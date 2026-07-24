@@ -15,6 +15,13 @@ Prisma migration infrastructure only: universta_shadow
 
 The public and admin frontends are separate Next.js App Router applications with TypeScript, Tailwind, and ESLint. The API is one NestJS modular monolith; no microservices or second application database are introduced.
 
+The admin browser uses a same-origin authentication BFF implemented with four
+explicit Next.js Route Handlers under `/api/v1/admin/auth/{login,refresh,logout,me}`.
+Those handlers forward only allowlisted authentication requests to the NestJS
+API using server-only `API_BASE_URL`; the browser never embeds or calls the API
+hostname directly. Refresh cookies are relayed without exposing their values,
+and access tokens remain in browser memory only.
+
 The API foundation uses a global typed runtime configuration module, one global
 Prisma service, request-context middleware, a global validation pipe, a global
 exception envelope, controlled CORS, and optional Swagger at `/api/docs`.

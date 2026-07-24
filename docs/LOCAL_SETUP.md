@@ -64,7 +64,21 @@ npm run dev:admin
 npm run dev:api
 ```
 
-The public app is at `http://localhost:3000`, the admin shell at `http://localhost:3001`, the API health endpoint at `http://localhost:4000/health`, and the versioned API prefix is `/api/v1`.
+The public app is at `http://localhost:3000`, the admin login/shell at `http://localhost:3001`, the API health endpoint at `http://localhost:4000/health`, and the versioned API prefix is `/api/v1`.
+
+### Admin BFF configuration
+
+Copy the server-only admin values from `apps/admin/.env.example` into a local
+environment when needed:
+
+```bash
+API_BASE_URL=http://127.0.0.1:4000
+ADMIN_APP_ORIGIN=http://localhost:3001
+```
+
+`API_BASE_URL` is intentionally not a `NEXT_PUBLIC_` variable. The browser
+calls only the same-origin admin BFF routes for login, refresh, logout, and
+`/me`; the refresh cookie remains HttpOnly and the access token is memory-only.
 
 ### API runtime configuration
 
@@ -99,6 +113,20 @@ npm --workspace apps/api run test
 npm --workspace apps/api run test:e2e
 ```
 
+Run the admin unit tests and real Chromium browser E2E tests with:
+
+```bash
+npm --workspace apps/admin run test
+set -a
+. apps/api/.env
+set +a
+E2E_ADMIN_EMAIL="$SEED_ADMIN_EMAIL" E2E_ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD" npm --workspace apps/admin run test:e2e
+```
+
+The browser test variables are local-only and are never sent to the browser
+bundle or committed. Playwright starts the API on port 4000 and admin app on
+port 3001 through readiness checks.
+
 Run the backend locally for an auth check:
 
 ```bash
@@ -106,7 +134,8 @@ npm run dev:api
 curl -i http://localhost:4000/health
 ```
 
-The admin frontend login screen and all business endpoints are deferred.
+Business endpoints and CRUD modules remain deferred. TASK_003 provides the
+admin login, same-origin authentication BFF, and protected shell.
 
 Open Prisma Studio:
 

@@ -9,11 +9,12 @@ npm audit
 npm audit --omit=dev
 ```
 
-The TASK_002 audit is recorded in the implementation report. The focused auth
-dependencies are `@nestjs/jwt`, `cookie-parser`, and `@types/cookie-parser`;
-no bcrypt or Passport dependency was added. The installed graph reports 7
-findings: 6 high, 1 moderate, 0 critical, 0 low, and 0 informational. The new
-auth dependencies do not appear in any finding.
+The TASK_002 audit is recorded in its implementation report. TASK_003 adds
+`server-only`, Vitest/Testing Library, and Playwright only to the admin
+workspace; no production vulnerability was introduced by those direct
+dependencies. The installed graph reports 7 findings: 6 high, 1 moderate, 0
+critical, 0 low, and 0 informational. The new admin testing/BFF dependencies do
+not appear in any finding.
 
 | Package/finding | Severity | Dependency path | Runtime relevance | Action |
 | --- | --- | --- | --- | --- |
@@ -25,11 +26,11 @@ auth dependencies do not appear in any finding.
 | `next` | High | direct in `apps/web` and `apps/admin` | Framework dependency | Requires a controlled compatible Next upgrade review |
 | `valibot` / GHSA-5qjj-4xww-7phc | Moderate | transitive via `@prisma/dev` | Development/migration tooling | Not forced; review with Prisma upgrade |
 
-The audit was rerun after adding the TASK_001 and TASK_002 dependencies. The direct
-`@nestjs/swagger` path was pinned to 11.4.5, which uses the clean `js-yaml`
-4.3.0 path; the newly introduced Swagger advisory is not present in the final
-audit. The remaining findings are existing framework/Prisma dependency paths
-or their refreshed transitive graph.
+The audit was rerun after adding the TASK_001, TASK_002, and TASK_003
+dependencies. The direct `@nestjs/swagger` path remains pinned to 11.4.5,
+which uses the clean `js-yaml` 4.3.0 path; the newly introduced admin
+testing/BFF dependencies do not add an advisory. The remaining findings are
+existing framework/Prisma dependency paths or their refreshed transitive graph.
 
 `npm audit --omit=dev` reports the same workspace graph because workspace
 manifests and installed framework packages remain included in the root audit
