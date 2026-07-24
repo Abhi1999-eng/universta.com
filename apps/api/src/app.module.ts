@@ -1,10 +1,46 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
+import { resolve } from 'node:path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AppExceptionFilter } from './common/app-exception.filter';
+import { RequestContextService } from './common/request-context.service';
+import { RequestLoggingMiddleware } from './common/request-logging.middleware';
+import { StructuredLogger } from './common/structured-logger.service';
+import { validateEnvironment } from './config/environment';
+import { RuntimeConfigModule } from './config/runtime-config.module';
+import { HealthService } from './health/health.service';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [],
+  imports: [
+    ConfigModule.forRoot({
+      cache: true,
+      isGlobal: true,
+      envFilePath: [
+        resolve(process.cwd(), 'apps/api/.env'),
+        resolve(process.cwd(), '.env'),
+      ],
+      validate: validateEnvironment,
+    }),
+    RuntimeConfigModule,
+    PrismaModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    AppExceptionFilter,
+    HealthService,
+    RequestContextService,
+    StructuredLogger,
+    { provide: APP_FILTER, useExisting: AppExceptionFilter },
+  ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(RequestLoggingMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

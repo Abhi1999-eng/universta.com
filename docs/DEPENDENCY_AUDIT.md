@@ -9,19 +9,31 @@ npm audit
 npm audit --omit=dev
 ```
 
-Both commands reported 6 high-severity vulnerabilities, 0 critical, 0 moderate, 0 low, and 0 informational findings.
+Both commands reported 7 findings: 6 high, 1 moderate, 0 critical, 0 low,
+and 0 informational.
 
-| Package/finding | Severity | Dependency path | Runtime relevance | Reported remediation | Action |
-| --- | --- | --- | --- | --- | --- |
-| `find-my-way` / GHSA-c96f-x56v-gq3h HTTP/2 DoS | High | transitive via `@prisma/dev` → `prisma` | Development/migration tooling | `npm audit fix --force` would install Prisma 7.8.0 and is marked breaking | Not applied; review Prisma release compatibility first |
-| `@prisma/dev` | High | transitive Prisma tooling package | Development/migration tooling | Same forced Prisma change | Not applied |
-| `prisma` | High | direct in `apps/api` devDependencies | Development/migration tooling | Forced downgrade/change to 7.8.0 | Not applied; current 7.9.0 is the verified migration tool |
-| `postcss` / GHSA-qx2v-qp2m-jg93 and GHSA-6g55-p6wh-862q | High | transitive via `next` in web/admin | Build tooling and framework pipeline | Forced change would install Next 9.3.3 | Not applied; this is a major, unsafe downgrade |
-| `sharp` / CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591 | High | transitive via `next` in web/admin | Next image/build dependency | Forced change would install Next 9.3.3 | Not applied; this is a major, unsafe downgrade |
-| `next` | High | direct in `apps/web` and `apps/admin` | Framework dependency | Audit's forced remediation points to Next 9.3.3 | Not applied; this is an incompatible major downgrade |
+| Package/finding | Severity | Dependency path | Runtime relevance | Action |
+| --- | --- | --- | --- | --- |
+| `find-my-way` / GHSA-c96f-x56v-gq3h HTTP/2 DoS | High | transitive via `@prisma/dev` → `prisma` | Development/migration tooling | Not forced; review Prisma release compatibility |
+| `@prisma/dev` | High | transitive Prisma tooling package | Development/migration tooling | Not forced; follows Prisma remediation |
+| `prisma` | High | direct in `apps/api` devDependencies | Development/migration tooling | Not changed; verified Prisma 7.9.0 retained |
+| `postcss` / GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849 | High | transitive via `next` in web/admin | Build tooling and framework pipeline | No unsafe framework downgrade applied |
+| `sharp` / CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591 | High | transitive via `next` in web/admin | Next image/build dependency | No unsafe framework downgrade applied |
+| `next` | High | direct in `apps/web` and `apps/admin` | Framework dependency | Requires a controlled compatible Next upgrade review |
+| `valibot` / GHSA-5qjj-4xww-7phc | Moderate | transitive via `@prisma/dev` | Development/migration tooling | Not forced; review with Prisma upgrade |
 
-`npm audit --omit=dev` reports the same workspace graph because the workspace manifests and installed framework packages are still included in the root audit tree; it does not establish that every finding is shipped in a production bundle. The Prisma findings are development/migration tooling. Next/PostCSS/sharp require a controlled framework upgrade review rather than `--force`.
+The audit was rerun after adding the TASK_001 dependencies. The direct
+`@nestjs/swagger` path was pinned to 11.4.5, which uses the clean `js-yaml`
+4.3.0 path; the newly introduced Swagger advisory is not present in the final
+audit. The remaining findings are existing framework/Prisma dependency paths
+or their refreshed transitive graph.
 
-No non-breaking patch/minor remediation was offered by npm. No dependency change was made, and `npm audit fix --force` was intentionally not run. The verified validation remains the current baseline: lint, tests, Prisma validation/generation, and web/admin/API builds pass.
+`npm audit --omit=dev` reports the same workspace graph because workspace
+manifests and installed framework packages remain included in the root audit
+tree; it does not establish that every finding is shipped in a production
+bundle. Prisma and Valibot are development/migration tooling paths. Next,
+PostCSS, and sharp require a controlled framework upgrade review.
 
-Unresolved risk: review current vendor advisories and plan compatible Next.js/Prisma upgrades before production deployment. Run the audit again after each approved upgrade.
+No non-breaking remediation was applied automatically, and
+`npm audit fix --force` was not run. The remaining audit risk is documented for
+future dependency review before production deployment.
