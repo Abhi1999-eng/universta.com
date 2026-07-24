@@ -22,6 +22,17 @@ export class RuntimeConfigService {
       databaseUrl: this.configService.getOrThrow('DATABASE_URL'),
       corsOrigins,
       swaggerEnabled: this.configService.getOrThrow('SWAGGER_ENABLED'),
+      jwtAccessSecret: this.configService.getOrThrow('JWT_ACCESS_SECRET'),
+      jwtRefreshSecret: this.configService.getOrThrow('JWT_REFRESH_SECRET'),
+      jwtAccessTtl: this.configService.getOrThrow('JWT_ACCESS_TTL'),
+      jwtRefreshTtl: this.configService.getOrThrow('JWT_REFRESH_TTL'),
+      authRefreshCookieName: this.configService.getOrThrow(
+        'AUTH_REFRESH_COOKIE_NAME',
+      ),
+      authMaxFailedAttempts: this.configService.getOrThrow(
+        'AUTH_MAX_FAILED_ATTEMPTS',
+      ),
+      authLockMinutes: this.configService.getOrThrow('AUTH_LOCK_MINUTES'),
     };
   }
 
@@ -43,5 +54,33 @@ export class RuntimeConfigService {
 
   get swaggerEnabled(): boolean {
     return this.value.swaggerEnabled;
+  }
+
+  get jwtAccessSecret(): string {
+    return this.value.jwtAccessSecret;
+  }
+
+  get jwtRefreshSecret(): string {
+    return this.value.jwtRefreshSecret;
+  }
+
+  get jwtAccessTtl(): string {
+    return this.value.jwtAccessTtl;
+  }
+
+  get jwtRefreshTtl(): string {
+    return this.value.jwtRefreshTtl;
+  }
+
+  get authRefreshCookieName(): string {
+    return this.value.authRefreshCookieName;
+  }
+
+  get authMaxFailedAttempts(): number {
+    return this.value.authMaxFailedAttempts;
+  }
+
+  get authLockMinutes(): number {
+    return this.value.authLockMinutes;
   }
 }

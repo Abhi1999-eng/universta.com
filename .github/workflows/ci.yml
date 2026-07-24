@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  foundation-ci:
+    name: CI / Foundation and Admin Auth
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PORT: 4000
+      DATABASE_URL: mysql://universta_ci_user:ci-only-db-password-2026@127.0.0.1:3306/universta_ci
+      SHADOW_DATABASE_URL: mysql://universta_ci_user:ci-only-db-password-2026@127.0.0.1:3306/universta_ci_shadow
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      SWAGGER_ENABLED: false
+      JWT_ACCESS_SECRET: ci-only-access-secret-2026-long-enough-for-tests
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-2026-different-and-long
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 30d
+      AUTH_REFRESH_COOKIE_NAME: universta_admin_refresh
+      AUTH_MAX_FAILED_ATTEMPTS: 5
+      AUTH_LOCK_MINUTES: 15
+      SEED_ADMIN_EMAIL: ci-admin@example.invalid
+      SEED_ADMIN_PASSWORD: ci-only-seed-password-2026-strong
+      SUPER_ADMIN_FIRST_NAME: CI
+      SUPER_ADMIN_LAST_NAME: Admin
+      CI_DB_PASSWORD: ci-only-db-password-2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js 25
+        uses: actions/setup-node@v6
+        with:
+          node-version: 25
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Linux CSS build binary
+        run: |
+          lightning_dir="${RUNNER_TEMP}/lightningcss-linux-x64-gnu"
+          mkdir -p "$lightning_dir/extracted" node_modules/lightningcss-linux-x64-gnu
+          npm pack --silent --pack-destination "$lightning_dir" lightningcss-linux-x64-gnu@1.32.0
+          tar -xzf "$lightning_dir/lightningcss-linux-x64-gnu-1.32.0.tgz" -C "$lightning_dir/extracted"
+          cp -R "$lightning_dir/extracted/package/." node_modules/lightningcss-linux-x64-gnu/
+
+          oxide_dir="${RUNNER_TEMP}/tailwindcss-oxide-linux-x64-gnu"
+          mkdir -p "$oxide_dir/extracted" apps/web/node_modules/@tailwindcss/oxide-linux-x64-gnu apps/admin/node_modules/@tailwindcss/oxide-linux-x64-gnu
+          npm pack --silent --pack-destination "$oxide_dir" @tailwindcss/oxide-linux-x64-gnu@4.3.3
+          tar -xzf "$oxide_dir/tailwindcss-oxide-linux-x64-gnu-4.3.3.tgz" -C "$oxide_dir/extracted"
+          cp -R "$oxide_dir/extracted/package/." apps/web/node_modules/@tailwindcss/oxide-linux-x64-gnu/
+          cp -R "$oxide_dir/extracted/package/." apps/admin/node_modules/@tailwindcss/oxide-linux-x64-gnu/
+
+      - name: Start native MySQL
+        run: sudo systemctl start mysql
+
+      - name: Create CI-only databases and user
+        run: |
+          # Ubuntu's preinstalled runner MySQL root password is the documented CI-only value: root.
+          sudo mysql --protocol=socket -uroot -proot -e "CREATE DATABASE IF NOT EXISTS universta_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS universta_ci_shadow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS 'universta_ci_user'@'127.0.0.1' IDENTIFIED BY '${CI_DB_PASSWORD}'; GRANT ALL PRIVILEGES ON universta_ci.* TO 'universta_ci_user'@'127.0.0.1'; GRANT ALL PRIVILEGES ON universta_ci_shadow.* TO 'universta_ci_user'@'127.0.0.1'; FLUSH PRIVILEGES;"
+
+      - name: Prisma format check
+        run: npm run db:format -- --check
+
+      - name: Prisma validate
+        run: npm run db:validate
+
+      - name: Prisma generate
+        run: npm run db:generate
+
+      - name: Prisma migrate deploy
+        run: npm run db:migrate:deploy
+
+      - name: Foundation seed
+        run: npm run db:seed
+
+      - name: API unit tests
+        run: npm --workspace apps/api run test -- --runInBand
+
+      - name: API E2E tests
+        run: npm --workspace apps/api run test:e2e -- --runInBand
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build web, admin, and API
+        run: npm run build
+
+      - name: Confirm generated and build output is clean
+        run: |
+          git diff --check
+          git diff --exit-code

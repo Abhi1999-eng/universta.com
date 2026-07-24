@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 const SENSITIVE_KEY_PATTERN =
-  /(authorization|cookie|password|passwordhash|accesstoken|refreshtoken|resettoken|database(url|password)?|jwt(secret)?|api[-_]?key)/i;
+  /(authorization|cookie|password|password[-_]?hash|access[-_]?token|refresh[-_]?token|reset[-_]?token|database(url|password)?|jwt([-_]?secret)?|api[-_]?key)/i;
 const DATABASE_URL_PATTERN = /(?:mysql|mariadb):\/\/[^\s"'`]+/gi;
 
 export function redactSensitiveFields(value: unknown, key?: string): unknown {

@@ -9,12 +9,20 @@ describe('structured logging redaction', () => {
       redactSensitiveFields({
         authorization: 'Bearer secret',
         password: 'secret',
+        accessToken: 'access-secret',
+        refresh_token: 'refresh-secret',
+        jwtSecret: 'jwt-secret',
+        cookie: 'refresh=secret',
         databaseUrl: 'mysql://user:password@localhost:3306/universta',
         safe: 'value',
       }),
     ).toEqual({
       authorization: '[REDACTED]',
       password: '[REDACTED]',
+      accessToken: '[REDACTED]',
+      refresh_token: '[REDACTED]',
+      jwtSecret: '[REDACTED]',
+      cookie: '[REDACTED]',
       databaseUrl: '[REDACTED]',
       safe: 'value',
     });

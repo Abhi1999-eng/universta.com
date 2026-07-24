@@ -13,6 +13,13 @@ export interface ValidatedEnvironment {
   DATABASE_URL: string;
   CORS_ORIGINS: string[];
   SWAGGER_ENABLED: boolean;
+  JWT_ACCESS_SECRET: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_ACCESS_TTL: string;
+  JWT_REFRESH_TTL: string;
+  AUTH_REFRESH_COOKIE_NAME: string;
+  AUTH_MAX_FAILED_ATTEMPTS: number;
+  AUTH_LOCK_MINUTES: number;
 }
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
@@ -85,6 +92,55 @@ function requiredString(env: Record<string, unknown>, name: string): string {
   return value.trim();
 }
 
+function requiredSecret(env: Record<string, unknown>, name: string): string {
+  const value = requiredString(env, name);
+  if (value.length < 32) {
+    throw new Error(`Invalid configuration variable: ${name}`);
+  }
+  return value;
+}
+
+export function parseTtl(
+  value: unknown,
+  name: string,
+  fallback: string,
+): string {
+  const normalized = value === undefined || value === '' ? fallback : value;
+  if (typeof normalized !== 'string' || !/^\d+(s|m|h|d)$/.test(normalized)) {
+    throw new Error(`Invalid configuration variable: ${name}`);
+  }
+  const amount = Number(normalized.slice(0, -1));
+  if (!Number.isSafeInteger(amount) || amount < 1) {
+    throw new Error(`Invalid configuration variable: ${name}`);
+  }
+  return normalized;
+}
+
+export function ttlToSeconds(ttl: string): number {
+  const amount = Number(ttl.slice(0, -1));
+  const unit = ttl.at(-1);
+  const multiplier =
+    unit === 's' ? 1 : unit === 'm' ? 60 : unit === 'h' ? 3600 : 86400;
+  return amount * multiplier;
+}
+
+function parsePositiveInteger(
+  value: unknown,
+  name: string,
+  fallback: number,
+): number {
+  const normalized =
+    value === undefined || value === '' ? String(fallback) : value;
+  if (typeof normalized !== 'string' && typeof normalized !== 'number') {
+    throw new Error(`Invalid configuration variable: ${name}`);
+  }
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    throw new Error(`Invalid configuration variable: ${name}`);
+  }
+  return parsed;
+}
+
 function parsePort(value: unknown, nodeEnv: EnvironmentName): number {
   if (
     (value === undefined || value === '') &&
@@ -133,6 +189,11 @@ export function validateEnvironment(
   const nodeEnv = nodeEnvValue as EnvironmentName;
   const databaseUrl = validateDatabaseUrl(requiredString(env, 'DATABASE_URL'));
   const corsOrigins = parseCorsOrigins(requiredString(env, 'CORS_ORIGINS'));
+  const accessSecret = requiredSecret(env, 'JWT_ACCESS_SECRET');
+  const refreshSecret = requiredSecret(env, 'JWT_REFRESH_SECRET');
+  if (accessSecret === refreshSecret) {
+    throw new Error('Invalid configuration variable: JWT_REFRESH_SECRET');
+  }
 
   return {
     NODE_ENV: nodeEnv,
@@ -142,6 +203,25 @@ export function validateEnvironment(
     SWAGGER_ENABLED: parseBoolean(
       env.SWAGGER_ENABLED,
       nodeEnv === 'development',
+    ),
+    JWT_ACCESS_SECRET: accessSecret,
+    JWT_REFRESH_SECRET: refreshSecret,
+    JWT_ACCESS_TTL: parseTtl(env.JWT_ACCESS_TTL, 'JWT_ACCESS_TTL', '15m'),
+    JWT_REFRESH_TTL: parseTtl(env.JWT_REFRESH_TTL, 'JWT_REFRESH_TTL', '30d'),
+    AUTH_REFRESH_COOKIE_NAME:
+      typeof env.AUTH_REFRESH_COOKIE_NAME === 'string' &&
+      env.AUTH_REFRESH_COOKIE_NAME.trim() !== ''
+        ? env.AUTH_REFRESH_COOKIE_NAME.trim()
+        : 'universta_admin_refresh',
+    AUTH_MAX_FAILED_ATTEMPTS: parsePositiveInteger(
+      env.AUTH_MAX_FAILED_ATTEMPTS,
+      'AUTH_MAX_FAILED_ATTEMPTS',
+      5,
+    ),
+    AUTH_LOCK_MINUTES: parsePositiveInteger(
+      env.AUTH_LOCK_MINUTES,
+      'AUTH_LOCK_MINUTES',
+      15,
     ),
   };
 }

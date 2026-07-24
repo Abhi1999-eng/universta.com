@@ -68,10 +68,22 @@ The public app is at `http://localhost:3000`, the admin shell at `http://localho
 
 ### API runtime configuration
 
-The API requires `NODE_ENV`, `DATABASE_URL`, and `CORS_ORIGINS`. `PORT` defaults
-to `4000` only in development/test and must otherwise be an integer from 1 to
-65535. `SWAGGER_ENABLED` defaults to enabled in development and disabled in
-other environments. Runtime startup does not require `SHADOW_DATABASE_URL`.
+The API requires `NODE_ENV`, `DATABASE_URL`, `CORS_ORIGINS`,
+`JWT_ACCESS_SECRET`, and `JWT_REFRESH_SECRET`. JWT secrets must be distinct and
+at least 32 characters long; generate local-only values and never commit
+`apps/api/.env`. `PORT` defaults to `4000` only in development/test and must
+otherwise be an integer from 1 to 65535. `SWAGGER_ENABLED` defaults to enabled
+in development and disabled in other environments. Runtime startup does not
+require `SHADOW_DATABASE_URL`.
+
+Auth defaults are `JWT_ACCESS_TTL=15m`, `JWT_REFRESH_TTL=30d`,
+`AUTH_REFRESH_COOKIE_NAME=universta_admin_refresh`,
+`AUTH_MAX_FAILED_ATTEMPTS=5`, and `AUTH_LOCK_MINUTES=15`. The backend-only
+Super Admin endpoints are `/api/v1/admin/auth/login`, `/refresh`, `/logout`,
+and `/me`. Login returns only the access token in JSON; the rotating refresh
+token is an HttpOnly cookie. Use the seeded Super Admin credentials from the
+local environment for runtime checks, and do not paste credentials or tokens
+into documentation.
 
 `SHADOW_DATABASE_URL` remains in the local environment and Prisma migration
 configuration because it is required by local Prisma migration tooling, not by
@@ -86,6 +98,15 @@ Run API unit and E2E foundation tests with:
 npm --workspace apps/api run test
 npm --workspace apps/api run test:e2e
 ```
+
+Run the backend locally for an auth check:
+
+```bash
+npm run dev:api
+curl -i http://localhost:4000/health
+```
+
+The admin frontend login screen and all business endpoints are deferred.
 
 Open Prisma Studio:
 

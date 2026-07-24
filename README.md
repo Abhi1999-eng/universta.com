@@ -2,7 +2,7 @@
 
 Universta is a single-repository Phase 1 foundation with two Next.js applications, one NestJS modular monolith, native MySQL, and Prisma migrations.
 
-This repository currently contains setup scaffolding only. Business APIs, authentication flows, admin CRUD screens, public country/course views, counselling forms, and approved HTML conversion are intentionally deferred.
+This repository contains the Phase 1 foundation and backend Super Admin authentication. Business APIs, admin CRUD screens, the admin frontend login screen, public country/course views, counselling forms, and approved HTML conversion remain intentionally deferred.
 
 ## Applications
 

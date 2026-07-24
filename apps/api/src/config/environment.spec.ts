@@ -6,6 +6,8 @@ const validEnvironment = {
   DATABASE_URL: 'mysql://user:password@127.0.0.1:3306/universta',
   CORS_ORIGINS:
     ' http://localhost:3000, http://localhost:3001, http://localhost:3000 ',
+  JWT_ACCESS_SECRET: 'access-secret-that-is-at-least-32-characters-long',
+  JWT_REFRESH_SECRET: 'refresh-secret-that-is-at-least-32-characters-long',
 };
 
 describe('runtime environment validation', () => {
@@ -16,6 +18,13 @@ describe('runtime environment validation', () => {
       DATABASE_URL: validEnvironment.DATABASE_URL,
       CORS_ORIGINS: ['http://localhost:3000', 'http://localhost:3001'],
       SWAGGER_ENABLED: false,
+      JWT_ACCESS_SECRET: validEnvironment.JWT_ACCESS_SECRET,
+      JWT_REFRESH_SECRET: validEnvironment.JWT_REFRESH_SECRET,
+      JWT_ACCESS_TTL: '15m',
+      JWT_REFRESH_TTL: '30d',
+      AUTH_REFRESH_COOKIE_NAME: 'universta_admin_refresh',
+      AUTH_MAX_FAILED_ATTEMPTS: 5,
+      AUTH_LOCK_MINUTES: 15,
     });
   });
 
@@ -33,6 +42,21 @@ describe('runtime environment validation', () => {
     expect(() =>
       validateEnvironment({ ...validEnvironment, NODE_ENV: 'local' }),
     ).toThrow('NODE_ENV');
+  });
+
+  it('requires long, distinct JWT secrets', () => {
+    expect(() =>
+      validateEnvironment({
+        ...validEnvironment,
+        JWT_ACCESS_SECRET: 'short',
+      }),
+    ).toThrow('JWT_ACCESS_SECRET');
+    expect(() =>
+      validateEnvironment({
+        ...validEnvironment,
+        JWT_REFRESH_SECRET: validEnvironment.JWT_ACCESS_SECRET,
+      }),
+    ).toThrow('JWT_REFRESH_SECRET');
   });
 
   it('defaults development and test ports to 4000', () => {

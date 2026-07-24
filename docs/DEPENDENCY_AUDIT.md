@@ -1,6 +1,6 @@
 # Dependency audit
 
-Audit date: 2026-07-24
+Audit date: 2026-07-25
 
 Commands run from the repository root:
 
@@ -9,8 +9,11 @@ npm audit
 npm audit --omit=dev
 ```
 
-Both commands reported 7 findings: 6 high, 1 moderate, 0 critical, 0 low,
-and 0 informational.
+The TASK_002 audit is recorded in the implementation report. The focused auth
+dependencies are `@nestjs/jwt`, `cookie-parser`, and `@types/cookie-parser`;
+no bcrypt or Passport dependency was added. The installed graph reports 7
+findings: 6 high, 1 moderate, 0 critical, 0 low, and 0 informational. The new
+auth dependencies do not appear in any finding.
 
 | Package/finding | Severity | Dependency path | Runtime relevance | Action |
 | --- | --- | --- | --- | --- |
@@ -22,7 +25,7 @@ and 0 informational.
 | `next` | High | direct in `apps/web` and `apps/admin` | Framework dependency | Requires a controlled compatible Next upgrade review |
 | `valibot` / GHSA-5qjj-4xww-7phc | Moderate | transitive via `@prisma/dev` | Development/migration tooling | Not forced; review with Prisma upgrade |
 
-The audit was rerun after adding the TASK_001 dependencies. The direct
+The audit was rerun after adding the TASK_001 and TASK_002 dependencies. The direct
 `@nestjs/swagger` path was pinned to 11.4.5, which uses the clean `js-yaml`
 4.3.0 path; the newly introduced Swagger advisory is not present in the final
 audit. The remaining findings are existing framework/Prisma dependency paths
