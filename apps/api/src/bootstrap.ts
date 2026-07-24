@@ -1,4 +1,5 @@
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import type { INestApplication } from '@nestjs/common';
 import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { AppExceptionFilter } from './common/app-exception.filter';
@@ -11,6 +12,7 @@ export function configureApplication(app: INestApplication): void {
 
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
   app.enableShutdownHooks();
+  app.use(cookieParser());
   const corsOptions: CorsOptions = {
     credentials: true,
     origin: (origin, callback) => {
@@ -34,6 +36,11 @@ export function configureSwagger(
       .setDescription('Universta Phase 1 API')
       .setVersion('1.0')
       .addBearerAuth()
+      .addCookieAuth('admin-refresh-cookie', {
+        type: 'apiKey',
+        in: 'cookie',
+        name: runtimeConfig.authRefreshCookieName,
+      })
       .build();
     const document = SwaggerModule.createDocument(app, documentConfig);
     SwaggerModule.setup('api/docs', app, document, {

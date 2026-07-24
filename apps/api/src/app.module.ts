@@ -5,9 +5,9 @@ import { resolve } from 'node:path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppExceptionFilter } from './common/app-exception.filter';
-import { RequestContextService } from './common/request-context.service';
+import { CommonModule } from './common/common.module';
+import { AuthModule } from './auth/auth.module';
 import { RequestLoggingMiddleware } from './common/request-logging.middleware';
-import { StructuredLogger } from './common/structured-logger.service';
 import { validateEnvironment } from './config/environment';
 import { RuntimeConfigModule } from './config/runtime-config.module';
 import { HealthService } from './health/health.service';
@@ -24,16 +24,16 @@ import { PrismaModule } from './prisma/prisma.module';
       ],
       validate: validateEnvironment,
     }),
+    CommonModule,
     RuntimeConfigModule,
     PrismaModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     AppExceptionFilter,
     HealthService,
-    RequestContextService,
-    StructuredLogger,
     { provide: APP_FILTER, useExisting: AppExceptionFilter },
   ],
 })

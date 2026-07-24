@@ -22,4 +22,11 @@ exception envelope, controlled CORS, and optional Swagger at `/api/docs`.
 the API TypeScript build uses CommonJS so the generated client and Nest runtime
 share one module format.
 
+The backend Super Admin authentication module uses short-lived access JWTs and
+rotating refresh JWTs. Access tokens are sent as bearer credentials; refresh
+tokens are stored only as hashes and delivered through an HttpOnly,
+SameSite=Lax cookie scoped to `/api/v1/admin/auth`. Auth state uses the existing
+`users`, `roles`, `user_roles`, `refresh_tokens`, `login_attempts`, and
+`audit_logs` tables without a schema change.
+
 Future extraction boundaries may follow authentication/identity, content/catalog, lead and counselling workflows, communications, and analytics. Those are boundaries for future code organization, not deployed services in Phase 1.
