@@ -1,0 +1,36 @@
+# Dependencies and generated build output
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+apps/api/.env
+apps/web/.env.local
+apps/admin/.env.local
+
+# Prisma generated client and local database artifacts
+apps/api/src/generated/prisma/
+apps/api/prisma/src/generated/prisma/
+*.db
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

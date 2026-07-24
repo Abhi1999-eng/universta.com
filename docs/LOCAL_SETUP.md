@@ -1,0 +1,99 @@
+# Local setup
+
+Run these commands from `/Users/abhishekchaubey/projects/universta`.
+
+## Retained local versions
+
+This setup intentionally retains the versions already installed on the machine:
+Node.js 25.9.0 and MySQL 9.7.1. The root package engine allows Node.js 24 or
+newer. Production versions will be selected later; production compatibility
+must be verified against the selected deployment versions before release.
+
+## MySQL
+
+The machine currently uses the Homebrew `mysql` formula:
+
+```bash
+brew services start mysql
+brew services stop mysql
+mysqladmin ping -h 127.0.0.1 --silent
+```
+
+If a machine has the versioned formula installed, the equivalent commands are:
+
+```bash
+brew services start mysql@8.4
+brew services stop mysql@8.4
+```
+
+Open the root console:
+
+```bash
+mysql -u root -p
+```
+
+Bootstrap the two databases and local application user once:
+
+```bash
+mysql -u root -p < database/bootstrap.sql
+```
+
+Open the application database:
+
+```bash
+mysql -u universta_app -p -h 127.0.0.1 universta
+```
+
+## Install and migrate
+
+```bash
+npm install
+npm run db:format
+npm run db:validate
+npm run db:generate
+npm run db:migrate:status
+npm run db:migrate:dev -- --name meaningful_migration_name
+npm run db:seed
+```
+
+## Run the apps
+
+```bash
+npm run dev:web
+npm run dev:admin
+npm run dev:api
+```
+
+The public app is at `http://localhost:3000`, the admin shell at `http://localhost:3001`, the API health endpoint at `http://localhost:4000/health`, and the versioned API prefix is `/api/v1`.
+
+Open Prisma Studio:
+
+```bash
+cd apps/api
+npx prisma studio
+```
+
+Check migration status:
+
+```bash
+cd apps/api
+npx prisma migrate status
+```
+
+Create a future local migration:
+
+```bash
+cd apps/api
+npx prisma migrate dev --name meaningful_migration_name
+```
+
+Deploy reviewed migrations:
+
+```bash
+cd apps/api
+npx prisma migrate deploy
+```
+
+## Safe inspection and reset warning
+
+Use `SHOW TABLES`, `DESCRIBE table_name`, and read-only `SELECT` statements to inspect data. `prisma migrate reset` destroys the local database and reseeds it; never run it without explicit approval and only against a disposable local database. It was not used for this setup.

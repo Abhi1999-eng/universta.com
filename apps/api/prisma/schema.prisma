@@ -1,0 +1,1352 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Role {
+  id           String   @id @default(uuid()) @db.Char(36)
+  code         String   @unique @db.VarChar(50)
+  name         String   @db.VarChar(100)
+  description  String?  @db.VarChar(500)
+  isSystemRole Boolean  @default(false) @map("is_system_role")
+  status       String   @default("ACTIVE") @db.VarChar(30)
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model User {
+  id                  String    @id @default(uuid()) @db.Char(36)
+  email               String    @unique @db.VarChar(255)
+  passwordHash        String    @map("password_hash") @db.VarChar(255)
+  firstName           String    @map("first_name") @db.VarChar(100)
+  lastName            String?   @map("last_name") @db.VarChar(100)
+  phoneCountryCode    String?   @map("phone_country_code") @db.VarChar(10)
+  phoneNumber         String?   @map("phone_number") @db.VarChar(30)
+  avatarMediaId       String?   @map("avatar_media_id") @db.Char(36)
+  status              String    @default("ACTIVE") @db.VarChar(30)
+  emailVerifiedAt     DateTime? @map("email_verified_at") @db.DateTime(3)
+  passwordChangedAt   DateTime? @map("password_changed_at") @db.DateTime(3)
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until") @db.DateTime(3)
+  lastLoginAt         DateTime? @map("last_login_at") @db.DateTime(3)
+  lastLoginIp         String?   @map("last_login_ip") @db.VarChar(45)
+  timezone            String    @default("Asia/Kolkata") @db.VarChar(100)
+  locale              String    @default("en-IN") @db.VarChar(20)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt           DateTime? @map("deleted_at") @db.DateTime(3)
+
+  avatarMedia           MediaAsset?          @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  userRoles             UserRole[]
+  assignedUserRoles     UserRole[]           @relation("UserRoleAssigner")
+  refreshTokens         RefreshToken[]
+  passwordResetTokens   PasswordResetToken[]
+  loginAttempts         LoginAttempt[]
+  auditLogs             AuditLog[]
+  uploadedMedia         MediaAsset[]         @relation("MediaUploadedBy")
+  updatedSettings       SiteSetting[]        @relation("SiteSettingUpdatedBy")
+  createdPages          Page[]               @relation("PageCreatedBy")
+  updatedPages          Page[]               @relation("PageUpdatedBy")
+  createdSubjects       Subject[]            @relation("SubjectCreatedBy")
+  updatedSubjects       Subject[]            @relation("SubjectUpdatedBy")
+  createdSubSubjects    SubSubject[]         @relation("SubSubjectCreatedBy")
+  updatedSubSubjects    SubSubject[]         @relation("SubSubjectUpdatedBy")
+  createdCountries      Country[]            @relation("CountryCreatedBy")
+  updatedCountries      Country[]            @relation("CountryUpdatedBy")
+  createdCountryFaqs    CountryFaq[]         @relation("CountryFaqCreatedBy")
+  updatedCountryFaqs    CountryFaq[]         @relation("CountryFaqUpdatedBy")
+  createdCourses        Course[]             @relation("CourseCreatedBy")
+  updatedCourses        Course[]             @relation("CourseUpdatedBy")
+  assignedLeads         Lead[]               @relation("LeadAssignedTo")
+  assignedBookings      CounsellingBooking[] @relation("BookingAssignedTo")
+  leadNotes             LeadNote[]
+  changedLeadStatuses   LeadStatusHistory[]  @relation("LeadStatusChangedBy")
+  createdEmailTemplates EmailTemplate[]      @relation("EmailTemplateCreatedBy")
+  updatedEmailTemplates EmailTemplate[]      @relation("EmailTemplateUpdatedBy")
+  createdRedirects      Redirect[]           @relation("RedirectCreatedBy")
+  createdContinents     Continent[]          @relation("ContinentCreatedBy")
+  updatedContinents     Continent[]          @relation("ContinentUpdatedBy")
+
+  @@index([avatarMediaId])
+  @@index([status, deletedAt])
+  @@map("users")
+}
+
+model UserRole {
+  id               String   @id @default(uuid()) @db.Char(36)
+  userId           String   @map("user_id") @db.Char(36)
+  roleId           String   @map("role_id") @db.Char(36)
+  assignedByUserId String?  @map("assigned_by_user_id") @db.Char(36)
+  assignedAt       DateTime @default(now()) @map("assigned_at") @db.DateTime(3)
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role  @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  assignedBy User? @relation("UserRoleAssigner", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([assignedByUserId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id                String    @id @default(uuid()) @db.Char(36)
+  userId            String    @map("user_id") @db.Char(36)
+  tokenHash         String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt         DateTime  @map("expires_at") @db.DateTime(3)
+  revokedAt         DateTime? @map("revoked_at") @db.DateTime(3)
+  revocationReason  String?   @map("revocation_reason") @db.VarChar(255)
+  replacedByTokenId String?   @map("replaced_by_token_id") @db.Char(36)
+  createdIp         String?   @map("created_ip") @db.VarChar(45)
+  userAgent         String?   @map("user_agent") @db.VarChar(1000)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedByToken RefreshToken?  @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id], onDelete: SetNull)
+  replaces        RefreshToken[] @relation("RefreshTokenReplacement")
+
+  @@index([userId])
+  @@index([replacedByTokenId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid()) @db.Char(36)
+  userId      String    @map("user_id") @db.Char(36)
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt   DateTime  @map("expires_at") @db.DateTime(3)
+  usedAt      DateTime? @map("used_at") @db.DateTime(3)
+  requestedIp String?   @map("requested_ip") @db.VarChar(45)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model LoginAttempt {
+  id             String   @id @default(uuid()) @db.Char(36)
+  userId         String?  @map("user_id") @db.Char(36)
+  attemptedEmail String   @map("attempted_email") @db.VarChar(255)
+  wasSuccessful  Boolean  @map("was_successful")
+  failureReason  String?  @map("failure_reason") @db.VarChar(255)
+  ipAddress      String?  @map("ip_address") @db.VarChar(45)
+  userAgent      String?  @map("user_agent") @db.VarChar(1000)
+  requestId      String?  @map("request_id") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([attemptedEmail, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("login_attempts")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Char(36)
+  userId      String?  @map("user_id") @db.Char(36)
+  module      String   @db.VarChar(100)
+  entityType  String   @map("entity_type") @db.VarChar(100)
+  entityId    String?  @map("entity_id") @db.Char(36)
+  action      String   @db.VarChar(50)
+  oldValues   Json?    @map("old_values") @db.Json
+  newValues   Json?    @map("new_values") @db.Json
+  description String?  @db.VarChar(1000)
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.VarChar(1000)
+  requestId   String?  @map("request_id") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([module, action, createdAt])
+  @@map("audit_logs")
+}
+
+model MediaAsset {
+  id               String    @id @default(uuid()) @db.Char(36)
+  storageProvider  String    @default("LOCAL") @map("storage_provider") @db.VarChar(30)
+  bucketName       String?   @map("bucket_name") @db.VarChar(255)
+  objectKey        String    @map("object_key") @db.VarChar(1000)
+  publicUrl        String    @map("public_url") @db.VarChar(2048)
+  originalFileName String    @map("original_file_name") @db.VarChar(500)
+  storedFileName   String    @map("stored_file_name") @db.VarChar(500)
+  mimeType         String    @map("mime_type") @db.VarChar(150)
+  fileExtension    String?   @map("file_extension") @db.VarChar(20)
+  fileSizeBytes    BigInt    @map("file_size_bytes") @db.BigInt
+  width            Int?      @db.Int
+  height           Int?      @db.Int
+  durationSeconds  Int?      @map("duration_seconds") @db.Int
+  checksum         String?   @db.VarChar(128)
+  title            String?   @db.VarChar(255)
+  altText          String?   @map("alt_text") @db.VarChar(500)
+  caption          String?   @db.Text
+  folder           String?   @db.VarChar(255)
+  mediaType        String    @default("IMAGE") @map("media_type") @db.VarChar(30)
+  status           String    @default("ACTIVE") @db.VarChar(30)
+  uploadedByUserId String?   @map("uploaded_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  uploadedBy               User?                   @relation("MediaUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  avatarUsers              User[]                  @relation("UserAvatar")
+  pageSections             PageSection[]           @relation("PageSectionMedia")
+  backgroundSections       PageSection[]           @relation("PageSectionBackgroundMedia")
+  navigationIcons          NavigationItem[]        @relation("NavigationItemIconMedia")
+  platformMetrics          PlatformMetric[]        @relation("PlatformMetricIconMedia")
+  seoOgMetadata            SeoMetadata[]           @relation("SeoOgMedia")
+  seoTwitterMetadata       SeoMetadata[]           @relation("SeoTwitterMedia")
+  continentIcons           Continent[]             @relation("ContinentIconMedia")
+  continentHeroes          Continent[]             @relation("ContinentHeroMedia")
+  subjectIcons             Subject[]               @relation("SubjectIconMedia")
+  subjectListingMedia      Subject[]               @relation("SubjectListingMedia")
+  subjectHeroMedia         Subject[]               @relation("SubjectHeroMedia")
+  subSubjectIcons          SubSubject[]            @relation("SubSubjectIconMedia")
+  subSubjectListingMedia   SubSubject[]            @relation("SubSubjectListingMedia")
+  countryFlags             Country[]               @relation("CountryFlagMedia")
+  countryListingMedia      Country[]               @relation("CountryListingMedia")
+  countryHeroMedia         Country[]               @relation("CountryHeroMedia")
+  countryMapMedia          Country[]               @relation("CountryMapMedia")
+  countryPrimarySections   CountryContentSection[] @relation("CountryPrimaryMedia")
+  countrySecondarySections CountryContentSection[] @relation("CountrySecondaryMedia")
+  courseFeaturedMedia      Course[]                @relation("CourseFeaturedMedia")
+  courseSections           CourseContentSection[]  @relation("CourseSectionMedia")
+  consultantIcons          ConsultantLandingCard[] @relation("ConsultantIconMedia")
+  consultantFeaturedMedia  ConsultantLandingCard[] @relation("ConsultantFeaturedMedia")
+
+  @@index([uploadedByUserId])
+  @@index([folder, status])
+  @@index([checksum])
+  @@map("media_assets")
+}
+
+model SiteSetting {
+  id              String   @id @default(uuid()) @db.Char(36)
+  settingKey      String   @unique @map("setting_key") @db.VarChar(150)
+  settingGroup    String   @map("setting_group") @db.VarChar(100)
+  valueType       String   @map("value_type") @db.VarChar(30)
+  valueJson       Json?    @map("value_json") @db.Json
+  description     String?  @db.VarChar(500)
+  isPublic        Boolean  @default(false) @map("is_public")
+  updatedByUserId String?  @map("updated_by_user_id") @db.Char(36)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  updatedBy User? @relation("SiteSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByUserId])
+  @@index([settingGroup, isPublic])
+  @@map("site_settings")
+}
+
+model FeatureFlag {
+  id                String   @id @default(uuid()) @db.Char(36)
+  flagKey           String   @unique @map("flag_key") @db.VarChar(150)
+  name              String   @db.VarChar(255)
+  description       String?  @db.VarChar(500)
+  isEnabled         Boolean  @default(false) @map("is_enabled")
+  environment       String   @default("ALL") @db.VarChar(30)
+  configurationJson Json?    @map("configuration_json") @db.Json
+  createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("feature_flags")
+}
+
+model Page {
+  id               String    @id @default(uuid()) @db.Char(36)
+  pageType         String    @map("page_type") @db.VarChar(50)
+  title            String    @db.VarChar(255)
+  shortTitle       String?   @map("short_title") @db.VarChar(150)
+  slug             String    @unique @db.VarChar(255)
+  layoutKey        String?   @map("layout_key") @db.VarChar(100)
+  shortDescription String?   @map("short_description") @db.VarChar(1000)
+  status           String    @default("DRAFT") @db.VarChar(30)
+  isHomepage       Boolean   @default(false) @map("is_homepage")
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  createdBy       User?            @relation("PageCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?            @relation("PageUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  sections        PageSection[]
+  navigationItems NavigationItem[]
+
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([pageType, status, displayOrder])
+  @@map("pages")
+}
+
+model PageSection {
+  id                String    @id @default(uuid()) @db.Char(36)
+  pageId            String    @map("page_id") @db.Char(36)
+  sectionKey        String    @map("section_key") @db.VarChar(100)
+  sectionType       String    @map("section_type") @db.VarChar(100)
+  eyebrow           String?   @db.VarChar(255)
+  heading           String?   @db.VarChar(500)
+  subheading        String?   @db.Text
+  bodyJson          Json?     @map("body_json") @db.Json
+  mediaId           String?   @map("media_id") @db.Char(36)
+  backgroundMediaId String?   @map("background_media_id") @db.Char(36)
+  ctaPrimaryLabel   String?   @map("cta_primary_label") @db.VarChar(100)
+  ctaPrimaryUrl     String?   @map("cta_primary_url") @db.VarChar(1000)
+  ctaSecondaryLabel String?   @map("cta_secondary_label") @db.VarChar(100)
+  ctaSecondaryUrl   String?   @map("cta_secondary_url") @db.VarChar(1000)
+  configurationJson Json?     @map("configuration_json") @db.Json
+  displayOrder      Int       @default(0) @map("display_order")
+  status            String    @default("ACTIVE") @db.VarChar(30)
+  startsAt          DateTime? @map("starts_at") @db.DateTime(3)
+  endsAt            DateTime? @map("ends_at") @db.DateTime(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt         DateTime? @map("deleted_at") @db.DateTime(3)
+
+  page            Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  media           MediaAsset? @relation("PageSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  backgroundMedia MediaAsset? @relation("PageSectionBackgroundMedia", fields: [backgroundMediaId], references: [id], onDelete: SetNull)
+
+  @@unique([pageId, sectionKey])
+  @@index([pageId, status, displayOrder])
+  @@index([mediaId])
+  @@index([backgroundMediaId])
+  @@map("page_sections")
+}
+
+model NavigationMenu {
+  id        String   @id @default(uuid()) @db.Char(36)
+  name      String   @db.VarChar(150)
+  menuKey   String   @unique @map("menu_key") @db.VarChar(100)
+  location  String   @db.VarChar(50)
+  status    String   @default("ACTIVE") @db.VarChar(30)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  items NavigationItem[]
+
+  @@map("navigation_menus")
+}
+
+model NavigationItem {
+  id           String   @id @default(uuid()) @db.Char(36)
+  menuId       String   @map("menu_id") @db.Char(36)
+  parentItemId String?  @map("parent_item_id") @db.Char(36)
+  label        String   @db.VarChar(150)
+  linkType     String   @map("link_type") @db.VarChar(30)
+  pageId       String?  @map("page_id") @db.Char(36)
+  customUrl    String?  @map("custom_url") @db.VarChar(1000)
+  iconMediaId  String?  @map("icon_media_id") @db.Char(36)
+  openInNewTab Boolean  @default(false) @map("open_in_new_tab")
+  cssClass     String?  @map("css_class") @db.VarChar(255)
+  displayOrder Int      @default(0) @map("display_order")
+  status       String   @default("ACTIVE") @db.VarChar(30)
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  menu       NavigationMenu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parentItem NavigationItem?  @relation("NavigationItemTree", fields: [parentItemId], references: [id], onDelete: Cascade)
+  children   NavigationItem[] @relation("NavigationItemTree")
+  page       Page?            @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  iconMedia  MediaAsset?      @relation("NavigationItemIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+
+  @@index([menuId, parentItemId, status, displayOrder])
+  @@index([parentItemId])
+  @@index([pageId])
+  @@index([iconMediaId])
+  @@map("navigation_items")
+}
+
+model PlatformMetric {
+  id              String    @id @default(uuid()) @db.Char(36)
+  metricKey       String    @unique @map("metric_key") @db.VarChar(100)
+  label           String    @db.VarChar(150)
+  numericValue    Decimal?  @map("numeric_value") @db.Decimal(20, 2)
+  displayValue    String    @map("display_value") @db.VarChar(100)
+  iconMediaId     String?   @map("icon_media_id") @db.Char(36)
+  sourceReference String?   @map("source_reference") @db.VarChar(2048)
+  verifiedAt      DateTime? @map("verified_at") @db.DateTime(3)
+  isVisible       Boolean   @default(true) @map("is_visible")
+  displayOrder    Int       @default(0) @map("display_order")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  iconMedia MediaAsset? @relation("PlatformMetricIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+
+  @@index([iconMediaId])
+  @@index([isVisible, displayOrder])
+  @@map("platform_metrics")
+}
+
+model SeoMetadata {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  ownerType          String   @map("owner_type") @db.VarChar(50)
+  ownerId            String   @map("owner_id") @db.Char(36)
+  seoTitle           String   @map("seo_title") @db.VarChar(255)
+  metaDescription    String   @map("meta_description") @db.VarChar(500)
+  canonicalUrl       String?  @map("canonical_url") @db.VarChar(2048)
+  focusKeyword       String?  @map("focus_keyword") @db.VarChar(255)
+  ogTitle            String?  @map("og_title") @db.VarChar(255)
+  ogDescription      String?  @map("og_description") @db.VarChar(500)
+  ogMediaId          String?  @map("og_media_id") @db.Char(36)
+  twitterTitle       String?  @map("twitter_title") @db.VarChar(255)
+  twitterDescription String?  @map("twitter_description") @db.VarChar(500)
+  twitterMediaId     String?  @map("twitter_media_id") @db.Char(36)
+  robotsIndex        Boolean  @default(true) @map("robots_index")
+  robotsFollow       Boolean  @default(true) @map("robots_follow")
+  schemaJson         Json?    @map("schema_json") @db.Json
+  hreflangJson       Json?    @map("hreflang_json") @db.Json
+  createdAt          DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  ogMedia      MediaAsset? @relation("SeoOgMedia", fields: [ogMediaId], references: [id], onDelete: SetNull)
+  twitterMedia MediaAsset? @relation("SeoTwitterMedia", fields: [twitterMediaId], references: [id], onDelete: SetNull)
+
+  @@unique([ownerType, ownerId])
+  @@index([ogMediaId])
+  @@index([twitterMediaId])
+  @@map("seo_metadata")
+}
+
+model Redirect {
+  id              String    @id @default(uuid()) @db.Char(36)
+  sourcePath      String    @map("source_path") @db.VarChar(1000)
+  targetPath      String    @map("target_path") @db.VarChar(1000)
+  httpStatusCode  Int       @default(301) @map("http_status_code")
+  isActive        Boolean   @default(true) @map("is_active")
+  hitCount        BigInt    @default(0) @map("hit_count") @db.BigInt
+  lastHitAt       DateTime? @map("last_hit_at") @db.DateTime(3)
+  createdByUserId String?   @map("created_by_user_id") @db.Char(36)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  createdBy User? @relation("RedirectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([sourcePath(length: 750)])
+  @@index([createdByUserId])
+  @@index([isActive, httpStatusCode])
+  @@map("redirects")
+}
+
+model Continent {
+  id               String    @id @default(uuid()) @db.Char(36)
+  name             String    @unique @db.VarChar(150)
+  slug             String    @unique @db.VarChar(150)
+  code             String?   @unique @db.VarChar(20)
+  emoji            String?   @db.VarChar(20)
+  shortDescription String?   @map("short_description") @db.VarChar(1000)
+  overview         String?   @db.Text
+  iconMediaId      String?   @map("icon_media_id") @db.Char(36)
+  heroMediaId      String?   @map("hero_media_id") @db.Char(36)
+  status           String    @default("ACTIVE") @db.VarChar(30)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  displayOrder     Int       @default(0) @map("display_order")
+  createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  iconMedia MediaAsset? @relation("ContinentIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  heroMedia MediaAsset? @relation("ContinentHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  createdBy User?       @relation("ContinentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?       @relation("ContinentUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  countries Country[]
+
+  @@index([iconMediaId])
+  @@index([heroMediaId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([status, displayOrder])
+  @@map("continents")
+}
+
+model Intake {
+  id           String   @id @default(uuid()) @db.Char(36)
+  name         String   @unique @db.VarChar(100)
+  slug         String   @unique @db.VarChar(100)
+  monthNumber  Int?     @map("month_number") @db.TinyInt
+  seasonName   String?  @map("season_name") @db.VarChar(50)
+  shortLabel   String?  @map("short_label") @db.VarChar(50)
+  description  String?  @db.VarChar(500)
+  status       String   @default("ACTIVE") @db.VarChar(30)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  countryIntakes       CountryIntake[]
+  countryCourseIntakes CountryCourseIntake[]
+  leads                Lead[]
+
+  @@index([status, displayOrder])
+  @@map("intakes")
+}
+
+model Subject {
+  id               String    @id @default(uuid()) @db.Char(36)
+  name             String    @unique @db.VarChar(255)
+  slug             String    @unique @db.VarChar(255)
+  shortDescription String?   @map("short_description") @db.VarChar(1000)
+  overview         String?   @db.LongText
+  iconMediaId      String?   @map("icon_media_id") @db.Char(36)
+  listingMediaId   String?   @map("listing_media_id") @db.Char(36)
+  heroMediaId      String?   @map("hero_media_id") @db.Char(36)
+  status           String    @default("DRAFT") @db.VarChar(30)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  iconMedia    MediaAsset?  @relation("SubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia MediaAsset?  @relation("SubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  heroMedia    MediaAsset?  @relation("SubjectHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  createdBy    User?        @relation("SubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?        @relation("SubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  subSubjects  SubSubject[]
+  courses      Course[]
+  leads        Lead[]
+
+  @@index([iconMediaId])
+  @@index([listingMediaId])
+  @@index([heroMediaId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([status, isFeatured, displayOrder])
+  @@map("subjects")
+}
+
+model SubSubject {
+  id               String    @id @default(uuid()) @db.Char(36)
+  subjectId        String    @map("subject_id") @db.Char(36)
+  name             String    @db.VarChar(255)
+  slug             String    @unique @db.VarChar(255)
+  shortDescription String?   @map("short_description") @db.VarChar(1000)
+  overview         String?   @db.LongText
+  iconMediaId      String?   @map("icon_media_id") @db.Char(36)
+  listingMediaId   String?   @map("listing_media_id") @db.Char(36)
+  status           String    @default("DRAFT") @db.VarChar(30)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  subject      Subject     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  iconMedia    MediaAsset? @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia MediaAsset? @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  createdBy    User?       @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?       @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  courses      Course[]
+
+  @@unique([subjectId, name])
+  @@index([subjectId, status, displayOrder])
+  @@index([iconMediaId])
+  @@index([listingMediaId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@map("sub_subjects")
+}
+
+model CourseLevel {
+  id             String   @id @default(uuid()) @db.Char(36)
+  code           String   @unique @db.VarChar(30)
+  name           String   @unique @db.VarChar(100)
+  description    String?  @db.VarChar(500)
+  educationOrder Int      @default(0) @map("education_order")
+  status         String   @default("ACTIVE") @db.VarChar(30)
+  displayOrder   Int      @default(0) @map("display_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  courses Course[]
+  leads   Lead[]
+
+  @@map("course_levels")
+}
+
+model StudyMode {
+  id           String   @id @default(uuid()) @db.Char(36)
+  code         String   @unique @db.VarChar(30)
+  name         String   @unique @db.VarChar(100)
+  description  String?  @db.VarChar(500)
+  status       String   @default("ACTIVE") @db.VarChar(30)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  courseStudyModes CourseStudyMode[]
+
+  @@map("study_modes")
+}
+
+model Country {
+  id               String    @id @default(uuid()) @db.Char(36)
+  continentId      String    @map("continent_id") @db.Char(36)
+  name             String    @unique @db.VarChar(150)
+  shortName        String?   @map("short_name") @db.VarChar(100)
+  pageHeading      String    @map("page_heading") @db.VarChar(255)
+  slug             String    @unique @db.VarChar(255)
+  iso2Code         String?   @unique @map("iso2_code") @db.Char(2)
+  iso3Code         String?   @unique @map("iso3_code") @db.Char(3)
+  dialCode         String?   @map("dial_code") @db.VarChar(10)
+  capitalCity      String?   @map("capital_city") @db.VarChar(150)
+  nationalityName  String?   @map("nationality_name") @db.VarChar(150)
+  currencyName     String?   @map("currency_name") @db.VarChar(100)
+  currencyCode     String?   @map("currency_code") @db.Char(3)
+  currencySymbol   String?   @map("currency_symbol") @db.VarChar(10)
+  timezoneJson     Json?     @map("timezone_json") @db.Json
+  flagMediaId      String?   @map("flag_media_id") @db.Char(36)
+  listingMediaId   String?   @map("listing_media_id") @db.Char(36)
+  heroMediaId      String?   @map("hero_media_id") @db.Char(36)
+  mapMediaId       String?   @map("map_media_id") @db.Char(36)
+  shortDescription String    @map("short_description") @db.VarChar(1000)
+  overview         String?   @db.LongText
+  featuredLabel    String?   @map("featured_label") @db.VarChar(100)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  isPopular        Boolean   @default(false) @map("is_popular")
+  status           String    @default("DRAFT") @db.VarChar(30)
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  lastVerifiedAt   DateTime? @map("last_verified_at") @db.DateTime(3)
+  primarySourceUrl String?   @map("primary_source_url") @db.VarChar(2048)
+  createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  continent            Continent                   @relation(fields: [continentId], references: [id], onDelete: Restrict)
+  flagMedia            MediaAsset?                 @relation("CountryFlagMedia", fields: [flagMediaId], references: [id], onDelete: SetNull)
+  listingMedia         MediaAsset?                 @relation("CountryListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  heroMedia            MediaAsset?                 @relation("CountryHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  mapMedia             MediaAsset?                 @relation("CountryMapMedia", fields: [mapMediaId], references: [id], onDelete: SetNull)
+  createdBy            User?                       @relation("CountryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy            User?                       @relation("CountryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  aliases              CountryAlias[]
+  costProfile          CountryCostProfile?
+  workProfile          CountryWorkProfile?
+  languageRequirements CountryLanguageRequirement?
+  intakes              CountryIntake[]
+  statistics           CountryStatistic?
+  contentSections      CountryContentSection[]
+  faqs                 CountryFaq[]
+  tagMaps              CountryTagMap[]
+  courses              CountryCourse[]
+  consultantCards      ConsultantLandingCard[]
+  preferredByLeads     Lead[]                      @relation("LeadPreferredCountry")
+
+  @@index([continentId, status, displayOrder])
+  @@index([status, isFeatured, isPopular])
+  @@index([flagMediaId])
+  @@index([listingMediaId])
+  @@index([heroMediaId])
+  @@index([mapMediaId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@fulltext([name, pageHeading, shortDescription])
+  @@map("countries")
+}
+
+model CountryAlias {
+  id              String   @id @default(uuid()) @db.Char(36)
+  countryId       String   @map("country_id") @db.Char(36)
+  alias           String   @db.VarChar(255)
+  normalizedAlias String   @map("normalized_alias") @db.VarChar(255)
+  aliasType       String   @default("COMMON") @map("alias_type") @db.VarChar(30)
+  locale          String   @default("en") @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, normalizedAlias])
+  @@index([countryId])
+  @@index([normalizedAlias])
+  @@map("country_aliases")
+}
+
+model CountryCostProfile {
+  id                  String    @id @default(uuid()) @db.Char(36)
+  countryId           String    @unique @map("country_id") @db.Char(36)
+  currencyCode        String    @map("currency_code") @db.Char(3)
+  currencySymbol      String?   @map("currency_symbol") @db.VarChar(10)
+  tuitionMin          Decimal?  @map("tuition_min") @db.Decimal(12, 2)
+  tuitionMax          Decimal?  @map("tuition_max") @db.Decimal(12, 2)
+  tuitionPeriod       String    @default("PER_YEAR") @map("tuition_period") @db.VarChar(30)
+  tuitionNotes        String?   @map("tuition_notes") @db.Text
+  livingCostMin       Decimal?  @map("living_cost_min") @db.Decimal(12, 2)
+  livingCostMax       Decimal?  @map("living_cost_max") @db.Decimal(12, 2)
+  livingCostPeriod    String    @default("PER_MONTH") @map("living_cost_period") @db.VarChar(30)
+  livingCostNotes     String?   @map("living_cost_notes") @db.Text
+  accommodationMin    Decimal?  @map("accommodation_min") @db.Decimal(12, 2)
+  accommodationMax    Decimal?  @map("accommodation_max") @db.Decimal(12, 2)
+  foodCostMin         Decimal?  @map("food_cost_min") @db.Decimal(12, 2)
+  foodCostMax         Decimal?  @map("food_cost_max") @db.Decimal(12, 2)
+  transportCostMin    Decimal?  @map("transport_cost_min") @db.Decimal(12, 2)
+  transportCostMax    Decimal?  @map("transport_cost_max") @db.Decimal(12, 2)
+  healthInsuranceCost Decimal?  @map("health_insurance_cost") @db.Decimal(12, 2)
+  applicationFeeMin   Decimal?  @map("application_fee_min") @db.Decimal(12, 2)
+  applicationFeeMax   Decimal?  @map("application_fee_max") @db.Decimal(12, 2)
+  budgetBand          String?   @map("budget_band") @db.VarChar(30)
+  applicableYear      Int?      @map("applicable_year") @db.SmallInt
+  sourceReference     String?   @map("source_reference") @db.VarChar(2048)
+  disclaimer          String?   @db.Text
+  verifiedAt          DateTime? @map("verified_at") @db.DateTime(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@index([budgetBand, applicableYear])
+  @@map("country_cost_profiles")
+}
+
+model CountryWorkProfile {
+  id                         String    @id @default(uuid()) @db.Char(36)
+  countryId                  String    @unique @map("country_id") @db.Char(36)
+  partTimeAllowed            Boolean   @default(false) @map("part_time_allowed")
+  partTimeHoursPerWeek       Decimal?  @map("part_time_hours_per_week") @db.Decimal(5, 2)
+  partTimeHoursDuringBreaks  Decimal?  @map("part_time_hours_during_breaks") @db.Decimal(5, 2)
+  partTimeSummary            String?   @map("part_time_summary") @db.Text
+  postStudyWorkAvailable     Boolean   @default(false) @map("post_study_work_available")
+  postStudyWorkMinMonths     Int?      @map("post_study_work_min_months")
+  postStudyWorkMaxMonths     Int?      @map("post_study_work_max_months")
+  postStudyWorkSummary       String?   @map("post_study_work_summary") @db.Text
+  immigrationPathwayStrength String?   @map("immigration_pathway_strength") @db.VarChar(30)
+  immigrationPathwaySummary  String?   @map("immigration_pathway_summary") @db.Text
+  visaSuccessBand            String    @default("NOT_PUBLISHED") @map("visa_success_band") @db.VarChar(30)
+  visaSuccessPercentage      Decimal?  @map("visa_success_percentage") @db.Decimal(5, 2)
+  visaInformation            String?   @map("visa_information") @db.LongText
+  visaProcessingTime         String?   @map("visa_processing_time") @db.VarChar(255)
+  proofOfFundsSummary        String?   @map("proof_of_funds_summary") @db.Text
+  sourceReference            String?   @map("source_reference") @db.VarChar(2048)
+  disclaimer                 String?   @db.Text
+  verifiedAt                 DateTime? @map("verified_at") @db.DateTime(3)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@index([partTimeAllowed, postStudyWorkAvailable])
+  @@index([immigrationPathwayStrength, visaSuccessBand])
+  @@map("country_work_profiles")
+}
+
+model CountryLanguageRequirement {
+  id                      String    @id @default(uuid()) @db.Char(36)
+  countryId               String    @unique @map("country_id") @db.Char(36)
+  ieltsRequirement        String    @default("VARIES") @map("ielts_requirement") @db.VarChar(30)
+  ieltsMinScore           Decimal?  @map("ielts_min_score") @db.Decimal(3, 1)
+  ieltsNotes              String?   @map("ielts_notes") @db.VarChar(500)
+  pteRequirement          String    @default("VARIES") @map("pte_requirement") @db.VarChar(30)
+  pteMinScore             Decimal?  @map("pte_min_score") @db.Decimal(5, 2)
+  pteNotes                String?   @map("pte_notes") @db.VarChar(500)
+  toeflRequirement        String    @default("VARIES") @map("toefl_requirement") @db.VarChar(30)
+  toeflMinScore           Decimal?  @map("toefl_min_score") @db.Decimal(5, 2)
+  toeflNotes              String?   @map("toefl_notes") @db.VarChar(500)
+  duolingoRequirement     String    @default("VARIES") @map("duolingo_requirement") @db.VarChar(30)
+  duolingoMinScore        Decimal?  @map("duolingo_min_score") @db.Decimal(5, 2)
+  duolingoNotes           String?   @map("duolingo_notes") @db.VarChar(500)
+  languageWaiverAvailable Boolean   @default(false) @map("language_waiver_available")
+  waiverNotes             String?   @map("waiver_notes") @db.Text
+  generalNotes            String?   @map("general_notes") @db.Text
+  sourceReference         String?   @map("source_reference") @db.VarChar(2048)
+  disclaimer              String?   @db.Text
+  verifiedAt              DateTime? @map("verified_at") @db.DateTime(3)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@index([ieltsRequirement, languageWaiverAvailable])
+  @@map("country_language_requirements")
+}
+
+model CountryIntake {
+  id                       String   @id @default(uuid()) @db.Char(36)
+  countryId                String   @map("country_id") @db.Char(36)
+  intakeId                 String   @map("intake_id") @db.Char(36)
+  isMajor                  Boolean  @default(false) @map("is_major")
+  availabilityStatus       String   @default("AVAILABLE") @map("availability_status") @db.VarChar(30)
+  applicationOpeningMonth  Int?     @map("application_opening_month") @db.TinyInt
+  applicationDeadlineMonth Int?     @map("application_deadline_month") @db.TinyInt
+  applicationOpeningNote   String?  @map("application_opening_note") @db.VarChar(500)
+  applicationDeadlineNote  String?  @map("application_deadline_note") @db.VarChar(500)
+  notes                    String?  @db.Text
+  displayOrder             Int      @default(0) @map("display_order")
+  createdAt                DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  intake  Intake  @relation(fields: [intakeId], references: [id], onDelete: Restrict)
+
+  @@unique([countryId, intakeId])
+  @@index([countryId])
+  @@index([intakeId, isMajor, availabilityStatus])
+  @@map("country_intakes")
+}
+
+model CountryStatistic {
+  id                            String    @id @default(uuid()) @db.Char(36)
+  countryId                     String    @unique @map("country_id") @db.Char(36)
+  universitiesCount             Int       @default(0) @map("universities_count")
+  publicUniversitiesCount       Int       @default(0) @map("public_universities_count")
+  privateUniversitiesCount      Int       @default(0) @map("private_universities_count")
+  coursesCount                  Int       @default(0) @map("courses_count")
+  ugCoursesCount                Int       @default(0) @map("ug_courses_count")
+  pgCoursesCount                Int       @default(0) @map("pg_courses_count")
+  pgdmCoursesCount              Int       @default(0) @map("pgdm_courses_count")
+  mbaCoursesCount               Int       @default(0) @map("mba_courses_count")
+  phdCoursesCount               Int       @default(0) @map("phd_courses_count")
+  scholarshipsCount             Int       @default(0) @map("scholarships_count")
+  citiesCount                   Int       @default(0) @map("cities_count")
+  topRankedUniversitiesCount    Int       @default(0) @map("top_ranked_universities_count")
+  internationalStudentsCount    Int?      @map("international_students_count")
+  studentSatisfactionPercentage Decimal?  @map("student_satisfaction_percentage") @db.Decimal(5, 2)
+  sourceMode                    String    @default("MANUAL") @map("source_mode") @db.VarChar(30)
+  sourceReference               String?   @map("source_reference") @db.VarChar(2048)
+  verifiedAt                    DateTime? @map("verified_at") @db.DateTime(3)
+  createdAt                     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt                     DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@map("country_statistics")
+}
+
+model CountryContentSection {
+  id                String    @id @default(uuid()) @db.Char(36)
+  countryId         String    @map("country_id") @db.Char(36)
+  sectionKey        String    @map("section_key") @db.VarChar(100)
+  sectionType       String    @default("RICH_TEXT") @map("section_type") @db.VarChar(50)
+  eyebrow           String?   @db.VarChar(255)
+  heading           String?   @db.VarChar(500)
+  subheading        String?   @db.Text
+  bodyJson          Json?     @map("body_json") @db.Json
+  primaryMediaId    String?   @map("primary_media_id") @db.Char(36)
+  secondaryMediaId  String?   @map("secondary_media_id") @db.Char(36)
+  ctaLabel          String?   @map("cta_label") @db.VarChar(100)
+  ctaUrl            String?   @map("cta_url") @db.VarChar(1000)
+  configurationJson Json?     @map("configuration_json") @db.Json
+  displayOrder      Int       @default(0) @map("display_order")
+  status            String    @default("ACTIVE") @db.VarChar(30)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt         DateTime? @map("deleted_at") @db.DateTime(3)
+
+  country        Country     @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  primaryMedia   MediaAsset? @relation("CountryPrimaryMedia", fields: [primaryMediaId], references: [id], onDelete: SetNull)
+  secondaryMedia MediaAsset? @relation("CountrySecondaryMedia", fields: [secondaryMediaId], references: [id], onDelete: SetNull)
+
+  @@unique([countryId, sectionKey])
+  @@index([countryId, status, displayOrder])
+  @@index([primaryMediaId])
+  @@index([secondaryMediaId])
+  @@map("country_content_sections")
+}
+
+model CountryFaq {
+  id              String    @id @default(uuid()) @db.Char(36)
+  countryId       String    @map("country_id") @db.Char(36)
+  question        String    @db.VarChar(1000)
+  answer          String    @db.LongText
+  category        String?   @db.VarChar(100)
+  isFeatured      Boolean   @default(false) @map("is_featured")
+  status          String    @default("ACTIVE") @db.VarChar(30)
+  displayOrder    Int       @default(0) @map("display_order")
+  createdByUserId String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("CountryFaqCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?   @relation("CountryFaqUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([countryId, status, displayOrder])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@map("country_faqs")
+}
+
+model CountryTag {
+  id          String   @id @default(uuid()) @db.Char(36)
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  tagType     String   @default("GENERAL") @map("tag_type") @db.VarChar(50)
+  description String?  @db.VarChar(500)
+  status      String   @default("ACTIVE") @db.VarChar(30)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  tagMaps CountryTagMap[]
+
+  @@map("country_tags")
+}
+
+model CountryTagMap {
+  id        String   @id @default(uuid()) @db.Char(36)
+  countryId String   @map("country_id") @db.Char(36)
+  tagId     String   @map("tag_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  country Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  tag     CountryTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, tagId])
+  @@index([countryId])
+  @@index([tagId, countryId])
+  @@map("country_tag_map")
+}
+
+model Course {
+  id                    String    @id @default(uuid()) @db.Char(36)
+  subjectId             String    @map("subject_id") @db.Char(36)
+  subSubjectId          String?   @map("sub_subject_id") @db.Char(36)
+  courseLevelId         String    @map("course_level_id") @db.Char(36)
+  name                  String    @db.VarChar(255)
+  shortName             String?   @map("short_name") @db.VarChar(150)
+  qualificationName     String?   @map("qualification_name") @db.VarChar(255)
+  slug                  String    @unique @db.VarChar(255)
+  courseCode            String?   @map("course_code") @db.VarChar(100)
+  shortDescription      String?   @map("short_description") @db.VarChar(1000)
+  overview              String?   @db.LongText
+  durationMin           Decimal?  @map("duration_min") @db.Decimal(6, 2)
+  durationMax           Decimal?  @map("duration_max") @db.Decimal(6, 2)
+  durationUnit          String?   @map("duration_unit") @db.VarChar(30)
+  credits               Decimal?  @db.Decimal(8, 2)
+  featuredMediaId       String?   @map("featured_media_id") @db.Char(36)
+  careerSummary         String?   @map("career_summary") @db.Text
+  averageStartingSalary Decimal?  @map("average_starting_salary") @db.Decimal(12, 2)
+  salaryCurrencyCode    String?   @map("salary_currency_code") @db.Char(3)
+  status                String    @default("DRAFT") @db.VarChar(30)
+  isFeatured            Boolean   @default(false) @map("is_featured")
+  popularityScore       Decimal   @default(0) @map("popularity_score") @db.Decimal(10, 2)
+  displayOrder          Int       @default(0) @map("display_order")
+  publishedAt           DateTime? @map("published_at") @db.DateTime(3)
+  createdByUserId       String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId       String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt             DateTime? @map("deleted_at") @db.DateTime(3)
+
+  subject          Subject                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  subSubject       SubSubject?            @relation(fields: [subSubjectId], references: [id], onDelete: SetNull)
+  courseLevel      CourseLevel            @relation(fields: [courseLevelId], references: [id], onDelete: Restrict)
+  featuredMedia    MediaAsset?            @relation("CourseFeaturedMedia", fields: [featuredMediaId], references: [id], onDelete: SetNull)
+  createdBy        User?                  @relation("CourseCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy        User?                  @relation("CourseUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  studyModes       CourseStudyMode[]
+  countryCourses   CountryCourse[]
+  contentSections  CourseContentSection[]
+  faqs             CourseFaq[]
+  relatedFrom      RelatedCourse[]        @relation("RelatedCourseSource")
+  relatedTo        RelatedCourse[]        @relation("RelatedCourseTarget")
+  preferredByLeads Lead[]                 @relation("LeadPreferredCourse")
+
+  @@index([subjectId, subSubjectId, courseLevelId, status])
+  @@index([courseLevelId])
+  @@index([subSubjectId])
+  @@index([featuredMediaId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([status, isFeatured, popularityScore])
+  @@fulltext([name, shortDescription, overview])
+  @@map("courses")
+}
+
+model CourseStudyMode {
+  id          String   @id @default(uuid()) @db.Char(36)
+  courseId    String   @map("course_id") @db.Char(36)
+  studyModeId String   @map("study_mode_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studyMode StudyMode @relation(fields: [studyModeId], references: [id], onDelete: Restrict)
+
+  @@unique([courseId, studyModeId])
+  @@index([courseId])
+  @@index([studyModeId])
+  @@map("course_study_modes")
+}
+
+model CountryCourse {
+  id                    String    @id @default(uuid()) @db.Char(36)
+  countryId             String    @map("country_id") @db.Char(36)
+  courseId              String    @map("course_id") @db.Char(36)
+  availabilityStatus    String    @default("AVAILABLE") @map("availability_status") @db.VarChar(30)
+  indicativeTuitionMin  Decimal?  @map("indicative_tuition_min") @db.Decimal(12, 2)
+  indicativeTuitionMax  Decimal?  @map("indicative_tuition_max") @db.Decimal(12, 2)
+  currencyCode          String?   @map("currency_code") @db.Char(3)
+  tuitionPeriod         String    @default("PER_YEAR") @map("tuition_period") @db.VarChar(30)
+  applicationFeeMin     Decimal?  @map("application_fee_min") @db.Decimal(12, 2)
+  applicationFeeMax     Decimal?  @map("application_fee_max") @db.Decimal(12, 2)
+  durationMinOverride   Decimal?  @map("duration_min_override") @db.Decimal(6, 2)
+  durationMaxOverride   Decimal?  @map("duration_max_override") @db.Decimal(6, 2)
+  durationUnitOverride  String?   @map("duration_unit_override") @db.VarChar(30)
+  academicMinPercentage Decimal?  @map("academic_min_percentage") @db.Decimal(5, 2)
+  academicMinCgpa       Decimal?  @map("academic_min_cgpa") @db.Decimal(4, 2)
+  ieltsMinScore         Decimal?  @map("ielts_min_score") @db.Decimal(3, 1)
+  pteMinScore           Decimal?  @map("pte_min_score") @db.Decimal(5, 2)
+  toeflMinScore         Decimal?  @map("toefl_min_score") @db.Decimal(5, 2)
+  duolingoMinScore      Decimal?  @map("duolingo_min_score") @db.Decimal(5, 2)
+  workExperienceMonths  Int?      @map("work_experience_months")
+  scholarshipAvailable  Boolean   @default(false) @map("scholarship_available")
+  admissionRequirements String?   @map("admission_requirements") @db.LongText
+  englishRequirements   String?   @map("english_requirements") @db.LongText
+  applicationNotes      String?   @map("application_notes") @db.Text
+  careerOpportunities   String?   @map("career_opportunities") @db.Text
+  sourceReference       String?   @map("source_reference") @db.VarChar(2048)
+  verifiedAt            DateTime? @map("verified_at") @db.DateTime(3)
+  status                String    @default("ACTIVE") @db.VarChar(30)
+  isFeatured            Boolean   @default(false) @map("is_featured")
+  displayOrder          Int       @default(0) @map("display_order")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt             DateTime? @map("deleted_at") @db.DateTime(3)
+
+  country Country               @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  course  Course                @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  intakes CountryCourseIntake[]
+
+  @@unique([countryId, courseId])
+  @@index([countryId, status, isFeatured])
+  @@index([courseId, status])
+  @@map("country_courses")
+}
+
+model CountryCourseIntake {
+  id                  String    @id @default(uuid()) @db.Char(36)
+  countryCourseId     String    @map("country_course_id") @db.Char(36)
+  intakeId            String    @map("intake_id") @db.Char(36)
+  applicationDeadline DateTime? @map("application_deadline") @db.Date
+  deadlineNotes       String?   @map("deadline_notes") @db.VarChar(500)
+  status              String    @default("ACTIVE") @db.VarChar(30)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  countryCourse CountryCourse @relation(fields: [countryCourseId], references: [id], onDelete: Cascade)
+  intake        Intake        @relation(fields: [intakeId], references: [id], onDelete: Restrict)
+
+  @@unique([countryCourseId, intakeId])
+  @@index([countryCourseId])
+  @@index([intakeId, status])
+  @@map("country_course_intakes")
+}
+
+model CourseContentSection {
+  id           String    @id @default(uuid()) @db.Char(36)
+  courseId     String    @map("course_id") @db.Char(36)
+  sectionKey   String    @map("section_key") @db.VarChar(100)
+  heading      String?   @db.VarChar(500)
+  subheading   String?   @db.Text
+  bodyJson     Json?     @map("body_json") @db.Json
+  mediaId      String?   @map("media_id") @db.Char(36)
+  displayOrder Int       @default(0) @map("display_order")
+  status       String    @default("ACTIVE") @db.VarChar(30)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
+
+  course Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  media  MediaAsset? @relation("CourseSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@unique([courseId, sectionKey])
+  @@index([courseId, status, displayOrder])
+  @@index([mediaId])
+  @@map("course_content_sections")
+}
+
+model CourseFaq {
+  id           String    @id @default(uuid()) @db.Char(36)
+  courseId     String    @map("course_id") @db.Char(36)
+  question     String    @db.VarChar(1000)
+  answer       String    @db.LongText
+  status       String    @default("ACTIVE") @db.VarChar(30)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, status, displayOrder])
+  @@map("course_faqs")
+}
+
+model RelatedCourse {
+  id               String   @id @default(uuid()) @db.Char(36)
+  courseId         String   @map("course_id") @db.Char(36)
+  relatedCourseId  String   @map("related_course_id") @db.Char(36)
+  relationshipType String   @default("RELATED") @map("relationship_type") @db.VarChar(30)
+  displayOrder     Int      @default(0) @map("display_order")
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  course        Course @relation("RelatedCourseSource", fields: [courseId], references: [id], onDelete: Restrict)
+  relatedCourse Course @relation("RelatedCourseTarget", fields: [relatedCourseId], references: [id], onDelete: Restrict)
+
+  @@unique([courseId, relatedCourseId, relationshipType])
+  @@index([courseId])
+  @@index([relatedCourseId])
+  @@map("related_courses")
+}
+
+model ConsultantLandingCard {
+  id                 String    @id @default(uuid()) @db.Char(36)
+  countryId          String?   @map("country_id") @db.Char(36)
+  title              String    @db.VarChar(255)
+  slug               String    @unique @db.VarChar(255)
+  shortDescription   String    @map("short_description") @db.VarChar(1000)
+  overview           String?   @db.LongText
+  iconMediaId        String?   @map("icon_media_id") @db.Char(36)
+  featuredMediaId    String?   @map("featured_media_id") @db.Char(36)
+  isFreeConsultation Boolean   @default(true) @map("is_free_consultation")
+  ctaLabel           String    @default("View consultants") @map("cta_label") @db.VarChar(100)
+  ctaUrl             String?   @map("cta_url") @db.VarChar(1000)
+  status             String    @default("DRAFT") @db.VarChar(30)
+  isFeatured         Boolean   @default(false) @map("is_featured")
+  displayOrder       Int       @default(0) @map("display_order")
+  publishedAt        DateTime? @map("published_at") @db.DateTime(3)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt          DateTime? @map("deleted_at") @db.DateTime(3)
+
+  country       Country?    @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  iconMedia     MediaAsset? @relation("ConsultantIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  featuredMedia MediaAsset? @relation("ConsultantFeaturedMedia", fields: [featuredMediaId], references: [id], onDelete: SetNull)
+
+  @@index([countryId, status, displayOrder])
+  @@index([iconMediaId])
+  @@index([featuredMediaId])
+  @@map("consultant_landing_cards")
+}
+
+model Lead {
+  id                     String    @id @default(uuid()) @db.Char(36)
+  leadNumber             String    @unique @map("lead_number") @db.VarChar(50)
+  formType               String    @map("form_type") @db.VarChar(50)
+  sourceType             String?   @map("source_type") @db.VarChar(50)
+  sourceEntityId         String?   @map("source_entity_id") @db.Char(36)
+  sourcePageUrl          String?   @map("source_page_url") @db.VarChar(2048)
+  firstName              String    @map("first_name") @db.VarChar(100)
+  lastName               String?   @map("last_name") @db.VarChar(100)
+  email                  String?   @db.VarChar(255)
+  phoneCountryCode       String?   @map("phone_country_code") @db.VarChar(10)
+  phoneNumber            String    @map("phone_number") @db.VarChar(30)
+  currentCity            String?   @map("current_city") @db.VarChar(150)
+  currentState           String?   @map("current_state") @db.VarChar(150)
+  currentCountry         String?   @map("current_country") @db.VarChar(150)
+  preferredCountryId     String?   @map("preferred_country_id") @db.Char(36)
+  preferredCourseId      String?   @map("preferred_course_id") @db.Char(36)
+  preferredSubjectId     String?   @map("preferred_subject_id") @db.Char(36)
+  preferredCourseLevelId String?   @map("preferred_course_level_id") @db.Char(36)
+  preferredIntakeId      String?   @map("preferred_intake_id") @db.Char(36)
+  budgetMin              Decimal?  @map("budget_min") @db.Decimal(12, 2)
+  budgetMax              Decimal?  @map("budget_max") @db.Decimal(12, 2)
+  budgetCurrencyCode     String?   @map("budget_currency_code") @db.Char(3)
+  englishTestType        String?   @map("english_test_type") @db.VarChar(30)
+  englishTestScore       Decimal?  @map("english_test_score") @db.Decimal(6, 2)
+  highestQualification   String?   @map("highest_qualification") @db.VarChar(255)
+  message                String?   @db.Text
+  status                 String    @default("NEW") @db.VarChar(30)
+  priority               String    @default("NORMAL") @db.VarChar(30)
+  assignedToUserId       String?   @map("assigned_to_user_id") @db.Char(36)
+  nextFollowUpAt         DateTime? @map("next_follow_up_at") @db.DateTime(3)
+  marketingConsent       Boolean   @default(false) @map("marketing_consent")
+  privacyConsent         Boolean   @default(false) @map("privacy_consent")
+  utmSource              String?   @map("utm_source") @db.VarChar(255)
+  utmMedium              String?   @map("utm_medium") @db.VarChar(255)
+  utmCampaign            String?   @map("utm_campaign") @db.VarChar(255)
+  utmTerm                String?   @map("utm_term") @db.VarChar(255)
+  utmContent             String?   @map("utm_content") @db.VarChar(255)
+  referrerUrl            String?   @map("referrer_url") @db.VarChar(2048)
+  landingPageUrl         String?   @map("landing_page_url") @db.VarChar(2048)
+  ipAddress              String?   @map("ip_address") @db.VarChar(45)
+  userAgent              String?   @map("user_agent") @db.VarChar(1000)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt              DateTime? @map("deleted_at") @db.DateTime(3)
+
+  preferredCountry     Country?             @relation("LeadPreferredCountry", fields: [preferredCountryId], references: [id], onDelete: SetNull)
+  preferredCourse      Course?              @relation("LeadPreferredCourse", fields: [preferredCourseId], references: [id], onDelete: SetNull)
+  preferredSubject     Subject?             @relation(fields: [preferredSubjectId], references: [id], onDelete: SetNull)
+  preferredCourseLevel CourseLevel?         @relation(fields: [preferredCourseLevelId], references: [id], onDelete: SetNull)
+  preferredIntake      Intake?              @relation(fields: [preferredIntakeId], references: [id], onDelete: SetNull)
+  assignedTo           User?                @relation("LeadAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  bookings             CounsellingBooking[]
+  notes                LeadNote[]
+  statusHistory        LeadStatusHistory[]
+
+  @@index([status, createdAt])
+  @@index([phoneNumber])
+  @@index([email])
+  @@index([assignedToUserId, status])
+  @@index([preferredCountryId, preferredCourseId])
+  @@index([preferredSubjectId])
+  @@index([preferredCourseLevelId])
+  @@index([preferredIntakeId])
+  @@map("leads")
+}
+
+model CounsellingBooking {
+  id                 String    @id @default(uuid()) @db.Char(36)
+  leadId             String    @map("lead_id") @db.Char(36)
+  bookingDate        DateTime  @map("booking_date") @db.Date
+  slotStartAt        DateTime  @map("slot_start_at") @db.DateTime(3)
+  slotEndAt          DateTime? @map("slot_end_at") @db.DateTime(3)
+  timezone           String    @default("Asia/Kolkata") @db.VarChar(100)
+  bookingMode        String    @default("PHONE") @map("booking_mode") @db.VarChar(30)
+  bookingStatus      String    @default("PENDING") @map("booking_status") @db.VarChar(30)
+  assignedToUserId   String?   @map("assigned_to_user_id") @db.Char(36)
+  meetingUrl         String?   @map("meeting_url") @db.VarChar(2048)
+  meetingProvider    String?   @map("meeting_provider") @db.VarChar(50)
+  meetingId          String?   @map("meeting_id") @db.VarChar(255)
+  customerNotes      String?   @map("customer_notes") @db.Text
+  internalNotes      String?   @map("internal_notes") @db.Text
+  confirmedAt        DateTime? @map("confirmed_at") @db.DateTime(3)
+  completedAt        DateTime? @map("completed_at") @db.DateTime(3)
+  cancelledAt        DateTime? @map("cancelled_at") @db.DateTime(3)
+  cancellationReason String?   @map("cancellation_reason") @db.VarChar(500)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  lead       Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedTo User? @relation("BookingAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([bookingDate, bookingStatus])
+  @@index([assignedToUserId, slotStartAt])
+  @@map("counselling_bookings")
+}
+
+model LeadNote {
+  id        String    @id @default(uuid()) @db.Char(36)
+  leadId    String    @map("lead_id") @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  noteType  String    @default("GENERAL") @map("note_type") @db.VarChar(30)
+  note      String    @db.LongText
+  isPinned  Boolean   @default(false) @map("is_pinned")
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([leadId, isPinned, createdAt])
+  @@index([userId])
+  @@map("lead_notes")
+}
+
+model LeadStatusHistory {
+  id              String   @id @default(uuid()) @db.Char(36)
+  leadId          String   @map("lead_id") @db.Char(36)
+  oldStatus       String?  @map("old_status") @db.VarChar(30)
+  newStatus       String   @map("new_status") @db.VarChar(30)
+  changedByUserId String?  @map("changed_by_user_id") @db.Char(36)
+  reason          String?  @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  lead      Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("LeadStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+  @@index([changedByUserId])
+  @@map("lead_status_history")
+}
+
+model EmailTemplate {
+  id              String   @id @default(uuid()) @db.Char(36)
+  templateKey     String   @unique @map("template_key") @db.VarChar(150)
+  name            String   @db.VarChar(255)
+  subjectTemplate String   @map("subject_template") @db.VarChar(500)
+  bodyHtml        String   @map("body_html") @db.LongText
+  bodyText        String?  @map("body_text") @db.LongText
+  variablesJson   Json?    @map("variables_json") @db.Json
+  senderName      String?  @map("sender_name") @db.VarChar(255)
+  replyToEmail    String?  @map("reply_to_email") @db.VarChar(255)
+  status          String   @default("ACTIVE") @db.VarChar(30)
+  createdByUserId String?  @map("created_by_user_id") @db.Char(36)
+  updatedByUserId String?  @map("updated_by_user_id") @db.Char(36)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  createdBy User?      @relation("EmailTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?      @relation("EmailTemplateUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  emailLogs EmailLog[]
+
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@map("email_templates")
+}
+
+model EmailLog {
+  id                String    @id @default(uuid()) @db.Char(36)
+  templateId        String?   @map("template_id") @db.Char(36)
+  relatedEntityType String?   @map("related_entity_type") @db.VarChar(50)
+  relatedEntityId   String?   @map("related_entity_id") @db.Char(36)
+  recipientEmail    String    @map("recipient_email") @db.VarChar(255)
+  recipientName     String?   @map("recipient_name") @db.VarChar(255)
+  subject           String    @db.VarChar(500)
+  provider          String?   @db.VarChar(50)
+  providerMessageId String?   @map("provider_message_id") @db.VarChar(255)
+  status            String    @default("QUEUED") @db.VarChar(30)
+  errorMessage      String?   @map("error_message") @db.Text
+  queuedAt          DateTime? @map("queued_at") @db.DateTime(3)
+  sentAt            DateTime? @map("sent_at") @db.DateTime(3)
+  deliveredAt       DateTime? @map("delivered_at") @db.DateTime(3)
+  failedAt          DateTime? @map("failed_at") @db.DateTime(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  template EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([templateId])
+  @@index([status, createdAt])
+  @@index([relatedEntityType, relatedEntityId])
+  @@map("email_logs")
+}
+
+model SearchLog {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  searchType         String   @map("search_type") @db.VarChar(30)
+  queryText          String?  @map("query_text") @db.VarChar(500)
+  normalizedQuery    String?  @map("normalized_query") @db.VarChar(500)
+  filtersJson        Json?    @map("filters_json") @db.Json
+  sorting            String?  @db.VarChar(100)
+  resultCount        Int      @default(0) @map("result_count")
+  selectedEntityType String?  @map("selected_entity_type") @db.VarChar(50)
+  selectedEntityId   String?  @map("selected_entity_id") @db.Char(36)
+  sessionId          String?  @map("session_id") @db.VarChar(255)
+  ipHash             String?  @map("ip_hash") @db.VarChar(255)
+  userAgent          String?  @map("user_agent") @db.VarChar(1000)
+  sourcePageUrl      String?  @map("source_page_url") @db.VarChar(2048)
+  createdAt          DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([searchType, createdAt])
+  @@index([normalizedQuery])
+  @@map("search_logs")
+}

@@ -1,0 +1,26 @@
+{
+  "name": "universta-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:admin": "npm --workspace apps/admin run dev -- --port 3001",
+    "dev:api": "npm --workspace apps/api run start:dev",
+    "build:web": "npm --workspace apps/web run build",
+    "build:admin": "npm --workspace apps/admin run build",
+    "build:api": "npm --workspace apps/api run build",
+    "build": "npm run build:web && npm run build:admin && npm run build:api",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:format": "npm --workspace apps/api exec -- prisma format",
+    "db:validate": "npm --workspace apps/api exec -- prisma validate",
+    "db:generate": "npm --workspace apps/api exec -- prisma generate",
+    "db:migrate:dev": "npm --workspace apps/api exec -- prisma migrate dev",
+    "db:migrate:deploy": "npm --workspace apps/api exec -- prisma migrate deploy",
+    "db:migrate:status": "npm --workspace apps/api exec -- prisma migrate status",
+    "db:studio": "npm --workspace apps/api exec -- prisma studio",
+    "db:seed": "npm --workspace apps/api exec -- prisma db seed"
+  },
+  "engines": {"node": ">=24"}
+}
