@@ -104,6 +104,6 @@ Actual `.env` files and local secrets are ignored and are not included in this r
 - Deferred controls include student/public authentication, dashboards, saved
   items, comparison, matching, tracking, and consultant accounts/dashboards;
   feature flags and settings are documented for later rollout.
-- Baseline commit: recorded after the requested foundation-and-planning commit.
+- Baseline commit: `6305926852be4f53349b4b4edb2072742b0183da` — `chore: freeze foundation and phase 1 planning`.
 - No blocker requires user input. The unresolved audit findings and future
   production-version compatibility check are tracked warnings, not setup blockers.
