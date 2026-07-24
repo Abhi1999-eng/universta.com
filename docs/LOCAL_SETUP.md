@@ -66,6 +66,27 @@ npm run dev:api
 
 The public app is at `http://localhost:3000`, the admin shell at `http://localhost:3001`, the API health endpoint at `http://localhost:4000/health`, and the versioned API prefix is `/api/v1`.
 
+### API runtime configuration
+
+The API requires `NODE_ENV`, `DATABASE_URL`, and `CORS_ORIGINS`. `PORT` defaults
+to `4000` only in development/test and must otherwise be an integer from 1 to
+65535. `SWAGGER_ENABLED` defaults to enabled in development and disabled in
+other environments. Runtime startup does not require `SHADOW_DATABASE_URL`.
+
+`SHADOW_DATABASE_URL` remains in the local environment and Prisma migration
+configuration because it is required by local Prisma migration tooling, not by
+the running NestJS API.
+
+Swagger is available at `http://localhost:4000/api/docs` when enabled, with the
+OpenAPI JSON document at `http://localhost:4000/api/docs-json`.
+
+Run API unit and E2E foundation tests with:
+
+```bash
+npm --workspace apps/api run test
+npm --workspace apps/api run test:e2e
+```
+
 Open Prisma Studio:
 
 ```bash

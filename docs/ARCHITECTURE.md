@@ -15,4 +15,11 @@ Prisma migration infrastructure only: universta_shadow
 
 The public and admin frontends are separate Next.js App Router applications with TypeScript, Tailwind, and ESLint. The API is one NestJS modular monolith; no microservices or second application database are introduced.
 
+The API foundation uses a global typed runtime configuration module, one global
+Prisma service, request-context middleware, a global validation pipe, a global
+exception envelope, controlled CORS, and optional Swagger at `/api/docs`.
+`/health` remains outside `/api/v1`. Prisma 7's generated client is retained;
+the API TypeScript build uses CommonJS so the generated client and Nest runtime
+share one module format.
+
 Future extraction boundaries may follow authentication/identity, content/catalog, lead and counselling workflows, communications, and analytics. Those are boundaries for future code organization, not deployed services in Phase 1.
