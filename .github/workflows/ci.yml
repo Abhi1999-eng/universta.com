@@ -94,6 +94,25 @@ jobs:
       - name: API E2E tests
         run: npm --workspace apps/api run test:e2e -- --runInBand
 
+      - name: Admin unit tests
+        run: npm --workspace apps/admin run test -- --run
+
+      - name: Install Playwright Chromium
+        run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
+
+      - name: Admin browser E2E tests
+        run: npm --workspace apps/admin run test:e2e
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-playwright-failures
+          path: |
+            apps/admin/test-results/
+            apps/admin/playwright-report/
+          if-no-files-found: ignore
+
       - name: Lint
         run: npm run lint
 
