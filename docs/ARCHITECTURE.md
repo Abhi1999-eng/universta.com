@@ -36,4 +36,12 @@ SameSite=Lax cookie scoped to `/api/v1/admin/auth`. Auth state uses the existing
 `users`, `roles`, `user_roles`, `refresh_tokens`, `login_attempts`, and
 `audit_logs` tables without a schema change.
 
+The catalog core is implemented as two modules inside the same API process:
+`continents` owns active region reads and protected Super Admin CRUD, while
+`countries` owns safe published reads, bounded search/suggestion/directory
+queries, core-record CRUD, publishing, soft deletion, and audit writes. The
+admin Next.js app exposes only exact same-origin BFF handlers for these catalog
+operations. Detailed country profile subdomains and public catalog screens
+remain deferred.
+
 Future extraction boundaries may follow authentication/identity, content/catalog, lead and counselling workflows, communications, and analytics. Those are boundaries for future code organization, not deployed services in Phase 1.

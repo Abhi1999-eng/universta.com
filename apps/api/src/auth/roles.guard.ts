@@ -17,6 +17,11 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    // The access-token guard runs on protected catalog controllers. Let it
+    // produce the correct 401 for a missing bearer token before role checks.
+    if (!request.user) {
+      return true;
+    }
     return Boolean(
       request.user &&
       requiredRoles.some((role) => request.user?.roles.includes(role)),

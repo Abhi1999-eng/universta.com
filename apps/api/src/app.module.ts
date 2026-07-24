@@ -12,6 +12,8 @@ import { validateEnvironment } from './config/environment';
 import { RuntimeConfigModule } from './config/runtime-config.module';
 import { HealthService } from './health/health.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { ContinentsModule } from './continents/continents.module';
+import { CountriesModule } from './countries/countries.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { PrismaModule } from './prisma/prisma.module';
     RuntimeConfigModule,
     PrismaModule,
     AuthModule,
+    ContinentsModule,
+    CountriesModule,
   ],
   controllers: [AppController],
   providers: [

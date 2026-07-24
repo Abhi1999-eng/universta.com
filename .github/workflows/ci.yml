@@ -91,10 +91,10 @@ jobs:
       - name: API unit tests
         run: npm --workspace apps/api run test -- --runInBand
 
-      - name: API E2E tests
+      - name: API foundation, auth and catalog E2E tests
         run: npm --workspace apps/api run test:e2e -- --runInBand
 
-      - name: Admin unit tests
+      - name: Admin unit and catalog tests
         run: npm --workspace apps/admin run test -- --run
 
       - name: Install Playwright Chromium

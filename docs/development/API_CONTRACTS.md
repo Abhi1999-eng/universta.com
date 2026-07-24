@@ -1,6 +1,7 @@
 # API contract plan
 
-Planning only. Endpoints are not implemented by this task.
+The standard response envelope and the catalog endpoints below are implemented
+for TASK_004. Other endpoint families remain planning contracts.
 
 ## Public Countries Listing endpoints
 
@@ -8,7 +9,7 @@ Planning only. Endpoints are not implemented by this task.
 | --- | --- | --- |
 | `GET /api/v1/continents` | Published region tabs and counts | optional `featured`/status policy |
 | `GET /api/v1/platform-metrics` | Visible, source-aware platform metrics | none or approved group |
-| `GET /api/v1/countries` | Paginated country cards | `q`, `continent`, `budgetBand`, `ieltsOptional`, `intake`, `visaSuccessBand`, `pathwayStrength`, `hasTopRankedUniversities`, `featured`, `letter`, `sort`, `page`, `limit` |
+| `GET /api/v1/countries` | Paginated core country cards | `q`, `continent`, `featured`, `letter`, `sort`, `page`, `limit` |
 | `GET /api/v1/countries/suggestions` | Search autocomplete | `q`, bounded `limit` |
 | `GET /api/v1/countries/directory` | A–Z directory DTOs | `letter`, `page`, `limit` |
 | `GET /api/v1/countries/:slug` | Single country page data | `slug` path parameter |
@@ -71,12 +72,33 @@ Error response:
 }
 ```
 
-The API returns structured money/count/status fields. It must not persist or return display strings such as `£12–28k/yr` as the source of truth; formatting belongs to the frontend.
+TASK_004 returns only the core country fields and verified university count
+available from the existing schema. Money, work, intake, pathway, language,
+visa, and course profile fields remain deferred; the API does not accept those
+filters or return display strings such as `£12–28k/yr` as a source of truth.
 
 ## Suggestions and directory DTOs
 
 Suggestions return `id`, `name`, `slug`, `flag`, `continent`, and `universitiesCount`. Directory entries return `name`, `slug`, `flag`, `shortDescription`, `programCounts` (`ug`, `pg`, `pgdm`, `mba`), `letter`, and `isAvailable`.
 
-## Admin contract plan
+## Admin catalog contracts
 
-Future admin contracts cover CRUD and publish workflows for continents, countries and child profiles, subjects/sub-subjects, levels, study modes, courses and mappings, media, pages/sections/navigation, SEO/redirects, settings/flags, consultant landing cards, leads/bookings, email templates, users/roles, and audit reads. Every mutation needs DTO validation, permission checks, source/verification handling, soft-delete rules, and an audit event. No admin endpoint is implemented yet.
+| Method/path | Purpose |
+| --- | --- |
+| `GET /api/v1/admin/continents` | Bounded Super Admin search/list with status and allowlisted sort |
+| `POST /api/v1/admin/continents` | Create an active continent |
+| `GET /api/v1/admin/continents/:id` | Read one non-deleted continent |
+| `PATCH /api/v1/admin/continents/:id` | Update safe continent fields with optional `expectedUpdatedAt` |
+| `DELETE /api/v1/admin/continents/:id` | Soft-delete an unused continent |
+| `GET /api/v1/admin/countries` | Bounded Super Admin search/list with status, continent, and featured filters |
+| `POST /api/v1/admin/countries` | Create a draft core country record |
+| `GET /api/v1/admin/countries/:id` | Read one non-deleted core country |
+| `PATCH /api/v1/admin/countries/:id` | Update safe core fields with optional `expectedUpdatedAt` |
+| `POST /api/v1/admin/countries/:id/publish` | Validate readiness and publish |
+| `POST /api/v1/admin/countries/:id/unpublish` | Return a published country to draft |
+| `DELETE /api/v1/admin/countries/:id` | Soft-delete a country |
+
+All catalog mutations require an active `SUPER_ADMIN`, use stable validation or
+conflict codes, and append safe audit events. Client input cannot set actor,
+audit, deletion, or publication fields. Detailed profile CRUD, Courses, Leads,
+CMS, media uploads, SEO, and other future admin contracts remain deferred.
