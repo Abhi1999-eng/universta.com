@@ -1,0 +1,119 @@
+import { Transform } from 'class-transformer';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsISO8601,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import {
+  COUNTRY_SECTION_KEYS,
+  COUNTRY_SECTION_TYPES,
+  EDITORIAL_STATUSES,
+} from './editorial.constants';
+
+const integer = ({ value }: { value: unknown }) =>
+  typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+
+export class EditorialVersionDto {
+  @IsOptional()
+  @IsISO8601()
+  expectedUpdatedAt?: string;
+}
+
+export class ContentSectionDto extends EditorialVersionDto {
+  @IsIn(COUNTRY_SECTION_KEYS)
+  sectionKey!: string;
+
+  @IsIn(COUNTRY_SECTION_TYPES)
+  sectionType!: string;
+
+  @IsOptional() @IsString() @MaxLength(255) eyebrow?: string;
+  @IsOptional() @IsString() @MaxLength(500) heading?: string;
+  @IsOptional() @IsString() @MaxLength(4000) subheading?: string;
+  @IsOptional() @IsObject() bodyJson?: Record<string, unknown>;
+  @IsOptional() @IsString() @MaxLength(36) primaryMediaId?: string;
+  @IsOptional() @IsString() @MaxLength(36) secondaryMediaId?: string;
+  @IsOptional() @IsString() @MaxLength(100) ctaLabel?: string;
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(1000)
+  ctaUrl?: string;
+  @IsOptional() @IsObject() configurationJson?: Record<string, unknown>;
+  @Transform(integer)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(999999)
+  displayOrder?: number;
+  @IsOptional() @IsIn(EDITORIAL_STATUSES) status?: string;
+}
+
+export class FaqDto extends EditorialVersionDto {
+  @IsString() @MaxLength(1000) question!: string;
+  @IsString() @MaxLength(12000) answer!: string;
+  @IsOptional() @IsString() @MaxLength(100) category?: string;
+  @IsOptional() @IsBoolean() isFeatured?: boolean;
+  @IsOptional() @IsIn(EDITORIAL_STATUSES) status?: string;
+  @Transform(integer)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(999999)
+  displayOrder?: number;
+}
+
+export class SeoMetadataDto extends EditorialVersionDto {
+  @IsString() @MaxLength(255) seoTitle!: string;
+  @IsString() @MaxLength(500) metaDescription!: string;
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(2048)
+  canonicalUrl?: string;
+  @IsOptional() @IsString() @MaxLength(255) focusKeyword?: string;
+  @IsOptional() @IsString() @MaxLength(255) ogTitle?: string;
+  @IsOptional() @IsString() @MaxLength(500) ogDescription?: string;
+  @IsOptional() @IsString() @MaxLength(36) ogMediaId?: string;
+  @IsOptional() @IsString() @MaxLength(255) twitterTitle?: string;
+  @IsOptional() @IsString() @MaxLength(500) twitterDescription?: string;
+  @IsOptional() @IsString() @MaxLength(36) twitterMediaId?: string;
+  @IsOptional() @IsBoolean() robotsIndex?: boolean;
+  @IsOptional() @IsBoolean() robotsFollow?: boolean;
+  @IsOptional() @IsObject() schemaJson?: Record<string, unknown>;
+  @IsOptional() @IsObject() hreflangJson?: Record<string, unknown>;
+}
+
+export class ConsultantCardDto extends EditorialVersionDto {
+  @IsString() @MaxLength(255) title!: string;
+  @IsString() @MaxLength(255) slug!: string;
+  @IsString() @MaxLength(1000) shortDescription!: string;
+  @IsOptional() @IsString() @MaxLength(12000) overview?: string;
+  @IsOptional() @IsString() @MaxLength(36) iconMediaId?: string;
+  @IsOptional() @IsString() @MaxLength(36) featuredMediaId?: string;
+  @IsOptional() @IsBoolean() isFreeConsultation?: boolean;
+  @IsOptional() @IsString() @MaxLength(100) ctaLabel?: string;
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(1000)
+  ctaUrl?: string;
+  @IsOptional() @IsIn(EDITORIAL_STATUSES) status?: string;
+  @IsOptional() @IsBoolean() isFeatured?: boolean;
+  @Transform(integer)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(999999)
+  displayOrder?: number;
+  @IsOptional() @IsISO8601() publishedAt?: string;
+}
+
+export class MediaOptionsQueryDto {
+  @IsOptional() @IsString() @MaxLength(100) q?: string;
+  @Transform(integer) @IsOptional() @IsInt() @Min(1) @Max(50) limit = 24;
+}

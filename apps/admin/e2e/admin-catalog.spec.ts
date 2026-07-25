@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { e2eEmail, e2ePassword } from '../playwright.config';
 
 test.describe.serial('catalog management', () => {
@@ -21,10 +20,11 @@ test.describe.serial('catalog management', () => {
   });
 
   test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }) => {
-    const codeSeed = randomUUID()
-      .replace(/[^a-f]/gi, '')
-      .toUpperCase()
-      .padEnd(6, 'A');
+    const codeSeed = `${Date.now()}`
+      .slice(-6)
+      .split('')
+      .map((digit) => String.fromCharCode(65 + Number(digit)))
+      .join('');
     await login(page);
     await page.goto('/continents');
     await page.getByRole('button', { name: 'Create continent' }).click();

@@ -20,6 +20,7 @@ export type CatalogProxyOperation =
   | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
   | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
   | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}`
+  | `editorial:${string}`
   | 'intakes:list';
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -56,6 +57,14 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   PROFILE_VERIFICATION_INVALID: 'Profile verification timestamp is invalid',
   COUNTRY_INTAKE_INVALID: 'One or more intake options are unavailable',
   COUNTRY_INTAKES_DUPLICATE: 'An intake can only be selected once',
+  COUNTRY_CONTENT_SECTION_NOT_FOUND: 'Content section not found',
+  COUNTRY_FAQ_NOT_FOUND: 'FAQ not found',
+  COUNTRY_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
+  COUNTRY_CONTENT_SECTION_STALE_VERSION: 'Content section changed in another session. Reload before saving',
+  COUNTRY_FAQ_STALE_VERSION: 'FAQ changed in another session. Reload before saving',
+  COUNTRY_CONSULTANT_CARD_STALE_VERSION: 'Consultant card changed in another session. Reload before saving',
+  EDITORIAL_MEDIA_INVALID: 'Selected media is not available',
+  EDITORIAL_BODY_INVALID: 'Editorial section content is invalid',
 };
 
 interface SafeEnvelope {
@@ -102,6 +111,23 @@ function errorResponse(status: number, requestId: string, code: string): NextRes
 
 function operationDetails(operation: CatalogProxyOperation): { method: string; path: string; query: string[]; body: string[] } {
   if (operation === 'intakes:list') return { method: 'GET', path: '/api/v1/admin/intakes', query: [], body: [] };
+  if (operation.startsWith('editorial:')) {
+    const [, method, countryId, resource, childId] = operation.split(':');
+    const safeCountryId = encodeURIComponent(countryId ?? '');
+    const safeChildId = childId ? `/${encodeURIComponent(childId)}` : '';
+    const base = `/api/v1/admin/countries/${safeCountryId}`;
+    if (resource === 'all') return { method: 'GET', path: `${base}/editorial`, query: [], body: [] };
+    if (resource === 'media-options') return { method: 'GET', path: '/api/v1/admin/media-options', query: ['q', 'limit'], body: [] };
+    const paths: Record<string, string> = { sections: 'content-sections', faqs: 'faqs', cards: 'consultant-cards', seo: 'seo' };
+    const path = `${base}/${paths[resource ?? ''] ?? resource}${safeChildId}`;
+    const bodies: Record<string, string[]> = {
+      sections: ['sectionKey', 'sectionType', 'eyebrow', 'heading', 'subheading', 'bodyJson', 'primaryMediaId', 'secondaryMediaId', 'ctaLabel', 'ctaUrl', 'configurationJson', 'displayOrder', 'status', 'expectedUpdatedAt'],
+      faqs: ['question', 'answer', 'category', 'isFeatured', 'status', 'displayOrder', 'expectedUpdatedAt'],
+      seo: ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'],
+      cards: ['title', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'featuredMediaId', 'isFreeConsultation', 'ctaLabel', 'ctaUrl', 'status', 'isFeatured', 'displayOrder', 'publishedAt', 'expectedUpdatedAt'],
+    };
+    return { method: method ?? 'GET', path, query: [], body: bodies[resource ?? ''] ?? ['expectedUpdatedAt'] };
+  }
   if (operation.startsWith('country-profiles:')) {
     const parts = operation.split(':');
     const action = parts[1];

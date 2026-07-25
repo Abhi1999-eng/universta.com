@@ -8,16 +8,27 @@ import {
   AdminIntakesController,
 } from './profiles/admin-country-profiles.controller';
 import { CountryProfilesService } from './profiles/country-profiles.service';
+import {
+  AdminCountryEditorialController,
+  PublicCountryEditorialController,
+} from './editorial/country-editorial.controller';
+import { CountryEditorialService } from './editorial/country-editorial.service';
 
 @Module({
   imports: [AuthModule],
   controllers: [
     AdminCountryProfilesController,
     AdminIntakesController,
+    AdminCountryEditorialController,
+    PublicCountryEditorialController,
     CountriesController,
     AdminCountriesController,
   ],
-  providers: [CountriesService, CountryProfilesService],
+  providers: [
+    CountriesService,
+    CountryProfilesService,
+    CountryEditorialService,
+  ],
   exports: [CountriesService],
 })
 export class CountriesModule {}
