@@ -12,7 +12,7 @@ Status: implementation complete on `feat/task-007-subjects-courses`; merge is in
 
 ## Deliberate exclusions
 
-Course Comparison, counselling forms, university/provider catalogues, ranking/salary claims, authentication changes, Docker, new migrations, Prisma schema changes, TASK_008, and conversion of the approved HTML references are not part of this task.
+Course Comparison, counselling forms, university/provider catalogues, ranking/salary claims, authentication changes, Docker, new migrations, Prisma schema changes, TASK_008, and execution of the approved HTML references remain excluded. Approved UI references are preserved byte-for-byte as visual inputs and are not runtime assets.
 
 ## Data and publication rules
 
