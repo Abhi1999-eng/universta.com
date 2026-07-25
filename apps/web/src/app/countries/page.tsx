@@ -34,5 +34,5 @@ export default async function CountriesPage({ searchParams }: { searchParams: Pr
   const data = await loadData(filters);
   if (!data) return <main className="shell error-page"><p className="eyebrow">Countries</p><h1>Destinations are temporarily unavailable</h1><p>Please try again shortly.</p><Link className="button" href="/countries">Retry</Link></main>;
   const activeContinents = data.continents.filter((item) => item.status === 'ACTIVE');
-  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} />;
+  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} filters={filters} />;
 }

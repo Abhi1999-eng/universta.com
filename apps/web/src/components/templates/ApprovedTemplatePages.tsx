@@ -4,7 +4,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { consultationTarget } from '@/lib/country-experience';
 import type {
   Country,
   CountryPage,
@@ -32,6 +34,7 @@ type IconName =
   | 'globe'
   | 'heart'
   | 'home'
+  | 'menu'
   | 'money'
   | 'search'
   | 'shield'
@@ -51,6 +54,7 @@ const iconPaths: Record<IconName, string> = {
   globe: 'M2 12h20M12 2a15 15 0 0 1 0 20M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20',
   heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8',
   home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+  menu: 'M4 6h16M4 12h16M4 18h16',
   money: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
   search: 'm21 21-4.3-4.3M11 18a7 7 0 1 1 0-14a7 7 0 0 1 0 14',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
@@ -77,22 +81,26 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 }
 
 function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="nav" id="siteNav">
       <div className="wrap nav-inner">
         <Link href="/" className="logo">Univer<b>sta</b></Link>
-        <nav className="nav-links" aria-label="Primary navigation">
+        <nav className={`nav-links${menuOpen ? ' is-open' : ''}`} aria-label="Primary navigation">
           <Link className={active === 'countries' ? 'active' : ''} href="/countries">Countries</Link>
-          <Link href="/universities">Universities</Link>
+          <Link className={active === 'subjects' ? 'active' : ''} href="/subjects">Subjects</Link>
           <Link className={active === 'courses' ? 'active' : ''} href="/courses">Courses</Link>
-          <Link href="/scholarships">Scholarships</Link>
-          <Link href="/consultants">Consultants</Link>
         </nav>
         <div className="nav-right">
-          <Link className="nav-signin" href="/signin">Sign in</Link>
-          <Link className="btn btn-primary btn-sm" href="/counselling">Get free counselling</Link>
-          <button type="button" className="nav-toggle" aria-label="Open menu">
-            <Icon name="users" size={25} />
+          <Link className="btn btn-primary btn-sm" href="/courses">Explore courses</Link>
+          <button
+            type="button"
+            className="nav-toggle"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((current) => !current)}
+          >
+            <Icon name="menu" size={25} />
           </button>
         </div>
       </div>
@@ -112,8 +120,6 @@ function CatalogFooter() {
           {[
             ['Courses', [['All courses', '/courses'], ['Subjects', '/subjects']]],
             ['Destinations', [['All countries', '/countries']]],
-            ['Platform', [['Scholarships', '/scholarships'], ['Consultants', '/consultants']]],
-            ['Company', [['About', '/about'], ['Contact', '/contact']]],
           ].map(([title, links]) => (
             <div className="foot-col" key={String(title)}>
               <h4>{String(title)}</h4>
@@ -135,21 +141,25 @@ function CatalogFooter() {
 }
 
 function CountryHeader() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header id="hdr">
       <div className="wrap nav">
         <Link href="/" className="logo">Univer<span>sta</span></Link>
-        <ul className="nav-links">
+        <ul className={`nav-links${menuOpen ? ' is-open' : ''}`}>
           <li><Link href="/countries">Countries</Link></li>
-          <li><Link href="/universities">Universities</Link></li>
+          <li><Link href="/subjects">Subjects</Link></li>
           <li><Link href="/courses">Courses</Link></li>
-          <li><Link href="/scholarships">Scholarships</Link></li>
-          <li><Link href="/consultants">Consultants</Link></li>
         </ul>
         <div className="nav-r">
-          <Link href="/signin" className="sign">Sign in</Link>
-          <Link href="/counselling" className="btn btn-p">Get free counselling</Link>
-          <button type="button" className="burger" aria-label="Open menu">
+          <Link href="/courses" className="btn btn-p">Explore courses</Link>
+          <button
+            type="button"
+            className="burger"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((current) => !current)}
+          >
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -226,17 +236,210 @@ function CountryTemplateCard({ country }: { country: Country }) {
   );
 }
 
+type CountryFilterKey =
+  | 'budgetBand'
+  | 'ieltsOptional'
+  | 'intake'
+  | 'visaSuccessBand'
+  | 'pathwayStrength'
+  | 'hasTopRankedUniversities';
+
+const countryFilterOptions: Record<CountryFilterKey, Array<{ value: string; label: string }>> = {
+  budgetBand: [
+    { value: 'BUDGET_FRIENDLY', label: 'Budget friendly' },
+    { value: 'MID_RANGE', label: 'Mid range' },
+    { value: 'PREMIUM', label: 'Premium' },
+  ],
+  ieltsOptional: [{ value: 'true', label: 'IELTS optional or waived' }],
+  intake: [
+    { value: 'fall', label: 'Fall intake' },
+    { value: 'spring', label: 'Spring intake' },
+    { value: 'winter', label: 'Winter intake' },
+  ],
+  visaSuccessBand: [
+    { value: 'HIGH', label: 'High visa success' },
+    { value: 'MEDIUM', label: 'Medium visa success' },
+    { value: 'LOW', label: 'Low visa success' },
+  ],
+  pathwayStrength: [
+    { value: 'STRONG', label: 'Strong pathway' },
+    { value: 'MODERATE', label: 'Moderate pathway' },
+    { value: 'LIMITED', label: 'Limited pathway' },
+  ],
+  hasTopRankedUniversities: [{ value: 'true', label: 'Has top-ranked universities' }],
+};
+
+const countryFilterLabels: Record<CountryFilterKey, string> = {
+  budgetBand: 'Budget',
+  ieltsOptional: 'IELTS',
+  intake: 'Intake',
+  visaSuccessBand: 'Visa success',
+  pathwayStrength: 'Pathway strength',
+  hasTopRankedUniversities: 'Top-ranked universities',
+};
+
+const countryQueryKeys = new Set([
+  'q',
+  'region',
+  'page',
+  ...Object.keys(countryFilterOptions),
+]);
+
+function searchRecord(params: URLSearchParams) {
+  return Object.fromEntries(params.entries());
+}
+
 export function ApprovedCountriesListing({
   countries,
   meta,
   continents,
   directory,
+  directoryMeta,
+  filters: initialFilters,
 }: {
   countries: Country[];
   meta: PaginationMeta;
   continents: Array<{ id: string; name: string; slug: string; status: string }>;
   directory: DirectoryRecord[];
+  directoryMeta: PaginationMeta;
+  filters: Record<string, string | undefined>;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchAreaRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState(initialFilters.q ?? '');
+  const [suggestions, setSuggestions] = useState<Country[]>([]);
+  const [suggestionState, setSuggestionState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState<Record<CountryFilterKey, string>>(
+    () => Object.fromEntries(
+      (Object.keys(countryFilterOptions) as CountryFilterKey[]).map((key) => [key, initialFilters[key] ?? '']),
+    ) as Record<CountryFilterKey, string>,
+  );
+  const currentFilters = useMemo(() => searchRecord(new URLSearchParams(searchParams.toString())), [searchParams]);
+  const region = currentFilters.region ?? 'all';
+  const submittedQuery = currentFilters.q ?? '';
+  const activeFilterCount = (Object.keys(countryFilterOptions) as CountryFilterKey[])
+    .filter((key) => Boolean(currentFilters[key])).length;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setQuery(submittedQuery);
+      setFilterDraft(
+        Object.fromEntries(
+          (Object.keys(countryFilterOptions) as CountryFilterKey[])
+            .map((key) => [key, currentFilters[key] ?? '']),
+        ) as Record<CountryFilterKey, string>,
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [currentFilters, submittedQuery]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      if (query.trim().length < 2 || query.trim() === submittedQuery) {
+        setSuggestions([]);
+        setSuggestionState('idle');
+        setSuggestionsOpen(false);
+        return;
+      }
+      setSuggestionState('loading');
+      setSuggestionsOpen(true);
+      void fetch(`/api/countries/suggestions?q=${encodeURIComponent(query.trim())}`, {
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error('Suggestions unavailable');
+          return response.json() as Promise<{ data?: Country[] }>;
+        })
+        .then((body) => {
+          setSuggestions(body.data ?? []);
+          setActiveSuggestion(-1);
+          setSuggestionState('ready');
+        })
+        .catch((error: unknown) => {
+          if ((error as { name?: string }).name !== 'AbortError') {
+            setSuggestions([]);
+            setSuggestionState('error');
+            setSuggestionsOpen(true);
+          }
+        });
+    }, 180);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query, submittedQuery]);
+
+  useEffect(() => {
+    const closeSuggestions = (event: MouseEvent) => {
+      if (!searchAreaRef.current?.contains(event.target as Node)) setSuggestionsOpen(false);
+    };
+    document.addEventListener('mousedown', closeSuggestions);
+    return () => document.removeEventListener('mousedown', closeSuggestions);
+  }, []);
+
+  function navigate(next: Record<string, string | undefined>, scroll = false) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const key of [...params.keys()]) {
+      if (!countryQueryKeys.has(key)) params.delete(key);
+    }
+    for (const [key, value] of Object.entries(next)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    router.push(`${pathname}${params.size ? `?${params}` : ''}`, { scroll });
+  }
+
+  function commitSearch(value: string) {
+    const next = value.trim();
+    setQuery(next);
+    setSuggestionsOpen(false);
+    navigate({ q: next || undefined, page: undefined });
+  }
+
+  function chooseSuggestion(country: Country) {
+    setQuery(country.name);
+    setSuggestionsOpen(false);
+    navigate({ q: country.name, page: undefined });
+  }
+
+  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      setSuggestionsOpen(false);
+      return;
+    }
+    if (event.key === 'ArrowDown' && suggestionsOpen && suggestions.length) {
+      event.preventDefault();
+      setActiveSuggestion((current) => current >= suggestions.length - 1 ? 0 : current + 1);
+      return;
+    }
+    if (event.key === 'ArrowUp' && suggestionsOpen && suggestions.length) {
+      event.preventDefault();
+      setActiveSuggestion((current) => current <= 0 ? suggestions.length - 1 : current - 1);
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (suggestionsOpen && activeSuggestion >= 0 && suggestions[activeSuggestion]) {
+        chooseSuggestion(suggestions[activeSuggestion]);
+      } else {
+        commitSearch(query);
+      }
+    }
+  }
+
+  function clearAll() {
+    setQuery('');
+    setSuggestionsOpen(false);
+    setFiltersOpen(false);
+    router.push(pathname, { scroll: false });
+  }
+
   const universityTotal = countries.reduce(
     (total, country) => total + (country.profiles?.statistics?.universitiesCount ?? 0),
     0,
@@ -249,11 +452,13 @@ export function ApprovedCountriesListing({
     (total, country) => total + (country.profiles?.statistics?.scholarshipsCount ?? 0),
     0,
   );
-  const letters = Array.from(new Set(directory.map((item) => item.letter))).sort();
-  const [activeLetter, setActiveLetter] = useState('All');
-  const displayedDirectory = activeLetter === 'All'
-    ? directory
-    : directory.filter((item) => item.letter === activeLetter);
+  const directoryByLetter = useMemo(() => {
+    const groups = new Map<string, DirectoryRecord[]>();
+    for (const item of directory) {
+      groups.set(item.letter, [...(groups.get(item.letter) ?? []), item]);
+    }
+    return groups;
+  }, [directory]);
   return (
     <main className="visual-countries-page">
       <CountryHeader />
@@ -273,18 +478,90 @@ export function ApprovedCountriesListing({
               ['calendar', 'Intakes'],
             ].map(([icon, label]) => <span key={label}><Icon name={icon as IconName} size={14} />{label}</span>)}
           </div>
-          <form className="searchbar" action="/countries">
-            <Icon name="search" size={19} />
-            <input id="q" name="q" type="search" autoComplete="off" placeholder="Search a country (Canada, UK, Australia...)" aria-label="Search a country" />
-            <button className="btn btn-p" type="submit">Search</button>
-          </form>
+          <div className="country-search-area" ref={searchAreaRef}>
+            <form
+              className="searchbar"
+              action="/countries"
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitSearch(query);
+              }}
+            >
+              <Icon name="search" size={19} />
+              <input
+                id="q"
+                name="q"
+                type="search"
+                role="combobox"
+                autoComplete="off"
+                placeholder="Search a country (Canada, UK, Australia...)"
+                aria-label="Search a country"
+                aria-autocomplete="list"
+                aria-expanded={suggestionsOpen}
+                aria-controls="country-suggestions"
+                aria-activedescendant={
+                  suggestionsOpen && activeSuggestion >= 0 && suggestions[activeSuggestion]
+                    ? `country-suggestion-${suggestions[activeSuggestion].id}`
+                    : undefined
+                }
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
+              />
+              <button className="btn btn-p" type="submit">Search</button>
+            </form>
+            {suggestionsOpen ? (
+              <div className="sugg on">
+                {suggestionState === 'loading' ? <p role="status">Loading suggestions…</p> : null}
+                {suggestionState === 'error' ? <p role="alert">Suggestions are temporarily unavailable.</p> : null}
+                {suggestionState === 'ready' && !suggestions.length ? <p role="status">No destinations found.</p> : null}
+                {suggestions.length ? (
+                  <ul id="country-suggestions" role="listbox">
+                    {suggestions.map((country, index) => (
+                      <li
+                        id={`country-suggestion-${country.id}`}
+                        role="option"
+                        aria-selected={index === activeSuggestion}
+                        key={country.id}
+                      >
+                        <button
+                          type="button"
+                          className={index === activeSuggestion ? 'is-active' : ''}
+                          onMouseEnter={() => setActiveSuggestion(index)}
+                          onClick={() => chooseSuggestion(country)}
+                        >
+                          <span>{flagFor(country)}</span>
+                          <span>{country.name}</span>
+                          <small>{country.continent.name}</small>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <div className="qf" id="qf">
-            <Link href="/countries?budgetBand=BUDGET_FRIENDLY"><Icon name="money" />Budget friendly</Link>
-            <Link href="/countries?ieltsOptional=true"><Icon name="book" />IELTS optional</Link>
-            <Link href="/countries?intake=winter"><Icon name="calendar" />January intake</Link>
-            <Link href="/countries?visaSuccessBand=HIGH"><Icon name="shield" />High visa success</Link>
-            <Link href="/countries?pathwayStrength=STRONG"><Icon name="home" />PR friendly</Link>
-            <Link href="/countries?hasTopRankedUniversities=true"><Icon name="star" />Top ranked universities</Link>
+            {[
+              ['budgetBand', 'BUDGET_FRIENDLY', 'money', 'Budget friendly'],
+              ['ieltsOptional', 'true', 'book', 'IELTS optional'],
+              ['intake', 'winter', 'calendar', 'January intake'],
+              ['visaSuccessBand', 'HIGH', 'shield', 'High visa success'],
+              ['pathwayStrength', 'STRONG', 'home', 'PR friendly'],
+              ['hasTopRankedUniversities', 'true', 'star', 'Top ranked universities'],
+            ].map(([key, value, icon, label]) => (
+              <button
+                type="button"
+                className={currentFilters[key] === value ? 'on' : ''}
+                onClick={() => navigate({
+                  [key]: currentFilters[key] === value ? undefined : value,
+                  page: undefined,
+                })}
+                key={key}
+              >
+                <Icon name={icon as IconName} />{label}
+              </button>
+            ))}
           </div>
           <div className="stats">
             <div className="stat"><b>{meta.total}</b><span>Destinations</span></div>
@@ -305,18 +582,99 @@ export function ApprovedCountriesListing({
           </div>
           <div className="tabbar">
             <div className="tabs">
-              <Link className="tab on" href="/countries">All destinations <span className="n">{meta.total}</span></Link>
+              <button
+                type="button"
+                className={`tab${region === 'all' ? ' on' : ''}`}
+                onClick={() => navigate({ region: undefined, page: undefined })}
+              >
+                All destinations <span className="n">{meta.total}</span>
+              </button>
               {continents.map((continent) => (
-                <Link className="tab" href={`/countries?region=${continent.slug}`} key={continent.id}>
+                <button
+                  type="button"
+                  className={`tab${region === continent.slug ? ' on' : ''}`}
+                  onClick={() => navigate({ region: continent.slug, page: undefined })}
+                  key={continent.id}
+                >
                   {continent.name} <span className="n">{countries.filter((item) => item.continent.id === continent.id).length}</span>
-                </Link>
+                </button>
               ))}
             </div>
           </div>
-          <div className="res-count">Showing {countries.length} destination{countries.length === 1 ? '' : 's'}</div>
+          <div className="country-results-toolbar">
+            <div className="res-count" role="status">
+              Showing {countries.length} of {meta.total} destination{meta.total === 1 ? '' : 's'}
+              {meta.totalPages > 1 ? ` · page ${meta.page} of ${meta.totalPages}` : ''}
+            </div>
+            <button
+              type="button"
+              className="btn btn-s country-filter-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls="country-filter-panel"
+              onClick={() => setFiltersOpen((current) => !current)}
+            >
+              <Icon name="search" size={15} />Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}
+            </button>
+          </div>
+          <button
+            type="button"
+            className={`country-filter-scrim${filtersOpen ? ' is-open' : ''}`}
+            aria-label="Close filters"
+            tabIndex={filtersOpen ? 0 : -1}
+            onClick={() => setFiltersOpen(false)}
+          />
+          <form
+            id="country-filter-panel"
+            className={`country-filter-panel${filtersOpen ? ' is-open' : ''}`}
+            aria-label="Country filters"
+            onSubmit={(event) => {
+              event.preventDefault();
+              navigate({ ...filterDraft, page: undefined });
+              setFiltersOpen(false);
+            }}
+          >
+            <div className="country-filter-heading">
+              <div><span className="eyebrow">Refine results</span><h3>Country filters</h3></div>
+              <button type="button" onClick={clearAll}>Clear all</button>
+            </div>
+            <div className="country-filter-grid">
+              {(Object.keys(countryFilterOptions) as CountryFilterKey[]).map((key) => (
+                <label key={key}>
+                  {countryFilterLabels[key]}
+                  <select
+                    name={key}
+                    value={filterDraft[key]}
+                    onChange={(event) => setFilterDraft((current) => ({
+                      ...current,
+                      [key]: event.target.value,
+                    }))}
+                  >
+                    <option value="">Any</option>
+                    {countryFilterOptions[key].map((option) => (
+                      <option value={option.value} key={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <div className="country-filter-actions">
+              <button className="btn btn-p" type="submit">Apply filters</button>
+              <button className="btn btn-s country-filter-close" type="button" onClick={() => setFiltersOpen(false)}>Close</button>
+            </div>
+          </form>
           <div className="cards">
             {countries.length ? countries.map((country) => <CountryTemplateCard country={country} key={country.id} />) : <EmptyTemplateState label="No destinations match these filters" />}
           </div>
+          {!countries.length || activeFilterCount || currentFilters.q || region !== 'all' ? (
+            <button type="button" className="clear-country-results" onClick={clearAll}>Clear all filters</button>
+          ) : null}
+          {meta.totalPages > 1 || meta.page > 1 ? (
+            <nav className="template-pagination" aria-label="Country results pages">
+              <button type="button" disabled={meta.page <= 1} onClick={() => navigate({ page: String(meta.page - 1) })}>Previous</button>
+              <span>Page {meta.page} of {meta.totalPages}</span>
+              <button type="button" disabled={meta.page >= meta.totalPages} onClick={() => navigate({ page: String(meta.page + 1) })}>Next</button>
+            </nav>
+          ) : null}
         </div>
       </section>
       <div className="wrap">
@@ -328,8 +686,8 @@ export function ApprovedCountriesListing({
               {['Profile evaluation', 'University shortlisting', 'Scholarship guidance', 'Visa assistance'].map((item) => <li key={item}><Icon name="check" />{item}</li>)}
             </ul>
             <div className="cta-btns">
-              <Link href="/counselling" className="btn btn-w btn-lg">Get free counselling</Link>
-              <Link href="/signup" className="btn btn-o btn-lg">Create free account</Link>
+              <a href="#regions" className="btn btn-w btn-lg">Review destinations</a>
+              <Link href="/subjects" className="btn btn-o btn-lg">Browse subjects</Link>
             </div>
           </div>
           <div className="cta-art" aria-hidden="true"><Icon name="globe" size={180} /></div>
@@ -340,27 +698,54 @@ export function ApprovedCountriesListing({
           <div className="eyebrow">Every destination</div>
           <h2 className="sec-h" style={{ marginTop: 12 }}>Browse every destination A–Z</h2>
           <p className="sec-p">Jump straight to a country and see what is currently published.</p>
-          <div className="alpha">
-            <button type="button" className={activeLetter === 'All' ? 'on' : ''} onClick={() => setActiveLetter('All')}>All</button>
-            {Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index)).map((letter) => (
-              <button type="button" className={activeLetter === letter ? 'on' : ''} disabled={!letters.includes(letter)} onClick={() => setActiveLetter(letter)} key={letter}>{letter}</button>
-            ))}
+          <div className="alpha" aria-label="Country directory letters">
+            {Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index)).map((letter) => {
+              const items = directoryByLetter.get(letter) ?? [];
+              return items.length ? (
+                <a
+                  className="directory-letter"
+                  href={`#directory-letter-${letter}`}
+                  aria-label={`${letter}, ${items.length} available`}
+                  key={letter}
+                >
+                  {letter}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className="directory-letter"
+                  disabled
+                  aria-label={`${letter}, unavailable`}
+                  key={letter}
+                >
+                  {letter}
+                </button>
+              );
+            })}
           </div>
-          <div className="az-grid">
-            {displayedDirectory.length ? displayedDirectory.map((country) => (
-              <article className="az-tile" key={country.slug}>
-                <div className="t">
-                  <span className="fl">{country.flag ? <img src={country.flag.url} alt={country.flag.alt || ''} /> : country.name.slice(0, 2).toUpperCase()}</span>
-                  <h3>Study in {country.name}</h3>
+          <div className="directory-groups">
+            {directoryByLetter.size ? Array.from(directoryByLetter.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([letter, items]) => (
+              <section className="directory-group" id={`directory-letter-${letter}`} key={letter}>
+                <h3 className="directory-group-letter">{letter}</h3>
+                <div className="az-grid">
+                  {items.map((country) => (
+                    <article className="az-tile" key={country.slug}>
+                      <div className="t">
+                        <span className="fl">{country.flag ? <img src={country.flag.url} alt={country.flag.alt || ''} /> : country.name.slice(0, 2).toUpperCase()}</span>
+                        <h3>Study in {country.name}</h3>
+                      </div>
+                      <p>{country.shortDescription}</p>
+                      <div className="progs">
+                        {Object.entries(country.programCounts).filter(([, count]) => count != null).map(([label, count]) => <span key={label}>{count} {label.toUpperCase()}</span>)}
+                      </div>
+                      {country.isAvailable ? <Link className="go" href={`/countries/${country.slug}`}>Explore <Icon name="arrow" size={13} /></Link> : <span>Coming soon</span>}
+                    </article>
+                  ))}
                 </div>
-                <p>{country.shortDescription}</p>
-                <div className="progs">
-                  {Object.entries(country.programCounts).filter(([, count]) => count != null).map(([label, count]) => <span key={label}>{count} {label.toUpperCase()}</span>)}
-                </div>
-                {country.isAvailable ? <Link className="go" href={`/countries/${country.slug}`}>Explore <Icon name="arrow" size={13} /></Link> : <span>Coming soon</span>}
-              </article>
+              </section>
             )) : <EmptyTemplateState label="No country directory entries are published" />}
           </div>
+          <p className="directory-total">{directoryMeta.total} destinations listed</p>
         </div>
       </section>
       <div className="wrap">
@@ -368,8 +753,8 @@ export function ApprovedCountriesListing({
           <h2>Ready to start your study abroad journey?</h2>
           <p>Create an account to save destinations and continue your planning.</p>
           <div className="cta2-btns">
-            <Link href="/signup" className="btn btn-p btn-lg">Create free account</Link>
-            <Link href="/counselling" className="btn btn-s btn-lg">Book free consultation</Link>
+            <Link href="/subjects" className="btn btn-p btn-lg">Browse subjects</Link>
+            <Link href="/courses" className="btn btn-s btn-lg">Explore courses</Link>
           </div>
         </section>
       </div>
@@ -387,8 +772,8 @@ export function ApprovedCountriesListing({
           <h2>Not sure which country fits you?</h2>
           <p>Start with the published catalog and get help turning it into a shortlist.</p>
           <div className="final-btns">
-            <Link href="/countries" className="btn btn-w btn-lg">Find my best match</Link>
-            <Link href="/counselling" className="btn btn-o btn-lg">Talk to a counsellor</Link>
+            <a href="#regions" className="btn btn-w btn-lg">Review destinations</a>
+            <Link href="/courses" className="btn btn-o btn-lg">Explore courses</Link>
           </div>
           <div className="trust">
             <div><Icon name="shield" />No obligation</div>
@@ -411,6 +796,22 @@ function profileMoney(page: CountryPage, field: 'tuition' | 'living') {
   const period = field === 'tuition' ? cost.tuitionPeriod : cost.livingCostPeriod;
   if (!min) return 'Not published';
   return `${symbol}${Number(min).toLocaleString()}${max ? `–${Number(max).toLocaleString()}` : '+'}/${period === 'PER_MONTH' ? 'mo' : 'yr'}`;
+}
+
+function ProfileSource({
+  profile,
+}: {
+  profile: { sourceReference?: string | null; verifiedAt?: string | null } | null | undefined;
+}) {
+  if (!profile?.sourceReference) return null;
+  return (
+    <p className="profile-source">
+      <strong>Source:</strong> {profile.sourceReference}
+      {profile.verifiedAt
+        ? ` · verified ${new Date(profile.verifiedAt).toLocaleDateString('en', { dateStyle: 'medium' })}`
+        : ''}
+    </p>
+  );
 }
 
 function CountrySection({
@@ -445,6 +846,36 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
   const statistics = profiles.statistics;
   const intakes = profiles.intakes.map((item) => item.intake?.shortLabel ?? item.name ?? item.shortLabel).filter(Boolean);
   const editorial = new Map(sections.map((section) => [section.sectionKey, section]));
+  const sourceProfiles = [profiles.cost, profiles.work, profiles.language, profiles.statistics]
+    .filter((profile) => Boolean(profile?.sourceReference));
+  const hasStructuredTrust = sourceProfiles.length > 0;
+  const configuredDestination = sections.find((section) => section.sectionKey === 'consultant-cta')?.ctaUrl;
+  const guidanceTarget = consultationTarget({
+    hasConsultants: consultantCards.length > 0,
+    hasStructuredTrust,
+    configuredDestination,
+  });
+  const jumpItems = [
+    ['why', `Why ${country.name}`],
+    ['unis', 'Universities'],
+    ['subjects', 'Subjects'],
+    profiles.intakes.length ? ['structured-intakes', 'Intakes'] : null,
+    ['documents', 'Documents'],
+    profiles.cost ? ['structured-cost', 'Cost'] : null,
+    ['scholarships', 'Scholarships'],
+    profiles.language ? ['structured-language', 'Language'] : null,
+    profiles.work ? ['structured-work-visa', 'Work & visa'] : null,
+    ['events', 'Events'],
+    ['cities', 'Cities'],
+    ['living', 'Living cost'],
+    ['careers', 'Careers'],
+    statistics ? ['structured-statistics', 'Statistics'] : null,
+    faqs.length ? ['faq', 'FAQ'] : null,
+    ['howto', 'How to apply'],
+    consultantCards.length ? ['consultants', 'Consultants'] : null,
+    hasStructuredTrust ? ['structured-trust', 'Sources'] : null,
+    ['consultation', 'Next steps'],
+  ].filter((item): item is string[] => Boolean(item));
   const reasonCards = [
     work?.immigrationPathwayStrength ? ['Immigration pathway', work.immigrationPathwaySummary ?? work.immigrationPathwayStrength.replaceAll('_', ' '), 'home'] : null,
     work?.postStudyWorkAvailable ? ['Post-study work', work.postStudyWorkSummary ?? `${work.postStudyWorkMinMonths ?? 0}–${work.postStudyWorkMaxMonths ?? 0} months`, 'briefcase'] : null,
@@ -458,23 +889,7 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
       <CountryHeader />
       <nav className="jump" aria-label="Page sections">
         <div className="wrap jump-in">
-          {[
-            ['why', `Why ${country.name}`],
-            ['unis', 'Universities'],
-            ['subjects', 'Subjects'],
-            ['intakes', 'Intakes'],
-            ['documents', 'Documents'],
-            ['cost', 'Cost'],
-            ['scholarships', 'Scholarships'],
-            ['visa', 'Visa'],
-            ['events', 'Events'],
-            ['cities', 'Cities'],
-            ['living', 'Living cost'],
-            ['careers', 'Careers'],
-            ['faq', 'FAQ'],
-            ['howto', 'How to apply'],
-            ['consultants', 'Consultants'],
-          ].map(([id, label], index) => <a href={`#${id}`} className={index === 0 ? 'on' : ''} key={id}>{label}</a>)}
+          {jumpItems.map(([id, label], index) => <a href={`#${id}`} className={index === 0 ? 'on' : ''} key={id}>{label}</a>)}
         </div>
       </nav>
       <div className="wrap">
@@ -492,8 +907,8 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
             <p className="lede">{country.shortDescription}</p>
             <div className="updated"><Icon name="clock" size={15} />Published source-aware country profile</div>
             <div className="hero-btns">
-              <Link href="/counselling" className="btn btn-p btn-lg">Get free counselling</Link>
-              <Link href="/signup" className="btn btn-s btn-lg">Create account &amp; start application</Link>
+              <Link href={`/courses?country=${country.slug}`} className="btn btn-p btn-lg">Explore courses</Link>
+              {guidanceTarget ? <a href={guidanceTarget} className="btn btn-s btn-lg">Review guidance</a> : null}
             </div>
           </div>
           <aside className="quickfacts">
@@ -525,37 +940,55 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
       <CountrySection id="subjects" eyebrow="What students choose" title={`Popular subjects in ${country.name}`}>
         <div className="subj-grid"><EmptyTemplateState label="Subject availability is not yet published for this country" /></div>
       </CountrySection>
-      <CountrySection id="intakes" eyebrow="Application timing" title={`Study intakes in ${country.name}`} alternate>
-        <div className="intakes">
-          {profiles.intakes.length ? profiles.intakes.map((item) => (
+      {profiles.intakes.length ? (
+        <CountrySection id="structured-intakes" eyebrow="Verified profile" title="Major intakes" alternate>
+          <div className="intakes">
+            {profiles.intakes.map((item) => (
             <article className="intake" key={item.id}>
               <div className="month">{item.intake?.shortLabel ?? item.name ?? item.shortLabel}</div>
               <h3>{item.intake?.name ?? item.name}</h3>
               <p>{item.notes ?? item.applicationDeadlineNote ?? 'Published as available.'}</p>
               <span>{item.availabilityStatus}</span>
             </article>
-          )) : <EmptyTemplateState label="No intake information is published" />}
-        </div>
-      </CountrySection>
+            ))}
+          </div>
+        </CountrySection>
+      ) : null}
       <CountrySection id="documents" eyebrow="Application checklist" title="Documents required">
         <div className="docs"><EmptyTemplateState label={editorial.get('documents')?.heading ?? 'Document guidance is not yet published'} /></div>
       </CountrySection>
-      <CountrySection id="cost" eyebrow="Plan your budget" title={`Cost to study in ${country.name}`} alternate>
-        <div className="cost-grid">
-          <article className="cost-card"><span>Tuition</span><strong>{profileMoney(page, 'tuition')}</strong><p>{profiles.cost?.disclaimer}</p></article>
-          <article className="cost-card"><span>Living cost</span><strong>{profileMoney(page, 'living')}</strong><p>{profiles.cost?.livingCostNotes ?? profiles.cost?.disclaimer}</p></article>
-        </div>
-      </CountrySection>
+      {profiles.cost ? (
+        <CountrySection id="structured-cost" eyebrow="Verified profile" title="Cost of study" alternate>
+          <div className="cost-grid">
+            <article className="cost-card"><span>Tuition</span><strong>{profileMoney(page, 'tuition')}</strong><p>{profiles.cost.disclaimer}</p></article>
+            <article className="cost-card"><span>Living cost</span><strong>{profileMoney(page, 'living')}</strong><p>{profiles.cost.livingCostNotes ?? profiles.cost.disclaimer}</p></article>
+          </div>
+          <ProfileSource profile={profiles.cost} />
+        </CountrySection>
+      ) : null}
       <CountrySection id="scholarships" eyebrow="Funding" title="Scholarships">
         <div className="schols"><EmptyTemplateState label={`${statistics?.scholarshipsCount ?? 0} scholarships are currently published`} /></div>
       </CountrySection>
-      <CountrySection id="visa" eyebrow="Student permission" title={`Visa and work information for ${country.name}`} alternate>
-        <div className="visa-grid">
-          <article className="visa-card"><h3>Visa information</h3><p>{work?.visaInformation ?? 'Visa guidance is not yet published.'}</p></article>
-          <article className="visa-card"><h3>Proof of funds</h3><p>{work?.proofOfFundsSummary ?? 'Proof-of-funds guidance is not yet published.'}</p></article>
-          <article className="visa-card"><h3>Processing time</h3><p>{work?.visaProcessingTime ?? 'Processing-time guidance is not yet published.'}</p></article>
-        </div>
-      </CountrySection>
+      {profiles.language ? (
+        <CountrySection id="structured-language" eyebrow="Verified profile" title="Language requirements">
+          <div className="visa-grid">
+            <article className="visa-card"><h3>IELTS</h3><p>{[profiles.language.ieltsRequirement, profiles.language.ieltsMinScore ? `Minimum ${profiles.language.ieltsMinScore}` : null, profiles.language.ieltsNotes].filter(Boolean).join(' · ')}</p></article>
+            <article className="visa-card"><h3>PTE</h3><p>{[profiles.language.pteRequirement, profiles.language.pteMinScore ? `Minimum ${profiles.language.pteMinScore}` : null, profiles.language.pteNotes].filter(Boolean).join(' · ') || 'Not published.'}</p></article>
+            <article className="visa-card"><h3>Language waiver</h3><p>{profiles.language.languageWaiverAvailable ? profiles.language.waiverNotes ?? 'Available for eligible applicants.' : 'Not published as available.'}</p></article>
+          </div>
+          <ProfileSource profile={profiles.language} />
+        </CountrySection>
+      ) : null}
+      {work ? (
+        <CountrySection id="structured-work-visa" eyebrow="Verified profile" title="Work and visa pathways" alternate>
+          <div className="visa-grid">
+            <article className="visa-card"><h3>Part-time work</h3><p>{work.partTimeAllowed ? work.partTimeSummary ?? `${work.partTimeHoursPerWeek ?? 'Published'} hours per week` : 'Not published as available.'}</p></article>
+            <article className="visa-card"><h3>Post-study work</h3><p>{work.postStudyWorkAvailable ? work.postStudyWorkSummary ?? `${work.postStudyWorkMinMonths ?? 0}–${work.postStudyWorkMaxMonths ?? 0} months` : 'Not available.'}</p></article>
+            <article className="visa-card"><h3>Visa and funds</h3><p>{[work.visaInformation, work.visaProcessingTime, work.proofOfFundsSummary].filter(Boolean).join(' · ') || 'Visa guidance is not yet published.'}</p></article>
+          </div>
+          <ProfileSource profile={work} />
+        </CountrySection>
+      ) : null}
       <CountrySection id="events" eyebrow="Meet institutions" title="Upcoming events">
         <div className="events"><EmptyTemplateState label="No events are currently published" /></div>
       </CountrySection>
@@ -570,32 +1003,60 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
       <CountrySection id="careers" eyebrow="After graduation" title="Career opportunities" alternate>
         <div className="careers"><EmptyTemplateState label="Career outcomes are not yet published" /></div>
       </CountrySection>
-      <CountrySection id="faq" eyebrow="Questions answered" title="Frequently asked questions">
-        <div className="faq">
-          {faqs.length ? faqs.map((faq) => <details className="faq-item" key={faq.id}><summary>{faq.question}</summary><p>{faq.answer}</p></details>) : <EmptyTemplateState label="No frequently asked questions are published" />}
-        </div>
-      </CountrySection>
+      {statistics ? (
+        <CountrySection id="structured-statistics" eyebrow="Verified profile" title="Destination statistics">
+          <div className="cost-grid">
+            <article className="cost-card"><span>Universities</span><strong>{statistics.universitiesCount.toLocaleString()}</strong><p>Published destination count</p></article>
+            <article className="cost-card"><span>Courses</span><strong>{statistics.coursesCount.toLocaleString()}</strong><p>Published course count</p></article>
+          </div>
+          <ProfileSource profile={statistics} />
+        </CountrySection>
+      ) : null}
+      {faqs.length ? (
+        <CountrySection id="faq" eyebrow="Questions answered" title="Frequently asked questions">
+          <div className="faq">
+            {faqs.map((faq) => <details className="faq-item" key={faq.id}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
+          </div>
+        </CountrySection>
+      ) : null}
       <CountrySection id="howto" eyebrow="Application journey" title={`How to study in ${country.name}`} alternate>
         <div className="steps"><EmptyTemplateState label={editorial.get('application-process')?.heading ?? 'Application steps are not yet published'} /></div>
       </CountrySection>
-      <CountrySection id="consultants" eyebrow="Destination guidance" title={`Consultants for ${country.name}`}>
-        <div className="cons-grid">
-          {consultantCards.length ? consultantCards.map((card) => (
+      {consultantCards.length ? (
+        <CountrySection id="consultants" eyebrow="Destination guidance" title={`Consultants for ${country.name}`}>
+          <div className="cons-grid">
+            {consultantCards.map((card) => (
             <article className="cons" key={card.id}>
               <h3>{card.title}</h3><p>{card.shortDescription}</p>
-              <Link href={card.ctaUrl ?? '/counselling'}>{card.ctaLabel}</Link>
+              {card.ctaUrl && (/^https:\/\//.test(card.ctaUrl) || /^#[a-zA-Z0-9_-]+$/.test(card.ctaUrl) || /^\/(countries|subjects|courses)(?:\/|$|\?)/.test(card.ctaUrl))
+                ? <Link href={card.ctaUrl}>{card.ctaLabel}</Link>
+                : <span aria-disabled="true">{card.ctaLabel}</span>}
             </article>
-          )) : <EmptyTemplateState label="No consultant profiles are currently published" />}
-        </div>
-      </CountrySection>
-      <section className="final-cta">
+            ))}
+          </div>
+        </CountrySection>
+      ) : null}
+      {hasStructuredTrust ? (
+        <CountrySection id="structured-trust" eyebrow="Source trust" title="What these figures mean" alternate>
+          <p className="source-intro">Structured profile fields are shown with their published source and verification date when available.</p>
+          <div className="source-list">
+            {sourceProfiles.map((profile, index) => <ProfileSource profile={profile} key={`${profile?.sourceReference}-${index}`} />)}
+          </div>
+        </CountrySection>
+      ) : null}
+      <section className="final-cta" id="consultation">
         <div className="wrap">
           <h2>Ready to study in {country.name}?</h2>
           <p>Use the published destination information and get guidance for your shortlist.</p>
-          <Link href="/counselling" className="btn btn-p">Get free guidance</Link>
+          <Link href={`/courses?country=${country.slug}`} className="btn btn-p">Explore courses</Link>
+          {guidanceTarget ? <a href={guidanceTarget} className="btn btn-s">Review source guidance</a> : null}
         </div>
       </section>
-      <footer>© 2026 Universta · Verify tuition, visa and immigration information with official sources.</footer>
+      <footer>
+        © 2026 Universta · Information is editorial and may vary by institution, programme, applicant, and policy.
+        {hasStructuredTrust ? ` ${sourceProfiles.length} published source${sourceProfiles.length === 1 ? '' : 's'} shown above.` : ''}
+        {' '}Verify tuition, visa, and immigration decisions with official sources.
+      </footer>
     </main>
   );
 }
@@ -687,10 +1148,10 @@ export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[
           ))}
         </div>
         <aside className="side">
-          <div className="side-card"><span className="eyebrow">Find your direction</span><h3>Choose the right subject</h3><p>Start with published subjects and compare the available pathways.</p><Link href="/counselling" className="btn btn-primary btn-block">Get guidance</Link></div>
+          <div className="side-card"><span className="eyebrow">Find your direction</span><h3>Choose the right subject</h3><p>Start with published subjects and compare the available pathways.</p><Link href="/courses" className="btn btn-primary btn-block">Explore courses</Link></div>
         </aside>
       </div>
-      <section className="section wrap"><div className="final-cta"><h2>Find the subject that fits your future</h2><p>Explore published pathways and continue into the course catalog.</p><div className="cta-row"><Link href="/courses" className="btn btn-secondary">Explore courses</Link><Link href="/counselling" className="btn btn-outline">Get guidance</Link></div></div></section>
+      <section className="section wrap"><div className="final-cta"><h2>Find the subject that fits your future</h2><p>Explore published pathways and continue into the course catalog.</p><div className="cta-row"><Link href="/courses" className="btn btn-secondary">Explore courses</Link><a href="#directory" className="btn btn-outline">Browse A–Z</a></div></div></section>
       <CatalogFooter />
     </main>
   );
@@ -784,7 +1245,7 @@ export function ApprovedSubjectDetail({ subject }: { subject: SubjectDetail }) {
         </div>
         <aside className="side"><div className="side-card"><span className="eyebrow">At a glance</span><h3>{subject.name}</h3><p>{subject.publishedCourseCount} published courses</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Browse courses</Link></div></aside>
       </div>
-      <section className="section wrap"><div className="final-cta"><h2>Ready to study {subject.name} abroad?</h2><p>Explore published courses and compare your available options.</p><div className="cta-row"><Link href={`/courses?subject=${subject.slug}`} className="btn btn-secondary">Explore courses</Link><Link href="/counselling" className="btn btn-outline">Get guidance</Link></div></div></section>
+      <section className="section wrap"><div className="final-cta"><h2>Ready to study {subject.name} abroad?</h2><p>Explore published courses and compare your available options.</p><div className="cta-row"><Link href={`/courses?subject=${subject.slug}`} className="btn btn-secondary">Explore courses</Link><Link href="/subjects" className="btn btn-outline">All subjects</Link></div></div></section>
       <CatalogFooter />
     </main>
   );
@@ -819,7 +1280,7 @@ export function ApprovedSpecializations({ subject }: { subject: SubjectDetail })
             ['explore', 'Explore more'],
           ].map(([id, title]) => <section className="section" id={id} key={id}><div className="section-head"><span className="eyebrow">Published guidance</span><h2>{title}</h2></div><div className="grid g3"><EmptyTemplateState label={`${title} are not yet published`} /></div></section>)}
         </div>
-        <aside className="side"><div className="side-card"><span className="eyebrow">Find your specialization</span><h3>Choose the right {subject.name} path</h3><p>Compare the currently published specializations.</p><Link href="/counselling" className="btn btn-primary btn-block">Get guidance</Link></div></aside>
+        <aside className="side"><div className="side-card"><span className="eyebrow">Find your specialization</span><h3>Choose the right {subject.name} path</h3><p>Compare the currently published specializations.</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Explore courses</Link></div></aside>
       </div>
       <section className="section wrap"><div className="final-cta"><h2>Choose your {subject.name} specialization</h2><p>Continue from a published specialization into the course catalog.</p><div className="cta-row"><Link href={`/subjects/${subject.slug}`} className="btn btn-secondary">Back to subject</Link><Link href="/courses" className="btn btn-outline">Explore courses</Link></div></div></section>
       <CatalogFooter />
@@ -829,26 +1290,24 @@ export function ApprovedSpecializations({ subject }: { subject: SubjectDetail })
 
 function CourseTemplateCard({
   course,
-  selected,
-  onCompare,
+  countryFilter,
 }: {
   course: Course;
-  selected: boolean;
-  onCompare: () => void;
+  countryFilter?: string;
 }) {
   const tuition = course.selectedTuition;
   const duration = course.duration.min
     ? `${course.duration.min}${course.duration.max && course.duration.max !== course.duration.min ? `–${course.duration.max}` : ''} ${course.duration.unit ?? ''}`
     : 'Varies';
   const intake = course.selectedIntakes[0]?.intake?.shortLabel ?? course.selectedIntakes[0]?.intake?.name ?? 'Not published';
+  const courseHref = `/courses/${course.slug}${countryFilter ? `?country=${encodeURIComponent(countryFilter)}` : ''}`;
   return (
     <article className="course">
-      <button type="button" className="save-btn" aria-label={`Save ${course.name}`}><Icon name="heart" /></button>
       <div className="course-top">
         <div className="uni-logo">{course.featuredMedia ? <img src={course.featuredMedia.url} alt={course.featuredMedia.alt ?? course.name} /> : course.name.slice(0, 2).toUpperCase()}</div>
         <div className="course-head">
           <div className="course-badges"><span className="badge badge-lvl"><Icon name="cap" size={12} />{course.courseLevel.name}</span>{course.scholarshipAvailable ? <span className="badge badge-sch"><Icon name="star" size={12} />Scholarships</span> : null}</div>
-          <h3><Link href={`/courses/${course.slug}`}>{course.name}</Link></h3>
+          <h3><Link href={courseHref}>{course.name}</Link></h3>
           <div className="uni">{course.subject.name}{course.selectedCountry ? ` · ${course.selectedCountry.name}` : ''}</div>
         </div>
       </div>
@@ -858,10 +1317,34 @@ function CourseTemplateCard({
         <div className="fact"><div className="k"><Icon name="calendar" size={13} />Next intake</div><div className="v">{intake}</div></div>
         <div className="fact"><div className="k"><Icon name="globe" size={13} />Countries</div><div className="v">{course.availableCountryCount}</div></div>
       </div>
-      <div className="course-foot"><label className="cmp-check"><input type="checkbox" checked={selected} onChange={onCompare} /> Compare</label><div className="spacer" /><Link href={`/courses/${course.slug}`} className="btn btn-primary btn-sm">View course <Icon name="arrow" size={15} /></Link></div>
+      <div className="course-foot"><div className="spacer" /><Link href={courseHref} className="btn btn-primary btn-sm">View course <Icon name="arrow" size={15} /></Link></div>
     </article>
   );
 }
+
+type CourseFilterKey = 'level' | 'country' | 'subject' | 'studyMode';
+type CourseSuggestion = {
+  id: string;
+  name: string;
+  slug: string;
+  subject: { name: string };
+};
+
+const courseQueryKeys = new Set([
+  'q',
+  'subject',
+  'subSubject',
+  'level',
+  'country',
+  'studyMode',
+  'intake',
+  'scholarshipAvailable',
+  'featured',
+  'minTuition',
+  'maxTuition',
+  'sort',
+  'page',
+]);
 
 export function ApprovedCoursesListing({
   courses,
@@ -870,6 +1353,7 @@ export function ApprovedCoursesListing({
   levels,
   modes,
   countries,
+  filters: initialFilters,
 }: {
   courses: Course[];
   meta: PageMeta;
@@ -877,40 +1361,331 @@ export function ApprovedCoursesListing({
   levels: Array<{ id: string; code: string; name: string; description: string | null }>;
   modes: Array<{ id: string; code: string; name: string; description: string | null }>;
   countries: Array<{ id: string; name: string; slug: string }>;
+  filters: Record<string, string>;
 }) {
-  const [compare, setCompare] = useState<string[]>([]);
-  const toggle = (id: string) => setCompare((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length < 4 ? [...current, id] : current);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchAreaRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState(initialFilters.q ?? '');
+  const [suggestions, setSuggestions] = useState<CourseSuggestion[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState<Record<CourseFilterKey, string>>({
+    level: initialFilters.level ?? '',
+    country: initialFilters.country ?? '',
+    subject: initialFilters.subject ?? '',
+    studyMode: initialFilters.studyMode ?? '',
+  });
+  const currentFilters = useMemo(() => searchRecord(new URLSearchParams(searchParams.toString())), [searchParams]);
+  const submittedQuery = currentFilters.q ?? '';
+  const courseFilterOptions: Record<CourseFilterKey, Array<[string, string]>> = {
+    level: levels.map((item) => [item.code, item.name]),
+    country: countries.map((item) => [item.slug, item.name]),
+    subject: subjects.map((item) => [item.slug, item.name]),
+    studyMode: modes.map((item) => [item.code, item.name]),
+  };
+  const courseFilterLabels: Record<CourseFilterKey, string> = {
+    level: 'Degree level',
+    country: 'Destination',
+    subject: 'Subject',
+    studyMode: 'Study mode',
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setQuery(submittedQuery);
+      setFilterDraft({
+        level: currentFilters.level ?? '',
+        country: currentFilters.country ?? '',
+        subject: currentFilters.subject ?? '',
+        studyMode: currentFilters.studyMode ?? '',
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [currentFilters, submittedQuery]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      if (query.trim().length < 2 || query.trim() === submittedQuery) {
+        setSuggestions([]);
+        setSuggestionsOpen(false);
+        return;
+      }
+      void fetch(`/api/courses/suggestions?q=${encodeURIComponent(query.trim())}`, {
+        signal: controller.signal,
+      })
+        .then((response) => response.json() as Promise<{ data?: CourseSuggestion[] }>)
+        .then((body) => {
+          setSuggestions(body.data ?? []);
+          setActiveSuggestion(-1);
+          setSuggestionsOpen(true);
+        })
+        .catch((error: unknown) => {
+          if ((error as { name?: string }).name !== 'AbortError') {
+            setSuggestions([]);
+            setSuggestionsOpen(false);
+          }
+        });
+    }, 180);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query, submittedQuery]);
+
+  useEffect(() => {
+    const closeSuggestions = (event: MouseEvent) => {
+      if (!searchAreaRef.current?.contains(event.target as Node)) setSuggestionsOpen(false);
+    };
+    document.addEventListener('mousedown', closeSuggestions);
+    return () => document.removeEventListener('mousedown', closeSuggestions);
+  }, []);
+
+  function navigate(next: Record<string, string | undefined>, scroll = false) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const key of [...params.keys()]) {
+      if (!courseQueryKeys.has(key)) params.delete(key);
+    }
+    for (const [key, value] of Object.entries(next)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    router.push(`${pathname}${params.size ? `?${params}` : ''}`, { scroll });
+  }
+
+  function submitSearch(value: string) {
+    const next = value.trim();
+    setQuery(next);
+    setSuggestionsOpen(false);
+    navigate({ q: next || undefined, page: undefined });
+  }
+
+  function selectCourseSuggestion(suggestion: CourseSuggestion) {
+    setQuery(suggestion.name);
+    setSuggestionsOpen(false);
+    navigate({ q: suggestion.name, page: undefined });
+  }
+
+  function handleCourseSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      setSuggestionsOpen(false);
+      return;
+    }
+    if (event.key === 'ArrowDown' && suggestionsOpen && suggestions.length) {
+      event.preventDefault();
+      setActiveSuggestion((current) => current >= suggestions.length - 1 ? 0 : current + 1);
+      return;
+    }
+    if (event.key === 'ArrowUp' && suggestionsOpen && suggestions.length) {
+      event.preventDefault();
+      setActiveSuggestion((current) => current <= 0 ? suggestions.length - 1 : current - 1);
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (suggestionsOpen && activeSuggestion >= 0 && suggestions[activeSuggestion]) {
+        selectCourseSuggestion(suggestions[activeSuggestion]);
+      } else {
+        submitSearch(query);
+      }
+    }
+  }
+
+  function clearCourseFilters() {
+    setQuery('');
+    setSuggestionsOpen(false);
+    setFiltersOpen(false);
+    router.push(pathname, { scroll: false });
+  }
+
+  const activeFilterCount = (Object.keys(filterDraft) as CourseFilterKey[])
+    .filter((key) => Boolean(currentFilters[key])).length;
+
   return (
     <main className="visual-courses-page">
       <CatalogHeader active="courses" />
       <div className="wrap crumbs"><nav aria-label="Breadcrumb"><ol><li><Link href="/">Home</Link></li><li className="sep">/</li><li>Courses</li></ol></nav></div>
-      <section className="hero"><div className="wrap hero-inner"><span className="hero-pill"><span className="dot" /><b>{meta.total}</b> published programs</span><h1>Find the Perfect Course<br />to <span>Study Abroad</span></h1><p className="lede">Explore published programs and compare duration, tuition, intakes and destination availability.</p><form className="search-shell" action="/courses"><div className="search-box"><Icon name="search" /><input name="q" placeholder="Search courses, subjects or qualifications..." aria-label="Search courses" /><button type="submit" className="btn btn-primary">Find Courses</button></div></form><div className="chips">{levels.slice(0, 6).map((level) => <Link href={`/courses?level=${level.code}`} className="chip" key={level.id}><Icon name="cap" size={14} />{level.name}</Link>)}</div><div className="hero-ctas"><a href="#discovery" className="btn btn-primary">Find Courses</a><a href="#discovery" className="btn btn-secondary">Compare Courses</a><Link href="/signup" className="btn btn-outline">Create Free Account</Link></div></div></section>
+      <section className="hero">
+        <div className="wrap hero-inner">
+          <span className="hero-pill"><span className="dot" /><b>{meta.total}</b> published programs</span>
+          <h1>Find the Perfect Course<br />to <span>Study Abroad</span></h1>
+          <p className="lede">Explore published programs and compare duration, tuition, intakes and destination availability.</p>
+          <div className="course-search-area" ref={searchAreaRef}>
+            <form
+              className="search-shell"
+              action="/courses"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitSearch(query);
+              }}
+            >
+              <div className="search-box">
+                <Icon name="search" />
+                <input
+                  name="q"
+                  role="combobox"
+                  placeholder="Search courses, subjects or qualifications..."
+                  aria-label="Search courses"
+                  aria-expanded={suggestionsOpen}
+                  aria-controls="course-suggestions"
+                  aria-autocomplete="list"
+                  aria-activedescendant={
+                    suggestionsOpen && activeSuggestion >= 0 && suggestions[activeSuggestion]
+                      ? `course-suggestion-${suggestions[activeSuggestion].id}`
+                      : undefined
+                  }
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={handleCourseSearchKeyDown}
+                />
+                <button type="submit" className="btn btn-primary">Find Courses</button>
+              </div>
+            </form>
+            {suggestionsOpen ? (
+              <ul className="suggest open" id="course-suggestions" role="listbox">
+                {suggestions.length ? suggestions.map((suggestion, index) => (
+                  <li
+                    id={`course-suggestion-${suggestion.id}`}
+                    className={`suggest-item${index === activeSuggestion ? ' hl' : ''}`}
+                    role="option"
+                    aria-selected={index === activeSuggestion}
+                    key={suggestion.id}
+                  >
+                    <button type="button" onMouseEnter={() => setActiveSuggestion(index)} onClick={() => selectCourseSuggestion(suggestion)}>
+                      <span className="sic"><Icon name="book" /></span>
+                      <span><span className="st">{suggestion.name}</span><span className="sd">{suggestion.subject.name}</span></span>
+                    </button>
+                  </li>
+                )) : <li className="suggest-group-label" role="status">No courses found.</li>}
+              </ul>
+            ) : null}
+          </div>
+          <div className="chips">
+            {levels.slice(0, 6).map((level) => (
+              <button
+                type="button"
+                className={`chip${currentFilters.level === level.code ? ' active' : ''}`}
+                onClick={() => navigate({
+                  level: currentFilters.level === level.code ? undefined : level.code,
+                  page: undefined,
+                })}
+                key={level.id}
+              >
+                <Icon name="cap" size={14} />{level.name}
+              </button>
+            ))}
+          </div>
+          <div className="hero-ctas"><a href="#discovery" className="btn btn-primary">Find Courses</a><Link href="/subjects" className="btn btn-outline">Browse Subjects</Link></div>
+        </div>
+      </section>
       <section className="wrap" style={{ paddingBottom: 8 }}><div className="stats-grid"><div className="stat"><div className="num">{meta.total}</div><div className="lbl">Programs</div></div><div className="stat"><div className="num">{subjects.length}</div><div className="lbl">Subjects</div></div><div className="stat"><div className="num">{countries.length}</div><div className="lbl">Destinations</div></div><div className="stat"><div className="num">{levels.length}</div><div className="lbl">Degree levels</div></div><div className="stat"><div className="num">{modes.length}</div><div className="lbl">Study modes</div></div><div className="stat"><div className="num">{courses.filter((item) => item.scholarshipAvailable).length}</div><div className="lbl">Scholarship options</div></div></div></section>
       <section className="section wrap" id="subjects"><div className="section-head row-between"><div><span className="eyebrow">Explore</span><h2>Browse courses by popular subjects</h2></div><Link href="/subjects" className="link-more">All subjects <Icon name="arrow" size={16} /></Link></div><div className="grid g4">{subjects.length ? subjects.map((subject) => <Link href={`/courses?subject=${subject.slug}`} className="card subj-card" key={subject.id}><span className="subj-ic"><Icon name="book" /></span><h3>{subject.name}</h3><span className="subj-meta"><span><b>{subject.publishedCourseCount}</b> programs</span><span><b>{subject.availableCountryCount}</b> countries</span></span><span className="subj-foot"><span className="cnt">Explore</span><span className="go"><Icon name="arrow" size={15} /></span></span></Link>) : <EmptyTemplateState label="No subjects are currently published" />}</div></section>
-      <section className="section wrap" id="discovery" style={{ paddingTop: 20 }}><div className="section-head"><span className="eyebrow">Discover → Filter → Compare</span><h2>Featured courses</h2><p className="sub">Search and compare the currently published programs.</p></div><div className="discovery"><aside className="filters"><div className="filters-head"><h3><Icon name="search" />Filters</h3></div><div className="filters-body"><form action="/courses">{[
-        ['Degree level', 'level', levels.map((item) => [item.code, item.name])],
-        ['Destination', 'country', countries.map((item) => [item.slug, item.name])],
-        ['Subject', 'subject', subjects.map((item) => [item.slug, item.name])],
-        ['Study mode', 'studyMode', modes.map((item) => [item.code, item.name])],
-      ].map(([label, name, options]) => <div className="fgroup open" key={String(name)}><div className="fgroup-btn">{String(label)}</div><div className="fgroup-panel">{(options as string[][]).map(([value, option]) => <label className="fopt" key={value}><input type="radio" name={String(name)} value={value} /><span>{option}</span></label>)}</div></div>)}<button className="btn btn-primary btn-sm" type="submit">Apply filters</button></form></div></aside><div><div className="results-bar"><div className="results-count"><b>{meta.total}</b> courses match your search</div></div><div className="course-list">{courses.length ? courses.map((course) => <CourseTemplateCard course={course} selected={compare.includes(course.id)} onCompare={() => toggle(course.id)} key={course.id} />) : <EmptyTemplateState label="No courses are currently published" />}</div></div></div></section>
+      <section className="section wrap" id="discovery" style={{ paddingTop: 20 }}>
+        <div className="section-head row-between">
+          <div><span className="eyebrow">Discover → Filter</span><h2>Featured courses</h2><p className="sub">Search and filter the currently published programs.</p></div>
+          <button
+            type="button"
+            className="btn btn-outline filter-toggle-mobile"
+            aria-expanded={filtersOpen}
+            aria-controls="course-filter-panel"
+            onClick={() => setFiltersOpen((current) => !current)}
+          >
+            Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`scrim${filtersOpen ? ' show' : ''}`}
+          aria-label="Close course filters"
+          tabIndex={filtersOpen ? 0 : -1}
+          onClick={() => setFiltersOpen(false)}
+        />
+        <div className="discovery">
+          <aside className={`filters${filtersOpen ? ' open' : ''}`} id="course-filter-panel">
+            <div className="filters-head">
+              <h3><Icon name="search" />Filters</h3>
+              <button type="button" className="clear" onClick={clearCourseFilters}>Clear all</button>
+            </div>
+            <div className="filters-body">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  navigate({ ...filterDraft, page: undefined });
+                  setFiltersOpen(false);
+                }}
+              >
+                {(Object.keys(courseFilterOptions) as CourseFilterKey[]).map((name) => (
+                  <div className="fgroup open" key={name}>
+                    <div className="fgroup-btn">{courseFilterLabels[name]}</div>
+                    <div className="fgroup-panel">
+                      <label className="fopt">
+                        <input
+                          type="radio"
+                          name={name}
+                          value=""
+                          checked={!filterDraft[name]}
+                          onChange={() => setFilterDraft((current) => ({ ...current, [name]: '' }))}
+                        />
+                        <span>Any {courseFilterLabels[name].toLowerCase()}</span>
+                      </label>
+                      {courseFilterOptions[name].map(([value, option]) => (
+                        <label className="fopt" key={value}>
+                          <input
+                            type="radio"
+                            name={name}
+                            value={value}
+                            checked={filterDraft[name] === value}
+                            onChange={() => setFilterDraft((current) => ({ ...current, [name]: value }))}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="filters-foot"><button className="btn btn-primary btn-sm" type="submit">Apply filters</button></div>
+              </form>
+            </div>
+          </aside>
+          <div>
+            <div className="results-bar">
+              <div className="results-count" role="status"><b>{meta.total}</b> courses match your search{meta.totalPages > 1 ? ` · page ${meta.page} of ${meta.totalPages}` : ''}</div>
+            </div>
+            <div className="course-list">
+              {courses.length
+                ? courses.map((course) => <CourseTemplateCard course={course} countryFilter={currentFilters.country} key={course.id} />)
+                : <EmptyTemplateState label="No courses match these filters" />}
+            </div>
+            {meta.totalPages > 1 || meta.page > 1 ? (
+              <nav className="template-pagination" aria-label="Course results pages">
+                <button type="button" disabled={meta.page <= 1} onClick={() => navigate({ page: String(meta.page - 1) })}>Previous</button>
+                <span>Page {meta.page} of {meta.totalPages}</span>
+                <button type="button" disabled={meta.page >= meta.totalPages} onClick={() => navigate({ page: String(meta.page + 1) })}>Next</button>
+              </nav>
+            ) : null}
+          </div>
+        </div>
+      </section>
       {[
-        ['degree-level', 'Browse courses by degree level', levels.map((item) => item.name)],
-        ['destinations', 'Browse courses by study destination', countries.map((item) => item.name)],
+        ['degree-level', 'Browse courses by degree level', levels.map((item) => [item.name, `/courses?level=${encodeURIComponent(item.code)}`])],
+        ['destinations', 'Browse courses by study destination', countries.map((item) => [item.name, `/courses?country=${encodeURIComponent(item.slug)}`])],
         ['careers', 'Browse courses by career', []],
-        ['categories', 'Explore by subject category', subjects.map((item) => item.name)],
+        ['categories', 'Explore by subject category', subjects.map((item) => [item.name, `/courses?subject=${encodeURIComponent(item.slug)}`])],
         ['duration', 'Courses by duration', []],
         ['tuition', 'Courses by tuition fee', []],
-        ['scholarships', 'Courses with scholarships', courses.filter((item) => item.scholarshipAvailable).map((item) => item.name)],
+        ['scholarships', 'Courses with scholarships', courses.filter((item) => item.scholarshipAvailable).map((item) => [item.name, `/courses/${item.slug}`])],
         ['outcomes', 'High career outcomes', []],
         ['why', 'Everything you need to choose with confidence', []],
         ['tools', 'Study abroad tools', []],
         ['events', 'Upcoming events', []],
         ['resources', 'Resources & guides', []],
         ['faq', 'Frequently asked questions', []],
-      ].map(([id, title, items]) => <section className="section wrap" id={String(id)} key={String(id)}><div className="section-head"><span className="eyebrow">Published catalog</span><h2>{String(title)}</h2></div><div className="grid g4">{(items as string[]).length ? (items as string[]).map((item) => <Link href="/courses" className="card mini-card" key={item}><span className="mini-ic"><Icon name="book" /></span><span><h3>{item}</h3></span><span className="go"><Icon name="arrow" /></span></Link>) : <EmptyTemplateState label={`${String(title)} will appear when supporting data is published`} />}</div></section>)}
-      <section className="section wrap"><div className="final-cta"><h2>Discover the right course for your future</h2><p>Explore the published catalog and compare your available options.</p><div className="cta-row"><a href="#discovery" className="btn btn-secondary">Find Courses</a><Link href="/counselling" className="btn btn-outline">Get guidance</Link></div></div></section>
+      ].map(([id, title, items]) => <section className="section wrap" id={String(id)} key={String(id)}><div className="section-head"><span className="eyebrow">Published catalog</span><h2>{String(title)}</h2></div><div className="grid g4">{(items as string[][]).length ? (items as string[][]).map(([item, href]) => <Link href={href} className="card mini-card" key={item}><span className="mini-ic"><Icon name="book" /></span><span><h3>{item}</h3></span><span className="go"><Icon name="arrow" /></span></Link>) : <EmptyTemplateState label={`${String(title)} will appear when supporting data is published`} />}</div></section>)}
+      <section className="section wrap"><div className="final-cta"><h2>Discover the right course for your future</h2><p>Explore the published catalog and filter your available options.</p><div className="cta-row"><a href="#discovery" className="btn btn-secondary">Find Courses</a><Link href="/subjects" className="btn btn-outline">Browse subjects</Link></div></div></section>
       <CatalogFooter />
-      {compare.length ? <div className="compare-bar"><strong>{compare.length} course{compare.length === 1 ? '' : 's'} selected</strong><button type="button" className="btn btn-primary btn-sm">Compare courses</button></div> : null}
     </main>
   );
 }
