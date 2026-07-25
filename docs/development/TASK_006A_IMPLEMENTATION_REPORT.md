@@ -22,3 +22,9 @@ Visual acceptance is documented against the approved listing and country-detail 
 Safety checks: no Prisma schema or migration change, no approved reference HTML/asset change, no public auth or token persistence, no real `.env`, credential, Docker, or TASK_007 file was added. The public web app remains limited to the country experience.
 
 Known environment limitation: authenticated API E2E scenarios require the CI-seeded test credentials supplied by the workflow. They were not printed or committed; CI is the authoritative run for those scenarios.
+
+## Final defect pass
+
+The final continuation pass keeps PR #8 open and adds the shared listing chrome, a server-authoritative native filter submission that preserves `q`, region, and structured filter state while dropping pagination, and deterministic back/forward restoration. Available A–Z initials now link to offset-safe group anchors while unavailable initials remain disabled. Country consultation CTAs use the fallback matrix consultants → structured source trust → configured destination → accessible unavailable state; no dead anchor is emitted.
+
+Numeric profile fields preserve explicit zero values and continue to omit null or empty values. Targeted regression coverage now includes shared footer rendering, combined filter preservation, page reset, back restoration, A–Z available and unavailable behavior, consultant/source CTA fallbacks, zero preservation, and null omission. The approved reference documents, production authentication, schema, migrations, Docker/security boundaries, and TASK_007 scope remain unchanged.

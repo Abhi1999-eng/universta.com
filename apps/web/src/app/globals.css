@@ -121,6 +121,7 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .consultation-band .eyebrow { color: #a8c7ff; }
 .consultation-band p:not(.eyebrow) { color: #d8e5fb; }
 .button.light { background: white; color: var(--blue-dark); }
+.button-disabled { cursor: not-allowed; opacity: .78; }
 .consultants { padding: 88px 0; }
 .consultant-card { min-height: 210px; padding: 24px; transition: transform .2s ease, box-shadow .2s ease; }
 .consultant-card h3 { margin-top: 0; }
@@ -141,7 +142,7 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .directory-letter { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #d2dae6; border-radius: 8px; background: white; color: var(--blue); cursor: pointer; font-weight: 800; }
 .directory-letter:disabled { background: var(--soft); color: #b5bdca; cursor: not-allowed; }
 .directory-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; }
-.directory-group { display: grid; align-content: start; gap: 8px; }
+.directory-group { display: grid; align-content: start; gap: 8px; scroll-margin-top: 145px; }
 .directory-group h3 { margin: 0 0 8px; font-family: var(--font-jakarta), sans-serif; font-size: 25px; color: var(--blue); }
 .directory-group a { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--body); font-size: 14px; font-weight: 700; }
 .directory-group a span { color: var(--blue); }

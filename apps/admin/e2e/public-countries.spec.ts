@@ -10,6 +10,7 @@ test.describe('public country experience', () => {
     await expect(page.getByRole('heading', { name: 'Find a country by name', level: 2 })).toBeVisible();
     await expect(page.getByText('destinations', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: /Explore guidance/ }).first()).toBeVisible();
+    await expect(page.locator('footer.site-footer')).toBeVisible();
     expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage).filter((key) => /token|auth|refresh/i.test(key)) }))).toEqual({ local: [], session: [] });
   });
 
@@ -35,6 +36,30 @@ test.describe('public country experience', () => {
     await page.locator('#country-filter-panel select').nth(0).selectOption('PREMIUM');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/budgetBand=PREMIUM/);
+  });
+
+  test('preserves combined search and region state when applying structured filters', async ({ page }) => {
+    await page.goto(`${listing}?q=Canada&region=north-america&budgetBand=MID_RANGE&ieltsOptional=true`);
+    await page.locator('#country-filter-panel select').nth(0).selectOption('PREMIUM');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page).toHaveURL(/q=Canada/);
+    await expect(page).toHaveURL(/region=north-america/);
+    await expect(page).toHaveURL(/budgetBand=PREMIUM/);
+    await expect(page).toHaveURL(/ieltsOptional=true/);
+    expect(new URL(page.url()).searchParams.has('page')).toBe(false);
+  });
+
+  test('resets pagination on filter submit and restores combined state with back', async ({ page }) => {
+    await page.goto(`${listing}?q=Canada&region=north-america&budgetBand=MID_RANGE&page=2`);
+    await page.locator('#country-filter-panel select').nth(0).selectOption('PREMIUM');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    expect(new URL(page.url()).searchParams.has('page')).toBe(false);
+    await page.goBack();
+    await expect(page).toHaveURL(/q=Canada/);
+    await expect(page).toHaveURL(/region=north-america/);
+    await expect(page).toHaveURL(/budgetBand=MID_RANGE/);
+    await expect(page).toHaveURL(/page=2/);
+    await expect(page.locator('#country-filter-panel select').nth(0)).toHaveValue('MID_RANGE');
   });
 
   test('clears all result filters without changing the dedicated directory', async ({ page }) => {
@@ -80,6 +105,16 @@ test.describe('public country experience', () => {
     expect(await page.locator('.directory-letter:disabled').count()).toBeGreaterThan(0);
   });
 
+  test('available A-Z letters navigate to their sticky-safe directory groups', async ({ page }) => {
+    await page.goto(listing);
+    const available = page.locator('a.directory-letter').first();
+    const href = await available.getAttribute('href');
+    expect(href).toMatch(/^#directory-letter-[A-Z]$/);
+    await available.click();
+    await expect(page).toHaveURL(new RegExp(`${href?.slice(1)}$`));
+    await expect(page.locator(href as string)).toBeVisible();
+  });
+
   test('renders structured country detail sections independently of editorial content', async ({ page }) => {
     await page.goto(`${listing}/canada`);
     await expect(page.getByRole('heading', { name: 'Cost of study' })).toBeVisible();
@@ -94,6 +129,7 @@ test.describe('public country experience', () => {
     for (const href of links) await expect(page.locator(href as string)).toHaveCount(1);
     await expect(page.locator('#consultation')).toBeVisible();
     await expect(page.locator('#consultants')).toHaveCount(0);
+    await expect(page.locator('#consultation a[href="#structured-trust"]')).toHaveCount(1);
   });
 
   test('keeps detail pages free of horizontal overflow at mobile width', async ({ page }) => {
