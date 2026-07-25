@@ -32,6 +32,7 @@ test.describe('approved public country experience', () => {
     await page.goto(listing);
     const search = page.getByRole('combobox', { name: 'Search a country' });
 
+    await expect(search).toBeEditable();
     await search.fill('Canada');
     await search.press('Enter');
 
@@ -86,8 +87,14 @@ test.describe('approved public country experience', () => {
   test('supports keyboard country suggestion selection', async ({ page }) => {
     await page.goto(listing);
     const search = page.getByRole('combobox', { name: 'Search a country' });
+    const suggestionsLoaded = page.waitForResponse((response) => (
+      response.url().includes('/api/countries/suggestions?')
+      && response.ok()
+    ));
 
+    await expect(search).toBeEditable();
     await search.fill('Can');
+    await suggestionsLoaded;
     await expect(page.getByRole('listbox')).toBeVisible();
     await search.press('ArrowDown');
     await search.press('Enter');
@@ -98,7 +105,15 @@ test.describe('approved public country experience', () => {
 
   test('announces country suggestion no-results state', async ({ page }) => {
     await page.goto(listing);
-    await page.getByRole('combobox', { name: 'Search a country' }).fill('zzzz-not-a-destination');
+    const search = page.getByRole('combobox', { name: 'Search a country' });
+    const suggestionsLoaded = page.waitForResponse((response) => (
+      response.url().includes('/api/countries/suggestions?')
+      && response.ok()
+    ));
+
+    await expect(search).toBeEditable();
+    await search.fill('zzzz-not-a-destination');
+    await suggestionsLoaded;
     await expect(page.getByText('No destinations found.', { exact: true })).toBeVisible();
   });
 

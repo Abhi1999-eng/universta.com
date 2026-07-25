@@ -41,6 +41,7 @@ test.describe('approved public subject and course discovery', () => {
 
     await expect(page.getByRole('heading', { level: 1, name: /Find the Perfect Course to Study Abroad/i })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Search courses' })).toHaveValue('engineering');
+    await expect(page.getByRole('combobox', { name: 'Search courses' })).toBeEditable();
     await expect(page.getByRole('radio', { name: 'Undergraduate' })).toBeChecked();
     await expect(page.getByRole('radio', { name: 'Canada' })).toBeChecked();
 

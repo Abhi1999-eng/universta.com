@@ -314,6 +314,8 @@ export function ApprovedCountriesListing({
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [interactionsReady, setInteractionsReady] = useState(false);
+  const searchLocationRef = useRef(searchParams.toString());
   const [filterDraft, setFilterDraft] = useState<Record<CountryFilterKey, string>>(
     () => Object.fromEntries(
       (Object.keys(countryFilterOptions) as CountryFilterKey[]).map((key) => [key, initialFilters[key] ?? '']),
@@ -326,6 +328,14 @@ export function ApprovedCountriesListing({
     .filter((key) => Boolean(currentFilters[key])).length;
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setInteractionsReady(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const nextLocation = searchParams.toString();
+    if (searchLocationRef.current === nextLocation) return;
+    searchLocationRef.current = nextLocation;
     const timer = window.setTimeout(() => {
       setQuery(submittedQuery);
       setFilterDraft(
@@ -336,7 +346,7 @@ export function ApprovedCountriesListing({
       );
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [currentFilters, submittedQuery]);
+  }, [currentFilters, searchParams, submittedQuery]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -496,6 +506,7 @@ export function ApprovedCountriesListing({
                 autoComplete="off"
                 placeholder="Search a country (Canada, UK, Australia...)"
                 aria-label="Search a country"
+                aria-busy={!interactionsReady}
                 aria-autocomplete="list"
                 aria-expanded={suggestionsOpen}
                 aria-controls="country-suggestions"
@@ -505,6 +516,7 @@ export function ApprovedCountriesListing({
                     : undefined
                 }
                 value={query}
+                readOnly={!interactionsReady}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={handleSearchKeyDown}
               />
@@ -1372,6 +1384,8 @@ export function ApprovedCoursesListing({
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [interactionsReady, setInteractionsReady] = useState(false);
+  const searchLocationRef = useRef(searchParams.toString());
   const [filterDraft, setFilterDraft] = useState<Record<CourseFilterKey, string>>({
     level: initialFilters.level ?? '',
     country: initialFilters.country ?? '',
@@ -1394,6 +1408,14 @@ export function ApprovedCoursesListing({
   };
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setInteractionsReady(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const nextLocation = searchParams.toString();
+    if (searchLocationRef.current === nextLocation) return;
+    searchLocationRef.current = nextLocation;
     const timer = window.setTimeout(() => {
       setQuery(submittedQuery);
       setFilterDraft({
@@ -1404,7 +1426,7 @@ export function ApprovedCoursesListing({
       });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [currentFilters, submittedQuery]);
+  }, [currentFilters, searchParams, submittedQuery]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1529,6 +1551,7 @@ export function ApprovedCoursesListing({
                   role="combobox"
                   placeholder="Search courses, subjects or qualifications..."
                   aria-label="Search courses"
+                  aria-busy={!interactionsReady}
                   aria-expanded={suggestionsOpen}
                   aria-controls="course-suggestions"
                   aria-autocomplete="list"
@@ -1538,6 +1561,7 @@ export function ApprovedCoursesListing({
                       : undefined
                   }
                   value={query}
+                  readOnly={!interactionsReady}
                   onChange={(event) => setQuery(event.target.value)}
                   onKeyDown={handleCourseSearchKeyDown}
                 />
