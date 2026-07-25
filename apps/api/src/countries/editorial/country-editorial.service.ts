@@ -104,7 +104,10 @@ export function validateEditorialBody(
   };
   const keys = Object.keys(value);
   if (keys.some((key) => !allowed[type]?.includes(key)))
-    throw bad('EDITORIAL_BODY_INVALID', 'Section body contains unsupported fields');
+    throw bad(
+      'EDITORIAL_BODY_INVALID',
+      'Section body contains unsupported fields',
+    );
   if (
     type === 'RICH_TEXT' &&
     (!Array.isArray(value.paragraphs) ||
@@ -113,14 +116,20 @@ export function validateEditorialBody(
         (item) => typeof item !== 'string' || item.length > 2000,
       ))
   )
-    throw bad('EDITORIAL_BODY_INVALID', 'Rich text paragraphs are invalid or too long');
+    throw bad(
+      'EDITORIAL_BODY_INVALID',
+      'Rich text paragraphs are invalid or too long',
+    );
   if (
     ['FACT_GRID', 'CARD_GRID', 'STEPS'].includes(type) &&
     (!Array.isArray(value.items) ||
       value.items.length > 12 ||
       value.items.some((item) => !item || typeof item !== 'object'))
   )
-    throw bad('EDITORIAL_BODY_INVALID', 'Section items are invalid or too many');
+    throw bad(
+      'EDITORIAL_BODY_INVALID',
+      'Section items are invalid or too many',
+    );
 }
 
 @Injectable()
