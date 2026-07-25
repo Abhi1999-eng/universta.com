@@ -1,0 +1,2 @@
+import { NextResponse } from 'next/server';
+export async function GET(request: Request) { const query = new URL(request.url).searchParams.get('q')?.trim() ?? ''; if (query.length < 2) return NextResponse.json({ data: [], meta: null, error: null }); const base = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000'; const response = await fetch(new URL(`/api/v1/courses/suggestions?q=${encodeURIComponent(query)}`, base), { cache: 'no-store' }); return NextResponse.json(await response.json(), { status: response.status, headers: { 'cache-control': 'no-store' } }); }

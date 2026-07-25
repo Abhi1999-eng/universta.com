@@ -145,10 +145,12 @@ curl -i http://localhost:4000/health
 ```
 
 The catalog core is available at `/api/v1/continents` and the core country
-read endpoints under `/api/v1/countries`. Super Admin catalog screens are
-available at `http://localhost:3001/continents` and
-`http://localhost:3001/countries` after login. Detailed country subdomains,
-public catalog screens, Courses, Leads, CMS, and other business modules remain
+read endpoints under `/api/v1/countries`. TASK_007 adds published public reads
+under `/api/v1/subjects`, `/api/v1/course-levels`, `/api/v1/study-modes`, and
+`/api/v1/courses`; the public web screens are `/subjects` and `/courses`.
+Super Admin catalog screens are available at `http://localhost:3001/continents`,
+`/countries`, `/subjects`, `/courses`, and `/catalog-masters` after login.
+Course Comparison, Leads, CMS, and other future business modules remain
 deferred. TASK_005 adds structured profile API routes under
 `/api/v1/admin/countries/:countryId/profiles` and the protected country editor
 sections for cost, work/visa, language, intakes, and statistics. TASK_003

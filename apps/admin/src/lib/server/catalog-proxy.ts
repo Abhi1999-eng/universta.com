@@ -21,7 +21,17 @@ export type CatalogProxyOperation =
   | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
   | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}`
   | `editorial:${string}`
-  | 'intakes:list';
+  | 'intakes:list'
+  | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}`
+  | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}`
+  | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}`
+  | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}`
+  | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}`
+  | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}`
+  | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}`
+  | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}`
+  | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}`
+  | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
@@ -65,6 +75,56 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_CONSULTANT_CARD_STALE_VERSION: 'Consultant card changed in another session. Reload before saving',
   EDITORIAL_MEDIA_INVALID: 'Selected media is not available',
   EDITORIAL_BODY_INVALID: 'Editorial section content is invalid',
+  SUBJECT_NOT_FOUND: 'Subject not found',
+  SUBJECT_CONFLICT: 'Subject name or slug already exists',
+  SUBJECT_STALE_VERSION: 'The subject changed in another session. Reload before saving',
+  SUBJECT_NOT_READY: 'Complete subject fields before publishing',
+  SUBJECT_IN_USE: 'A subject referenced by courses cannot be deleted',
+  SUB_SUBJECT_NOT_FOUND: 'Sub-Subject not found',
+  SUB_SUBJECT_CONFLICT: 'Sub-Subject name or slug already exists',
+  SUB_SUBJECT_STALE_VERSION: 'The Sub-Subject changed in another session. Reload before saving',
+  SUB_SUBJECT_NOT_READY: 'Complete Sub-Subject fields before publishing',
+  SUB_SUBJECT_IN_USE: 'A Sub-Subject referenced by courses cannot be deleted',
+  COURSE_LEVEL_NOT_FOUND: 'Course level not found',
+  COURSE_LEVEL_CONFLICT: 'Course level code or name already exists',
+  COURSE_LEVEL_STALE_VERSION: 'The course level changed in another session. Reload before saving',
+  COURSE_LEVEL_IN_USE: 'This course level is still used by courses',
+  STUDY_MODE_NOT_FOUND: 'Study mode not found',
+  STUDY_MODE_CONFLICT: 'Study mode code or name already exists',
+  STUDY_MODE_STALE_VERSION: 'The study mode changed in another session. Reload before saving',
+  STUDY_MODE_IN_USE: 'This study mode is still used by courses',
+  COURSE_NOT_FOUND: 'Course not found',
+  COURSE_CONFLICT: 'Course slug already exists',
+  COURSE_STALE_VERSION: 'The course changed in another session. Reload before saving',
+  COURSE_NOT_READY: 'Complete course readiness requirements before publishing',
+  COURSE_LEVEL_INACTIVE: 'Course level must be active',
+  COURSE_SUBJECT_MISMATCH: 'Sub-Subject must belong to the selected Subject',
+  COURSE_STUDY_MODES_INVALID: 'Published courses need at least one active study mode',
+  COURSE_TUITION_COUNTRY_REQUIRED: 'Tuition filters require a country',
+  COURSE_DURATION_INVALID: 'Duration values are invalid',
+  COURSE_POPULARITY_INVALID: 'Popularity score must be between 0 and 100',
+  COUNTRY_MAPPING_SOURCE_REQUIRED: 'Available mappings require an HTTPS source and verification date',
+  COURSE_MAPPING_SOURCE_REQUIRED: 'Available mappings require an HTTPS source and verification date',
+  COURSE_MAPPING_SOURCE_INVALID: 'Source reference must use HTTPS',
+  COURSE_MAPPING_VERIFICATION_INVALID: 'Verification date cannot be in the future',
+  COURSE_MAPPING_RANGE_INVALID: 'Course mapping values are invalid',
+  COURSE_COUNTRY_DUPLICATE: 'This country is already mapped to the course',
+  COURSE_COUNTRY_NOT_FOUND: 'Country-course mapping not found',
+  COURSE_COUNTRY_STALE_VERSION: 'The country-course mapping changed in another session. Reload before saving',
+  COURSE_INTAKES_DUPLICATE: 'An intake can only be selected once',
+  COURSE_INTAKE_INVALID: 'One or more intakes are inactive',
+  COURSE_INTAKES_STALE_VERSION: 'The course intakes changed in another session. Reload before saving',
+  COURSE_SECTION_INVALID: 'Unsupported course content section',
+  COURSE_SECTION_DUPLICATE: 'This content section key already exists',
+  COURSE_SECTION_NOT_FOUND: 'Content section not found',
+  COURSE_SECTION_STALE_VERSION: 'Content section changed in another session. Reload before saving',
+  COURSE_FAQ_NOT_FOUND: 'FAQ not found',
+  COURSE_FAQ_STALE_VERSION: 'FAQ changed in another session. Reload before saving',
+  COURSE_RELATED_INVALID: 'Related courses cannot include the source course or duplicates',
+  COURSE_RELATED_NOT_FOUND: 'One or more related courses were not found',
+  COURSE_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
+  SEO_URL_INVALID: 'SEO canonical URL must use HTTPS',
+  MEDIA_INVALID: 'Selected media is not an active image',
 };
 
 interface SafeEnvelope {
@@ -146,6 +206,42 @@ function operationDetails(operation: CatalogProxyOperation): { method: string; p
       statistics: ['universitiesCount', 'publicUniversitiesCount', 'privateUniversitiesCount', 'coursesCount', 'ugCoursesCount', 'pgCoursesCount', 'pgdmCoursesCount', 'mbaCoursesCount', 'phdCoursesCount', 'scholarshipsCount', 'citiesCount', 'topRankedUniversitiesCount', 'internationalStudentsCount', 'studentSatisfactionPercentage', 'sourceMode'],
     };
     return { method: 'PUT', path, query: [], body: [...common, ...(profileFields[profile ?? ''] ?? [])] };
+  }
+  if (operation.startsWith('subjects-seo:')) {
+    const [, action, id] = operation.split(':');
+    const path = `/api/v1/admin/subjects/${encodeURIComponent(id ?? '')}/seo`;
+    return { method: action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE', path, query: [], body: action === 'put' ? ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+  }
+  if (operation.startsWith('courses-seo:')) {
+    const [, action, id] = operation.split(':');
+    const path = `/api/v1/admin/courses/${encodeURIComponent(id ?? '')}/seo`;
+    return { method: action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE', path, query: [], body: action === 'put' ? ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+  }
+  if (operation.startsWith('subsubjects:')) {
+    const parts = operation.split(':'); const action = parts[1]; const subjectId = encodeURIComponent(parts[2] ?? ''); const id = parts[3] ? `/${encodeURIComponent(parts[3])}` : ''; const base = `/api/v1/admin/subjects/${subjectId}/sub-subjects`;
+    const method = action === 'list' || action === 'get' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : action === 'publish' || action === 'unpublish' ? 'POST' : 'DELETE';
+    const path = `${base}${id}${action === 'publish' || action === 'unpublish' ? `/${action}` : ''}`;
+    return { method, path, query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [], body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+  }
+  if (operation.startsWith('subjects:')) {
+    const [, action, id] = operation.split(':'); const safeId = encodeURIComponent(id ?? ''); const path = action === 'list' || action === 'create' ? '/api/v1/admin/subjects' : `/api/v1/admin/subjects/${safeId}${action === 'publish' || action === 'unpublish' ? `/${action}` : ''}`;
+    return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : action === 'get' ? 'GET' : action === 'publish' || action === 'unpublish' ? 'POST' : 'DELETE', path, query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [], body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+  }
+  if (operation.startsWith('course-levels:') || operation.startsWith('study-modes:')) {
+    const parts = operation.split(':'); const resource = parts[0]; const action = parts[1]; const id = encodeURIComponent(parts[2] ?? ''); const base = `/api/v1/admin/${resource}`; const path = action === 'list' || action === 'create' ? base : `${base}/${id}`;
+    return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE', path, query: action === 'list' ? ['q', 'status', 'page', 'limit'] : [], body: action === 'create' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status'] : action === 'update' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+  }
+  if (operation.startsWith('courses:')) {
+    const parts = operation.split(':'); const resource = parts[1]; const action = parts[2]; const rawId = ['get', 'update', 'publish', 'unpublish', 'delete', 'modes'].includes(resource ?? '') ? parts[2] : parts[3]; const id = encodeURIComponent(rawId ?? ''); const child = parts[4] ? encodeURIComponent(parts[4]) : ''; const base = `/api/v1/admin/courses/${id}`;
+    const coreFields = ['subjectId', 'subSubjectId', 'courseLevelId', 'name', 'shortName', 'qualificationName', 'slug', 'courseCode', 'shortDescription', 'overview', 'durationMin', 'durationMax', 'durationUnit', 'credits', 'featuredMediaId', 'careerSummary', 'popularityScore', 'isFeatured', 'displayOrder'];
+    if (resource === 'list' || resource === 'create') return { method: resource === 'list' ? 'GET' : 'POST', path: '/api/v1/admin/courses', query: resource === 'list' ? ['q', 'subject', 'subSubject', 'level', 'country', 'studyMode', 'status', 'featured', 'sort', 'page', 'limit'] : [], body: resource === 'create' ? coreFields : [] };
+    if (resource === 'modes') return { method: 'PUT', path: `${base}/study-modes`, query: [], body: ['studyModeIds', 'expectedUpdatedAt'] };
+    const leafPath = child ? `/${child}` : '';
+    if (resource === 'countries') return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE', path: `${base}/countries${leafPath}`, query: [], body: action === 'create' ? ['countryId', 'availabilityStatus', 'indicativeTuitionMin', 'indicativeTuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationFeeMin', 'applicationFeeMax', 'durationMinOverride', 'durationMaxOverride', 'durationUnitOverride', 'academicMinPercentage', 'academicMinCgpa', 'ieltsMinScore', 'pteMinScore', 'toeflMinScore', 'duolingoMinScore', 'workExperienceMonths', 'scholarshipAvailable', 'admissionRequirements', 'englishRequirements', 'applicationNotes', 'careerOpportunities', 'sourceReference', 'verifiedAt', 'status', 'isFeatured', 'displayOrder'] : action === 'update' ? ['countryId', 'availabilityStatus', 'indicativeTuitionMin', 'indicativeTuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationFeeMin', 'applicationFeeMax', 'durationMinOverride', 'durationMaxOverride', 'durationUnitOverride', 'academicMinPercentage', 'academicMinCgpa', 'ieltsMinScore', 'pteMinScore', 'toeflMinScore', 'duolingoMinScore', 'workExperienceMonths', 'scholarshipAvailable', 'admissionRequirements', 'englishRequirements', 'applicationNotes', 'careerOpportunities', 'sourceReference', 'verifiedAt', 'status', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    if (resource === 'intakes') return { method: action === 'list' ? 'GET' : 'PUT', path: `${base}/countries/${child}/intakes`, query: [], body: action === 'list' ? [] : ['intakes', 'expectedUpdatedAt'] };
+    if (resource === 'sections' || resource === 'faqs') { const pathName = resource === 'sections' ? 'content-sections' : 'faqs'; return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE', path: `${base}/${pathName}${leafPath}`, query: [], body: resource === 'sections' ? (action === 'create' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status'] : action === 'update' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt']) : (action === 'create' ? ['question', 'answer', 'status', 'displayOrder'] : action === 'update' ? ['question', 'answer', 'status', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt']) }; }
+    if (resource === 'related') return { method: action === 'list' ? 'GET' : 'PUT', path: `${base}/related`, query: [], body: action === 'list' ? [] : ['related', 'expectedUpdatedAt'] };
+    return { method: resource === 'get' ? 'GET' : resource === 'update' ? 'PATCH' : resource === 'publish' || resource === 'unpublish' ? 'POST' : 'DELETE', path: `${base}${resource === 'publish' || resource === 'unpublish' ? `/${resource}` : ''}`, query: [], body: resource === 'update' ? [...coreFields, 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
   }
   const [resource, action, id] = operation.split(':');
   if (resource === 'continents') {

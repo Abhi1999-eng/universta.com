@@ -14,8 +14,16 @@ import type {
   EditorialCard,
   EditorialFaq,
   EditorialSection,
-  EditorialSeo,
   EditorialMedia,
+  SubjectRecord,
+  SubSubjectRecord,
+  MasterRecord,
+  CourseRecord,
+  CourseMappingRecord,
+  CourseSectionRecord,
+  CourseFaqRecord,
+  CourseRelatedRecord,
+  EditorialSeo,
 } from './catalog.types';
 
 function query(params: object): string {
@@ -140,3 +148,55 @@ export function deleteCountrySeo(id: string, expectedUpdatedAt?: string) { retur
 export function createConsultantCard(id: string, data: Record<string, unknown>) { return request<EditorialCard>(`/api/v1/admin/countries/${id}/consultant-cards`, { method: 'POST', body: JSON.stringify(data) }); }
 export function updateConsultantCard(countryId: string, cardId: string, data: Record<string, unknown>) { return request<EditorialCard>(`/api/v1/admin/countries/${countryId}/consultant-cards/${cardId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
 export function deleteConsultantCard(countryId: string, cardId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/countries/${countryId}/consultant-cards/${cardId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+
+export function listSubjects(params: CatalogListParams = {}, signal?: AbortSignal) { return request<SubjectRecord[]>(`/api/v1/admin/subjects${query(params)}`, { signal }); }
+export function getSubject(id: string) { return request<SubjectRecord>(`/api/v1/admin/subjects/${id}`); }
+export function createSubject(data: Record<string, unknown>) { return request<SubjectRecord>('/api/v1/admin/subjects', { method: 'POST', body: JSON.stringify(data) }); }
+export function updateSubject(id: string, data: Record<string, unknown>) { return request<SubjectRecord>(`/api/v1/admin/subjects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function publishSubject(id: string, expectedUpdatedAt?: string) { return request<SubjectRecord>(`/api/v1/admin/subjects/${id}/publish`, { method: 'POST', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function unpublishSubject(id: string, expectedUpdatedAt?: string) { return request<SubjectRecord>(`/api/v1/admin/subjects/${id}/unpublish`, { method: 'POST', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function deleteSubject(id: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/subjects/${id}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function listSubSubjects(subjectId: string, params: CatalogListParams = {}) { return request<SubSubjectRecord[]>(`/api/v1/admin/subjects/${subjectId}/sub-subjects${query(params)}`); }
+export function createSubSubject(subjectId: string, data: Record<string, unknown>) { return request<SubSubjectRecord>(`/api/v1/admin/subjects/${subjectId}/sub-subjects`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateSubSubject(subjectId: string, id: string, data: Record<string, unknown>) { return request<SubSubjectRecord>(`/api/v1/admin/subjects/${subjectId}/sub-subjects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function publishSubSubject(subjectId: string, id: string, expectedUpdatedAt?: string) { return request<SubSubjectRecord>(`/api/v1/admin/subjects/${subjectId}/sub-subjects/${id}/publish`, { method: 'POST', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function unpublishSubSubject(subjectId: string, id: string, expectedUpdatedAt?: string) { return request<SubSubjectRecord>(`/api/v1/admin/subjects/${subjectId}/sub-subjects/${id}/unpublish`, { method: 'POST', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function deleteSubSubject(subjectId: string, id: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/subjects/${subjectId}/sub-subjects/${id}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function listCourseLevels(params: CatalogListParams = {}) { return request<MasterRecord[]>(`/api/v1/admin/course-levels${query(params)}`); }
+export function listStudyModes(params: CatalogListParams = {}) { return request<MasterRecord[]>(`/api/v1/admin/study-modes${query(params)}`); }
+export function createCourseLevel(data: Record<string, unknown>) { return request<MasterRecord>('/api/v1/admin/course-levels', { method: 'POST', body: JSON.stringify(data) }); }
+export function updateCourseLevel(id: string, data: Record<string, unknown>) { return request<MasterRecord>(`/api/v1/admin/course-levels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteCourseLevel(id: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/course-levels/${id}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function createStudyMode(data: Record<string, unknown>) { return request<MasterRecord>('/api/v1/admin/study-modes', { method: 'POST', body: JSON.stringify(data) }); }
+export function updateStudyMode(id: string, data: Record<string, unknown>) { return request<MasterRecord>(`/api/v1/admin/study-modes/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteStudyMode(id: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/study-modes/${id}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function listAdminCourses(params: CatalogListParams = {}) { return request<CourseRecord[]>(`/api/v1/admin/courses${query(params)}`); }
+export function getAdminCourse(id: string) { return request<CourseRecord>(`/api/v1/admin/courses/${id}`); }
+export function createCourse(data: Record<string, unknown>) { return request<CourseRecord>('/api/v1/admin/courses', { method: 'POST', body: JSON.stringify(data) }); }
+export function updateCourse(id: string, data: Record<string, unknown>) { return request<CourseRecord>(`/api/v1/admin/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function publishCourse(id: string, expectedUpdatedAt?: string) { return request<CourseRecord>(`/api/v1/admin/courses/${id}/publish`, { method: 'POST', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function unpublishCourse(id: string, expectedUpdatedAt?: string) { return request<CourseRecord>(`/api/v1/admin/courses/${id}/unpublish`, { method: 'POST', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function deleteCourse(id: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/courses/${id}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function replaceCourseModes(id: string, studyModeIds: string[], expectedUpdatedAt?: string) { return request<CourseRecord>(`/api/v1/admin/courses/${id}/study-modes`, { method: 'PUT', body: JSON.stringify({ studyModeIds, expectedUpdatedAt }) }); }
+export function listCourseMappings(id: string) { return request<CourseMappingRecord[]>(`/api/v1/admin/courses/${id}/countries`); }
+export function createCourseMapping(id: string, data: Record<string, unknown>) { return request<CourseMappingRecord>(`/api/v1/admin/courses/${id}/countries`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateCourseMapping(courseId: string, mappingId: string, data: Record<string, unknown>) { return request<CourseMappingRecord>(`/api/v1/admin/courses/${courseId}/countries/${mappingId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteCourseMapping(courseId: string, mappingId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/courses/${courseId}/countries/${mappingId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function listCourseIntakes(courseId: string, mappingId: string) { return request<Array<Record<string, unknown>>>(`/api/v1/admin/courses/${courseId}/countries/${mappingId}/intakes`); }
+export function replaceCourseIntakes(courseId: string, mappingId: string, intakes: Array<Record<string, unknown>>, expectedUpdatedAt?: string) { return request<Array<Record<string, unknown>>>(`/api/v1/admin/courses/${courseId}/countries/${mappingId}/intakes`, { method: 'PUT', body: JSON.stringify({ intakes, expectedUpdatedAt }) }); }
+export function listCourseSections(id: string) { return request<CourseSectionRecord[]>(`/api/v1/admin/courses/${id}/content-sections`); }
+export function createCourseSection(id: string, data: Record<string, unknown>) { return request<CourseSectionRecord>(`/api/v1/admin/courses/${id}/content-sections`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateCourseSection(courseId: string, sectionId: string, data: Record<string, unknown>) { return request<CourseSectionRecord>(`/api/v1/admin/courses/${courseId}/content-sections/${sectionId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteCourseSection(courseId: string, sectionId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/courses/${courseId}/content-sections/${sectionId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function listCourseFaqs(id: string) { return request<CourseFaqRecord[]>(`/api/v1/admin/courses/${id}/faqs`); }
+export function createCourseFaq(id: string, data: Record<string, unknown>) { return request<CourseFaqRecord>(`/api/v1/admin/courses/${id}/faqs`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateCourseFaq(courseId: string, faqId: string, data: Record<string, unknown>) { return request<CourseFaqRecord>(`/api/v1/admin/courses/${courseId}/faqs/${faqId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteCourseFaq(courseId: string, faqId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/courses/${courseId}/faqs/${faqId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function listCourseRelated(id: string) { return request<CourseRelatedRecord[]>(`/api/v1/admin/courses/${id}/related`); }
+export function replaceCourseRelated(id: string, related: Array<Record<string, unknown>>, expectedUpdatedAt?: string) { return request<CourseRelatedRecord[]>(`/api/v1/admin/courses/${id}/related`, { method: 'PUT', body: JSON.stringify({ related, expectedUpdatedAt }) }); }
+export function getSubjectSeo(id: string) { return request<EditorialSeo | null>(`/api/v1/admin/subjects/${id}/seo`); }
+export function saveSubjectSeo(id: string, data: Record<string, unknown>) { return request<EditorialSeo>(`/api/v1/admin/subjects/${id}/seo`, { method: 'PUT', body: JSON.stringify(data) }); }
+export function deleteSubjectSeo(id: string, expectedUpdatedAt?: string) { return request<{ deleted: boolean }>(`/api/v1/admin/subjects/${id}/seo`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function getCourseSeo(id: string) { return request<EditorialSeo | null>(`/api/v1/admin/courses/${id}/seo`); }
+export function saveCourseSeo(id: string, data: Record<string, unknown>) { return request<EditorialSeo>(`/api/v1/admin/courses/${id}/seo`, { method: 'PUT', body: JSON.stringify(data) }); }
+export function deleteCourseSeo(id: string, expectedUpdatedAt?: string) { return request<{ deleted: boolean }>(`/api/v1/admin/courses/${id}/seo`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }

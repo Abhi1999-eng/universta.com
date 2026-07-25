@@ -5,12 +5,12 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 
-const plannedItems = ['Courses', 'Leads', 'Content', 'Media', 'SEO', 'Settings'];
+const plannedItems = ['Leads', 'Content', 'Media', 'SEO', 'Settings'];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const pageTitle = pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : 'Dashboard';
+  const pageTitle = pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : pathname.startsWith('/subjects') ? 'Subjects' : pathname.startsWith('/courses') ? 'Courses' : pathname.startsWith('/catalog-masters') ? 'Catalog masters' : 'Dashboard';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -160,7 +160,7 @@ function DesktopSidebar({
   loggingOut: boolean;
 }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col bg-[#0D1524] p-6 text-white lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col overflow-y-auto bg-[#0D1524] p-6 text-white lg:flex">
       <Brand inverse />
       <p className="mt-2 pl-1 text-xs font-medium text-white/40">ADMIN CONSOLE</p>
       <Navigation pathname={pathname} />
@@ -209,6 +209,33 @@ function Navigation({
         >
           <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">C</span>
           Countries
+        </Link>
+        <Link
+          href="/subjects"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/subjects') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/subjects') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">S</span>
+          Subjects
+        </Link>
+        <Link
+          href="/courses"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/courses') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/courses') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">C</span>
+          Courses
+        </Link>
+        <Link
+          href="/catalog-masters"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/catalog-masters') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/catalog-masters') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">M</span>
+          Catalog masters
         </Link>
       </div>
       <div className="mt-8">

@@ -120,6 +120,9 @@ mutation appends a safe structured-profile audit event.
 
 All catalog mutations require an active `SUPER_ADMIN`, use stable validation or
 conflict codes, and append safe audit events. Client input cannot set actor,
-audit, deletion, or publication fields. Content sections, FAQs, SEO, media
-uploads/library, aliases/tags UI, Courses, Leads, and other future admin
-contracts remain deferred.
+audit, deletion, or publication fields. TASK_007 adds the Subjects, Sub-Subjects,
+Course Levels, Study Modes, Courses, country mappings/intakes, controlled course
+content, FAQs, related-course, and course/subject SEO contracts. Course content
+section type is preserved in the existing `bodyJson` envelope because the schema
+freeze does not permit adding a column in this task. Course Comparison, Leads,
+media upload/library UI, and other future business contracts remain deferred.
