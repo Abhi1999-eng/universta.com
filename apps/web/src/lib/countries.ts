@@ -35,7 +35,22 @@ export interface ProfileSummary {
     waiverNotes?: string | null; generalNotes?: string | null;
     sourceReference?: string | null; disclaimer?: string | null; verifiedAt?: string | null;
   } | null;
-  intakes: Array<{ id: string; name: string; slug: string; shortLabel: string | null; availabilityStatus: string; applicationOpeningNote?: string | null; applicationDeadlineNote?: string | null; notes?: string | null }>;
+  intakes: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    shortLabel: string | null;
+    availabilityStatus: string;
+    applicationOpeningNote?: string | null;
+    applicationDeadlineNote?: string | null;
+    notes?: string | null;
+    intake?: {
+      id: string;
+      name: string;
+      slug: string;
+      shortLabel: string | null;
+    };
+  }>;
   statistics: { universitiesCount: number; publicUniversitiesCount?: number; privateUniversitiesCount?: number; coursesCount: number; ugCoursesCount?: number; pgCoursesCount?: number; pgdmCoursesCount?: number; mbaCoursesCount?: number; phdCoursesCount?: number; topRankedUniversitiesCount: number; citiesCount?: number; scholarshipsCount?: number; internationalStudentsCount?: number | null; studentSatisfactionPercentage?: string | null; sourceReference?: string | null; verifiedAt?: string | null } | null;
 }
 export interface Media { id: string; url: string; title: string | null; alt: string | null; width: number | null; height: number | null; }

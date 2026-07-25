@@ -33,6 +33,7 @@ jobs:
       AUTH_LOCK_MINUTES: 15
       SEED_ADMIN_EMAIL: ci-admin@example.invalid
       SEED_ADMIN_PASSWORD: ci-only-seed-password-2026-strong
+      SEED_DEMO_CATALOG: "true"
       SUPER_ADMIN_FIRST_NAME: CI
       SUPER_ADMIN_LAST_NAME: Admin
       CI_DB_PASSWORD: ci-only-db-password-2026
@@ -87,6 +88,9 @@ jobs:
 
       - name: Foundation seed
         run: npm run db:seed
+
+      - name: Demo catalog seed
+        run: npm --workspace apps/api run db:seed:demo
 
       - name: API unit tests
         run: npm --workspace apps/api run test -- --runInBand

@@ -6,6 +6,8 @@ export function SiteHeader({ detail = false }: { detail?: boolean }) {
       <div className="shell header-inner">
         <Link className="brand" href="/countries">universta<span>.</span></Link>
         <nav aria-label="Primary navigation">
+          <Link href="/subjects">Subjects</Link>
+          <Link href="/courses">Courses</Link>
           <Link href="/countries">Countries</Link>
           <Link href={detail ? '#consultation' : '#country-results'}>{detail ? 'Get counselling' : 'Explore'}</Link>
         </nav>

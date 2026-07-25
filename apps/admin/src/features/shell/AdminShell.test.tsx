@@ -22,12 +22,12 @@ describe('AdminShell', () => {
     expect(screen.getByText('Dashboard content')).toBeVisible();
   });
 
-  it('keeps deferred navigation disabled while exposing catalog links', () => {
+  it('exposes the implemented catalog links while keeping future modules deferred', () => {
     render(<AdminShell><p>Dashboard content</p></AdminShell>);
     expect(screen.getByRole('link', { name: 'Countries' })).toHaveAttribute('href', '/countries');
-    const courses = screen.getByRole('button', { name: /Courses/ });
-    expect(courses).toBeDisabled();
-    expect(courses).not.toHaveAttribute('href');
+    expect(screen.getByRole('link', { name: 'Subjects' })).toHaveAttribute('href', '/subjects');
+    expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/courses');
+    expect(screen.getByRole('button', { name: /Leads/ })).toBeDisabled();
   });
 
   it('opens the mobile drawer and closes it with Escape', () => {

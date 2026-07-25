@@ -14,6 +14,10 @@ import { HealthService } from './health/health.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ContinentsModule } from './continents/continents.module';
 import { CountriesModule } from './countries/countries.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { CourseLevelsModule } from './course-levels/course-levels.module';
+import { StudyModesModule } from './study-modes/study-modes.module';
+import { CoursesModule } from './courses/courses.module';
 
 @Module({
   imports: [
@@ -32,6 +36,10 @@ import { CountriesModule } from './countries/countries.module';
     AuthModule,
     ContinentsModule,
     CountriesModule,
+    SubjectsModule,
+    CourseLevelsModule,
+    StudyModesModule,
+    CoursesModule,
   ],
   controllers: [AppController],
   providers: [
