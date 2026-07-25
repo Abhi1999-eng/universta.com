@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { CountriesExplorer } from '@/components/countries/CountriesExplorer';
-import { SiteFooter, SiteHeader } from '@/components/countries/SiteChrome';
+import { ApprovedCountriesListing } from '@/components/templates/ApprovedTemplatePages';
 import { getContinents, getCountries, getDirectory } from '@/lib/countries';
 
 export const dynamic = 'force-dynamic';
@@ -35,5 +34,5 @@ export default async function CountriesPage({ searchParams }: { searchParams: Pr
   const data = await loadData(filters);
   if (!data) return <main className="shell error-page"><p className="eyebrow">Countries</p><h1>Destinations are temporarily unavailable</h1><p>Please try again shortly.</p><Link className="button" href="/countries">Retry</Link></main>;
   const activeContinents = data.continents.filter((item) => item.status === 'ACTIVE');
-  return <main><SiteHeader /><section className="listing-hero"><div className="shell"><p className="eyebrow">Your global study journey</p><h1>Find the right country for your future</h1><p>Compare destinations through structured, source-aware guidance built around your goals.</p></div></section><CountriesExplorer countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} filters={filters} /><SiteFooter /></main>;
+  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} />;
 }
