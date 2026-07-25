@@ -121,3 +121,34 @@ export interface CatalogMutationError extends Error {
   status: number;
   details: unknown;
 }
+
+export interface EditorialMedia {
+  id: string;
+  url: string;
+  title: string | null;
+  alt: string | null;
+  width: number | null;
+  height: number | null;
+}
+export interface EditorialSection {
+  id: string;
+  sectionKey: string;
+  sectionType: string;
+  eyebrow: string | null;
+  heading: string | null;
+  subheading: string | null;
+  bodyJson: Record<string, unknown> | null;
+  primaryMedia: EditorialMedia | null;
+  secondaryMedia: EditorialMedia | null;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  configurationJson: Record<string, unknown> | null;
+  displayOrder: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface EditorialFaq { id: string; question: string; answer: string; category: string | null; isFeatured: boolean; status: string; displayOrder: number; createdAt: string; updatedAt: string; }
+export interface EditorialSeo { id: string; ownerType: string; ownerId: string; seoTitle: string; metaDescription: string; canonicalUrl: string | null; focusKeyword: string | null; ogTitle: string | null; ogDescription: string | null; ogMediaId: string | null; twitterTitle: string | null; twitterDescription: string | null; twitterMediaId: string | null; robotsIndex: boolean; robotsFollow: boolean; schemaJson: Record<string, unknown> | null; hreflangJson: Record<string, unknown> | null; ogMedia: EditorialMedia | null; twitterMedia: EditorialMedia | null; createdAt: string; updatedAt: string; }
+export interface EditorialCard { id: string; title: string; slug: string; shortDescription: string; overview: string | null; iconMediaId: string | null; featuredMediaId: string | null; isFreeConsultation: boolean; ctaLabel: string; ctaUrl: string | null; status: string; isFeatured: boolean; displayOrder: number; publishedAt: string | null; createdAt?: string; updatedAt?: string; }
+export interface CountryEditorialBundle { sections: EditorialSection[]; faqs: EditorialFaq[]; seo: EditorialSeo | null; consultantCards: EditorialCard[]; }

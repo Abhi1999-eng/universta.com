@@ -10,6 +10,12 @@ import type {
   DirectoryRecord,
   PageMeta,
   SuggestionRecord,
+  CountryEditorialBundle,
+  EditorialCard,
+  EditorialFaq,
+  EditorialSection,
+  EditorialSeo,
+  EditorialMedia,
 } from './catalog.types';
 
 function query(params: object): string {
@@ -120,3 +126,17 @@ export function getDirectory(params: { letter?: string; page?: number; limit?: n
 export function getSuggestions(q: string, limit = 5) {
   return request<SuggestionRecord[]>(`/api/v1/countries/suggestions${query({ q, limit })}`);
 }
+
+export function getCountryEditorial(id: string) { return request<CountryEditorialBundle>(`/api/v1/admin/countries/${id}/editorial`); }
+export function listEditorialMedia(params: { q?: string; limit?: number } = {}) { return request<EditorialMedia[]>(`/api/v1/admin/media-options${query(params)}`); }
+export function createEditorialSection(id: string, data: Record<string, unknown>) { return request<EditorialSection>(`/api/v1/admin/countries/${id}/content-sections`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateEditorialSection(countryId: string, sectionId: string, data: Record<string, unknown>) { return request<EditorialSection>(`/api/v1/admin/countries/${countryId}/content-sections/${sectionId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteEditorialSection(countryId: string, sectionId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/countries/${countryId}/content-sections/${sectionId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function createCountryFaq(id: string, data: Record<string, unknown>) { return request<EditorialFaq>(`/api/v1/admin/countries/${id}/faqs`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateCountryFaq(countryId: string, faqId: string, data: Record<string, unknown>) { return request<EditorialFaq>(`/api/v1/admin/countries/${countryId}/faqs/${faqId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteCountryFaq(countryId: string, faqId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/countries/${countryId}/faqs/${faqId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function saveCountrySeo(id: string, data: Record<string, unknown>) { return request<EditorialSeo>(`/api/v1/admin/countries/${id}/seo`, { method: 'PUT', body: JSON.stringify(data) }); }
+export function deleteCountrySeo(id: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/countries/${id}/seo`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
+export function createConsultantCard(id: string, data: Record<string, unknown>) { return request<EditorialCard>(`/api/v1/admin/countries/${id}/consultant-cards`, { method: 'POST', body: JSON.stringify(data) }); }
+export function updateConsultantCard(countryId: string, cardId: string, data: Record<string, unknown>) { return request<EditorialCard>(`/api/v1/admin/countries/${countryId}/consultant-cards/${cardId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+export function deleteConsultantCard(countryId: string, cardId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/countries/${countryId}/consultant-cards/${cardId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
