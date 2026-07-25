@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { randomBytes, scryptSync } from "node:crypto";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { Prisma, PrismaClient } from "../src/generated/prisma/client";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -103,6 +103,112 @@ async function main() {
       update: { name, monthNumber, seasonName, shortLabel, status: "ACTIVE" },
       create: { name, slug, monthNumber, seasonName, shortLabel, status: "ACTIVE" },
     });
+  }
+
+  const northAmerica = await prisma.continent.findUnique({ where: { slug: "north-america" } });
+  if (northAmerica) {
+    let canada = await prisma.country.findUnique({ where: { slug: "canada" } });
+    if (!canada) {
+      canada = await prisma.country.create({
+        data: {
+          continentId: northAmerica.id,
+          name: "Canada",
+          slug: "canada",
+          iso2Code: "CA",
+          iso3Code: "CAN",
+          pageHeading: "Study in Canada",
+          shortDescription: "Foundation country record for structured profile development.",
+          status: "PUBLISHED",
+          publishedAt: now,
+          createdByUserId: admin.id,
+          updatedByUserId: admin.id,
+        },
+      });
+    }
+    const sourceReference = "https://example.com/universta/seed/canada-profile";
+    await prisma.countryCostProfile.upsert({
+      where: { countryId: canada.id },
+      update: {},
+      create: {
+        countryId: canada.id,
+        currencyCode: "CAD",
+        currencySymbol: "$",
+        tuitionMin: new Prisma.Decimal("18000.00"),
+        tuitionMax: new Prisma.Decimal("42000.00"),
+        tuitionPeriod: "PER_YEAR",
+        livingCostMin: new Prisma.Decimal("1200.00"),
+        livingCostMax: new Prisma.Decimal("2200.00"),
+        livingCostPeriod: "PER_MONTH",
+        budgetBand: "MID_RANGE",
+        applicableYear: now.getUTCFullYear(),
+        sourceReference,
+        disclaimer: "Fictional local foundation data for development and testing.",
+        verifiedAt: now,
+      },
+    });
+    await prisma.countryWorkProfile.upsert({
+      where: { countryId: canada.id },
+      update: {},
+      create: {
+        countryId: canada.id,
+        partTimeAllowed: true,
+        partTimeHoursPerWeek: new Prisma.Decimal("20.00"),
+        postStudyWorkAvailable: true,
+        postStudyWorkMinMonths: 12,
+        postStudyWorkMaxMonths: 36,
+        immigrationPathwayStrength: "MODERATE",
+        visaSuccessBand: "MEDIUM",
+        visaInformation: "Fictional local foundation data for development and testing.",
+        sourceReference,
+        disclaimer: "Fictional local foundation data for development and testing.",
+        verifiedAt: now,
+      },
+    });
+    await prisma.countryLanguageRequirement.upsert({
+      where: { countryId: canada.id },
+      update: {},
+      create: {
+        countryId: canada.id,
+        ieltsRequirement: "OPTIONAL",
+        ieltsMinScore: new Prisma.Decimal("6.5"),
+        pteRequirement: "OPTIONAL",
+        pteMinScore: new Prisma.Decimal("60.00"),
+        toeflRequirement: "OPTIONAL",
+        toeflMinScore: new Prisma.Decimal("88.00"),
+        languageWaiverAvailable: true,
+        sourceReference,
+        disclaimer: "Fictional local foundation data for development and testing.",
+        verifiedAt: now,
+      },
+    });
+    await prisma.countryStatistic.upsert({
+      where: { countryId: canada.id },
+      update: {},
+      create: {
+        countryId: canada.id,
+        universitiesCount: 120,
+        publicUniversitiesCount: 40,
+        privateUniversitiesCount: 80,
+        coursesCount: 2400,
+        ugCoursesCount: 900,
+        pgCoursesCount: 1000,
+        pgdmCoursesCount: 250,
+        mbaCoursesCount: 150,
+        topRankedUniversitiesCount: 12,
+        citiesCount: 18,
+        sourceMode: "MANUAL",
+        sourceReference,
+        verifiedAt: now,
+      },
+    });
+    for (const [slug, isMajor] of [["january", false], ["may", false], ["september", true]] as const) {
+      const intake = await prisma.intake.findUnique({ where: { slug } });
+      if (intake) await prisma.countryIntake.upsert({
+        where: { countryId_intakeId: { countryId: canada.id, intakeId: intake.id } },
+        update: {},
+        create: { countryId: canada.id, intakeId: intake.id, isMajor, availabilityStatus: "AVAILABLE" },
+      });
+    }
   }
 
   const courseLevels = [

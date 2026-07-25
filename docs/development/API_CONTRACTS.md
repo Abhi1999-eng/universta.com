@@ -9,7 +9,7 @@ for TASK_004. Other endpoint families remain planning contracts.
 | --- | --- | --- |
 | `GET /api/v1/continents` | Published region tabs and counts | optional `featured`/status policy |
 | `GET /api/v1/platform-metrics` | Visible, source-aware platform metrics | none or approved group |
-| `GET /api/v1/countries` | Paginated core country cards | `q`, `continent`, `featured`, `letter`, `sort`, `page`, `limit` |
+| `GET /api/v1/countries` | Paginated country cards with verified profile summaries | `q`, `continent`, `featured`, `letter`, `budgetBand`, `ieltsOptional`, `intake`, `visaSuccessBand`, `pathwayStrength`, `hasTopRankedUniversities`, `sort`, `page`, `limit` |
 | `GET /api/v1/countries/suggestions` | Search autocomplete | `q`, bounded `limit` |
 | `GET /api/v1/countries/directory` | A–Z directory DTOs | `letter`, `page`, `limit` |
 | `GET /api/v1/countries/:slug` | Single country page data | `slug` path parameter |
@@ -72,14 +72,17 @@ Error response:
 }
 ```
 
-TASK_004 returns only the core country fields and verified university count
-available from the existing schema. Money, work, intake, pathway, language,
-visa, and course profile fields remain deferred; the API does not accept those
-filters or return display strings such as `£12–28k/yr` as a source of truth.
+TASK_005 adds verified profile summaries to the existing country DTOs. Decimal
+values remain strings, controlled filters use exact allowlists, and missing or
+unverified optional facts are returned as `null` or omitted. Display strings
+such as `£12–28k/yr` are not persisted as a source of truth.
 
 ## Suggestions and directory DTOs
 
-Suggestions return `id`, `name`, `slug`, `flag`, `continent`, and `universitiesCount`. Directory entries return `name`, `slug`, `flag`, `shortDescription`, `programCounts` (`ug`, `pg`, `pgdm`, `mba`), `letter`, and `isAvailable`.
+Suggestions return `id`, `name`, `slug`, `flag`, `continent`, `universitiesCount`,
+and verified profile summaries. Directory entries return `name`, `slug`, `flag`,
+`shortDescription`, `programCounts` (`ug`, `pg`, `pgdm`, `mba`), `letter`,
+`isAvailable`, and verified profile summaries.
 
 ## Admin catalog contracts
 
@@ -98,7 +101,25 @@ Suggestions return `id`, `name`, `slug`, `flag`, `continent`, and `universitiesC
 | `POST /api/v1/admin/countries/:id/unpublish` | Return a published country to draft |
 | `DELETE /api/v1/admin/countries/:id` | Soft-delete a country |
 
+## Structured country profile admin contracts
+
+| Method/path | Purpose |
+| --- | --- |
+| `GET /api/v1/admin/countries/:countryId/profiles` | Read core metadata and all structured profiles |
+| `GET|PUT|DELETE /api/v1/admin/countries/:countryId/profiles/cost` | Manage cost profile |
+| `GET|PUT|DELETE /api/v1/admin/countries/:countryId/profiles/work` | Manage work and visa profile |
+| `GET|PUT|DELETE /api/v1/admin/countries/:countryId/profiles/language` | Manage language requirements |
+| `GET|PUT /api/v1/admin/countries/:countryId/profiles/intakes` | Replace country intake mappings with optimistic concurrency |
+| `GET|PUT|DELETE /api/v1/admin/countries/:countryId/profiles/statistics` | Manage country statistics |
+| `GET /api/v1/admin/intakes` | Read active intake master options |
+
+These routes are protected by the access-token and `SUPER_ADMIN` role guards.
+Existing profile rows require `expectedUpdatedAt` for updates and deletes;
+intake replacement compares the latest child-row timestamp. Each successful
+mutation appends a safe structured-profile audit event.
+
 All catalog mutations require an active `SUPER_ADMIN`, use stable validation or
 conflict codes, and append safe audit events. Client input cannot set actor,
-audit, deletion, or publication fields. Detailed profile CRUD, Courses, Leads,
-CMS, media uploads, SEO, and other future admin contracts remain deferred.
+audit, deletion, or publication fields. Content sections, FAQs, SEO, media
+uploads/library, aliases/tags UI, Courses, Leads, and other future admin
+contracts remain deferred.

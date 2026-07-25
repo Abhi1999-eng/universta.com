@@ -149,8 +149,15 @@ read endpoints under `/api/v1/countries`. Super Admin catalog screens are
 available at `http://localhost:3001/continents` and
 `http://localhost:3001/countries` after login. Detailed country subdomains,
 public catalog screens, Courses, Leads, CMS, and other business modules remain
-deferred. TASK_003 provides the admin login, same-origin authentication BFF,
-and protected shell.
+deferred. TASK_005 adds structured profile API routes under
+`/api/v1/admin/countries/:countryId/profiles` and the protected country editor
+sections for cost, work/visa, language, intakes, and statistics. TASK_003
+provides the admin login, same-origin authentication BFF, and protected shell.
+
+The seed command creates deterministic fictional local profile data for Canada,
+including active intake mappings. These values are for development/testing and
+are source-marked so public redaction and verification behavior can be tested;
+they are not production country facts.
 
 Open Prisma Studio:
 

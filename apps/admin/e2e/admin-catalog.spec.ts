@@ -46,6 +46,13 @@ test.describe.serial('catalog management', () => {
     await page.getByRole('button', { name: 'Save draft' }).click();
     await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/);
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Profile editors' })).toBeVisible();
+    await page.getByLabel('Currency code').fill('CAD');
+    const costProfile = page.getByRole('group', { name: 'cost' });
+    await costProfile.getByLabel('Source URL').fill('https://example.com/browser-profile');
+    await costProfile.getByLabel('Verified at').fill('2026-01-01T00:00:00.000Z');
+    await costProfile.getByRole('button', { name: 'Save cost' }).click();
+    await expect(page.getByRole('status')).toContainText('cost profile saved.');
     const publicDraft = await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`);
     expect(publicDraft.status()).toBe(404);
 

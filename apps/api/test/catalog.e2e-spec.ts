@@ -9,15 +9,20 @@ import { configureApplication } from '../src/bootstrap';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 type Json = Record<string, unknown>;
-const suffix = `task004-${Date.now()}`;
-const codeSeed = randomUUID()
-  .replace(/[^a-f]/gi, '')
-  .toUpperCase()
-  .padEnd(6, 'A');
-const iso2 = codeSeed.slice(0, 2);
-const iso3 = codeSeed.slice(0, 3);
-const duplicateIso2 = codeSeed.slice(2, 4);
-const duplicateIso3 = codeSeed.slice(3, 6);
+const suffix = `task004-${Date.now()}-${randomUUID().slice(0, 8)}`;
+let iso2 = '';
+let iso3 = '';
+let duplicateIso2 = '';
+let duplicateIso3 = '';
+
+function alphaCodeSeed(): string {
+  return randomUUID()
+    .replace(/-/g, '')
+    .slice(0, 6)
+    .split('')
+    .map((value) => String.fromCharCode(65 + (parseInt(value, 16) % 26)))
+    .join('');
+}
 
 function body(response: { body: unknown }): Json {
   return response.body && typeof response.body === 'object'
@@ -64,6 +69,37 @@ describe('catalog core (e2e)', () => {
     configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const codeSeed = alphaCodeSeed();
+      const candidateIso2 = codeSeed.slice(0, 2);
+      const candidateIso3 = codeSeed.slice(0, 3);
+      const candidateDuplicateIso2 = codeSeed.slice(2, 4);
+      const candidateDuplicateIso3 = codeSeed.slice(3, 6);
+      const conflict = await prisma.country.findFirst({
+        where: {
+          OR: [
+            { iso2Code: candidateIso2 },
+            { iso3Code: candidateIso2 },
+            { iso2Code: candidateIso3 },
+            { iso3Code: candidateIso3 },
+            { iso2Code: candidateDuplicateIso2 },
+            { iso3Code: candidateDuplicateIso2 },
+            { iso2Code: candidateDuplicateIso3 },
+            { iso3Code: candidateDuplicateIso3 },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!conflict) {
+        iso2 = candidateIso2;
+        iso3 = candidateIso3;
+        duplicateIso2 = candidateDuplicateIso2;
+        duplicateIso3 = candidateDuplicateIso3;
+        break;
+      }
+    }
+    if (!iso2 || !iso3 || !duplicateIso2 || !duplicateIso3)
+      throw new Error('Unable to allocate unique catalog E2E ISO codes');
     const email =
       process.env.SEED_ADMIN_EMAIL ??
       process.env.SUPER_ADMIN_EMAIL ??

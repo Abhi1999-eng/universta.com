@@ -15,7 +15,12 @@ export type CatalogProxyOperation =
   | `countries:update:${string}`
   | `countries:publish:${string}`
   | `countries:unpublish:${string}`
-  | `countries:delete:${string}`;
+  | `countries:delete:${string}`
+  | `country-profiles:all:${string}`
+  | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
+  | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
+  | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}`
+  | 'intakes:list';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
@@ -38,6 +43,19 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_CODE_CONFLICT: 'Country ISO code already exists',
   COUNTRY_STALE_VERSION: 'The country changed in another session. Reload before saving',
   COUNTRY_NOT_READY: 'Complete the required fields before publishing',
+  COUNTRY_COST_PROFILE_STALE_VERSION: 'The cost profile changed in another session. Reload before saving',
+  COUNTRY_WORK_PROFILE_STALE_VERSION: 'The work profile changed in another session. Reload before saving',
+  COUNTRY_LANGUAGE_PROFILE_STALE_VERSION: 'The language profile changed in another session. Reload before saving',
+  COUNTRY_INTAKES_STALE_VERSION: 'The country intakes changed in another session. Reload before saving',
+  COUNTRY_STATISTICS_STALE_VERSION: 'The statistics changed in another session. Reload before saving',
+  PROFILE_DECIMAL_INVALID: 'Profile decimal values are invalid',
+  PROFILE_DECIMAL_PRECISION: 'Profile decimal precision is invalid',
+  PROFILE_RANGE_INVALID: 'Profile minimum and maximum values are invalid',
+  PROFILE_SOURCE_REQUIRED: 'A published profile value requires a source and verification timestamp',
+  PROFILE_SOURCE_INVALID: 'Profile source reference is invalid',
+  PROFILE_VERIFICATION_INVALID: 'Profile verification timestamp is invalid',
+  COUNTRY_INTAKE_INVALID: 'One or more intake options are unavailable',
+  COUNTRY_INTAKES_DUPLICATE: 'An intake can only be selected once',
 };
 
 interface SafeEnvelope {
@@ -83,6 +101,26 @@ function errorResponse(status: number, requestId: string, code: string): NextRes
 }
 
 function operationDetails(operation: CatalogProxyOperation): { method: string; path: string; query: string[]; body: string[] } {
+  if (operation === 'intakes:list') return { method: 'GET', path: '/api/v1/admin/intakes', query: [], body: [] };
+  if (operation.startsWith('country-profiles:')) {
+    const parts = operation.split(':');
+    const action = parts[1];
+    const countryId = encodeURIComponent(parts[2] ?? '');
+    const profile = parts[3];
+    const path = `/api/v1/admin/countries/${countryId}/profiles${profile ? `/${profile}` : ''}`;
+    if (action === 'all') return { method: 'GET', path, query: [], body: [] };
+    if (action === 'get') return { method: 'GET', path, query: [], body: [] };
+    if (action === 'delete') return { method: 'DELETE', path, query: [], body: ['expectedUpdatedAt'] };
+    const common = ['expectedUpdatedAt', 'sourceReference', 'verifiedAt', 'disclaimer'];
+    const profileFields: Record<string, string[]> = {
+      cost: ['currencyCode', 'currencySymbol', 'tuitionMin', 'tuitionMax', 'tuitionPeriod', 'tuitionNotes', 'livingCostMin', 'livingCostMax', 'livingCostPeriod', 'livingCostNotes', 'accommodationMin', 'accommodationMax', 'foodCostMin', 'foodCostMax', 'transportCostMin', 'transportCostMax', 'healthInsuranceCost', 'applicationFeeMin', 'applicationFeeMax', 'budgetBand', 'applicableYear'],
+      work: ['partTimeAllowed', 'partTimeHoursPerWeek', 'partTimeHoursDuringBreaks', 'partTimeSummary', 'postStudyWorkAvailable', 'postStudyWorkMinMonths', 'postStudyWorkMaxMonths', 'postStudyWorkSummary', 'immigrationPathwayStrength', 'immigrationPathwaySummary', 'visaSuccessBand', 'visaSuccessPercentage', 'visaInformation', 'visaProcessingTime', 'proofOfFundsSummary'],
+      language: ['ieltsRequirement', 'ieltsMinScore', 'ieltsNotes', 'pteRequirement', 'pteMinScore', 'pteNotes', 'toeflRequirement', 'toeflMinScore', 'toeflNotes', 'duolingoRequirement', 'duolingoMinScore', 'duolingoNotes', 'languageWaiverAvailable', 'waiverNotes', 'generalNotes'],
+      intakes: ['intakes'],
+      statistics: ['universitiesCount', 'publicUniversitiesCount', 'privateUniversitiesCount', 'coursesCount', 'ugCoursesCount', 'pgCoursesCount', 'pgdmCoursesCount', 'mbaCoursesCount', 'phdCoursesCount', 'scholarshipsCount', 'citiesCount', 'topRankedUniversitiesCount', 'internationalStudentsCount', 'studentSatisfactionPercentage', 'sourceMode'],
+    };
+    return { method: 'PUT', path, query: [], body: [...common, ...(profileFields[profile ?? ''] ?? [])] };
+  }
   const [resource, action, id] = operation.split(':');
   if (resource === 'continents') {
     if (action === 'list') return { method: 'GET', path: '/api/v1/admin/continents', query: ['q', 'status', 'sort', 'page', 'limit'], body: [] };

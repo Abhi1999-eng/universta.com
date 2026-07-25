@@ -22,6 +22,13 @@ import type {
   SuggestionsQueryDto,
   UpdateCountryDto,
 } from './dto/country.dto';
+import { PROFILE_INCLUDE } from './profiles/country-profiles.service';
+import {
+  publicProfileSummary,
+  type ProfileBundle,
+  type ProfileStatisticsRecord,
+} from './profiles/profile.mappers';
+import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
 
 const COUNTRY_INCLUDE = {
   continent: {
@@ -30,18 +37,8 @@ const COUNTRY_INCLUDE = {
   flagMedia: {
     select: { publicUrl: true, altText: true, status: true, deletedAt: true },
   },
-  statistics: {
-    select: {
-      universitiesCount: true,
-      ugCoursesCount: true,
-      pgCoursesCount: true,
-      pgdmCoursesCount: true,
-      mbaCoursesCount: true,
-      sourceReference: true,
-      verifiedAt: true,
-    },
-  },
-} as const;
+  ...PROFILE_INCLUDE,
+} satisfies Prisma.CountryInclude;
 
 type CountryRecord = {
   id: string;
@@ -72,16 +69,8 @@ type CountryRecord = {
     status: string;
     deletedAt: Date | null;
   } | null;
-  statistics: {
-    universitiesCount: number;
-    ugCoursesCount: number;
-    pgCoursesCount: number;
-    pgdmCoursesCount: number;
-    mbaCoursesCount: number;
-    sourceReference: string | null;
-    verifiedAt: Date | null;
-  } | null;
-};
+  statistics: ProfileStatisticsRecord | null;
+} & ProfileBundle;
 
 export interface FlagDto {
   url: string;
@@ -99,6 +88,7 @@ export interface CountryPublicDto {
   featured: boolean;
   displayOrder: number;
   statistics: { universitiesCount: number | null } | null;
+  profiles: ReturnType<typeof publicProfileSummary>;
 }
 
 export interface CountryAdminDto extends CountryPublicDto {
@@ -185,13 +175,14 @@ export class CountriesService {
         universitiesCount: isVerifiedStatistics(record.statistics)
           ? (record.statistics?.universitiesCount ?? null)
           : null,
+        profiles: publicProfileSummary(record),
       };
     });
   }
 
   async directory(query: DirectoryQueryDto) {
     const where = {
-      ...this.publicWhere({}),
+      ...this.publicWhere(query),
       ...(query.letter ? { name: { startsWith: query.letter } } : {}),
     };
     const [total, countries] = await Promise.all([
@@ -223,6 +214,7 @@ export class CountriesService {
             : { ug: null, pg: null, pgdm: null, mba: null },
           letter: record.name.slice(0, 1).toUpperCase(),
           isAvailable: true,
+          profiles: publicProfileSummary(record),
         };
       }),
       meta: paginationMeta(query.page, query.limit, total),
@@ -518,7 +510,28 @@ export class CountriesService {
     continent?: string;
     featured?: boolean;
     letter?: string;
+    budgetBand?: string;
+    ieltsOptional?: boolean;
+    intake?: string;
+    visaSuccessBand?: string;
+    pathwayStrength?: string;
+    hasTopRankedUniversities?: boolean;
   }): Prisma.CountryWhereInput {
+    const workProfileFilter: Prisma.CountryWorkProfileWhereInput = {};
+    if (query.visaSuccessBand) {
+      Object.assign(workProfileFilter, {
+        visaSuccessBand: query.visaSuccessBand,
+        sourceReference: { not: null },
+        verifiedAt: { not: null },
+      });
+    }
+    if (query.pathwayStrength) {
+      Object.assign(workProfileFilter, {
+        immigrationPathwayStrength: query.pathwayStrength,
+        sourceReference: { not: null },
+        verifiedAt: { not: null },
+      });
+    }
     return {
       status: 'PUBLISHED',
       deletedAt: null,
@@ -540,6 +553,61 @@ export class CountriesService {
               { name: { contains: query.q } },
               { slug: { contains: query.q } },
             ],
+          }
+        : {}),
+      ...(query.budgetBand
+        ? {
+            costProfile: {
+              is: {
+                budgetBand: query.budgetBand,
+                sourceReference: { not: null },
+                verifiedAt: { not: null },
+              },
+            },
+          }
+        : {}),
+      ...(query.ieltsOptional
+        ? {
+            languageRequirements: {
+              is: {
+                sourceReference: { not: null },
+                verifiedAt: { not: null },
+                OR: [
+                  { ieltsRequirement: 'OPTIONAL' },
+                  { ieltsRequirement: 'NOT_REQUIRED' },
+                  { languageWaiverAvailable: true },
+                ],
+              },
+            },
+          }
+        : {}),
+      ...(query.intake
+        ? {
+            intakes: {
+              some: {
+                availabilityStatus: { in: [...PUBLIC_INTAKE_AVAILABILITY] },
+                intake: {
+                  status: 'ACTIVE',
+                  OR: [{ id: query.intake }, { slug: query.intake }],
+                },
+              },
+            },
+          }
+        : {}),
+      ...(Object.keys(workProfileFilter).length > 0
+        ? { workProfile: { is: workProfileFilter } }
+        : {}),
+      ...(query.hasTopRankedUniversities !== undefined
+        ? {
+            statistics: {
+              is: {
+                sourceReference: { not: null },
+                verifiedAt: { not: null },
+                topRankedUniversitiesCount: query.hasTopRankedUniversities
+                  ? { gt: 0 }
+                  : 0,
+              },
+            },
           }
         : {}),
     };
@@ -744,6 +812,7 @@ export class CountriesService {
               : null,
           }
         : null,
+      profiles: publicProfileSummary(record),
     };
   }
 
