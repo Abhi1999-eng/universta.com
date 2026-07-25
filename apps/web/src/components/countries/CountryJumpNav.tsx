@@ -1,0 +1,5 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+type Item = { id: string; label: string };
+export function CountryJumpNav({ items }: { items: Item[] }) { const [active, setActive] = useState(items[0]?.id ?? ''); useEffect(() => { if (!items.length) return undefined; const observer = new IntersectionObserver((entries) => { const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]; if (visible) setActive(visible.target.id); }, { rootMargin: '-120px 0px -60% 0px', threshold: 0 }); const elements = items.map((item) => document.getElementById(item.id)).filter((element): element is HTMLElement => Boolean(element)); elements.forEach((element) => observer.observe(element)); return () => observer.disconnect(); }, [items]); if (!items.length) return null; return <nav className="detail-tabs" aria-label="On this page"><div className="shell">{items.map((item) => <a key={item.id} className={active === item.id ? 'is-active' : undefined} aria-current={active === item.id ? 'location' : undefined} href={`#${item.id}`}>{item.label}</a>)}</div></nav>; }

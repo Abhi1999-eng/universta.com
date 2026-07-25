@@ -1068,6 +1068,8 @@ export class CountryEditorialService {
       publishedAt: Date | null;
       createdAt?: Date;
       updatedAt?: Date;
+      iconMedia?: SafeMedia | null;
+      featuredMedia?: SafeMedia | null;
     },
     publicOnly = false,
   ) {
@@ -1079,6 +1081,12 @@ export class CountryEditorialService {
       overview: row.overview,
       iconMediaId: row.iconMediaId,
       featuredMediaId: row.featuredMediaId,
+      ...(publicOnly
+        ? {
+            iconMedia: this.media(row.iconMedia),
+            featuredMedia: this.media(row.featuredMedia),
+          }
+        : {}),
       isFreeConsultation: row.isFreeConsultation,
       ctaLabel: row.ctaLabel,
       ctaUrl: row.ctaUrl,
