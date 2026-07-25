@@ -5,6 +5,8 @@ import type {
   CatalogMutationError,
   ContinentRecord,
   CountryRecord,
+  CountryProfileBundle,
+  IntakeOption,
   DirectoryRecord,
   PageMeta,
   SuggestionRecord,
@@ -89,6 +91,22 @@ export function unpublishCountry(id: string, expectedUpdatedAt?: string) {
 
 export function deleteCountry(id: string, expectedUpdatedAt?: string) {
   return request<{ deleted: true }>(`/api/v1/admin/countries/${id}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) });
+}
+
+export function getCountryProfiles(id: string) {
+  return request<CountryProfileBundle>(`/api/v1/admin/countries/${id}/profiles`);
+}
+
+export function listIntakeOptions() {
+  return request<IntakeOption[]>('/api/v1/admin/intakes');
+}
+
+export function putCountryProfile(id: string, profile: 'cost' | 'work' | 'language' | 'intakes' | 'statistics', data: Record<string, unknown>) {
+  return request<Record<string, unknown> | { intakes: Array<Record<string, unknown>> }>(`/api/v1/admin/countries/${id}/profiles/${profile}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export function deleteCountryProfile(id: string, profile: 'cost' | 'work' | 'language' | 'statistics', expectedUpdatedAt?: string) {
+  return request<{ deleted: boolean }>(`/api/v1/admin/countries/${id}/profiles/${profile}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) });
 }
 
 export function getPublicCountry(slug: string) {

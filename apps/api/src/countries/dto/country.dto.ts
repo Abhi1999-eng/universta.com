@@ -23,6 +23,11 @@ import {
   MAX_SUGGESTION_LIMIT,
   SUGGESTION_LIMIT,
 } from '../../catalog/catalog.constants';
+import {
+  BUDGET_BANDS,
+  PATHWAY_STRENGTHS,
+  VISA_SUCCESS_BANDS,
+} from '../profiles/profile.constants';
 
 function trimValue({ value }: TransformFnParams): unknown {
   return typeof value === 'string' ? value.trim() : value;
@@ -165,6 +170,49 @@ export class CountryListQueryDto {
   @IsIn(COUNTRY_STATUSES)
   status?: string;
 
+  @ApiPropertyOptional({ enum: BUDGET_BANDS })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(BUDGET_BANDS)
+  budgetBand?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Only verified countries where IELTS is optional or not required',
+  })
+  @Transform(booleanValue)
+  @IsOptional()
+  @IsBoolean()
+  ieltsOptional?: boolean;
+
+  @ApiPropertyOptional({ description: 'Active intake slug or ID' })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  intake?: string;
+
+  @ApiPropertyOptional({ enum: VISA_SUCCESS_BANDS })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(VISA_SUCCESS_BANDS)
+  visaSuccessBand?: string;
+
+  @ApiPropertyOptional({ enum: PATHWAY_STRENGTHS })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(PATHWAY_STRENGTHS)
+  pathwayStrength?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Match only verified statistics with or without top-ranked universities',
+  })
+  @Transform(booleanValue)
+  @IsOptional()
+  @IsBoolean()
+  hasTopRankedUniversities?: boolean;
+
   @ApiPropertyOptional({ default: DEFAULT_PAGE })
   @Transform(numberValue)
   @IsOptional()
@@ -226,6 +274,38 @@ export class DirectoryQueryDto {
   @Min(1)
   @Max(MAX_LIMIT)
   limit = DEFAULT_LIMIT;
+
+  @ApiPropertyOptional({ enum: BUDGET_BANDS })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(BUDGET_BANDS)
+  budgetBand?: string;
+  @ApiPropertyOptional()
+  @Transform(booleanValue)
+  @IsOptional()
+  @IsBoolean()
+  ieltsOptional?: boolean;
+  @ApiPropertyOptional()
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  intake?: string;
+  @ApiPropertyOptional({ enum: VISA_SUCCESS_BANDS })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(VISA_SUCCESS_BANDS)
+  visaSuccessBand?: string;
+  @ApiPropertyOptional({ enum: PATHWAY_STRENGTHS })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(PATHWAY_STRENGTHS)
+  pathwayStrength?: string;
+  @ApiPropertyOptional()
+  @Transform(booleanValue)
+  @IsOptional()
+  @IsBoolean()
+  hasTopRankedUniversities?: boolean;
 }
 
 export class CountryActionDto {

@@ -48,6 +48,35 @@ export interface CountryRecord {
   publishedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  profiles?: CountryProfileSummary;
+}
+
+export interface CountryProfileSummary {
+  cost: Record<string, unknown> | null;
+  work: Record<string, unknown> | null;
+  language: Record<string, unknown> | null;
+  intakes: Array<Record<string, unknown>>;
+  statistics: Record<string, unknown> | null;
+}
+
+export interface CountryProfileBundle {
+  country: { id: string; name: string; slug: string; status: string; updatedAt: string };
+  cost: Record<string, unknown> | null;
+  work: Record<string, unknown> | null;
+  language: Record<string, unknown> | null;
+  intakes: Array<Record<string, unknown>>;
+  statistics: Record<string, unknown> | null;
+}
+
+export interface IntakeOption {
+  id: string;
+  name: string;
+  slug: string;
+  monthNumber: number | null;
+  seasonName: string | null;
+  shortLabel: string | null;
+  description: string | null;
+  displayOrder: number;
 }
 
 export interface DirectoryRecord {

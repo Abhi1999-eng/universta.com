@@ -9,11 +9,9 @@ optimistic concurrency checks, safe audit events, same-origin Admin BFF routes,
 protected Admin catalog screens, unit tests, API E2E tests, and Chromium browser
 E2E coverage.
 
-Detailed country profile subdomains remain deferred. This task does not add
-costs, work rights, language requirements, intakes, statistics, FAQs, content
-sections, aliases UI, tags UI, course mappings, consultant cards, media
-uploads, SEO, Courses, Leads, CMS, student features, public Countries UI, or
-Single Country frontend UI.
+Detailed country profile subdomains were deferred from TASK_004 and are
+implemented separately in TASK_005. TASK_004 itself does not add profile
+editors or public profile filters.
 
 ## Files changed
 

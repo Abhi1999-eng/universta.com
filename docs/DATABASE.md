@@ -12,7 +12,9 @@ The application database is native MySQL `universta`. `universta_shadow` is used
 - Consultants, leads, communication, and analytics: `consultant_landing_cards`, `leads`, `counselling_bookings`, `lead_notes`, `lead_status_history`, `email_templates`, `email_logs`, `search_logs`.
 - Prisma-managed: `_prisma_migrations`.
 
-The migration creates 49 application tables plus `_prisma_migrations`.
+The migration creates 49 application tables plus `_prisma_migrations`. TASK_005
+uses the existing country profile tables and does not add a schema change or
+migration.
 
 ## Relation overview
 
@@ -29,6 +31,9 @@ All foreign keys are indexed. Many-to-many mappings use explicit models with com
 - Owned child records use explicit cascades only where the child has no independent lifecycle.
 - Audit and history records are preserved.
 - Country, course, work, language, cost, statistics, and metric records carry source and/or verification fields where specified. Unverified seed metrics remain placeholders.
+- Structured country profile seed values are deterministic fictional local
+  development data. Public profile claims require both `source_reference` and
+  `verified_at`; missing or unverified optional facts are not exposed.
 
 ## Important indexes
 
