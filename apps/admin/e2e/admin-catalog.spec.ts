@@ -45,26 +45,29 @@ test.describe.serial('catalog management', () => {
     await page.getByLabel('Short description *').fill('An isolated browser E2E catalog record.');
     await page.getByRole('button', { name: 'Save draft' }).click();
     await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/);
-    await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
+    const publishingStatus = page.getByRole('status', { name: 'Country publishing status' });
+    await expect(publishingStatus).toHaveText('DRAFT');
     await expect(page.getByRole('heading', { name: 'Profile editors' })).toBeVisible();
     await page.getByLabel('Currency code').fill('CAD');
     const costProfile = page.getByRole('group', { name: 'cost' });
     await costProfile.getByLabel('Source URL').fill('https://example.com/browser-profile');
     await costProfile.getByLabel('Verified at').fill('2026-01-01T00:00:00.000Z');
     await costProfile.getByRole('button', { name: 'Save cost' }).click();
-    await expect(page.getByRole('status')).toContainText('cost profile saved.');
+    await expect(page.getByText('cost profile saved.', { exact: true })).toBeVisible();
     const publicDraft = await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`);
     expect(publicDraft.status()).toBe(404);
 
     await page.getByRole('button', { name: 'Publish' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Publish country' }).click();
     await expect(page.getByText('Country published.', { exact: true })).toBeVisible();
+    await expect(publishingStatus).toHaveText('PUBLISHED');
     const publicPublished = await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`);
     expect(publicPublished.status()).toBe(200);
 
     await page.getByRole('button', { name: 'Unpublish' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Unpublish country' }).click();
     await expect(page.getByText('Country unpublished.', { exact: true })).toBeVisible();
+    await expect(publishingStatus).toHaveText('DRAFT');
     expect((await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`)).status()).toBe(404);
 
     await page.goto('/countries');
