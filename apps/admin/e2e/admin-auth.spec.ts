@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { e2eEmail, e2ePassword } from '../playwright.config';
+import { loginAsAdmin } from './helpers/admin-auth';
 
 test('protects the dashboard, restores the session, and logs out', async ({ page, context }) => {
   const consoleErrors: string[] = [];
@@ -79,13 +80,7 @@ test('shows a generic error for invalid credentials', async ({ page }) => {
 
 test('opens and closes the responsive navigation on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(e2eEmail);
-  await page.getByLabel('Password').fill(e2ePassword);
-  await Promise.all([
-    page.waitForURL('**/dashboard'),
-    page.getByRole('button', { name: 'Sign in securely' }).click(),
-  ]);
+  await loginAsAdmin(page);
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await expect(page.getByRole('dialog', { name: 'Admin navigation' })).toBeVisible();
   await page.keyboard.press('Escape');

@@ -1,18 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
-import { e2eEmail, e2ePassword } from '../playwright.config';
+import { expect, test } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { loginAsAdmin } from './helpers/admin-auth';
 
 test.describe.serial('catalog management', () => {
   const suffix = `E2E ${Date.now()}`;
   const continentName = `Browser Region ${suffix}`;
   const countryName = `Browser Country ${suffix}`;
+  const continentCode = `E${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
   let countrySlug = '';
-
-  async function login(page: Page) {
-    await page.goto('/login');
-    await page.getByLabel('Email address').fill(e2eEmail);
-    await page.getByLabel('Password').fill(e2ePassword);
-    await Promise.all([page.waitForURL('**/dashboard'), page.getByRole('button', { name: 'Sign in securely' }).click()]);
-  }
 
   test('requires authentication for Countries', async ({ page }) => {
     await page.goto('/countries');
@@ -20,17 +15,22 @@ test.describe.serial('catalog management', () => {
   });
 
   test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }) => {
-    const codeSeed = `${Date.now()}`
-      .slice(-6)
-      .split('')
-      .map((digit) => String.fromCharCode(65 + Number(digit)))
-      .join('');
-    await login(page);
+    const codeSeed = randomUUID()
+      .replace(/-/g, '')
+      .match(/../g)
+      ?.slice(0, 3)
+      .map((pair) => String.fromCharCode(65 + (Number.parseInt(pair, 16) % 26)))
+      .join('') ?? 'E2E';
+    await loginAsAdmin(page);
     await page.goto('/continents');
+    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/continents$/);
+    await expect(page.getByRole('heading', { name: 'Continents', level: 2 })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create continent' })).toBeVisible();
     await page.getByRole('button', { name: 'Create continent' }).click();
     await page.getByRole('dialog').getByLabel('Name *').fill(continentName);
     await page.getByRole('dialog').getByLabel('Slug *').fill(continentName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-    await page.getByRole('dialog').getByLabel('Code').fill(`E${String(Date.now()).slice(-3)}`);
+    await page.getByRole('dialog').getByLabel('Code').fill(continentCode);
     await page.getByRole('dialog').getByRole('button', { name: 'Save continent' }).click();
     await expect(page.getByText('Continent created.', { exact: true })).toBeVisible();
 
@@ -77,9 +77,11 @@ test.describe.serial('catalog management', () => {
   });
 
   test('keeps mobile country actions accessible', async ({ page }) => {
-    await login(page);
+    await loginAsAdmin(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/countries');
+    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/countries$/);
     await expect(page.getByRole('heading', { name: 'Countries', level: 2 })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Create country' })).toBeVisible();
     await page.getByRole('button', { name: 'Open navigation' }).click();
