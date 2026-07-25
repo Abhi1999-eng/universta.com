@@ -25,4 +25,54 @@ describe('country editorial body policy', () => {
       }),
     ).toThrow(BadRequestException);
   });
+
+  it('supports the complete approved section key set with bounded bodies', () => {
+    const keys = [
+      'hero',
+      'why-study',
+      'universities',
+      'subjects',
+      'intakes',
+      'documents',
+      'cost-of-study',
+      'scholarships',
+      'visa-process',
+      'work-opportunities',
+      'language-requirements',
+      'events',
+      'cities',
+      'life-and-culture',
+      'living-costs',
+      'careers',
+      'application-steps',
+      'guides',
+      'faqs',
+      'consultant-cta',
+      'trust-disclaimer',
+    ];
+    expect(keys).toHaveLength(21);
+    for (const key of keys) {
+      expect(() =>
+        validateEditorialBody('RICH_TEXT', { paragraphs: [key] }),
+      ).not.toThrow();
+    }
+  });
+
+  it('rejects markup, unsafe URLs, and unapproved item fields', () => {
+    expect(() =>
+      validateEditorialBody('RICH_TEXT', {
+        paragraphs: ['<b>not allowed</b>'],
+      }),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      validateEditorialBody('CARD_GRID', {
+        items: [{ title: 'Card', description: 'Text', date: '2026-01-01' }],
+      }),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      validateEditorialBody('CARD_GRID', {
+        items: [{ title: 'Card', ctaUrl: 'javascript:alert(1)' }],
+      }),
+    ).toThrow(BadRequestException);
+  });
 });

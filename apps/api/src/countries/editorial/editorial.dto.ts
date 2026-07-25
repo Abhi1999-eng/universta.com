@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -42,7 +43,8 @@ export class ContentSectionDto extends EditorialVersionDto {
   @IsOptional() @IsString() @MaxLength(36) secondaryMediaId?: string;
   @IsOptional() @IsString() @MaxLength(100) ctaLabel?: string;
   @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @IsString()
+  @Matches(/^(?:\/(?!\/)|#[a-zA-Z0-9_-]+|https:\/\/)/)
   @MaxLength(1000)
   ctaUrl?: string;
   @IsOptional() @IsObject() configurationJson?: Record<string, unknown>;
@@ -99,7 +101,8 @@ export class ConsultantCardDto extends EditorialVersionDto {
   @IsOptional() @IsBoolean() isFreeConsultation?: boolean;
   @IsOptional() @IsString() @MaxLength(100) ctaLabel?: string;
   @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @IsString()
+  @Matches(/^(?:\/(?!\/)|#[a-zA-Z0-9_-]+|https:\/\/)/)
   @MaxLength(1000)
   ctaUrl?: string;
   @IsOptional() @IsIn(EDITORIAL_STATUSES) status?: string;
