@@ -1265,18 +1265,26 @@ export function ApprovedSubjectDetail({ subject }: { subject: SubjectDetail }) {
 
 export function ApprovedSpecializations({ subject }: { subject: SubjectDetail }) {
   const [query, setQuery] = useState('');
+  const resultsRef = useRef<HTMLElement>(null);
   const filtered = subject.subSubjects.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      resultsRef.current?.focus({ preventScroll: true });
+    });
+  }
   return (
     <main className="visual-specializations-page">
       <CatalogHeader active="subjects" />
       <div className="wrap crumbs"><nav aria-label="Breadcrumb"><ol><li><Link href="/">Home</Link></li><li className="sep">/</li><li><Link href="/subjects">Subjects</Link></li><li className="sep">/</li><li><Link href={`/subjects/${subject.slug}`}>{subject.name}</Link></li><li className="sep">/</li><li>Specializations</li></ol></nav></div>
-      <section className="hero"><div className="wrap hero-inner"><span className="parent-pill">{subject.name} · Specializations</span><h1>Explore {subject.name} <span>Specializations</span></h1><p className="lede">Choose from the focused pathways currently published for this subject.</p><div className="search-shell"><div className="search-box"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search specializations..." aria-label="Search specializations" /><button type="button" className="btn btn-primary">Find specializations</button></div></div><div className="hero-stats"><div className="hstat"><span className="num">{subject.publishedSubSubjectCount}</span><span className="lbl">Specializations</span></div><div className="hstat"><span className="num">{subject.availableCountryCount}</span><span className="lbl">Countries</span></div><div className="hstat"><span className="num">{subject.publishedCourseCount}</span><span className="lbl">Courses</span></div></div></div></section>
+      <section className="hero"><div className="wrap hero-inner"><span className="parent-pill">{subject.name} · Specializations</span><h1>Explore {subject.name} <span>Specializations</span></h1><p className="lede">Choose from the focused pathways currently published for this subject.</p><form className="search-shell" onSubmit={submitSearch}><div className="search-box"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search specializations..." aria-label="Search specializations" /><button type="submit" className="btn btn-primary">Find specializations</button></div></form><div className="hero-stats"><div className="hstat"><span className="num">{subject.publishedSubSubjectCount}</span><span className="lbl">Specializations</span></div><div className="hstat"><span className="num">{subject.availableCountryCount}</span><span className="lbl">Countries</span></div><div className="hstat"><span className="num">{subject.publishedCourseCount}</span><span className="lbl">Courses</span></div></div></div></section>
       <div className="wrap layout">
         <div className="main">
           {[
             ['popular', 'Popular specializations'],
             ['all', 'All specializations'],
-          ].map(([id, title]) => <section className="section" id={id} key={id}><div className="section-head"><span className="eyebrow">Published pathways</span><h2>{title}</h2></div><div className="grid g3">{filtered.length ? filtered.map((item) => <article className="card spec-card" id={item.slug} key={`${id}-${item.id}`}><div className="spec-band" /><div className="spec-body"><div className="spec-top"><div className="spec-ic">{item.iconMedia ? <img src={item.iconMedia.url} alt={item.iconMedia.alt ?? ''} /> : <Icon name="code" />}</div><div><h3>{item.name}</h3></div></div><p className="spec-desc">{item.shortDescription ?? item.overview ?? 'Published specialization pathway'}</p><div className="spec-foot"><Link href={`/courses?subSubject=${item.slug}`} className="go">Explore courses <Icon name="arrow" size={14} /></Link></div></div></article>) : <EmptyTemplateState label="No specializations match this search" />}</div></section>)}
+          ].map(([id, title]) => <section className="section" id={id} key={id} ref={id === 'all' ? resultsRef : undefined} tabIndex={id === 'all' ? -1 : undefined}><div className="section-head"><span className="eyebrow">Published pathways</span><h2>{title}</h2></div><div className="grid g3">{filtered.length ? filtered.map((item) => <article className="card spec-card" id={item.slug} key={`${id}-${item.id}`}><div className="spec-band" /><div className="spec-body"><div className="spec-top"><div className="spec-ic">{item.iconMedia ? <img src={item.iconMedia.url} alt={item.iconMedia.alt ?? ''} /> : <Icon name="code" />}</div><div><h3>{item.name}</h3></div></div><p className="spec-desc">{item.shortDescription ?? item.overview ?? 'Published specialization pathway'}</p><div className="spec-foot"><Link href={`/courses?subSubject=${item.slug}`} className="go">Explore courses <Icon name="arrow" size={14} /></Link></div></div></article>) : <EmptyTemplateState label="No specializations match this search" />}</div></section>)}
           {[
             ['categories', 'Browse by category'],
             ['careers', 'Career opportunities'],

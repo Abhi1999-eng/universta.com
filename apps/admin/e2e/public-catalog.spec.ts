@@ -4,7 +4,7 @@ const subjects = 'http://localhost:3000/subjects';
 const courses = 'http://localhost:3000/courses';
 
 test.describe('approved public subject and course discovery', () => {
-  test('renders the approved empty subject catalog with safe discovery paths', async ({ page }) => {
+  test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {
     await page.goto(subjects);
 
     await expect(page.getByRole('heading', { level: 1, name: /Explore Subjects to Study Abroad/i })).toBeVisible();
@@ -12,8 +12,20 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.getByRole('heading', { name: 'Popular subjects' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Browse by subject category' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'All subjects' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'No subjects are currently published' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /Computer Science/i }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Explore courses' }).first()).toBeVisible();
+  });
+
+  test('submits specialization search and focuses the filtered results', async ({ page }) => {
+    await page.goto(`${subjects}/computer-science/specializations`);
+
+    await page.getByRole('textbox', { name: 'Search specializations' }).fill('Cyber');
+    await page.getByRole('button', { name: 'Find specializations' }).click();
+
+    const results = page.locator('#all');
+    await expect(results).toBeFocused();
+    await expect(results.getByRole('heading', { name: 'Cybersecurity' })).toBeVisible();
+    await expect(results.getByRole('heading', { name: 'Artificial Intelligence' })).toHaveCount(0);
   });
 
   test('keeps the subject specialisations route safe when the record is unpublished', async ({ page }) => {
