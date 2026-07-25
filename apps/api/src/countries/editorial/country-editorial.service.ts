@@ -87,6 +87,44 @@ function scalarValues(
   );
 }
 
+function assertSafeCopy(values: Array<string | undefined>): void {
+  if (values.some((value) => value && /<[^>]*>|javascript:|data:/i.test(value)))
+    throw bad(
+      'EDITORIAL_BODY_INVALID',
+      'Editorial copy cannot contain HTML or unsafe URLs',
+    );
+}
+
+function validateEditorialConfiguration(
+  value: Record<string, unknown> | undefined,
+): void {
+  if (value === undefined) return;
+  const allowed = ['anchorLabel', 'hiddenFromNav', 'variant'];
+  if (Object.keys(value).some((key) => !allowed.includes(key)))
+    throw bad(
+      'EDITORIAL_BODY_INVALID',
+      'Section configuration contains unsupported fields',
+    );
+  if (
+    value.anchorLabel !== undefined &&
+    (typeof value.anchorLabel !== 'string' || value.anchorLabel.length > 100)
+  )
+    throw bad('EDITORIAL_BODY_INVALID', 'Section anchor label is invalid');
+  if (
+    value.variant !== undefined &&
+    (typeof value.variant !== 'string' || value.variant.length > 50)
+  )
+    throw bad('EDITORIAL_BODY_INVALID', 'Section variant is invalid');
+  if (
+    value.hiddenFromNav !== undefined &&
+    typeof value.hiddenFromNav !== 'boolean'
+  )
+    throw bad(
+      'EDITORIAL_BODY_INVALID',
+      'Section navigation visibility is invalid',
+    );
+}
+
 export function validateEditorialBody(
   type: string,
   value: Record<string, unknown> | undefined,
@@ -113,23 +151,75 @@ export function validateEditorialBody(
     (!Array.isArray(value.paragraphs) ||
       value.paragraphs.length > 12 ||
       value.paragraphs.some(
-        (item) => typeof item !== 'string' || item.length > 2000,
+        (item) =>
+          typeof item !== 'string' ||
+          item.length > 2000 ||
+          /<[^>]*>|javascript:|data:/i.test(item),
       ))
   )
     throw bad(
       'EDITORIAL_BODY_INVALID',
       'Rich text paragraphs are invalid or too long',
     );
-  if (
-    ['FACT_GRID', 'CARD_GRID', 'STEPS'].includes(type) &&
-    (!Array.isArray(value.items) ||
+  if (['FACT_GRID', 'CARD_GRID', 'STEPS'].includes(type)) {
+    if (
+      !Array.isArray(value.items) ||
       value.items.length > 12 ||
-      value.items.some((item) => !item || typeof item !== 'object'))
+      value.items.some(
+        (item) => !item || typeof item !== 'object' || Array.isArray(item),
+      )
+    )
+      throw bad(
+        'EDITORIAL_BODY_INVALID',
+        'Section items are invalid or too many',
+      );
+
+    const itemKeys: Record<string, string[]> = {
+      FACT_GRID: ['label', 'value'],
+      CARD_GRID: ['title', 'description', 'ctaLabel', 'ctaUrl'],
+      STEPS: ['step', 'title', 'description'],
+    };
+    for (const item of value.items) {
+      const record = item as Record<string, unknown>;
+      if (Object.keys(record).some((key) => !itemKeys[type].includes(key)))
+        throw bad(
+          'EDITORIAL_BODY_INVALID',
+          'Section item contains unsupported fields',
+        );
+      for (const [key, itemValue] of Object.entries(record)) {
+        if (
+          typeof itemValue !== 'string' ||
+          itemValue.length > 2000 ||
+          /<[^>]*>|javascript:|data:/i.test(itemValue)
+        )
+          throw bad('EDITORIAL_BODY_INVALID', `Section item ${key} is invalid`);
+        if (
+          key === 'ctaUrl' &&
+          !/^\/(?!\/)|^#[a-zA-Z0-9_-]+$|^https:\/\//.test(itemValue)
+        )
+          throw bad(
+            'EDITORIAL_BODY_INVALID',
+            'Section item CTA URL is invalid',
+          );
+      }
+    }
+  }
+  if (
+    type === 'CTA' &&
+    value.supportingText !== undefined &&
+    (typeof value.supportingText !== 'string' ||
+      value.supportingText.length > 2000 ||
+      /<[^>]*>|javascript:|data:/i.test(value.supportingText))
   )
-    throw bad(
-      'EDITORIAL_BODY_INVALID',
-      'Section items are invalid or too many',
-    );
+    throw bad('EDITORIAL_BODY_INVALID', 'CTA supporting text is invalid');
+  if (
+    type === 'MEDIA' &&
+    value.caption !== undefined &&
+    (typeof value.caption !== 'string' ||
+      value.caption.length > 1000 ||
+      /<[^>]*>|javascript:|data:/i.test(value.caption))
+  )
+    throw bad('EDITORIAL_BODY_INVALID', 'Media caption is invalid');
 }
 
 @Injectable()
@@ -246,6 +336,8 @@ export class CountryEditorialService {
     const userId = actorId(request);
     await this.country(countryId);
     validateEditorialBody(dto.sectionType, dto.bodyJson);
+    validateEditorialConfiguration(dto.configurationJson);
+    assertSafeCopy([dto.eyebrow, dto.heading, dto.subheading, dto.ctaLabel]);
     await this.mediaIds([dto.primaryMediaId, dto.secondaryMediaId]);
     const row = await this.prisma.countryContentSection.create({
       data: {
@@ -301,6 +393,8 @@ export class CountryEditorialService {
       'COUNTRY_CONTENT_SECTION_STALE_VERSION',
     );
     validateEditorialBody(dto.sectionType, dto.bodyJson);
+    validateEditorialConfiguration(dto.configurationJson);
+    assertSafeCopy([dto.eyebrow, dto.heading, dto.subheading, dto.ctaLabel]);
     await this.mediaIds([dto.primaryMediaId, dto.secondaryMediaId]);
     const row = await this.prisma.countryContentSection.update({
       where: { id },
@@ -377,6 +471,7 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     await this.country(countryId);
+    assertSafeCopy([dto.question, dto.answer, dto.category]);
     const row = await this.prisma.countryFaq.create({
       data: {
         countryId,
@@ -412,6 +507,7 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     const current = await this.faqRecord(countryId, id);
+    assertSafeCopy([dto.question, dto.answer, dto.category]);
     this.version(
       current.updatedAt,
       dto.expectedUpdatedAt,
@@ -486,6 +582,15 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     await this.country(countryId);
+    assertSafeCopy([
+      dto.seoTitle,
+      dto.metaDescription,
+      dto.focusKeyword,
+      dto.ogTitle,
+      dto.ogDescription,
+      dto.twitterTitle,
+      dto.twitterDescription,
+    ]);
     const current = await this.prisma.seoMetadata.findUnique({
       where: {
         ownerType_ownerId: { ownerType: SEO_OWNER_TYPE, ownerId: countryId },
@@ -598,6 +703,13 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     await this.country(countryId);
+    assertSafeCopy([
+      dto.title,
+      dto.slug,
+      dto.shortDescription,
+      dto.overview,
+      dto.ctaLabel,
+    ]);
     await this.mediaIds([dto.iconMediaId, dto.featuredMediaId]);
     const row = await this.prisma.consultantLandingCard.create({
       data: {
@@ -639,6 +751,13 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     const current = await this.cardRecord(countryId, id);
+    assertSafeCopy([
+      dto.title,
+      dto.slug,
+      dto.shortDescription,
+      dto.overview,
+      dto.ctaLabel,
+    ]);
     this.version(
       current.updatedAt,
       dto.expectedUpdatedAt,
