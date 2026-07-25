@@ -18,6 +18,12 @@ import { CommonModule } from '../common/common.module';
     RolesGuard,
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
-  exports: [AuthService, PasswordService, AccessTokenGuard, RolesGuard],
+  exports: [
+    AuthService,
+    PasswordService,
+    AccessTokenGuard,
+    RolesGuard,
+    JwtModule,
+  ],
 })
 export class AuthModule {}

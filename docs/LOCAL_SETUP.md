@@ -106,11 +106,21 @@ the running NestJS API.
 Swagger is available at `http://localhost:4000/api/docs` when enabled, with the
 OpenAPI JSON document at `http://localhost:4000/api/docs-json`.
 
-Run API unit and E2E foundation tests with:
+Run API unit and catalog E2E tests with:
 
 ```bash
 npm --workspace apps/api run test
 npm --workspace apps/api run test:e2e
+```
+
+The catalog E2E suite requires the local seeded Super Admin environment and
+uses isolated, soft-deleted records:
+
+```bash
+set -a
+. apps/api/.env
+set +a
+npm --workspace apps/api run test:e2e -- --runInBand
 ```
 
 Run the admin unit tests and real Chromium browser E2E tests with:
@@ -134,8 +144,13 @@ npm run dev:api
 curl -i http://localhost:4000/health
 ```
 
-Business endpoints and CRUD modules remain deferred. TASK_003 provides the
-admin login, same-origin authentication BFF, and protected shell.
+The catalog core is available at `/api/v1/continents` and the core country
+read endpoints under `/api/v1/countries`. Super Admin catalog screens are
+available at `http://localhost:3001/continents` and
+`http://localhost:3001/countries` after login. Detailed country subdomains,
+public catalog screens, Courses, Leads, CMS, and other business modules remain
+deferred. TASK_003 provides the admin login, same-origin authentication BFF,
+and protected shell.
 
 Open Prisma Studio:
 

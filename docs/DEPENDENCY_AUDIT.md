@@ -26,8 +26,9 @@ not appear in any finding.
 | `next` | High | direct in `apps/web` and `apps/admin` | Framework dependency | Requires a controlled compatible Next upgrade review |
 | `valibot` / GHSA-5qjj-4xww-7phc | Moderate | transitive via `@prisma/dev` | Development/migration tooling | Not forced; review with Prisma upgrade |
 
-The audit was rerun after adding the TASK_001, TASK_002, and TASK_003
-dependencies. The direct `@nestjs/swagger` path remains pinned to 11.4.5,
+The audit was rerun for TASK_004 after the TASK_001, TASK_002, and TASK_003
+dependency additions. TASK_004 adds no package dependencies. The direct
+`@nestjs/swagger` path remains pinned to 11.4.5,
 which uses the clean `js-yaml` 4.3.0 path; the newly introduced admin
 testing/BFF dependencies do not add an advisory. The remaining findings are
 existing framework/Prisma dependency paths or their refreshed transitive graph.

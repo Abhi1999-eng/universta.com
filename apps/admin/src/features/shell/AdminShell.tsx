@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 
-const plannedItems = ['Countries', 'Courses', 'Leads', 'Content', 'Media', 'SEO', 'Settings'];
+const plannedItems = ['Courses', 'Leads', 'Content', 'Media', 'SEO', 'Settings'];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const pageTitle = pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : 'Dashboard';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -123,7 +124,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </button>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#828B9B]">Admin workspace</p>
-              <h1 className="mt-1 text-lg font-semibold tracking-[-0.02em]">Dashboard</h1>
+              <h1 className="mt-1 text-lg font-semibold tracking-[-0.02em]">{pageTitle}</h1>
             </div>
           </div>
           <div className="hidden items-center gap-3 sm:flex">
@@ -190,6 +191,26 @@ function Navigation({
         <GridIcon />
         Dashboard
       </Link>
+      <div className="mt-2 space-y-1">
+        <Link
+          href="/continents"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/continents') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/continents') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">R</span>
+          Continents
+        </Link>
+        <Link
+          href="/countries"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/countries') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/countries') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">C</span>
+          Countries
+        </Link>
+      </div>
       <div className="mt-8">
         <p className={`px-3 text-[10px] font-bold uppercase tracking-[0.18em] ${dark ? 'text-white/35' : 'text-[#A0A8B6]'}`}>
           Planned modules

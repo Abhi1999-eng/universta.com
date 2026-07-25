@@ -1,6 +1,8 @@
 # Backend module plan
 
-Planning only. These modules are boundaries for the NestJS modular monolith; they are not separate services and are not implemented by this task.
+These modules are boundaries for the NestJS modular monolith; they are not
+separate services. TASK_004 implements the continents and core countries
+catalog rows described below. Other modules remain planning boundaries.
 
 | Module | Responsibility | Owned tables | Public endpoints | Admin endpoints | Validation/permissions/audit/dependencies |
 | --- | --- | --- | --- | --- | --- |
@@ -15,8 +17,8 @@ Planning only. These modules are boundaries for the NestJS modular monolith; the
 | pages | CMS pages and sections | `pages`, `page_sections` | published page reads later | page/section CRUD | slug/status/publish validation, editor permission, content audit; media/users |
 | navigation | Menus and menu tree | `navigation_menus`, `navigation_items` | published navigation later | menu/item CRUD | tree/ordering/link validation, editor permission, audit; pages/media |
 | seo | Metadata and redirects | `seo_metadata`, `redirects` | metadata/redirect reads | SEO CRUD | canonical/robots/path validation, editor permission, audit; pages/countries/courses |
-| continents | Region catalog | `continents` | `GET /api/v1/continents` | continent CRUD | slug/name/status validation, catalog permission, audit; media/users |
-| countries | Country listing/detail/search data | country tables: `countries`, aliases, profiles, intakes, stats, sections, FAQs, tags/maps | `GET /api/v1/countries`, suggestions, directory, `/:slug` | country and child content CRUD | source/verification/status/soft-delete rules, catalog permission, audit; continents/media/intakes/courses |
+| continents | Region catalog | `continents` | `GET /api/v1/continents` | `GET|POST /api/v1/admin/continents`, `GET|PATCH|DELETE /api/v1/admin/continents/:id` | trimmed name/slug/code, bounded query, active visibility, Super Admin permission, soft-delete/in-use rule, audit; users |
+| countries | Core country listing/detail/search data | `countries` core row only in TASK_004; detailed child tables remain deferred | `GET /api/v1/countries`, `/suggestions`, `/directory`, `/:slug` | `GET|POST /api/v1/admin/countries`, `GET|PATCH|DELETE /api/v1/admin/countries/:id`, publish/unpublish | core DTO validation, ISO normalization, readiness/status/soft-delete/stale-write rules, Super Admin permission, audit; continents/media |
 | subjects | Subject catalog | `subjects`, `sub_subjects` | future subject reads | subject/sub-subject CRUD | slug/content validation, catalog permission, soft delete, audit; media/users |
 | course-levels | Level catalog | `course_levels` | filter data later | level CRUD | code/order validation, catalog permission, audit |
 | study-modes | Mode catalog | `study_modes` | filter data later | mode CRUD | code/order validation, catalog permission, audit |
