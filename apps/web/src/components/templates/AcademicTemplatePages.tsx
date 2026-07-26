@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -229,8 +230,11 @@ export function ApprovedSubjectsListing({
   const [searchQuery, setSearchQuery] = useState(query);
   const [suggestions, setSuggestions] = useState<Subject[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const submittedQuery = searchParams.get('q') ?? '';
+  const submittedQueryRef = useRef(submittedQuery);
+  const suggestionRequestRef = useRef(0);
   const orderedSubjects = useMemo(
     () => [
       ...subjects.filter((subject) => subject.featured),
@@ -257,36 +261,47 @@ export function ApprovedSubjectsListing({
   const featuredCount = subjects.filter((subject) => subject.featured).length;
 
   useEffect(() => {
+    if (submittedQueryRef.current === submittedQuery) return;
+    submittedQueryRef.current = submittedQuery;
     const timer = window.setTimeout(() => setSearchQuery(submittedQuery), 0);
     return () => window.clearTimeout(timer);
   }, [submittedQuery]);
 
   useEffect(() => {
+    const requestId = suggestionRequestRef.current + 1;
+    suggestionRequestRef.current = requestId;
     const controller = new AbortController();
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery.length < 2 || trimmedQuery === submittedQuery) {
+      return () => controller.abort();
+    }
+
     const timer = window.setTimeout(() => {
-      if (
-        searchQuery.trim().length < 2 ||
-        searchQuery.trim() === submittedQuery
-      ) {
-        setSuggestions([]);
-        setSuggestionsOpen(false);
-        return;
-      }
       void fetch(
-        `/api/subjects/suggestions?q=${encodeURIComponent(searchQuery.trim())}`,
+        `/api/subjects/suggestions?q=${encodeURIComponent(trimmedQuery)}`,
         { signal: controller.signal },
       )
-        .then((response) => response.json() as Promise<{ data?: Subject[] }>)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Subject suggestions are unavailable.');
+          }
+          return response.json() as Promise<{ data?: Subject[] }>;
+        })
         .then((body) => {
+          if (requestId !== suggestionRequestRef.current) return;
           setSuggestions(body.data ?? []);
           setActiveSuggestion(-1);
+          setSuggestionsLoading(false);
           setSuggestionsOpen(true);
         })
         .catch((error: unknown) => {
-          if ((error as { name?: string }).name !== 'AbortError') {
-            setSuggestions([]);
-            setSuggestionsOpen(false);
-          }
+          if (
+            requestId !== suggestionRequestRef.current ||
+            (error as { name?: string }).name === 'AbortError'
+          ) return;
+          setSuggestions([]);
+          setSuggestionsLoading(false);
+          setSuggestionsOpen(true);
         });
     }, 180);
     return () => {
@@ -305,9 +320,26 @@ export function ApprovedSubjectsListing({
     return () => document.removeEventListener('mousedown', closeSuggestions);
   }, []);
 
+  function handleSubjectQueryChange(next: string) {
+    const trimmedQuery = next.trim();
+    setSearchQuery(next);
+    setSuggestions([]);
+    setActiveSuggestion(-1);
+    if (trimmedQuery.length >= 2 && trimmedQuery !== submittedQuery) {
+      setSuggestionsLoading(true);
+      setSuggestionsOpen(true);
+    } else {
+      setSuggestionsLoading(false);
+      setSuggestionsOpen(false);
+    }
+  }
+
   function submitSubjectSearch(value: string) {
     const next = value.trim();
     setSearchQuery(next);
+    suggestionRequestRef.current += 1;
+    setSuggestions([]);
+    setSuggestionsLoading(false);
     setSuggestionsOpen(false);
     const params = new URLSearchParams(searchParams.toString());
     if (next) params.set('q', next);
@@ -407,7 +439,9 @@ export function ApprovedSubjectsListing({
                       ? `subject-suggestion-${suggestions[activeSuggestion].id}`
                       : undefined
                   }
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) =>
+                    handleSubjectQueryChange(event.target.value)
+                  }
                   onKeyDown={handleSubjectSearchKeyDown}
                 />
                 <button className="btn btn-primary" type="submit">
@@ -420,20 +454,27 @@ export function ApprovedSubjectsListing({
                 className="suggest open"
                 id="subject-suggestions"
                 role="listbox"
+                aria-busy={suggestionsLoading}
               >
-                {suggestions.length ? (
+                {suggestionsLoading ? (
+                  <li className="suggest-group-label" role="status">
+                    Loading subjects…
+                  </li>
+                ) : suggestions.length ? (
                   suggestions.map((suggestion, index) => (
                     <li
                       className={`suggest-item${
                         index === activeSuggestion ? ' hl' : ''
                       }`}
-                      id={`subject-suggestion-${suggestion.id}`}
-                      role="option"
-                      aria-selected={index === activeSuggestion}
+                      role="presentation"
                       key={suggestion.id}
                     >
                       <button
                         type="button"
+                        id={`subject-suggestion-${suggestion.id}`}
+                        role="option"
+                        aria-label={suggestion.name}
+                        aria-selected={index === activeSuggestion}
                         onMouseEnter={() => setActiveSuggestion(index)}
                         onClick={() => submitSubjectSearch(suggestion.name)}
                       >
@@ -1200,9 +1241,9 @@ export function ApprovedSpecializations({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const submittedQuery = searchParams.get('q') ?? '';
-  const [query, setQuery] = useState(submittedQuery);
   const resultsRef = useRef<HTMLElement>(null);
-  const normalizedQuery = query.trim().toLowerCase();
+  const focusResultsAfterNavigationRef = useRef(false);
+  const normalizedQuery = submittedQuery.trim().toLowerCase();
   const filtered = subject.subSubjects.filter((item) => {
     const searchable = [
       item.name,
@@ -1221,28 +1262,44 @@ export function ApprovedSpecializations({
     from: `/subjects/${subject.slug}/specializations`,
   });
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(submittedQuery), 0);
-    return () => window.clearTimeout(timer);
-  }, [submittedQuery]);
+  const focusResults = useCallback(() => {
+    resultsRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+    resultsRef.current?.focus({ preventScroll: true });
+  }, []);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = query.trim();
+  function navigateSearch(nextValue: string) {
+    const next = nextValue.trim();
     const params = new URLSearchParams(searchParams.toString());
     if (next) params.set('q', next);
     else params.delete('q');
+    params.delete('page');
     const queryString = params.toString();
-    router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, {
+    const destination = `${pathname}${queryString ? `?${queryString}` : ''}`;
+    focusResultsAfterNavigationRef.current = true;
+    if (destination === `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`) {
+      window.requestAnimationFrame(focusResults);
+      focusResultsAfterNavigationRef.current = false;
+      return;
+    }
+    router.push(destination, {
       scroll: false,
     });
-    window.requestAnimationFrame(() => {
-      resultsRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-      resultsRef.current?.focus({ preventScroll: true });
-    });
+  }
+
+  useEffect(() => {
+    if (!focusResultsAfterNavigationRef.current) return;
+    focusResultsAfterNavigationRef.current = false;
+    const frame = window.requestAnimationFrame(focusResults);
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusResults, submittedQuery]);
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = new FormData(event.currentTarget).get('q');
+    navigateSearch(typeof value === 'string' ? value : '');
   }
 
   return (
@@ -1289,8 +1346,9 @@ export function ApprovedSpecializations({
             <div className="search-box">
               <AcademicIcon name="search" />
               <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                defaultValue={submittedQuery}
+                key={submittedQuery}
+                name="q"
                 placeholder="Search specializations..."
                 aria-label="Search specializations"
               />
@@ -1392,17 +1450,14 @@ export function ApprovedSpecializations({
               <h2>All specializations</h2>
               <p className="sub">
                 {normalizedQuery
-                  ? `${filtered.length} result${filtered.length === 1 ? '' : 's'} for “${query.trim()}”.`
+                  ? `${filtered.length} result${filtered.length === 1 ? '' : 's'} for “${submittedQuery.trim()}”.`
                   : `${filtered.length} published specialization${filtered.length === 1 ? '' : 's'}.`}
               </p>
               {normalizedQuery ? (
                 <button
                   type="button"
                   className="link-more specialization-clear-search"
-                  onClick={() => {
-                    setQuery('');
-                    router.push(pathname, { scroll: false });
-                  }}
+                  onClick={() => navigateSearch('')}
                 >
                   Clear search
                 </button>

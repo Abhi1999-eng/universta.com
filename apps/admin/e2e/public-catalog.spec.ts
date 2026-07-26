@@ -1,8 +1,36 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { webBaseUrl } from './helpers/e2e-urls';
 
 const subjects = `${webBaseUrl}/subjects`;
 const courses = `${webBaseUrl}/courses`;
+
+function observePageHealth(page: Page) {
+  const consoleErrors: string[] = [];
+  const failedRequests: string[] = [];
+
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => consoleErrors.push(error.message));
+  page.on('requestfailed', (request) => {
+    const target = new URL(request.url());
+    const failure = request.failure()?.errorText ?? 'unknown failure';
+    const expectedNavigationCancellation =
+      target.searchParams.has('_rsc') &&
+      request.resourceType() === 'fetch' &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    if (!expectedNavigationCancellation) {
+      failedRequests.push(`${request.method()} ${request.url()} (${failure})`);
+    }
+  });
+
+  return () => {
+    expect(consoleErrors, 'unexpected browser console or hydration errors').toEqual(
+      [],
+    );
+    expect(failedRequests, 'unexpected failed browser requests').toEqual([]);
+  };
+}
 
 test.describe('approved public subject and course discovery', () => {
   test('redirects the unfinished root route to approved country discovery', async ({ page }) => {
@@ -39,20 +67,34 @@ test.describe('approved public subject and course discovery', () => {
   });
 
   test('offers API-backed subject suggestions with keyboard selection', async ({ page }) => {
+    const assertHealthyPage = observePageHealth(page);
     await page.goto(subjects);
     const search = page.getByRole('combobox', { name: 'Search subjects' });
+    const suggestionResponse = page.waitForResponse((response) => {
+      const target = new URL(response.url());
+      return (
+        target.pathname === '/api/subjects/suggestions' &&
+        target.searchParams.get('q') === 'comp'
+      );
+    });
 
     await search.fill('comp');
-    await expect(page.getByRole('option', { name: /Computer Science/ })).toBeVisible();
+    expect((await suggestionResponse).status()).toBe(200);
+    await expect(
+      page.getByRole('option', { name: 'Computer Science', exact: true }),
+    ).toBeVisible();
+    await expect(search).toHaveAttribute('aria-expanded', 'true');
     await search.press('ArrowDown');
     await search.press('Enter');
 
     await expect(page).toHaveURL(/q=Computer\+Science/);
     await expect(search).toHaveValue('Computer Science');
     await expect(page.locator('#popular a.subj-card')).toHaveCount(1);
+    assertHealthyPage();
   });
 
   test('submits specialization search and focuses the filtered results', async ({ page }) => {
+    const assertHealthyPage = observePageHealth(page);
     await page.goto(`${subjects}/computer-science/specializations`);
 
     await page.getByRole('textbox', { name: 'Search specializations' }).fill('Cyber');
@@ -70,14 +112,17 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page).toHaveURL(/subSubject=cybersecurity/);
     await expect(page.getByRole('checkbox', { name: /Computer Science/ })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: /Cybersecurity/ })).toBeChecked();
+    assertHealthyPage();
   });
 
   test('restores specialization search with refresh, back, and clear', async ({ page }) => {
+    const assertHealthyPage = observePageHealth(page);
     const route = `${subjects}/computer-science/specializations`;
-    await page.goto(route);
+    await page.goto(`${route}?page=3`);
     await page.getByRole('textbox', { name: 'Search specializations' }).fill('data');
     await page.getByRole('button', { name: 'Find specializations' }).click();
     await expect(page).toHaveURL(/q=data/);
+    expect(new URL(page.url()).searchParams.has('page')).toBe(false);
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Search specializations' })).toHaveValue('data');
     await expect(
@@ -89,6 +134,10 @@ test.describe('approved public subject and course discovery', () => {
     await page.goBack();
     await expect(page).toHaveURL(/q=data/);
     await expect(page.getByRole('textbox', { name: 'Search specializations' })).toHaveValue('data');
+    await page.goForward();
+    await expect(page).toHaveURL(route);
+    await expect(page.getByRole('textbox', { name: 'Search specializations' })).toHaveValue('');
+    assertHealthyPage();
   });
 
   test('keeps the subject specialisations route safe when the record is unpublished', async ({ page }) => {
@@ -188,6 +237,7 @@ test.describe('approved public subject and course discovery', () => {
   });
 
   test('enables destination-currency tuition inputs and pagination', async ({ page }) => {
+    const assertHealthyPage = observePageHealth(page);
     await page.goto(`${courses}?country=canada&pageSize=3`);
 
     await expect(page.getByText(/Amounts in CAD/)).toBeVisible();
@@ -197,9 +247,47 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page).toHaveURL(/minTuition=1000/);
     await expect(page).toHaveURL(/maxTuition=999999/);
 
-    await page.getByRole('button', { name: 'Next' }).click();
+    const pagination = page.getByRole('navigation', {
+      name: 'Course results pagination',
+    });
+    await expect(pagination).toHaveCount(1);
+    await expect(
+      pagination.getByRole('button', {
+        name: 'Previous results page',
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await expect(
+      pagination.getByText('Page 1 of 2', { exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    await pagination
+      .getByRole('button', { name: 'Next results page', exact: true })
+      .click();
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByText('Page 2 of 2', { exact: true })).toBeVisible();
+    expect(new URL(page.url()).searchParams.get('country')).toBe('canada');
+    expect(new URL(page.url()).searchParams.get('minTuition')).toBe('1000');
+    await expect(
+      pagination.getByText('Page 2 of 2', { exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    await expect(
+      pagination.getByRole('button', {
+        name: 'Previous results page',
+        exact: true,
+      }),
+    ).toBeEnabled();
+    await expect(
+      pagination.getByRole('button', {
+        name: 'Next results page',
+        exact: true,
+      }),
+    ).toBeDisabled();
+
+    await page.getByLabel('Maximum').fill('2000000');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has('page'))
+      .toBe(false);
+    assertHealthyPage();
   });
 
   test('opens the approved course filter drawer on mobile and applies a URL filter', async ({ page }) => {

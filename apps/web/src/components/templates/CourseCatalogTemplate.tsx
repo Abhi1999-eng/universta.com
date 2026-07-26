@@ -1059,10 +1059,11 @@ export function ApprovedCoursesListing({
             {meta.totalPages > 1 || meta.page > 1 ? (
               <nav
                 className="template-pagination"
-                aria-label="Course results pages"
+                aria-label="Course results pagination"
               >
                 <button
                   type="button"
+                  aria-label="Previous results page"
                   disabled={meta.page <= 1}
                   onClick={() =>
                     navigate({ page: String(meta.page - 1) }, true)
@@ -1070,11 +1071,12 @@ export function ApprovedCoursesListing({
                 >
                   Previous
                 </button>
-                <span>
+                <span aria-current="page">
                   Page {meta.page} of {meta.totalPages}
                 </span>
                 <button
                   type="button"
+                  aria-label="Next results page"
                   disabled={meta.page >= meta.totalPages}
                   onClick={() =>
                     navigate({ page: String(meta.page + 1) }, true)
