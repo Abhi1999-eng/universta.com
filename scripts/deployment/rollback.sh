@@ -24,6 +24,9 @@ case "${target}" in
   *) fail "Rollback target is outside the release directory." ;;
 esac
 [[ -f "${target}/.release-ready" ]] || fail "Rollback target is not a ready release."
+target_sha="$(basename "${target}")"
+release_was_successful "${target_sha}" ||
+  fail "Rollback target has no successful deployment record."
 
 exec 9>"${UNIVERSTA_ROOT}/shared/deploy/deploy.lock"
 flock -n 9 || fail "Another deployment or rollback is already running."
@@ -41,7 +44,7 @@ if ! "${target}/scripts/deployment/health-check.sh"; then
 fi
 
 atomic_symlink "${current}" "${UNIVERSTA_ROOT}/previous"
-rolled_back_sha="$(basename "${target}")"
+rolled_back_sha="${target_sha}"
 printf '%s|%s|rollback\n' "$(date -u +%FT%TZ)" "${rolled_back_sha}" \
   >> "${UNIVERSTA_ROOT}/shared/deployment-history.log"
 

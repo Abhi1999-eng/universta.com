@@ -114,8 +114,12 @@ set +a
 "${SCRIPT_DIR}/configure-host.sh"
 
 old_current=""
+old_current_was_successful=false
 if [[ -L "${UNIVERSTA_ROOT}/current" ]]; then
   old_current="$(readlink -f "${UNIVERSTA_ROOT}/current")"
+  if release_was_successful "$(basename "${old_current}")"; then
+    old_current_was_successful=true
+  fi
 fi
 
 atomic_symlink "${release}" "${UNIVERSTA_ROOT}/current"
@@ -125,16 +129,18 @@ systemctl restart universta-web universta-admin
 systemctl reload nginx
 
 if ! "${SCRIPT_DIR}/health-check.sh"; then
-  if [[ -n "${old_current}" && -d "${old_current}" ]]; then
+  if [[ "${old_current_was_successful}" == "true" && -d "${old_current}" ]]; then
     log "Health failed; restoring previous application release."
     atomic_symlink "${old_current}" "${UNIVERSTA_ROOT}/current"
     systemctl restart "${UNIVERSTA_SERVICES[@]}"
     "${old_current}/scripts/deployment/health-check.sh" || true
+  else
+    log "Health failed and no previously successful release is available."
   fi
   fail "Deployment health checks failed for ${sha}."
 fi
 
-if [[ -n "${old_current}" && "${old_current}" != "${release}" ]]; then
+if [[ "${old_current_was_successful}" == "true" && "${old_current}" != "${release}" ]]; then
   atomic_symlink "${old_current}" "${UNIVERSTA_ROOT}/previous"
 fi
 
