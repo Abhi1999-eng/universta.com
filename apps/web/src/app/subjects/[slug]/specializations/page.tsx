@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSubject } from '@/lib/catalog';
-import { ApprovedSpecializations } from '@/components/templates/ApprovedTemplatePages';
+import { ApprovedSpecializations } from '@/components/templates/AcademicTemplatePages';
 
 type Props = { params: Promise<{ slug: string }> };
 async function load(slug: string) { try { return await getSubject(slug); } catch { return null; } }

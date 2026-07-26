@@ -12,7 +12,15 @@ test('protects the dashboard, restores the session, and logs out', async ({ page
     }
   });
   page.on('requestfailed', (request) => {
-    failedRequests.push(request.url());
+    const target = new URL(request.url());
+    const failure = request.failure()?.errorText ?? 'unknown failure';
+    const isExpectedNavigationCancellation =
+      target.searchParams.has('_rsc') &&
+      request.resourceType() === 'fetch' &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    if (!isExpectedNavigationCancellation) {
+      failedRequests.push(`${request.url()} (${failure})`);
+    }
   });
   page.on('response', (response) => {
     if (new URL(response.url()).pathname.includes('/api/v1/admin/auth/')) {

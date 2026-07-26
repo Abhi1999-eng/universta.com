@@ -17,6 +17,7 @@ import {
 import { writeAudit } from '../catalog/catalog.audit';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type {
+  AdminCourseListQueryDto,
   CreateContentSectionDto,
   CreateCountryCourseDto,
   CreateCourseDto,
@@ -31,6 +32,7 @@ import type {
   UpdateCourseDto,
   UpdateFaqDto,
 } from './dto/course.dto';
+import { COURSE_ENGLISH_TESTS } from './dto/course.dto';
 import type { SeoMetadataDto } from '../subjects/dto/subject.dto';
 
 const MEDIA_SELECT = {
@@ -173,28 +175,28 @@ export class CoursesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async publicList(query: CourseListQueryDto) {
-    if ((query.minTuition || query.maxTuition) && !query.country)
-      throw catalogBadRequest(
-        'COURSE_TUITION_COUNTRY_REQUIRED',
-        'Tuition filters require a country',
-      );
+    await this.validatePublicQuery(query);
+    const pageSize = query.pageSize ?? query.limit;
     const where = this.publicWhere(query);
     const include = this.publicInclude(query.country);
+    if (query.sort === 'tuition-low') {
+      return this.publicTuitionSortedList(query, where, include, pageSize);
+    }
     const [total, rows] = await Promise.all([
       this.prisma.course.count({ where }),
       this.prisma.course.findMany({
         where,
         include,
         orderBy: this.publicOrderBy(query.sort),
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
+        skip: (query.page - 1) * pageSize,
+        take: pageSize,
       }),
     ]);
     return {
       data: rows.map((row) =>
         this.toPublicList(row as PublicCourse, query.country),
       ),
-      meta: paginationMeta(query.page, query.limit, total),
+      meta: paginationMeta(query.page, pageSize, total),
     };
   }
 
@@ -222,6 +224,260 @@ export class CoursesService {
     }));
   }
 
+  async publicFilterOptions(query: CourseListQueryDto) {
+    await this.validatePublicQuery(query);
+    const [levels, countries, subjects, subSubjects, studyModes, intakes] =
+      await Promise.all([
+        this.prisma.courseLevel.findMany({
+          where: { status: 'ACTIVE' },
+          select: { id: true, code: true, name: true },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        }),
+        this.prisma.country.findMany({
+          where: { status: 'PUBLISHED', deletedAt: null },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            currencyCode: true,
+          },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        }),
+        this.prisma.subject.findMany({
+          where: { status: 'PUBLISHED', deletedAt: null },
+          select: { id: true, slug: true, name: true },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        }),
+        this.prisma.subSubject.findMany({
+          where: {
+            status: 'PUBLISHED',
+            deletedAt: null,
+            ...(query.subject?.length
+              ? { subject: { slug: { in: query.subject } } }
+              : {}),
+          },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            subject: { select: { slug: true, name: true } },
+          },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        }),
+        this.prisma.studyMode.findMany({
+          where: { status: 'ACTIVE' },
+          select: { id: true, code: true, name: true },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        }),
+        this.prisma.intake.findMany({
+          where: { status: 'ACTIVE' },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            shortLabel: true,
+            monthNumber: true,
+          },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        }),
+      ]);
+
+    const contextualCount = (
+      key:
+        | 'level'
+        | 'country'
+        | 'subject'
+        | 'subSubject'
+        | 'studyMode'
+        | 'intake'
+        | 'englishTest',
+      value: string,
+    ) =>
+      this.prisma.course.count({
+        where: this.publicWhere({
+          ...query,
+          [key]: [value],
+          page: 1,
+          pageSize: 1,
+        }),
+      });
+    const counted = async <
+      T extends { value: string; label: string; id?: string },
+    >(
+      key:
+        | 'level'
+        | 'country'
+        | 'subject'
+        | 'subSubject'
+        | 'studyMode'
+        | 'intake'
+        | 'englishTest',
+      options: T[],
+    ) => {
+      const selectedValues = query[key] ?? [];
+      return (
+        await Promise.all(
+          options.map(async (option) => ({
+            ...option,
+            count: await contextualCount(key, option.value),
+          })),
+        )
+      ).filter(
+        (option) => option.count > 0 || selectedValues.includes(option.value),
+      );
+    };
+
+    const [
+      levelOptions,
+      countryOptions,
+      subjectOptions,
+      subSubjectOptions,
+      studyModeOptions,
+      intakeOptions,
+      englishTestOptions,
+      scholarshipCount,
+      postStudyWorkCount,
+      popularityCount,
+    ] = await Promise.all([
+      counted(
+        'level',
+        levels.map((option) => ({
+          id: option.id,
+          value: option.code,
+          label: option.name,
+        })),
+      ),
+      counted(
+        'country',
+        countries.map((option) => ({
+          id: option.id,
+          value: option.slug,
+          label: option.name,
+          currencyCode: option.currencyCode,
+        })),
+      ),
+      counted(
+        'subject',
+        subjects.map((option) => ({
+          id: option.id,
+          value: option.slug,
+          label: option.name,
+        })),
+      ),
+      counted(
+        'subSubject',
+        subSubjects.map((option) => ({
+          id: option.id,
+          value: option.slug,
+          label: option.name,
+          subject: option.subject,
+        })),
+      ),
+      counted(
+        'studyMode',
+        studyModes.map((option) => ({
+          id: option.id,
+          value: option.code,
+          label: option.name,
+        })),
+      ),
+      counted(
+        'intake',
+        intakes.map((option) => ({
+          id: option.id,
+          value: option.slug,
+          label: option.shortLabel ?? option.name,
+          monthNumber: option.monthNumber,
+        })),
+      ),
+      counted(
+        'englishTest',
+        COURSE_ENGLISH_TESTS.map((value) => ({
+          value,
+          label: value === 'DUOLINGO' ? 'Duolingo' : value,
+        })),
+      ),
+      this.prisma.course.count({
+        where: this.publicWhere({
+          ...query,
+          scholarshipAvailable: true,
+          page: 1,
+          pageSize: 1,
+        }),
+      }),
+      this.prisma.course.count({
+        where: this.publicWhere({
+          ...query,
+          postStudyWorkAvailable: true,
+          page: 1,
+          pageSize: 1,
+        }),
+      }),
+      this.prisma.course.count({
+        where: {
+          ...this.publicWhere({ ...query, page: 1, pageSize: 1 }),
+          popularityScore: { gt: 0 },
+        },
+      }),
+    ]);
+    const selectedCountry =
+      query.country?.length === 1
+        ? countries.find((country) => country.slug === query.country?.[0])
+        : null;
+
+    return {
+      levels: levelOptions,
+      countries: countryOptions,
+      subjects: subjectOptions,
+      subSubjects: subSubjectOptions,
+      studyModes: studyModeOptions,
+      intakes: intakeOptions,
+      englishTests: englishTestOptions,
+      extras: [
+        ...(scholarshipCount || query.scholarshipAvailable === true
+          ? [
+              {
+                value: 'scholarshipAvailable',
+                label: 'Scholarships available',
+                count: scholarshipCount,
+              },
+            ]
+          : []),
+        ...(postStudyWorkCount || query.postStudyWorkAvailable === true
+          ? [
+              {
+                value: 'postStudyWorkAvailable',
+                label: 'Verified post-study work destination',
+                count: postStudyWorkCount,
+              },
+            ]
+          : []),
+      ],
+      sorts: [
+        { value: 'featured', label: 'Recommended' },
+        ...(popularityCount || query.sort === 'popularity'
+          ? [{ value: 'popularity', label: 'Most popular' }]
+          : []),
+        ...(selectedCountry
+          ? [{ value: 'tuition-low', label: 'Tuition low to high' }]
+          : []),
+        { value: 'name', label: 'Alphabetical' },
+        { value: 'newest', label: 'Recently added' },
+      ],
+      tuition: selectedCountry
+        ? {
+            enabled: true,
+            country: selectedCountry.slug,
+            currencyCode: selectedCountry.currencyCode,
+          }
+        : {
+            enabled: false,
+            country: null,
+            currencyCode: null,
+          },
+    };
+  }
+
   async publicDetail(slug: string, countrySlug?: string) {
     const course = await this.prisma.course.findFirst({
       where: {
@@ -234,7 +490,9 @@ export class CoursesService {
       include: {
         ...COURSE_PUBLIC_INCLUDE,
         countryCourses: {
-          where: this.publicMappingWhere(countrySlug),
+          where: this.publicMappingWhere(
+            countrySlug ? [countrySlug] : undefined,
+          ),
           include: {
             country: {
               select: {
@@ -289,7 +547,10 @@ export class CoursesService {
         twitterMedia: { select: MEDIA_SELECT },
       },
     });
-    const payload = this.toPublicList(course, countrySlug);
+    const payload = this.toPublicList(
+      course,
+      countrySlug ? [countrySlug] : undefined,
+    );
     return {
       ...payload,
       overview: course.overview,
@@ -312,7 +573,7 @@ export class CoursesService {
     };
   }
 
-  async adminList(query: CourseListQueryDto) {
+  async adminList(query: AdminCourseListQueryDto) {
     const where = this.adminWhere(query);
     const [total, rows] = await Promise.all([
       this.prisma.course.count({ where }),
@@ -1200,7 +1461,7 @@ export class CoursesService {
   }
 
   private publicMappingWhere(
-    countrySlug?: string,
+    countrySlugs?: string[],
   ): Prisma.CountryCourseWhereInput {
     return {
       status: 'ACTIVE',
@@ -1211,13 +1472,14 @@ export class CoursesService {
       country: {
         status: 'PUBLISHED',
         deletedAt: null,
-        ...(countrySlug ? { slug: countrySlug } : {}),
+        ...(countrySlugs?.length ? { slug: { in: countrySlugs } } : {}),
       },
     };
   }
   private publicWhere(query: CourseListQueryDto): Prisma.CourseWhereInput {
+    const selectedCountries = query.country ?? [];
     const mapping: Prisma.CountryCourseWhereInput = {
-      ...this.publicMappingWhere(query.country),
+      ...this.publicMappingWhere(selectedCountries),
       ...(query.minTuition
         ? {
             indicativeTuitionMin: { gte: new Prisma.Decimal(query.minTuition) },
@@ -1236,8 +1498,47 @@ export class CoursesService {
             intakes: {
               some: {
                 status: 'ACTIVE',
-                intake: { status: 'ACTIVE', slug: query.intake },
+                intake: { status: 'ACTIVE', slug: { in: query.intake } },
               },
+            },
+          }
+        : {}),
+      ...(query.englishTest?.length
+        ? {
+            OR: query.englishTest.map((test) =>
+              test === 'IELTS'
+                ? { ieltsMinScore: { not: null } }
+                : test === 'TOEFL'
+                  ? { toeflMinScore: { not: null } }
+                  : test === 'PTE'
+                    ? { pteMinScore: { not: null } }
+                    : { duolingoMinScore: { not: null } },
+            ),
+          }
+        : {}),
+      ...(query.postStudyWorkAvailable !== undefined
+        ? {
+            country: {
+              status: 'PUBLISHED',
+              deletedAt: null,
+              ...(selectedCountries.length
+                ? { slug: { in: selectedCountries } }
+                : {}),
+              workProfile: query.postStudyWorkAvailable
+                ? {
+                    is: {
+                      postStudyWorkAvailable: true,
+                      sourceReference: { not: null },
+                      verifiedAt: { not: null },
+                    },
+                  }
+                : {
+                    isNot: {
+                      postStudyWorkAvailable: true,
+                      sourceReference: { not: null },
+                      verifiedAt: { not: null },
+                    },
+                  },
             },
           }
         : {}),
@@ -1255,45 +1556,48 @@ export class CoursesService {
             ],
           }
         : {}),
-      ...(query.subject
+      ...(query.subject?.length
         ? {
             subject: {
-              slug: query.subject,
+              slug: { in: query.subject },
               status: 'PUBLISHED',
               deletedAt: null,
             },
           }
         : {}),
-      ...(query.subSubject
+      ...(query.subSubject?.length
         ? {
             subSubject: {
-              slug: query.subSubject,
+              slug: { in: query.subSubject },
               status: 'PUBLISHED',
               deletedAt: null,
             },
           }
         : {}),
-      ...(query.level
-        ? { courseLevel: { code: query.level, status: 'ACTIVE' } }
+      ...(query.level?.length
+        ? { courseLevel: { code: { in: query.level }, status: 'ACTIVE' } }
         : {}),
-      ...(query.studyMode
+      ...(query.studyMode?.length
         ? {
             studyModes: {
-              some: { studyMode: { code: query.studyMode, status: 'ACTIVE' } },
+              some: {
+                studyMode: { code: { in: query.studyMode }, status: 'ACTIVE' },
+              },
             },
           }
         : {}),
-      ...(query.country ||
-      query.intake ||
+      ...(query.country?.length ||
+      query.intake?.length ||
       query.minTuition ||
       query.maxTuition ||
-      query.scholarshipAvailable !== undefined
+      query.scholarshipAvailable !== undefined ||
+      query.englishTest?.length ||
+      query.postStudyWorkAvailable !== undefined
         ? { countryCourses: { some: mapping } }
         : { countryCourses: { some: this.publicMappingWhere() } }),
-      ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
     };
   }
-  private adminWhere(query: CourseListQueryDto): Prisma.CourseWhereInput {
+  private adminWhere(query: AdminCourseListQueryDto): Prisma.CourseWhereInput {
     return {
       deletedAt: null,
       ...(query.status ? { status: query.status } : {}),
@@ -1306,18 +1610,31 @@ export class CoursesService {
             ],
           }
         : {}),
-      ...(query.subject ? { subject: { slug: query.subject } } : {}),
-      ...(query.subSubject ? { subSubject: { slug: query.subSubject } } : {}),
-      ...(query.level ? { courseLevel: { code: query.level } } : {}),
-      ...(query.country
+      ...(query.subject?.length
+        ? { subject: { slug: { in: query.subject } } }
+        : {}),
+      ...(query.subSubject?.length
+        ? { subSubject: { slug: { in: query.subSubject } } }
+        : {}),
+      ...(query.level?.length
+        ? { courseLevel: { code: { in: query.level } } }
+        : {}),
+      ...(query.country?.length
         ? {
             countryCourses: {
-              some: { country: { slug: query.country }, deletedAt: null },
+              some: {
+                country: { slug: { in: query.country } },
+                deletedAt: null,
+              },
             },
           }
         : {}),
-      ...(query.studyMode
-        ? { studyModes: { some: { studyMode: { code: query.studyMode } } } }
+      ...(query.studyMode?.length
+        ? {
+            studyModes: {
+              some: { studyMode: { code: { in: query.studyMode } } },
+            },
+          }
         : {}),
       ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
     };
@@ -1329,9 +1646,7 @@ export class CoursesService {
     if (sort === 'newest') return [{ publishedAt: 'desc' }, { id: 'asc' }];
     if (sort === 'duration') return [{ durationMin: 'asc' }, { name: 'asc' }];
     if (sort === 'popularity')
-      return [{ popularityScore: 'desc' }, { name: 'asc' }];
-    if (sort === 'tuition-low')
-      return [{ countryCourses: { _count: 'asc' } }, { name: 'asc' }];
+      return [{ popularityScore: 'desc' }, { name: 'asc' }, { id: 'asc' }];
     return [
       { isFeatured: 'desc' },
       { displayOrder: 'asc' },
@@ -1339,11 +1654,11 @@ export class CoursesService {
       { id: 'asc' },
     ];
   }
-  private publicInclude(country?: string) {
+  private publicInclude(countries?: string[]) {
     return {
       ...COURSE_PUBLIC_INCLUDE,
       countryCourses: {
-        where: this.publicMappingWhere(country),
+        where: this.publicMappingWhere(countries),
         include: {
           country: { select: { id: true, name: true, slug: true } },
           intakes: {
@@ -1358,6 +1673,165 @@ export class CoursesService {
       },
     };
   }
+
+  private async validatePublicQuery(query: CourseListQueryDto) {
+    rangeError(
+      query.minTuition,
+      query.maxTuition,
+      'COURSE_TUITION_RANGE_INVALID',
+      'Tuition',
+    );
+    if (
+      (query.minTuition || query.maxTuition || query.sort === 'tuition-low') &&
+      query.country?.length !== 1
+    )
+      throw catalogBadRequest(
+        'COURSE_TUITION_COUNTRY_REQUIRED',
+        'Tuition filters and tuition sorting require exactly one country so currency values remain comparable',
+      );
+
+    const checks: Array<Promise<number>> = [];
+    const expected: number[] = [];
+    if (query.subject?.length) {
+      checks.push(
+        this.prisma.subject.count({
+          where: {
+            slug: { in: query.subject },
+            status: 'PUBLISHED',
+            deletedAt: null,
+          },
+        }),
+      );
+      expected.push(query.subject.length);
+    }
+    if (query.subSubject?.length) {
+      checks.push(
+        this.prisma.subSubject.count({
+          where: {
+            slug: { in: query.subSubject },
+            status: 'PUBLISHED',
+            deletedAt: null,
+          },
+        }),
+      );
+      expected.push(query.subSubject.length);
+    }
+    if (query.level?.length) {
+      checks.push(
+        this.prisma.courseLevel.count({
+          where: { code: { in: query.level }, status: 'ACTIVE' },
+        }),
+      );
+      expected.push(query.level.length);
+    }
+    if (query.country?.length) {
+      checks.push(
+        this.prisma.country.count({
+          where: {
+            slug: { in: query.country },
+            status: 'PUBLISHED',
+            deletedAt: null,
+          },
+        }),
+      );
+      expected.push(query.country.length);
+    }
+    if (query.studyMode?.length) {
+      checks.push(
+        this.prisma.studyMode.count({
+          where: { code: { in: query.studyMode }, status: 'ACTIVE' },
+        }),
+      );
+      expected.push(query.studyMode.length);
+    }
+    if (query.intake?.length) {
+      checks.push(
+        this.prisma.intake.count({
+          where: { slug: { in: query.intake }, status: 'ACTIVE' },
+        }),
+      );
+      expected.push(query.intake.length);
+    }
+    const resolved = await Promise.all(checks);
+    if (resolved.some((count, index) => count !== expected[index]))
+      throw catalogBadRequest(
+        'COURSE_FILTER_OPTION_INVALID',
+        'One or more course filter values are not active published options',
+      );
+  }
+
+  private async publicTuitionSortedList(
+    query: CourseListQueryDto,
+    where: Prisma.CourseWhereInput,
+    include: ReturnType<CoursesService['publicInclude']>,
+    pageSize: number,
+  ) {
+    const country = query.country?.[0];
+    if (!country)
+      throw catalogBadRequest(
+        'COURSE_TUITION_COUNTRY_REQUIRED',
+        'Tuition sorting requires exactly one country',
+      );
+    const mappingWhere: Prisma.CountryCourseWhereInput = {
+      ...this.publicMappingWhere([country]),
+      course: where,
+    };
+    const nonNullWhere: Prisma.CountryCourseWhereInput = {
+      ...mappingWhere,
+      indicativeTuitionMin: { not: null },
+    };
+    const nullWhere: Prisma.CountryCourseWhereInput = {
+      ...mappingWhere,
+      indicativeTuitionMin: null,
+    };
+    const [total, pricedTotal] = await Promise.all([
+      this.prisma.countryCourse.count({ where: mappingWhere }),
+      this.prisma.countryCourse.count({ where: nonNullWhere }),
+    ]);
+    const skip = (query.page - 1) * pageSize;
+    const pricedTake =
+      skip < pricedTotal ? Math.min(pageSize, pricedTotal - skip) : 0;
+    const priced = pricedTake
+      ? await this.prisma.countryCourse.findMany({
+          where: nonNullWhere,
+          select: { courseId: true },
+          orderBy: [
+            { indicativeTuitionMin: 'asc' },
+            { course: { name: 'asc' } },
+            { courseId: 'asc' },
+          ],
+          skip,
+          take: pricedTake,
+        })
+      : [];
+    const remaining = pageSize - priced.length;
+    const unpricedSkip = Math.max(0, skip - pricedTotal);
+    const unpriced = remaining
+      ? await this.prisma.countryCourse.findMany({
+          where: nullWhere,
+          select: { courseId: true },
+          orderBy: [{ course: { name: 'asc' } }, { courseId: 'asc' }],
+          skip: unpricedSkip,
+          take: remaining,
+        })
+      : [];
+    const orderedIds = [...priced, ...unpriced].map((row) => row.courseId);
+    const rows = orderedIds.length
+      ? await this.prisma.course.findMany({
+          where: { id: { in: orderedIds } },
+          include,
+        })
+      : [];
+    const order = new Map(orderedIds.map((id, index) => [id, index]));
+    rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    return {
+      data: rows.map((row) =>
+        this.toPublicList(row as PublicCourse, query.country),
+      ),
+      meta: paginationMeta(query.page, pageSize, total),
+    };
+  }
+
   private async adminCourse(id: string): Promise<AdminCourse> {
     const row = await this.prisma.course.findFirst({
       where: { id, deletedAt: null },
@@ -1654,10 +2128,13 @@ export class CoursesService {
       });
     return errors;
   }
-  private toPublicList(row: any, country?: string) {
+  private toPublicList(row: any, countries?: string[]) {
     const mappings = row.countryCourses ?? [];
-    const selected = country
-      ? mappings.find((mapping: any) => mapping.country?.slug === country)
+    const selectedCountry = countries?.length === 1 ? countries[0] : null;
+    const selected = selectedCountry
+      ? mappings.find(
+          (mapping: any) => mapping.country?.slug === selectedCountry,
+        )
       : null;
     return {
       id: row.id,
@@ -1705,7 +2182,9 @@ export class CoursesService {
         : null,
       selectedIntakes:
         selected?.intakes?.map((item: any) => this.toIntake(item)) ?? [],
-      scholarshipAvailable: selected?.scholarshipAvailable ?? null,
+      scholarshipAvailable: selected
+        ? selected.scholarshipAvailable
+        : mappings.some((mapping: any) => mapping.scholarshipAvailable),
       displayOrder: row.displayOrder,
     };
   }

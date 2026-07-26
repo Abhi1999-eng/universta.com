@@ -5,12 +5,12 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 
-const plannedItems = ['Leads', 'Content', 'Media', 'SEO', 'Settings'];
+const plannedItems = ['Content', 'Media', 'SEO', 'Settings'];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const pageTitle = pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : pathname.startsWith('/subjects') ? 'Subjects' : pathname.startsWith('/courses') ? 'Courses' : pathname.startsWith('/catalog-masters') ? 'Catalog masters' : 'Dashboard';
+  const pageTitle = pathname.startsWith('/leads') ? 'Leads' : pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : pathname.startsWith('/subjects') ? 'Subjects' : pathname.startsWith('/courses') ? 'Courses' : pathname.startsWith('/catalog-masters') ? 'Catalog masters' : 'Dashboard';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -192,6 +192,15 @@ function Navigation({
         Dashboard
       </Link>
       <div className="mt-2 space-y-1">
+        <Link
+          href="/leads"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/leads') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/leads') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">L</span>
+          Leads
+        </Link>
         <Link
           href="/continents"
           onClick={onNavigate}
