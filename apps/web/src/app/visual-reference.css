@@ -469,6 +469,413 @@
 
 }
 
+/* Dynamic academic-page additions that preserve the approved template rhythm. */
+.template-empty-action{margin-top:16px;align-self:flex-start}
+
+:is(.visual-subjects-page,.visual-specializations-page) .academic-intro{
+  padding-top:8px;
+  color:var(--slate);
+  font-size:15.5px
+}
+:is(.visual-subjects-page,.visual-specializations-page) .academic-intro p{
+  max-width:860px
+}
+:is(.visual-subjects-page,.visual-specializations-page) .academic-layout{
+  padding-top:44px
+}
+:is(.visual-subjects-page,.visual-subject-page,.visual-specializations-page) .academic-final-cta{
+  padding-top:20px
+}
+
+.visual-subjects-page .section-card,
+.visual-specializations-page .section-card{
+  background:#fff;
+  border-radius:var(--r-xl);
+  border:1px solid var(--line);
+  padding:40px 32px
+}
+.visual-subjects-page .subj-img>img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover
+}
+.visual-subjects-page .az-nav span{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:9px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--faint);
+  background:#fff;
+  border:1px solid var(--line);
+  opacity:.5
+}
+.visual-subjects-page .subj-body>p{
+  color:var(--muted);
+  font-size:13.5px;
+  margin-top:4px
+}
+
+.visual-subject-page .hero-metrics{
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr))
+}
+.visual-subject-page .subject-country-callout{
+  display:flex;
+  align-items:center;
+  gap:18px
+}
+.visual-subject-page .subject-country-icon{
+  width:52px;
+  height:52px;
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  border-radius:14px;
+  background:var(--blue-50);
+  color:var(--blue)
+}
+.visual-subject-page .subject-country-callout h3{
+  font-size:17px;
+  margin-bottom:4px
+}
+.visual-subject-page .subject-country-callout p{
+  color:var(--muted);
+  font-size:14px
+}
+.visual-subject-page .subject-country-callout .btn{
+  margin-left:auto
+}
+
+@media(max-width:560px){
+  :is(.visual-subjects-page,.visual-specializations-page) .academic-layout{
+    padding-top:30px
+  }
+  .visual-subjects-page .section-card,
+  .visual-specializations-page .section-card{
+    padding:30px 20px
+  }
+  .visual-subject-page .subject-country-callout{
+    align-items:flex-start;
+    flex-direction:column
+  }
+  .visual-subject-page .subject-country-callout .btn{
+    width:100%;
+    margin-left:0
+  }
+}
+
+/* Counselling uses the approved catalog chrome with a focused form layout. */
+.visual-counselling-page {
+  min-width: 0;
+  overflow-x: clip;
+  background: #f7f9fc;
+}
+.visual-counselling-page .counselling-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 56px 0 78px;
+}
+.visual-counselling-page .counselling-hero::before {
+  content: "";
+  position: absolute;
+  width: 720px;
+  height: 720px;
+  top: -380px;
+  left: -260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37, 99, 235, .14), transparent 68%);
+  pointer-events: none;
+}
+.visual-counselling-page .counselling-hero-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, .82fr) minmax(520px, 1.18fr);
+  align-items: start;
+  gap: clamp(40px, 7vw, 88px);
+}
+.visual-counselling-page .counselling-hero h1 {
+  margin-top: 22px;
+  color: #0b1220;
+  font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  font-size: clamp(42px, 5.6vw, 68px);
+  font-weight: 800;
+  letter-spacing: -.055em;
+  line-height: 1.03;
+}
+.visual-counselling-page .counselling-hero h1 span {
+  color: #2563eb;
+}
+.visual-counselling-page .counselling-hero .lede {
+  max-width: 590px;
+  margin-top: 22px;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1.75;
+}
+.visual-counselling-page .counselling-benefits {
+  display: grid;
+  gap: 14px;
+  margin: 30px 0 0;
+  padding: 0;
+  color: #334155;
+  list-style: none;
+}
+.visual-counselling-page .counselling-benefits li {
+  position: relative;
+  padding-left: 30px;
+  line-height: 1.55;
+}
+.visual-counselling-page .counselling-benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 800;
+}
+.visual-counselling-page .counselling-form-card,
+.visual-counselling-page .counselling-confirmation {
+  min-width: 0;
+  padding: clamp(26px, 4vw, 42px);
+  border: 1px solid #e7ecf3;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .1);
+}
+.visual-counselling-page .counselling-form-heading h2,
+.visual-counselling-page .counselling-confirmation h2 {
+  margin-top: 8px;
+  color: #0b1220;
+  font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  font-size: clamp(27px, 3vw, 36px);
+  letter-spacing: -.04em;
+}
+.visual-counselling-page .counselling-form-heading > p,
+.visual-counselling-page .counselling-confirmation p {
+  margin-top: 10px;
+  color: #64748b;
+  line-height: 1.65;
+}
+.visual-counselling-page .source-context {
+  display: inline-flex;
+  max-width: 100%;
+  margin-top: 16px;
+  padding: 7px 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef3ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.visual-counselling-page .counselling-form {
+  margin-top: 28px;
+}
+.visual-counselling-page .counselling-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.visual-counselling-page .counselling-field {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  margin-top: 18px;
+}
+.visual-counselling-page .counselling-grid .counselling-field {
+  margin-top: 0;
+}
+.visual-counselling-page .counselling-field > label,
+.visual-counselling-page .consent-field label {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.visual-counselling-page .counselling-field > label span {
+  color: #dc2626;
+}
+.visual-counselling-page .counselling-field input,
+.visual-counselling-page .counselling-field select,
+.visual-counselling-page .counselling-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #d8e0eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #0b1220;
+  font: inherit;
+  outline: none;
+}
+.visual-counselling-page .counselling-field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.visual-counselling-page .counselling-field input:focus,
+.visual-counselling-page .counselling-field select:focus,
+.visual-counselling-page .counselling-field textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #dee8ff;
+}
+.visual-counselling-page .counselling-field.has-error input,
+.visual-counselling-page .counselling-field.has-error select,
+.visual-counselling-page .counselling-field.has-error textarea {
+  border-color: #dc2626;
+}
+.visual-counselling-page .field-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+}
+.visual-counselling-page .field-help {
+  justify-self: end;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.visual-counselling-page .consent-field {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 22px;
+  padding: 17px;
+  border: 1px solid #e7ecf3;
+  border-radius: 14px;
+  background: #f8faff;
+}
+.visual-counselling-page .consent-field input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #2563eb;
+}
+.visual-counselling-page .consent-field p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.visual-counselling-page .counselling-submit {
+  width: 100%;
+  margin-top: 22px;
+}
+.visual-counselling-page .counselling-submit:disabled,
+.visual-counselling-page .counselling-field select:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+.visual-counselling-page .counselling-honeypot {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+.visual-counselling-page .form-notice,
+.visual-counselling-page .form-error-summary {
+  margin-top: 20px;
+  padding: 15px 17px;
+  border-radius: 12px;
+  background: #eef3ff;
+  color: #1e40af;
+  font-size: 14px;
+}
+.visual-counselling-page .form-notice.error,
+.visual-counselling-page .form-error-summary {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #9f1239;
+}
+.visual-counselling-page .form-notice .btn {
+  margin-top: 12px;
+}
+.visual-counselling-page .form-error-summary h3 {
+  color: inherit;
+  font-size: 15px;
+}
+.visual-counselling-page .form-error-summary ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0 18px;
+}
+.visual-counselling-page .form-error-summary button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.visual-counselling-page .counselling-confirmation {
+  align-self: center;
+}
+.visual-counselling-page .counselling-confirmation .btn {
+  margin-top: 24px;
+}
+.visual-counselling-page .counselling-trust {
+  padding: 72px 0;
+  background: #fff;
+  text-align: center;
+}
+.visual-counselling-page .counselling-trust h2 {
+  max-width: 760px;
+  margin: 10px auto 0;
+  color: #0b1220;
+  font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  font-size: clamp(27px, 4vw, 42px);
+  letter-spacing: -.045em;
+}
+.visual-counselling-page .counselling-trust p {
+  max-width: 700px;
+  margin: 18px auto 0;
+  color: #64748b;
+  line-height: 1.7;
+}
+@media (max-width: 960px) {
+  .visual-counselling-page .counselling-hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .visual-counselling-page .counselling-hero {
+    padding: 36px 0 56px;
+  }
+  .visual-counselling-page .counselling-hero-grid {
+    gap: 34px;
+  }
+  .visual-counselling-page .counselling-hero h1 {
+    font-size: 42px;
+  }
+  .visual-counselling-page .counselling-grid {
+    grid-template-columns: 1fr;
+  }
+  .visual-counselling-page .counselling-form-card,
+  .visual-counselling-page .counselling-confirmation {
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
+  .visual-counselling-page .source-context {
+    white-space: normal;
+  }
+}
+
 /* Approved-template interaction contracts */
 .visual-courses-page,
 .visual-countries-page,
@@ -478,16 +885,49 @@
 .visual-specializations-page{width:100%;min-width:0;overflow-x:clip}
 
 .visual-courses-page .course-search-area,
-.visual-countries-page .country-search-area{position:relative;max-width:720px;margin:0 auto}
+.visual-countries-page .country-search-area,
+.visual-subjects-page .subject-search-area{
+  position:relative;max-width:720px;margin:0 auto
+}
 
-.visual-courses-page .suggest-item{padding:0}
-.visual-courses-page .suggest-item button{
+:is(.visual-courses-page,.visual-subjects-page) .suggest-item{padding:0}
+:is(.visual-courses-page,.visual-subjects-page) .suggest-item button{
   width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;
   border:0;background:transparent;text-align:left;font:inherit;color:inherit
 }
-.visual-courses-page .suggest-item button>span:nth-child(2){display:flex;flex-direction:column}
+:is(.visual-courses-page,.visual-subjects-page) .suggest-item button>span:nth-child(2){
+  display:flex;flex-direction:column
+}
 .visual-courses-page .chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 .visual-courses-page .chip.active svg{color:#fff}
+.visual-courses-page .course-filter-head-actions{
+  display:flex;align-items:center;gap:12px
+}
+.visual-courses-page .course-filter-close{
+  display:none;width:34px;height:34px;place-items:center;border:1px solid var(--line);
+  border-radius:9px;background:#fff;color:var(--ink)
+}
+.visual-courses-page .course-filter-help{
+  color:var(--muted);font-size:12.5px;line-height:1.55
+}
+.visual-courses-page .tuition-fields{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px
+}
+.visual-courses-page .tuition-fields label{
+  display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:700
+}
+.visual-courses-page .tuition-fields input{
+  width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;
+  padding:9px 10px;background:#fff;color:var(--ink);font:500 14px var(--font-inter),sans-serif
+}
+.visual-courses-page .course-zero-state .btn{margin-top:16px}
+.visual-courses-page :is(.course,.mini-card,.subj-card){min-width:0}
+.visual-courses-page .uni-logo img{
+  width:100%;height:100%;object-fit:cover;border-radius:inherit
+}
+.visual-specializations-page .specialization-clear-search{
+  margin-top:12px;border:0;background:transparent
+}
 
 .visual-countries-page .country-search-area .sugg{
   position:absolute;top:100%;left:0;right:0;z-index:55;max-width:680px;
@@ -610,10 +1050,20 @@
 }
 
 @media(max-width:900px){
+  .visual-courses-page .course-filter-close{display:grid}
   .visual-countries-page .country-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 @media(max-width:640px){
+  .visual-courses-page .tuition-fields{grid-template-columns:1fr}
+  .visual-courses-page .results-bar{align-items:flex-start}
+  .visual-courses-page .sort-wrap{width:100%;justify-content:space-between}
+  .visual-courses-page .select{max-width:70%}
+  .visual-courses-page .select select{max-width:100%}
+  .visual-courses-page .course-top{padding-right:0}
+  .visual-courses-page .course-facts{grid-template-columns:1fr 1fr}
+  .visual-courses-page .fact{min-width:0}
+  .visual-courses-page .fact .v{overflow-wrap:anywhere}
   .visual-countries-page .country-results-toolbar{align-items:flex-start}
   .visual-countries-page .country-filter-panel{
     display:block;position:fixed;inset:0 auto 0 0;width:min(340px,88vw);z-index:92;
@@ -631,6 +1081,19 @@
   .visual-countries-page .country-search-area .sugg{left:0;right:0}
   .visual-countries-page .directory-group{scroll-margin-top:120px}
   .visual-country-detail-page .final-cta .btn{width:min(100%,320px)}
+}
+
+@media(max-width:420px){
+  :is(
+    .visual-courses-page,
+    .visual-countries-page,
+    .visual-country-detail-page,
+    .visual-subjects-page,
+    .visual-subject-page,
+    .visual-specializations-page
+  ) .nav-right>.btn{
+    display:none
+  }
 }
 
 /* Countries listing reference CSS */
