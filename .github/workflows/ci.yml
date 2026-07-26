@@ -215,7 +215,6 @@ jobs:
         run: |
           archive="${RUNNER_TEMP}/universta-release/universta-${RELEASE_SHA}.tar.gz"
           checksum="${archive}.sha256"
-          prefix="s3://${AWS_ARTIFACT_BUCKET}/releases/${RELEASE_SHA}"
 
           if aws s3api head-object \
             --bucket "${AWS_ARTIFACT_BUCKET}" \
@@ -227,18 +226,20 @@ jobs:
               >/dev/null
             echo "Reusing the existing immutable artifact for ${RELEASE_SHA}."
           else
-            aws s3 cp \
-              --no-progress \
-              --sse AES256 \
+            aws s3api put-object \
+              --bucket "${AWS_ARTIFACT_BUCKET}" \
+              --key "releases/${RELEASE_SHA}/universta-${RELEASE_SHA}.tar.gz" \
+              --body "${archive}" \
+              --server-side-encryption AES256 \
               --tagging immutable=true \
-              "${archive}" \
-              "${prefix}/universta-${RELEASE_SHA}.tar.gz"
-            aws s3 cp \
-              --no-progress \
-              --sse AES256 \
+              >/dev/null
+            aws s3api put-object \
+              --bucket "${AWS_ARTIFACT_BUCKET}" \
+              --key "releases/${RELEASE_SHA}/universta-${RELEASE_SHA}.tar.gz.sha256" \
+              --body "${checksum}" \
+              --server-side-encryption AES256 \
               --tagging immutable=true \
-              "${checksum}" \
-              "${prefix}/universta-${RELEASE_SHA}.tar.gz.sha256"
+              >/dev/null
           fi
 
       - name: Deploy exact SHA through SSM
