@@ -7,7 +7,7 @@ import { RuntimeConfigService } from './config/runtime-config.service';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, new ExpressAdapter());
   configureApplication(app);
-  await app.listen(app.get(RuntimeConfigService).port);
+  await app.listen(app.get(RuntimeConfigService).port, '127.0.0.1');
 }
 
 void bootstrap().catch((error: unknown) => {
