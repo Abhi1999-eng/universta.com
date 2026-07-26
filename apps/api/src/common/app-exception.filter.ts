@@ -30,6 +30,8 @@ function statusCodeFor(status: number): string {
       return 'CONFLICT';
     case 429:
       return 'RATE_LIMITED';
+    case 413:
+      return 'REQUEST_TOO_LARGE';
     case 503:
       return 'SERVICE_UNAVAILABLE';
     case 400:
@@ -37,6 +39,20 @@ function statusCodeFor(status: number): string {
     default:
       return 'INTERNAL_ERROR';
   }
+}
+
+function isPayloadTooLarge(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as {
+    status?: unknown;
+    statusCode?: unknown;
+    type?: unknown;
+  };
+  return (
+    candidate.status === 413 ||
+    candidate.statusCode === 413 ||
+    candidate.type === 'entity.too.large'
+  );
 }
 
 @Catch()
@@ -83,6 +99,10 @@ export class AppExceptionFilter implements ExceptionFilter {
         message =
           status === 503 ? 'Service unavailable' : 'Internal server error';
       }
+    } else if (isPayloadTooLarge(exception)) {
+      status = 413;
+      code = 'REQUEST_TOO_LARGE';
+      message = 'Request body is too large';
     } else {
       this.logger.logError('unhandled request exception', {
         requestId,
@@ -102,6 +122,7 @@ export class AppExceptionFilter implements ExceptionFilter {
     };
 
     response.setHeader('x-request-id', requestId);
+    response.setHeader('Cache-Control', 'no-store');
     response.status(status).json(envelope);
   }
 }

@@ -18,6 +18,7 @@ import { SubjectsModule } from './subjects/subjects.module';
 import { CourseLevelsModule } from './course-levels/course-levels.module';
 import { StudyModesModule } from './study-modes/study-modes.module';
 import { CoursesModule } from './courses/courses.module';
+import { LeadsModule } from './leads/leads.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CoursesModule } from './courses/courses.module';
     CourseLevelsModule,
     StudyModesModule,
     CoursesModule,
+    LeadsModule,
   ],
   controllers: [AppController],
   providers: [

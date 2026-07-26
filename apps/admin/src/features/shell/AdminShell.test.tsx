@@ -27,7 +27,7 @@ describe('AdminShell', () => {
     expect(screen.getByRole('link', { name: 'Countries' })).toHaveAttribute('href', '/countries');
     expect(screen.getByRole('link', { name: 'Subjects' })).toHaveAttribute('href', '/subjects');
     expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/courses');
-    expect(screen.getByRole('button', { name: /Leads/ })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Leads' })).toHaveAttribute('href', '/leads');
   });
 
   it('opens the mobile drawer and closes it with Escape', () => {

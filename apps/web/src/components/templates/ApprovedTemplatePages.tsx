@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { consultationTarget } from '@/lib/country-experience';
+import { counsellingHref } from '@/lib/counselling-link';
 import type {
   Country,
   CountryPage,
@@ -80,7 +81,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
+export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="nav" id="siteNav">
@@ -92,7 +93,15 @@ function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses
           <Link className={active === 'courses' ? 'active' : ''} href="/courses">Courses</Link>
         </nav>
         <div className="nav-right">
-          <Link className="btn btn-primary btn-sm" href="/courses">Explore courses</Link>
+          <Link
+            className="btn btn-primary btn-sm"
+            href={counsellingHref({
+              source: 'general',
+              from: `/${active}`,
+            })}
+          >
+            Get free counselling
+          </Link>
           <button
             type="button"
             className="nav-toggle"
@@ -108,7 +117,7 @@ function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses
   );
 }
 
-function CatalogFooter() {
+export function CatalogFooter() {
   return (
     <footer className="site">
       <div className="wrap">
@@ -118,8 +127,10 @@ function CatalogFooter() {
             <p>Compare published study destinations, subjects and courses in one place.</p>
           </div>
           {[
-            ['Courses', [['All courses', '/courses'], ['Subjects', '/subjects']]],
-            ['Destinations', [['All countries', '/countries']]],
+            ['Subjects', [['All subjects', '/subjects'], ['Computer Science', '/subjects/computer-science']]],
+            ['Courses', [['All courses', '/courses'], ['Browse by subject', '/subjects']]],
+            ['Destinations', [['All countries', '/countries'], ['Study in Canada', '/countries/canada']]],
+            ['Guidance', [['Free counselling', '/counselling']]],
           ].map(([title, links]) => (
             <div className="foot-col" key={String(title)}>
               <h4>{String(title)}</h4>
@@ -146,7 +157,7 @@ function CountryHeader() {
     <header id="hdr">
       <div className="wrap nav">
         <Link href="/" className="logo">Univer<span>sta</span></Link>
-        <ul className={`nav-links${menuOpen ? ' is-open' : ''}`}>
+        <ul className={`nav-links${menuOpen ? ' is-open' : ''}`} role="navigation" aria-label="Primary navigation">
           <li><Link href="/countries">Countries</Link></li>
           <li><Link href="/subjects">Subjects</Link></li>
           <li><Link href="/courses">Courses</Link></li>
@@ -698,7 +709,7 @@ export function ApprovedCountriesListing({
               {['Profile evaluation', 'University shortlisting', 'Scholarship guidance', 'Visa assistance'].map((item) => <li key={item}><Icon name="check" />{item}</li>)}
             </ul>
             <div className="cta-btns">
-              <a href="#regions" className="btn btn-w btn-lg">Review destinations</a>
+              <Link href={counsellingHref({ source: 'general', from: '/countries' })} className="btn btn-w btn-lg">Get free counselling</Link>
               <Link href="/subjects" className="btn btn-o btn-lg">Browse subjects</Link>
             </div>
           </div>
@@ -763,9 +774,9 @@ export function ApprovedCountriesListing({
       <div className="wrap">
         <section className="cta2">
           <h2>Ready to start your study abroad journey?</h2>
-          <p>Create an account to save destinations and continue your planning.</p>
+          <p>Share your goals and get help turning published destinations into a practical shortlist.</p>
           <div className="cta2-btns">
-            <Link href="/subjects" className="btn btn-p btn-lg">Browse subjects</Link>
+            <Link href={counsellingHref({ source: 'general', from: '/countries' })} className="btn btn-p btn-lg">Request counselling</Link>
             <Link href="/courses" className="btn btn-s btn-lg">Explore courses</Link>
           </div>
         </section>
@@ -784,7 +795,7 @@ export function ApprovedCountriesListing({
           <h2>Not sure which country fits you?</h2>
           <p>Start with the published catalog and get help turning it into a shortlist.</p>
           <div className="final-btns">
-            <a href="#regions" className="btn btn-w btn-lg">Review destinations</a>
+            <Link href={counsellingHref({ source: 'general', from: '/countries' })} className="btn btn-w btn-lg">Talk to a counsellor</Link>
             <Link href="/courses" className="btn btn-o btn-lg">Explore courses</Link>
           </div>
           <div className="trust">
@@ -920,7 +931,7 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
             <div className="updated"><Icon name="clock" size={15} />Published source-aware country profile</div>
             <div className="hero-btns">
               <Link href={`/courses?country=${country.slug}`} className="btn btn-p btn-lg">Explore courses</Link>
-              {guidanceTarget ? <a href={guidanceTarget} className="btn btn-s btn-lg">Review guidance</a> : null}
+              <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s btn-lg">Talk to a counsellor</Link>
             </div>
           </div>
           <aside className="quickfacts">
@@ -1061,7 +1072,8 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
           <h2>Ready to study in {country.name}?</h2>
           <p>Use the published destination information and get guidance for your shortlist.</p>
           <Link href={`/courses?country=${country.slug}`} className="btn btn-p">Explore courses</Link>
-          {guidanceTarget ? <a href={guidanceTarget} className="btn btn-s">Review source guidance</a> : null}
+          <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s">Request counselling</Link>
+          {guidanceTarget ? <a href={guidanceTarget} className="profile-source">Review source guidance</a> : null}
         </div>
       </section>
       <footer>
@@ -1092,7 +1104,7 @@ function SubjectCard({ subject }: { subject: Subject }) {
   );
 }
 
-export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[]; meta: PageMeta }) {
+export function ApprovedSubjectsListing({ subjects, meta, query = '' }: { subjects: Subject[]; meta: PageMeta; query?: string }) {
   const directory = useMemo(
     () => subjects.reduce<Record<string, Subject[]>>((groups, subject) => {
       const letter = subject.name.slice(0, 1).toUpperCase();
@@ -1111,7 +1123,7 @@ export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[
           <h1>Explore Subjects to<br /><span>Study Abroad</span></h1>
           <p className="lede">Find the subject that fits your interests, strengths and future plans. Compare published courses, specializations and destinations.</p>
           <form className="search-shell" action="/subjects">
-            <div className="search-box"><Icon name="search" /><input name="q" placeholder="Search subjects..." aria-label="Search subjects" /><button className="btn btn-primary" type="submit">Find Subjects</button></div>
+            <div className="search-box"><Icon name="search" /><input name="q" defaultValue={query} placeholder="Search subjects..." aria-label="Search subjects" /><button className="btn btn-primary" type="submit">Find Subjects</button></div>
           </form>
           <div className="hero-stats">
             <div className="hstat"><span className="num">{meta.total}</span><span className="lbl">Subjects</span></div>
@@ -1124,7 +1136,7 @@ export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[
         <div className="main">
           <section className="section" id="popular" style={{ paddingTop: 0 }}>
             <div className="section-head row-between"><div><span className="eyebrow">Start here</span><h2>Popular subjects</h2><p className="sub">Featured subjects from the published catalog.</p></div></div>
-            <div className="grid g3">{subjects.length ? subjects.filter((item) => item.featured).concat(subjects).slice(0, 6).map((subject) => <SubjectCard subject={subject} key={subject.id} />) : <EmptyTemplateState label="No subjects are currently published" />}</div>
+            <div className="grid g3">{subjects.length ? subjects.filter((item) => item.featured).concat(subjects.filter((item) => !item.featured)).slice(0, 6).map((subject) => <SubjectCard subject={subject} key={subject.id} />) : <EmptyTemplateState label="No subjects are currently published" />}</div>
           </section>
           <section className="section" id="categories">
             <div className="section-head"><span className="eyebrow">Explore fields</span><h2>Browse by subject category</h2></div>
@@ -1163,7 +1175,7 @@ export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[
           <div className="side-card"><span className="eyebrow">Find your direction</span><h3>Choose the right subject</h3><p>Start with published subjects and compare the available pathways.</p><Link href="/courses" className="btn btn-primary btn-block">Explore courses</Link></div>
         </aside>
       </div>
-      <section className="section wrap"><div className="final-cta"><h2>Find the subject that fits your future</h2><p>Explore published pathways and continue into the course catalog.</p><div className="cta-row"><Link href="/courses" className="btn btn-secondary">Explore courses</Link><a href="#directory" className="btn btn-outline">Browse A–Z</a></div></div></section>
+      <section className="section wrap"><div className="final-cta"><h2>Find the subject that fits your future</h2><p>Explore published pathways or talk through your study goals.</p><div className="cta-row"><Link href="/courses" className="btn btn-secondary">Explore courses</Link><Link href={counsellingHref({ source: 'general', from: '/subjects' })} className="btn btn-outline">Get study guidance</Link></div></div></section>
       <CatalogFooter />
     </main>
   );
@@ -1257,7 +1269,7 @@ export function ApprovedSubjectDetail({ subject }: { subject: SubjectDetail }) {
         </div>
         <aside className="side"><div className="side-card"><span className="eyebrow">At a glance</span><h3>{subject.name}</h3><p>{subject.publishedCourseCount} published courses</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Browse courses</Link></div></aside>
       </div>
-      <section className="section wrap"><div className="final-cta"><h2>Ready to study {subject.name} abroad?</h2><p>Explore published courses and compare your available options.</p><div className="cta-row"><Link href={`/courses?subject=${subject.slug}`} className="btn btn-secondary">Explore courses</Link><Link href="/subjects" className="btn btn-outline">All subjects</Link></div></div></section>
+      <section className="section wrap"><div className="final-cta"><h2>Ready to study {subject.name} abroad?</h2><p>Explore published courses or get help shaping your next step.</p><div className="cta-row"><Link href={`/courses?subject=${subject.slug}`} className="btn btn-secondary">Explore courses</Link><Link href={counsellingHref({ source: 'subject', subject: subject.slug, from: `/subjects/${subject.slug}` })} className="btn btn-outline">Talk to a counsellor</Link></div></div></section>
       <CatalogFooter />
     </main>
   );
@@ -1284,7 +1296,7 @@ export function ApprovedSpecializations({ subject }: { subject: SubjectDetail })
           {[
             ['popular', 'Popular specializations'],
             ['all', 'All specializations'],
-          ].map(([id, title]) => <section className="section" id={id} key={id} ref={id === 'all' ? resultsRef : undefined} tabIndex={id === 'all' ? -1 : undefined}><div className="section-head"><span className="eyebrow">Published pathways</span><h2>{title}</h2></div><div className="grid g3">{filtered.length ? filtered.map((item) => <article className="card spec-card" id={item.slug} key={`${id}-${item.id}`}><div className="spec-band" /><div className="spec-body"><div className="spec-top"><div className="spec-ic">{item.iconMedia ? <img src={item.iconMedia.url} alt={item.iconMedia.alt ?? ''} /> : <Icon name="code" />}</div><div><h3>{item.name}</h3></div></div><p className="spec-desc">{item.shortDescription ?? item.overview ?? 'Published specialization pathway'}</p><div className="spec-foot"><Link href={`/courses?subSubject=${item.slug}`} className="go">Explore courses <Icon name="arrow" size={14} /></Link></div></div></article>) : <EmptyTemplateState label="No specializations match this search" />}</div></section>)}
+          ].map(([id, title]) => <section className="section" id={id} key={id} ref={id === 'all' ? resultsRef : undefined} tabIndex={id === 'all' ? -1 : undefined}><div className="section-head"><span className="eyebrow">Published pathways</span><h2>{title}</h2></div><div className="grid g3">{filtered.length ? filtered.map((item) => <article className="card spec-card" id={id === 'all' ? item.slug : undefined} key={`${id}-${item.id}`}><div className="spec-band" /><div className="spec-body"><div className="spec-top"><div className="spec-ic">{item.iconMedia ? <img src={item.iconMedia.url} alt={item.iconMedia.alt ?? ''} /> : <Icon name="code" />}</div><div><h3>{item.name}</h3></div></div><p className="spec-desc">{item.shortDescription ?? item.overview ?? 'Published specialization pathway'}</p><div className="spec-foot"><Link href={`/courses?subject=${subject.slug}&subSubject=${item.slug}`} className="go">Explore courses <Icon name="arrow" size={14} /></Link></div></div></article>) : <EmptyTemplateState label="No specializations match this search" />}</div></section>)}
           {[
             ['categories', 'Browse by category'],
             ['careers', 'Career opportunities'],
@@ -1302,7 +1314,7 @@ export function ApprovedSpecializations({ subject }: { subject: SubjectDetail })
         </div>
         <aside className="side"><div className="side-card"><span className="eyebrow">Find your specialization</span><h3>Choose the right {subject.name} path</h3><p>Compare the currently published specializations.</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Explore courses</Link></div></aside>
       </div>
-      <section className="section wrap"><div className="final-cta"><h2>Choose your {subject.name} specialization</h2><p>Continue from a published specialization into the course catalog.</p><div className="cta-row"><Link href={`/subjects/${subject.slug}`} className="btn btn-secondary">Back to subject</Link><Link href="/courses" className="btn btn-outline">Explore courses</Link></div></div></section>
+      <section className="section wrap"><div className="final-cta"><h2>Choose your {subject.name} specialization</h2><p>Continue into the course catalog or talk through the published pathways.</p><div className="cta-row"><Link href={`/courses?subject=${subject.slug}`} className="btn btn-secondary">Explore courses</Link><Link href={counsellingHref({ source: 'subject', subject: subject.slug, from: `/subjects/${subject.slug}/specializations` })} className="btn btn-outline">Get study guidance</Link></div></div></section>
       <CatalogFooter />
     </main>
   );
@@ -1716,7 +1728,7 @@ export function ApprovedCoursesListing({
         ['resources', 'Resources & guides', []],
         ['faq', 'Frequently asked questions', []],
       ].map(([id, title, items]) => <section className="section wrap" id={String(id)} key={String(id)}><div className="section-head"><span className="eyebrow">Published catalog</span><h2>{String(title)}</h2></div><div className="grid g4">{(items as string[][]).length ? (items as string[][]).map(([item, href]) => <Link href={href} className="card mini-card" key={item}><span className="mini-ic"><Icon name="book" /></span><span><h3>{item}</h3></span><span className="go"><Icon name="arrow" /></span></Link>) : <EmptyTemplateState label={`${String(title)} will appear when supporting data is published`} />}</div></section>)}
-      <section className="section wrap"><div className="final-cta"><h2>Discover the right course for your future</h2><p>Explore the published catalog and filter your available options.</p><div className="cta-row"><a href="#discovery" className="btn btn-secondary">Find Courses</a><Link href="/subjects" className="btn btn-outline">Browse subjects</Link></div></div></section>
+      <section className="section wrap"><div className="final-cta"><h2>Discover the right course for your future</h2><p>Explore the published catalog or get help narrowing your options.</p><div className="cta-row"><a href="#discovery" className="btn btn-secondary">Find Courses</a><Link href={counsellingHref({ source: 'general', from: '/courses' })} className="btn btn-outline">Talk to a counsellor</Link></div></div></section>
       <CatalogFooter />
     </main>
   );
