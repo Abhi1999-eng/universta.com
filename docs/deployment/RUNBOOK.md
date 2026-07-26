@@ -1,0 +1,106 @@
+# Universta deployment runbook
+
+## Automatic main deployment
+
+`.github/workflows/ci.yml` is the single CI/CD workflow.
+
+- Pull requests run database validation, migrations against CI MySQL, safe
+  foundation and demo seeding, unit tests, API E2E, browser E2E, lint, all
+  three production builds, and a clean-output check.
+- Pull requests never receive an OIDC token and never run a deployment job.
+- A push to `main` repeats the complete CI suite, packages the exact
+  `github.sha`, uploads the private SHA-addressed artifact, deploys through
+  SSM, and verifies the public endpoints.
+- A failed validation job prevents deployment.
+- A failed deployment health check atomically restores the previous
+  application release and leaves the workflow failed.
+
+The deployment applies forward Prisma migrations before switching the
+application release. Application rollback does not reverse database
+migrations; destructive or backward-incompatible migrations require a
+separate reviewed database rollback plan.
+
+## Manual operations
+
+Open the `CI` workflow in GitHub Actions and choose **Run workflow**.
+
+### Deploy an exact SHA
+
+1. Select action `deploy`.
+2. Enter the exact 40-character Git commit SHA.
+3. Run the workflow.
+
+The complete CI suite runs against that checkout before any AWS action.
+
+### Roll back
+
+1. Select action `rollback`.
+2. Leave SHA empty to use `/opt/universta/previous`, or enter a retained exact
+   SHA from `/opt/universta/releases`.
+3. Run the workflow.
+
+The rollback is accepted only when the target is a complete immutable release.
+All three services must pass health checks or the original release is restored.
+
+### Inspect status
+
+Select action `status`. The SSM output reports:
+
+- current and previous SHAs;
+- API, Web, Admin, Nginx, and MySQL systemd states;
+- API/database health.
+
+## Direct operator diagnostics
+
+All commands use SSM; SSH is intentionally unavailable.
+
+```bash
+aws ssm send-command \
+  --region us-east-1 \
+  --instance-ids i-0288a3283c26638b3 \
+  --document-name AWS-RunShellScript \
+  --parameters '{"commands":["bash /opt/universta/current/scripts/deployment/status.sh"]}'
+```
+
+To inspect a service without exposing secrets:
+
+```bash
+aws ssm send-command \
+  --region us-east-1 \
+  --instance-ids i-0288a3283c26638b3 \
+  --document-name AWS-RunShellScript \
+  --parameters '{"commands":["systemctl status --no-pager universta-api universta-web universta-admin","tail -n 100 /opt/universta/shared/logs/api.log"]}'
+```
+
+## Release verification
+
+For a deployed SHA:
+
+```bash
+aws s3api head-object \
+  --region us-east-1 \
+  --bucket universta-demo-artifacts-771413672221-us-east-1 \
+  --key releases/<sha>/universta-<sha>.tar.gz
+```
+
+On the instance, `DEPLOYMENT_SHA` in the current release must equal the
+`current` symlink basename. The deployment script verifies this before
+switching.
+
+## HTTPS activation
+
+When an owned hosted zone is available:
+
+1. Create Web and Admin records pointing to `54.162.49.131`.
+2. Issue and install a trusted certificate suitable for direct Nginx use.
+3. Add Nginx 443 virtual hosts and redirect port 80 to HTTPS.
+4. update `/universta/demo/runtime/web-origin`,
+   `/universta/demo/runtime/admin-origin`, and
+   `/universta/demo/runtime/api-origin`;
+5. update the non-secret workflow endpoint constants;
+6. change the API runtime environment from the HTTP demo policy only after
+   demo-catalog requirements are reviewed;
+7. run full CI and deploy an exact `main` SHA;
+8. verify secure refresh-cookie rotation and all public-to-Admin flows.
+
+Do not collect real counselling data while the HTTP fallback is active.
