@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { webBaseUrl } from './helpers/e2e-urls';
 
-const listing = 'http://localhost:3000/countries';
+const listing = `${webBaseUrl}/countries`;
 
 test.describe('approved public country experience', () => {
   test('renders the API-backed approved listing without browser auth persistence', async ({ page }) => {
