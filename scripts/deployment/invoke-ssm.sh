@@ -51,7 +51,8 @@ esac
   exit 1
 }
 
-printf -v remote_command 'bash -lc %q' "${remote_script}"
+encoded_script="$(printf '%s' "${remote_script}" | base64 | tr -d '\n')"
+remote_command="printf '%s' '${encoded_script}' | base64 --decode | bash"
 parameters="$(jq -cn --arg command "${remote_command}" '{commands:[$command]}')"
 command_id="$(
   aws ssm send-command \
