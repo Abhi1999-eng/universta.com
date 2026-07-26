@@ -27,6 +27,16 @@ validate_sha() {
   [[ "${sha}" =~ ^[0-9a-f]{40}$ ]] || fail "Expected an exact 40-character lowercase Git commit SHA."
 }
 
+release_was_successful() {
+  local sha="${1:-}"
+  local history="${UNIVERSTA_ROOT}/shared/deployment-history.log"
+
+  [[ "${sha}" =~ ^[0-9a-f]{40}$ && -f "${history}" ]] || return 1
+  awk -F '|' -v sha="${sha}" \
+    '$2 == sha && $3 == "success" { found = 1 } END { exit !found }' \
+    "${history}"
+}
+
 parameter() {
   local name="$1"
   aws ssm get-parameter \
