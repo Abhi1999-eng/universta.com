@@ -22,7 +22,7 @@ on:
         type: string
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || 'universta-demo-deployment' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -121,6 +121,9 @@ jobs:
 
       - name: Admin unit and catalog tests
         run: npm --workspace apps/admin run test -- --run
+
+      - name: Web unit tests
+        run: npm --workspace apps/web run test -- --run
 
       - name: Install Playwright Chromium
         run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
