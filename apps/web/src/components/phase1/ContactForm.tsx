@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { contactPayload } from '@/lib/contact-payload';
 
 export function ContactForm() {
   const [message, setMessage] = useState('');
@@ -9,7 +10,7 @@ export function ContactForm() {
     setBusy(true); setMessage('');
     try {
       const formData = new FormData(form);
-      const response = await fetch('/api/contact-inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.fromEntries(formData)) });
+      const response = await fetch('/api/contact-inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(contactPayload(formData)) });
       const body = await response.json() as { error?: { message?: string } };
       if (!response.ok || body.error) throw new Error(body.error?.message ?? 'Unable to send enquiry');
       form.reset(); setMessage('Thanks — your enquiry has been received.');

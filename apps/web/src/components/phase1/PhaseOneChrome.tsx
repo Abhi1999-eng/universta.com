@@ -1,11 +1,25 @@
+"use client";
+
 import Link from 'next/link';
+import { useEffect, useId, useState } from "react";
 
 const links = [
   ['Countries', '/countries'], ['Universities', '/universities'], ['Subjects', '/subjects'], ['Courses', '/courses'], ['Scholarships', '/scholarships'], ['Consultants', '/study-abroad-consultants'],
 ] as const;
 
 export function PhaseOneHeader() {
-  return <header className="site-header"><div className="shell header-inner"><Link className="brand" href="/">universta<span>.</span></Link><nav aria-label="Primary navigation">{links.map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}<Link href="/counselling">Counselling</Link></nav></div></header>;
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, []);
+
+  return <header className="site-header"><div className="shell header-inner"><Link className="brand" href="/">universta<span>.</span></Link><button type="button" className="phase1-nav-toggle" aria-controls={menuId} aria-expanded={open} aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((value) => !value)}>{open ? "Close" : "Menu"}</button><nav id={menuId} className={`phase1-nav${open ? " is-open" : ""}`} aria-label="Primary navigation">{links.map(([label, href]) => <Link href={href} key={href} onClick={() => setOpen(false)}>{label}</Link>)}<Link href="/counselling" onClick={() => setOpen(false)}>Counselling</Link></nav></div></header>;
 }
 
 export function PhaseOneFooter() {

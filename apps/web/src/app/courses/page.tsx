@@ -6,6 +6,7 @@ import {
   getCourses,
   getSubjects,
 } from '@/lib/catalog';
+import { legacyCourseDiscoveryUrl } from '@/lib/course-discovery-url';
 import { ApprovedCoursesListing } from '@/components/templates/CourseCatalogTemplate';
 
 export const dynamic = 'force-dynamic';
@@ -68,24 +69,7 @@ export default async function CoursesPage({
   // Preserve the generic catalog while giving the complete subject /
   // specialization / country / intake hierarchy one deterministic shareable URL.
   if (filters.subject && filters.subSubject && filters.country && filters.intake) {
-    const secondary = new URLSearchParams();
-    const mapping: Record<string, string> = {
-      englishTest: 'english-test',
-      scholarshipAvailable: 'scholarship',
-      level: 'level',
-      studyMode: 'study-mode',
-      minTuition: 'min-tuition',
-      maxTuition: 'max-tuition',
-      sort: 'sort',
-      page: 'page',
-      pageSize: 'page-size',
-    };
-    for (const [key, target] of Object.entries(mapping)) {
-      const value = filters[key];
-      if (value) secondary.set(target, value);
-    }
-    const destination = `/courses/${filters.subject}/${filters.subSubject}/${filters.country}/${filters.intake}`;
-    redirect(`${destination}${secondary.size ? `?${secondary}` : ''}`);
+    redirect(legacyCourseDiscoveryUrl(filters));
   }
 
   let catalog;
