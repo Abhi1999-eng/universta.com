@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { hasValidAdminSession } from '@/lib/server/session';
 
 const protectedPaths = [
   '/dashboard',
@@ -11,16 +12,20 @@ const protectedPaths = [
   '/phase1',
 ];
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (!protectedPaths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     return NextResponse.next();
   }
   const cookieName = process.env.AUTH_REFRESH_COOKIE_NAME ?? 'universta_admin_refresh';
-  if (request.cookies.has(cookieName)) return NextResponse.next();
+  const refreshToken = request.cookies.get(cookieName)?.value;
+  if (await hasValidAdminSession(refreshToken)) return NextResponse.next();
   const login = new URL('/login', request.url);
   login.searchParams.set('returnTo', `${path}${request.nextUrl.search}`);
-  return NextResponse.redirect(login);
+  const response = NextResponse.redirect(login);
+  response.cookies.delete({ name: cookieName, path: '/' });
+  response.cookies.delete({ name: cookieName, path: '/api/v1/admin/auth' });
+  return response;
 }
 
 export const config = { matcher: ['/((?!api|_next|favicon.ico).*)'] };
