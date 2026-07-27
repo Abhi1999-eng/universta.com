@@ -25,6 +25,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report' }]] : 'line',
   use: {
     baseURL: adminBaseUrl,
+    // Every test starts with an explicit empty state, regardless of any local
+    // developer browser profile or a previous Playwright run.
+    storageState: { cookies: [], origins: [] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
