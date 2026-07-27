@@ -11,6 +11,8 @@
 - A push to `main` repeats the complete CI suite, packages the exact
   `github.sha`, uploads the private SHA-addressed artifact, deploys through
   SSM, and verifies the public endpoints.
+- Automatic deployments run only the safe foundation seed. The fictional demo
+  catalog is never reseeded after initial provisioning.
 - A failed validation job prevents deployment.
 - A failed deployment health check atomically restores the previous
   application release and leaves the workflow failed.
@@ -19,6 +21,24 @@ The deployment applies forward Prisma migrations before switching the
 application release. Application rollback does not reverse database
 migrations; destructive or backward-incompatible migrations require a
 separate reviewed database rollback plan.
+
+## One-time initial demo catalog seed
+
+Run the fictional demo catalog seed only once, during initial provisioning and
+before Admin-managed catalog editing begins. From an authorized SSM session:
+
+```bash
+sudo -u universta bash -lc '
+  set -a
+  source /opt/universta/shared/env/api.env
+  set +a
+  cd /opt/universta/current
+  SEED_DEMO_CATALOG=true npm --workspace apps/api run db:seed:demo
+'
+```
+
+Do not add `SEED_DEMO_CATALOG` to the persistent runtime environment and do not
+run this command as part of an automatic deployment.
 
 ## Manual operations
 

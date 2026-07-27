@@ -46,7 +46,6 @@ admin_pending="${env_dir}/admin.env.pending"
   printf 'SUPER_ADMIN_LAST_NAME=Administrator\n'
   printf 'SEED_ADMIN_EMAIL=%s\n' "${admin_email}"
   printf 'SEED_ADMIN_PASSWORD=%s\n' "${admin_password}"
-  printf 'SEED_DEMO_CATALOG=true\n'
 } > "${api_pending}"
 
 {
