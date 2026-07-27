@@ -9,7 +9,7 @@ test.describe.serial('isolated Phase 1 Admin authentication', () => {
     await page.getByLabel('Email address').fill(e2eEmail!);
     await page.getByLabel('Password').fill(`${e2ePassword}-invalid`);
     await page.getByRole('button', { name: 'Sign in securely' }).click();
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.getByRole('main').getByRole('alert')).toBeVisible();
 
     await page.getByLabel('Password').fill(e2ePassword!);
     await Promise.all([
