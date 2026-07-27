@@ -107,8 +107,6 @@ runuser --preserve-environment -u universta -- \
   bash -lc "cd '${release}' && npm run db:migrate:deploy"
 runuser --preserve-environment -u universta -- \
   bash -lc "cd '${release}' && npm run db:seed"
-runuser --preserve-environment -u universta -- \
-  bash -lc "cd '${release}' && npm --workspace apps/api run db:seed:demo"
 set +a
 
 "${SCRIPT_DIR}/configure-host.sh"
