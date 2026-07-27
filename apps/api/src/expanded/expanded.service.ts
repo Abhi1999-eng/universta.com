@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type Resource =
   | 'universities'
+  | 'offerings'
   | 'scholarships'
   | 'consultants'
   | 'jobs'
@@ -27,6 +28,7 @@ const PAGE_LIMIT = 12;
 const MAX_LIMIT = 50;
 const resourceModel: Record<Resource, string> = {
   universities: 'university',
+  offerings: 'universityCourseOffering',
   scholarships: 'scholarship',
   consultants: 'consultant',
   jobs: 'job',
@@ -589,6 +591,67 @@ export class ExpandedService {
   }
 
   async adminDetail(resource: Resource, id: string) {
+    if (resource === 'universities') {
+      const record = await this.prisma.university.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          country: true,
+          campuses: {
+            where: { deletedAt: null },
+            orderBy: { displayOrder: 'asc' },
+          },
+          accreditations: {
+            where: { deletedAt: null },
+            orderBy: { displayOrder: 'asc' },
+          },
+        },
+      });
+      return this.withSeo(resource, record ?? this.notFound(resource));
+    }
+    if (resource === 'offerings') {
+      const record = await this.prisma.universityCourseOffering.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          university: true,
+          campus: true,
+          genericCourse: true,
+          courseLevel: true,
+          intakes: {
+            include: { intake: true },
+            orderBy: { intake: { monthNumber: 'asc' } },
+          },
+          requirements: {
+            where: { deletedAt: null },
+            orderBy: { displayOrder: 'asc' },
+          },
+        },
+      });
+      return this.withSeo(resource, record ?? this.notFound(resource));
+    }
+    if (resource === 'scholarships') {
+      const record = await this.prisma.scholarship.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          provider: true,
+          countries: { include: { country: true } },
+          universities: { include: { university: true } },
+          offerings: { include: { offering: true } },
+        },
+      });
+      return this.withSeo(resource, record ?? this.notFound(resource));
+    }
+    if (resource === 'consultants') {
+      const record = await this.prisma.consultant.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          locations: { include: { location: true } },
+          services: { orderBy: { displayOrder: 'asc' } },
+          countries: { include: { country: true } },
+          languages: true,
+        },
+      });
+      return this.withSeo(resource, record ?? this.notFound(resource));
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[
@@ -597,7 +660,7 @@ export class ExpandedService {
     const row = await delegate.findFirst({
       where: resource === 'navigation-menus' ? { id } : { id, deletedAt: null },
     });
-    return row ?? this.notFound(resource);
+    return this.withSeo(resource, row ?? this.notFound(resource));
   }
 
   async adminCreate(
@@ -611,7 +674,11 @@ export class ExpandedService {
     ] as any;
     const data = this.writeData(resource, body);
     try {
-      return await delegate.create({ data });
+      const created = await delegate.create({
+        data: { ...data, ...this.relationWrites(resource, body, false) },
+      });
+      await this.saveSeo(resource, String(created.id), body.seo);
+      return created;
     } catch (error) {
       throw this.conflict(error);
     }
@@ -629,10 +696,15 @@ export class ExpandedService {
     ] as any;
     await this.adminDetail(resource, id);
     try {
-      return await delegate.update({
+      const updated = await delegate.update({
         where: { id },
-        data: this.writeData(resource, body),
+        data: {
+          ...this.writeData(resource, body),
+          ...this.relationWrites(resource, body, true),
+        },
       });
+      await this.saveSeo(resource, id, body.seo);
+      return updated;
     } catch (error) {
       throw this.conflict(error);
     }
@@ -739,6 +811,333 @@ export class ExpandedService {
     });
   }
 
+  async formOptions() {
+    const active = { deletedAt: null };
+    const [
+      countries,
+      universities,
+      offerings,
+      courses,
+      levels,
+      modes,
+      intakes,
+      locations,
+      providers,
+      media,
+    ] = await Promise.all([
+      this.prisma.country.findMany({
+        where: active,
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.university.findMany({
+        where: active,
+        select: { id: true, name: true, slug: true, countryId: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.universityCourseOffering.findMany({
+        where: active,
+        select: { id: true, name: true, slug: true, universityId: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.course.findMany({
+        where: active,
+        select: { id: true, name: true, slug: true, courseLevelId: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.courseLevel.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true, code: true },
+        orderBy: { educationOrder: 'asc' },
+      }),
+      this.prisma.studyMode.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true, code: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.intake.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true, slug: true, monthNumber: true },
+        orderBy: { monthNumber: 'asc' },
+      }),
+      this.prisma.consultantLocation.findMany({
+        where: active,
+        select: { id: true, name: true, slug: true, city: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.scholarshipProvider.findMany({
+        where: active,
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.mediaAsset.findMany({
+        where: { status: 'ACTIVE', deletedAt: null },
+        select: { id: true, altText: true, originalFileName: true },
+        take: 100,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    const campuses = await this.prisma.universityCampus.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, universityId: true },
+      orderBy: { name: 'asc' },
+    });
+    return {
+      countries,
+      universities,
+      offerings,
+      courses,
+      levels,
+      modes,
+      intakes,
+      locations,
+      providers,
+      media,
+      campuses,
+    };
+  }
+
+  private relationWrites(
+    resource: Exclude<Resource, 'contact-inquiries'>,
+    body: Data,
+    replace: boolean,
+  ): Data {
+    const strings = (value: unknown) =>
+      Array.isArray(value)
+        ? [
+            ...new Set(
+              value.filter(
+                (item): item is string =>
+                  typeof item === 'string' && item.trim() !== '',
+              ),
+            ),
+          ]
+        : [];
+    const rows = (value: unknown) =>
+      Array.isArray(value)
+        ? value.filter(
+            (item): item is Data =>
+              Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+          )
+        : [];
+    const reset = replace ? { deleteMany: {} } : {};
+
+    if (resource === 'universities') {
+      const campuses = rows(body.campuses).filter(
+        (row) => typeof row.name === 'string' && row.name.trim(),
+      );
+      const accreditations = rows(body.accreditations).filter(
+        (row) => typeof row.name === 'string' && row.name.trim(),
+      );
+      return {
+        ...(Array.isArray(body.campuses)
+          ? {
+              campuses: {
+                ...reset,
+                create: campuses.map((row, index) => ({
+                  name: String(row.name).trim(),
+                  slug:
+                    this.optionalText(row.slug) ??
+                    `${String(row.name)
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .replace(/^-|-$/g, '')}-${index + 1}`,
+                  city: this.optionalText(row.city),
+                  state: this.optionalText(row.state),
+                  address: this.optionalText(row.address),
+                  overview: this.optionalText(row.overview),
+                  status: 'ACTIVE',
+                  displayOrder: index + 1,
+                })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.accreditations)
+          ? {
+              accreditations: {
+                ...reset,
+                create: accreditations.map((row, index) => ({
+                  name: String(row.name).trim(),
+                  accreditor: this.optionalText(row.accreditor),
+                  referenceUrl: this.optionalText(row.referenceUrl),
+                  verifiedAt: this.dateValue(row.verifiedAt),
+                  status: 'ACTIVE',
+                  displayOrder: index + 1,
+                })),
+              },
+            }
+          : {}),
+      };
+    }
+    if (resource === 'offerings') {
+      const intakes = rows(body.intakes).filter(
+        (row) => typeof row.intakeId === 'string',
+      );
+      const requirements = rows(body.requirements).filter(
+        (row) => typeof row.title === 'string' && row.title.trim(),
+      );
+      return {
+        ...(Array.isArray(body.intakes)
+          ? {
+              intakes: {
+                ...reset,
+                create: intakes.map((row) => ({
+                  intakeId: String(row.intakeId),
+                  deadline: this.dateValue(row.deadline),
+                  notes: this.optionalText(row.notes),
+                  status: 'ACTIVE',
+                })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.requirements)
+          ? {
+              requirements: {
+                ...reset,
+                create: requirements.map((row, index) => ({
+                  category: this.optionalText(row.category) ?? 'ACADEMIC',
+                  title: String(row.title).trim(),
+                  description: this.optionalText(row.description),
+                  minimumScore: this.decimalValue(row.minimumScore),
+                  status: 'ACTIVE',
+                  displayOrder: index + 1,
+                })),
+              },
+            }
+          : {}),
+      };
+    }
+    if (resource === 'scholarships') {
+      const countryIds = strings(body.countryIds);
+      const universityIds = strings(body.universityIds);
+      const offeringIds = strings(body.offeringIds);
+      return {
+        ...(Array.isArray(body.countryIds)
+          ? {
+              countries: {
+                ...reset,
+                create: countryIds.map((countryId) => ({ countryId })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.universityIds)
+          ? {
+              universities: {
+                ...reset,
+                create: universityIds.map((universityId) => ({ universityId })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.offeringIds)
+          ? {
+              offerings: {
+                ...reset,
+                create: offeringIds.map((offeringId) => ({ offeringId })),
+              },
+            }
+          : {}),
+      };
+    }
+    if (resource === 'consultants') {
+      const locationIds = strings(body.locationIds);
+      const countryIds = strings(body.countryIds);
+      const services = strings(body.services);
+      const languages = strings(body.languages);
+      return {
+        ...(Array.isArray(body.locationIds)
+          ? {
+              locations: {
+                ...reset,
+                create: locationIds.map((locationId) => ({ locationId })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.countryIds)
+          ? {
+              countries: {
+                ...reset,
+                create: countryIds.map((countryId) => ({ countryId })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.services)
+          ? {
+              services: {
+                ...reset,
+                create: services.map((name, index) => ({
+                  name,
+                  slug: `${name
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')}-${index + 1}`,
+                  displayOrder: index + 1,
+                })),
+              },
+            }
+          : {}),
+        ...(Array.isArray(body.languages)
+          ? {
+              languages: {
+                ...reset,
+                create: languages.map((name) => ({ name })),
+              },
+            }
+          : {}),
+      };
+    }
+    return {};
+  }
+
+  private async saveSeo(resource: Resource, ownerId: string, value: unknown) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const seo = value as Data;
+    const seoTitle = this.optionalText(seo.seoTitle);
+    const metaDescription = this.optionalText(seo.metaDescription);
+    if (!seoTitle || !metaDescription) return;
+    await this.prisma.seoMetadata.upsert({
+      where: { ownerType_ownerId: { ownerType: resource, ownerId } },
+      update: {
+        seoTitle,
+        metaDescription,
+        canonicalUrl: this.optionalText(seo.canonicalUrl),
+        focusKeyword: this.optionalText(seo.focusKeyword),
+        robotsIndex: seo.robotsIndex !== false,
+        robotsFollow: seo.robotsFollow !== false,
+      },
+      create: {
+        ownerType: resource,
+        ownerId,
+        seoTitle,
+        metaDescription,
+        canonicalUrl: this.optionalText(seo.canonicalUrl),
+        focusKeyword: this.optionalText(seo.focusKeyword),
+        robotsIndex: seo.robotsIndex !== false,
+        robotsFollow: seo.robotsFollow !== false,
+      },
+    });
+  }
+
+  private async withSeo(resource: Resource, record: { id: unknown }) {
+    const seo = await this.prisma.seoMetadata.findUnique({
+      where: {
+        ownerType_ownerId: { ownerType: resource, ownerId: String(record.id) },
+      },
+    });
+    return { ...record, seo };
+  }
+
+  private decimalValue(value: unknown) {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private dateValue(value: unknown) {
+    if (typeof value !== 'string' || !value.trim()) return undefined;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.valueOf()) ? undefined : parsed;
+  }
+
   private writeData(
     resource: Exclude<Resource, 'contact-inquiries'>,
     body: Data,
@@ -749,10 +1148,153 @@ export class ExpandedService {
       'updatedAt',
       'deletedAt',
       'publishedAt',
+      'seo',
+      'campuses',
+      'accreditations',
+      'intakes',
+      'requirements',
+      'countryIds',
+      'universityIds',
+      'offeringIds',
+      'locationIds',
+      'services',
+      'languages',
+      'speakers',
+      'providerName',
     ]);
+    const allowed: Partial<
+      Record<Exclude<Resource, 'contact-inquiries'>, Set<string>>
+    > = {
+      universities: new Set([
+        'countryId',
+        'name',
+        'slug',
+        'institutionType',
+        'shortDescription',
+        'overview',
+        'featuredMediaId',
+        'sourceReference',
+        'status',
+        'displayOrder',
+      ]),
+      offerings: new Set([
+        'universityId',
+        'genericCourseId',
+        'campusId',
+        'name',
+        'slug',
+        'shortDescription',
+        'overview',
+        'courseLevelId',
+        'studyMode',
+        'durationMin',
+        'durationMax',
+        'durationUnit',
+        'tuitionMin',
+        'tuitionMax',
+        'currencyCode',
+        'tuitionPeriod',
+        'applicationUrl',
+        'sourceReference',
+        'featuredMediaId',
+        'status',
+        'displayOrder',
+      ]),
+      scholarships: new Set([
+        'providerId',
+        'title',
+        'slug',
+        'summary',
+        'description',
+        'benefitType',
+        'amount',
+        'currencyCode',
+        'eligibility',
+        'deadline',
+        'applicationUrl',
+        'sourceReference',
+        'featuredMediaId',
+        'status',
+        'displayOrder',
+      ]),
+      consultants: new Set([
+        'name',
+        'slug',
+        'shortDescription',
+        'description',
+        'email',
+        'phone',
+        'websiteUrl',
+        'verificationStatus',
+        'sourceReference',
+        'featuredMediaId',
+        'status',
+        'displayOrder',
+      ]),
+      jobs: new Set([
+        'title',
+        'slug',
+        'summary',
+        'department',
+        'employmentType',
+        'location',
+        'remoteStatus',
+        'description',
+        'responsibilities',
+        'qualifications',
+        'expiryDate',
+        'applicationUrl',
+        'applicationEmail',
+        'status',
+        'displayOrder',
+      ]),
+      events: new Set([
+        'title',
+        'slug',
+        'summary',
+        'description',
+        'startsAt',
+        'endsAt',
+        'timezone',
+        'eventType',
+        'venue',
+        'onlineUrl',
+        'registrationUrl',
+        'featuredMediaId',
+        'status',
+        'displayOrder',
+      ]),
+      'success-stories': new Set([
+        'countryId',
+        'universityId',
+        'offeringId',
+        'title',
+        'slug',
+        'journey',
+        'attribution',
+        'attributionNote',
+        'featuredMediaId',
+        'status',
+        'displayOrder',
+      ]),
+      testimonials: new Set([
+        'universityId',
+        'offeringId',
+        'quote',
+        'attribution',
+        'attributionNote',
+        'imageMediaId',
+        'status',
+        'displayOrder',
+      ]),
+    };
     const data: Data = {};
     for (const [key, value] of Object.entries(body))
-      if (!ignored.has(key) && value !== undefined)
+      if (
+        !ignored.has(key) &&
+        value !== undefined &&
+        (!allowed[resource] || allowed[resource]?.has(key))
+      )
         data[key] = typeof value === 'string' ? value.trim() : value;
     const title =
       typeof data.title === 'string'
@@ -779,6 +1321,7 @@ export class ExpandedService {
     if (
       [
         'universities',
+        'offerings',
         'scholarships',
         'consultants',
         'jobs',
@@ -793,6 +1336,9 @@ export class ExpandedService {
         message: 'A slug is required',
         details: null,
       });
+    if (resource === 'events' && Array.isArray(body.speakers))
+      data.speakersJson = body.speakers;
+    if (data.status === 'PUBLISHED') data.publishedAt = new Date();
     return data;
   }
 

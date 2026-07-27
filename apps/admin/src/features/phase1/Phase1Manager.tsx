@@ -1,9 +1,15 @@
 "use client";
+
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import {
+  isStructuredPhase1Resource,
+  Phase1StructuredEditor,
+} from "./Phase1StructuredEditor";
 
 const titles: Record<string, string> = {
   universities: "Universities",
+  offerings: "University course offerings",
   scholarships: "Scholarships",
   consultants: "Consultants",
   jobs: "Jobs",
@@ -14,19 +20,8 @@ const titles: Record<string, string> = {
   "navigation-menus": "Navigation menus",
   "contact-inquiries": "Contact enquiries",
 };
+
 const examples: Record<string, string> = {
-  universities:
-    '{\n  "name": "Demo University",\n  "slug": "demo-university",\n  "countryId": "<country-id>",\n  "shortDescription": "Clearly fictional local demo record"\n}',
-  scholarships:
-    '{\n  "title": "Demo scholarship",\n  "slug": "demo-scholarship",\n  "summary": "Clearly fictional local demo record"\n}',
-  consultants:
-    '{\n  "name": "Demo consultant",\n  "slug": "demo-consultant"\n}',
-  jobs: '{\n  "title": "Demo role",\n  "slug": "demo-role"\n}',
-  events:
-    '{\n  "title": "Demo event",\n  "slug": "demo-event",\n  "startsAt": "2026-12-01T10:00:00.000Z"\n}',
-  "success-stories":
-    '{\n  "title": "Demo story",\n  "slug": "demo-story",\n  "journey": "Clearly fictional local demo content"\n}',
-  testimonials: '{\n  "quote": "Clearly fictional local demo content"\n}',
   pages:
     '{\n  "pageType": "EDITORIAL",\n  "title": "About",\n  "slug": "about"\n}',
   "navigation-menus":
@@ -66,7 +61,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const [rows, setRows] = useState<Phase1Row[]>([]);
   const [message, setMessage] = useState("");
   const [draft, setDraft] = useState(examples[resource] ?? "{}");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const title = titles[resource] ?? resource;
+  const structured = isStructuredPhase1Resource(resource);
+
   const load = useCallback(async () => {
     try {
       const body = await request(resource);
@@ -77,23 +76,14 @@ export function Phase1Manager({ resource }: { resource: string }) {
       );
     }
   }, [resource]);
+
   useEffect(() => {
-    let active = true;
-    void request(resource)
-      .then((body) => {
-        if (active) setRows(body.data ?? []);
-      })
-      .catch((error: unknown) => {
-        if (active)
-          setMessage(
-            error instanceof Error ? error.message : "Unable to load records",
-          );
-      });
-    return () => {
-      active = false;
-    };
-  }, [resource]);
-  async function create() {
+    // The state update happens only after the asynchronous API request resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  async function createAdvanced() {
     try {
       const body: unknown = JSON.parse(draft);
       if (!body || typeof body !== "object" || Array.isArray(body))
@@ -105,6 +95,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
       setMessage(error instanceof Error ? error.message : "Invalid JSON");
     }
   }
+
   async function action(path: string, method = "POST") {
     try {
       await request(path, { method });
@@ -114,6 +105,15 @@ export function Phase1Manager({ resource }: { resource: string }) {
       setMessage(error instanceof Error ? error.message : "Unable to save");
     }
   }
+
+  async function afterSave() {
+    await load();
+    setCreating(false);
+    setEditingId(null);
+  }
+
+  const editor = structured && (creating || editingId);
+
   return (
     <section className="mx-auto max-w-[1240px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -125,9 +125,42 @@ export function Phase1Manager({ resource }: { resource: string }) {
             {title}
           </h2>
         </div>
-        <p className="text-sm text-[#667085]">{rows.length} records</p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-[#667085]">{rows.length} records</p>
+          {structured ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null);
+                setCreating(true);
+              }}
+              className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Create {resource === "offerings" ? "offering" : "record"}
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+
+      {editor ? (
+        <Phase1StructuredEditor
+          resource={resource}
+          recordId={editingId ?? undefined}
+          onSaved={afterSave}
+          onCancel={() => {
+            setCreating(false);
+            setEditingId(null);
+          }}
+        />
+      ) : null}
+
+      <div
+        className={`mt-8 grid gap-8 ${
+          structured || resource === "contact-inquiries"
+            ? ""
+            : "lg:grid-cols-[1fr_360px]"
+        }`}
+      >
         <div className="overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[#E8ECF3] text-[#667085]">
@@ -151,6 +184,18 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     {row.slug ?? row.status}
                   </td>
                   <td className="flex flex-wrap gap-2 p-4">
+                    {structured ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-[#1657CF] px-3 py-2 text-xs font-semibold text-[#1657CF]"
+                        onClick={() => {
+                          setCreating(false);
+                          setEditingId(row.id);
+                        }}
+                      >
+                        Edit
+                      </button>
+                    ) : null}
                     {resource !== "contact-inquiries" ? (
                       <>
                         <button
@@ -202,20 +247,24 @@ export function Phase1Manager({ resource }: { resource: string }) {
             <p className="p-6 text-sm text-[#667085]">No records yet.</p>
           )}
         </div>
+
         {resource === "contact-inquiries" ? (
           <aside className="rounded-2xl border border-[#E8ECF3] bg-white p-5 text-sm text-[#667085]">
             Contact enquiries are separate from counselling leads. Conversion is
             idempotent, requires a phone number, and is recorded in the API
             audit log.
           </aside>
-        ) : (
+        ) : null}
+
+        {!structured && resource !== "contact-inquiries" ? (
           <aside className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
-            <h3 className="font-semibold">Create draft</h3>
+            <h3 className="font-semibold">Advanced development fallback</h3>
             <p className="mt-2 text-sm text-[#667085]">
-              Use the supported schema fields. Complex relationships can be
-              managed through the API while richer form editors are added.
+              This JSON tool is retained only for editorial and navigation
+              development. Catalog records use field-based editors.
             </p>
             <textarea
+              aria-label="Advanced JSON draft"
               className="mt-4 h-72 w-full rounded-xl border border-[#DCE2EA] p-3 font-mono text-xs"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -223,12 +272,12 @@ export function Phase1Manager({ resource }: { resource: string }) {
             <button
               className="mt-3 rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
               type="button"
-              onClick={() => void create()}
+              onClick={() => void createAdvanced()}
             >
               Create draft
             </button>
           </aside>
-        )}
+        ) : null}
       </div>
       {message ? (
         <p className="mt-5 text-sm text-[#48505F]" role="status">

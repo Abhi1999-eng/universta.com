@@ -39,6 +39,7 @@ function content(value: string): Content {
 
 const ADMIN_CONTENT = [
   ...CONTENT,
+  'offerings',
   'pages',
   'navigation-menus',
   'contact-inquiries',
@@ -171,6 +172,9 @@ export class ExpandedPublicController {
 @Roles('SUPER_ADMIN')
 export class ExpandedAdminController {
   constructor(private readonly service: ExpandedService) {}
+  @Get('form-options') async formOptions(@Req() req: AuthenticatedRequest) {
+    return successEnvelope(req, await this.service.formOptions());
+  }
   @Get(':resource') async list(
     @Req() req: AuthenticatedRequest,
     @Param('resource') resource: string,

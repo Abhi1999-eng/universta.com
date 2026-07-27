@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const RESOURCES = new Set([
   "universities",
+  "offerings",
   "scholarships",
   "consultants",
   "jobs",
