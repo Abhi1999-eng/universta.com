@@ -1,22 +1,25 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
 import { webBaseUrl } from './helpers/e2e-urls';
 
-const prefix = 'Acceptance Demo';
+// CI may provide a stable run id; local reruns remain isolated after a failed run.
+const runId = process.env.PHASE1_ACCEPTANCE_RUN_ID ?? randomUUID().slice(0, 8);
+const prefix = `Acceptance Demo ${runId}`;
 const universityName = `${prefix} University`;
-const universitySlug = 'acceptance-demo-university';
+const universitySlug = `acceptance-demo-${runId}-university`;
 const offeringName = `${prefix} Offering`;
-const offeringSlug = 'acceptance-demo-offering';
+const offeringSlug = `acceptance-demo-${runId}-offering`;
 const scholarshipTitle = `${prefix} Scholarship`;
-const scholarshipSlug = 'acceptance-demo-scholarship';
+const scholarshipSlug = `acceptance-demo-${runId}-scholarship`;
 const consultantName = `${prefix} Consultant`;
-const consultantSlug = 'acceptance-demo-consultant';
+const consultantSlug = `acceptance-demo-${runId}-consultant`;
 const jobTitle = `${prefix} Job`;
-const jobSlug = 'acceptance-demo-job';
+const jobSlug = `acceptance-demo-${runId}-job`;
 const eventTitle = `${prefix} Event`;
-const eventSlug = 'acceptance-demo-event';
+const eventSlug = `acceptance-demo-${runId}-event`;
 const storyTitle = `${prefix} Story`;
-const storySlug = 'acceptance-demo-story';
+const storySlug = `acceptance-demo-${runId}-story`;
 const testimonialQuote = `${prefix} testimonial is fictional local acceptance content.`;
 
 async function chooseFirst(form: Locator, label: string) {

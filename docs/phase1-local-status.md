@@ -15,7 +15,7 @@ has not yet been executed; it is not a release sign-off.
 | Course hierarchy and SEO | partial | Course filtering and detail/discovery routes were covered by the public browser catalog suite; comparison canonical/noindex metadata was checked. | Execute legacy redirect, invalid hierarchy, sitemap and robots inclusion/exclusion matrix. |
 | Responsive/accessibility | partial | Public catalog 320/390/768 overflow/menu coverage; structured field errors are programmatically associated; archive dialog is keyboard-labelled. | Execute full Admin 390px and all expanded public route viewport checks. |
 | Demo seed idempotency | pass | Explicit local demo seed ran twice with stable fictional records: 3 universities, 4 campuses, 8 offerings, 5 scholarships, 4 consultants, 3 locations, 3 jobs, 4 events, 3 stories and 5 testimonials. | None in this focused pass. |
-| Build and package integrity | pass | API, Admin and Web production builds passed. `npm ci --ignore-scripts --dry-run` passed. Next’s generated platform SWC lock mutation was restored. | Run the full repository suite only after every outstanding matrix is complete. |
+| Build and package integrity | pass | API, Admin and Web production builds passed. `npm ci --ignore-scripts --dry-run` passed. Next’s generated platform SWC lock mutation was restored. | None. |
 
 ## Local fixes in this pass
 
@@ -35,3 +35,11 @@ has not yet been executed; it is not a release sign-off.
 - Branch: `feat/phase1-expanded-local`
 - No remote, deployment, schema or migration changes were made in this pass.
 - Browser artifacts are kept outside the repository under `/tmp`.
+
+## Final validation executed
+
+- API unit: 44 passed; API authentication E2E: 11 passed.
+- Admin unit: 48 passed; Web unit: 3 passed.
+- Full Playwright browser suite: 55 passed.
+- Root lint completed with zero errors. Existing warnings remain: 53 API
+  `any`-safety warnings and 4 Web image-optimization warnings.

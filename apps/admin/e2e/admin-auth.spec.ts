@@ -49,7 +49,8 @@ test('protects the dashboard, restores the session, and logs out', async ({ page
   const cookies = await context.cookies();
   const refreshCookie = cookies.find((cookie) => cookie.name === 'universta_admin_refresh');
   expect(refreshCookie?.httpOnly).toBe(true);
-  expect(refreshCookie?.path).toBe('/api/v1/admin/auth');
+  // The protected server layout validates this HttpOnly cookie before rendering.
+  expect(refreshCookie?.path).toBe('/');
   const storage = await page.evaluate(() => ({
     localKeys: Object.keys(localStorage),
     sessionKeys: Object.keys(sessionStorage),
