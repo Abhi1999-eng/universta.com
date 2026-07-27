@@ -420,7 +420,11 @@ describe('Super Admin authentication (e2e)', () => {
     const jwt = app.get(JwtService);
     const config = app.get(RuntimeConfigService);
     const expired = await jwt.signAsync(
-      { sub: testUsers[0].id, jti: 'expired-session', type: REFRESH_TOKEN_TYPE },
+      {
+        sub: testUsers[0].id,
+        jti: 'expired-session',
+        type: REFRESH_TOKEN_TYPE,
+      },
       {
         secret: config.jwtRefreshSecret,
         expiresIn: -1,
@@ -433,8 +437,17 @@ describe('Super Admin authentication (e2e)', () => {
       .set('Cookie', `universta_admin_refresh=${expired}`)
       .expect(401);
     const wrongSignature = await jwt.signAsync(
-      { sub: testUsers[0].id, jti: 'wrong-signature', type: REFRESH_TOKEN_TYPE },
-      { expiresIn: '15m', issuer: AUTH_ISSUER, audience: AUTH_AUDIENCE },
+      {
+        sub: testUsers[0].id,
+        jti: 'wrong-signature',
+        type: REFRESH_TOKEN_TYPE,
+      },
+      {
+        secret: 'not-the-authoritative-refresh-secret',
+        expiresIn: '15m',
+        issuer: AUTH_ISSUER,
+        audience: AUTH_AUDIENCE,
+      },
     );
     await request(app.getHttpServer())
       .post('/api/v1/admin/auth/session/validate')

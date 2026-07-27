@@ -118,6 +118,7 @@ export function PhaseListing({
   search = true,
   basePath,
   title: customTitle,
+  details = !["success-stories", "testimonials"].includes(resource),
 }: {
   resource: string;
   rows: AnyRecord[];
@@ -125,6 +126,8 @@ export function PhaseListing({
   search?: boolean;
   basePath?: string;
   title?: string;
+  /** Listing-only resources must not expose routes that the product does not implement. */
+  details?: boolean;
 }) {
   const label = customTitle ?? labels[resource] ?? resource;
   const path = basePath ?? paths[resource] ?? `/${resource}`;
@@ -209,9 +212,11 @@ export function PhaseListing({
                     {row.location ? <span>{row.location}</span> : null}
                     {row.benefitType ? <span>{row.benefitType}</span> : null}
                   </div>
-                  <Link className="card-link" href={`${path}/${slugFor(row)}`}>
-                    View details <span aria-hidden="true">→</span>
-                  </Link>
+                  {details ? (
+                    <Link className="card-link" href={`${path}/${slugFor(row)}`}>
+                      View details <span aria-hidden="true">→</span>
+                    </Link>
+                  ) : null}
                 </div>
               </article>
             ))}

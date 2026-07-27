@@ -63,6 +63,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const [draft, setDraft] = useState(examples[resource] ?? "{}");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [pendingArchive, setPendingArchive] = useState<Phase1Row | null>(null);
   const title = titles[resource] ?? resource;
   const structured = isStructuredPhase1Resource(resource);
 
@@ -232,9 +233,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     <button
                       type="button"
                       className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700"
-                      onClick={() =>
-                        void action(`${resource}/${row.id}`, "DELETE")
-                      }
+                      onClick={() => setPendingArchive(row)}
                     >
                       Archive
                     </button>
@@ -283,6 +282,45 @@ export function Phase1Manager({ resource }: { resource: string }) {
         <p className="mt-5 text-sm text-[#48505F]" role="status">
           {message}
         </p>
+      ) : null}
+      {pendingArchive ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="archive-record-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 id="archive-record-title" className="text-lg font-semibold">
+              Archive this record?
+            </h3>
+            <p className="mt-2 text-sm text-[#667085]">
+              {pendingArchive.name ??
+                pendingArchive.title ??
+                pendingArchive.quote?.slice(0, 48) ??
+                "This record"} will be removed from Admin and public listings.
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+                onClick={() => setPendingArchive(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => {
+                  void action(`${resource}/${pendingArchive.id}`, "DELETE");
+                  setPendingArchive(null);
+                }}
+              >
+                Archive record
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );

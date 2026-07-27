@@ -699,7 +699,7 @@ export class ExpandedService {
       const updated = await delegate.update({
         where: { id },
         data: {
-          ...this.writeData(resource, body),
+          ...this.writeData(resource, body, true),
           ...this.relationWrites(resource, body, true),
         },
       });
@@ -1141,6 +1141,7 @@ export class ExpandedService {
   private writeData(
     resource: Exclude<Resource, 'contact-inquiries'>,
     body: Data,
+    partial = false,
   ) {
     const ignored = new Set([
       'id',
@@ -1242,6 +1243,7 @@ export class ExpandedService {
         'description',
         'responsibilities',
         'qualifications',
+        'publishedDate',
         'expiryDate',
         'applicationUrl',
         'applicationEmail',
@@ -1305,6 +1307,7 @@ export class ExpandedService {
     if (
       resource !== 'navigation-menus' &&
       !title &&
+      !partial &&
       resource !== 'testimonials'
     )
       throw new UnprocessableEntityException({
@@ -1312,7 +1315,11 @@ export class ExpandedService {
         message: 'A title or name is required',
         details: null,
       });
-    if (resource === 'testimonials' && !this.optionalText(data.quote))
+    if (
+      resource === 'testimonials' &&
+      !partial &&
+      !this.optionalText(data.quote)
+    )
       throw new UnprocessableEntityException({
         code: 'QUOTE_REQUIRED',
         message: 'A testimonial quote is required',
@@ -1329,7 +1336,8 @@ export class ExpandedService {
         'success-stories',
         'pages',
       ].includes(resource) &&
-      !this.optionalText(data.slug)
+      !this.optionalText(data.slug) &&
+      !partial
     )
       throw new UnprocessableEntityException({
         code: 'SLUG_REQUIRED',
@@ -1338,6 +1346,70 @@ export class ExpandedService {
       });
     if (resource === 'events' && Array.isArray(body.speakers))
       data.speakersJson = body.speakers;
+    const normalizeDate = (key: string) => {
+      if (!(key in data)) return;
+      if (data[key] === null || data[key] === '') {
+        data[key] = null;
+        return;
+      }
+      const parsed = this.dateValue(data[key]);
+      if (!parsed)
+        throw new UnprocessableEntityException({
+          code: 'VALIDATION_ERROR',
+          message: `${key} must be a valid date`,
+          details: null,
+        });
+      data[key] = parsed;
+    };
+    const normalizeDecimal = (key: string) => {
+      if (!(key in data)) return;
+      if (data[key] === null || data[key] === '') {
+        data[key] = null;
+        return;
+      }
+      const parsed = this.decimalValue(data[key]);
+      if (parsed === undefined)
+        throw new UnprocessableEntityException({
+          code: 'VALIDATION_ERROR',
+          message: `${key} must be a valid number`,
+          details: null,
+        });
+      data[key] = parsed;
+    };
+    if (resource === 'offerings')
+      for (const key of [
+        'durationMin',
+        'durationMax',
+        'tuitionMin',
+        'tuitionMax',
+      ])
+        normalizeDecimal(key);
+    if (resource === 'scholarships') {
+      normalizeDecimal('amount');
+      normalizeDate('deadline');
+    }
+    if (resource === 'jobs') {
+      normalizeDate('publishedDate');
+      normalizeDate('expiryDate');
+    }
+    if (resource === 'events') {
+      normalizeDate('startsAt');
+      normalizeDate('endsAt');
+      const startsAt = data.startsAt as Date | null | undefined;
+      const endsAt = data.endsAt as Date | null | undefined;
+      if (!startsAt)
+        throw new UnprocessableEntityException({
+          code: 'EVENT_START_REQUIRED',
+          message: 'An event start date and time is required',
+          details: null,
+        });
+      if (endsAt && endsAt <= startsAt)
+        throw new UnprocessableEntityException({
+          code: 'EVENT_DATE_RANGE_INVALID',
+          message: 'Event end date and time must be after the start',
+          details: null,
+        });
+    }
     if (data.status === 'PUBLISHED') data.publishedAt = new Date();
     return data;
   }

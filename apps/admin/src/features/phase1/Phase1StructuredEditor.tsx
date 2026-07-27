@@ -3,7 +3,7 @@
 /* The dynamic repeaters and relation option sets intentionally share one editor shape. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 
 type Option = {
@@ -136,6 +136,9 @@ export function Phase1StructuredEditor({
   const [tagDraft, setTagDraft] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
+  // New records also depend on asynchronous relationship options; do not let a
+  // save race ahead of those options or an existing-record hydration.
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   function hydrate(record: Row) {
@@ -165,6 +168,7 @@ export function Phase1StructuredEditor({
       "applicationUrl",
       "providerId",
       "title",
+      "quote",
       "summary",
       "description",
       "benefitType",
@@ -283,14 +287,15 @@ export function Phase1StructuredEditor({
         if (!active) return;
         setOptions(nextOptions);
         if (record) hydrate(record);
+        setLoading(false);
       })
-      .catch(
-        (error: unknown) =>
-          active &&
-          setMessage(
-            error instanceof Error ? error.message : "Unable to load editor",
-          ),
-      );
+      .catch((error: unknown) => {
+        if (!active) return;
+        setMessage(
+          error instanceof Error ? error.message : "Unable to load editor",
+        );
+        setLoading(false);
+      });
     return () => {
       active = false;
     };
@@ -361,13 +366,17 @@ export function Phase1StructuredEditor({
       next.countryId = "Select a country.";
     if (resource === "offerings" && !values.courseLevelId)
       next.courseLevelId = "Select a course level.";
+    if (resource === "events" && values.startsAt && values.endsAt) {
+      if (new Date(values.endsAt) <= new Date(values.startsAt))
+        next.endsAt = "End date and time must be after the start.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validate() || busy) return;
+    if (!validate() || busy || loading) return;
     setBusy(true);
     setMessage("");
     const payload: Record<string, unknown> = {
@@ -410,8 +419,13 @@ export function Phase1StructuredEditor({
         robotsFollow: values.robotsFollow !== "false",
       },
     };
-    for (const [key, value] of Object.entries(payload))
-      if (value === "") delete payload[key];
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== "") continue;
+      // Empty optional controls clear persisted nullable values on edit.
+      // Required values remain absent so the API can return their field error.
+      if (["name", "title", "slug", "quote"].includes(key)) delete payload[key];
+      else payload[key] = null;
+    }
     try {
       await api<Row>(recordId ? `${resource}/${recordId}` : resource, {
         method: recordId ? "PATCH" : "POST",
@@ -462,6 +476,8 @@ export function Phase1StructuredEditor({
           {message}
         </p>
       ) : null}
+      {loading ? <p role="status" className="text-sm text-[#667085]">Loading record…</p> : null}
+      <fieldset disabled={loading} className="contents" aria-busy={loading}>
       {resource === "universities" ? (
         <UniversityFields
           values={values}
@@ -582,6 +598,7 @@ export function Phase1StructuredEditor({
           {busy ? "Saving…" : recordId ? "Save changes" : "Create draft"}
         </button>
       </div>
+      </fieldset>
     </form>
   );
 }
@@ -601,27 +618,37 @@ function Field({
   textarea?: boolean;
   type?: string;
 }) {
+  const fieldId = useId();
+  const errorId = useId();
   return (
-    <label className="block text-sm font-semibold">
-      {label}
+    <div className="block text-sm font-semibold">
+      <label htmlFor={fieldId}>{label}</label>
       {textarea ? (
         <textarea
+          id={fieldId}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className={`${inputClass} min-h-28`}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
         />
       ) : (
         <input
+          id={fieldId}
           type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className={inputClass}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
         />
       )}
       {error ? (
-        <span className="mt-1 block text-xs text-[#B42318]">{error}</span>
+        <span id={errorId} className="mt-1 block text-xs text-[#B42318]">
+          {error}
+        </span>
       ) : null}
-    </label>
+    </div>
   );
 }
 function Select({
@@ -637,13 +664,18 @@ function Select({
   options: Option[];
   error?: string;
 }) {
+  const fieldId = useId();
+  const errorId = useId();
   return (
-    <label className="block text-sm font-semibold">
-      {label}
+    <div className="block text-sm font-semibold">
+      <label htmlFor={fieldId}>{label}</label>
       <select
+        id={fieldId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={inputClass}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
       >
         <option value="">Select {label.toLowerCase()}</option>
         {options.map((option) => (
@@ -653,9 +685,9 @@ function Select({
         ))}
       </select>
       {error ? (
-        <span className="mt-1 block text-xs text-[#B42318]">{error}</span>
+        <span id={errorId} className="mt-1 block text-xs text-[#B42318]">{error}</span>
       ) : null}
-    </label>
+    </div>
   );
 }
 function labelOf(option: Option) {
@@ -1207,6 +1239,12 @@ function JobFields(p: any) {
           onChange={(value) => p.set("remoteStatus", value)}
         />
         <Field
+          label="Published date"
+          type="date"
+          value={p.values.publishedDate ?? ""}
+          onChange={(value) => p.set("publishedDate", value)}
+        />
+        <Field
           label="Expiry"
           type="date"
           value={p.values.expiryDate ?? ""}
@@ -1261,6 +1299,7 @@ function EventFields(p: any) {
           type="datetime-local"
           value={p.values.endsAt ?? ""}
           onChange={(value) => p.set("endsAt", value)}
+          error={p.errors.endsAt}
         />
         <Field
           label="Timezone"
@@ -1276,6 +1315,7 @@ function EventFields(p: any) {
           >
             <option>OFFLINE</option>
             <option>ONLINE</option>
+            <option>HYBRID</option>
           </select>
         </label>
         <Field

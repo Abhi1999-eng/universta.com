@@ -58,13 +58,16 @@ export async function proxyPhase1Admin(
       "UNAUTHORIZED",
       "Your admin session is invalid",
     );
+  const isFormOptions = segments.length === 1 && resource === "form-options";
   if (
     !resource ||
-    !RESOURCES.has(resource) ||
     segments.length > 3 ||
+    (!isFormOptions && !RESOURCES.has(resource)) ||
     (action && !["publish", "unpublish", "convert"].includes(action))
   )
     return fail(404, requestId, "NOT_FOUND", "Admin resource not found");
+  if (isFormOptions && request.method !== "GET")
+    return fail(405, requestId, "METHOD_NOT_ALLOWED", "Method not allowed");
   if (action === "convert" && resource !== "contact-inquiries")
     return fail(404, requestId, "NOT_FOUND", "Admin resource not found");
   const method = request.method;
