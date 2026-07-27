@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { ExpandedAdminController, ExpandedPublicController } from './expanded.controller';
+import {
+  ExpandedAdminController,
+  ExpandedPublicController,
+} from './expanded.controller';
 import { ExpandedService } from './expanded.service';
 
 @Module({

@@ -33,11 +33,13 @@ function observePageHealth(page: Page) {
 }
 
 test.describe('approved public subject and course discovery', () => {
-  test('redirects the unfinished root route to approved country discovery', async ({ page }) => {
+  test('renders the editorial home route with primary discovery actions', async ({ page }) => {
     await page.goto(webBaseUrl);
 
-    await expect(page).toHaveURL(`${webBaseUrl}/countries`);
-    await expect(page.getByRole('heading', { level: 1, name: /Where will your degree take you/i })).toBeVisible();
+    await expect(page).toHaveURL(webBaseUrl);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Explore countries/i })).toHaveAttribute('href', '/countries');
+    await expect(page.getByRole('link', { name: /Book free counselling/i })).toHaveAttribute('href', '/counselling');
   });
 
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {
