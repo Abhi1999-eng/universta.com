@@ -1276,6 +1276,106 @@ async function main() {
     }
   }
 
+  // Expanded Phase 1 records are deliberately fictional, local-only fixtures.
+  // They are not part of the normal foundation seed or any deployment path.
+  const demoCountry =
+    countryBySlug.get('canada') ??
+    (await prisma.country.findFirst({ where: { status: 'PUBLISHED', deletedAt: null } }));
+  const demoCourse = await prisma.course.findFirst({
+    where: { status: 'PUBLISHED', deletedAt: null },
+    orderBy: { displayOrder: 'asc' },
+  });
+  const demoLevel = await prisma.courseLevel.findFirst({ where: { status: 'ACTIVE' } });
+
+  if (demoCountry) {
+    const university = await prisma.university.upsert({
+      where: { slug: 'northstar-demonstration-university' },
+      update: {
+        countryId: demoCountry.id,
+        name: 'Northstar Demonstration University',
+        institutionType: 'DEMONSTRATION',
+        shortDescription: 'Clearly fictional local university fixture for Phase 1 testing.',
+        overview: 'Northstar Demonstration University is fictional seed data. It must never be presented as a real institution.',
+        sourceReference: 'https://example.com/universta/local-demo/universities/northstar',
+        verifiedAt: now,
+        status: 'PUBLISHED',
+        publishedAt: now,
+        deletedAt: null,
+      },
+      create: {
+        countryId: demoCountry.id,
+        name: 'Northstar Demonstration University',
+        slug: 'northstar-demonstration-university',
+        institutionType: 'DEMONSTRATION',
+        shortDescription: 'Clearly fictional local university fixture for Phase 1 testing.',
+        overview: 'Northstar Demonstration University is fictional seed data. It must never be presented as a real institution.',
+        sourceReference: 'https://example.com/universta/local-demo/universities/northstar',
+        verifiedAt: now,
+        status: 'PUBLISHED',
+        publishedAt: now,
+      },
+    });
+    const campus = await prisma.universityCampus.upsert({
+      where: { universityId_slug: { universityId: university.id, slug: 'demo-city-campus' } },
+      update: { name: 'Demo City Campus', city: 'Demo City', overview: 'Fictional local campus fixture.', status: 'ACTIVE', deletedAt: null },
+      create: { universityId: university.id, name: 'Demo City Campus', slug: 'demo-city-campus', city: 'Demo City', overview: 'Fictional local campus fixture.', status: 'ACTIVE' },
+    });
+    const accreditation = await prisma.universityAccreditation.findFirst({ where: { universityId: university.id, name: 'Local demonstration record' } });
+    if (accreditation) await prisma.universityAccreditation.update({ where: { id: accreditation.id }, data: { status: 'ACTIVE', deletedAt: null, verifiedAt: now } });
+    else await prisma.universityAccreditation.create({ data: { universityId: university.id, name: 'Local demonstration record', accreditor: 'Not a real accreditor', referenceUrl: 'https://example.com/universta/local-demo', verifiedAt: now, status: 'ACTIVE' } });
+    if (demoCourse) {
+      const offering = await prisma.universityCourseOffering.upsert({
+        where: { slug: 'msc-computer-science-northstar-demo' },
+        update: { universityId: university.id, genericCourseId: demoCourse.id, campusId: campus.id, courseLevelId: demoLevel?.id ?? null, name: 'MSc Computer Science — local demo offering', shortDescription: 'Clearly fictional university-owned offering for local testing.', overview: 'This is a fictional local development fixture, not a real university program.', studyMode: 'FULL_TIME', durationMin: new Prisma.Decimal('2'), durationMax: new Prisma.Decimal('2'), durationUnit: 'YEARS', tuitionMin: new Prisma.Decimal('24000'), tuitionMax: new Prisma.Decimal('26000'), currencyCode: 'CAD', tuitionPeriod: 'PER_YEAR', sourceReference: 'https://example.com/universta/local-demo/offerings/msc-computer-science', verifiedAt: now, status: 'PUBLISHED', publishedAt: now, deletedAt: null },
+        create: { universityId: university.id, genericCourseId: demoCourse.id, campusId: campus.id, courseLevelId: demoLevel?.id ?? null, name: 'MSc Computer Science — local demo offering', slug: 'msc-computer-science-northstar-demo', shortDescription: 'Clearly fictional university-owned offering for local testing.', overview: 'This is a fictional local development fixture, not a real university program.', studyMode: 'FULL_TIME', durationMin: new Prisma.Decimal('2'), durationMax: new Prisma.Decimal('2'), durationUnit: 'YEARS', tuitionMin: new Prisma.Decimal('24000'), tuitionMax: new Prisma.Decimal('26000'), currencyCode: 'CAD', tuitionPeriod: 'PER_YEAR', sourceReference: 'https://example.com/universta/local-demo/offerings/msc-computer-science', verifiedAt: now, status: 'PUBLISHED', publishedAt: now },
+      });
+      for (const intake of intakeRows.slice(0, 2)) await prisma.universityCourseIntake.upsert({ where: { offeringId_intakeId: { offeringId: offering.id, intakeId: intake.id } }, update: { status: 'ACTIVE', deadline: new Date('2026-11-15') }, create: { offeringId: offering.id, intakeId: intake.id, deadline: new Date('2026-11-15'), status: 'ACTIVE' } });
+      const requirement = await prisma.universityCourseRequirement.findFirst({ where: { offeringId: offering.id, title: 'Local academic requirement' } });
+      if (requirement) await prisma.universityCourseRequirement.update({ where: { id: requirement.id }, data: { status: 'ACTIVE', description: 'Fictional local requirement for interface testing.', deletedAt: null } });
+      else await prisma.universityCourseRequirement.create({ data: { offeringId: offering.id, category: 'ACADEMIC', title: 'Local academic requirement', description: 'Fictional local requirement for interface testing.', status: 'ACTIVE' } });
+
+      const provider = await prisma.scholarshipProvider.upsert({ where: { slug: 'universta-demo-provider' }, update: { name: 'Universta Demonstration Provider', status: 'ACTIVE', deletedAt: null }, create: { name: 'Universta Demonstration Provider', slug: 'universta-demo-provider', websiteUrl: 'https://example.com/universta/local-demo/scholarships', status: 'ACTIVE' } });
+      const scholarship = await prisma.scholarship.upsert({ where: { slug: 'northstar-local-demo-scholarship' }, update: { providerId: provider.id, title: 'Northstar local demo scholarship', summary: 'Clearly fictional scholarship record for local filter and detail testing.', description: 'This is a fictional local development fixture. It is not an award or an endorsement.', benefitType: 'TUITION_REDUCTION', amount: new Prisma.Decimal('2000'), currencyCode: 'CAD', eligibility: 'Fictional local eligibility text.', deadline: new Date('2026-12-01'), applicationUrl: 'https://example.com/universta/local-demo/scholarships/apply', sourceReference: 'https://example.com/universta/local-demo/scholarships/northstar', verifiedAt: now, status: 'PUBLISHED', publishedAt: now, deletedAt: null }, create: { providerId: provider.id, title: 'Northstar local demo scholarship', slug: 'northstar-local-demo-scholarship', summary: 'Clearly fictional scholarship record for local filter and detail testing.', description: 'This is a fictional local development fixture. It is not an award or an endorsement.', benefitType: 'TUITION_REDUCTION', amount: new Prisma.Decimal('2000'), currencyCode: 'CAD', eligibility: 'Fictional local eligibility text.', deadline: new Date('2026-12-01'), applicationUrl: 'https://example.com/universta/local-demo/scholarships/apply', sourceReference: 'https://example.com/universta/local-demo/scholarships/northstar', verifiedAt: now, status: 'PUBLISHED', publishedAt: now } });
+      await prisma.scholarshipCountry.upsert({ where: { scholarshipId_countryId: { scholarshipId: scholarship.id, countryId: demoCountry.id } }, update: {}, create: { scholarshipId: scholarship.id, countryId: demoCountry.id } });
+      await prisma.scholarshipUniversity.upsert({ where: { scholarshipId_universityId: { scholarshipId: scholarship.id, universityId: university.id } }, update: {}, create: { scholarshipId: scholarship.id, universityId: university.id } });
+      await prisma.scholarshipUniversityCourseOffering.upsert({ where: { scholarshipId_offeringId: { scholarshipId: scholarship.id, offeringId: offering.id } }, update: {}, create: { scholarshipId: scholarship.id, offeringId: offering.id } });
+      await prisma.successStory.upsert({ where: { slug: 'local-demo-study-journey' }, update: { countryId: demoCountry.id, universityId: university.id, offeringId: offering.id, title: 'Local demo study journey', journey: 'Clearly fictional local demo content. It does not represent a real student, outcome or endorsement.', attribution: 'Demo record — not a real student', status: 'PUBLISHED', publishedAt: now, deletedAt: null }, create: { countryId: demoCountry.id, universityId: university.id, offeringId: offering.id, title: 'Local demo study journey', slug: 'local-demo-study-journey', journey: 'Clearly fictional local demo content. It does not represent a real student, outcome or endorsement.', attribution: 'Demo record — not a real student', status: 'PUBLISHED', publishedAt: now } });
+      const testimonial = await prisma.testimonial.findFirst({ where: { attribution: 'Demo record — not a real student' } });
+      if (testimonial) await prisma.testimonial.update({ where: { id: testimonial.id }, data: { universityId: university.id, offeringId: offering.id, quote: 'Clearly fictional local demo content for layout testing only.', status: 'PUBLISHED', publishedAt: now, deletedAt: null } });
+      else await prisma.testimonial.create({ data: { universityId: university.id, offeringId: offering.id, quote: 'Clearly fictional local demo content for layout testing only.', attribution: 'Demo record — not a real student', status: 'PUBLISHED', publishedAt: now } });
+    }
+  }
+
+  if (demoCountry) {
+    const location = await prisma.consultantLocation.upsert({ where: { slug: 'demo-city' }, update: { countryId: demoCountry.id, name: 'Demo City', city: 'Demo City', overview: 'Fictional local location fixture.', status: 'ACTIVE', deletedAt: null }, create: { countryId: demoCountry.id, name: 'Demo City', slug: 'demo-city', city: 'Demo City', overview: 'Fictional local location fixture.', status: 'ACTIVE' } });
+    const consultant = await prisma.consultant.upsert({ where: { slug: 'universta-demo-guidance' }, update: { name: 'Universta Demo Guidance', shortDescription: 'Clearly fictional local consultant fixture.', description: 'This local record is not a real consultancy or endorsement.', email: 'demo-consultant@example.test', phone: '+10000000000', verificationStatus: 'UNVERIFIED', sourceReference: 'https://example.com/universta/local-demo/consultants', status: 'PUBLISHED', publishedAt: now, deletedAt: null }, create: { name: 'Universta Demo Guidance', slug: 'universta-demo-guidance', shortDescription: 'Clearly fictional local consultant fixture.', description: 'This local record is not a real consultancy or endorsement.', email: 'demo-consultant@example.test', phone: '+10000000000', verificationStatus: 'UNVERIFIED', sourceReference: 'https://example.com/universta/local-demo/consultants', status: 'PUBLISHED', publishedAt: now } });
+    await prisma.consultantLocationMap.upsert({ where: { consultantId_locationId: { consultantId: consultant.id, locationId: location.id } }, update: { address: 'Fictional local address' }, create: { consultantId: consultant.id, locationId: location.id, address: 'Fictional local address' } });
+    await prisma.consultantCountry.upsert({ where: { consultantId_countryId: { consultantId: consultant.id, countryId: demoCountry.id } }, update: {}, create: { consultantId: consultant.id, countryId: demoCountry.id } });
+    const service = await prisma.consultantService.findFirst({ where: { consultantId: consultant.id, slug: 'course-guidance' } });
+    if (service) await prisma.consultantService.update({ where: { id: service.id }, data: { name: 'Course guidance' } }); else await prisma.consultantService.create({ data: { consultantId: consultant.id, name: 'Course guidance', slug: 'course-guidance' } });
+    const language = await prisma.consultantLanguage.findFirst({ where: { consultantId: consultant.id, name: 'English' } });
+    if (!language) await prisma.consultantLanguage.create({ data: { consultantId: consultant.id, name: 'English', code: 'en' } });
+  }
+
+  await prisma.job.upsert({ where: { slug: 'local-demo-content-coordinator' }, update: { title: 'Local demo content coordinator', summary: 'Clearly fictional local job listing fixture.', description: 'This is a local development record only.', department: 'Demonstration', employmentType: 'FULL_TIME', location: 'Demo City', remoteStatus: 'HYBRID', applicationUrl: 'https://example.com/universta/local-demo/jobs/apply', publishedDate: new Date('2026-07-01'), expiryDate: new Date('2027-01-01'), status: 'PUBLISHED', publishedAt: now, deletedAt: null }, create: { title: 'Local demo content coordinator', slug: 'local-demo-content-coordinator', summary: 'Clearly fictional local job listing fixture.', description: 'This is a local development record only.', department: 'Demonstration', employmentType: 'FULL_TIME', location: 'Demo City', remoteStatus: 'HYBRID', applicationUrl: 'https://example.com/universta/local-demo/jobs/apply', publishedDate: new Date('2026-07-01'), expiryDate: new Date('2027-01-01'), status: 'PUBLISHED', publishedAt: now } });
+  await prisma.event.upsert({ where: { slug: 'local-demo-study-options-session' }, update: { title: 'Local demo study options session', summary: 'Clearly fictional local event fixture.', description: 'This local event record is for interface testing only.', startsAt: new Date('2026-12-10T10:00:00.000Z'), endsAt: new Date('2026-12-10T11:00:00.000Z'), timezone: 'Asia/Kolkata', eventType: 'ONLINE', onlineUrl: 'https://example.com/universta/local-demo/events/session', registrationUrl: 'https://example.com/universta/local-demo/events/register', status: 'PUBLISHED', publishedAt: now, deletedAt: null }, create: { title: 'Local demo study options session', slug: 'local-demo-study-options-session', summary: 'Clearly fictional local event fixture.', description: 'This local event record is for interface testing only.', startsAt: new Date('2026-12-10T10:00:00.000Z'), endsAt: new Date('2026-12-10T11:00:00.000Z'), timezone: 'Asia/Kolkata', eventType: 'ONLINE', onlineUrl: 'https://example.com/universta/local-demo/events/session', registrationUrl: 'https://example.com/universta/local-demo/events/register', status: 'PUBLISHED', publishedAt: now } });
+
+  const editorialPages = [
+    ['home', 'HOME', 'Home', 'Explore local published study-abroad information without invented claims.', 'Start with countries, subjects, generic courses, university offerings and scholarships.'],
+    ['about', 'EDITORIAL', 'About Universta', 'A local Phase 1 study-abroad information experience.', 'This local page is managed through the Page and PageSection foundation.'],
+    ['faq', 'FAQ', 'Frequently asked questions', 'Answers about using the local Universta catalog.', 'Information is source-aware and should be verified with official providers.'],
+  ] as const;
+  for (const [slug, pageType, title, shortDescription, text] of editorialPages) {
+    const page = await prisma.page.upsert({ where: { slug }, update: { pageType, title, shortDescription, status: 'PUBLISHED', isHomepage: slug === 'home', publishedAt: now, deletedAt: null, updatedByUserId: admin.id }, create: { pageType, title, slug, shortDescription, status: 'PUBLISHED', isHomepage: slug === 'home', publishedAt: now, createdByUserId: admin.id, updatedByUserId: admin.id } });
+    await prisma.pageSection.upsert({ where: { pageId_sectionKey: { pageId: page.id, sectionKey: 'intro' } }, update: { heading: title, subheading: text, status: 'ACTIVE', deletedAt: null }, create: { pageId: page.id, sectionKey: 'intro', sectionType: 'RICH_TEXT', heading: title, subheading: text, status: 'ACTIVE' } });
+  }
+  const menu = await prisma.navigationMenu.upsert({ where: { menuKey: 'primary' }, update: { name: 'Primary navigation', location: 'HEADER', status: 'ACTIVE' }, create: { name: 'Primary navigation', menuKey: 'primary', location: 'HEADER', status: 'ACTIVE' } });
+  for (const [order, label, customUrl] of [['Countries', '/countries'], ['Universities', '/universities'], ['Scholarships', '/scholarships'], ['Consultants', '/study-abroad-consultants'], ['Counselling', '/counselling']].map(([label, url], index) => [index + 1, label, url] as const)) {
+    const existingItem = await prisma.navigationItem.findFirst({ where: { menuId: menu.id, label } });
+    const data = { linkType: 'CUSTOM', customUrl, displayOrder: order, status: 'ACTIVE' };
+    if (existingItem) await prisma.navigationItem.update({ where: { id: existingItem.id }, data }); else await prisma.navigationItem.create({ data: { menuId: menu.id, label, ...data } });
+  }
+
   const featureFlags = [
     ['PUBLIC_LOGIN', 'Public login', false],
     ['COMPARE_COUNTRIES', 'Compare countries', false],

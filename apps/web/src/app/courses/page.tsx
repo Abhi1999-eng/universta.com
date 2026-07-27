@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   getCourseFilterOptions,
   getCourses,
@@ -63,6 +64,29 @@ export default async function CoursesPage({
     }),
   ) as Record<string, string>;
   if (!filters.pageSize) filters.pageSize = '12';
+
+  // Preserve the generic catalog while giving the complete subject /
+  // specialization / country / intake hierarchy one deterministic shareable URL.
+  if (filters.subject && filters.subSubject && filters.country && filters.intake) {
+    const secondary = new URLSearchParams();
+    const mapping: Record<string, string> = {
+      englishTest: 'english-test',
+      scholarshipAvailable: 'scholarship',
+      level: 'level',
+      studyMode: 'study-mode',
+      minTuition: 'min-tuition',
+      maxTuition: 'max-tuition',
+      sort: 'sort',
+      page: 'page',
+      pageSize: 'page-size',
+    };
+    for (const [key, target] of Object.entries(mapping)) {
+      const value = filters[key];
+      if (value) secondary.set(target, value);
+    }
+    const destination = `/courses/${filters.subject}/${filters.subSubject}/${filters.country}/${filters.intake}`;
+    redirect(`${destination}${secondary.size ? `?${secondary}` : ''}`);
+  }
 
   let catalog;
   try {

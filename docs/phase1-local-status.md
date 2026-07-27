@@ -3,10 +3,10 @@
 | Batch | Status | Routes completed | Schema changes | Targeted tests run | Remaining issue |
 | --- | --- | --- | --- | --- | --- |
 | 1. Shared schema foundation | complete | — | Universities, offerings, scholarships, consultants, contact enquiries, jobs, events, success stories and testimonials | Prisma format, validate, generate, disposable-local migration | Demo records and feature modules follow in later batches |
-| 2. Editorial and contact | pending | — | — | — | — |
-| 3. Universities | pending | — | — | — | — |
-| 4. Scholarships | pending | — | — | — | — |
-| 5. Consultants | pending | — | — | — | — |
-| 6. Careers, events and trust | pending | — | — | — | — |
-| 7. Comparisons | pending | — | — | — | — |
-| 8. SEO, routing and navigation | pending | — | — | — | — |
+| 2. Editorial and contact | complete | `/`, `/about`, `/contact`, `/faq` | ContactInquiry reuse; no extra migration | API build, Web build, local submission/conversion/idempotency check | Rich visual CMS editor remains a small generic Admin JSON editor |
+| 3. Universities | complete | `/universities`, detail, offerings list/detail | University domain from batch 1 | API build, Web build, browser route check | Rich nested Admin forms are represented by generic Admin CRUD/API operations |
+| 4. Scholarships | complete | `/scholarships`, detail | Scholarship/provider/join models from batch 1 | API build, Web build, local route check | Relationship editing is API-backed through generic Admin operations |
+| 5. Consultants | complete | directory, detail, city location | Consultant/location/service/country/language models from batch 1 | API build, Web build, local route check | Rich relationship editor remains polish |
+| 6. Careers, events and trust | complete | careers/job, events/detail, success stories, testimonials | Structured entities from batch 1 | API build, Web build, local route check | No real-world demo claims were seeded |
+| 7. Comparisons | complete | four `/compare/*` routes | No persisted comparison models | Browser URL-state and mobile no-overflow check | Selection picker is URL-driven rather than saved state |
+| 8. SEO, routing and navigation | complete | sitemap, robots, Course discovery hierarchy | No further migration | Web build, legacy URL redirect check | Existing approved catalog chrome is preserved; expanded navigation uses shared Phase 1 chrome |
