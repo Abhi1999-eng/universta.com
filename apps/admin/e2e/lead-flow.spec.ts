@@ -134,3 +134,45 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
     JSON.stringify(detailWidth.offenders),
   ).toBeLessThanOrEqual(detailWidth.clientWidth);
 });
+
+test('keeps a contact enquiry traceable and converts it to exactly one counselling lead', async ({
+  page,
+}) => {
+  const unique = Date.now();
+  const fullName = `Manual UAT Contact ${unique}`;
+  const email = `manual-uat-contact-${unique}@example.invalid`;
+
+  await page.goto(`${webBaseUrl}/contact`);
+  await page.getByLabel('Full name').fill(fullName);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Phone (optional)').fill('+15550123456');
+  await page.getByLabel('Message').fill('Fictional local contact enquiry.');
+  await page
+    .getByLabel('I agree that Universta may use this enquiry to respond.')
+    .check();
+  await page.getByRole('button', { name: 'Send enquiry' }).click();
+  await expect(page.getByRole('status')).toHaveText(
+    'Thanks — your enquiry has been received.',
+  );
+
+  await page.goto(`${adminBaseUrl}/login`);
+  await loginAsAdmin(page);
+  await page.goto(`${adminBaseUrl}/phase1/contact-inquiries`);
+  const inquiry = page.getByRole('row').filter({ hasText: fullName });
+  await expect(inquiry).toBeVisible();
+  await inquiry.getByRole('button', { name: 'Convert to lead' }).click();
+  await expect(page.getByRole('status')).toHaveText('Saved.');
+  await expect(
+    inquiry.getByRole('button', { name: 'Convert to lead' }),
+  ).toBeDisabled();
+  await page.reload();
+  const persistedInquiry = page.getByRole('row').filter({ hasText: fullName });
+  await expect(
+    persistedInquiry.getByRole('button', { name: 'Convert to lead' }),
+  ).toBeDisabled();
+
+  await page.goto(`${adminBaseUrl}/leads`);
+  await page.getByLabel('Search').fill(email);
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page.getByRole('row').filter({ hasText: fullName })).toHaveCount(1);
+});

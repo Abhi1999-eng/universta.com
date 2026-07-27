@@ -47,9 +47,9 @@ test.describe('published Phase 1 comparisons', () => {
 
       await page.reload();
       await expect(input).toHaveValue(items);
-      await page.goBack();
+      await page.goBack({ waitUntil: 'commit' });
       await expect(page).toHaveURL(path);
-      await page.goForward();
+      await page.goForward({ waitUntil: 'commit' });
       await expect(input).toHaveValue(items);
 
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute(

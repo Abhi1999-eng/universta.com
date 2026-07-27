@@ -31,6 +31,15 @@ async function chooseFirst(form: Locator, label: string) {
   await select.selectOption({ index: 1 });
 }
 
+async function chooseNamed(form: Locator, label: string, name: string) {
+  const select = form.getByLabel(label, { exact: true });
+  await expect(select).toBeVisible();
+  await expect
+    .poll(async () => select.locator('option').count())
+    .toBeGreaterThan(1);
+  await select.selectOption({ label: name });
+}
+
 async function chooseOne(form: Locator, group: string) {
   const fieldset = form.getByRole('group', { name: group, exact: true });
   const choices = fieldset.getByRole('checkbox');
@@ -134,7 +143,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const form = await openCreate(page, 'offerings');
     await form.getByLabel('Name', { exact: true }).fill(offeringName);
     await form.getByLabel('Slug', { exact: true }).fill(offeringSlug);
-    await chooseFirst(form, 'University');
+    await chooseNamed(form, 'University', universityName);
     await chooseFirst(form, 'Generic course');
     await chooseFirst(form, 'Course level');
     await chooseFirst(form, 'Campus (optional)');

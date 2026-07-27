@@ -16,12 +16,12 @@ test.describe.serial('catalog management', () => {
   });
 
   test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }) => {
-    const codeSeed = randomUUID()
+    const codeSeed = `Q${randomUUID()
       .replace(/-/g, '')
       .match(/../g)
-      ?.slice(0, 3)
+      ?.slice(0, 2)
       .map((pair) => String.fromCharCode(65 + (Number.parseInt(pair, 16) % 26)))
-      .join('') ?? 'E2E';
+      .join('') ?? 'AA'}`;
     await loginAsAdmin(page);
     await page.goto('/continents');
     await expect(page).not.toHaveURL(/\/login/);
