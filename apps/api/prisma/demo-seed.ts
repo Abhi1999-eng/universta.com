@@ -1481,7 +1481,7 @@ async function main() {
         where: { slug: 'northstar-local-demo-scholarship' },
         update: {
           providerId: provider.id,
-          title: 'Northstar local demo scholarship',
+          title: 'Northstar Community Scholarship',
           summary:
             'Clearly fictional scholarship record for local filter and detail testing.',
           description:
@@ -1502,7 +1502,7 @@ async function main() {
         },
         create: {
           providerId: provider.id,
-          title: 'Northstar local demo scholarship',
+          title: 'Northstar Community Scholarship',
           slug: 'northstar-local-demo-scholarship',
           summary:
             'Clearly fictional scholarship record for local filter and detail testing.',
@@ -1558,10 +1558,11 @@ async function main() {
           countryId: demoCountry.id,
           universityId: university.id,
           offeringId: offering.id,
-          title: 'Local demo study journey',
+          title: 'A Northstar Study Journey',
           journey:
             'Clearly fictional local demo content. It does not represent a real student, outcome or endorsement.',
-          attribution: 'Demo record — not a real student',
+          attribution: 'Priya Nair',
+          attributionNote: 'Demo record — not a real student.',
           status: 'PUBLISHED',
           publishedAt: now,
           deletedAt: null,
@@ -1570,17 +1571,18 @@ async function main() {
           countryId: demoCountry.id,
           universityId: university.id,
           offeringId: offering.id,
-          title: 'Local demo study journey',
+          title: 'A Northstar Study Journey',
           slug: 'local-demo-study-journey',
           journey:
             'Clearly fictional local demo content. It does not represent a real student, outcome or endorsement.',
-          attribution: 'Demo record — not a real student',
+          attribution: 'Priya Nair',
+          attributionNote: 'Demo record — not a real student.',
           status: 'PUBLISHED',
           publishedAt: now,
         },
       });
       const testimonial = await prisma.testimonial.findFirst({
-        where: { attribution: 'Demo record — not a real student' },
+        where: { attributionNote: 'Demo record — not a real student.' },
       });
       if (testimonial)
         await prisma.testimonial.update({
@@ -1590,6 +1592,8 @@ async function main() {
             offeringId: offering.id,
             quote:
               'Clearly fictional local demo content for layout testing only.',
+            attribution: 'Marcus Lee',
+            attributionNote: 'Demo record — not a real student.',
             status: 'PUBLISHED',
             publishedAt: now,
             deletedAt: null,
@@ -1602,7 +1606,8 @@ async function main() {
             offeringId: offering.id,
             quote:
               'Clearly fictional local demo content for layout testing only.',
-            attribution: 'Demo record — not a real student',
+            attribution: 'Marcus Lee',
+            attributionNote: 'Demo record — not a real student.',
             status: 'PUBLISHED',
             publishedAt: now,
           },
@@ -1711,7 +1716,7 @@ async function main() {
   await prisma.job.upsert({
     where: { slug: 'local-demo-content-coordinator' },
     update: {
-      title: 'Local demo content coordinator',
+      title: 'Content Coordinator',
       summary: 'Clearly fictional local job listing fixture.',
       description: 'This is a local development record only.',
       department: 'Demonstration',
@@ -1726,7 +1731,7 @@ async function main() {
       deletedAt: null,
     },
     create: {
-      title: 'Local demo content coordinator',
+      title: 'Content Coordinator',
       slug: 'local-demo-content-coordinator',
       summary: 'Clearly fictional local job listing fixture.',
       description: 'This is a local development record only.',
@@ -1744,7 +1749,7 @@ async function main() {
   await prisma.event.upsert({
     where: { slug: 'local-demo-study-options-session' },
     update: {
-      title: 'Local demo study options session',
+      title: 'Study Options Info Session',
       summary: 'Clearly fictional local event fixture.',
       description: 'This local event record is for interface testing only.',
       startsAt: new Date('2026-12-10T10:00:00.000Z'),
@@ -1759,7 +1764,7 @@ async function main() {
       deletedAt: null,
     },
     create: {
-      title: 'Local demo study options session',
+      title: 'Study Options Info Session',
       slug: 'local-demo-study-options-session',
       summary: 'Clearly fictional local event fixture.',
       description: 'This local event record is for interface testing only.',
@@ -2076,11 +2081,18 @@ async function main() {
         index < 2 ? universities[index].university : northstar;
       const targetOffering = expandedOfferings[index] ?? expandedOfferings[0];
       const status = index === 3 ? 'DRAFT' : 'PUBLISHED';
+      const scholarshipTitles: Record<string, string> = {
+        'lakeside-demo-scholarship': 'Lakeside Merit Scholarship',
+        'ember-demo-scholarship': 'Ember Innovation Grant',
+        'demo-access-grant': 'Northstar Access Grant',
+        'demo-draft-scholarship': 'Northstar Future Leaders Scholarship',
+      };
+      const scholarshipTitle = scholarshipTitles[slug] ?? `Fictional ${slug.replaceAll('-', ' ')}`;
       const scholarship = await prisma.scholarship.upsert({
         where: { slug },
         update: {
           providerId: provider.id,
-          title: `Fictional ${slug.replaceAll('-', ' ')}`,
+          title: scholarshipTitle,
           summary: 'Fictional demo scholarship; no real award or endorsement.',
           description:
             'Fictional demo content for local relationship, filtering and detail testing.',
@@ -2097,7 +2109,7 @@ async function main() {
         },
         create: {
           providerId: provider.id,
-          title: `Fictional ${slug.replaceAll('-', ' ')}`,
+          title: scholarshipTitle,
           slug,
           summary: 'Fictional demo scholarship; no real award or endorsement.',
           description:
@@ -2183,12 +2195,18 @@ async function main() {
       'ember-demo-consultant',
       'demo-draft-consultant',
     ];
+    const consultantNames: Record<string, string> = {
+      'lakeside-demo-consultant': 'Lakeside Study Advisory',
+      'ember-demo-consultant': 'Ember Global Guidance',
+      'demo-draft-consultant': 'Northstar Consultant Preview',
+    };
     for (const [index, slug] of consultantSpecs.entries()) {
       const status = index === 2 ? 'DRAFT' : 'PUBLISHED';
+      const consultantName = consultantNames[slug] ?? `Demo Consultant ${index + 2}`;
       const consultant = await prisma.consultant.upsert({
         where: { slug },
         update: {
-          name: `Demo Consultant ${index + 2}`,
+          name: consultantName,
           shortDescription: 'Clearly fictional demo consultant fixture.',
           description:
             'Fictional demo content; no real credentials or endorsements.',
@@ -2201,7 +2219,7 @@ async function main() {
           deletedAt: null,
         },
         create: {
-          name: `Demo Consultant ${index + 2}`,
+          name: consultantName,
           slug,
           shortDescription: 'Clearly fictional demo consultant fixture.',
           description:
@@ -2275,12 +2293,13 @@ async function main() {
       'local-demo-expired-role',
     ].entries()) {
       const expired = index === 1;
+      const jobTitle = expired
+        ? 'Admissions Coordinator (Archived)'
+        : 'Student Support Advisor';
       await prisma.job.upsert({
         where: { slug },
         update: {
-          title: expired
-            ? 'Fictional expired demo role'
-            : 'Fictional demo student support role',
+          title: jobTitle,
           summary: 'Clearly fictional local job fixture.',
           description: 'Fictional demo content only.',
           department: 'Demonstration',
@@ -2294,9 +2313,7 @@ async function main() {
           deletedAt: null,
         },
         create: {
-          title: expired
-            ? 'Fictional expired demo role'
-            : 'Fictional demo student support role',
+          title: jobTitle,
           slug,
           summary: 'Clearly fictional local job fixture.',
           description: 'Fictional demo content only.',
@@ -2317,10 +2334,16 @@ async function main() {
       'local-demo-adviser-workshop',
     ].entries()) {
       const past = index === 1;
+      const eventTitles = [
+        'Lakeside Campus Info Session',
+        'Ember Study Options Webinar',
+        'Northstar Adviser Workshop',
+      ];
+      const eventTitle = eventTitles[index] ?? `Fictional demo event ${index + 2}`;
       await prisma.event.upsert({
         where: { slug },
         update: {
-          title: `Fictional demo event ${index + 2}`,
+          title: eventTitle,
           summary: 'Clearly fictional local event fixture.',
           description: 'Fictional demo content for event states.',
           startsAt: past
@@ -2340,7 +2363,7 @@ async function main() {
           deletedAt: null,
         },
         create: {
-          title: `Fictional demo event ${index + 2}`,
+          title: eventTitle,
           slug,
           summary: 'Clearly fictional local event fixture.',
           description: 'Fictional demo content for event states.',
@@ -2367,16 +2390,24 @@ async function main() {
     ].entries()) {
       const university = universities[index].university;
       const offering = expandedOfferings[index + 2];
+      const storyTitles = [
+        'From Lakeside to Living Abroad',
+        'Building a Career Through Ember',
+      ];
+      const storyTitle = storyTitles[index] ?? `Fictional demo study journey ${index + 2}`;
+      const storyAttributions = ['Wei Zhang', 'Fatima Al-Sayed'];
+      const storyAttribution = storyAttributions[index] ?? 'Fictional demo student';
       await prisma.successStory.upsert({
         where: { slug },
         update: {
           countryId: university.countryId,
           universityId: university.id,
           offeringId: offering.id,
-          title: `Fictional demo study journey ${index + 2}`,
+          title: storyTitle,
           journey:
             'Fictional demo content. It does not represent a real student or outcome.',
-          attribution: 'Fictional demo student — not a real person',
+          attribution: storyAttribution,
+          attributionNote: 'Not a real person.',
           status: 'PUBLISHED',
           publishedAt: now,
           deletedAt: null,
@@ -2385,21 +2416,22 @@ async function main() {
           countryId: university.countryId,
           universityId: university.id,
           offeringId: offering.id,
-          title: `Fictional demo study journey ${index + 2}`,
+          title: storyTitle,
           slug,
           journey:
             'Fictional demo content. It does not represent a real student or outcome.',
-          attribution: 'Fictional demo student — not a real person',
+          attribution: storyAttribution,
+          attributionNote: 'Not a real person.',
           status: 'PUBLISHED',
           publishedAt: now,
         },
       });
     }
     for (const [index, attribution] of [
-      'Fictional demo testimonial 2',
-      'Fictional demo testimonial 3',
-      'Fictional demo testimonial 4',
-      'Fictional demo testimonial 5',
+      'Ananya Sharma',
+      'Rohan Mehta',
+      'Sara Ibrahim',
+      'Daniel Osei',
     ].entries()) {
       const existing = await prisma.testimonial.findFirst({
         where: { attribution },
