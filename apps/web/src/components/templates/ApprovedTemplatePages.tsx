@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { consultationTarget } from '@/lib/country-experience';
+import { counsellingHref } from '@/lib/counselling-link';
 import type {
   Country,
   CountryPage,
@@ -920,7 +921,7 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
             <div className="updated"><Icon name="clock" size={15} />Published source-aware country profile</div>
             <div className="hero-btns">
               <Link href={`/courses?country=${country.slug}`} className="btn btn-p btn-lg">Explore courses</Link>
-              {guidanceTarget ? <a href={guidanceTarget} className="btn btn-s btn-lg">Review guidance</a> : null}
+              <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s btn-lg">Talk to a counsellor</Link>
             </div>
           </div>
           <aside className="quickfacts">

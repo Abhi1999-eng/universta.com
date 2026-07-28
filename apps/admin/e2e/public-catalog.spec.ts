@@ -49,37 +49,43 @@ test.describe('approved public subject and course discovery', () => {
   });
 
   test('hydrates approved course filters from the URL and preserves them on submit', async ({ page }) => {
-    await page.goto(`${courses}?q=engineering&level=UG&country=canada`);
+    await page.goto(`${courses}?q=computer&level=UG&country=canada`);
 
     await expect(page.getByRole('heading', { level: 1, name: /Find the Perfect Course to Study Abroad/i })).toBeVisible();
-    await expect(page.getByRole('combobox', { name: 'Search courses' })).toHaveValue('engineering');
+    await expect(page.getByRole('combobox', { name: 'Search courses' })).toHaveValue('computer');
     await expect(page.getByRole('combobox', { name: 'Search courses' })).toBeEditable();
-    await expect(page.getByRole('radio', { name: 'Undergraduate' })).toBeChecked();
-    await expect(page.getByRole('radio', { name: 'Canada' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: /Undergraduate/ })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: /Canada/ })).toBeChecked();
 
-    await page.getByRole('radio', { name: 'Diploma', exact: true }).check();
+    await page.getByRole('checkbox', { name: /United Kingdom/ }).check();
     await page.getByRole('button', { name: 'Apply filters' }).click();
 
-    await expect(page).toHaveURL(/q=engineering/);
-    await expect(page).toHaveURL(/level=DIPLOMA/);
-    await expect(page).toHaveURL(/country=canada/);
+    await expect(page).toHaveURL(/q=computer/);
+    await expect(page).toHaveURL(/level=UG/);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('country'))
+      .toBe('canada,united-kingdom');
+    expect(new URL(page.url()).searchParams.get('country')).toBe(
+      'canada,united-kingdom',
+    );
     expect(new URL(page.url()).searchParams.has('page')).toBe(false);
-    await expect(page.getByRole('heading', { name: 'No courses match these filters' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bachelor of Computer Science' })).toBeVisible();
   });
 
   test('restores course filter controls with browser back and forward navigation', async ({ page }) => {
     await page.goto(`${courses}?level=UG&country=canada`);
-    await page.getByRole('radio', { name: 'Diploma', exact: true }).check();
+    await page.getByRole('checkbox', { name: /^Diploma / }).check();
+    await page.getByRole('checkbox', { name: /Undergraduate/ }).uncheck();
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/level=DIPLOMA/);
 
     await page.goBack();
     await expect(page).toHaveURL(/level=UG/);
-    await expect(page.getByRole('radio', { name: 'Undergraduate' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: /Undergraduate/ })).toBeChecked();
 
     await page.goForward();
     await expect(page).toHaveURL(/level=DIPLOMA/);
-    await expect(page.getByRole('radio', { name: 'Diploma', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: /^Diploma / })).toBeChecked();
   });
 
   test('opens the approved course filter drawer on mobile and applies a URL filter', async ({ page }) => {
@@ -88,10 +94,14 @@ test.describe('approved public subject and course discovery', () => {
 
     await page.getByRole('button', { name: /^Filters/ }).click();
     await expect(page.locator('#course-filter-panel')).toHaveClass(/open/);
-    await page.getByRole('radio', { name: 'Canada' }).check();
+    await page.getByRole('checkbox', { name: /Canada/ }).check();
     await page.getByRole('button', { name: 'Apply filters' }).click();
 
     await expect(page).toHaveURL(/country=canada/);
+    await expect(page.locator('#course-filter-panel')).not.toHaveClass(/open/);
+
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    await page.keyboard.press('Escape');
     await expect(page.locator('#course-filter-panel')).not.toHaveClass(/open/);
   });
 
