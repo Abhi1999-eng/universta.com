@@ -393,6 +393,85 @@
   .final-cta .btn-outline:hover{background:rgba(255,255,255,.1);border-color:#fff;color:#fff}
   .final-cta .btn-secondary{background:#fff;color:var(--ink)}
 
+  /* counselling page */
+  .counselling-hero{padding:52px 0 60px;position:relative;overflow:hidden}
+  .counselling-hero-grid{display:grid;grid-template-columns:1fr 460px;gap:48px;align-items:start;position:relative;z-index:1}
+  .counselling-hero-grid h1{font-size:clamp(32px,4.4vw,46px);font-weight:800;letter-spacing:-.03em;margin-top:18px}
+  .counselling-hero-grid h1 span{color:var(--blue)}
+  .counselling-benefits{list-style:none;display:grid;gap:14px;margin-top:26px}
+  .counselling-benefits li{display:flex;gap:10px;font-size:15px;color:var(--slate);align-items:flex-start}
+  .counselling-benefits li::before{
+    content:"";width:20px;height:20px;border-radius:50%;background:var(--green-50);flex-shrink:0;margin-top:1px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23059669' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M20 6 9 17l-5-5'/></svg>");
+    background-repeat:no-repeat;background-position:center;background-size:12px;
+  }
+
+  .counselling-form-card{background:#fff;border:1px solid var(--line);border-radius:var(--r-xl);padding:32px;box-shadow:var(--shadow-lg)}
+  .counselling-form-heading h2{font-size:22px;font-weight:800;margin-top:8px}
+  .counselling-form-heading p{font-size:13.5px;color:var(--muted);margin-top:6px}
+  .counselling-form-heading p span{color:var(--blue)}
+  .source-context{display:inline-block;margin-top:12px;font-size:12.5px;font-weight:600;color:var(--blue);background:var(--blue-50);padding:5px 11px;border-radius:999px}
+
+  .form-notice{font-size:13.5px;color:var(--muted);padding:12px 14px;border-radius:10px;background:var(--bg);margin:16px 0}
+  .form-notice.error{background:#FEF2F2;color:#B91C1C;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+  .form-notice.error .btn{margin-top:2px}
+
+  .form-error-summary{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:16px 18px;margin:16px 0}
+  .form-error-summary h3{font-size:14px;font-weight:700;color:#B91C1C;margin-bottom:8px}
+  .form-error-summary ul{list-style:none;display:grid;gap:5px}
+  .form-error-summary button{background:none;border:none;color:#B91C1C;font-size:13.5px;text-decoration:underline;cursor:pointer;padding:0;text-align:left}
+
+  .counselling-form{margin-top:20px}
+  .counselling-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .counselling-field{display:flex;flex-direction:column;gap:6px}
+  .counselling-field label{font-size:13px;font-weight:600;color:var(--ink)}
+  .counselling-field label span{color:#DC2626}
+  .counselling-field input,.counselling-field select,.counselling-field textarea{
+    font-family:inherit;font-size:14.5px;color:var(--ink);background:#fff;border:1.5px solid var(--line);
+    border-radius:10px;padding:11px 14px;transition:.15s;width:100%;
+  }
+  .counselling-field input:focus,.counselling-field select:focus,.counselling-field textarea:focus{
+    outline:none;border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-50);
+  }
+  .counselling-field select{
+    appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:36px;
+  }
+  .counselling-field select:disabled{color:var(--faint);cursor:not-allowed;background-color:var(--bg)}
+  .counselling-field textarea{resize:vertical;min-height:110px}
+  .counselling-field.has-error input,.counselling-field.has-error select,.counselling-field.has-error textarea{border-color:#FCA5A5}
+  .field-error{font-size:12.5px;color:#DC2626;font-weight:500}
+  .field-help{font-size:12px;color:var(--faint);text-align:right}
+
+  .counselling-honeypot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  .consent-field{display:flex;gap:12px;align-items:flex-start;margin:20px 0;padding:16px;background:var(--bg);border-radius:12px}
+  .consent-field input{
+    appearance:none;-webkit-appearance:none;width:19px;height:19px;border:1.6px solid var(--line);border-radius:5px;
+    cursor:pointer;position:relative;flex-shrink:0;margin-top:2px;background:#fff;transition:.15s;
+  }
+  .consent-field input:checked{background:var(--blue);border-color:var(--blue)}
+  .consent-field input:checked::after{content:"";position:absolute;left:5px;top:1.5px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .consent-field label{font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+  .consent-field p{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .consent-field .field-error{margin-top:6px}
+
+  .counselling-submit{width:100%;justify-content:center;margin-top:4px}
+
+  .counselling-confirmation{text-align:center;padding:24px 8px}
+  .counselling-confirmation h2{font-size:22px;font-weight:800;margin:14px 0 10px}
+  .counselling-confirmation p{font-size:14.5px;color:var(--muted);margin-bottom:22px}
+
+  .counselling-trust{text-align:center;padding:60px 0;border-top:1px solid var(--line-2);margin-top:20px}
+  .counselling-trust h2{font-size:clamp(22px,3vw,30px);margin:10px 0 12px;max-width:640px;margin-left:auto;margin-right:auto}
+  .counselling-trust p{font-size:15px;color:var(--muted);max-width:560px;margin:0 auto}
+
+  @media(max-width:960px){
+    .counselling-hero-grid{grid-template-columns:1fr}
+    .counselling-grid{grid-template-columns:1fr}
+  }
+
   /* footer */
   footer.site{background:#fff;border-top:1px solid var(--line);padding:56px 0 30px;margin-top:20px}
   .foot-badges{display:flex;flex-wrap:wrap;gap:14px 32px;padding-bottom:32px;margin-bottom:32px;border-bottom:1px solid var(--line-2)}
