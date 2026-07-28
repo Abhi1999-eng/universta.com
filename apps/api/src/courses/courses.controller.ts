@@ -11,6 +11,17 @@ import { CoursesService } from './courses.service';
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly courses: CoursesService) {}
+  @Get('filter-options')
+  @ApiOperation({ summary: 'List database-backed public course filters' })
+  async filterOptions(
+    @Req() request: RequestWithId,
+    @Query() query: CourseListQueryDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.courses.publicFilterOptions(query),
+    );
+  }
   @Get('suggestions')
   @ApiOperation({ summary: 'Suggest published courses' })
   async suggestions(

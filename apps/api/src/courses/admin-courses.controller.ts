@@ -18,12 +18,12 @@ import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import {
+  AdminCourseListQueryDto,
   CreateContentSectionDto,
   CreateCountryCourseDto,
   CreateCourseDto,
   CreateFaqDto,
   CourseActionDto,
-  CourseListQueryDto,
   IntakeReplacementDto,
   RelatedCourseReplacementDto,
   StudyModeReplacementDto,
@@ -43,7 +43,7 @@ export class AdminCoursesController {
   constructor(private readonly courses: CoursesService) {}
   @Get() async list(
     @Req() request: AuthenticatedRequest,
-    @Query() query: CourseListQueryDto,
+    @Query() query: AdminCourseListQueryDto,
   ) {
     const result = await this.courses.adminList(query);
     return successEnvelope(request, result.data, result.meta);

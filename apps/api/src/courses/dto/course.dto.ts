@@ -46,6 +46,32 @@ const bool = ({ value }: TransformFnParams) =>
 const num = ({ value }: TransformFnParams) =>
   value === undefined || value === '' ? value : Number(value);
 const decimal = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
+const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const csv = (
+  value: unknown,
+  normalize: (item: string) => string = (item) => item,
+) => {
+  const input = Array.isArray(value) ? value : [value];
+  if (input.some((item) => typeof item !== 'string')) return value;
+  return [
+    ...new Set(
+      input
+        .flatMap((item) => String(item).split(','))
+        .map((item) => normalize(item.trim()))
+        .filter(Boolean),
+    ),
+  ];
+};
+const csvLower = ({ value }: TransformFnParams) =>
+  csv(value, (item) => item.toLowerCase());
+const csvUpper = ({ value }: TransformFnParams) =>
+  csv(value, (item) => item.toUpperCase());
+export const COURSE_ENGLISH_TESTS = [
+  'IELTS',
+  'TOEFL',
+  'PTE',
+  'DUOLINGO',
+] as const;
 
 export class CourseFieldsDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() subjectId!: string;
@@ -158,41 +184,73 @@ export class CourseListQueryDto {
   @MaxLength(100)
   q?: string;
   @ApiPropertyOptional()
-  @Transform(trim)
+  @Transform(csvLower)
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  subject?: string;
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(slug, { each: true })
+  subject?: string[];
   @ApiPropertyOptional()
-  @Transform(trim)
+  @Transform(csvLower)
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  subSubject?: string;
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(slug, { each: true })
+  subSubject?: string[];
   @ApiPropertyOptional()
-  @Transform(trim)
+  @Transform(csvUpper)
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  level?: string;
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  @Matches(/^[A-Z0-9_-]+$/, { each: true })
+  level?: string[];
   @ApiPropertyOptional()
-  @Transform(trim)
+  @Transform(csvLower)
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  country?: string;
+  @IsArray()
+  @ArrayMaxSize(30)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(slug, { each: true })
+  country?: string[];
   @ApiPropertyOptional()
-  @Transform(trim)
+  @Transform(csvUpper)
   @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  studyMode?: string;
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
+  @Matches(/^[A-Z0-9_-]+$/, { each: true })
+  studyMode?: string[];
   @ApiPropertyOptional()
-  @Transform(trim)
+  @Transform(csvLower)
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  intake?: string;
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  @Matches(slug, { each: true })
+  intake?: string[];
+  @ApiPropertyOptional({ enum: COURSE_ENGLISH_TESTS, isArray: true })
+  @Transform(csvUpper)
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(COURSE_ENGLISH_TESTS.length)
+  @ArrayUnique()
+  @IsIn(COURSE_ENGLISH_TESTS, { each: true })
+  englishTest?: string[];
   @ApiPropertyOptional()
   @Transform(bool)
   @IsOptional()
@@ -202,11 +260,7 @@ export class CourseListQueryDto {
   @Transform(bool)
   @IsOptional()
   @IsBoolean()
-  featured?: boolean;
-  @ApiPropertyOptional({ enum: COURSE_STATUSES })
-  @IsOptional()
-  @IsIn(COURSE_STATUSES)
-  status?: string;
+  postStudyWorkAvailable?: boolean;
   @ApiPropertyOptional()
   @Transform(trim)
   @IsOptional()
@@ -218,17 +272,10 @@ export class CourseListQueryDto {
   @Matches(decimal)
   maxTuition?: string;
   @ApiPropertyOptional({
-    enum: [
-      'featured',
-      'name',
-      'newest',
-      'duration',
-      'tuition-low',
-      'popularity',
-    ],
+    enum: ['featured', 'name', 'newest', 'tuition-low', 'popularity'],
   })
   @IsOptional()
-  @IsIn(['featured', 'name', 'newest', 'duration', 'tuition-low', 'popularity'])
+  @IsIn(['featured', 'name', 'newest', 'tuition-low', 'popularity'])
   sort?: string;
   @ApiPropertyOptional({ default: DEFAULT_PAGE })
   @Transform(num)
@@ -242,7 +289,27 @@ export class CourseListQueryDto {
   @IsInt()
   @Min(1)
   @Max(MAX_LIMIT)
+  pageSize?: number;
+  @ApiPropertyOptional({ default: DEFAULT_LIMIT, maximum: MAX_LIMIT })
+  @Transform(num)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_LIMIT)
   limit = DEFAULT_LIMIT;
+}
+
+export class AdminCourseListQueryDto extends CourseListQueryDto {
+  @ApiPropertyOptional()
+  @Transform(bool)
+  @IsOptional()
+  @IsBoolean()
+  featured?: boolean;
+
+  @ApiPropertyOptional({ enum: COURSE_STATUSES })
+  @IsOptional()
+  @IsIn(COURSE_STATUSES)
+  status?: string;
 }
 
 export class CourseSuggestionsQueryDto {
