@@ -17,6 +17,7 @@ import type {
 } from '@/lib/countries';
 import type {
   Course,
+  CourseDetail,
   PageMeta,
   Subject,
   SubjectDetail,
@@ -81,6 +82,10 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
+function pluralWord(count: number, singular: string, plural = `${singular}s`) {
+  return count === 1 ? singular : plural;
+}
+
 export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -109,23 +114,60 @@ export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | '
   );
 }
 
+const footerColumns: [string, [string, string][]][] = [
+  ['Explore', [
+    ['Countries', '/countries'],
+    ['Subjects', '/subjects'],
+    ['Courses', '/courses'],
+    ['Compare countries', '/compare/countries'],
+  ]],
+  ['Guidance', [
+    ['Book free counselling', '/counselling'],
+    ['Study abroad consultants', '/study-abroad-consultants'],
+    ['FAQ', '/faq'],
+    ['Contact us', '/contact'],
+  ]],
+  ['Resources', [
+    ['Universities', '/universities'],
+    ['Scholarships', '/scholarships'],
+    ['Success stories', '/success-stories'],
+    ['Events', '/events'],
+  ]],
+  ['Company', [
+    ['About Universta', '/about'],
+    ['Careers', '/careers'],
+    ['Testimonials', '/testimonials'],
+  ]],
+];
+
+const footerBadges: [IconName, string][] = [
+  ['book', 'Structured, comparable course data'],
+  ['globe', 'Destinations across multiple regions'],
+  ['users', 'Free counselling, no obligation'],
+];
+
 export function CatalogFooter() {
   return (
     <footer className="site">
       <div className="wrap">
+        <div className="foot-badges">
+          {footerBadges.map(([icon, label]) => (
+            <div className="foot-badge" key={label}>
+              <Icon name={icon} size={20} />
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
         <div className="foot-grid">
           <div className="foot-brand">
             <Link href="/" className="logo">Univer<b>sta</b></Link>
             <p>Compare published study destinations, subjects and courses in one place.</p>
           </div>
-          {[
-            ['Courses', [['All courses', '/courses'], ['Subjects', '/subjects']]],
-            ['Destinations', [['All countries', '/countries']]],
-          ].map(([title, links]) => (
-            <div className="foot-col" key={String(title)}>
-              <h4>{String(title)}</h4>
+          {footerColumns.map(([title, links]) => (
+            <div className="foot-col" key={title}>
+              <h4>{title}</h4>
               <ul>
-                {(links as string[][]).map(([label, href]) => (
+                {links.map(([label, href]) => (
                   <li key={label}><Link href={href}>{label}</Link></li>
                 ))}
               </ul>
@@ -795,7 +837,7 @@ export function ApprovedCountriesListing({
           </div>
         </div>
       </section>
-      <footer>© 2026 Universta · Verify tuition, visa and intake information with official sources.</footer>
+      <CatalogFooter />
     </main>
   );
 }
@@ -1063,13 +1105,14 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
           <p>Use the published destination information and get guidance for your shortlist.</p>
           <Link href={`/courses?country=${country.slug}`} className="btn btn-p">Explore courses</Link>
           {guidanceTarget ? <a href={guidanceTarget} className="btn btn-s">Review source guidance</a> : null}
+          <p className="source-intro">
+            Information is editorial and may vary by institution, programme, applicant, and policy.
+            {hasStructuredTrust ? ` ${sourceProfiles.length} published source${sourceProfiles.length === 1 ? '' : 's'} shown above.` : ''}
+            {' '}Verify tuition, visa, and immigration decisions with official sources.
+          </p>
         </div>
       </section>
-      <footer>
-        © 2026 Universta · Information is editorial and may vary by institution, programme, applicant, and policy.
-        {hasStructuredTrust ? ` ${sourceProfiles.length} published source${sourceProfiles.length === 1 ? '' : 's'} shown above.` : ''}
-        {' '}Verify tuition, visa, and immigration decisions with official sources.
-      </footer>
+      <CatalogFooter />
     </main>
   );
 }
@@ -1084,10 +1127,10 @@ function SubjectCard({ subject }: { subject: Subject }) {
         <h3>{subject.name}</h3>
         <p>{subject.shortDescription ?? 'Published subject pathway'}</p>
         <div className="subj-meta">
-          <span><b>{subject.publishedCourseCount}</b> courses</span>
-          <span><b>{subject.publishedSubSubjectCount}</b> specializations</span>
+          <span><b>{subject.publishedCourseCount}</b> {pluralWord(subject.publishedCourseCount, 'course')}</span>
+          <span><b>{subject.publishedSubSubjectCount}</b> {pluralWord(subject.publishedSubSubjectCount, 'specialization')}</span>
         </div>
-        <div className="subj-foot"><span>{subject.availableCountryCount} countries</span><span className="go">Explore <Icon name="arrow" size={14} /></span></div>
+        <div className="subj-foot"><span>{subject.availableCountryCount} {pluralWord(subject.availableCountryCount, 'country', 'countries')}</span><span className="go">Explore <Icon name="arrow" size={14} /></span></div>
       </div>
     </Link>
   );
@@ -1139,26 +1182,6 @@ export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[
               )) : <EmptyTemplateState label="The subject directory is empty" />}
             </div>
           </section>
-          {[
-            ['degrees', 'Study by degree level'],
-            ['careers', 'Explore subjects by career'],
-            ['featured', 'Featured subject pathways'],
-            ['destinations', 'Best destinations by subject'],
-            ['universities', 'Universities by subject'],
-            ['courses', 'Popular courses by subject'],
-            ['scholarships', 'Scholarships by subject'],
-            ['outcomes', 'Career outcomes'],
-            ['why', 'Why choose a subject first?'],
-            ['resources', 'Resources & guides'],
-            ['stories', 'Student stories'],
-            ['faq', 'Frequently asked questions'],
-            ['explore', 'Explore more'],
-          ].map(([id, title]) => (
-            <section className="section" id={id} key={id}>
-              <div className="section-head"><span className="eyebrow">Published catalog</span><h2>{title}</h2></div>
-              <div className="grid g3">{subjects.length ? subjects.slice(0, 3).map((subject) => <SubjectCard subject={subject} key={`${id}-${subject.id}`} />) : <EmptyTemplateState label={`${title} will appear when subject data is published`} />}</div>
-            </section>
-          ))}
         </div>
         <aside className="side">
           <div className="side-card"><span className="eyebrow">Find your direction</span><h3>Choose the right subject</h3><p>Start with published subjects and compare the available pathways.</p><Link href="/courses" className="btn btn-primary btn-block">Explore courses</Link></div>
@@ -1195,6 +1218,138 @@ function CourseMiniCard({ course }: { course: Course }) {
         <div><b>{course.availableCountryCount}</b>Countries</div>
       </div>
     </Link>
+  );
+}
+
+type CourseAvailabilityItem = {
+  id: string;
+  country?: { name?: string; slug?: string };
+  tuition?: { min?: string | null; currencyCode?: string | null; period?: string };
+  sourceReference?: string | null;
+  verifiedAt?: string | null;
+};
+
+function courseMoney(value: string | null | undefined, currency: string | null | undefined) {
+  if (value === null || value === undefined || !currency) return null;
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value));
+  } catch {
+    return `${currency} ${value}`;
+  }
+}
+
+function coursePeriod(value: string | undefined) {
+  return ({ PER_YEAR: 'per year', PER_SEMESTER: 'per semester', PER_MONTH: 'per month', TOTAL: 'total' } as Record<string, string>)[value ?? ''] ?? value;
+}
+
+function courseParagraphs(body: unknown): string[] {
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !('paragraphs' in body)) return [];
+  const values = (body as { paragraphs?: unknown }).paragraphs;
+  return Array.isArray(values) ? values.filter((value): value is string => typeof value === 'string') : [];
+}
+
+export function ApprovedCourseDetail({ course, country }: { course: CourseDetail; country?: string }) {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const availability = course.availability as CourseAvailabilityItem[];
+  const mapping = country ? (availability.find((item) => item.country?.slug === country) ?? null) : null;
+  const toc = [
+    ['overview', 'Overview'],
+    ['availability', 'Availability'],
+    ...course.contentSections.map((section) => [`content-${section.sectionKey}`, section.heading ?? section.sectionKey.replaceAll('-', ' ')] as [string, string]),
+    ...(course.faqs.length ? [['faq', 'FAQ'] as [string, string]] : []),
+    ...(course.relatedCourses.length ? [['related', 'Related courses'] as [string, string]] : []),
+  ];
+  return (
+    <main className="visual-subject-page">
+      <CatalogHeader active="courses" />
+      <div className="wrap crumbs"><nav aria-label="Breadcrumb"><ol><li><Link href="/">Home</Link></li><li className="sep">/</li><li><Link href="/courses">Courses</Link></li><li className="sep">/</li><li>{course.name}</li></ol></nav></div>
+      <section className="hero"><div className="wrap"><div className="hero-banner">
+        <span className="hero-parent"><Icon name="cap" size={14} />{course.subject.name}{course.subSubject ? ` · ${course.subSubject.name}` : ''}</span>
+        <h1>{course.name}</h1>
+        <p className="lede">{course.qualificationName ?? course.shortDescription ?? 'Published course details and verified country availability.'}</p>
+        <div className="hero-metrics">
+          <div className="hm"><div className="v">{course.courseLevel.name}</div><div className="k">Level</div></div>
+          <div className="hm"><div className="v">{course.duration.min ?? '—'}–{course.duration.max ?? '—'} {course.duration.unit?.toLowerCase() ?? ''}</div><div className="k">Duration</div></div>
+          <div className="hm"><div className="v">{course.availableCountryCount}</div><div className="k">Countries</div></div>
+          <div className="hm"><div className="v">{course.studyModes.map((mode) => mode.name).join(', ') || '—'}</div><div className="k">Study mode</div></div>
+        </div>
+        <div className="hero-cta">
+          <Link href="/courses" className="btn btn-white">All courses</Link>
+          <Link href={counsellingHref({ source: 'course', course: course.slug, ...(country ? { country } : {}), from: `/courses/${course.slug}` })} className="btn btn-glass">Talk to a counsellor</Link>
+        </div>
+      </div></div></section>
+      <nav className="toc" aria-label="On this page"><div className="wrap toc-inner">{toc.map(([id, title]) => <a href={`#${id}`} key={id}>{title}</a>)}</div></nav>
+      <div className="wrap layout">
+        <div className="main">
+          <SubjectSection id="overview" eyebrow="Course overview" title="What you will explore">
+            <div className="prose">
+              <p>{course.overview ?? course.shortDescription ?? 'Course overview is not available yet.'}</p>
+              {course.careerSummary ? <p>{course.careerSummary}</p> : null}
+            </div>
+          </SubjectSection>
+          <SubjectSection id="availability" eyebrow="Availability" title="Choose a country">
+            <div className="country-choice-grid">
+              {availability.length ? availability.map((item) => (
+                <Link className={item.country?.slug === country ? 'country-choice active' : 'country-choice'} href={`/courses/${course.slug}?country=${encodeURIComponent(item.country?.slug ?? '')}`} key={item.id}>
+                  <strong>{item.country?.name ?? 'Country'}</strong>
+                  <span>{item.tuition?.min && courseMoney(item.tuition.min, item.tuition.currencyCode) ? `${courseMoney(item.tuition.min, item.tuition.currencyCode)} ${coursePeriod(item.tuition.period)}` : 'Indicative tuition unavailable'}</span>
+                </Link>
+              )) : <EmptyTemplateState label="No country availability is published yet" />}
+            </div>
+          </SubjectSection>
+          {course.contentSections.map((section) => {
+            const content = courseParagraphs(section.bodyJson);
+            return (
+              <SubjectSection id={`content-${section.sectionKey}`} eyebrow="Course content" title={section.heading ?? section.sectionKey.replaceAll('-', ' ')} key={section.id}>
+                {section.subheading ? <p className="sub">{section.subheading}</p> : null}
+                <div className="prose">{content.length ? content.map((paragraph) => <p key={paragraph}>{paragraph}</p>) : <p>Structured content is available for this section.</p>}</div>
+              </SubjectSection>
+            );
+          })}
+          {course.faqs.length ? (
+            <SubjectSection id="faq" eyebrow="Questions" title="Frequently asked questions">
+              <div className="faq">
+                {course.faqs.map((faq, index) => (
+                  <div className={`faq-item${openFaq === index ? ' open' : ''}`} key={faq.id}>
+                    <button type="button" className="faq-q" aria-expanded={openFaq === index} onClick={() => setOpenFaq(openFaq === index ? null : index)}>
+                      <span>{faq.question}</span><span className="fic"><Icon name="arrow" size={15} /></span>
+                    </button>
+                    <div className="faq-a" style={openFaq === index ? { maxHeight: 240 } : undefined}><div className="faq-a-inner">{faq.answer}</div></div>
+                  </div>
+                ))}
+              </div>
+            </SubjectSection>
+          ) : null}
+          {course.relatedCourses.length ? (
+            <SubjectSection id="related" eyebrow="Keep exploring" title="Related courses">
+              <div className="grid g3">{course.relatedCourses.map((item) => (
+                <Link className="card spec-card" href={`/courses/${item.slug}`} key={item.id}>
+                  <span className="spec-ic"><Icon name="code" /></span>
+                  <span><span className="sn">{item.name}</span><span className="sd">{item.qualificationName ?? item.subject.name}</span></span>
+                  <Icon name="arrow" />
+                </Link>
+              ))}</div>
+            </SubjectSection>
+          ) : null}
+          <p className="source-note">Course-country facts are indicative and require verification with the linked official source where provided. Universta does not guarantee admission, visa outcomes, scholarships, work rights, or career outcomes.</p>
+        </div>
+        <aside className="side">
+          <div className="side-card">
+            <span className="eyebrow">{course.selectedCountry?.name ?? 'Course facts'}</span>
+            <h3>{course.selectedTuition?.min && courseMoney(course.selectedTuition.min, course.selectedTuition.currencyCode) ? courseMoney(course.selectedTuition.min, course.selectedTuition.currencyCode) : 'Tuition not listed'}</h3>
+            {course.selectedTuition?.period ? <p>{coursePeriod(course.selectedTuition.period)}</p> : null}
+            <div className="side-links">
+              <span><Icon name="cap" /> {course.studyModes.map((mode) => mode.name).join(', ') || 'Study mode not listed'}</span>
+              <span><Icon name="calendar" /> {course.selectedIntakes.map((item) => item.intake?.shortLabel ?? item.intake?.name).filter(Boolean).join(', ') || 'Intakes not listed'}</span>
+            </div>
+            {mapping?.sourceReference ? <p className="source-note"><a href={mapping.sourceReference} target="_blank" rel="noreferrer">View source</a>{mapping.verifiedAt ? ` · verified ${new Date(mapping.verifiedAt).toLocaleDateString('en-US')}` : ''}</p> : null}
+            <Link className="btn btn-primary btn-block" href="/countries">Explore countries</Link>
+          </div>
+        </aside>
+      </div>
+      <section className="section wrap"><div className="final-cta"><h2>Ready to pursue {course.name}?</h2><p>Compare countries, check verified requirements, and talk to a counsellor about your next step.</p><div className="cta-row"><Link href="/courses" className="btn btn-secondary">Explore more courses</Link><Link href={counsellingHref({ source: 'course', course: course.slug, from: `/courses/${course.slug}` })} className="btn btn-outline">Talk to a counsellor</Link></div></div></section>
+      <CatalogFooter />
+    </main>
   );
 }
 
@@ -1256,7 +1411,7 @@ export function ApprovedSubjectDetail({ subject }: { subject: SubjectDetail }) {
             ['explore', 'Explore more'],
           ].map(([id, title]) => <SubjectSection id={id} eyebrow="Published guidance" title={title} key={id}><EmptyTemplateState label={`${title} are not yet published`} /></SubjectSection>)}
         </div>
-        <aside className="side"><div className="side-card"><span className="eyebrow">At a glance</span><h3>{subject.name}</h3><p>{subject.publishedCourseCount} published courses</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Browse courses</Link></div></aside>
+        <aside className="side"><div className="side-card"><span className="eyebrow">At a glance</span><h3>{subject.name}</h3><p>{subject.publishedCourseCount} published {pluralWord(subject.publishedCourseCount, 'course')}</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Browse courses</Link></div></aside>
       </div>
       <section className="section wrap"><div className="final-cta"><h2>Ready to study {subject.name} abroad?</h2><p>Explore published courses and compare your available options.</p><div className="cta-row"><Link href={`/courses?subject=${subject.slug}`} className="btn btn-secondary">Explore courses</Link><Link href="/subjects" className="btn btn-outline">All subjects</Link></div></div></section>
       <CatalogFooter />
@@ -1300,15 +1455,8 @@ export function ApprovedSpecializations({ subject, subjects }: { subject: Subjec
             ['all', 'All specializations'],
           ].map(([id, title]) => <section className="section" id={id} key={id} ref={id === 'all' ? resultsRef : undefined} tabIndex={id === 'all' ? -1 : undefined}><div className="section-head"><span className="eyebrow">Published pathways</span><h2>{title}</h2></div><div className="grid g3">{filtered.length ? filtered.map((item) => <article className="card spec-card" id={item.slug} key={`${id}-${item.id}`}><div className="spec-band" /><div className="spec-body"><div className="spec-top"><div className="spec-ic">{item.iconMedia ? <img src={item.iconMedia.url} alt={item.iconMedia.alt ?? ''} /> : <Icon name="code" />}</div><div><h3>{item.name}</h3></div></div><p className="spec-desc">{item.shortDescription ?? item.overview ?? 'Published specialization pathway'}</p><div className="spec-foot"><Link href={`/courses?subSubject=${item.slug}`} className="go">Explore courses <Icon name="arrow" size={14} /></Link></div></div></article>) : <EmptyTemplateState label="No specializations match this search" />}</div></section>)}
           <section className="section" id="categories"><div className="section-head"><span className="eyebrow">Explore fields</span><h2>Browse by category</h2></div><div className="grid g2">{relatedSubjects(4, 'categories') ?? <EmptyTemplateState label="Subject categories are not yet published" />}</div></section>
-          <section className="section" id="careers"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Career opportunities</h2></div><div className="grid g3">{relatedSubjects(3, 'careers') ?? <EmptyTemplateState label="Career opportunities are not yet published" />}</div></section>
-          <section className="section" id="universities"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Top universities</h2></div><div className="grid g2">{relatedSubjects(4, 'universities') ?? <EmptyTemplateState label="Top universities are not yet published" />}</div></section>
           <section className="section" id="courses"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Popular courses</h2></div><div className="grid g3">{subject.featuredCourses.length ? subject.featuredCourses.slice(0, 3).map((course) => <CourseMiniCard course={course} key={course.id} />) : <EmptyTemplateState label="Popular courses are not yet published" />}</div></section>
-          <section className="section" id="scholarships"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Scholarships</h2></div><div className="grid g3">{relatedSubjects(3, 'scholarships') ?? <EmptyTemplateState label="Scholarships are not yet published" />}</div></section>
-          <section className="section" id="best-countries"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Best countries</h2></div><div className="grid g3">{relatedSubjects(3, 'best-countries') ?? <EmptyTemplateState label="Best countries are not yet published" />}</div></section>
           <section className="section" id="skills"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Skills you’ll learn</h2></div><div className="skills-wrap">{siblingSubjects.length || subject.subSubjects.length ? [...subject.subSubjects, ...siblingSubjects].slice(0, 8).map((item) => <span className="skill-chip" key={`skill-${item.id}`}><span className="sk-ic"><Icon name="code" size={13} /></span>{item.name}</span>) : <EmptyTemplateState label="Skills are not yet published" />}</div></section>
-          <section className="section" id="trends"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Industry trends</h2></div><div className="trend-grid">{siblingSubjects.length ? siblingSubjects.slice(0, 5).map((item) => <div className="card trend-card" key={`trend-${item.id}`}><div className="trend-ic"><Icon name="book" size={18} /></div><h3>{item.name}</h3><p>{item.shortDescription ?? 'Published pathway'}</p></div>) : <EmptyTemplateState label="Industry trends are not yet published" />}</div></section>
-          <section className="section" id="stories"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Student success stories</h2></div><div className="grid g3">{relatedSubjects(3, 'stories') ?? <EmptyTemplateState label="Student success stories are not yet published" />}</div></section>
-          <section className="section" id="resources"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Resources & guides</h2></div><div className="grid g4">{relatedSubjects(8, 'resources') ?? <EmptyTemplateState label="Resources & guides are not yet published" />}</div></section>
           <section className="section" id="faq"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Frequently asked questions</h2></div><div className="faq">{specializationFaqs.map((item, index) => <div className={`faq-item${openFaq === index ? ' open' : ''}`} key={item.q}><button type="button" className="faq-q" aria-expanded={openFaq === index} onClick={() => setOpenFaq(openFaq === index ? null : index)}><span>{item.q}</span><span className="fic"><Icon name="arrow" size={15} /></span></button><div className="faq-a" style={openFaq === index ? { maxHeight: 200 } : undefined}><div className="faq-a-inner">{item.a}</div></div></div>)}</div></section>
           <section className="section" id="explore"><div className="section-head"><span className="eyebrow">Keep exploring</span><h2>Explore more</h2></div><div className="explore-grid">{[['Back to subject', 'cap', `/subjects/${subject.slug}`], ['All subjects', 'book', '/subjects'], ['Course catalog', 'code', '/courses'], ['Study destinations', 'globe', '/countries'], ['Book free counselling', 'star', '/counselling']].map(([label, icon, href]) => <Link href={href} className="explore-item" key={href}><Icon name={icon as IconName} /><span className="en">{label}</span><span className="go"><Icon name="arrow" size={16} /></span></Link>)}</div></section>
         </div>
@@ -1626,7 +1774,7 @@ export function ApprovedCoursesListing({
         </div>
       </section>
       <section className="wrap" style={{ paddingBottom: 8 }}><div className="stats-grid"><div className="stat"><div className="num">{meta.total}</div><div className="lbl">Programs</div></div><div className="stat"><div className="num">{subjects.length}</div><div className="lbl">Subjects</div></div><div className="stat"><div className="num">{countries.length}</div><div className="lbl">Destinations</div></div><div className="stat"><div className="num">{levels.length}</div><div className="lbl">Degree levels</div></div><div className="stat"><div className="num">{modes.length}</div><div className="lbl">Study modes</div></div><div className="stat"><div className="num">{courses.filter((item) => item.scholarshipAvailable).length}</div><div className="lbl">Scholarship options</div></div></div></section>
-      <section className="section wrap" id="subjects"><div className="section-head row-between"><div><span className="eyebrow">Explore</span><h2>Browse courses by popular subjects</h2></div><Link href="/subjects" className="link-more">All subjects <Icon name="arrow" size={16} /></Link></div><div className="grid g4">{subjects.length ? subjects.map((subject) => <Link href={`/courses?subject=${subject.slug}`} className="card subj-card" key={subject.id}><span className="subj-ic"><Icon name="book" /></span><h3>{subject.name}</h3><span className="subj-meta"><span><b>{subject.publishedCourseCount}</b> programs</span><span><b>{subject.availableCountryCount}</b> countries</span></span><span className="subj-foot"><span className="cnt">Explore</span><span className="go"><Icon name="arrow" size={15} /></span></span></Link>) : <EmptyTemplateState label="No subjects are currently published" />}</div></section>
+      <section className="section wrap" id="subjects"><div className="section-head row-between"><div><span className="eyebrow">Explore</span><h2>Browse courses by popular subjects</h2></div><Link href="/subjects" className="link-more">All subjects <Icon name="arrow" size={16} /></Link></div><div className="grid g4">{subjects.length ? subjects.map((subject) => <Link href={`/courses?subject=${subject.slug}`} className="card subj-card" key={subject.id}><span className="subj-ic"><Icon name="book" /></span><h3>{subject.name}</h3><span className="subj-meta"><span><b>{subject.publishedCourseCount}</b> {pluralWord(subject.publishedCourseCount, 'program')}</span><span><b>{subject.availableCountryCount}</b> {pluralWord(subject.availableCountryCount, 'country', 'countries')}</span></span><span className="subj-foot"><span className="cnt">Explore</span><span className="go"><Icon name="arrow" size={15} /></span></span></Link>) : <EmptyTemplateState label="No subjects are currently published" />}</div></section>
       <section className="section wrap" id="discovery" style={{ paddingTop: 20 }}>
         <div className="section-head row-between">
           <div><span className="eyebrow">Discover → Filter</span><h2>Featured courses</h2><p className="sub">Search and filter the currently published programs.</p></div>

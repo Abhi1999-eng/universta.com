@@ -126,6 +126,10 @@ const courseQueryKeys = new Set([
   'pageSize',
 ]);
 
+function pluralWord(count: number, singular: string, plural = `${singular}s`) {
+  return count === 1 ? singular : plural;
+}
+
 function csvValues(value: string | undefined) {
   return value
     ? [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))]
@@ -802,7 +806,7 @@ export function ApprovedCoursesListing({
           items={subjects.slice(0, 8).map((subject) => ({
             label: subject.name,
             href: `/courses?subject=${encodeURIComponent(subject.slug)}`,
-            detail: `${subject.publishedCourseCount} programs`,
+            detail: `${subject.publishedCourseCount} ${pluralWord(subject.publishedCourseCount, 'program')}`,
           }))}
         />
       </section>
@@ -1100,7 +1104,7 @@ export function ApprovedCoursesListing({
             items={filterOptions.levels.map((item) => ({
               label: item.label,
               href: `/courses?level=${encodeURIComponent(item.value)}`,
-              detail: `${item.count} programs`,
+              detail: `${item.count} ${pluralWord(item.count, 'program')}`,
             }))}
           />
         </section>
@@ -1116,7 +1120,7 @@ export function ApprovedCoursesListing({
             items={filterOptions.countries.map((item) => ({
               label: item.label,
               href: `/courses?country=${encodeURIComponent(item.value)}`,
-              detail: `${item.count} programs`,
+              detail: `${item.count} ${pluralWord(item.count, 'program')}`,
             }))}
           />
         </section>
@@ -1132,7 +1136,7 @@ export function ApprovedCoursesListing({
             items={subjects.map((subject) => ({
               label: subject.name,
               href: `/courses?subject=${encodeURIComponent(subject.slug)}`,
-              detail: `${subject.publishedCourseCount} programs`,
+              detail: `${subject.publishedCourseCount} ${pluralWord(subject.publishedCourseCount, 'program')}`,
             }))}
           />
         </section>
