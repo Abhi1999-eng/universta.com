@@ -18,7 +18,7 @@ export function legacyCourseDiscoveryUrl(filters: Record<string, string>) {
   const subject = normalized(filters.subject);
   const subSubject = normalized(filters.subSubject);
   const country = normalized(filters.country);
-  const intake = normalized(filters.intake);
+  const intake = filters.intake ? normalized(filters.intake) : "";
   const secondary = new URLSearchParams();
 
   for (const [key, target] of Object.entries(secondaryKeys)) {
@@ -26,6 +26,8 @@ export function legacyCourseDiscoveryUrl(filters: Record<string, string>) {
     if (value) secondary.set(target, normalized(value));
   }
 
-  const destination = `/courses/${subject}/${subSubject}/${country}/${intake}`;
+  const destination = intake
+    ? `/courses/${subject}/${subSubject}/${country}/${intake}`
+    : `/courses/${subject}/${subSubject}/${country}`;
   return `${destination}${secondary.size ? `?${secondary}` : ""}`;
 }

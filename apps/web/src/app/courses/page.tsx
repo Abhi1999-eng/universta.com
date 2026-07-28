@@ -68,7 +68,7 @@ export default async function CoursesPage({
 
   // Preserve the generic catalog while giving the complete subject /
   // specialization / country / intake hierarchy one deterministic shareable URL.
-  if (filters.subject && filters.subSubject && filters.country && filters.intake) {
+  if (filters.subject && filters.subSubject && filters.country) {
     redirect(legacyCourseDiscoveryUrl(filters));
   }
 

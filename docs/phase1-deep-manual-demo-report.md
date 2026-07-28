@@ -2,9 +2,11 @@
 
 ## 1. Environment
 
+- Date: 2026-07-28.
 - Repository: `/Users/abhishekchaubey/projects/universta-phase1-leads`
 - Branch: `feat/phase1-expanded-local`
-- Starting revision: `876c0bde51a35bd82960068f4faa226c23dbcbf3`
+- Starting revision (prior handoff): `876c0bde51a35bd82960068f4faa226c23dbcbf3`
+- Revision at the start of this final pass: `ab657f10078f95a0ea7c4c6742b25543f1f17aa0` (working tree clean; the two commits ahead of the prior handoff — `fix(web): resolve phase1 public demo issues` and `test(phase1): cover manual uat regressions` — were inspected and are legitimate continuations of the manual UAT recorded below, not unexpected drift).
 - Scope: local API (`127.0.0.1:4000`), Web (`localhost:3000`), Admin (`localhost:3001`) and local MySQL only.
 - Browser contexts: fresh desktop (1440×900) and mobile (390×844); tablet behavior is covered by the existing responsive Playwright suite.
 
@@ -89,11 +91,13 @@ The deployment/startup/migration paths contain no automatic demo-catalog seed. C
 | Functional | A checked contact consent checkbox serializes as the string `"true"`, while the API contract correctly requires boolean `true`; Contact always failed with “Privacy consent is required”. | Typed `contactPayload` maps the checkbox to a boolean. | PASS — manual fictional submission succeeds; unit regression added. |
 | Major mobile/keyboard | Shared Phase 1 header wrapped seven links at 390px and provided no menu control. | Accessible toggle menu with Escape close and mobile CSS. | PASS — menu opens/closes in browser without overflow. |
 | Route/SEO | Legacy course redirect retained uppercase `IELTS` and other values. | Normalized hierarchy/query values in `legacyCourseDiscoveryUrl`. | PASS — direct browser redirect is lowercase; unit regression added. |
+| Broken route | The three-level course hierarchy route `/courses/[subjectSlug]/[specializationSlug]/[countrySlug]` (subject + specialization + country, no intake) had no `page.tsx` and returned a hard 404 on direct load; the legacy `?subject=&subSubject=&country=` redirect also only fired when `intake` was additionally present, so it never reached this level. | Added the missing `page.tsx` (mirrors the sibling two- and four-level pages, passing filters without `intake`); relaxed the `/courses` redirect condition to fire on subject+subSubject+country alone; `legacyCourseDiscoveryUrl` now omits the trailing intake segment when no intake is supplied. | PASS — direct browser load of `/courses/computer-science/cybersecurity/canada` now renders the filtered discovery page (1 matching course, no console errors); the legacy query-only URL now redirects to the same lowercase three-level path; unit regression added in `course-discovery-url.test.ts`. |
 
 ## 14. Remaining visual/content polish
 
 - Existing lint warnings remain for four deliberate raw `<img>` uses in approved template components. They are warnings, not runtime errors.
 - The visual system intentionally uses the approved catalog templates on catalog pages and the structured Phase 1 shell on expanded public pages; content remains clearly labelled fictional/local demo where required.
+- The `/courses` legacy-redirect path carries a default `page-size=12` query parameter into the normalized URL even when the visitor never requested pagination; cosmetic only, pre-existing before this pass, not fixed here.
 
 ## 15. User decisions
 
@@ -134,4 +138,19 @@ Open Web at `http://localhost:3000`, Admin at `http://localhost:3001/login`, and
 
 ## 18. Final automated regression and git status
 
-Final command totals, builds and final revision are recorded after the clean regression run and cleanup.
+Executed against the local worktree after the manual UAT pass above, starting from revision `876c0bde51a35bd82960068f4faa226c23dbcbf3` at the prior handoff and continuing from `ab657f10078f95a0ea7c4c6742b25543f1f17aa0` (two legitimate continuation commits already on the branch: `fix(web): resolve phase1 public demo issues`, `test(phase1): cover manual uat regressions`).
+
+- Prisma: `format`/`validate`/`generate` clean; `migrate status` — database schema up to date (2 migrations, local MySQL at `127.0.0.1:3306`).
+- Demo seed: ran twice with `SEED_DEMO_CATALOG=true`; counts stable both times — 3 universities / 4 campuses / 8 offerings / 5 scholarships / 4 consultants / 3 locations / 3 jobs / 4 events / 3 stories / 5 testimonials. `PASS` idempotent.
+- API unit: 44/44 passed.
+- API E2E (full local suite, incl. auth): 59/59 passed.
+- Admin unit: 48/48 passed.
+- Web unit: 7/7 passed (includes the new three-level hierarchy regression).
+- Full Playwright browser suite: 56/56 passed (grew from 55 with the new Contact-to-Lead traceability test already on the branch).
+- Root lint: 0 errors. 53 pre-existing API `any`-safety warnings, 4 pre-existing Web `<img>` warnings — identical in count and kind to the prior handoff, no new warnings introduced.
+- Production builds: API, Admin and Web all built successfully, including the new three-level course route.
+- Package integrity: the Next.js dev server's transient platform-specific `swc` lockfile mutation appeared twice during this pass (once from Playwright's webServer, once from a manual `npm run dev:web`) and was reverted both times with `git checkout -- package-lock.json`; the committed lockfile is unchanged from HEAD.
+- One real defect was found and fixed during this final pass beyond the four already recorded in section 13: the missing three-level course-hierarchy route (see section 13, "Broken route").
+- The `phase1-structured-crud.spec.ts` and other Playwright specs created temporary `Acceptance Demo *` records for the 8 structured resources during this run; all were identified by their `acceptance-demo-*` slug/quote prefix and removed after the suite completed, restoring the exact demo counts above.
+- `git status --short` at the end of this pass: only the four intended fix files touched by the three-level route defect, plus this report — `apps/web/src/app/courses/page.tsx`, `apps/web/src/lib/course-discovery-url.ts`, `apps/web/src/lib/course-discovery-url.test.ts`, the new `apps/web/src/app/courses/[slug]/[specializationSlug]/[countrySlug]/page.tsx`, and `docs/phase1-deep-manual-demo-report.md`. No `.env`, credentials, build output, or browser artifacts are tracked.
+- Nothing was pushed, merged, or deployed. No AWS, remote database, or CI/CD change was made.
