@@ -444,6 +444,7 @@ export class ExpandedService {
       include: {
         country: true,
         consultants: {
+          where: { consultant: publishedWhere() },
           include: {
             consultant: {
               include: {

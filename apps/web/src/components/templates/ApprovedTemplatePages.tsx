@@ -23,7 +23,7 @@ import type {
   SubjectDetail,
 } from '@/lib/catalog';
 
-type IconName =
+export type IconName =
   | 'arrow'
   | 'book'
   | 'briefcase'
@@ -64,7 +64,7 @@ const iconPaths: Record<IconName, string> = {
   users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87',
 };
 
-function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
+export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -86,7 +86,7 @@ function pluralWord(count: number, singular: string, plural = `${singular}s`) {
   return count === 1 ? singular : plural;
 }
 
-export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
+export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' | 'universities' | 'scholarships' | 'consultants' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="nav" id="siteNav">
@@ -96,6 +96,9 @@ export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | '
           <Link className={active === 'countries' ? 'active' : ''} href="/countries">Countries</Link>
           <Link className={active === 'subjects' ? 'active' : ''} href="/subjects">Subjects</Link>
           <Link className={active === 'courses' ? 'active' : ''} href="/courses">Courses</Link>
+          <Link className={active === 'universities' ? 'active' : ''} href="/universities">Universities</Link>
+          <Link className={active === 'scholarships' ? 'active' : ''} href="/scholarships">Scholarships</Link>
+          <Link className={active === 'consultants' ? 'active' : ''} href="/study-abroad-consultants">Consultants</Link>
         </nav>
         <div className="nav-right">
           <Link className="btn btn-primary btn-sm" href="/courses">Explore courses</Link>

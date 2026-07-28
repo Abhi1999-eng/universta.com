@@ -1,16 +1,15 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { PhaseDetail, type AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { phaseDetail } from "@/lib/phase1";
-import { phaseOneMetadata } from "@/lib/phase1-metadata";
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { ConsultantDetail, type Consultant } from '@/components/templates/DirectoryTemplatePages';
+import { phaseDetail } from '@/lib/phase1';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ slug: string }> };
 
 async function consultant(slug: string) {
   try {
-    return await phaseDetail<AnyRecord>("consultants", slug);
+    return await phaseDetail<Consultant>('consultants', slug);
   } catch {
     return null;
   }
@@ -19,14 +18,17 @@ async function consultant(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const row = await consultant(slug);
-  return row
-    ? phaseOneMetadata(row, `/study-abroad-consultants/${row.slug ?? slug}`, "Study abroad consultant")
-    : { title: "Consultant not found | Universta", robots: { index: false } };
+  if (!row) return { title: 'Consultant not found | Universta', robots: { index: false } };
+  return {
+    title: `${row.name} | Universta`,
+    description: row.shortDescription ?? `Explore ${row.name}.`,
+    alternates: { canonical: `/study-abroad-consultants/${row.slug ?? slug}` },
+  };
 }
 
 export default async function ConsultantPage({ params }: Props) {
   const { slug } = await params;
   const row = await consultant(slug);
   if (!row) notFound();
-  return <PhaseDetail resource="consultants" row={row} />;
+  return <ConsultantDetail consultant={row} />;
 }

@@ -1,16 +1,15 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { PhaseDetail, type AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { phaseLocation } from "@/lib/phase1";
-import { phaseOneMetadata } from "@/lib/phase1-metadata";
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { ConsultantLocationDetail, type ConsultantLocationRow } from '@/components/templates/DirectoryTemplatePages';
+import { phaseLocation } from '@/lib/phase1';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ locationSlug: string }> };
 
 async function consultantLocation(slug: string) {
   try {
-    return await phaseLocation<AnyRecord>(slug);
+    return await phaseLocation<ConsultantLocationRow>(slug);
   } catch {
     return null;
   }
@@ -19,20 +18,17 @@ async function consultantLocation(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locationSlug } = await params;
   const row = await consultantLocation(locationSlug);
-  return row
-    ? phaseOneMetadata(row, `/study-abroad-consultants/locations/${row.slug ?? locationSlug}`, "Consultant location")
-    : { title: "Consultant location not found | Universta", robots: { index: false } };
+  if (!row) return { title: 'Consultant location not found | Universta', robots: { index: false } };
+  return {
+    title: `${row.name} | Universta`,
+    description: row.overview ?? `Study abroad consultants in ${row.name}.`,
+    alternates: { canonical: `/study-abroad-consultants/locations/${row.slug ?? locationSlug}` },
+  };
 }
 
 export default async function ConsultantLocationPage({ params }: Props) {
   const { locationSlug } = await params;
   const row = await consultantLocation(locationSlug);
   if (!row) notFound();
-  return (
-    <PhaseDetail
-      resource="consultants"
-      row={row}
-      parent={["Consultants", "/study-abroad-consultants"]}
-    />
-  );
+  return <ConsultantLocationDetail location={row} />;
 }

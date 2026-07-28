@@ -1,19 +1,14 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import {
-  PhaseListing,
-  type AnyRecord,
-  type PageMeta,
-} from "@/components/phase1/PhaseOneViews";
-import { phaseUniversityCourses } from "@/lib/phase1";
-import { phaseOneMetadata } from "@/lib/phase1-metadata";
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { UniversityCoursesListing, type Offering } from '@/components/templates/DirectoryTemplatePages';
+import { phaseUniversityCourses } from '@/lib/phase1';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type UniversityCoursesResult = {
-  university?: { name?: string };
-  data?: AnyRecord[];
-  meta?: PageMeta;
+  university?: { name?: string; slug?: string };
+  data?: Offering[];
+  meta?: { page: number; total: number; totalPages: number };
 };
 
 type Props = { params: Promise<{ slug: string }> };
@@ -29,10 +24,10 @@ async function universityCourses(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const result = await universityCourses(slug);
-  const name = result?.university?.name ?? "University";
+  const name = result?.university?.name ?? 'University';
   return result
-    ? phaseOneMetadata({ name, summary: `Published university courses from ${name}.` }, `/universities/${slug}/courses`, "University courses")
-    : { title: "University courses not found | Universta", robots: { index: false } };
+    ? { title: `${name} courses | Universta`, description: `Published university courses from ${name}.`, alternates: { canonical: `/universities/${slug}/courses` } }
+    : { title: 'University courses not found | Universta', robots: { index: false } };
 }
 
 export default async function UniversityCoursesPage({ params }: Props) {
@@ -40,13 +35,10 @@ export default async function UniversityCoursesPage({ params }: Props) {
   const result = await universityCourses(value.slug);
   if (!result) notFound();
   return (
-    <PhaseListing
-      resource="courses"
-      title={`${result.university?.name ?? "University"} courses`}
-      basePath={`/universities/${value.slug}/courses`}
-      rows={result.data ?? []}
-      meta={result.meta ?? null}
-      search={false}
+    <UniversityCoursesListing
+      university={{ name: result.university?.name ?? 'University', slug: value.slug }}
+      offerings={result.data ?? []}
+      meta={result.meta ?? { page: 1, total: 0, totalPages: 0 }}
     />
   );
 }

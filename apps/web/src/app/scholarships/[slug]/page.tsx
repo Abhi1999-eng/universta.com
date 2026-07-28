@@ -1,16 +1,15 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { PhaseDetail, type AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { phaseDetail } from "@/lib/phase1";
-import { phaseOneMetadata } from "@/lib/phase1-metadata";
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { ScholarshipDetail, type Scholarship } from '@/components/templates/DirectoryTemplatePages';
+import { phaseDetail } from '@/lib/phase1';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ slug: string }> };
 
 async function scholarship(slug: string) {
   try {
-    return await phaseDetail<AnyRecord>("scholarships", slug);
+    return await phaseDetail<Scholarship>('scholarships', slug);
   } catch {
     return null;
   }
@@ -19,14 +18,17 @@ async function scholarship(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const row = await scholarship(slug);
-  return row
-    ? phaseOneMetadata(row, `/scholarships/${row.slug ?? slug}`, "Scholarship")
-    : { title: "Scholarship not found | Universta", robots: { index: false } };
+  if (!row) return { title: 'Scholarship not found | Universta', robots: { index: false } };
+  return {
+    title: `${row.title} | Universta`,
+    description: row.summary ?? `Explore ${row.title}.`,
+    alternates: { canonical: `/scholarships/${row.slug ?? slug}` },
+  };
 }
 
 export default async function ScholarshipPage({ params }: Props) {
   const { slug } = await params;
   const row = await scholarship(slug);
   if (!row) notFound();
-  return <PhaseDetail resource="scholarships" row={row} />;
+  return <ScholarshipDetail scholarship={row} />;
 }

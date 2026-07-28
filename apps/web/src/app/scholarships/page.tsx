@@ -1,33 +1,44 @@
-import {
-  PhaseListing,
-  type AnyRecord,
-  type PageMeta,
-} from "@/components/phase1/PhaseOneViews";
-import { phaseList } from "@/lib/phase1";
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { ScholarshipListing, type Scholarship, type PageMeta } from '@/components/templates/DirectoryTemplatePages';
+import { phaseList } from '@/lib/phase1';
 
-export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Scholarships | Universta",
-  alternates: { canonical: "/scholarships" },
+export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: 'Scholarships | Universta',
+  description: 'Explore published scholarships and compare award amounts, deadlines and eligibility.',
+  alternates: { canonical: '/scholarships' },
 };
 
-export default async function ScholarshipsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const raw = await searchParams;
-  const params = Object.fromEntries(
-    Object.entries(raw).flatMap(([key, value]) =>
-      typeof value === "string" && value ? [[key, value]] : [],
-    ),
+type SearchParams = Record<string, string | string[] | undefined>;
+function one(value: string | string[] | undefined) {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function unavailable() {
+  return (
+    <main className="shell error-page">
+      <p className="eyebrow">Scholarships</p>
+      <h1>Scholarships are temporarily unavailable</h1>
+      <p>Please try again shortly.</p>
+      <Link className="button" href="/scholarships">Retry</Link>
+    </main>
   );
-  let rows: AnyRecord[] = [];
-  let meta: PageMeta | null = null;
+}
+
+export default async function ScholarshipsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const raw = await searchParams;
+  const filters = Object.fromEntries(
+    (['q', 'country', 'university', 'type', 'deadline', 'page'] as const).flatMap((key) => {
+      const value = one(raw[key]);
+      return value ? [[key, value]] : [];
+    }),
+  );
+  let result: { data: Scholarship[]; meta: unknown };
   try {
-    const result = await phaseList<AnyRecord>("scholarships", params);
-    rows = result.data;
-    meta = result.meta as PageMeta;
-  } catch {}
-  return <PhaseListing resource="scholarships" rows={rows} meta={meta} />;
+    result = await phaseList<Scholarship>('scholarships', filters);
+  } catch {
+    return unavailable();
+  }
+  return <ScholarshipListing scholarships={result.data} meta={result.meta as PageMeta} filters={filters} />;
 }
