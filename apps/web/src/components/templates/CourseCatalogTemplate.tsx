@@ -21,6 +21,7 @@ import type {
   Subject,
 } from '@/lib/catalog';
 import { CatalogFooter, CatalogHeader } from './ApprovedTemplatePages';
+import { CompareCheckbox, CompareTray } from '@/components/compare/CompareWidgets';
 
 type CourseIconName =
   | 'arrow'
@@ -253,6 +254,7 @@ function CourseTemplateCard({
         </div>
       </div>
       <div className="course-foot">
+        <CompareCheckbox type="courses" slug={course.slug} label={course.name} />
         <div className="spacer" />
         <Link href={courseHref} className="btn btn-primary btn-sm">
           View course <CourseIcon name="arrow" size={15} />
@@ -1165,6 +1167,7 @@ export function ApprovedCoursesListing({
         </div>
       </section>
       <CatalogFooter />
+      <CompareTray type="courses" />
     </main>
   );
 }

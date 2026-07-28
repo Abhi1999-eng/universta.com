@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { consultationTarget } from '@/lib/country-experience';
 import { counsellingHref } from '@/lib/counselling-link';
+import { CompareCheckbox, CompareTray } from '@/components/compare/CompareWidgets';
 import type {
   Country,
   CountryPage,
@@ -275,9 +276,12 @@ function CountryTemplateCard({ country }: { country: Country }) {
         <div className="fact"><span><Icon name="briefcase" size={14} />Post-study work</span><b>{work ?? 'Not published'}</b></div>
         <div className="fact"><span><Icon name="calendar" size={14} />Popular intake</span><b>{intakes || 'Not published'}</b></div>
       </div>
-      <Link href={`/countries/${country.slug}`} className="card-cta">
-        Explore {country.name}<Icon name="arrow" size={15} />
-      </Link>
+      <div className="card-foot-row">
+        <CompareCheckbox type="countries" slug={country.slug} label={country.name} />
+        <Link href={`/countries/${country.slug}`} className="card-cta">
+          Explore {country.name}<Icon name="arrow" size={15} />
+        </Link>
+      </div>
     </article>
   );
 }
@@ -841,6 +845,7 @@ export function ApprovedCountriesListing({
         </div>
       </section>
       <CatalogFooter />
+      <CompareTray type="countries" />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CatalogFooter, CatalogHeader, Icon } from './ApprovedTemplatePages';
 import { counsellingHref } from '@/lib/counselling-link';
+import { CompareCheckbox, CompareTray } from '@/components/compare/CompareWidgets';
 import type { Country } from '@/lib/countries';
 
 // The phase1 API returns loosely-shaped JSON per resource; these types
@@ -252,7 +253,7 @@ export function UniversityListing({
                   </div>
                   <div className="dir-card-actions">
                     <Link href={`/universities/${university.slug}`} className="btn btn-secondary btn-sm">View details</Link>
-                    <Link href={`/compare/universities?items=${university.slug}`} className="btn btn-outline btn-sm">Compare</Link>
+                    <CompareCheckbox type="universities" slug={university.slug} label={university.name} />
                   </div>
                 </article>
               ))}
@@ -266,6 +267,7 @@ export function UniversityListing({
         </div>
       </div>
       <CatalogFooter />
+      <CompareTray type="universities" />
     </main>
   );
 }
@@ -299,7 +301,7 @@ export function UniversityDetail({ university }: { university: University }) {
               </div>
             </div>
             <div className="dir-detail-actions">
-              <Link href={`/compare/universities?items=${university.slug}`} className="btn btn-outline btn-sm"><Icon name="chart" size={15} />Add to compare</Link>
+              <CompareCheckbox type="universities" slug={university.slug} label={university.name} />
               {university.sourceReference ? <a href={university.sourceReference} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">View source</a> : null}
             </div>
           </div>
@@ -377,6 +379,7 @@ export function UniversityDetail({ university }: { university: University }) {
         </aside>
       </div>
       <CatalogFooter />
+      <CompareTray type="universities" />
     </main>
   );
 }
@@ -666,7 +669,7 @@ export function ConsultantListing({ consultants, meta, filters }: { consultants:
                 </div>
                 <div className="dir-card-actions">
                   <Link href={`/study-abroad-consultants/${consultant.slug}`} className="btn btn-secondary btn-sm">View details</Link>
-                  <Link href={`/compare/consultants?items=${consultant.slug}`} className="btn btn-outline btn-sm">Compare</Link>
+                  <CompareCheckbox type="consultants" slug={consultant.slug} label={consultant.name} />
                 </div>
               </article>
             ))}
@@ -675,6 +678,7 @@ export function ConsultantListing({ consultants, meta, filters }: { consultants:
         {meta.totalPages > 1 ? <nav className="pagination" aria-label="Pages" style={{ marginTop: 20, textAlign: 'center', color: 'var(--muted)' }}>Page {meta.page} of {meta.totalPages}</nav> : null}
       </div>
       <CatalogFooter />
+      <CompareTray type="consultants" />
     </main>
   );
 }
@@ -701,7 +705,7 @@ export function ConsultantDetail({ consultant }: { consultant: Consultant }) {
           </div>
         </div>
         <div className="dir-detail-actions">
-          <Link href={`/compare/consultants?items=${consultant.slug}`} className="btn btn-outline btn-sm"><Icon name="chart" size={15} />Add to compare</Link>
+          <CompareCheckbox type="consultants" slug={consultant.slug} label={consultant.name} />
           {consultant.websiteUrl ? <a href={consultant.websiteUrl} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">Visit website</a> : null}
         </div>
       </div>
@@ -743,6 +747,7 @@ export function ConsultantDetail({ consultant }: { consultant: Consultant }) {
         </aside>
       </div>
       <CatalogFooter />
+      <CompareTray type="consultants" />
     </main>
   );
 }
