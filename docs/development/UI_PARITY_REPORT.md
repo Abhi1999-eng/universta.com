@@ -2,72 +2,67 @@
 
 ## Scope
 
-The approved references are preserved in `design/reference/`. This phase
-adapts the visual hierarchy, section rhythm, navigation, cards, responsive
-layout, and safe interactions to production React components. The HTML and its
-sample JavaScript are not loaded at runtime.
+Pixel-parity work is in progress on `feat/task-007-subjects-courses`. The six
+approved references are preserved byte-for-byte in `design/reference/` and are
+served only by the local comparison harness. Reference HTML and JavaScript are
+not loaded by the application.
 
-## Route status
+## Reference coverage
 
-| Route | Reference | Status | Notes |
-| --- | --- | --- | --- |
-| `/` | No uploaded homepage reference | Existing route retained | Not evaluated against an uploaded reference |
-| `/countries` | `final-countries-list.html` | Adapted | Search, URL filters, region controls, directory, empty/error states, and safe CTA are data-backed |
-| `/countries/[slug]` | `final-country-detail.html` | Adapted | Sticky navigation, structured profiles, editorial sections, FAQs, consultants, and source-aware CTA are data-backed |
-| `/subjects` | `subjects-listing.html` | Adapted | Search, published cards, featured state, published A–Z directory, pagination, and safe omissions |
-| `/subjects/[slug]` | `subject-detail.html` | Adapted | Hero, sticky section navigation, published snapshot, specialisations, levels, courses, and safe omissions |
-| `/subjects/[slug]/specializations` | `subject-specializations.html` | Implemented/adapted | Published Sub-Subjects only; comparison is intentionally deferred |
-| `/courses` | No uploaded course-list reference | Existing route retained | Not evaluated against an uploaded reference |
-| `/courses/[slug]` | No uploaded course-detail reference | Existing route retained | Not evaluated against an uploaded reference |
+| Route | Reference | Fixture status |
+| --- | --- | --- |
+| `/countries` | `final-countries-list.html` | Structured local fixture; strict diff failing |
+| `/countries/canada` | `final-country-detail.html` | Structured local fixture; strict diff failing |
+| `/subjects` | `subjects-listing.html` | Structured local fixture; strict diff failing |
+| `/subjects/computer-science` | `subject-detail.html` | Structured local fixture; strict diff failing |
+| `/subjects/computer-science/specializations` | `subject-specializations.html` | Structured local fixture; strict diff failing |
+| `/courses` | `courses-listing.html` | Structured local fixture; strict diff failing |
 
-## Shared production components and patterns
+No uploaded homepage or course-detail reference exists, so those routes are
+not included in the parity matrix.
 
-The parity implementation reuses the existing `SiteHeader`, `SiteFooter`,
-country search/filter controls, sticky detail navigation, catalog cards,
-section headings, facts panels, CTA bands, empty states, error states, source
-notes, and responsive CSS tokens. Subject cards, subject directories,
-specialisation cards, and subject detail snapshots are API-driven additions.
+## Harness and evidence
 
-## Interaction and responsive review
+The deterministic fixture mode is enabled only when
+`VISUAL_FIXTURE_MODE=true` and `NODE_ENV !== production`. The Playwright
+matrix uses Chromium at 1440×1000, 768×1024, and 390×844, and writes full-page
+and selected-section evidence to:
 
-- Search and pagination remain URL-backed and preserve allowed query state.
-- Country filters preserve browser navigation and reset pagination on change.
-- Subject detail and specialisation links are generated from real slugs.
-- Subject comparison, save, matching, scholarships, calculators, and other
-  unsupported reference actions are not dead interactive controls.
-- Layouts use the existing 1440/768/390 responsive breakpoints; mobile grids
-  collapse, navigation wraps or scrolls, and no intentional horizontal canvas
-  overflow is introduced.
-- Semantic headings, labelled search fields, landmarks, visible focus, safe
-  links, status text, and reduced-motion CSS are preserved.
+`apps/admin/test-results/ui-parity/{route}/{viewport}/`
 
-## Data safety
+Each case records `reference.png`, `actual.png`, `diff.png`, `overlay.png`,
+section equivalents, and `metrics.json`. Full-page acceptance is strict at
+`<= 0.001`; section acceptance is strict at `<= 0.0005` with matching image
+dimensions.
 
-The references contain illustrative values such as counts, salary, ranking,
-scholarship, and testimonial claims. Those values are not copied into runtime
-components. Only published API data, verified country profiles, and safe copy
-are rendered. Unsupported sections are omitted and documented in
-`UI_REFERENCE_INVENTORY.md`.
+The latest complete matrix generated screenshots and metrics for all 18
+route/viewport cases. All 18 cases failed the strict gate:
 
-## Validation status
+| Route | Desktop | Tablet | Mobile |
+| --- | ---: | ---: | ---: |
+| Countries Listing | 0.098934 (1440×7331 vs 1440×7149) | 0.078571 (834×8891 vs 834×8825) | 0.203184 (645×15841 vs 645×14167) |
+| Country Detail | 0.492456 (1440×16066 vs 1440×9127) | 0.507503 (834×21866 vs 834×12056) | 0.562199 (645×31316 vs 645×14775) |
+| Subjects Listing | 0.218818 (1440×12687 vs 1440×10370) | 0.252215 (768×15982 vs 768×12747) | 0.276926 (416×24042 vs 416×18821) |
+| Subject Detail | 0.227911 (1440×13167 vs 1440×10622) | 0.271087 (768×18122 vs 768×14520) | 0.299448 (416×25422 vs 416×18953) |
+| Subject Specializations | 0.036502 (1440×9567 vs 1440×9640) | 0.082870 (768×11986 vs 768×12197) | 0.083795 (416×17819 vs 416×17948) |
+| Courses Listing | 0.251641 (1440×10157 vs 1440×12857) | 0.334543 (768×12151 vs 789×16663) | 0.409959 (416×15190 vs 416×23967) |
 
-Validation completed on the local native-MySQL setup:
+The strict full-page limit is 0.001 and the selected-section limit is
+0.0005. The country detail and courses listing remain materially different in
+section structure and height; country listing/detail also have responsive
+section-width mismatches at tablet/mobile.
 
-- `npm install` completed; the existing audit reported 36 dependency findings
-  (1 moderate and 35 high), with no dependency changes made by this phase.
-- Prisma format, validate, generate, and migration status passed. The database
-  reported one existing migration and an up-to-date schema.
-- Unit tests passed: Admin 46, API 28, Web 2.
-- Lint passed with existing warning-only findings: API 52, Web 4; no errors.
-- Production builds passed for Web, Admin, and API.
-- Playwright passed all 28 browser tests, including the new subject parity
-  checks, country listing/detail checks, admin auth, catalog workflows, and
-  mobile overflow checks.
-- `git diff --check` passed.
+Pixel parity is therefore not claimed, the CI parity job is expected to fail,
+and no commit/push or PR readiness action was performed. The existing browser
+E2E suite could not be rerun in this environment because
+`E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` are not available; this is separate
+from the passing unit, lint, and production-build checks.
 
-The in-app browser could not connect to the local development server for an
-additional live screenshot review; Playwright provided the rendered route and
-responsive validation instead. The approved reference HTML was inspected as
-the visual source and remains byte-identical in the repository.
+## Safety boundaries
 
-Schema and migration files are unchanged in this phase.
+- Production routes remain API-driven when `VISUAL_FIXTURE_MODE` is unset.
+- No Prisma schema or migration files were changed.
+- No reference HTML or reference asset was modified.
+- No Docker files, credentials, real `.env` files, or token persistence were added.
+- Sample counts, rankings, salary claims, scholarship claims, and testimonials
+  in the references remain isolated to local visual fixtures.

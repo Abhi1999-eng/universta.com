@@ -1,6 +1,8 @@
 # TASK_007 — Subjects and Courses
 
-Status: implementation complete on `feat/task-007-subjects-courses`; merge is intentionally left to the repository owner.
+Status: implementation complete with UI parity still in progress on
+`feat/task-007-subjects-courses`; merge is intentionally left to the repository
+owner.
 
 ## Scope delivered
 
@@ -9,10 +11,11 @@ Status: implementation complete on `feat/task-007-subjects-courses`; merge is in
 - Same-origin Admin BFF routes with explicit method/path/query/body allowlists and safe error normalization.
 - Super Admin catalog screens for Subjects, Sub-Subjects, Courses, Course Levels, and Study Modes with optimistic-version fields, dependency-aware deletion, audit-backed mutations, and accessible confirmation dialogs.
 - Unit, admin component, and public browser coverage for catalog validation, empty states, filters, and responsive overflow.
+- A local Chromium screenshot-diff matrix for every uploaded reference at desktop, tablet, and mobile viewports. The matrix currently produces evidence for all 18 cases, but the strict acceptance gate is not yet green.
 
 ## Deliberate exclusions
 
-Course Comparison, counselling forms, university/provider catalogues, ranking/salary claims, authentication changes, Docker, new migrations, Prisma schema changes, TASK_008, and execution of the approved HTML references remain excluded. Approved UI references are preserved byte-for-byte as visual inputs and are not runtime assets.
+Course Comparison, counselling forms, university/provider catalogues, ranking/salary claims, authentication changes, Docker, new migrations, Prisma schema changes, TASK_008, and runtime execution of the approved HTML references remain excluded. Approved UI references are preserved byte-for-byte as visual inputs and are not runtime assets.
 
 ## Data and publication rules
 

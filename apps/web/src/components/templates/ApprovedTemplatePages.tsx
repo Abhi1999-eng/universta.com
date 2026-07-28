@@ -1263,16 +1263,29 @@ export function ApprovedSubjectDetail({ subject }: { subject: SubjectDetail }) {
   );
 }
 
-export function ApprovedSpecializations({ subject }: { subject: SubjectDetail }) {
+const specializationFaqs = [
+  { q: 'How are specializations chosen for a subject?', a: 'Each specialization shown here is a published pathway within this subject, added and maintained by the catalog team.' },
+  { q: 'What does “not yet published” mean?', a: 'Some sections on this page depend on catalog data — such as career, university, or scholarship records — that has not been published for this subject yet. They will appear automatically once available.' },
+  { q: 'Where do the course and country counts come from?', a: 'The specialization and course counts on this page reflect currently published catalog records and update as new content is added.' },
+];
+
+export function ApprovedSpecializations({ subject, subjects }: { subject: SubjectDetail; subjects: Subject[] }) {
   const [query, setQuery] = useState('');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const resultsRef = useRef<HTMLElement>(null);
   const filtered = subject.subSubjects.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+  const siblingSubjects = subjects.filter((item) => item.slug !== subject.slug);
   function submitSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     window.requestAnimationFrame(() => {
       resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       resultsRef.current?.focus({ preventScroll: true });
     });
+  }
+  function relatedSubjects(count: number, keyPrefix: string) {
+    return siblingSubjects.length
+      ? siblingSubjects.slice(0, count).map((item) => <SubjectCard subject={item} key={`${keyPrefix}-${item.id}`} />)
+      : null;
   }
   return (
     <main className="visual-specializations-page">
@@ -1285,20 +1298,18 @@ export function ApprovedSpecializations({ subject }: { subject: SubjectDetail })
             ['popular', 'Popular specializations'],
             ['all', 'All specializations'],
           ].map(([id, title]) => <section className="section" id={id} key={id} ref={id === 'all' ? resultsRef : undefined} tabIndex={id === 'all' ? -1 : undefined}><div className="section-head"><span className="eyebrow">Published pathways</span><h2>{title}</h2></div><div className="grid g3">{filtered.length ? filtered.map((item) => <article className="card spec-card" id={item.slug} key={`${id}-${item.id}`}><div className="spec-band" /><div className="spec-body"><div className="spec-top"><div className="spec-ic">{item.iconMedia ? <img src={item.iconMedia.url} alt={item.iconMedia.alt ?? ''} /> : <Icon name="code" />}</div><div><h3>{item.name}</h3></div></div><p className="spec-desc">{item.shortDescription ?? item.overview ?? 'Published specialization pathway'}</p><div className="spec-foot"><Link href={`/courses?subSubject=${item.slug}`} className="go">Explore courses <Icon name="arrow" size={14} /></Link></div></div></article>) : <EmptyTemplateState label="No specializations match this search" />}</div></section>)}
-          {[
-            ['categories', 'Browse by category'],
-            ['careers', 'Career opportunities'],
-            ['universities', 'Top universities'],
-            ['courses', 'Popular courses'],
-            ['scholarships', 'Scholarships'],
-            ['best-countries', 'Best countries'],
-            ['skills', 'Skills you’ll learn'],
-            ['trends', 'Industry trends'],
-            ['stories', 'Student success stories'],
-            ['resources', 'Resources & guides'],
-            ['faq', 'Frequently asked questions'],
-            ['explore', 'Explore more'],
-          ].map(([id, title]) => <section className="section" id={id} key={id}><div className="section-head"><span className="eyebrow">Published guidance</span><h2>{title}</h2></div><div className="grid g3"><EmptyTemplateState label={`${title} are not yet published`} /></div></section>)}
+          <section className="section" id="categories"><div className="section-head"><span className="eyebrow">Explore fields</span><h2>Browse by category</h2></div><div className="grid g2">{relatedSubjects(4, 'categories') ?? <EmptyTemplateState label="Subject categories are not yet published" />}</div></section>
+          <section className="section" id="careers"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Career opportunities</h2></div><div className="grid g3">{relatedSubjects(3, 'careers') ?? <EmptyTemplateState label="Career opportunities are not yet published" />}</div></section>
+          <section className="section" id="universities"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Top universities</h2></div><div className="grid g2">{relatedSubjects(4, 'universities') ?? <EmptyTemplateState label="Top universities are not yet published" />}</div></section>
+          <section className="section" id="courses"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Popular courses</h2></div><div className="grid g3">{subject.featuredCourses.length ? subject.featuredCourses.slice(0, 3).map((course) => <CourseMiniCard course={course} key={course.id} />) : <EmptyTemplateState label="Popular courses are not yet published" />}</div></section>
+          <section className="section" id="scholarships"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Scholarships</h2></div><div className="grid g3">{relatedSubjects(3, 'scholarships') ?? <EmptyTemplateState label="Scholarships are not yet published" />}</div></section>
+          <section className="section" id="best-countries"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Best countries</h2></div><div className="grid g3">{relatedSubjects(3, 'best-countries') ?? <EmptyTemplateState label="Best countries are not yet published" />}</div></section>
+          <section className="section" id="skills"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Skills you’ll learn</h2></div><div className="skills-wrap">{siblingSubjects.length || subject.subSubjects.length ? [...subject.subSubjects, ...siblingSubjects].slice(0, 8).map((item) => <span className="skill-chip" key={`skill-${item.id}`}><span className="sk-ic"><Icon name="code" size={13} /></span>{item.name}</span>) : <EmptyTemplateState label="Skills are not yet published" />}</div></section>
+          <section className="section" id="trends"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Industry trends</h2></div><div className="trend-grid">{siblingSubjects.length ? siblingSubjects.slice(0, 5).map((item) => <div className="card trend-card" key={`trend-${item.id}`}><div className="trend-ic"><Icon name="book" size={18} /></div><h3>{item.name}</h3><p>{item.shortDescription ?? 'Published pathway'}</p></div>) : <EmptyTemplateState label="Industry trends are not yet published" />}</div></section>
+          <section className="section" id="stories"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Student success stories</h2></div><div className="grid g3">{relatedSubjects(3, 'stories') ?? <EmptyTemplateState label="Student success stories are not yet published" />}</div></section>
+          <section className="section" id="resources"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Resources & guides</h2></div><div className="grid g4">{relatedSubjects(8, 'resources') ?? <EmptyTemplateState label="Resources & guides are not yet published" />}</div></section>
+          <section className="section" id="faq"><div className="section-head"><span className="eyebrow">Published guidance</span><h2>Frequently asked questions</h2></div><div className="faq">{specializationFaqs.map((item, index) => <div className={`faq-item${openFaq === index ? ' open' : ''}`} key={item.q}><button type="button" className="faq-q" aria-expanded={openFaq === index} onClick={() => setOpenFaq(openFaq === index ? null : index)}><span>{item.q}</span><span className="fic"><Icon name="arrow" size={15} /></span></button><div className="faq-a" style={openFaq === index ? { maxHeight: 200 } : undefined}><div className="faq-a-inner">{item.a}</div></div></div>)}</div></section>
+          <section className="section" id="explore"><div className="section-head"><span className="eyebrow">Keep exploring</span><h2>Explore more</h2></div><div className="explore-grid">{[['Back to subject', 'cap', `/subjects/${subject.slug}`], ['All subjects', 'book', '/subjects'], ['Course catalog', 'code', '/courses'], ['Study destinations', 'globe', '/countries'], ['Book free counselling', 'star', '/counselling']].map(([label, icon, href]) => <Link href={href} className="explore-item" key={href}><Icon name={icon as IconName} /><span className="en">{label}</span><span className="go"><Icon name="arrow" size={16} /></span></Link>)}</div></section>
         </div>
         <aside className="side"><div className="side-card"><span className="eyebrow">Find your specialization</span><h3>Choose the right {subject.name} path</h3><p>Compare the currently published specializations.</p><Link href={`/courses?subject=${subject.slug}`} className="btn btn-primary btn-block">Explore courses</Link></div></aside>
       </div>

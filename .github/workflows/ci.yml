@@ -107,6 +107,19 @@ jobs:
       - name: Admin browser E2E tests
         run: npm --workspace apps/admin run test:e2e
 
+      - name: Public UI pixel parity tests
+        run: npm run test:visual
+
+      - name: Upload UI parity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-parity-artifacts
+          path: |
+            apps/admin/test-results/ui-parity/
+            apps/admin/playwright-ui-parity-report/
+          if-no-files-found: ignore
+
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

@@ -2,9 +2,9 @@
 
 TASK_007 provides the Subjects/Sub-Subjects, course master data, Courses API,
 admin BFF/editorial workflows, and public subject/course discovery surfaces.
-The UI parity phase extends the existing public catalog with approved subject
-reference mappings while preserving the API-driven and factual-safety
-boundaries.
+The UI parity phase is still in progress; it extends local deterministic
+fixtures with the approved reference composition while preserving the
+API-driven and factual-safety boundaries.
 
 ## Included
 
@@ -13,10 +13,11 @@ boundaries.
 - Subject cards, featured state, published directory, sticky detail navigation,
   published course-level snapshot, and specialisation/course links.
 - Byte-identical approved HTML references in `design/reference/`.
-- Reference inventory and parity documentation.
+- Reference inventory, parity harness, screenshot evidence, and parity documentation.
 
 ## Excluded
 
 Subject/course comparison, matching, scholarships, rankings, salary claims,
-university management, fake sample fixtures, Docker, new migrations, and
-TASK_008 remain excluded. The reference HTML is not embedded or executed.
+university management, Docker, new migrations, and TASK_008 remain excluded.
+Visual fixtures are test-only and guarded from production; the reference HTML
+is not embedded or executed. Strict screenshot parity is not yet achieved.
