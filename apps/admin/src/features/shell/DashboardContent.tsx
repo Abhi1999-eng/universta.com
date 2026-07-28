@@ -1,6 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '@/features/auth/AuthProvider';
+
+const quickLinks = [
+  { icon: 'C', label: 'Countries', href: '/countries' },
+  { icon: 'S', label: 'Subjects', href: '/subjects' },
+  { icon: 'C', label: 'Courses', href: '/courses' },
+  { icon: 'L', label: 'Leads', href: '/leads' },
+  { icon: 'P1', label: 'Phase 1 content', href: '/phase1/universities' },
+  { icon: 'M', label: 'Catalog masters', href: '/catalog-masters' },
+];
 
 export function DashboardContent() {
   const { user } = useAuth();
@@ -14,7 +24,7 @@ export function DashboardContent() {
           Good to see you, {firstName}.
         </h2>
         <p className="mt-4 max-w-xl text-base leading-7 text-white/75">
-          Your foundation is ready. This space will grow with the next Universta modules.
+          Countries, Subjects, Courses, Leads and the expanded Phase 1 catalog are live. Jump in below.
         </p>
       </div>
 
@@ -28,7 +38,7 @@ export function DashboardContent() {
             <span className="rounded-full bg-[#E9F8F0] px-3 py-1 text-xs font-bold text-[#18794E]">Active</span>
           </div>
           <p className="mt-5 max-w-xl text-sm leading-6 text-[#48505F]">
-            Authentication is active and your account is ready for the planned catalog workspace.
+            Authentication is active and your account has access to the full published catalog workspace.
           </p>
           <div className="mt-7 grid gap-4 sm:grid-cols-2">
             <InfoItem label="Account email" value={user?.email ?? 'Unavailable'} />
@@ -37,13 +47,19 @@ export function DashboardContent() {
         </article>
 
         <article className="rounded-[24px] border border-[#E8ECF3] bg-white p-6 sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Next planned module</p>
-          <div className="mt-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF4FF] text-xl font-bold text-[#1657CF]">C</div>
-          <h3 className="mt-5 text-xl font-semibold tracking-[-0.025em]">Countries</h3>
-          <p className="mt-3 text-sm leading-6 text-[#48505F]">
-            The catalog workspace is planned next. No country data or operational metrics are shown here yet.
-          </p>
-          <span className="mt-6 inline-flex rounded-full bg-[#F0F4FA] px-3 py-1 text-xs font-semibold text-[#828B9B]">Coming soon</span>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Quick links</p>
+          <div className="mt-5 grid gap-2">
+            {quickLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#48505F] transition hover:bg-[#F0F4FA] hover:text-[#0D1524]"
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#EEF4FF] text-xs font-bold text-[#1657CF]">{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </article>
       </div>
     </section>
