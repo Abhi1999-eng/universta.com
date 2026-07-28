@@ -24,3 +24,21 @@ h3,
 h4 {
   font-family: var(--font-jakarta), Arial, Helvetica, sans-serif;
 }
+
+.lead-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.65rem 0.8rem;
+  color: #0d1524;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.lead-control:focus {
+  border-color: #1657cf;
+  box-shadow: 0 0 0 3px #dce8ff;
+}

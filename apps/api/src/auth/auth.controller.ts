@@ -33,7 +33,10 @@ import {
 } from './auth.types';
 import { LoginDto } from './dto/login.dto';
 
-const REFRESH_COOKIE_PATH = '/api/v1/admin/auth';
+// The Admin server must receive this HttpOnly cookie before it renders a
+// protected route. API auth endpoints still require it independently.
+const REFRESH_COOKIE_PATH = '/';
+const LEGACY_REFRESH_COOKIE_PATH = '/api/v1/admin/auth';
 
 function envelope<T>(
   request: AuthenticatedRequest,
@@ -178,6 +181,21 @@ export class AuthController {
     }
   }
 
+  @Post('session/validate')
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth('admin-refresh-cookie')
+  @ApiOperation({
+    summary: 'Validate an active Admin refresh session without rotation',
+  })
+  async validateSession(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<ResponseEnvelope<{ user: AuthenticatedAdmin }>> {
+    const user = await this.auth.validateRefreshSession(
+      refreshCookie(request, this.runtimeConfig.authRefreshCookieName),
+    );
+    return envelope(request, { user });
+  }
+
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiCookieAuth('admin-refresh-cookie')
@@ -226,6 +244,13 @@ export class AuthController {
       path: REFRESH_COOKIE_PATH,
       maxAge: this.refreshTtlSeconds() * 1000,
     });
+    // Remove the former narrow-path cookie during the one-time path upgrade.
+    response.clearCookie(this.runtimeConfig.authRefreshCookieName, {
+      httpOnly: true,
+      secure: ['production', 'staging'].includes(this.runtimeConfig.nodeEnv),
+      sameSite: 'lax',
+      path: LEGACY_REFRESH_COOKIE_PATH,
+    });
   }
 
   private clearRefreshCookie(response: Response): void {
@@ -234,6 +259,12 @@ export class AuthController {
       secure: ['production', 'staging'].includes(this.runtimeConfig.nodeEnv),
       sameSite: 'lax',
       path: REFRESH_COOKIE_PATH,
+    });
+    response.clearCookie(this.runtimeConfig.authRefreshCookieName, {
+      httpOnly: true,
+      secure: ['production', 'staging'].includes(this.runtimeConfig.nodeEnv),
+      sameSite: 'lax',
+      path: LEGACY_REFRESH_COOKIE_PATH,
     });
   }
 

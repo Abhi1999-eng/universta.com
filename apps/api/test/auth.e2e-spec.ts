@@ -121,7 +121,7 @@ describe('Super Admin authentication (e2e)', () => {
     await app.close();
   });
 
-  it('logs in, returns the standard envelope, sets a scoped HttpOnly cookie, and does not return the refresh token', async () => {
+  it('logs in, returns the standard envelope, sets an Admin-route HttpOnly cookie, and does not return the refresh token', async () => {
     const user = testUsers[0];
     const response = await request(app.getHttpServer())
       .post('/api/v1/admin/auth/login')
@@ -144,7 +144,7 @@ describe('Super Admin authentication (e2e)', () => {
     const cookie = cookieValue(response);
     expect(cookie).toContain('universta_admin_refresh=');
     expect(setCookieHeaders(response)[0]).toContain('HttpOnly');
-    expect(setCookieHeaders(response)[0]).toContain('Path=/api/v1/admin/auth');
+    expect(setCookieHeaders(response)[0]).toContain('Path=/');
     expect(JSON.stringify(body)).not.toContain(cookie.split('=')[1]);
     expect(response.headers['x-request-id']).toBe(body.requestId);
   });
@@ -383,6 +383,75 @@ describe('Super Admin authentication (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/admin/auth/refresh')
       .set('Cookie', 'universta_admin_refresh=invalid')
+      .expect(401);
+  });
+
+  it('validates only active persisted refresh sessions without rotating them', async () => {
+    const user = testUsers[0];
+    const login = await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/login')
+      .send({ email: user.email, password })
+      .expect(200);
+    const cookie = cookieValue(login);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/session/validate')
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect((response) =>
+        expect(dataOf(bodyOf(response)).user).toMatchObject({ id: user.id }),
+      );
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/session/validate')
+      .set('Cookie', 'universta_admin_refresh=malformed')
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/logout')
+      .set('Cookie', cookie)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/session/validate')
+      .set('Cookie', cookie)
+      .expect(401);
+  });
+
+  it('rejects expired and wrong-signature refresh tokens during server-session validation', async () => {
+    const jwt = app.get(JwtService);
+    const config = app.get(RuntimeConfigService);
+    const expired = await jwt.signAsync(
+      {
+        sub: testUsers[0].id,
+        jti: 'expired-session',
+        type: REFRESH_TOKEN_TYPE,
+      },
+      {
+        secret: config.jwtRefreshSecret,
+        expiresIn: -1,
+        issuer: AUTH_ISSUER,
+        audience: AUTH_AUDIENCE,
+      },
+    );
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/session/validate')
+      .set('Cookie', `universta_admin_refresh=${expired}`)
+      .expect(401);
+    const wrongSignature = await jwt.signAsync(
+      {
+        sub: testUsers[0].id,
+        jti: 'wrong-signature',
+        type: REFRESH_TOKEN_TYPE,
+      },
+      {
+        secret: 'not-the-authoritative-refresh-secret',
+        expiresIn: '15m',
+        issuer: AUTH_ISSUER,
+        audience: AUTH_AUDIENCE,
+      },
+    );
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/auth/session/validate')
+      .set('Cookie', `universta_admin_refresh=${wrongSignature}`)
       .expect(401);
   });
 });

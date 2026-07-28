@@ -5,17 +5,36 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Deployment operation
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - rollback
+          - status
+      sha:
+        description: Exact 40-character commit SHA (required for deploy, optional for rollback)
+        required: false
+        type: string
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || 'universta-demo-deployment' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
+env:
+  RELEASE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.sha }}
+
 jobs:
   foundation-ci:
     name: CI / Foundation and Admin Auth
+    if: github.event_name != 'workflow_dispatch' || inputs.action == 'deploy'
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
@@ -41,6 +60,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
 
       - name: Setup Node.js 25
         uses: actions/setup-node@v6
@@ -101,6 +122,9 @@ jobs:
       - name: Admin unit and catalog tests
         run: npm --workspace apps/admin run test -- --run
 
+      - name: Web unit tests
+        run: npm --workspace apps/web run test -- --run
+
       - name: Install Playwright Chromium
         run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
 
@@ -140,3 +164,165 @@ jobs:
         run: |
           git diff --check
           git diff --exit-code
+
+      - name: Package exact-SHA release
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy')
+        run: |
+          chmod +x scripts/deployment/package-release.sh
+          scripts/deployment/package-release.sh \
+            "${RELEASE_SHA}" \
+            "${RUNNER_TEMP}/universta-release"
+
+      - name: Upload exact-SHA release for deployment
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy')
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: universta-release-${{ env.RELEASE_SHA }}
+          path: |
+            ${{ runner.temp }}/universta-release/universta-${{ env.RELEASE_SHA }}.tar.gz
+            ${{ runner.temp }}/universta-release/universta-${{ env.RELEASE_SHA }}.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy-demo:
+    name: Deploy / AWS demo
+    needs: foundation-ci
+    if: >-
+      needs.foundation-ci.result == 'success' &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: demo
+      url: http://54.162.49.131
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      AWS_ROLE_ARN: arn:aws:iam::771413672221:role/universta-demo-github-deploy-role
+      AWS_ARTIFACT_BUCKET: universta-demo-artifacts-771413672221-us-east-1
+      AWS_INSTANCE_ID: i-0288a3283c26638b3
+      DEPLOY_WEB_URL: http://54.162.49.131
+      DEPLOY_ADMIN_URL: http://admin.54.162.49.131.nip.io
+      DEPLOY_API_URL: http://api.54.162.49.131.nip.io
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+
+      - name: Download exact-SHA release
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: universta-release-${{ env.RELEASE_SHA }}
+          path: ${{ runner.temp }}/universta-release
+
+      - name: Configure AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: universta-${{ github.run_id }}
+
+      - name: Publish immutable exact-SHA artifact
+        run: |
+          archive="${RUNNER_TEMP}/universta-release/universta-${RELEASE_SHA}.tar.gz"
+          checksum="${archive}.sha256"
+
+          if aws s3api head-object \
+            --bucket "${AWS_ARTIFACT_BUCKET}" \
+            --key "releases/${RELEASE_SHA}/universta-${RELEASE_SHA}.tar.gz" \
+            >/dev/null 2>&1; then
+            aws s3api head-object \
+              --bucket "${AWS_ARTIFACT_BUCKET}" \
+              --key "releases/${RELEASE_SHA}/universta-${RELEASE_SHA}.tar.gz.sha256" \
+              >/dev/null
+            echo "Reusing the existing immutable artifact for ${RELEASE_SHA}."
+          else
+            aws s3api put-object \
+              --bucket "${AWS_ARTIFACT_BUCKET}" \
+              --key "releases/${RELEASE_SHA}/universta-${RELEASE_SHA}.tar.gz" \
+              --body "${archive}" \
+              --server-side-encryption AES256 \
+              --tagging immutable=true \
+              >/dev/null
+            aws s3api put-object \
+              --bucket "${AWS_ARTIFACT_BUCKET}" \
+              --key "releases/${RELEASE_SHA}/universta-${RELEASE_SHA}.tar.gz.sha256" \
+              --body "${checksum}" \
+              --server-side-encryption AES256 \
+              --tagging immutable=true \
+              >/dev/null
+          fi
+
+      - name: Deploy exact SHA through SSM
+        run: |
+          chmod +x scripts/deployment/invoke-ssm.sh
+          scripts/deployment/invoke-ssm.sh \
+            deploy \
+            "${RELEASE_SHA}" \
+            "${AWS_ARTIFACT_BUCKET}" \
+            "${AWS_INSTANCE_ID}" \
+            "${AWS_REGION}"
+
+      - name: Verify public endpoints
+        run: |
+          curl --fail --silent --show-error --max-time 30 "${DEPLOY_API_URL}/health" |
+            jq -e '.status == "ok" and .database == "up"'
+          for path in / /countries /subjects /courses /counselling; do
+            curl --fail --silent --show-error --max-time 30 \
+              --output /dev/null "${DEPLOY_WEB_URL}${path}"
+          done
+          curl --fail --silent --show-error --max-time 30 \
+            --output /dev/null "${DEPLOY_ADMIN_URL}/login"
+
+      - name: Record deployment summary
+        run: |
+          {
+            echo "### Universta AWS demo deployment"
+            echo
+            echo "- Commit: \`${RELEASE_SHA}\`"
+            echo "- Web: ${DEPLOY_WEB_URL}"
+            echo "- Admin: ${DEPLOY_ADMIN_URL}"
+            echo "- API: ${DEPLOY_API_URL}"
+            echo "- Transport: HTTP fallback pending an owned Route 53 domain"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  operate-demo:
+    name: Deploy / AWS demo ${{ inputs.action }}
+    if: github.event_name == 'workflow_dispatch' && inputs.action != 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: demo
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      AWS_ROLE_ARN: arn:aws:iam::771413672221:role/universta-demo-github-deploy-role
+      AWS_ARTIFACT_BUCKET: universta-demo-artifacts-771413672221-us-east-1
+      AWS_INSTANCE_ID: i-0288a3283c26638b3
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: universta-${{ github.run_id }}
+
+      - name: Run deployment operation through SSM
+        run: |
+          chmod +x scripts/deployment/invoke-ssm.sh
+          scripts/deployment/invoke-ssm.sh \
+            "${{ inputs.action }}" \
+            "${{ inputs.sha }}" \
+            "${AWS_ARTIFACT_BUCKET}" \
+            "${AWS_INSTANCE_ID}" \
+            "${AWS_REGION}"

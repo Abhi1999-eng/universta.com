@@ -12,7 +12,15 @@ test('protects the dashboard, restores the session, and logs out', async ({ page
     }
   });
   page.on('requestfailed', (request) => {
-    failedRequests.push(request.url());
+    const target = new URL(request.url());
+    const failure = request.failure()?.errorText ?? 'unknown failure';
+    const isExpectedNavigationCancellation =
+      target.searchParams.has('_rsc') &&
+      request.resourceType() === 'fetch' &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    if (!isExpectedNavigationCancellation) {
+      failedRequests.push(`${request.url()} (${failure})`);
+    }
   });
   page.on('response', (response) => {
     if (new URL(response.url()).pathname.includes('/api/v1/admin/auth/')) {
@@ -41,7 +49,8 @@ test('protects the dashboard, restores the session, and logs out', async ({ page
   const cookies = await context.cookies();
   const refreshCookie = cookies.find((cookie) => cookie.name === 'universta_admin_refresh');
   expect(refreshCookie?.httpOnly).toBe(true);
-  expect(refreshCookie?.path).toBe('/api/v1/admin/auth');
+  // The protected server layout validates this HttpOnly cookie before rendering.
+  expect(refreshCookie?.path).toBe('/');
   const storage = await page.evaluate(() => ({
     localKeys: Object.keys(localStorage),
     sessionKeys: Object.keys(sessionStorage),

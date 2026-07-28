@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
+import { apiBaseUrl } from './helpers/e2e-urls';
 
 test.describe.serial('catalog management', () => {
   const suffix = `E2E ${Date.now()}`;
@@ -15,12 +16,12 @@ test.describe.serial('catalog management', () => {
   });
 
   test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }) => {
-    const codeSeed = randomUUID()
+    const codeSeed = `Q${randomUUID()
       .replace(/-/g, '')
       .match(/../g)
-      ?.slice(0, 3)
+      ?.slice(0, 2)
       .map((pair) => String.fromCharCode(65 + (Number.parseInt(pair, 16) % 26)))
-      .join('') ?? 'E2E';
+      .join('') ?? 'AA'}`;
     await loginAsAdmin(page);
     await page.goto('/continents');
     await expect(page).not.toHaveURL(/\/login/);
@@ -54,21 +55,21 @@ test.describe.serial('catalog management', () => {
     await costProfile.getByLabel('Verified at').fill('2026-01-01T00:00:00.000Z');
     await costProfile.getByRole('button', { name: 'Save cost' }).click();
     await expect(page.getByText('cost profile saved.', { exact: true })).toBeVisible();
-    const publicDraft = await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`);
+    const publicDraft = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicDraft.status()).toBe(404);
 
     await page.getByRole('button', { name: 'Publish' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Publish country' }).click();
     await expect(page.getByText('Country published.', { exact: true })).toBeVisible();
     await expect(publishingStatus).toHaveText('PUBLISHED');
-    const publicPublished = await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`);
+    const publicPublished = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicPublished.status()).toBe(200);
 
     await page.getByRole('button', { name: 'Unpublish' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Unpublish country' }).click();
     await expect(page.getByText('Country unpublished.', { exact: true })).toBeVisible();
     await expect(publishingStatus).toHaveText('DRAFT');
-    expect((await request.get(`http://127.0.0.1:4000/api/v1/countries/${countrySlug}`)).status()).toBe(404);
+    expect((await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`)).status()).toBe(404);
 
     await page.goto('/countries');
     const row = page.getByRole('row').filter({ hasText: countryName });
@@ -77,6 +78,16 @@ test.describe.serial('catalog management', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Delete country' }).click();
     await expect(page.getByText('Country soft-deleted.', { exact: true })).toBeVisible();
     await expect(page.getByText(countryName)).not.toBeVisible();
+
+    await page.goto('/continents');
+    await page.getByPlaceholder('Search by name, slug or code').fill(continentName);
+    const continentRow = page.getByRole('row').filter({ hasText: continentName });
+    await continentRow.getByRole('button', { name: 'Delete' }).click();
+    const continentDialog = page.getByRole('dialog');
+    await continentDialog.getByLabel('Confirmation').fill(continentName);
+    await continentDialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByText('Continent deleted.', { exact: true })).toBeVisible();
+    await expect(page.getByText(continentName)).not.toBeVisible();
   });
 
   test('keeps mobile country actions accessible', async ({ page }) => {
@@ -90,5 +101,15 @@ test.describe.serial('catalog management', () => {
     await page.getByRole('button', { name: 'Open navigation' }).click();
     await expect(page.getByRole('dialog', { name: 'Admin navigation' })).toBeVisible();
     await expect(page.getByRole('dialog').getByRole('link', { name: 'Countries' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('recovers safely from an out-of-range lead page', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/leads?page=2');
+
+    const pagination = page.getByRole('navigation', { name: 'Lead result pages' });
+    await expect(pagination).toBeVisible();
+    await pagination.getByRole('link', { name: 'Previous' }).click();
+    await expect(page).toHaveURL(/\/leads$/);
   });
 });

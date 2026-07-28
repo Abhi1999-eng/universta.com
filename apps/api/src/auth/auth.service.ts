@@ -148,6 +148,45 @@ export class AuthService {
     rawRefreshToken: string | undefined,
     metadata: AuthRequestMetadata,
   ): Promise<AuthResponseData & { refreshToken: string }> {
+    const { admin, stored } =
+      await this.validatedRefreshSession(rawRefreshToken);
+    const next = await this.issueTokens(admin);
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.refreshToken.create({
+        data: {
+          id: next.refreshTokenId,
+          userId: admin.id,
+          tokenHash: tokenHash(next.refreshToken),
+          expiresAt: next.refreshExpiresAt,
+          createdIp: metadata.ipAddress,
+          userAgent: metadata.userAgent,
+        },
+      });
+      await transaction.refreshToken.update({
+        where: { id: stored.id },
+        data: {
+          revokedAt: new Date(),
+          revocationReason: 'ROTATED',
+          replacedByTokenId: next.refreshTokenId,
+        },
+      });
+    });
+    return next.response;
+  }
+
+  /**
+   * Verifies the signed refresh token and its persisted, non-revoked session
+   * without rotating it. Protected server routes use this before rendering;
+   * browser refresh remains responsible for rotation.
+   */
+  async validateRefreshSession(
+    rawRefreshToken: string | undefined,
+  ): Promise<AuthenticatedAdmin> {
+    const { admin } = await this.validatedRefreshSession(rawRefreshToken);
+    return admin;
+  }
+
+  private async validatedRefreshSession(rawRefreshToken: string | undefined) {
     if (!rawRefreshToken) {
       throw invalidRefreshToken();
     }
@@ -182,11 +221,9 @@ export class AuthService {
       !stored ||
       stored.userId !== payload.sub ||
       stored.revokedAt ||
-      stored.expiresAt <= new Date()
+      stored.expiresAt <= new Date() ||
+      !hashesMatch(stored.tokenHash, tokenHash(rawRefreshToken))
     ) {
-      throw invalidRefreshToken();
-    }
-    if (!hashesMatch(stored.tokenHash, tokenHash(rawRefreshToken))) {
       throw invalidRefreshToken();
     }
 
@@ -203,29 +240,7 @@ export class AuthService {
       throw invalidRefreshToken();
     }
 
-    const admin = this.toAdmin(stored.user);
-    const next = await this.issueTokens(admin);
-    await this.prisma.$transaction(async (transaction) => {
-      await transaction.refreshToken.create({
-        data: {
-          id: next.refreshTokenId,
-          userId: admin.id,
-          tokenHash: tokenHash(next.refreshToken),
-          expiresAt: next.refreshExpiresAt,
-          createdIp: metadata.ipAddress,
-          userAgent: metadata.userAgent,
-        },
-      });
-      await transaction.refreshToken.update({
-        where: { id: stored.id },
-        data: {
-          revokedAt: new Date(),
-          revocationReason: 'ROTATED',
-          replacedByTokenId: next.refreshTokenId,
-        },
-      });
-    });
-    return next.response;
+    return { admin: this.toAdmin(stored.user), stored };
   }
 
   async logout(
