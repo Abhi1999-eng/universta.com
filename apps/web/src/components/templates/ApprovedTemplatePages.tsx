@@ -1125,7 +1125,7 @@ export function ApprovedSubjectsListing({ subjects, meta }: { subjects: Subject[
         <div className="main">
           <section className="section" id="popular" style={{ paddingTop: 0 }}>
             <div className="section-head row-between"><div><span className="eyebrow">Start here</span><h2>Popular subjects</h2><p className="sub">Featured subjects from the published catalog.</p></div></div>
-            <div className="grid g3">{subjects.length ? subjects.filter((item) => item.featured).concat(subjects).slice(0, 6).map((subject) => <SubjectCard subject={subject} key={subject.id} />) : <EmptyTemplateState label="No subjects are currently published" />}</div>
+            <div className="grid g3">{subjects.length ? [...subjects.filter((item) => item.featured), ...subjects.filter((item) => !item.featured)].slice(0, 6).map((subject) => <SubjectCard subject={subject} key={subject.id} />) : <EmptyTemplateState label="No subjects are currently published" />}</div>
           </section>
           <section className="section" id="categories">
             <div className="section-head"><span className="eyebrow">Explore fields</span><h2>Browse by subject category</h2></div>
