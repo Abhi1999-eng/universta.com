@@ -2454,76 +2454,175 @@ async function main() {
     }
   }
 
-  const editorialPages = [
-    [
-      'home',
-      'HOME',
-      'Home',
-      'Explore local published study-abroad information without invented claims.',
-      'Start with countries, subjects, generic courses, university offerings and scholarships.',
-    ],
-    [
-      'about',
-      'EDITORIAL',
-      'About Universta',
-      'A local Phase 1 study-abroad information experience.',
-      'This local page is managed through the Page and PageSection foundation.',
-    ],
-    [
-      'faq',
-      'FAQ',
-      'Frequently asked questions',
-      'Answers about using the local Universta catalog.',
-      'Information is source-aware and should be verified with official providers.',
-    ],
-  ] as const;
-  for (const [
-    slug,
-    pageType,
-    title,
-    shortDescription,
-    text,
-  ] of editorialPages) {
+  type EditorialSection = {
+    key: string;
+    eyebrow: string;
+    heading: string;
+    body: string;
+    ctaPrimaryLabel?: string;
+    ctaPrimaryUrl?: string;
+  };
+  const editorialPages: Array<{
+    slug: string;
+    pageType: string;
+    title: string;
+    shortDescription: string;
+    sections: EditorialSection[];
+  }> = [
+    {
+      slug: 'home',
+      pageType: 'HOME',
+      title: 'Home',
+      shortDescription:
+        'Explore local published study-abroad information without invented claims.',
+      sections: [
+        {
+          key: 'intro',
+          eyebrow: 'Universta',
+          heading: 'Home',
+          body: 'Start with countries, subjects, generic courses, university offerings and scholarships.',
+        },
+      ],
+    },
+    {
+      slug: 'about',
+      pageType: 'EDITORIAL',
+      title: 'About Universta',
+      shortDescription:
+        'Compare study destinations, subjects, courses and scholarships in one place, then talk it through with free counselling.',
+      sections: [
+        {
+          key: 'mission',
+          eyebrow: 'Our mission',
+          heading: 'Compare first, decide with confidence',
+          body: 'Universta brings country, subject, course, university and scholarship information into one place so you can compare real options side by side instead of piecing it together across a dozen different websites.',
+        },
+        {
+          key: 'what-we-do',
+          eyebrow: 'What we do',
+          heading: 'A working comparison tool, not just a directory',
+          body: 'Every listing page lets you select up to three countries, universities, courses or consultants and compare them side by side. Nothing needs an account or a login: the tools work as soon as you land on the page.',
+        },
+        {
+          key: 'approach',
+          eyebrow: 'Our approach',
+          heading: "Honest about what is and isn't published yet",
+          body: "We only show information that has actually been published in our catalogue. Where something hasn't been added yet, we say so rather than filling the gap with a guess.",
+        },
+        {
+          key: 'counselling-cta',
+          eyebrow: 'Next step',
+          heading: 'Ready to talk it through?',
+          body: 'If you want help turning your shortlist into a plan, book a free counselling session and a counsellor will follow up on the details you share.',
+          ctaPrimaryLabel: 'Book free counselling',
+          ctaPrimaryUrl: '/counselling',
+        },
+      ],
+    },
+    {
+      slug: 'faq',
+      pageType: 'FAQ',
+      title: 'Frequently asked questions',
+      shortDescription:
+        'Answers about using Universta to research and plan your study abroad journey.',
+      sections: [
+        {
+          key: 'what-is-universta',
+          eyebrow: 'Getting started',
+          heading: 'What is Universta?',
+          body: 'Universta is a study-abroad research tool. Browse countries, subjects, generic courses, university-specific offerings, scholarships and study-abroad consultants, and compare your shortlist side by side.',
+        },
+        {
+          key: 'is-it-free',
+          eyebrow: 'Getting started',
+          heading: 'Is Universta free to use?',
+          body: "Yes. Browsing the catalogue, comparing options, and booking a free counselling session don't cost anything and don't require payment details.",
+        },
+        {
+          key: 'account',
+          eyebrow: 'Getting started',
+          heading: 'Do I need to create an account?',
+          body: 'No account is required to browse, compare or research. Booking free counselling only asks for your name, email and phone number so a counsellor can follow up.',
+        },
+        {
+          key: 'compare',
+          eyebrow: 'Using the site',
+          heading: 'How do I compare countries, universities, courses or consultants?',
+          body: 'Tick the Compare checkbox on up to three listings of the same type, then use the compare bar that appears at the bottom of the page to open a side-by-side view.',
+        },
+        {
+          key: 'sources',
+          eyebrow: 'Using the site',
+          heading: 'Where does the information come from?',
+          body: "Content comes from what has been published in our catalogue. If a country, university or course hasn't been added yet, the page will say so rather than showing placeholder or invented details.",
+        },
+        {
+          key: 'counselling',
+          eyebrow: 'Getting help',
+          heading: 'How do I get personalised guidance?',
+          body: "Open Book Free Counselling from any page, tell us what you're considering, and a counsellor will follow up using the contact details you provide.",
+        },
+      ],
+    },
+  ];
+  for (const pageDef of editorialPages) {
     const page = await prisma.page.upsert({
-      where: { slug },
+      where: { slug: pageDef.slug },
       update: {
-        pageType,
-        title,
-        shortDescription,
+        pageType: pageDef.pageType,
+        title: pageDef.title,
+        shortDescription: pageDef.shortDescription,
         status: 'PUBLISHED',
-        isHomepage: slug === 'home',
+        isHomepage: pageDef.slug === 'home',
         publishedAt: now,
         deletedAt: null,
         updatedByUserId: admin.id,
       },
       create: {
-        pageType,
-        title,
-        slug,
-        shortDescription,
+        pageType: pageDef.pageType,
+        title: pageDef.title,
+        slug: pageDef.slug,
+        shortDescription: pageDef.shortDescription,
         status: 'PUBLISHED',
-        isHomepage: slug === 'home',
+        isHomepage: pageDef.slug === 'home',
         publishedAt: now,
         createdByUserId: admin.id,
         updatedByUserId: admin.id,
       },
     });
-    await prisma.pageSection.upsert({
-      where: { pageId_sectionKey: { pageId: page.id, sectionKey: 'intro' } },
-      update: {
-        heading: title,
-        subheading: text,
-        status: 'ACTIVE',
-        deletedAt: null,
-      },
-      create: {
-        pageId: page.id,
-        sectionKey: 'intro',
-        sectionType: 'RICH_TEXT',
-        heading: title,
-        subheading: text,
-        status: 'ACTIVE',
-      },
+    for (const [index, section] of pageDef.sections.entries()) {
+      await prisma.pageSection.upsert({
+        where: {
+          pageId_sectionKey: { pageId: page.id, sectionKey: section.key },
+        },
+        update: {
+          eyebrow: section.eyebrow,
+          heading: section.heading,
+          subheading: section.body,
+          ctaPrimaryLabel: section.ctaPrimaryLabel ?? null,
+          ctaPrimaryUrl: section.ctaPrimaryUrl ?? null,
+          displayOrder: index,
+          status: 'ACTIVE',
+          deletedAt: null,
+        },
+        create: {
+          pageId: page.id,
+          sectionKey: section.key,
+          sectionType: 'RICH_TEXT',
+          eyebrow: section.eyebrow,
+          heading: section.heading,
+          subheading: section.body,
+          ctaPrimaryLabel: section.ctaPrimaryLabel ?? null,
+          ctaPrimaryUrl: section.ctaPrimaryUrl ?? null,
+          displayOrder: index,
+          status: 'ACTIVE',
+        },
+      });
+    }
+    const currentKeys = pageDef.sections.map((section) => section.key);
+    await prisma.pageSection.updateMany({
+      where: { pageId: page.id, sectionKey: { notIn: currentKeys } },
+      data: { status: 'ARCHIVED', deletedAt: now },
     });
   }
   const menu = await prisma.navigationMenu.upsert({
