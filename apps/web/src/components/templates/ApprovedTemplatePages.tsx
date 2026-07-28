@@ -80,7 +80,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
+export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="nav" id="siteNav">
@@ -108,7 +108,7 @@ function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses
   );
 }
 
-function CatalogFooter() {
+export function CatalogFooter() {
   return (
     <footer className="site">
       <div className="wrap">
