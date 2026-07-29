@@ -14,8 +14,8 @@ Branch: `feat/phase1-expanded-local`
 | 2 | CMS foundation completion | DONE |
 | 3 | Media, links and URL management | DONE |
 | 4 | A/B testing foundation | DONE |
-| 5 | Location hierarchy and destination pages | IN PROGRESS |
-| 6 | Country Listing client composition | pending |
+| 5 | Location hierarchy and destination pages | DONE |
+| 6 | Country Listing client composition | IN PROGRESS |
 | 7 | University Claim | pending |
 | 8 | Bulk data management | pending |
 | 9 | Featured listings and advanced filters | pending |
@@ -70,14 +70,80 @@ Branch: `feat/phase1-expanded-local`
   system-wide file descriptor table (`ENFILE`) well before any per-process
   `ulimit`. Check `lsof -nP -iTCP -sTCP:LISTEN` for the port actually serving
   traffic, and kill only processes with no live listening child.
+- **This Next.js version (16.2.11) never registers a route for an app-router
+  folder name that mixes literal text with a bracket in the same segment**
+  (e.g. `study-in-[countrySlug]`) — it silently never appears in
+  `.next/routes-manifest.json`'s `dynamicRoutes`, in dev *or* production,
+  no matter how many times `.next` is cleared and the server restarted.
+  Every other dynamic route in this app uses the bracket as the *entire*
+  segment name (`[slug]`, `[countrySlug]`), which is unaffected. If a URL
+  needs a literal prefix, put the real page under a pure dynamic segment
+  (`study-in/[countrySlug]`) and add a `rewrites()` entry in
+  `next.config.ts` mapping the external hyphenated path to the internal
+  one — this preserves the exact public URL with no redirect and no
+  extra slash. Diagnostic trick: a *pre-existing, known-working* dynamic
+  route (e.g. `/universities/[slug]`) suddenly 404ing too is the signal
+  this bug is in play rather than something wrong with new code.
 
 ## Commits this effort (newest first)
 
+- `4d119bb` fix(admin): correct countries page-size cap in LocationsManager
+- `c6c6c48` feat(locations): add state/city hierarchy and canonical country routes
+- `7628d43` docs(phase1): checkpoint after milestone 4
 - `2f6676c` feat(cms): add local ab testing support
 - `7178803` feat(cms): add media library and redirect management
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 5 summary (done)
+
+- Schema: `State` and `City` models (migration
+  `20260729180205_add_location_hierarchy`) — a deliberately 2-level
+  hierarchy (Country → State → City, State optional on City) rather than
+  a 3-level Region/State/City tree, since the brief's own examples never
+  needed a level above State/Province for Phase 1's scope. Both are
+  soft-deletable, sluggable, orderable; City carries `isFeatured`,
+  `shortDescription`/`overview`, and an optional hero media relation.
+- New dedicated `LocationsModule` (not folded into the existing
+  `ExpandedService` monolith, matching the precedent set by Media and
+  Experiments): public `GET phase1/countries/:slug/states`,
+  `GET phase1/countries/:slug/cities` (paginated, `?state=` filter),
+  `GET phase1/countries/:slug/cities/:citySlug`; full admin CRUD at
+  `/admin/states` and `/admin/cities`, including cross-country state/city
+  validation and an "in use" guard blocking state archival while a city
+  still references it.
+- Country's canonical public URL moved to `/study-in-{countrySlug}`
+  (brief's own required scheme); the old `/countries/[slug]` route is now
+  a permanent-redirect shim. City pages live nested under it:
+  `/study-in-{country}/cities` (listing, reuses the generic
+  `PhaseListing`/`PhaseDetail` components from Milestone 2/3's Phase 1
+  pages via a new `basePath` override prop) and
+  `/study-in-{country}/{citySlug}` (detail). Sitemap now emits both.
+- **Real Next.js routing bug found and worked around** (see environment
+  notes above): a folder name mixing literal text with a bracket in one
+  segment never gets a routes-manifest entry in this Next version. Fixed
+  by moving the actual pages to the pure dynamic segment
+  `study-in/[countrySlug]` and adding `rewrites()` in `next.config.ts` so
+  the public URL is unaffected. Caught by browser-testing the real route,
+  not just by lint/build/typecheck, all of which stayed green throughout.
+- Admin UI: new "States & cities" section (`LocationsManager.tsx`) with
+  a country→state cascading picker for creating cities, status/featured
+  toggles, and archive. Verified end-to-end in a real browser: created a
+  state and a city through the actual form (not just the API), published
+  the city, confirmed it appeared on the public API/site, then archived
+  both back out.
+- One real defect found only by exercising this new admin UI in a
+  browser: the country picker requested `limit=250` against an endpoint
+  that caps at 100, silently emptying the dropdown (error swallowed by
+  the load's own catch) — fixed in a follow-up commit.
+- 12 new e2e tests for the locations API; full 111-test API e2e suite
+  green (`--runInBand`). Full API/admin/web lint, typecheck, and
+  production builds all clean.
+- Explicitly out of scope for this milestone, left for Milestone 6:
+  wiring the Country detail page's own pre-existing "Cities" nav tab to
+  the new City model (it currently renders its own placeholder), and any
+  City-based filtering on the University/Consultant listing pages.
 
 ## Milestone 4 summary (done)
 
@@ -167,8 +233,9 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 5 — Location hierarchy and destination pages: Region/State/
-Province/City models + migration + admin CRUD, public City Listing + nested
-City Detail, Country canonical `/study-in-[countrySlug]` route (redirect
-from legacy `/countries/[slug]` reusing the existing `Redirect` mechanism
-from Milestone 3), filtering integration.
+Milestone 6 — Country Listing client composition: wire the Country detail
+page's own pre-existing "Cities" nav tab to the real City model built in
+Milestone 5 (it currently shows placeholder content); fix the audit-identified
+Consultants-section data wiring and CTA copy on the Country Listing page in
+this repo specifically (this repo has its own older, unpolished Country
+Listing template, distinct from the `universta` repo's reskinned one).
