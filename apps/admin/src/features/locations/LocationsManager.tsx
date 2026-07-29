@@ -77,7 +77,7 @@ export function LocationsManager() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadStates();
     void loadCities();
-    void api<CountryOption[]>("/countries?limit=250")
+    void api<CountryOption[]>("/countries?limit=100")
       .then(setCountries)
       .catch(() => undefined);
   }, [loadStates, loadCities]);
