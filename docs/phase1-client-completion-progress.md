@@ -12,8 +12,8 @@ Branch: `feat/phase1-expanded-local`
 | - | --- | --- |
 | 1 | Scope audit and safe plan | DONE |
 | 2 | CMS foundation completion | DONE |
-| 3 | Media, links and URL management | IN PROGRESS |
-| 4 | A/B testing foundation | pending |
+| 3 | Media, links and URL management | DONE |
+| 4 | A/B testing foundation | IN PROGRESS |
 | 5 | Location hierarchy and destination pages | pending |
 | 6 | Country Listing client composition | pending |
 | 7 | University Claim | pending |
@@ -54,8 +54,28 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `7178803` feat(cms): add media library and redirect management
+- `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 3 summary (done)
+
+- Media Library: local-disk upload (JPEG/PNG/WEBP/GIF, 5MB cap, safe random
+  filenames, sha256 checksum), searchable/filterable admin grid, inline
+  metadata editing, archive blocked while in use (checked against
+  PageSection/University/Offering/Scholarship/ConsultantLandingCard/Event/
+  SuccessStory/Testimonial). New admin nav item "Media library" replaces
+  the old disabled "Media" coming-soon placeholder.
+- Redirects: slug renames on universities/scholarships/consultants/jobs/
+  events auto-create a 301 Redirect row via the shared adminUpdate() path;
+  public lookup endpoint wired into all 5 affected detail pages' 404
+  fallback. Country/City routes (Milestone 5) will reuse this same
+  mechanism rather than needing a second design.
+- Real defect found and fixed via full-chain browser testing (not just the
+  API): MediaAsset.fileSizeBytes is a Prisma BigInt with no native JSON
+  serialization — every media endpoint 500'd until serialized to a Number.
+- 12 new e2e tests this pass (9 media + 3 redirects), full regression green.
 
 ## Milestone 2 summary (done)
 
@@ -77,8 +97,7 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 3 — Media, links and URL management: build a real local media
-upload endpoint + browsable Media Library (today's admin only offers a
-dropdown of pre-existing assets, nothing lets you upload one), a structured
-internal-link picker, and wire the existing-but-unused `Redirect` model into
-an actual URL-change safety net.
+Milestone 4 — A/B testing foundation: scoped per the brief's own minimum-bar
+language (section 8.4) to a lightweight variant system, not a full
+experimentation platform — variants on PageSection, deterministic cookie-
+based assignment, admin preview override, exposure/conversion counts.
