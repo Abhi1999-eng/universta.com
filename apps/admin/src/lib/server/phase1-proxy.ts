@@ -59,11 +59,27 @@ export async function proxyPhase1Admin(
       "Your admin session is invalid",
     );
   const isFormOptions = segments.length === 1 && resource === "form-options";
+  // Pages own a nested section sub-resource (create/edit/reorder/duplicate/
+  // archive/preview), which is a deeper shape than every other flat
+  // resource/id/action path this proxy otherwise allows.
+  const isPageSectionPath = resource === "pages" && segments[2] === "sections";
+  const isPagePreviewPath =
+    resource === "pages" && segments.length === 3 && segments[2] === "preview";
+  const pageSectionShapeIsValid =
+    !isPageSectionPath ||
+    segments.length === 3 || // POST pages/:id/sections
+    (segments.length === 4 &&
+      (segments[3] === "reorder" || /^[-\w]+$/.test(segments[3]))) || // PATCH/DELETE pages/:id/sections/:sectionId, POST .../reorder
+    (segments.length === 5 && segments[4] === "duplicate"); // POST pages/:id/sections/:sectionId/duplicate
   if (
     !resource ||
-    segments.length > 3 ||
+    (!isPageSectionPath && !isPagePreviewPath && segments.length > 3) ||
+    (isPageSectionPath && !pageSectionShapeIsValid) ||
     (!isFormOptions && !RESOURCES.has(resource)) ||
-    (action && !["publish", "unpublish", "convert"].includes(action))
+    (!isPageSectionPath &&
+      !isPagePreviewPath &&
+      action &&
+      !["publish", "unpublish", "convert"].includes(action))
   )
     return fail(404, requestId, "NOT_FOUND", "Admin resource not found");
   if (isFormOptions && request.method !== "GET")

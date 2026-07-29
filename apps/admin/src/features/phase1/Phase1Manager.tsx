@@ -6,6 +6,7 @@ import {
   isStructuredPhase1Resource,
   Phase1StructuredEditor,
 } from "./Phase1StructuredEditor";
+import { PageCmsEditor } from "./PageCmsEditor";
 
 const titles: Record<string, string> = {
   universities: "Universities",
@@ -66,6 +67,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const [pendingArchive, setPendingArchive] = useState<Phase1Row | null>(null);
   const title = titles[resource] ?? resource;
   const structured = isStructuredPhase1Resource(resource);
+  const isPageCms = resource === "pages";
 
   const load = useCallback(async () => {
     try {
@@ -113,7 +115,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
     setEditingId(null);
   }
 
-  const editor = structured && (creating || editingId);
+  const editor = (structured || isPageCms) && (creating || editingId);
 
   return (
     <section className="mx-auto max-w-[1240px]">
@@ -128,7 +130,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
         </div>
         <div className="flex items-center gap-3">
           <p className="text-sm text-[#667085]">{rows.length} records</p>
-          {structured ? (
+          {structured || isPageCms ? (
             <button
               type="button"
               onClick={() => {
@@ -137,13 +139,23 @@ export function Phase1Manager({ resource }: { resource: string }) {
               }}
               className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
             >
-              Create {resource === "offerings" ? "offering" : "record"}
+              Create {resource === "offerings" ? "offering" : isPageCms ? "page" : "record"}
             </button>
           ) : null}
         </div>
       </div>
 
-      {editor ? (
+      {editor && isPageCms ? (
+        <PageCmsEditor
+          recordId={editingId ?? undefined}
+          onSaved={afterSave}
+          onCancel={() => {
+            setCreating(false);
+            setEditingId(null);
+          }}
+        />
+      ) : null}
+      {editor && structured ? (
         <Phase1StructuredEditor
           resource={resource}
           recordId={editingId ?? undefined}
@@ -157,7 +169,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
 
       <div
         className={`mt-8 grid gap-8 ${
-          structured || resource === "contact-inquiries"
+          structured || isPageCms || resource === "contact-inquiries"
             ? ""
             : "lg:grid-cols-[1fr_360px]"
         }`}
@@ -185,7 +197,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     {row.slug ?? row.status}
                   </td>
                   <td className="flex flex-wrap gap-2 p-4">
-                    {structured ? (
+                    {structured || isPageCms ? (
                       <button
                         type="button"
                         className="rounded-lg border border-[#1657CF] px-3 py-2 text-xs font-semibold text-[#1657CF]"
@@ -255,7 +267,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
           </aside>
         ) : null}
 
-        {!structured && resource !== "contact-inquiries" ? (
+        {!structured && !isPageCms && resource !== "contact-inquiries" ? (
           <aside className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
             <h3 className="font-semibold">Advanced development fallback</h3>
             <p className="mt-2 text-sm text-[#667085]">

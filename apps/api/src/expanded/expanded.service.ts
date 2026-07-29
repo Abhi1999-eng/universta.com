@@ -6,6 +6,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type Resource =
@@ -62,6 +63,29 @@ function publishedWhere() {
   return { status: 'PUBLISHED', deletedAt: null };
 }
 
+/**
+ * Read-time visibility for scheduled content: a PUBLISHED or SCHEDULED page
+ * (or section, with 'ACTIVE' standing in for 'SCHEDULED' target state) is
+ * only effectively live once `now` is inside its optional [startsAt, endsAt)
+ * window. This is the sole source of truth for public visibility — no cron
+ * job flips status, so a page/section that has passed its endsAt must stop
+ * appearing purely from this query, and one whose startsAt hasn't arrived
+ * yet must not appear early.
+ */
+function effectivePublicationWhere(
+  liveStatuses: string[],
+  now: Date,
+): Record<string, unknown> {
+  return {
+    deletedAt: null,
+    status: { in: liveStatuses },
+    AND: [
+      { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+      { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+    ],
+  };
+}
+
 function contains(value: string | undefined) {
   return value?.trim() ? { contains: value.trim() } : undefined;
 }
@@ -87,11 +111,15 @@ export class ExpandedService {
   constructor(private readonly prisma: PrismaService) {}
 
   async editorial(slug: string) {
+    const now = new Date();
     const page = await this.prisma.page.findFirst({
-      where: { slug, ...publishedWhere() },
+      where: {
+        slug,
+        ...effectivePublicationWhere(['PUBLISHED', 'SCHEDULED'], now),
+      },
       include: {
         sections: {
-          where: { status: 'ACTIVE', deletedAt: null },
+          where: effectivePublicationWhere(['ACTIVE', 'SCHEDULED'], now),
           orderBy: { displayOrder: 'asc' },
         },
       },
@@ -640,6 +668,18 @@ export class ExpandedService {
       });
       return this.withSeo(resource, record ?? this.notFound(resource));
     }
+    if (resource === 'pages') {
+      const record = await this.prisma.page.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          sections: {
+            where: { deletedAt: null },
+            orderBy: { displayOrder: 'asc' },
+          },
+        },
+      });
+      return this.withSeo(resource, record ?? this.notFound(resource));
+    }
     if (resource === 'consultants') {
       const record = await this.prisma.consultant.findFirst({
         where: { id, deletedAt: null },
@@ -751,6 +791,202 @@ export class ExpandedService {
         ...(resource === 'contact-inquiries' ? {} : { status: 'DRAFT' }),
       },
     });
+  }
+
+  /** Block types the admin editor can add. Kept as a plain string on the
+   * column, but this is the enum the editor UI actually offers. */
+  static readonly SECTION_TYPES = [
+    'HERO',
+    'RICH_TEXT',
+    'CTA',
+    'IMAGE_TEXT',
+    'STATS',
+    'FAQ_GROUP',
+    'RELATED_LINKS',
+    'CUSTOM',
+  ] as const;
+
+  private async requirePage(pageId: string) {
+    const page = await this.prisma.page.findFirst({
+      where: { id: pageId, deletedAt: null },
+    });
+    if (!page) this.notFound('pages');
+    return page;
+  }
+
+  private slugifySectionKey(input: string) {
+    const base =
+      input
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80) || 'section';
+    return `${base}-${randomUUID().slice(0, 6)}`;
+  }
+
+  private sectionWriteData(body: Data) {
+    const sectionType = this.optionalText(body.sectionType);
+    if (
+      sectionType &&
+      !(ExpandedService.SECTION_TYPES as readonly string[]).includes(
+        sectionType,
+      )
+    )
+      throw new BadRequestException({
+        code: 'INVALID_SECTION_TYPE',
+        message: `sectionType must be one of ${ExpandedService.SECTION_TYPES.join(', ')}`,
+        details: null,
+      });
+    const data: Data = {};
+    if (sectionType) data.sectionType = sectionType;
+    for (const key of [
+      'eyebrow',
+      'heading',
+      'ctaPrimaryLabel',
+      'ctaPrimaryUrl',
+      'ctaSecondaryLabel',
+      'ctaSecondaryUrl',
+      'status',
+      'mediaId',
+      'backgroundMediaId',
+    ] as const)
+      if (body[key] !== undefined) data[key] = this.optionalText(body[key]);
+    if (body.subheading !== undefined)
+      data.subheading = this.optionalText(body.subheading);
+    if (body.bodyJson !== undefined) data.bodyJson = body.bodyJson;
+    if (body.configurationJson !== undefined)
+      data.configurationJson = body.configurationJson;
+    if (body.startsAt !== undefined)
+      data.startsAt = this.dateValue(body.startsAt) ?? null;
+    if (body.endsAt !== undefined)
+      data.endsAt = this.dateValue(body.endsAt) ?? null;
+    return data;
+  }
+
+  async createPageSection(pageId: string, body: Data) {
+    await this.requirePage(pageId);
+    const heading = this.optionalText(body.heading) ?? 'Untitled section';
+    const sectionKey =
+      this.optionalText(body.sectionKey) ?? this.slugifySectionKey(heading);
+    const maxOrder = await this.prisma.pageSection.aggregate({
+      where: { pageId, deletedAt: null },
+      _max: { displayOrder: true },
+    });
+    return this.prisma.pageSection.create({
+      data: {
+        pageId,
+        sectionKey,
+        sectionType: this.optionalText(body.sectionType) ?? 'CUSTOM',
+        heading,
+        status: this.optionalText(body.status) ?? 'DRAFT',
+        displayOrder: (maxOrder._max.displayOrder ?? -1) + 1,
+        ...this.sectionWriteData({ ...body, heading: undefined }),
+      },
+    });
+  }
+
+  async updatePageSection(pageId: string, sectionId: string, body: Data) {
+    await this.requirePage(pageId);
+    const section = await this.prisma.pageSection.findFirst({
+      where: { id: sectionId, pageId, deletedAt: null },
+    });
+    if (!section) this.notFound('page section');
+    return this.prisma.pageSection.update({
+      where: { id: sectionId },
+      data: this.sectionWriteData(body),
+    });
+  }
+
+  async deletePageSection(pageId: string, sectionId: string) {
+    await this.requirePage(pageId);
+    const section = await this.prisma.pageSection.findFirst({
+      where: { id: sectionId, pageId, deletedAt: null },
+    });
+    if (!section) this.notFound('page section');
+    return this.prisma.pageSection.update({
+      where: { id: sectionId },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
+  }
+
+  async duplicatePageSection(pageId: string, sectionId: string) {
+    await this.requirePage(pageId);
+    const section = await this.prisma.pageSection.findFirst({
+      where: { id: sectionId, pageId, deletedAt: null },
+    });
+    if (!section) this.notFound('page section');
+    const maxOrder = await this.prisma.pageSection.aggregate({
+      where: { pageId, deletedAt: null },
+      _max: { displayOrder: true },
+    });
+    return this.prisma.pageSection.create({
+      data: {
+        pageId,
+        sectionKey: this.slugifySectionKey(section.heading ?? 'section'),
+        sectionType: section.sectionType,
+        eyebrow: section.eyebrow,
+        heading: section.heading ? `${section.heading} (copy)` : null,
+        subheading: section.subheading,
+        bodyJson: section.bodyJson as Prisma.InputJsonValue | undefined,
+        mediaId: section.mediaId,
+        backgroundMediaId: section.backgroundMediaId,
+        ctaPrimaryLabel: section.ctaPrimaryLabel,
+        ctaPrimaryUrl: section.ctaPrimaryUrl,
+        ctaSecondaryLabel: section.ctaSecondaryLabel,
+        ctaSecondaryUrl: section.ctaSecondaryUrl,
+        configurationJson: section.configurationJson as
+          Prisma.InputJsonValue | undefined,
+        status: 'DRAFT',
+        displayOrder: (maxOrder._max.displayOrder ?? -1) + 1,
+      },
+    });
+  }
+
+  async reorderPageSections(pageId: string, orderedIds: string[]) {
+    await this.requirePage(pageId);
+    const sections = await this.prisma.pageSection.findMany({
+      where: { pageId, deletedAt: null },
+      select: { id: true },
+    });
+    const known = new Set(sections.map((section) => section.id));
+    if (
+      orderedIds.length !== known.size ||
+      !orderedIds.every((id) => known.has(id))
+    )
+      throw new BadRequestException({
+        code: 'INVALID_SECTION_ORDER',
+        message:
+          'The section order must include every current section exactly once',
+        details: null,
+      });
+    await this.prisma.$transaction(
+      orderedIds.map((id, index) =>
+        this.prisma.pageSection.update({
+          where: { id },
+          data: { displayOrder: index },
+        }),
+      ),
+    );
+    return this.prisma.pageSection.findMany({
+      where: { pageId, deletedAt: null },
+      orderBy: { displayOrder: 'asc' },
+    });
+  }
+
+  /** Admin-only preview: ignores publish status and scheduling windows so an
+   * editor can see draft/scheduled/archived content before it goes live. */
+  async previewPage(id: string) {
+    const page = await this.prisma.page.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        sections: {
+          where: { deletedAt: null },
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+    });
+    return page ?? this.notFound('pages');
   }
 
   async convertContact(id: string, actor: { sub?: string } | undefined) {

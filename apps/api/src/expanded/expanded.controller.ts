@@ -257,4 +257,58 @@ export class ExpandedAdminController {
       await this.service.convertContact(id, req.user),
     );
   }
+  @Get('pages/:id/preview') async pagePreview(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(req, await this.service.previewPage(id));
+  }
+  @Post('pages/:id/sections') async createSection(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(req, await this.service.createPageSection(id, body));
+  }
+  @Patch('pages/:id/sections/:sectionId') async updateSection(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.updatePageSection(id, sectionId, body),
+    );
+  }
+  @Delete('pages/:id/sections/:sectionId') async deleteSection(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.deletePageSection(id, sectionId),
+    );
+  }
+  @Post('pages/:id/sections/:sectionId/duplicate') async duplicateSection(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.duplicatePageSection(id, sectionId),
+    );
+  }
+  @Post('pages/:id/sections/reorder') async reorderSections(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: { order?: string[] },
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.reorderPageSections(id, body.order ?? []),
+    );
+  }
 }

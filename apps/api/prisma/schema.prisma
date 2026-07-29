@@ -280,6 +280,8 @@ model Page {
   isHomepage       Boolean   @default(false) @map("is_homepage")
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  startsAt         DateTime? @map("starts_at") @db.DateTime(3)
+  endsAt           DateTime? @map("ends_at") @db.DateTime(3)
   createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
   updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)

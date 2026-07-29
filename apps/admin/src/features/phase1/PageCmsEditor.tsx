@@ -1,0 +1,717 @@
+"use client";
+
+import { useCallback, useEffect, useId, useState } from "react";
+import { authFetch } from "@/features/auth/auth-client";
+
+type Section = {
+  id: string;
+  sectionKey: string;
+  sectionType: string;
+  eyebrow?: string | null;
+  heading?: string | null;
+  subheading?: string | null;
+  ctaPrimaryLabel?: string | null;
+  ctaPrimaryUrl?: string | null;
+  status: string;
+  displayOrder: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
+};
+type Seo = {
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  canonicalUrl?: string | null;
+  focusKeyword?: string | null;
+};
+type PageRecord = {
+  id: string;
+  pageType: string;
+  title: string;
+  slug: string;
+  shortDescription?: string | null;
+  layoutKey?: string | null;
+  status: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  sections?: Section[];
+  seo?: Seo | null;
+};
+
+const SECTION_TYPES = [
+  "HERO",
+  "RICH_TEXT",
+  "CTA",
+  "IMAGE_TEXT",
+  "STATS",
+  "FAQ_GROUP",
+  "RELATED_LINKS",
+  "CUSTOM",
+];
+const PAGE_STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
+const SECTION_STATUSES = ["DRAFT", "SCHEDULED", "ACTIVE", "ARCHIVED"];
+const LAYOUT_KEYS = ["default", "editorial", "landing"];
+
+const inputClass =
+  "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await authFetch(`/api/v1/admin/phase1/${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+  });
+  const body = (await response.json()) as {
+    data?: T;
+    error?: { message?: string } | null;
+  };
+  if (!response.ok || body.error)
+    throw new Error(body.error?.message ?? "Request failed");
+  return body.data as T;
+}
+
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function fromDateTimeLocal(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  textarea = false,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  textarea?: boolean;
+  type?: string;
+}) {
+  const fieldId = useId();
+  return (
+    <div className="block text-sm font-semibold">
+      <label htmlFor={fieldId}>{label}</label>
+      {textarea ? (
+        <textarea
+          id={fieldId}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${inputClass} min-h-20`}
+        />
+      ) : (
+        <input
+          id={fieldId}
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={inputClass}
+        />
+      )}
+    </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  const fieldId = useId();
+  return (
+    <div className="block text-sm font-semibold">
+      <label htmlFor={fieldId}>{label}</label>
+      <select
+        id={fieldId}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={inputClass}
+      >
+        {options.map((option) => (
+          <option value={option} key={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function SectionCard({
+  section,
+  index,
+  total,
+  onChange,
+  onMove,
+  onDuplicate,
+  onDelete,
+}: {
+  section: Section;
+  index: number;
+  total: number;
+  onChange: (patch: Partial<Section>) => void;
+  onMove: (direction: -1 | 1) => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const scheduledFields =
+    section.status === "SCHEDULED" || section.status === "ACTIVE";
+  return (
+    <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-bold text-[#1657CF]">
+            {section.sectionType}
+          </span>
+          <span className="text-xs text-[#828B9B]">{section.sectionKey}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Move section up"
+            disabled={index === 0}
+            onClick={() => onMove(-1)}
+            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold disabled:opacity-40"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            aria-label="Move section down"
+            disabled={index === total - 1}
+            onClick={() => onMove(1)}
+            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold disabled:opacity-40"
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            onClick={onDuplicate}
+            className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-xs font-semibold"
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-700"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Block type"
+          value={section.sectionType}
+          options={SECTION_TYPES}
+          onChange={(value) => onChange({ sectionType: value })}
+        />
+        <Select
+          label="Status"
+          value={section.status}
+          options={SECTION_STATUSES}
+          onChange={(value) => onChange({ status: value })}
+        />
+        <Field
+          label="Eyebrow (optional)"
+          value={section.eyebrow ?? ""}
+          onChange={(value) => onChange({ eyebrow: value })}
+        />
+        <Field
+          label="Heading"
+          value={section.heading ?? ""}
+          onChange={(value) => onChange({ heading: value })}
+        />
+        <div className="sm:col-span-2">
+          <Field
+            label="Body"
+            value={section.subheading ?? ""}
+            onChange={(value) => onChange({ subheading: value })}
+            textarea
+          />
+        </div>
+        <Field
+          label="CTA label (optional)"
+          value={section.ctaPrimaryLabel ?? ""}
+          onChange={(value) => onChange({ ctaPrimaryLabel: value })}
+        />
+        <Field
+          label="CTA URL (optional)"
+          value={section.ctaPrimaryUrl ?? ""}
+          onChange={(value) => onChange({ ctaPrimaryUrl: value })}
+        />
+        {scheduledFields ? (
+          <>
+            <Field
+              label="Starts showing at (optional)"
+              type="datetime-local"
+              value={toDateTimeLocal(section.startsAt)}
+              onChange={(value) =>
+                onChange({ startsAt: fromDateTimeLocal(value) })
+              }
+            />
+            <Field
+              label="Stops showing at (optional)"
+              type="datetime-local"
+              value={toDateTimeLocal(section.endsAt)}
+              onChange={(value) =>
+                onChange({ endsAt: fromDateTimeLocal(value) })
+              }
+            />
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function PageCmsEditor({
+  recordId,
+  onSaved,
+  onCancel,
+}: {
+  recordId?: string;
+  onSaved: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [page, setPage] = useState<PageRecord>({
+    id: "",
+    pageType: "EDITORIAL",
+    title: "",
+    slug: "",
+    shortDescription: "",
+    layoutKey: "default",
+    status: "DRAFT",
+    sections: [],
+    seo: {},
+  });
+  const [sections, setSections] = useState<Section[]>([]);
+  const [dirtySections, setDirtySections] = useState<Set<string>>(new Set());
+  const [newSections, setNewSections] = useState<Section[]>([]);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(Boolean(recordId));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [preview, setPreview] = useState<PageRecord | null>(null);
+
+  const load = useCallback(async () => {
+    if (!recordId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const record = await api<PageRecord>(`pages/${recordId}`);
+      setPage(record);
+      setSections((record.sections ?? []).slice().sort((a, b) => a.displayOrder - b.displayOrder));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to load page");
+    } finally {
+      setLoading(false);
+    }
+  }, [recordId]);
+
+  useEffect(() => {
+    // Runs once per recordId to hydrate the editor from the API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  function setPageField<K extends keyof PageRecord>(key: K, value: PageRecord[K]) {
+    setPage((current) => ({ ...current, [key]: value }));
+  }
+
+  async function savePage() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const payload = {
+        pageType: page.pageType,
+        title: page.title,
+        slug: page.slug,
+        shortDescription: page.shortDescription || null,
+        layoutKey: page.layoutKey || null,
+        status: page.status,
+        startsAt: page.status === "SCHEDULED" ? fromDateTimeLocal(toDateTimeLocal(page.startsAt)) : null,
+        endsAt: fromDateTimeLocal(toDateTimeLocal(page.endsAt)),
+        seo: {
+          seoTitle: page.seo?.seoTitle ?? "",
+          metaDescription: page.seo?.metaDescription ?? "",
+          canonicalUrl: page.seo?.canonicalUrl ?? "",
+          focusKeyword: page.seo?.focusKeyword ?? "",
+        },
+      };
+      if (recordId) {
+        await api(`pages/${recordId}`, { method: "PATCH", body: JSON.stringify(payload) });
+        setMessage("Page saved.");
+      } else {
+        const created = await api<PageRecord>("pages", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setMessage("Page created as a Draft. Add sections, then save again to publish.");
+        await onSaved();
+        return created;
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save page");
+    } finally {
+      setBusy(false);
+    }
+    return null;
+  }
+
+  function addSection() {
+    setNewSections((current) => [
+      ...current,
+      {
+        id: `new-${current.length}-${Date.now()}`,
+        sectionKey: "",
+        sectionType: "CUSTOM",
+        heading: "",
+        subheading: "",
+        status: "DRAFT",
+        displayOrder: sections.length + current.length,
+      },
+    ]);
+  }
+
+  function updateExisting(id: string, patch: Partial<Section>) {
+    setSections((current) =>
+      current.map((section) => (section.id === id ? { ...section, ...patch } : section)),
+    );
+    setDirtySections((current) => new Set(current).add(id));
+  }
+  function updateNew(id: string, patch: Partial<Section>) {
+    setNewSections((current) =>
+      current.map((section) => (section.id === id ? { ...section, ...patch } : section)),
+    );
+  }
+
+  function move(id: string, direction: -1 | 1) {
+    setSections((current) => {
+      const index = current.findIndex((section) => section.id === id);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= current.length) return current;
+      const next = current.slice();
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setDirtySections((current) => new Set(current).add("__order__"));
+  }
+
+  function removeExisting(id: string) {
+    setSections((current) => current.filter((section) => section.id !== id));
+    setRemovedIds((current) => [...current, id]);
+  }
+  function removeNew(id: string) {
+    setNewSections((current) => current.filter((section) => section.id !== id));
+  }
+
+  async function duplicateExisting(id: string) {
+    if (!recordId) return;
+    setBusy(true);
+    try {
+      await api(`pages/${recordId}/sections/${id}/duplicate`, { method: "POST" });
+      await load();
+      setMessage("Section duplicated as a Draft copy.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to duplicate section");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveSections() {
+    if (!recordId) {
+      setMessage("Save the page once before adding sections.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      for (const id of removedIds) {
+        await api(`pages/${recordId}/sections/${id}`, { method: "DELETE" });
+      }
+      for (const section of newSections) {
+        if (!section.heading?.trim()) continue;
+        await api(`pages/${recordId}/sections`, {
+          method: "POST",
+          body: JSON.stringify({
+            sectionType: section.sectionType,
+            heading: section.heading,
+            eyebrow: section.eyebrow || null,
+            subheading: section.subheading || null,
+            ctaPrimaryLabel: section.ctaPrimaryLabel || null,
+            ctaPrimaryUrl: section.ctaPrimaryUrl || null,
+            status: section.status,
+          }),
+        });
+      }
+      for (const section of sections) {
+        if (!dirtySections.has(section.id) && !dirtySections.has("__order__")) continue;
+        await api(`pages/${recordId}/sections/${section.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            sectionType: section.sectionType,
+            heading: section.heading || null,
+            eyebrow: section.eyebrow || null,
+            subheading: section.subheading || null,
+            ctaPrimaryLabel: section.ctaPrimaryLabel || null,
+            ctaPrimaryUrl: section.ctaPrimaryUrl || null,
+            status: section.status,
+            startsAt: section.startsAt ?? null,
+            endsAt: section.endsAt ?? null,
+          }),
+        });
+      }
+      if (dirtySections.has("__order__")) {
+        await api(`pages/${recordId}/sections/reorder`, {
+          method: "POST",
+          body: JSON.stringify({ order: sections.map((section) => section.id) }),
+        });
+      }
+      setMessage("Sections saved.");
+      setNewSections([]);
+      setRemovedIds([]);
+      setDirtySections(new Set());
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save sections");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openPreview() {
+    if (!recordId) return;
+    try {
+      const record = await api<PageRecord>(`pages/${recordId}/preview`);
+      setPreview(record);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to load preview");
+    }
+  }
+
+  if (loading) return <p className="mt-6 text-sm text-[#667085]">Loading page…</p>;
+
+  return (
+    <div className="mt-6 space-y-6">
+      <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+        <h3 className="text-lg font-semibold">Page</h3>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Title" value={page.title} onChange={(value) => setPageField("title", value)} />
+          <Field label="Slug" value={page.slug} onChange={(value) => setPageField("slug", value)} />
+          <div className="sm:col-span-2">
+            <Field
+              label="Short description"
+              value={page.shortDescription ?? ""}
+              onChange={(value) => setPageField("shortDescription", value)}
+              textarea
+            />
+          </div>
+          <Select
+            label="Template"
+            value={page.layoutKey ?? "default"}
+            options={LAYOUT_KEYS}
+            onChange={(value) => setPageField("layoutKey", value)}
+          />
+          <Select
+            label="Status"
+            value={page.status}
+            options={PAGE_STATUSES}
+            onChange={(value) => setPageField("status", value)}
+          />
+          {page.status === "SCHEDULED" ? (
+            <Field
+              label="Publish at"
+              type="datetime-local"
+              value={toDateTimeLocal(page.startsAt)}
+              onChange={(value) => setPageField("startsAt", fromDateTimeLocal(value))}
+            />
+          ) : null}
+          <Field
+            label="Unpublish at (optional)"
+            type="datetime-local"
+            value={toDateTimeLocal(page.endsAt)}
+            onChange={(value) => setPageField("endsAt", fromDateTimeLocal(value))}
+          />
+        </div>
+        <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
+          <legend className="px-1 text-sm font-semibold">SEO</legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="SEO title"
+              value={page.seo?.seoTitle ?? ""}
+              onChange={(value) => setPageField("seo", { ...page.seo, seoTitle: value })}
+            />
+            <Field
+              label="Meta description"
+              value={page.seo?.metaDescription ?? ""}
+              onChange={(value) => setPageField("seo", { ...page.seo, metaDescription: value })}
+            />
+            <Field
+              label="Canonical URL (optional)"
+              value={page.seo?.canonicalUrl ?? ""}
+              onChange={(value) => setPageField("seo", { ...page.seo, canonicalUrl: value })}
+            />
+            <Field
+              label="Focus keyword (optional)"
+              value={page.seo?.focusKeyword ?? ""}
+              onChange={(value) => setPageField("seo", { ...page.seo, focusKeyword: value })}
+            />
+          </div>
+        </fieldset>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void savePage()}
+            className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {recordId ? "Save page" : "Create page"}
+          </button>
+          {recordId ? (
+            <button
+              type="button"
+              onClick={() => void openPreview()}
+              className="rounded-xl border border-[#E8ECF3] px-4 py-2 text-sm font-semibold"
+            >
+              Preview
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border border-[#E8ECF3] px-4 py-2 text-sm font-semibold"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      {recordId ? (
+        <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Sections</h3>
+            <button
+              type="button"
+              onClick={addSection}
+              className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
+            >
+              Add section
+            </button>
+          </div>
+          <div className="mt-4 space-y-4">
+            {sections.map((section, index) => (
+              <SectionCard
+                key={section.id}
+                section={section}
+                index={index}
+                total={sections.length}
+                onChange={(patch) => updateExisting(section.id, patch)}
+                onMove={(direction) => move(section.id, direction)}
+                onDuplicate={() => void duplicateExisting(section.id)}
+                onDelete={() => removeExisting(section.id)}
+              />
+            ))}
+            {newSections.map((section, index) => (
+              <SectionCard
+                key={section.id}
+                section={section}
+                index={index}
+                total={newSections.length}
+                onChange={(patch) => updateNew(section.id, patch)}
+                onMove={() => {}}
+                onDuplicate={() => {}}
+                onDelete={() => removeNew(section.id)}
+              />
+            ))}
+            {sections.length === 0 && newSections.length === 0 ? (
+              <p className="text-sm text-[#667085]">No sections yet. Add one above.</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void saveSections()}
+            className="mt-4 rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            Save sections
+          </button>
+        </div>
+      ) : null}
+
+      {message ? (
+        <p className="text-sm text-[#48505F]" role="status">
+          {message}
+        </p>
+      ) : null}
+
+      {preview ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="page-preview-title"
+        >
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 id="page-preview-title" className="text-lg font-semibold">
+                Preview — {preview.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-xs font-semibold"
+              >
+                Close
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-[#667085]">
+              This shows every non-deleted section regardless of publish state, exactly
+              as an editor working ahead of publication would need to see it.
+            </p>
+            <div className="mt-4 space-y-4">
+              {(preview.sections ?? []).map((section) => (
+                <div key={section.id} className="rounded-xl border border-[#E8ECF3] p-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#828B9B]">
+                    <span className="rounded-full bg-[#EEF3FF] px-2 py-0.5 text-[#1657CF]">
+                      {section.sectionType}
+                    </span>
+                    <span>{section.status}</span>
+                  </div>
+                  {section.eyebrow ? (
+                    <p className="mt-2 text-xs font-bold uppercase tracking-wide text-[#1657CF]">
+                      {section.eyebrow}
+                    </p>
+                  ) : null}
+                  <h4 className="mt-1 text-base font-semibold">{section.heading}</h4>
+                  {section.subheading ? (
+                    <p className="mt-1 text-sm text-[#48505F]">{section.subheading}</p>
+                  ) : null}
+                  {section.ctaPrimaryLabel ? (
+                    <p className="mt-2 text-sm font-semibold text-[#1657CF]">
+                      {section.ctaPrimaryLabel} → {section.ctaPrimaryUrl}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
