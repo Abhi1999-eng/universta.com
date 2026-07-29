@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { EditorialPage } from "@/components/phase1/EditorialPage";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phasePage } from "@/lib/phase1";
@@ -11,7 +12,8 @@ export const metadata = {
 export default async function AboutPage() {
   let page: AnyRecord | null = null;
   try {
-    page = await phasePage<AnyRecord>("about");
+    const anonymousId = (await headers()).get("x-anon-id") ?? undefined;
+    page = await phasePage<AnyRecord>("about", anonymousId);
   } catch {}
   return (
     <EditorialPage

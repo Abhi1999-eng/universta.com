@@ -21,6 +21,7 @@ import { CoursesModule } from './courses/courses.module';
 import { LeadsModule } from './leads/leads.module';
 import { ExpandedModule } from './expanded/expanded.module';
 import { MediaModule } from './media/media.module';
+import { ExperimentsModule } from './experiments/experiments.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { MediaModule } from './media/media.module';
     LeadsModule,
     ExpandedModule,
     MediaModule,
+    ExperimentsModule,
   ],
   controllers: [AppController],
   providers: [

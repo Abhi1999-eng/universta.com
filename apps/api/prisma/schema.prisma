@@ -55,6 +55,7 @@ model User {
   updatedSettings           SiteSetting[]        @relation("SiteSettingUpdatedBy")
   createdPages              Page[]               @relation("PageCreatedBy")
   updatedPages              Page[]               @relation("PageUpdatedBy")
+  createdExperiments        Experiment[]         @relation("ExperimentCreatedBy")
   createdSubjects           Subject[]            @relation("SubjectCreatedBy")
   updatedSubjects           Subject[]            @relation("SubjectUpdatedBy")
   createdSubSubjects        SubSubject[]         @relation("SubSubjectCreatedBy")
@@ -326,12 +327,92 @@ model PageSection {
   page            Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
   media           MediaAsset? @relation("PageSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   backgroundMedia MediaAsset? @relation("PageSectionBackgroundMedia", fields: [backgroundMediaId], references: [id], onDelete: SetNull)
+  experiments     Experiment[]
 
   @@unique([pageId, sectionKey])
   @@index([pageId, status, displayOrder])
   @@index([mediaId])
   @@index([backgroundMediaId])
   @@map("page_sections")
+}
+
+model Experiment {
+  id              String    @id @default(uuid()) @db.Char(36)
+  key             String    @unique @db.VarChar(150)
+  name            String    @db.VarChar(255)
+  description     String?   @db.VarChar(1000)
+  sectionId       String    @map("section_id") @db.Char(36)
+  status          String    @default("DRAFT") @db.VarChar(30)
+  startsAt        DateTime? @map("starts_at") @db.DateTime(3)
+  endsAt          DateTime? @map("ends_at") @db.DateTime(3)
+  createdByUserId String?   @map("created_by_user_id") @db.Char(36)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+
+  section     PageSection            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy   User?                  @relation("ExperimentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  variants    ExperimentVariant[]
+  exposures   ExperimentExposure[]
+  conversions ExperimentConversion[]
+
+  @@index([sectionId, status])
+  @@index([createdByUserId])
+  @@map("experiments")
+}
+
+model ExperimentVariant {
+  id              String    @id @default(uuid()) @db.Char(36)
+  experimentId    String    @map("experiment_id") @db.Char(36)
+  key             String    @db.VarChar(100)
+  name            String    @db.VarChar(255)
+  isControl       Boolean   @default(false) @map("is_control")
+  trafficWeight   Int       @default(0) @map("traffic_weight")
+  eyebrow         String?   @db.VarChar(255)
+  heading         String?   @db.VarChar(500)
+  subheading      String?   @db.Text
+  ctaPrimaryLabel String?   @map("cta_primary_label") @db.VarChar(100)
+  ctaPrimaryUrl   String?   @map("cta_primary_url") @db.VarChar(1000)
+  displayOrder    Int       @default(0) @map("display_order")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+
+  experiment  Experiment             @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  exposures   ExperimentExposure[]
+  conversions ExperimentConversion[]
+
+  @@unique([experimentId, key])
+  @@map("experiment_variants")
+}
+
+model ExperimentExposure {
+  id           String   @id @default(uuid()) @db.Char(36)
+  experimentId String   @map("experiment_id") @db.Char(36)
+  variantId    String   @map("variant_id") @db.Char(36)
+  anonymousId  String   @map("anonymous_id") @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  experiment Experiment        @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant    ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId, variantId])
+  @@map("experiment_exposures")
+}
+
+model ExperimentConversion {
+  id           String   @id @default(uuid()) @db.Char(36)
+  experimentId String   @map("experiment_id") @db.Char(36)
+  variantId    String   @map("variant_id") @db.Char(36)
+  anonymousId  String   @map("anonymous_id") @db.VarChar(100)
+  kind         String   @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  experiment Experiment        @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant    ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId, variantId, kind])
+  @@map("experiment_conversions")
 }
 
 model NavigationMenu {

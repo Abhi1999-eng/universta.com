@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../generated/prisma/client';
+import { ExperimentsService } from '../experiments/experiments.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type Resource =
@@ -108,9 +109,12 @@ function leadNumber() {
 export class ExpandedService {
   private readonly contactAttempts = new Map<string, number>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly experiments: ExperimentsService,
+  ) {}
 
-  async editorial(slug: string) {
+  async editorial(slug: string, anonymousId?: string) {
     const now = new Date();
     const page = await this.prisma.page.findFirst({
       where: {
@@ -130,7 +134,29 @@ export class ExpandedService {
         message: 'Page not found',
         details: null,
       });
-    return page;
+    const overrides = await this.experiments.resolveOverridesForSections(
+      page.sections.map((section) => section.id),
+      anonymousId,
+      now,
+    );
+    if (!overrides.size) return page;
+    return {
+      ...page,
+      sections: page.sections.map((section) => {
+        const override = overrides.get(section.id);
+        if (!override) return section;
+        return {
+          ...section,
+          eyebrow: override.eyebrow ?? section.eyebrow,
+          heading: override.heading ?? section.heading,
+          subheading: override.subheading ?? section.subheading,
+          ctaPrimaryLabel: override.ctaPrimaryLabel ?? section.ctaPrimaryLabel,
+          ctaPrimaryUrl: override.ctaPrimaryUrl ?? section.ctaPrimaryUrl,
+          experimentKey: override.experimentKey,
+          experimentVariantKey: override.key,
+        };
+      }),
+    };
   }
 
   async resolveRedirect(path: string) {

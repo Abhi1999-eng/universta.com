@@ -5,10 +5,13 @@ export type Envelope<T> = {
 };
 const baseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
-async function request<T>(path: string): Promise<{ data: T; meta: unknown }> {
+async function request<T>(
+  path: string,
+  headers: Record<string, string> = {},
+): Promise<{ data: T; meta: unknown }> {
   const response = await fetch(new URL(`/api/v1/phase1${path}`, baseUrl), {
     cache: "no-store",
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...headers },
   });
   const body = (await response.json()) as Envelope<T>;
   if (!response.ok || body.error || body.data === null)
@@ -28,10 +31,11 @@ export function phaseDetail<T>(resource: string, slug: string) {
     (result) => result.data,
   );
 }
-export function phasePage<T>(slug: string) {
-  return request<T>(`/pages/${encodeURIComponent(slug)}`).then(
-    (result) => result.data,
-  );
+export function phasePage<T>(slug: string, anonymousId?: string) {
+  return request<T>(
+    `/pages/${encodeURIComponent(slug)}`,
+    anonymousId ? { "x-anon-id": anonymousId } : {},
+  ).then((result) => result.data);
 }
 export function phaseUniversityCourses<T>(
   slug: string,

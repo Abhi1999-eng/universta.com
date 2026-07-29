@@ -52,6 +52,8 @@ export type AnyRecord = {
   sectionKey?: string;
   ctaPrimaryUrl?: string;
   ctaPrimaryLabel?: string;
+  experimentKey?: string;
+  experimentVariantKey?: string;
   costProfile?: { currencyCode?: string };
   workProfile?: { postStudyWorkSummary?: string };
   languageRequirements?: { ieltsRequirement?: string };

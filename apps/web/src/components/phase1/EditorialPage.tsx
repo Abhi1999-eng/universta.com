@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
+import { ExperimentCta } from "./ExperimentCta";
 import type { AnyRecord } from "./PhaseOneViews";
 
 function body(section: AnyRecord) {
@@ -58,9 +59,13 @@ export function EditorialPage({
               <h2>{section.heading ?? section.sectionKey}</h2>
               <p>{body(section)}</p>
               {section.ctaPrimaryUrl && section.ctaPrimaryLabel ? (
-                <Link className="text-link" href={section.ctaPrimaryUrl}>
+                <ExperimentCta
+                  className="text-link"
+                  href={section.ctaPrimaryUrl}
+                  experimentKey={section.experimentKey}
+                >
                   {section.ctaPrimaryLabel} →
-                </Link>
+                </ExperimentCta>
               ) : null}
             </article>
           ))

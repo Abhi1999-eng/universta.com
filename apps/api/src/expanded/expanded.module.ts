@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { ExperimentsModule } from '../experiments/experiments.module';
 import {
   ExpandedAdminController,
   ExpandedPublicController,
@@ -7,7 +8,7 @@ import {
 import { ExpandedService } from './expanded.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ExperimentsModule],
   controllers: [ExpandedPublicController, ExpandedAdminController],
   providers: [ExpandedService],
   exports: [ExpandedService],

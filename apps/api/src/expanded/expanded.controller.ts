@@ -69,7 +69,12 @@ export class ExpandedPublicController {
     @Req() req: RequestWithId,
     @Param('slug') slug: string,
   ) {
-    return successEnvelope(req, await this.service.editorial(slug));
+    const header = req.headers['x-anon-id'];
+    const anonymousId = Array.isArray(header) ? header[0] : header;
+    return successEnvelope(
+      req,
+      await this.service.editorial(slug, anonymousId),
+    );
   }
   @Get('navigation/:menuKey') async navigation(
     @Req() req: RequestWithId,
