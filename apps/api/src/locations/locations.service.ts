@@ -1,0 +1,408 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { slugify } from '../catalog/catalog.constants';
+import { PrismaService } from '../prisma/prisma.service';
+
+const PAGE_LIMIT = 12;
+const MAX_LIMIT = 50;
+
+function pageOf(query: Record<string, string | undefined>) {
+  const page = Math.max(1, Number(query.page ?? 1) || 1);
+  const limit = Math.min(
+    MAX_LIMIT,
+    Math.max(1, Number(query.limit ?? PAGE_LIMIT) || PAGE_LIMIT),
+  );
+  return { page, limit, skip: (page - 1) * limit };
+}
+
+function meta(page: number, limit: number, total: number) {
+  return {
+    page,
+    limit,
+    total,
+    totalPages: total ? Math.ceil(total / limit) : 0,
+  };
+}
+
+function isUniqueConflict(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'P2002'
+  );
+}
+
+@Injectable()
+export class LocationsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  // ---------- Public ----------
+
+  async publicCountryStates(countrySlug: string) {
+    const country = await this.prisma.country.findFirst({
+      where: { slug: countrySlug, status: 'PUBLISHED', deletedAt: null },
+    });
+    if (!country) return [];
+    return this.prisma.state.findMany({
+      where: { countryId: country.id, status: 'PUBLISHED', deletedAt: null },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async publicCities(
+    countrySlug: string,
+    query: Record<string, string | undefined>,
+  ) {
+    const country = await this.prisma.country.findFirst({
+      where: { slug: countrySlug, status: 'PUBLISHED', deletedAt: null },
+    });
+    if (!country)
+      throw new NotFoundException({
+        code: 'COUNTRY_NOT_FOUND',
+        message: 'Country not found',
+        details: null,
+      });
+    const { page, limit, skip } = pageOf(query);
+    const where = {
+      countryId: country.id,
+      status: 'PUBLISHED',
+      deletedAt: null,
+      ...(query.state ? { state: { slug: query.state } } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.city.findMany({
+        where,
+        include: {
+          state: { select: { name: true, slug: true } },
+          heroMedia: true,
+        },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { displayOrder: 'asc' },
+          { name: 'asc' },
+        ],
+        skip,
+        take: limit,
+      }),
+      this.prisma.city.count({ where }),
+    ]);
+    return { data: rows, meta: meta(page, limit, total), country };
+  }
+
+  async publicCityDetail(countrySlug: string, citySlug: string) {
+    const country = await this.prisma.country.findFirst({
+      where: { slug: countrySlug, status: 'PUBLISHED', deletedAt: null },
+    });
+    if (!country) return null;
+    return this.prisma.city.findFirst({
+      where: {
+        countryId: country.id,
+        slug: citySlug,
+        status: 'PUBLISHED',
+        deletedAt: null,
+      },
+      include: {
+        country: true,
+        state: { select: { name: true, slug: true } },
+        heroMedia: true,
+      },
+    });
+  }
+
+  // ---------- Admin: States ----------
+
+  async adminListStates(countryId?: string) {
+    return this.prisma.state.findMany({
+      where: { deletedAt: null, ...(countryId ? { countryId } : {}) },
+      include: { country: { select: { name: true, slug: true } } },
+      orderBy: [{ countryId: 'asc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  async adminDetailState(id: string) {
+    const state = await this.prisma.state.findFirst({
+      where: { id, deletedAt: null },
+      include: { country: { select: { name: true, slug: true } } },
+    });
+    if (!state)
+      throw new NotFoundException({
+        code: 'STATE_NOT_FOUND',
+        message: 'State not found',
+        details: null,
+      });
+    return state;
+  }
+
+  async createState(body: {
+    countryId: string;
+    name: string;
+    slug?: string;
+    status?: string;
+    displayOrder?: number;
+  }) {
+    const country = await this.prisma.country.findFirst({
+      where: { id: body.countryId, deletedAt: null },
+    });
+    if (!country)
+      throw new BadRequestException({
+        code: 'COUNTRY_NOT_FOUND',
+        message: 'The selected country does not exist',
+        details: null,
+      });
+    const slug = body.slug?.trim() || slugify(body.name);
+    try {
+      return await this.prisma.state.create({
+        data: {
+          countryId: body.countryId,
+          name: body.name.trim(),
+          slug,
+          status: body.status ?? 'DRAFT',
+          displayOrder: body.displayOrder ?? 0,
+        },
+      });
+    } catch (error) {
+      if (isUniqueConflict(error))
+        throw new ConflictException({
+          code: 'STATE_SLUG_TAKEN',
+          message: 'A state with this slug already exists for this country',
+          details: null,
+        });
+      throw error;
+    }
+  }
+
+  async updateState(
+    id: string,
+    body: {
+      name?: string;
+      slug?: string;
+      status?: string;
+      displayOrder?: number;
+    },
+  ) {
+    await this.adminDetailState(id);
+    try {
+      return await this.prisma.state.update({
+        where: { id },
+        data: {
+          ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+          ...(body.slug !== undefined ? { slug: body.slug.trim() } : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.displayOrder !== undefined
+            ? { displayOrder: body.displayOrder }
+            : {}),
+        },
+      });
+    } catch (error) {
+      if (isUniqueConflict(error))
+        throw new ConflictException({
+          code: 'STATE_SLUG_TAKEN',
+          message: 'A state with this slug already exists for this country',
+          details: null,
+        });
+      throw error;
+    }
+  }
+
+  async archiveState(id: string) {
+    await this.adminDetailState(id);
+    const citiesUsingState = await this.prisma.city.count({
+      where: { stateId: id, deletedAt: null },
+    });
+    if (citiesUsingState > 0)
+      throw new ConflictException({
+        code: 'STATE_IN_USE',
+        message: `${citiesUsingState} cit${citiesUsingState === 1 ? 'y is' : 'ies are'} still assigned to this state`,
+        details: null,
+      });
+    return this.prisma.state.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
+  }
+
+  // ---------- Admin: Cities ----------
+
+  async adminListCities(query: { countryId?: string; q?: string }) {
+    return this.prisma.city.findMany({
+      where: {
+        deletedAt: null,
+        ...(query.countryId ? { countryId: query.countryId } : {}),
+        ...(query.q?.trim() ? { name: { contains: query.q.trim() } } : {}),
+      },
+      include: {
+        country: { select: { name: true, slug: true } },
+        state: { select: { name: true, slug: true } },
+      },
+      orderBy: [{ countryId: 'asc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  async adminDetailCity(id: string) {
+    const city = await this.prisma.city.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        country: { select: { name: true, slug: true } },
+        state: { select: { id: true, name: true, slug: true } },
+        heroMedia: true,
+      },
+    });
+    if (!city)
+      throw new NotFoundException({
+        code: 'CITY_NOT_FOUND',
+        message: 'City not found',
+        details: null,
+      });
+    return city;
+  }
+
+  async createCity(
+    body: {
+      countryId: string;
+      stateId?: string | null;
+      name: string;
+      slug?: string;
+      shortDescription?: string;
+      overview?: string;
+      heroMediaId?: string | null;
+      isFeatured?: boolean;
+      status?: string;
+      displayOrder?: number;
+    },
+    actorUserId?: string,
+  ) {
+    const country = await this.prisma.country.findFirst({
+      where: { id: body.countryId, deletedAt: null },
+    });
+    if (!country)
+      throw new BadRequestException({
+        code: 'COUNTRY_NOT_FOUND',
+        message: 'The selected country does not exist',
+        details: null,
+      });
+    if (body.stateId) {
+      const state = await this.prisma.state.findFirst({
+        where: { id: body.stateId, countryId: body.countryId, deletedAt: null },
+      });
+      if (!state)
+        throw new BadRequestException({
+          code: 'STATE_NOT_FOUND',
+          message: 'The selected state does not belong to this country',
+          details: null,
+        });
+    }
+    const slug = body.slug?.trim() || slugify(body.name);
+    try {
+      return await this.prisma.city.create({
+        data: {
+          countryId: body.countryId,
+          stateId: body.stateId || null,
+          name: body.name.trim(),
+          slug,
+          shortDescription: body.shortDescription || null,
+          overview: body.overview || null,
+          heroMediaId: body.heroMediaId || null,
+          isFeatured: body.isFeatured ?? false,
+          status: body.status ?? 'DRAFT',
+          displayOrder: body.displayOrder ?? 0,
+          createdByUserId: actorUserId ?? null,
+          updatedByUserId: actorUserId ?? null,
+        },
+      });
+    } catch (error) {
+      if (isUniqueConflict(error))
+        throw new ConflictException({
+          code: 'CITY_SLUG_TAKEN',
+          message: 'A city with this slug already exists for this country',
+          details: null,
+        });
+      throw error;
+    }
+  }
+
+  async updateCity(
+    id: string,
+    body: {
+      stateId?: string | null;
+      name?: string;
+      slug?: string;
+      shortDescription?: string;
+      overview?: string;
+      heroMediaId?: string | null;
+      isFeatured?: boolean;
+      status?: string;
+      displayOrder?: number;
+    },
+    actorUserId?: string,
+  ) {
+    const current = await this.adminDetailCity(id);
+    if (body.stateId) {
+      const state = await this.prisma.state.findFirst({
+        where: {
+          id: body.stateId,
+          countryId: current.countryId,
+          deletedAt: null,
+        },
+      });
+      if (!state)
+        throw new BadRequestException({
+          code: 'STATE_NOT_FOUND',
+          message: 'The selected state does not belong to this country',
+          details: null,
+        });
+    }
+    const wasPublished = current.status === 'PUBLISHED';
+    const willPublish = (body.status ?? current.status) === 'PUBLISHED';
+    try {
+      return await this.prisma.city.update({
+        where: { id },
+        data: {
+          ...(body.stateId !== undefined
+            ? { stateId: body.stateId || null }
+            : {}),
+          ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+          ...(body.slug !== undefined ? { slug: body.slug.trim() } : {}),
+          ...(body.shortDescription !== undefined
+            ? { shortDescription: body.shortDescription || null }
+            : {}),
+          ...(body.overview !== undefined
+            ? { overview: body.overview || null }
+            : {}),
+          ...(body.heroMediaId !== undefined
+            ? { heroMediaId: body.heroMediaId || null }
+            : {}),
+          ...(body.isFeatured !== undefined
+            ? { isFeatured: body.isFeatured }
+            : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.displayOrder !== undefined
+            ? { displayOrder: body.displayOrder }
+            : {}),
+          ...(!wasPublished && willPublish ? { publishedAt: new Date() } : {}),
+          updatedByUserId: actorUserId ?? current.updatedByUserId,
+        },
+      });
+    } catch (error) {
+      if (isUniqueConflict(error))
+        throw new ConflictException({
+          code: 'CITY_SLUG_TAKEN',
+          message: 'A city with this slug already exists for this country',
+          details: null,
+        });
+      throw error;
+    }
+  }
+
+  async archiveCity(id: string) {
+    await this.adminDetailCity(id);
+    return this.prisma.city.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
+  }
+}

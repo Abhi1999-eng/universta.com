@@ -62,6 +62,8 @@ model User {
   updatedSubSubjects        SubSubject[]         @relation("SubSubjectUpdatedBy")
   createdCountries          Country[]            @relation("CountryCreatedBy")
   updatedCountries          Country[]            @relation("CountryUpdatedBy")
+  createdCities             City[]               @relation("CityCreatedBy")
+  updatedCities             City[]               @relation("CityUpdatedBy")
   createdCountryFaqs        CountryFaq[]         @relation("CountryFaqCreatedBy")
   updatedCountryFaqs        CountryFaq[]         @relation("CountryFaqUpdatedBy")
   createdCourses            Course[]             @relation("CourseCreatedBy")
@@ -223,6 +225,7 @@ model MediaAsset {
   countryListingMedia      Country[]               @relation("CountryListingMedia")
   countryHeroMedia         Country[]               @relation("CountryHeroMedia")
   countryMapMedia          Country[]               @relation("CountryMapMedia")
+  cityHeroMedia            City[]                  @relation("CityHeroMedia")
   countryPrimarySections   CountryContentSection[] @relation("CountryPrimaryMedia")
   countrySecondarySections CountryContentSection[] @relation("CountrySecondaryMedia")
   courseFeaturedMedia      Course[]                @relation("CourseFeaturedMedia")
@@ -741,6 +744,8 @@ model Country {
   contentSections      CountryContentSection[]
   faqs                 CountryFaq[]
   tagMaps              CountryTagMap[]
+  states               State[]
+  cities               City[]
   courses              CountryCourse[]
   consultantCards      ConsultantLandingCard[]
   universities         University[]
@@ -1012,6 +1017,57 @@ model CountryTagMap {
   @@index([countryId])
   @@index([tagId, countryId])
   @@map("country_tag_map")
+}
+
+model State {
+  id           String    @id @default(uuid()) @db.Char(36)
+  countryId    String    @map("country_id") @db.Char(36)
+  name         String    @db.VarChar(150)
+  slug         String    @db.VarChar(160)
+  status       String    @default("DRAFT") @db.VarChar(30)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  cities  City[]
+
+  @@unique([countryId, slug])
+  @@index([countryId, status, displayOrder])
+  @@map("states")
+}
+
+model City {
+  id               String    @id @default(uuid()) @db.Char(36)
+  countryId        String    @map("country_id") @db.Char(36)
+  stateId          String?   @map("state_id") @db.Char(36)
+  name             String    @db.VarChar(150)
+  slug             String    @db.VarChar(160)
+  shortDescription String?   @map("short_description") @db.VarChar(1000)
+  overview         String?   @db.LongText
+  heroMediaId      String?   @map("hero_media_id") @db.Char(36)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  status           String    @default("DRAFT") @db.VarChar(30)
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId  String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  country   Country     @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  state     State?      @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  heroMedia MediaAsset? @relation("CityHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  createdBy User?       @relation("CityCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?       @relation("CityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([countryId, slug])
+  @@index([countryId, status, displayOrder])
+  @@index([stateId])
+  @@index([heroMediaId])
+  @@map("cities")
 }
 
 model Course {

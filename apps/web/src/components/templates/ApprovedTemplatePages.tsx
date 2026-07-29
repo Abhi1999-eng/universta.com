@@ -129,7 +129,7 @@ export function CatalogFooter() {
           {[
             ['Subjects', [['All subjects', '/subjects'], ['Computer Science', '/subjects/computer-science']]],
             ['Courses', [['All courses', '/courses'], ['Browse by subject', '/subjects']]],
-            ['Destinations', [['All countries', '/countries'], ['Study in Canada', '/countries/canada']]],
+            ['Destinations', [['All countries', '/countries'], ['Study in Canada', '/study-in-canada']]],
             ['Guidance', [['Free counselling', '/counselling']]],
           ].map(([title, links]) => (
             <div className="foot-col" key={String(title)}>
@@ -240,7 +240,7 @@ function CountryTemplateCard({ country }: { country: Country }) {
         <div className="fact"><span><Icon name="briefcase" size={14} />Post-study work</span><b>{work ?? 'Not published'}</b></div>
         <div className="fact"><span><Icon name="calendar" size={14} />Popular intake</span><b>{intakes || 'Not published'}</b></div>
       </div>
-      <Link href={`/countries/${country.slug}`} className="card-cta">
+      <Link href={`/study-in-${country.slug}`} className="card-cta">
         Explore {country.name}<Icon name="arrow" size={15} />
       </Link>
     </article>
@@ -761,7 +761,7 @@ export function ApprovedCountriesListing({
                       <div className="progs">
                         {Object.entries(country.programCounts).filter(([, count]) => count != null).map(([label, count]) => <span key={label}>{count} {label.toUpperCase()}</span>)}
                       </div>
-                      {country.isAvailable ? <Link className="go" href={`/countries/${country.slug}`}>Explore <Icon name="arrow" size={13} /></Link> : <span>Coming soon</span>}
+                      {country.isAvailable ? <Link className="go" href={`/study-in-${country.slug}`}>Explore <Icon name="arrow" size={13} /></Link> : <span>Coming soon</span>}
                     </article>
                   ))}
                 </div>
@@ -931,7 +931,7 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
             <div className="updated"><Icon name="clock" size={15} />Published source-aware country profile</div>
             <div className="hero-btns">
               <Link href={`/courses?country=${country.slug}`} className="btn btn-p btn-lg">Explore courses</Link>
-              <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s btn-lg">Talk to a counsellor</Link>
+              <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/study-in-${country.slug}` })} className="btn btn-s btn-lg">Talk to a counsellor</Link>
             </div>
           </div>
           <aside className="quickfacts">
@@ -1072,7 +1072,7 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
           <h2>Ready to study in {country.name}?</h2>
           <p>Use the published destination information and get guidance for your shortlist.</p>
           <Link href={`/courses?country=${country.slug}`} className="btn btn-p">Explore courses</Link>
-          <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s">Request counselling</Link>
+          <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/study-in-${country.slug}` })} className="btn btn-s">Request counselling</Link>
           {guidanceTarget ? <a href={guidanceTarget} className="profile-source">Review source guidance</a> : null}
         </div>
       </section>

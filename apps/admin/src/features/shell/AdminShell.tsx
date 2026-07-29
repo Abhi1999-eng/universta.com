@@ -10,7 +10,7 @@ const plannedItems = ['Content', 'SEO', 'Settings'];
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const pageTitle = pathname.startsWith('/leads') ? 'Leads' : pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : pathname.startsWith('/subjects') ? 'Subjects' : pathname.startsWith('/courses') ? 'Courses' : pathname.startsWith('/catalog-masters') ? 'Catalog masters' : pathname.startsWith('/media') ? 'Media library' : pathname.startsWith('/experiments') ? 'Experiments' : pathname.startsWith('/phase1') ? 'Expanded Phase 1' : 'Dashboard';
+  const pageTitle = pathname.startsWith('/leads') ? 'Leads' : pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : pathname.startsWith('/subjects') ? 'Subjects' : pathname.startsWith('/courses') ? 'Courses' : pathname.startsWith('/catalog-masters') ? 'Catalog masters' : pathname.startsWith('/media') ? 'Media library' : pathname.startsWith('/experiments') ? 'Experiments' : pathname.startsWith('/locations') ? 'States & cities' : pathname.startsWith('/phase1') ? 'Expanded Phase 1' : 'Dashboard';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -272,6 +272,15 @@ function Navigation({
         >
           <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">AB</span>
           Experiments
+        </Link>
+        <Link
+          href="/locations"
+          onClick={onNavigate}
+          aria-current={pathname.startsWith('/locations') ? 'page' : undefined}
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/locations') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        >
+          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">L</span>
+          States &amp; cities
         </Link>
       </div>
       <div className="mt-8">

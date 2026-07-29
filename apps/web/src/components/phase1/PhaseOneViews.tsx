@@ -39,7 +39,7 @@ export type AnyRecord = {
   intake?: NamedRecord;
   notes?: string;
   city?: string;
-  state?: string;
+  state?: string | NamedRecord;
   address?: string;
   offerings?: AnyRecord[];
   campuses?: AnyRecord[];
@@ -78,6 +78,7 @@ const labels: Record<string, string> = {
   events: "Events",
   "success-stories": "Success stories",
   testimonials: "Testimonials",
+  cities: "Cities",
 };
 const paths: Record<string, string> = {
   universities: "/universities",
@@ -249,13 +250,17 @@ export function PhaseDetail({
   resource,
   row,
   parent,
+  basePath,
 }: {
   resource: string;
   row: AnyRecord;
   parent?: [string, string];
+  /** Overrides the resource's default flat path, for nested routes (e.g. a
+   * city detail page living under its country's canonical URL). */
+  basePath?: string;
 }) {
   const label = labels[resource] ?? resource;
-  const path = paths[resource] ?? `/${resource}`;
+  const path = basePath ?? paths[resource] ?? `/${resource}`;
   const facts: Array<[string, string | null]> = [
     ["Country", row.country?.name ?? null],
     ["University", row.university?.name ?? null],

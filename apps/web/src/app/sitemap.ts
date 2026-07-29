@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { getCountries } from "@/lib/countries";
+import { getCountryCities } from "@/lib/locations";
 
 const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const resources = [
@@ -35,12 +37,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "/" ? 1 : 0.7,
   }));
   try {
-    const [universities, scholarships, consultants, jobs, events, stories] =
-      await Promise.all(
-        resources.map((resource) =>
-          phaseList<AnyRecord>(resource, { limit: "50" }),
+    const [[universities, scholarships, consultants, jobs, events, stories], countries] =
+      await Promise.all([
+        Promise.all(
+          resources.map((resource) => phaseList<AnyRecord>(resource, { limit: "50" })),
         ),
-      );
+        getCountries({ limit: "50" }),
+      ]);
+    const citiesByCountry = await Promise.all(
+      countries.data.map((country) =>
+        getCountryCities(country.slug, { limit: "50" }).catch(() => ({
+          data: [] as Array<{ slug: string }>,
+        })),
+      ),
+    );
     const dynamicRoutes = [
       ...universities.data.map((row) => `/universities/${row.slug}`),
       ...scholarships.data.map((row) => `/scholarships/${row.slug}`),
@@ -48,6 +58,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...jobs.data.map((row) => `/careers/${row.slug}`),
       ...events.data.map((row) => `/events/${row.slug}`),
       ...stories.data.map((row) => `/success-stories/${row.slug}`),
+      ...countries.data.map((row) => `/study-in-${row.slug}`),
+      ...countries.data.flatMap((country, index) =>
+        citiesByCountry[index].data.map(
+          (city) => `/study-in-${country.slug}/${city.slug}`,
+        ),
+      ),
     ].map((path) => ({
       url: new URL(path, base).toString(),
       changeFrequency: "weekly" as const,
