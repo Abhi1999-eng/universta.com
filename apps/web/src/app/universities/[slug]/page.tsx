@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   UniversityDetail,
   type AnyRecord,
 } from "@/components/phase1/PhaseOneViews";
-import { phaseDetail } from "@/lib/phase1";
+import { phaseDetail, phaseResolveRedirect } from "@/lib/phase1";
 import { phaseOneMetadata } from "@/lib/phase1-metadata";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function UniversityPage({ params }: Props) {
   const { slug } = await params;
   const row = await university(slug);
-  if (!row) notFound();
+  if (!row) {
+    const redirect = await phaseResolveRedirect(`/universities/${slug}`);
+    if (redirect) permanentRedirect(redirect.targetPath);
+    notFound();
+  }
   return <UniversityDetail row={row} />;
 }

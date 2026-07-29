@@ -56,3 +56,23 @@ export function phaseCompare<T>(type: string, items: string[]) {
     `/compare/${encodeURIComponent(type)}?items=${encodeURIComponent(items.join(","))}`,
   ).then((result) => result.data);
 }
+
+export type RedirectMatch = { targetPath: string; httpStatusCode: number };
+/** Unlike `request`, tolerates a null result — most paths have no redirect. */
+export async function phaseResolveRedirect(
+  path: string,
+): Promise<RedirectMatch | null> {
+  try {
+    const response = await fetch(
+      new URL(
+        `/api/v1/phase1/redirects?path=${encodeURIComponent(path)}`,
+        baseUrl,
+      ),
+      { cache: "no-store", headers: { accept: "application/json" } },
+    );
+    const body = (await response.json()) as Envelope<RedirectMatch>;
+    return response.ok ? body.data : null;
+  } catch {
+    return null;
+  }
+}

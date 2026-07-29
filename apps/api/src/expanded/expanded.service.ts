@@ -133,6 +133,22 @@ export class ExpandedService {
     return page;
   }
 
+  async resolveRedirect(path: string) {
+    if (!path) return null;
+    const redirect = await this.prisma.redirect.findFirst({
+      where: { sourcePath: path, isActive: true },
+    });
+    if (!redirect) return null;
+    await this.prisma.redirect.update({
+      where: { id: redirect.id },
+      data: { hitCount: { increment: 1 }, lastHitAt: new Date() },
+    });
+    return {
+      targetPath: redirect.targetPath,
+      httpStatusCode: redirect.httpStatusCode,
+    };
+  }
+
   async navigation(menuKey: string) {
     const menu = await this.prisma.navigationMenu.findFirst({
       where: { menuKey, status: 'ACTIVE' },
@@ -734,7 +750,7 @@ export class ExpandedService {
     const delegate = this.prisma[
       resourceModel[resource] as keyof PrismaService
     ] as any;
-    await this.adminDetail(resource, id);
+    const current = await this.adminDetail(resource, id);
     try {
       const updated = await delegate.update({
         where: { id },
@@ -744,10 +760,50 @@ export class ExpandedService {
         },
       });
       await this.saveSeo(resource, id, body.seo);
+      await this.recordSlugRedirect(resource, current, updated);
       return updated;
     } catch (error) {
       throw this.conflict(error);
     }
+  }
+
+  /** Flat top-level resources with a stable public detail URL of the shape
+   * `{prefix}/{slug}`. Nested resources (offerings, which live under a
+   * university) and slug-less resources (testimonials) are out of scope for
+   * this automatic redirect — a slug rename there needs its own handling. */
+  private static readonly PUBLIC_PATH_PREFIX: Partial<
+    Record<Resource, string>
+  > = {
+    universities: '/universities',
+    scholarships: '/scholarships',
+    consultants: '/study-abroad-consultants',
+    jobs: '/careers',
+    events: '/events',
+  };
+
+  private async recordSlugRedirect(
+    resource: Resource,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+  ) {
+    const prefix = ExpandedService.PUBLIC_PATH_PREFIX[resource];
+    if (!prefix) return;
+    const oldSlug = typeof before.slug === 'string' ? before.slug : null;
+    const newSlug = typeof after.slug === 'string' ? after.slug : null;
+    if (!oldSlug || !newSlug || oldSlug === newSlug) return;
+    await this.prisma.redirect.upsert({
+      where: { sourcePath: `${prefix}/${oldSlug}` },
+      update: {
+        targetPath: `${prefix}/${newSlug}`,
+        httpStatusCode: 301,
+        isActive: true,
+      },
+      create: {
+        sourcePath: `${prefix}/${oldSlug}`,
+        targetPath: `${prefix}/${newSlug}`,
+        httpStatusCode: 301,
+      },
+    });
   }
 
   async adminPublish(

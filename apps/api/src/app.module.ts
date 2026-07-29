@@ -20,6 +20,7 @@ import { StudyModesModule } from './study-modes/study-modes.module';
 import { CoursesModule } from './courses/courses.module';
 import { LeadsModule } from './leads/leads.module';
 import { ExpandedModule } from './expanded/expanded.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { ExpandedModule } from './expanded/expanded.module';
     CoursesModule,
     LeadsModule,
     ExpandedModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [

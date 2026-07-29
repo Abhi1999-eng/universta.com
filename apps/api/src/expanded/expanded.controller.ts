@@ -145,6 +145,12 @@ export class ExpandedPublicController {
       await this.service.compare(type, raw.split(',')),
     );
   }
+  @Get('redirects') async redirect(
+    @Req() req: RequestWithId,
+    @Query('path') path: string,
+  ) {
+    return successEnvelope(req, await this.service.resolveRedirect(path));
+  }
   @Get(':resource') async list(
     @Req() req: RequestWithId,
     @Param('resource') resource: string,
