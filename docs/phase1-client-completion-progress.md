@@ -13,8 +13,8 @@ Branch: `feat/phase1-expanded-local`
 | 1 | Scope audit and safe plan | DONE |
 | 2 | CMS foundation completion | DONE |
 | 3 | Media, links and URL management | DONE |
-| 4 | A/B testing foundation | IN PROGRESS |
-| 5 | Location hierarchy and destination pages | pending |
+| 4 | A/B testing foundation | DONE |
+| 5 | Location hierarchy and destination pages | IN PROGRESS |
 | 6 | Country Listing client composition | pending |
 | 7 | University Claim | pending |
 | 8 | Bulk data management | pending |
@@ -51,13 +51,83 @@ Branch: `feat/phase1-expanded-local`
   cross-file interference (rate-limit/lockout and leftover fixture data)
   against this single local MySQL instance. Use `--runInBand` for a reliable
   full-suite run; individual files pass fine in parallel.
+- The API's `ConfigModule` only assigns its own *validated* config keys back
+  onto `process.env` (see `validateEnvironment` in `src/config/environment.ts`)
+  — it does NOT dotenv-load the rest of `.env` into `process.env`. Test files
+  that read `process.env.SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` directly
+  need those exported into the shell first: run e2e as
+  `set -a && source .env && set +a && npx jest --config test/jest-e2e.json --runInBand`,
+  not a bare `npx jest ...` — otherwise every login-dependent e2e spec fails
+  with a 400 validation error, which looks like a regression but isn't one.
+- Adding/editing `apps/web/src/middleware.ts` does not always hot-reload into
+  an already-running `next dev` process — symptoms are `HTTP 200` with an
+  empty (0-byte) response body on every route. Fix: restart that dev server.
+- The web app's own BFF routes (`contact-inquiries`, `experiments/conversions`)
+  403 if `NEXT_PUBLIC_WEB_ORIGIN` isn't set to match the port actually in use
+  — same pattern as admin's `ADMIN_APP_ORIGIN`, defaults to `:3000`.
+- When running many long-lived dev-server restarts across a session, orphaned
+  `nest start --watch` / `next dev` processes accumulate and can exhaust the
+  system-wide file descriptor table (`ENFILE`) well before any per-process
+  `ulimit`. Check `lsof -nP -iTCP -sTCP:LISTEN` for the port actually serving
+  traffic, and kill only processes with no live listening child.
 
 ## Commits this effort (newest first)
 
+- `2f6676c` feat(cms): add local ab testing support
 - `7178803` feat(cms): add media library and redirect management
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 4 summary (done)
+
+- Schema: `Experiment` / `ExperimentVariant` / `ExperimentExposure` /
+  `ExperimentConversion` models (migration
+  `20260729154211_add_ab_testing_experiments`), one experiment per
+  `PageSection`.
+- Deterministic, dependency-free assignment (`hashToUnitInterval` +
+  `assignVariant` in `experiments.service.ts`): same visitor always gets the
+  same variant while the experiment's configuration is unchanged; falls back
+  safely to the control/first variant on zero-weight or empty configs.
+- Bot-safety: a fixed `bot` anonymous-id sentinel (set by
+  `apps/web/src/middleware.ts` via User-Agent match) always resolves to
+  control and is never logged as an exposure — crawlers see a stable
+  canonical page and impression counts stay meaningful.
+- Anonymous visitor id flows middleware → `x-anon-id` request header →
+  Server Component (`headers()`) → API (`phasePage`) → `editorial()`, which
+  merges the assigned variant's `eyebrow/heading/subheading/cta*` over the
+  base section (`??` fallback) and stamps `experimentKey`/
+  `experimentVariantKey` onto the returned section.
+- CTA-click conversion tracking: `ExperimentCta.tsx` (client component)
+  posts to the web app's own `/api/experiments/conversions` BFF route (never
+  exposes the real API origin to the browser), which reads the visitor id
+  server-side from the (httpOnly) `universta_ab` cookie and forwards it as
+  `x-anon-id`.
+- Admin: full CRUD + stats UI at `/experiments` (`ExperimentsManager.tsx`) —
+  create against any Page's section, add/edit variants with traffic weights
+  and content overrides, activate/archive, per-variant exposure/conversion/
+  rate table. Mirrors the `MediaLibrary.tsx`/`PageCmsEditor.tsx` admin BFF
+  pattern (`experiments-proxy.ts` + nested route handlers).
+- 15 new e2e tests (determinism, bot/no-id safety, DRAFT-doesn't-override,
+  ACTIVE-overrides-and-is-stable, exposure logging, conversion attribution,
+  bot conversions rejected, stats, admin preview, archive removes override).
+  Full 99-test API e2e suite green (`--runInBand`).
+- Real browser verification end-to-end: created "Home intro heading test"
+  targeting the Home page's `intro` section via the admin UI, added Control
+  + "Bold Welcome" variants (50/50) with distinct heading/CTA overrides,
+  activated it, confirmed the override rendered on the public Home page,
+  clicked the CTA and confirmed a `CTA_CLICK` conversion was recorded
+  (`5 exposures / 1 conversion / 20.0%` in the stats table), then archived
+  the experiment and confirmed the public page reverted to its base content.
+  This test experiment was archived (soft-deleted), not left active.
+- Two real defects found and fixed only by testing in an actual browser (not
+  just curl/API): (1) the web app's own origin-check BFF routes 403 unless
+  `NEXT_PUBLIC_WEB_ORIGIN` matches the port in use — same class of issue as
+  the admin app's pre-existing `ADMIN_APP_ORIGIN` requirement; (2) a
+  long-running `next dev` process does not reliably pick up a newly-added
+  `middleware.ts` file, silently serving empty (0-byte) responses on every
+  route until restarted. Both are now documented above under environment
+  notes rather than being product defects.
 
 ## Milestone 3 summary (done)
 
@@ -97,7 +167,8 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 4 — A/B testing foundation: scoped per the brief's own minimum-bar
-language (section 8.4) to a lightweight variant system, not a full
-experimentation platform — variants on PageSection, deterministic cookie-
-based assignment, admin preview override, exposure/conversion counts.
+Milestone 5 — Location hierarchy and destination pages: Region/State/
+Province/City models + migration + admin CRUD, public City Listing + nested
+City Detail, Country canonical `/study-in-[countrySlug]` route (redirect
+from legacy `/countries/[slug]` reusing the existing `Redirect` mechanism
+from Milestone 3), filtering integration.
