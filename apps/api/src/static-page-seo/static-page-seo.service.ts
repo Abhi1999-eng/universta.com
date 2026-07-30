@@ -66,8 +66,10 @@ export const STATIC_PAGES: {
   },
   { key: 'faq', label: 'FAQ page', defaultRobotsIndex: true },
   {
-    key: 'city-listing-base',
-    label: 'City listing (base)',
+    // Backs the real global /cities index. Previously registered as
+    // "city-listing-base", which had no route to attach to.
+    key: 'cities-listing',
+    label: 'Cities listing',
     defaultRobotsIndex: true,
   },
   {

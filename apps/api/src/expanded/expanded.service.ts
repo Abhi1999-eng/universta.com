@@ -257,7 +257,65 @@ export class ExpandedService {
         },
       },
     });
-    return menu;
+    if (!menu) return menu;
+    // The public header/footer render nested dropdowns, so the flat rows are
+    // resolved into a parent/children tree here rather than in every consumer.
+    // Each item also gets one resolved `href`, so the web app never re-implements
+    // the linkType -> URL rules.
+    return { ...menu, items: ExpandedService.navigationTree(menu.items) };
+  }
+
+  /** Resolves flat NavigationItem rows into an ordered two-level tree with a
+   * concrete `href` per item. Items whose link cannot be resolved (a PAGE link
+   * whose page was deleted, or an unsafe custom URL) are dropped rather than
+   * rendered as a dead `#` placeholder. */
+  static navigationTree(
+    rows: Array<{
+      id: string;
+      parentItemId: string | null;
+      label: string;
+      linkType: string;
+      customUrl: string | null;
+      openInNewTab: boolean;
+      displayOrder: number;
+      page?: { slug: string } | null;
+    }>,
+  ) {
+    const hrefOf = (row: (typeof rows)[number]): string | null => {
+      if (row.linkType === 'PAGE')
+        return row.page?.slug ? `/${row.page.slug}` : null;
+      const url = row.customUrl?.trim();
+      if (!url) return null;
+      return /^(\/[^\s]*|https:\/\/[^\s]+)$/.test(url) ? url : null;
+    };
+    const shape = (row: (typeof rows)[number]) => ({
+      id: row.id,
+      label: row.label,
+      href: hrefOf(row),
+      openInNewTab: row.openInNewTab,
+      displayOrder: row.displayOrder,
+    });
+    const byOrder = (a: { displayOrder: number }, b: { displayOrder: number }) =>
+      a.displayOrder - b.displayOrder;
+    const children = new Map<string, ReturnType<typeof shape>[]>();
+    for (const row of rows) {
+      if (!row.parentItemId) continue;
+      const resolved = shape(row);
+      if (!resolved.href) continue;
+      const bucket = children.get(row.parentItemId) ?? [];
+      bucket.push(resolved);
+      children.set(row.parentItemId, bucket);
+    }
+    return rows
+      .filter((row) => !row.parentItemId)
+      .sort(byOrder)
+      .map((row) => ({
+        ...shape(row),
+        children: (children.get(row.id) ?? []).sort(byOrder),
+      }))
+      // Keep a top-level entry if it links somewhere itself, or is a dropdown
+      // parent with at least one resolvable child.
+      .filter((item) => item.href || item.children.length > 0);
   }
 
   async list(

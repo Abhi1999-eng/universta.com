@@ -1,0 +1,379 @@
+/* Styles for the single Admin-managed public Header/Footer.
+ *
+ * Deliberately uses a `usta-` prefix that no existing page CSS targets: the
+ * page templates each scope their own styles with `@scope (.visual-*-page)`
+ * and reuse generic names like `.nav`, `.site-header` and `.card`. Prefixing
+ * keeps the shared chrome visually identical on every template instead of
+ * inheriting whichever scope happens to wrap it. */
+
+.usta-announce {
+  background: #0d1524;
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  padding: 9px 16px;
+}
+.usta-announce a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.usta-header {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid #e7ecf3;
+  z-index: 60;
+}
+.usta-header.is-sticky {
+  position: sticky;
+  top: 0;
+}
+.usta-header-inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.usta-logo {
+  font-family: var(--font-jakarta), sans-serif;
+  font-weight: 800;
+  font-size: 23px;
+  letter-spacing: -0.03em;
+  color: #0b1220;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.usta-logo span {
+  color: #2563eb;
+}
+
+.usta-nav {
+  flex: 1;
+  min-width: 0;
+}
+.usta-nav-list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.usta-nav-item {
+  position: relative;
+}
+.usta-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #334155;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 8px 9px;
+  border-radius: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.usta-nav-link:hover {
+  color: #0b1220;
+  background: #f1f5f9;
+}
+.usta-nav-link.is-active {
+  color: #2563eb;
+  font-weight: 600;
+}
+.usta-nav-link:focus-visible,
+.usta-burger:focus-visible,
+.usta-dropdown a:focus-visible,
+.usta-drawer a:focus-visible {
+  outline: 3px solid #dee8ff;
+  outline-offset: 2px;
+}
+.usta-caret {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.usta-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 232px;
+  background: #fff;
+  border: 1px solid #e7ecf3;
+  border-radius: 14px;
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.12);
+  padding: 8px;
+  list-style: none;
+  margin: 0;
+  display: none;
+  z-index: 70;
+}
+.usta-dropdown.is-open {
+  display: block;
+}
+.usta-dropdown a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 14.5px;
+  color: #334155;
+  text-decoration: none;
+}
+.usta-dropdown a:hover {
+  background: #eef3ff;
+  color: #0b1220;
+}
+.usta-dropdown a.is-active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.usta-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.usta-cta {
+  display: inline-flex;
+  align-items: center;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.usta-cta:hover {
+  background: #1d4ed8;
+}
+.usta-ghost {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0b1220;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.usta-burger {
+  display: none;
+  background: none;
+  border: 1px solid #e7ecf3;
+  border-radius: 10px;
+  padding: 7px;
+  cursor: pointer;
+  color: #0b1220;
+}
+.usta-burger svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.usta-drawer {
+  display: none;
+  border-top: 1px solid #e7ecf3;
+  background: #fff;
+  padding: 12px 24px 22px;
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+}
+.usta-drawer.is-open {
+  display: block;
+}
+.usta-drawer-group {
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.usta-drawer-group:last-child {
+  border-bottom: 0;
+}
+.usta-drawer-head {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 6px;
+  display: block;
+  text-decoration: none;
+}
+a.usta-drawer-head {
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: #0b1220;
+  font-weight: 600;
+}
+a.usta-drawer-head.is-active {
+  color: #2563eb;
+}
+.usta-drawer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.usta-drawer ul a {
+  display: block;
+  padding: 9px 0;
+  font-size: 15px;
+  color: #334155;
+  text-decoration: none;
+}
+.usta-drawer ul a.is-active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* footer */
+.usta-footer {
+  background: #0b1220;
+  color: #cbd5e1;
+  margin-top: auto;
+}
+.usta-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 56px 24px 34px;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 2.4fr;
+  gap: 48px;
+}
+.usta-footer .usta-logo {
+  color: #fff;
+}
+.usta-footer-brand p {
+  margin: 14px 0 20px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  max-width: 34ch;
+}
+.usta-footer-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 32px;
+}
+.usta-footer-cols h2 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 0 0 14px;
+}
+.usta-footer-cols ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+.usta-footer-cols a {
+  color: #cbd5e1;
+  font-size: 14.5px;
+  text-decoration: none;
+}
+.usta-footer-cols a:hover {
+  color: #fff;
+}
+.usta-footer-contact li {
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+.usta-footer-contact a {
+  color: #cbd5e1;
+  text-decoration: none;
+}
+.usta-footer-contact a:hover {
+  color: #fff;
+}
+.usta-footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 34px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 13.5px;
+}
+.usta-footer-bottom p {
+  margin: 0;
+}
+.usta-footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.usta-footer-meta a {
+  color: #cbd5e1;
+  text-decoration: none;
+}
+.usta-footer-meta a:hover {
+  color: #fff;
+}
+
+@media (max-width: 1200px) {
+  .usta-nav {
+    display: none;
+  }
+  .usta-burger {
+    display: block;
+  }
+  .usta-footer-inner {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+}
+@media (max-width: 640px) {
+  .usta-header-inner {
+    padding: 0 16px;
+    gap: 12px;
+  }
+  .usta-cta,
+  .usta-ghost {
+    display: none;
+  }
+  .usta-drawer {
+    padding: 12px 16px 22px;
+  }
+  .usta-footer-inner,
+  .usta-footer-bottom {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .usta-header *,
+  .usta-footer * {
+    transition: none !important;
+  }
+}
+
+/* Source-aware disclaimer that used to be an extra per-page <footer>. Kept as
+ * page content (there is now exactly one <footer> landmark per page, in the
+ * root layout) but visually unchanged. */
+.usta-page-note {
+  background: #0b1220;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 13.5px;
+  text-align: center;
+  padding: 40px 24px;
+  margin: 0;
+}

@@ -94,6 +94,41 @@ export class LocationsService {
     return { data: rows, meta: meta(page, limit, total), country };
   }
 
+  /** Published cities across every published country. City detail pages were
+   * previously reachable only by first opening a specific country, which left
+   * the "Cities" destination nav entry with nowhere sensible to point. */
+  async publicAllCities(query: Record<string, string | undefined>) {
+    const { page, limit, skip } = pageOf(query);
+    const where = {
+      status: 'PUBLISHED',
+      deletedAt: null,
+      country: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        ...(query.country ? { slug: query.country } : {}),
+      },
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.city.findMany({
+        where,
+        include: {
+          state: { select: { name: true, slug: true } },
+          country: { select: { name: true, slug: true } },
+          heroMedia: true,
+        },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { displayOrder: 'asc' },
+          { name: 'asc' },
+        ],
+        skip,
+        take: limit,
+      }),
+      this.prisma.city.count({ where }),
+    ]);
+    return { data: rows, meta: meta(page, limit, total) };
+  }
+
   async publicCityDetail(countrySlug: string, citySlug: string) {
     const country = await this.prisma.country.findFirst({
       where: { slug: countrySlug, status: 'PUBLISHED', deletedAt: null },

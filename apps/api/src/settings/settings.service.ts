@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
+import { ExpandedService } from '../expanded/expanded.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Every "General platform configuration" screen the client asked for maps
@@ -51,6 +52,16 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
     ctaLabel: 'Book free counselling',
     ctaUrl: '/counselling',
     ctaVisible: true,
+    menuKey: 'header',
+    sticky: true,
+    announcementText: '',
+    announcementUrl: '',
+    announcementVisible: false,
+    /** Deliberately blank by default. The client asked for a configurable
+     * account CTA that stays hidden until an approved destination exists;
+     * no student-account feature is implemented behind this field. */
+    accountCtaLabel: '',
+    accountCtaUrl: '',
   },
   footer: {
     description:
@@ -58,6 +69,12 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
     copyrightText: `© ${new Date().getFullYear()} Universta. All rights reserved.`,
     privacyUrl: '',
     termsUrl: '',
+    menuKey: 'footer',
+    showContact: true,
+    showSocial: true,
+    counsellingCtaLabel: 'Book free counselling',
+    counsellingCtaUrl: '/counselling',
+    counsellingCtaVisible: true,
   },
   seo: {
     defaultTitleSuffix: '| Universta',
@@ -83,10 +100,15 @@ function assertSafeUrl(value: unknown, field: string) {
 
 function sanitizeGroup(group: SettingsGroup, body: Record<string, unknown>) {
   const merged = { ...DEFAULTS[group], ...body };
-  if (group === 'header') assertSafeUrl(merged.ctaUrl, 'ctaUrl');
+  if (group === 'header') {
+    assertSafeUrl(merged.ctaUrl, 'ctaUrl');
+    assertSafeUrl(merged.announcementUrl, 'announcementUrl');
+    assertSafeUrl(merged.accountCtaUrl, 'accountCtaUrl');
+  }
   if (group === 'footer') {
     assertSafeUrl(merged.privacyUrl, 'privacyUrl');
     assertSafeUrl(merged.termsUrl, 'termsUrl');
+    assertSafeUrl(merged.counsellingCtaUrl, 'counsellingCtaUrl');
   }
   if (group === 'contact') assertSafeUrl(merged.whatsappLink, 'whatsappLink');
   for (const key of [
@@ -132,6 +154,40 @@ export class SettingsService {
         ...((byKey.get(group)?.valueJson as object) ?? {}),
       };
     return result;
+  }
+
+  /** One call that returns everything the public Header and Footer need.
+   * Every public page renders both, so composing them server-side here keeps
+   * each page to a single chrome round-trip instead of three. */
+  async publicChrome() {
+    const settings = await this.publicGetAll();
+    const headerKey =
+      typeof settings.header?.menuKey === 'string' && settings.header.menuKey
+        ? settings.header.menuKey
+        : 'header';
+    const footerKey =
+      typeof settings.footer?.menuKey === 'string' && settings.footer.menuKey
+        ? settings.footer.menuKey
+        : 'footer';
+    const menus = await this.prisma.navigationMenu.findMany({
+      where: { menuKey: { in: [headerKey, footerKey] }, status: 'ACTIVE' },
+      include: {
+        items: {
+          where: { status: 'ACTIVE' },
+          orderBy: { displayOrder: 'asc' },
+          include: { page: { select: { slug: true } } },
+        },
+      },
+    });
+    const treeFor = (key: string) => {
+      const menu = menus.find((row) => row.menuKey === key);
+      return menu ? ExpandedService.navigationTree(menu.items) : [];
+    };
+    return {
+      settings,
+      headerMenu: treeFor(headerKey),
+      footerMenu: treeFor(footerKey),
+    };
   }
 
   async update(

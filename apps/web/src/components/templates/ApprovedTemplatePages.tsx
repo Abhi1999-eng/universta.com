@@ -8,7 +8,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { consultationTarget } from '@/lib/country-experience';
 import { counsellingHref } from '@/lib/counselling-link';
-import { useSiteSettings } from '@/lib/site-settings-client';
 import type {
   Country,
   CountryPage,
@@ -100,105 +99,27 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-export function CatalogHeader({ active }: { active?: 'countries' | 'subjects' | 'courses' }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  return (
-    <header className="nav" id="siteNav">
-      <div className="wrap nav-inner">
-        <Link href="/" className="logo">Univer<b>sta</b></Link>
-        <nav className={`nav-links${menuOpen ? ' is-open' : ''}`} aria-label="Primary navigation">
-          <Link className={active === 'countries' ? 'active' : ''} href="/countries">Countries</Link>
-          <Link className={active === 'subjects' ? 'active' : ''} href="/subjects">Subjects</Link>
-          <Link className={active === 'courses' ? 'active' : ''} href="/courses">Courses</Link>
-        </nav>
-        <div className="nav-right">
-          <Link
-            className="btn btn-primary btn-sm"
-            href={counsellingHref({
-              source: 'general',
-              from: active ? `/${active}` : undefined,
-            })}
-          >
-            Get free counselling
-          </Link>
-          <button
-            type="button"
-            className="nav-toggle"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((current) => !current)}
-          >
-            <Icon name="menu" size={25} />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
+/** Legacy per-template chrome. The public Header and Footer are now rendered
+ * once in the root layout from Admin-managed navigation and settings
+ * (see components/chrome/SiteChrome.tsx), so this renders nothing. It stays a
+ * no-op so the many templates that still call it compile unchanged and cannot
+ * reintroduce a second, divergent header. */
+export function CatalogHeader(props?: {
+  active?: 'countries' | 'subjects' | 'courses';
+}) {
+  void props;
+  return null;
 }
 
+/** Legacy per-template chrome -- see CatalogHeader above. Renders nothing; the
+ * Admin-managed Footer in the root layout is now the only public footer. */
 export function CatalogFooter() {
-  const settings = useSiteSettings();
-  return (
-    <footer className="site">
-      <div className="wrap">
-        <div className="foot-grid">
-          <div className="foot-brand">
-            <Link href="/" className="logo">Univer<b>sta</b></Link>
-            <p>{settings?.footer.description ?? 'Compare published study destinations, subjects and courses in one place.'}</p>
-          </div>
-          {[
-            ['Subjects', [['All subjects', '/subjects'], ['Computer Science', '/subjects/computer-science']]],
-            ['Courses', [['All courses', '/courses'], ['Browse by subject', '/subjects']]],
-            ['Destinations', [['All countries', '/countries'], ['Study in Canada', '/study-in-canada']]],
-            ['Guidance', [['Free counselling', '/counselling']]],
-          ].map(([title, links]) => (
-            <div className="foot-col" key={String(title)}>
-              <h4>{String(title)}</h4>
-              <ul>
-                {(links as string[][]).map(([label, href]) => (
-                  <li key={label}><Link href={href}>{label}</Link></li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="foot-bottom">
-          <span>{settings?.footer.copyrightText ?? '© 2026 Universta · Verify important information with official sources.'}</span>
-          <span>Made for students worldwide</span>
-        </div>
-      </div>
-    </footer>
-  );
+  return null;
 }
 
+/** Legacy per-template chrome -- see CatalogHeader above. Renders nothing. */
 function CountryHeader() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  return (
-    <header id="hdr">
-      <div className="wrap nav">
-        <Link href="/" className="logo">Univer<span>sta</span></Link>
-        <ul className={`nav-links${menuOpen ? ' is-open' : ''}`} role="navigation" aria-label="Primary navigation">
-          <li><Link href="/countries">Countries</Link></li>
-          <li><Link href="/subjects">Subjects</Link></li>
-          <li><Link href="/courses">Courses</Link></li>
-        </ul>
-        <div className="nav-r">
-          <Link href="/courses" className="btn btn-p">Explore courses</Link>
-          <button
-            type="button"
-            className="burger"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((current) => !current)}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </header>
-  );
+  return null;
 }
 
 function EmptyTemplateState({ label }: { label: string }) {
@@ -877,7 +798,7 @@ export function ApprovedCountriesListing({
           </div>
         </div>
       </section>
-      <footer>© 2026 Universta · Verify tuition, visa and intake information with official sources.</footer>
+      <p className="usta-page-note">© 2026 Universta · Verify tuition, visa and intake information with official sources.</p>
     </main>
   );
 }
@@ -1174,11 +1095,11 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
           {guidanceTarget ? <a href={guidanceTarget} className="profile-source">Review source guidance</a> : null}
         </div>
       </section>
-      <footer>
+      <p className="usta-page-note">
         © 2026 Universta · Information is editorial and may vary by institution, programme, applicant, and policy.
         {hasStructuredTrust ? ` ${sourceProfiles.length} published source${sourceProfiles.length === 1 ? '' : 's'} shown above.` : ''}
         {' '}Verify tuition, visa, and immigration decisions with official sources.
-      </footer>
+      </p>
     </main>
   );
 }

@@ -61,10 +61,12 @@ import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
     InternalLinksModule,
     SettingsModule,
     StaticPageSeoModule,
+    // Same reason: its literal `phase1/cities` route must win over
+    // ExpandedPublicController's generic `phase1/:resource`.
+    LocationsModule,
     ExpandedModule,
     MediaModule,
     ExperimentsModule,
-    LocationsModule,
     UniversityClaimsModule,
     BulkModule,
     RedirectsModule,

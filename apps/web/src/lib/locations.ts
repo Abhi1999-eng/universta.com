@@ -24,6 +24,15 @@ export async function getCountryCities(countrySlug: string, params: Record<strin
   return { data: result.data, meta: result.meta as PaginationMeta };
 }
 
+/** Every published city, across every published country. Backs the global
+ * /cities index that makes city detail pages reachable from the header
+ * without first having to choose a country. */
+export async function getAllCities(params: Record<string, string> = {}) {
+  const query = new URLSearchParams(params).toString();
+  const result = await request<Array<CitySummary & { country: CityState }>>(`/cities${query ? `?${query}` : ''}`);
+  return { data: result.data, meta: result.meta as PaginationMeta };
+}
+
 export function getCityDetail(countrySlug: string, citySlug: string) {
   return request<CityDetail>(`/countries/${encodeURIComponent(countrySlug)}/cities/${encodeURIComponent(citySlug)}`).then((result) => result.data);
 }

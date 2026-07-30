@@ -26,6 +26,17 @@ export class SettingsPublicController {
   }
 }
 
+/** Header + footer navigation and the settings both need, in one request. */
+@ApiTags('settings-public')
+@Controller('phase1/site-chrome')
+export class SiteChromePublicController {
+  constructor(private readonly settings: SettingsService) {}
+
+  @Get() async chrome(@Req() req: RequestWithId) {
+    return successEnvelope(req, await this.settings.publicChrome());
+  }
+}
+
 @ApiTags('settings-admin')
 @ApiBearerAuth()
 @Controller('admin/settings')

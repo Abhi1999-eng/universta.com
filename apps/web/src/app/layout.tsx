@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import {
+  SiteChromeFooter,
+  SiteChromeHeader,
+} from "@/components/chrome/SiteChrome";
 import { jsonLdString } from "@/lib/json-ld";
 import "./globals.css";
 import "./visual-reference.css";
+import "./global-chrome.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const organizationJsonLd = {
@@ -38,7 +43,13 @@ export default function RootLayout({
       className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* The one public Header/Footer for every route. Rendered here (server
+            side) so navigation links are in the initial HTML, and so a single
+            Admin change in Website Builder applies site-wide regardless of
+            which page template the route uses. */}
+        <SiteChromeHeader />
         {children}
+        <SiteChromeFooter />
         <script type="application/ld+json">
           {jsonLdString(organizationJsonLd)}
         </script>

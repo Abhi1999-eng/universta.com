@@ -25,6 +25,14 @@ import { LocationsService } from './locations.service';
 export class LocationsPublicController {
   constructor(private readonly locations: LocationsService) {}
 
+  @Get('cities') async allCities(
+    @Req() req: RequestWithId,
+    @Query() query: Record<string, string>,
+  ) {
+    const result = await this.locations.publicAllCities(query);
+    return successEnvelope(req, result.data, result.meta);
+  }
+
   @Get('countries/:countrySlug/states') async states(
     @Req() req: RequestWithId,
     @Param('countrySlug') countrySlug: string,

@@ -1,28 +1,14 @@
-import Link from 'next/link';
+/** Legacy per-template chrome. The public Header and Footer are now rendered
+ * once in the root layout from Admin-managed navigation and settings
+ * (see components/chrome/SiteChrome.tsx), so these render nothing. They are
+ * kept as no-ops so the many page templates that still call them compile
+ * unchanged and cannot reintroduce a second, divergent header. */
 
-export function SiteHeader({ detail = false }: { detail?: boolean }) {
-  return (
-    <header className="site-header">
-      <div className="shell header-inner">
-        <Link className="brand" href="/countries">universta<span>.</span></Link>
-        <nav aria-label="Primary navigation">
-          <Link href="/subjects">Subjects</Link>
-          <Link href="/courses">Courses</Link>
-          <Link href="/countries">Countries</Link>
-          <Link href={detail ? '#consultation' : '#country-results'}>{detail ? 'Get counselling' : 'Explore'}</Link>
-        </nav>
-      </div>
-    </header>
-  );
+export function SiteHeader(props?: { detail?: boolean }) {
+  void props;
+  return null;
 }
 
 export function SiteFooter() {
-  return (
-    <footer className="site-footer">
-      <div className="shell footer-grid">
-        <div><Link className="brand" href="/countries">universta<span>.</span></Link><p>Structured, source-aware study destination guidance for your next step.</p></div>
-        <div><p className="footer-note">Information is editorial and may vary by institution, programme, applicant, and policy. Verify important decisions with official sources.</p></div>
-      </div>
-    </footer>
-  );
+  return null;
 }

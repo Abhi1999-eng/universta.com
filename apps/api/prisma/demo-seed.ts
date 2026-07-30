@@ -2618,45 +2618,162 @@ async function main() {
       },
     });
   }
-  const menu = await prisma.navigationMenu.upsert({
-    where: { menuKey: 'primary' },
-    update: {
-      name: 'Primary navigation',
+  // Public navigation. Every Phase 1 public page type must be reachable from
+  // visible navigation, so the header/footer trees below are the source of
+  // truth for that guarantee -- the web app renders exactly what is seeded
+  // here (and whatever an admin later edits in Website Builder), and never
+  // falls back to a hardcoded link list.
+  type NavNode = { label: string; url?: string; children?: NavNode[] };
+  const navTrees: Array<{
+    menuKey: string;
+    name: string;
+    location: string;
+    nodes: NavNode[];
+  }> = [
+    {
+      menuKey: 'header',
+      name: 'Header navigation',
       location: 'HEADER',
-      status: 'ACTIVE',
+      nodes: [
+        { label: 'Home', url: '/' },
+        {
+          label: 'Study Destinations',
+          children: [
+            { label: 'All Countries', url: '/countries' },
+            { label: 'Cities', url: '/cities' },
+            { label: 'Compare Countries', url: '/compare/countries' },
+          ],
+        },
+        {
+          label: 'Universities',
+          children: [
+            { label: 'All Universities', url: '/universities' },
+            { label: 'Compare Universities', url: '/compare/universities' },
+          ],
+        },
+        {
+          label: 'Courses',
+          children: [
+            { label: 'Subjects', url: '/subjects' },
+            { label: 'Generic Courses', url: '/courses' },
+            { label: 'Compare Courses', url: '/compare/courses' },
+          ],
+        },
+        { label: 'Scholarships', url: '/scholarships' },
+        {
+          label: 'Consultants',
+          children: [
+            { label: 'All Consultants', url: '/study-abroad-consultants' },
+            { label: 'Compare Consultants', url: '/compare/consultants' },
+          ],
+        },
+        {
+          label: 'Resources',
+          children: [
+            { label: 'Success Stories', url: '/success-stories' },
+            { label: 'Testimonials', url: '/testimonials' },
+            { label: 'FAQ', url: '/faq' },
+            { label: 'Events', url: '/events' },
+            { label: 'Careers', url: '/careers' },
+            { label: 'About Us', url: '/about' },
+          ],
+        },
+        {
+          label: 'Contact',
+          children: [
+            { label: 'Contact Us', url: '/contact' },
+            { label: 'Book Free Counselling', url: '/counselling' },
+          ],
+        },
+      ],
     },
-    create: {
-      name: 'Primary navigation',
-      menuKey: 'primary',
-      location: 'HEADER',
-      status: 'ACTIVE',
+    {
+      menuKey: 'footer',
+      name: 'Footer navigation',
+      location: 'FOOTER',
+      nodes: [
+        {
+          label: 'Destinations',
+          children: [
+            { label: 'All Countries', url: '/countries' },
+            { label: 'Cities', url: '/cities' },
+            { label: 'Compare Countries', url: '/compare/countries' },
+          ],
+        },
+        {
+          label: 'Study',
+          children: [
+            { label: 'Universities', url: '/universities' },
+            { label: 'Subjects', url: '/subjects' },
+            { label: 'Courses', url: '/courses' },
+            { label: 'Scholarships', url: '/scholarships' },
+          ],
+        },
+        {
+          label: 'Guidance',
+          children: [
+            { label: 'Consultants', url: '/study-abroad-consultants' },
+            { label: 'Book Free Counselling', url: '/counselling' },
+            { label: 'Contact Us', url: '/contact' },
+            { label: 'FAQ', url: '/faq' },
+          ],
+        },
+        {
+          label: 'Company',
+          children: [
+            { label: 'About Us', url: '/about' },
+            { label: 'Success Stories', url: '/success-stories' },
+            { label: 'Testimonials', url: '/testimonials' },
+            { label: 'Events', url: '/events' },
+            { label: 'Careers', url: '/careers' },
+          ],
+        },
+      ],
     },
-  });
-  for (const [order, label, customUrl] of [
-    ['Countries', '/countries'],
-    ['Universities', '/universities'],
-    ['Scholarships', '/scholarships'],
-    ['Consultants', '/study-abroad-consultants'],
-    ['Counselling', '/counselling'],
-  ].map(([label, url], index) => [index + 1, label, url] as const)) {
-    const existingItem = await prisma.navigationItem.findFirst({
-      where: { menuId: menu.id, label },
+  ];
+
+  for (const tree of navTrees) {
+    const menu = await prisma.navigationMenu.upsert({
+      where: { menuKey: tree.menuKey },
+      update: { name: tree.name, location: tree.location, status: 'ACTIVE' },
+      create: {
+        name: tree.name,
+        menuKey: tree.menuKey,
+        location: tree.location,
+        status: 'ACTIVE',
+      },
     });
-    const data = {
-      linkType: 'CUSTOM',
-      customUrl,
-      displayOrder: order,
-      status: 'ACTIVE',
+    // Idempotent by (menu, parent, label): re-running the seed refreshes the
+    // canonical items in place without duplicating them or discarding extra
+    // items an admin added by hand.
+    const upsertNode = async (
+      node: NavNode,
+      order: number,
+      parentItemId: string | null,
+    ) => {
+      const existing = await prisma.navigationItem.findFirst({
+        where: { menuId: menu.id, parentItemId, label: node.label },
+      });
+      const data = {
+        linkType: node.url ? 'CUSTOM' : 'NONE',
+        customUrl: node.url ?? null,
+        displayOrder: order,
+        status: 'ACTIVE',
+      };
+      const row = existing
+        ? await prisma.navigationItem.update({
+            where: { id: existing.id },
+            data,
+          })
+        : await prisma.navigationItem.create({
+            data: { menuId: menu.id, parentItemId, label: node.label, ...data },
+          });
+      let childOrder = 1;
+      for (const child of node.children ?? [])
+        await upsertNode(child, childOrder++, row.id);
     };
-    if (existingItem)
-      await prisma.navigationItem.update({
-        where: { id: existingItem.id },
-        data,
-      });
-    else
-      await prisma.navigationItem.create({
-        data: { menuId: menu.id, label, ...data },
-      });
+    let order = 1;
+    for (const node of tree.nodes) await upsertNode(node, order++, null);
   }
 
   const featureFlags = [
