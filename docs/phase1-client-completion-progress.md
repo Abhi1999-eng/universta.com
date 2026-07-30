@@ -21,7 +21,7 @@ Branch: `feat/phase1-expanded-local`
 | 9 | Featured listings and advanced filters | DONE (scoped — see summary) |
 | 10 | SEO and schema completion | DONE (scoped — see summary) |
 | 11 | Full integration and defect fixing | DONE — see summary |
-| 12 | Final Phase 1 acceptance | pending |
+| 12 | Final Phase 1 acceptance | DONE — see `docs/phase1-client-final-completion-report.md` |
 
 ## Local environment notes (read before running anything)
 
