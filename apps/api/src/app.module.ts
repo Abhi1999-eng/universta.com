@@ -24,6 +24,7 @@ import { MediaModule } from './media/media.module';
 import { ExperimentsModule } from './experiments/experiments.module';
 import { LocationsModule } from './locations/locations.module';
 import { UniversityClaimsModule } from './university-claims/university-claims.module';
+import { BulkModule } from './bulk/bulk.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { UniversityClaimsModule } from './university-claims/university-claims.mo
     ExperimentsModule,
     LocationsModule,
     UniversityClaimsModule,
+    BulkModule,
   ],
   controllers: [AppController],
   providers: [
