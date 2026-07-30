@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -203,5 +204,13 @@ export class CitiesAdminController {
     @Param('id') id: string,
   ) {
     return successEnvelope(req, await this.locations.archiveCity(id));
+  }
+
+  @Put(':id/seo') async saveSeo(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(req, await this.locations.saveCitySeo(id, body));
   }
 }

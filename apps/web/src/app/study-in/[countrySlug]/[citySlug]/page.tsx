@@ -20,10 +20,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { countrySlug, citySlug } = await params;
   const city = await load(countrySlug, citySlug);
   if (!city) return { title: 'City not found | Universta' };
+  const seo = (city as { seo?: Record<string, unknown> | null }).seo;
   return {
-    title: `${city.name}, ${city.country.name} | Universta`,
-    description: city.shortDescription ?? undefined,
-    alternates: { canonical: `/study-in-${countrySlug}/${city.slug}` },
+    title:
+      (seo?.seoTitle as string | undefined) ??
+      `${city.name}, ${city.country.name} | Universta`,
+    description:
+      (seo?.metaDescription as string | undefined) ?? city.shortDescription ?? undefined,
+    alternates: {
+      canonical:
+        (seo?.canonicalUrl as string | undefined) ??
+        `/study-in-${countrySlug}/${city.slug}`,
+    },
+    robots:
+      seo?.robotsIndex === false || seo?.robotsFollow === false
+        ? {
+            index: seo?.robotsIndex !== false,
+            follow: seo?.robotsFollow !== false,
+          }
+        : undefined,
+    openGraph:
+      seo?.ogTitle || seo?.ogDescription
+        ? {
+            title: (seo?.ogTitle as string | undefined) ?? undefined,
+            description: (seo?.ogDescription as string | undefined) ?? undefined,
+          }
+        : undefined,
   };
 }
 

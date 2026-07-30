@@ -1705,26 +1705,27 @@ export class ExpandedService {
     const seoTitle = this.optionalText(seo.seoTitle);
     const metaDescription = this.optionalText(seo.metaDescription);
     if (!seoTitle || !metaDescription) return;
+    const shared = {
+      seoTitle,
+      metaDescription,
+      canonicalUrl: this.optionalText(seo.canonicalUrl),
+      focusKeyword: this.optionalText(seo.focusKeyword),
+      ogTitle: this.optionalText(seo.ogTitle),
+      ogDescription: this.optionalText(seo.ogDescription),
+      ogMediaId: this.optionalText(seo.ogMediaId),
+      twitterTitle: this.optionalText(seo.twitterTitle),
+      twitterDescription: this.optionalText(seo.twitterDescription),
+      twitterMediaId: this.optionalText(seo.twitterMediaId),
+      robotsIndex: seo.robotsIndex !== false,
+      robotsFollow: seo.robotsFollow !== false,
+      ...(seo.schemaJson !== undefined
+        ? { schemaJson: seo.schemaJson as Prisma.InputJsonValue }
+        : {}),
+    };
     await this.prisma.seoMetadata.upsert({
       where: { ownerType_ownerId: { ownerType: resource, ownerId } },
-      update: {
-        seoTitle,
-        metaDescription,
-        canonicalUrl: this.optionalText(seo.canonicalUrl),
-        focusKeyword: this.optionalText(seo.focusKeyword),
-        robotsIndex: seo.robotsIndex !== false,
-        robotsFollow: seo.robotsFollow !== false,
-      },
-      create: {
-        ownerType: resource,
-        ownerId,
-        seoTitle,
-        metaDescription,
-        canonicalUrl: this.optionalText(seo.canonicalUrl),
-        focusKeyword: this.optionalText(seo.focusKeyword),
-        robotsIndex: seo.robotsIndex !== false,
-        robotsFollow: seo.robotsFollow !== false,
-      },
+      update: shared,
+      create: { ownerType: resource, ownerId, ...shared },
     });
   }
 
@@ -1733,6 +1734,7 @@ export class ExpandedService {
       where: {
         ownerType_ownerId: { ownerType: resource, ownerId: String(record.id) },
       },
+      include: { ogMedia: true, twitterMedia: true },
     });
     return { ...record, seo };
   }

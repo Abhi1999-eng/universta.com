@@ -177,6 +177,46 @@ describe('Location hierarchy — states and cities (e2e)', () => {
     expect((city.country as RecordValue)?.slug).toBe(countrySlug);
   });
 
+  it('saves City SEO metadata and surfaces it on both the admin detail and the public city payload', async () => {
+    const saved = await admin('put', `/api/v1/admin/cities/${cityId}/seo`)
+      .send({
+        seoTitle: 'Test City | Universta',
+        metaDescription: 'Fictional city SEO metadata for e2e coverage.',
+        canonicalUrl: `/study-in-${countrySlug}/test-city`,
+        ogTitle: 'Discover Test City',
+        ogDescription: 'Fictional OG description for e2e coverage.',
+        robotsIndex: true,
+        robotsFollow: true,
+      })
+      .expect(200);
+    expect(data(saved)).toMatchObject({
+      seoTitle: 'Test City | Universta',
+      ogTitle: 'Discover Test City',
+    });
+
+    const adminDetail = await admin('get', `/api/v1/admin/cities/${cityId}`).expect(
+      200,
+    );
+    expect((data(adminDetail).seo as RecordValue)?.seoTitle).toBe(
+      'Test City | Universta',
+    );
+
+    const publicDetail = await request(app.getHttpServer())
+      .get(`/api/v1/phase1/countries/${countrySlug}/cities/test-city`)
+      .expect(200);
+    expect((data(publicDetail).seo as RecordValue)?.ogDescription).toBe(
+      'Fictional OG description for e2e coverage.',
+    );
+  });
+
+  it('rejects City SEO without the required fields', async () => {
+    const res = await admin('put', `/api/v1/admin/cities/${cityId}/seo`).send({
+      seoTitle: 'Missing description',
+    });
+    expect(res.status).toBe(400);
+    expect(code(res)).toBe('SEO_FIELDS_REQUIRED');
+  });
+
   it('lists published states for the country', async () => {
     const response = await request(app.getHttpServer())
       .get(`/api/v1/phase1/countries/${countrySlug}/states`)

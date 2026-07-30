@@ -99,7 +99,7 @@ export class LocationsService {
       where: { slug: countrySlug, status: 'PUBLISHED', deletedAt: null },
     });
     if (!country) return null;
-    return this.prisma.city.findFirst({
+    const city = await this.prisma.city.findFirst({
       where: {
         countryId: country.id,
         slug: citySlug,
@@ -112,6 +112,11 @@ export class LocationsService {
         heroMedia: true,
       },
     });
+    if (!city) return null;
+    const seo = await this.prisma.seoMetadata.findUnique({
+      where: { ownerType_ownerId: { ownerType: 'city', ownerId: city.id } },
+    });
+    return { ...city, seo };
   }
 
   // ---------- Admin: States ----------
@@ -258,7 +263,50 @@ export class LocationsService {
         message: 'City not found',
         details: null,
       });
-    return city;
+    const seo = await this.prisma.seoMetadata.findUnique({
+      where: { ownerType_ownerId: { ownerType: 'city', ownerId: id } },
+      include: { ogMedia: true, twitterMedia: true },
+    });
+    return { ...city, seo };
+  }
+
+  /** City did not previously have any SEO management -- this follows the
+   * same simple owner-type-keyed SeoMetadata pattern already used for the
+   * "expanded" resources (jobs, events, success stories, testimonials)
+   * rather than Country's richer version-checked editor, since City has no
+   * existing optimistic-concurrency convention to match. */
+  async saveCitySeo(id: string, body: Record<string, unknown>) {
+    await this.adminDetailCity(id);
+    const text = (value: unknown) =>
+      typeof value === 'string' && value.trim() ? value.trim() : undefined;
+    const seoTitle = text(body.seoTitle);
+    const metaDescription = text(body.metaDescription);
+    if (!seoTitle || !metaDescription)
+      throw new BadRequestException({
+        code: 'SEO_FIELDS_REQUIRED',
+        message: 'seoTitle and metaDescription are required',
+        details: null,
+      });
+    const shared = {
+      seoTitle,
+      metaDescription,
+      canonicalUrl: text(body.canonicalUrl),
+      focusKeyword: text(body.focusKeyword),
+      ogTitle: text(body.ogTitle),
+      ogDescription: text(body.ogDescription),
+      ogMediaId: text(body.ogMediaId),
+      twitterTitle: text(body.twitterTitle),
+      twitterDescription: text(body.twitterDescription),
+      twitterMediaId: text(body.twitterMediaId),
+      robotsIndex: body.robotsIndex !== false,
+      robotsFollow: body.robotsFollow !== false,
+    };
+    return this.prisma.seoMetadata.upsert({
+      where: { ownerType_ownerId: { ownerType: 'city', ownerId: id } },
+      update: shared,
+      create: { ownerType: 'city', ownerId: id, ...shared },
+      include: { ogMedia: true, twitterMedia: true },
+    });
   }
 
   async createCity(

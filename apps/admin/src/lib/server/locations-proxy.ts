@@ -59,7 +59,7 @@ function requireAuth(request: NextRequest, requestId: string) {
 export async function proxyLocations(
   request: NextRequest,
   kind: "states" | "cities",
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   path: string,
 ) {
   const requestId = request.headers.get("x-request-id")?.slice(0, 100) || randomUUID();
@@ -67,7 +67,7 @@ export async function proxyLocations(
   if (auth.error) return auth.error;
   let body: string | undefined;
   const search = method === "GET" ? new URL(request.url).searchParams : undefined;
-  if (method === "POST" || method === "PATCH") {
+  if (method === "POST" || method === "PATCH" || method === "PUT") {
     const raw = await request.text();
     if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES)
       return fail(413, requestId, "REQUEST_TOO_LARGE", "Request is too large");

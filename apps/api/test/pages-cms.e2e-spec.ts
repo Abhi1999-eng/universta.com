@@ -168,12 +168,19 @@ describe('Phase 1 Page CMS (e2e)', () => {
     expect(sections.length).toBeGreaterThan(0);
   });
 
-  it('respects SEO metadata round-trip through the generic seo field', async () => {
+  it('respects SEO metadata round-trip through the generic seo field, including OG/Twitter/robots/schema', async () => {
     await admin('patch', `/api/v1/admin/phase1/pages/${pageId}`)
       .send({
         seo: {
           seoTitle: 'CMS E2E Page | Universta',
           metaDescription: 'A fictional meta description for the CMS e2e test.',
+          ogTitle: 'CMS E2E Page — Open Graph title',
+          ogDescription: 'Fictional OG description for the CMS e2e test.',
+          twitterTitle: 'CMS E2E Page — Twitter title',
+          twitterDescription: 'Fictional Twitter description for the CMS e2e test.',
+          robotsIndex: false,
+          robotsFollow: true,
+          schemaJson: { '@type': 'WebPage', name: 'CMS E2E Page' },
         },
       })
       .expect(200);
@@ -182,7 +189,14 @@ describe('Phase 1 Page CMS (e2e)', () => {
       `/api/v1/admin/phase1/pages/${pageId}`,
     ).expect(200);
     const seo = record(data(detail).seo);
-    expect(seo.seoTitle).toBe('CMS E2E Page | Universta');
+    expect(seo).toMatchObject({
+      seoTitle: 'CMS E2E Page | Universta',
+      ogTitle: 'CMS E2E Page — Open Graph title',
+      twitterTitle: 'CMS E2E Page — Twitter title',
+      robotsIndex: false,
+      robotsFollow: true,
+    });
+    expect(seo.schemaJson).toMatchObject({ '@type': 'WebPage' });
   });
 
   it('a Scheduled page with a future startsAt is not yet publicly visible', async () => {

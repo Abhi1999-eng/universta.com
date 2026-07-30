@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 
 type CountryOption = { id: string; name: string; slug: string };
@@ -25,6 +25,16 @@ type CityRow = {
 
 const STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"];
 
+type CitySeo = {
+  seoTitle: string;
+  metaDescription: string;
+  canonicalUrl: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  robotsIndex: boolean;
+  robotsFollow: boolean;
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authFetch(`/api/v1/admin${path}`, {
     ...init,
@@ -38,6 +48,155 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
 const buttonClass = "rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60";
+
+function CitySeoEditor({
+  cityId,
+  onSaved,
+  onClose,
+}: {
+  cityId: string;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const [seoTitle, setSeoTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [canonicalUrl, setCanonicalUrl] = useState("");
+  const [ogTitle, setOgTitle] = useState("");
+  const [ogDescription, setOgDescription] = useState("");
+  const [robotsIndex, setRobotsIndex] = useState(true);
+  const [robotsFollow, setRobotsFollow] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    api<{ seo: CitySeo | null }>(`/cities/${cityId}`)
+      .then((city) => {
+        if (cancelled || !city.seo) return;
+        setSeoTitle(city.seo.seoTitle);
+        setMetaDescription(city.seo.metaDescription);
+        setCanonicalUrl(city.seo.canonicalUrl ?? "");
+        setOgTitle(city.seo.ogTitle ?? "");
+        setOgDescription(city.seo.ogDescription ?? "");
+        setRobotsIndex(city.seo.robotsIndex);
+        setRobotsFollow(city.seo.robotsFollow);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId]);
+
+  async function save() {
+    setBusy(true);
+    setMessage("");
+    try {
+      await api(`/cities/${cityId}/seo`, {
+        method: "PUT",
+        body: JSON.stringify({
+          seoTitle,
+          metaDescription,
+          canonicalUrl: canonicalUrl || null,
+          ogTitle: ogTitle || null,
+          ogDescription: ogDescription || null,
+          robotsIndex,
+          robotsFollow,
+        }),
+      });
+      onSaved();
+      onClose();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save SEO");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <p className="text-sm text-[#667085]">Loading SEO…</p>;
+
+  return (
+    <div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold">
+          SEO title
+          <input value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
+        </label>
+        <label className="block text-xs font-semibold">
+          Meta description
+          <input
+            value={metaDescription}
+            onChange={(event) => setMetaDescription(event.target.value)}
+            className={inputClass}
+          />
+        </label>
+        <label className="block text-xs font-semibold">
+          Canonical URL (optional)
+          <input
+            value={canonicalUrl}
+            onChange={(event) => setCanonicalUrl(event.target.value)}
+            className={inputClass}
+          />
+        </label>
+        <label className="block text-xs font-semibold">
+          OG title (optional)
+          <input value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
+        </label>
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold">
+            OG description (optional)
+            <input
+              value={ogDescription}
+              onChange={(event) => setOgDescription(event.target.value)}
+              className={inputClass}
+            />
+          </label>
+        </div>
+        <label className="flex items-center gap-2 text-xs font-semibold">
+          <input
+            type="checkbox"
+            checked={robotsIndex}
+            onChange={(event) => setRobotsIndex(event.target.checked)}
+          />
+          Allow search indexing
+        </label>
+        <label className="flex items-center gap-2 text-xs font-semibold">
+          <input
+            type="checkbox"
+            checked={robotsFollow}
+            onChange={(event) => setRobotsFollow(event.target.checked)}
+          />
+          Allow link following
+        </label>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          disabled={busy || !seoTitle || !metaDescription}
+          onClick={() => void save()}
+          className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+        >
+          Save SEO
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+        >
+          Close
+        </button>
+        {message ? (
+          <p className="text-xs text-red-700" role="alert">
+            {message}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function LocationsManager() {
   const [tab, setTab] = useState<"states" | "cities">("cities");
@@ -57,6 +216,7 @@ export function LocationsManager() {
   const [newCityName, setNewCityName] = useState("");
   const [newCityShortDescription, setNewCityShortDescription] = useState("");
   const [creatingCity, setCreatingCity] = useState(false);
+  const [seoEditingCityId, setSeoEditingCityId] = useState<string | null>(null);
 
   const loadStates = useCallback(async () => {
     try {
@@ -428,7 +588,8 @@ export function LocationsManager() {
               </thead>
               <tbody>
                 {visibleCities.map((city) => (
-                  <tr key={city.id} className="border-t border-[#E8ECF3]">
+                  <Fragment key={city.id}>
+                  <tr className="border-t border-[#E8ECF3]">
                     <td className="px-4 py-3 font-medium">
                       {city.name} <span className="text-[#9AA3B2]">({city.slug})</span>
                     </td>
@@ -459,6 +620,15 @@ export function LocationsManager() {
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
+                        onClick={() =>
+                          setSeoEditingCityId(seoEditingCityId === city.id ? null : city.id)
+                        }
+                        className="mr-3 text-xs font-semibold text-[#1657CF]"
+                      >
+                        SEO
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => void archiveCity(city)}
                         className="text-xs font-semibold text-red-700"
                       >
@@ -466,6 +636,18 @@ export function LocationsManager() {
                       </button>
                     </td>
                   </tr>
+                  {seoEditingCityId === city.id ? (
+                    <tr className="border-t border-[#E8ECF3] bg-[#F7F9FC]">
+                      <td colSpan={6} className="p-4">
+                        <CitySeoEditor
+                          cityId={city.id}
+                          onSaved={() => setMessage("City SEO saved.")}
+                          onClose={() => setSeoEditingCityId(null)}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
