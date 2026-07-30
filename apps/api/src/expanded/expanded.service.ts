@@ -440,42 +440,42 @@ export class ExpandedService {
     slug: string,
   ) {
     if (resource === 'universities') return this.universityDetail(slug);
-    if (resource === 'scholarships')
-      return (
-        this.prisma.scholarship.findFirst({
-          where: { slug, ...publishedWhere() },
-          include: {
-            provider: true,
-            countries: { include: { country: true } },
-            universities: { include: { university: true } },
-            offerings: {
-              include: {
-                offering: {
-                  include: {
-                    university: true,
-                    campus: true,
-                    genericCourse: true,
-                  },
+    if (resource === 'scholarships') {
+      const row = await this.prisma.scholarship.findFirst({
+        where: { slug, ...publishedWhere() },
+        include: {
+          provider: true,
+          countries: { include: { country: true } },
+          universities: { include: { university: true } },
+          offerings: {
+            include: {
+              offering: {
+                include: {
+                  university: true,
+                  campus: true,
+                  genericCourse: true,
                 },
               },
             },
           },
-        }) ?? this.notFound(resource)
-      );
-    if (resource === 'consultants')
-      return (
-        this.prisma.consultant.findFirst({
-          where: { slug, ...publishedWhere() },
-          include: {
-            locations: {
-              include: { location: { include: { country: true } } },
-            },
-            countries: { include: { country: true } },
-            services: true,
-            languages: true,
+        },
+      });
+      return this.withSeo(resource, row ?? this.notFound(resource));
+    }
+    if (resource === 'consultants') {
+      const row = await this.prisma.consultant.findFirst({
+        where: { slug, ...publishedWhere() },
+        include: {
+          locations: {
+            include: { location: { include: { country: true } } },
           },
-        }) ?? this.notFound(resource)
-      );
+          countries: { include: { country: true } },
+          services: true,
+          languages: true,
+        },
+      });
+      return this.withSeo(resource, row ?? this.notFound(resource));
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[
@@ -484,7 +484,7 @@ export class ExpandedService {
     const row = await delegate.findFirst({
       where: { slug, ...publishedWhere() },
     });
-    return row ?? this.notFound(resource);
+    return this.withSeo(resource, row ?? this.notFound(resource));
   }
 
   private async universityDetail(slug: string) {
@@ -511,7 +511,7 @@ export class ExpandedService {
         },
       },
     });
-    return row ?? this.notFound('universities');
+    return this.withSeo('universities', row ?? this.notFound('universities'));
   }
 
   async universityOfferings(
@@ -545,7 +545,7 @@ export class ExpandedService {
           },
         },
       });
-      return row ?? this.notFound('offerings');
+      return this.withSeo('offerings', row ?? this.notFound('offerings'));
     }
     const { page, limit, skip } = pageOf(query);
     const listingWhere: any = {

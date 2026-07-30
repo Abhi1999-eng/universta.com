@@ -25,7 +25,15 @@ export type AnyRecord = {
   location?: string;
   deadline?: string | Date | null;
   startsAt?: string | Date | null;
+  endsAt?: string | Date | null;
   expiryDate?: string | Date | null;
+  publishedDate?: string | Date | null;
+  createdAt?: string | Date | null;
+  eventType?: string;
+  venue?: string;
+  onlineUrl?: string;
+  employmentType?: string;
+  remoteStatus?: string;
   sourceReference?: string;
   applicationUrl?: string;
   registrationUrl?: string;

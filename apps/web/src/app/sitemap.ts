@@ -3,15 +3,19 @@ import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
+import { getCourses, getSubjects } from "@/lib/catalog";
 
 const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+// success-stories and testimonials are listing-only — there is no
+// success-stories/[slug] or testimonials/[slug] detail route, so neither
+// belongs in the dynamic-routes list below (a prior version generated dead
+// success-stories detail URLs that all 404).
 const resources = [
   "universities",
   "scholarships",
   "consultants",
   "jobs",
   "events",
-  "success-stories",
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -37,13 +41,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "/" ? 1 : 0.7,
   }));
   try {
-    const [[universities, scholarships, consultants, jobs, events, stories], countries] =
-      await Promise.all([
-        Promise.all(
-          resources.map((resource) => phaseList<AnyRecord>(resource, { limit: "50" })),
-        ),
-        getCountries({ limit: "50" }),
-      ]);
+    const [
+      [universities, scholarships, consultants, jobs, events],
+      countries,
+      subjects,
+      courses,
+    ] = await Promise.all([
+      Promise.all(
+        resources.map((resource) => phaseList<AnyRecord>(resource, { limit: "50" })),
+      ),
+      getCountries({ limit: "50" }),
+      getSubjects({ limit: "100" }),
+      getCourses({ limit: "100" }),
+    ]);
     const citiesByCountry = await Promise.all(
       countries.data.map((country) =>
         getCountryCities(country.slug, { limit: "50" }).catch(() => ({
@@ -57,13 +67,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...consultants.data.map((row) => `/study-abroad-consultants/${row.slug}`),
       ...jobs.data.map((row) => `/careers/${row.slug}`),
       ...events.data.map((row) => `/events/${row.slug}`),
-      ...stories.data.map((row) => `/success-stories/${row.slug}`),
       ...countries.data.map((row) => `/study-in-${row.slug}`),
       ...countries.data.flatMap((country, index) =>
         citiesByCountry[index].data.map(
           (city) => `/study-in-${country.slug}/${city.slug}`,
         ),
       ),
+      ...subjects.data.map((row) => `/subjects/${row.slug}`),
+      ...courses.data.map((row) => `/courses/${row.slug}`),
     ].map((path) => ({
       url: new URL(path, base).toString(),
       changeFrequency: "weekly" as const,

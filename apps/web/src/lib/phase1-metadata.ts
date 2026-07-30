@@ -9,6 +9,13 @@ type PhaseOneMetadataRecord = {
   overview?: string;
   journey?: string;
   quote?: string;
+  seo?: {
+    seoTitle?: string;
+    metaDescription?: string;
+    canonicalUrl?: string | null;
+    robotsIndex?: boolean;
+    robotsFollow?: boolean;
+  } | null;
 };
 
 export function phaseOneMetadata(
@@ -17,7 +24,7 @@ export function phaseOneMetadata(
   fallbackLabel: string,
 ): Metadata {
   const title = record.name ?? record.title ?? fallbackLabel;
-  const description =
+  const fallbackDescription =
     record.shortDescription ??
     record.summary ??
     record.description ??
@@ -25,12 +32,19 @@ export function phaseOneMetadata(
     record.journey ??
     record.quote ??
     `Published information about ${title}.`;
+  const seo = record.seo;
+  const resolvedTitle = seo?.seoTitle ?? title;
+  const description = seo?.metaDescription ?? fallbackDescription;
+  const resolvedCanonical = seo?.canonicalUrl ?? canonical;
 
   return {
-    title: `${title} | Universta`,
+    title: `${resolvedTitle} | Universta`,
     description,
-    alternates: { canonical },
-    robots: { index: true, follow: true },
-    openGraph: { title, description, url: canonical },
+    alternates: { canonical: resolvedCanonical },
+    robots: {
+      index: seo?.robotsIndex ?? true,
+      follow: seo?.robotsFollow ?? true,
+    },
+    openGraph: { title: resolvedTitle, description, url: resolvedCanonical },
   };
 }
