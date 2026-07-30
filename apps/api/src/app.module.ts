@@ -29,6 +29,7 @@ import { RedirectsModule } from './redirects/redirects.module';
 import { InternalLinksModule } from './internal-links/internal-links.module';
 import { PageTemplatesModule } from './page-templates/page-templates.module';
 import { SettingsModule } from './settings/settings.module';
+import { WebsiteBuilderModule } from './website-builder/website-builder.module';
 import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
 
 @Module({
@@ -61,6 +62,7 @@ import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
     InternalLinksModule,
     SettingsModule,
     StaticPageSeoModule,
+    WebsiteBuilderModule,
     // Same reason: its literal `phase1/cities` route must win over
     // ExpandedPublicController's generic `phase1/:resource`.
     LocationsModule,

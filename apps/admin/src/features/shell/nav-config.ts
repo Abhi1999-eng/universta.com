@@ -10,13 +10,24 @@ export type NavGroup = { label: string; items: NavItem[] };
  * with a `note` explaining where the control actually lives. */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Content management",
+    // Everything that shapes the public website, from Header to Footer.
+    label: "Website Builder",
+    items: [
+      { label: "Website Pages", href: "/website" },
+      { label: "Global Header", href: "/website/header" },
+      { label: "Global Footer", href: "/website/footer" },
+      { label: "Navigation menus", href: "/phase1/navigation-menus" },
+      { label: "Page templates", href: "/page-templates" },
+      { label: "Reusable sections", href: "/page-templates", note: "Default section sets live on each template" },
+      { label: "Media library", href: "/media" },
+      { label: "SEO management", href: "/seo" },
+    ],
+  },
+  {
+    label: "Content records",
     items: [
       { label: "Pages", href: "/phase1/pages" },
-      { label: "Page templates", href: "/page-templates" },
       { label: "Page sections / content blocks", href: "/phase1/pages", note: "Managed within each page's editor" },
-      { label: "Navigation menus", href: "/phase1/navigation-menus" },
-      { label: "Media library", href: "/media" },
       { label: "FAQs", href: "/countries", note: "Managed within each Country's editor" },
       { label: "Success stories", href: "/phase1/success-stories" },
       { label: "Testimonials", href: "/phase1/testimonials" },
@@ -87,7 +98,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Bulk import / export", href: "/bulk-data" },
       { label: "Redirects", href: "/redirects" },
-      { label: "SEO management", href: "/seo" },
       { label: "A/B experiments", href: "/experiments" },
     ],
   },

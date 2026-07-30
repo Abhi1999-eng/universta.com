@@ -2776,6 +2776,204 @@ async function main() {
     for (const node of tree.nodes) await upsertNode(node, order++, null);
   }
 
+  // Page templates for the dynamic detail pages. A detail page (University
+  // Detail, Scholarship Detail, ...) is one layout applied to every record of
+  // that type -- the entity data still comes from the University/Scholarship
+  // record, the template owns section composition and order only. Without
+  // these rows the template system exists in code but has nothing to manage.
+  const pageTemplates: Array<{
+    templateKey: string;
+    name: string;
+    pageFamily: string;
+    description: string;
+    sections: Array<[string, string, string]>;
+  }> = [
+    {
+      templateKey: 'country-detail',
+      name: 'Country Detail',
+      pageFamily: 'Destinations',
+      description: 'Layout applied to every published country page.',
+      sections: [
+        ['hero', 'HERO', 'Country hero'],
+        ['at-a-glance', 'STATS', 'At a glance'],
+        ['overview', 'RICH_TEXT', 'Why study here'],
+        ['universities', 'UNIVERSITY_DIRECTORY', 'Universities'],
+        ['cities', 'RELATED_LINKS', 'Cities'],
+        ['faq', 'FAQ_GROUP', 'Frequently asked questions'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'city-detail',
+      name: 'City Detail',
+      pageFamily: 'Destinations',
+      description: 'Layout applied to every published city page.',
+      sections: [
+        ['hero', 'HERO', 'City hero'],
+        ['overview', 'RICH_TEXT', 'About this city'],
+        ['universities', 'UNIVERSITY_DIRECTORY', 'Universities here'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'university-detail',
+      name: 'University Detail',
+      pageFamily: 'Universities',
+      description: 'Layout applied to every published university profile.',
+      sections: [
+        ['hero', 'HERO', 'University hero'],
+        ['quick-facts', 'STATS', 'Quick facts'],
+        ['overview', 'RICH_TEXT', 'Overview'],
+        ['campuses', 'CARD_GRID', 'Campuses'],
+        ['accreditations', 'RELATED_LINKS', 'Accreditations'],
+        ['offerings', 'COURSE_DIRECTORY', 'Course offerings'],
+        ['scholarships', 'SCHOLARSHIP_DIRECTORY', 'Scholarships'],
+        ['related', 'RELATED_LINKS', 'Related links'],
+        ['claim', 'CTA', 'Claim this university'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'university-courses',
+      name: 'University Courses',
+      pageFamily: 'Universities',
+      description: "Layout for a university's course offering listing.",
+      sections: [
+        ['hero', 'HERO', 'Courses hero'],
+        ['offerings', 'COURSE_DIRECTORY', 'Course offerings'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'university-course-offering',
+      name: 'Single University Course Offering',
+      pageFamily: 'Universities',
+      description: 'Layout for one university course offering.',
+      sections: [
+        ['hero', 'HERO', 'Offering hero'],
+        ['at-a-glance', 'STATS', 'At a glance'],
+        ['overview', 'RICH_TEXT', 'What to know'],
+        ['related', 'RELATED_LINKS', 'Related offerings'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'subject-detail',
+      name: 'Subject Detail',
+      pageFamily: 'Academics',
+      description: 'Layout applied to every published subject page.',
+      sections: [
+        ['hero', 'HERO', 'Subject hero'],
+        ['at-a-glance', 'STATS', 'At a glance'],
+        ['overview', 'RICH_TEXT', 'About this subject'],
+        ['specializations', 'CARD_GRID', 'Specializations'],
+        ['courses', 'COURSE_DIRECTORY', 'Popular courses'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'course-detail',
+      name: 'Generic Course Detail',
+      pageFamily: 'Academics',
+      description: 'Layout applied to every published generic course.',
+      sections: [
+        ['hero', 'HERO', 'Course hero'],
+        ['at-a-glance', 'STATS', 'At a glance'],
+        ['overview', 'RICH_TEXT', 'Course overview'],
+        ['related', 'RELATED_LINKS', 'Related courses'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'scholarship-detail',
+      name: 'Scholarship Detail',
+      pageFamily: 'Scholarships',
+      description: 'Layout applied to every published scholarship.',
+      sections: [
+        ['hero', 'HERO', 'Scholarship hero'],
+        ['at-a-glance', 'STATS', 'At a glance'],
+        ['overview', 'RICH_TEXT', 'What to know'],
+        ['related', 'RELATED_LINKS', 'Related scholarships'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'consultant-detail',
+      name: 'Consultant Detail',
+      pageFamily: 'Consultants',
+      description: 'Layout applied to every published consultant profile.',
+      sections: [
+        ['hero', 'HERO', 'Consultant hero'],
+        ['overview', 'RICH_TEXT', 'About this consultant'],
+        ['services', 'CARD_GRID', 'Services'],
+        ['locations', 'RELATED_LINKS', 'Locations'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'consultant-location',
+      name: 'Consultant Location',
+      pageFamily: 'Consultants',
+      description: 'Layout applied to every published consultant location.',
+      sections: [
+        ['hero', 'HERO', 'Location hero'],
+        ['consultants', 'CONSULTANT_DIRECTORY', 'Consultants here'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
+      templateKey: 'job-detail',
+      name: 'Job Detail',
+      pageFamily: 'Content',
+      description: 'Layout applied to every published job posting.',
+      sections: [
+        ['hero', 'HERO', 'Job hero'],
+        ['overview', 'RICH_TEXT', 'Role overview'],
+        ['related', 'RELATED_LINKS', 'Other openings'],
+      ],
+    },
+    {
+      templateKey: 'event-detail',
+      name: 'Event Detail',
+      pageFamily: 'Content',
+      description: 'Layout applied to every published event.',
+      sections: [
+        ['hero', 'HERO', 'Event hero'],
+        ['overview', 'RICH_TEXT', 'Event details'],
+        ['related', 'RELATED_LINKS', 'Other events'],
+      ],
+    },
+  ];
+
+  for (const template of pageTemplates) {
+    const defaultSectionsJson = template.sections.map(
+      ([sectionKey, sectionType, heading], index) => ({
+        sectionKey,
+        sectionType,
+        heading,
+        displayOrder: index,
+      }),
+    );
+    await prisma.pageTemplate.upsert({
+      where: { templateKey: template.templateKey },
+      update: {
+        name: template.name,
+        pageFamily: template.pageFamily,
+        description: template.description,
+        defaultSectionsJson,
+        isActive: true,
+      },
+      create: {
+        templateKey: template.templateKey,
+        name: template.name,
+        pageFamily: template.pageFamily,
+        description: template.description,
+        defaultSectionsJson,
+        isActive: true,
+      },
+    });
+  }
+
   const featureFlags = [
     ['PUBLIC_LOGIN', 'Public login', false],
     ['COMPARE_COUNTRIES', 'Compare countries', false],

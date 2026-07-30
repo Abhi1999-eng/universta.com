@@ -52,19 +52,34 @@ const GROUP_FIELDS: Record<string, { title: string; description: string; fields:
     ],
   },
   header: {
-    title: "Header",
-    description: "The primary call-to-action shown in the site header.",
+    title: "Global Header",
+    description:
+      "Applies to the header on every public page. Menu items themselves are ordered in Navigation menus.",
     fields: [
+      { key: "menuKey", label: "Navigation menu key", type: "text", placeholder: "header" },
       { key: "ctaLabel", label: "Primary CTA label", type: "text" },
       { key: "ctaUrl", label: "Primary CTA destination", type: "url" },
       { key: "ctaVisible", label: "Show the header CTA", type: "checkbox" },
+      { key: "sticky", label: "Keep the header visible while scrolling", type: "checkbox" },
+      { key: "announcementText", label: "Announcement bar text", type: "text" },
+      { key: "announcementUrl", label: "Announcement bar link (optional)", type: "url" },
+      { key: "announcementVisible", label: "Show the announcement bar", type: "checkbox" },
+      { key: "accountCtaLabel", label: "Account CTA label (optional)", type: "text" },
+      { key: "accountCtaUrl", label: "Account CTA destination (hidden until set)", type: "url" },
     ],
   },
   footer: {
-    title: "Footer",
-    description: "Footer copy and legal links.",
+    title: "Global Footer",
+    description:
+      "Applies to the footer on every public page. Footer link columns are ordered in Navigation menus.",
     fields: [
+      { key: "menuKey", label: "Navigation menu key", type: "text", placeholder: "footer" },
       { key: "description", label: "Footer description", type: "textarea" },
+      { key: "counsellingCtaLabel", label: "Counselling CTA label", type: "text" },
+      { key: "counsellingCtaUrl", label: "Counselling CTA destination", type: "url" },
+      { key: "counsellingCtaVisible", label: "Show the counselling CTA", type: "checkbox" },
+      { key: "showContact", label: "Show the contact column", type: "checkbox" },
+      { key: "showSocial", label: "Show social links", type: "checkbox" },
       { key: "copyrightText", label: "Copyright text", type: "text" },
       { key: "privacyUrl", label: "Privacy policy URL (optional)", type: "url" },
       { key: "termsUrl", label: "Terms URL (optional)", type: "url" },
@@ -209,7 +224,20 @@ function GroupForm({
   );
 }
 
-export function SettingsManager() {
+export function SettingsManager({
+  only,
+  eyebrow = "Global configuration",
+  title = "Settings",
+  intro = "Global platform configuration — every value here is served to the public site. Universities, Scholarships and Consultants have their own dedicated sections and are not managed here.",
+}: {
+  /** Render just these groups. Website Builder uses this for the focused
+   * Global Header and Global Footer screens, which read and write the very
+   * same settings rows as the full Settings page. */
+  only?: string[];
+  eyebrow?: string;
+  title?: string;
+  intro?: string;
+} = {}) {
   const [groups, setGroups] = useState<{ group: string; values: Record<string, unknown> }[]>([]);
   const [media, setMedia] = useState<MediaOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -243,18 +271,15 @@ export function SettingsManager() {
 
   return (
     <section className="mx-auto max-w-[1180px]">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Global configuration</p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Settings</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-        Global platform configuration — every value here is served to the public site. Universities, Scholarships
-        and Consultants have their own dedicated sections and are not managed here.
-      </p>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">{eyebrow}</p>
+      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">{intro}</p>
       {error ? <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">{error}</p> : null}
       {loading ? (
         <p className="mt-8 text-sm text-[#667085]">Loading…</p>
       ) : (
         <div className="mt-8 grid gap-6">
-          {GROUP_ORDER.map((group) => {
+          {(only ?? GROUP_ORDER).map((group) => {
             const row = groups.find((g) => g.group === group);
             if (!row) return null;
             return <GroupForm key={group} group={group} values={row.values} media={media} onSaved={onSaved} />;
