@@ -177,7 +177,8 @@ describe('Phase 1 Page CMS (e2e)', () => {
           ogTitle: 'CMS E2E Page — Open Graph title',
           ogDescription: 'Fictional OG description for the CMS e2e test.',
           twitterTitle: 'CMS E2E Page — Twitter title',
-          twitterDescription: 'Fictional Twitter description for the CMS e2e test.',
+          twitterDescription:
+            'Fictional Twitter description for the CMS e2e test.',
           robotsIndex: false,
           robotsFollow: true,
           schemaJson: { '@type': 'WebPage', name: 'CMS E2E Page' },

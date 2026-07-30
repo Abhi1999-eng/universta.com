@@ -269,35 +269,31 @@ describe('Super Admin authentication (e2e)', () => {
     expect(audit).toMatchObject({ module: 'AUTH', action: 'LOGOUT' });
   });
 
-  it(
-    'uses one generic login failure for unknown, invalid, inactive, deleted, and non-admin users',
-    async () => {
-      const cases = [
-        { email: 'missing-task002@example.invalid', password },
-        { email: testUsers[0].email, password: 'wrong-password' },
-        { email: testUsers[1].email, password },
-        { email: testUsers[2].email, password },
-        { email: testUsers[3].email, password },
-      ];
-      for (const testCase of cases) {
-        const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/auth/login')
-          .send(testCase)
-          .expect(401);
-        expect(errorOf(bodyOf(response))).toMatchObject({
-          code: 'INVALID_CREDENTIALS',
-          message: 'Invalid email or password',
-        });
-      }
-    },
-    // Five real bcrypt comparisons in sequence, deliberately CPU-heavy (that
-    // is what makes the generic-failure timing actually constant against
-    // user enumeration). The default 5s budget is fine in isolation but
-    // gets tight once the full e2e suite's parallel Jest workers are all
-    // doing their own bcrypt/NestJS-bootstrap work at the same time --
-    // widen the budget rather than weaken what the test checks.
-    15000,
-  );
+  // Five real bcrypt comparisons in sequence, deliberately CPU-heavy (that
+  // is what makes the generic-failure timing actually constant against
+  // user enumeration). The default 5s budget is fine in isolation but
+  // gets tight once the full e2e suite's parallel Jest workers are all
+  // doing their own bcrypt/NestJS-bootstrap work at the same time --
+  // widen the budget rather than weaken what the test checks.
+  it('uses one generic login failure for unknown, invalid, inactive, deleted, and non-admin users', async () => {
+    const cases = [
+      { email: 'missing-task002@example.invalid', password },
+      { email: testUsers[0].email, password: 'wrong-password' },
+      { email: testUsers[1].email, password },
+      { email: testUsers[2].email, password },
+      { email: testUsers[3].email, password },
+    ];
+    for (const testCase of cases) {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/admin/auth/login')
+        .send(testCase)
+        .expect(401);
+      expect(errorOf(bodyOf(response))).toMatchObject({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid email or password',
+      });
+    }
+  }, 15000);
 
   it('increments failed attempts, locks after the threshold, and resets after an expired lock', async () => {
     const user = testUsers[4];

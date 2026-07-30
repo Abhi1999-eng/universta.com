@@ -194,9 +194,10 @@ describe('Location hierarchy — states and cities (e2e)', () => {
       ogTitle: 'Discover Test City',
     });
 
-    const adminDetail = await admin('get', `/api/v1/admin/cities/${cityId}`).expect(
-      200,
-    );
+    const adminDetail = await admin(
+      'get',
+      `/api/v1/admin/cities/${cityId}`,
+    ).expect(200);
     expect((data(adminDetail).seo as RecordValue)?.seoTitle).toBe(
       'Test City | Universta',
     );

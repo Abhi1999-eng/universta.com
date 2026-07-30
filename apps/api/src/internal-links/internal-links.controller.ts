@@ -29,7 +29,10 @@ export class InternalLinksAdminController {
     @Query('entityType') entityType: string,
     @Query('entityId') entityId: string,
   ) {
-    return successEnvelope(req, await this.service.resolve(entityType, entityId));
+    return successEnvelope(
+      req,
+      await this.service.resolve(entityType, entityId),
+    );
   }
 }
 

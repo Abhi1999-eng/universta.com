@@ -1150,7 +1150,11 @@ export class ExpandedService {
       for (const [key, item] of Object.entries(
         value as Record<string, unknown>,
       )) {
-        if (key === 'html' || key === '__html' || key === 'dangerouslySetInnerHTML')
+        if (
+          key === 'html' ||
+          key === '__html' ||
+          key === 'dangerouslySetInnerHTML'
+        )
           continue;
         out[key] = ExpandedService.sanitizeSectionBody(item, depth + 1);
       }

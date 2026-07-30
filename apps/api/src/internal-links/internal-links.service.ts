@@ -21,17 +21,41 @@ interface EntityConfig {
  * Kept in one place so search/resolve/public-resolve all agree on what a
  * canonical URL and a "published" target actually mean per entity. */
 const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
-  country: { prefix: '/countries', titleField: 'name', publishedStatuses: ['PUBLISHED'] },
-  university: { prefix: '/universities', titleField: 'name', publishedStatuses: ['PUBLISHED'] },
-  scholarship: { prefix: '/scholarships', titleField: 'title', publishedStatuses: ['PUBLISHED'] },
+  country: {
+    prefix: '/countries',
+    titleField: 'name',
+    publishedStatuses: ['PUBLISHED'],
+  },
+  university: {
+    prefix: '/universities',
+    titleField: 'name',
+    publishedStatuses: ['PUBLISHED'],
+  },
+  scholarship: {
+    prefix: '/scholarships',
+    titleField: 'title',
+    publishedStatuses: ['PUBLISHED'],
+  },
   consultant: {
     prefix: '/study-abroad-consultants',
     titleField: 'name',
     publishedStatuses: ['PUBLISHED'],
   },
-  job: { prefix: '/careers', titleField: 'title', publishedStatuses: ['PUBLISHED'] },
-  event: { prefix: '/events', titleField: 'title', publishedStatuses: ['PUBLISHED'] },
-  course: { prefix: '/courses', titleField: 'name', publishedStatuses: ['PUBLISHED'] },
+  job: {
+    prefix: '/careers',
+    titleField: 'title',
+    publishedStatuses: ['PUBLISHED'],
+  },
+  event: {
+    prefix: '/events',
+    titleField: 'title',
+    publishedStatuses: ['PUBLISHED'],
+  },
+  course: {
+    prefix: '/courses',
+    titleField: 'name',
+    publishedStatuses: ['PUBLISHED'],
+  },
 };
 const ENTITY_TYPES = Object.keys(ENTITY_CONFIG) as EntityType[];
 
@@ -69,7 +93,8 @@ export class InternalLinksService {
     q: string,
     entityType?: string,
   ): Promise<InternalLinkCandidate[]> {
-    const types = entityType && isEntityType(entityType) ? [entityType] : ENTITY_TYPES;
+    const types =
+      entityType && isEntityType(entityType) ? [entityType] : ENTITY_TYPES;
     const results = await Promise.all(
       types.map((type) => this.searchOne(type, q)),
     );
@@ -82,13 +107,18 @@ export class InternalLinksService {
   ): Promise<InternalLinkCandidate[]> {
     const config = ENTITY_CONFIG[type];
     // Prisma's generated delegates are selected by a validated entity type.
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     const delegate = (this.prisma as any)[type];
     const rows = await delegate.findMany({
       where: {
         deletedAt: null,
         ...(q
-          ? { OR: [{ [config.titleField]: { contains: q } }, { slug: { contains: q } }] }
+          ? {
+              OR: [
+                { [config.titleField]: { contains: q } },
+                { slug: { contains: q } },
+              ],
+            }
           : {}),
       },
       select: { id: true, slug: true, status: true, [config.titleField]: true },
@@ -125,7 +155,7 @@ export class InternalLinksService {
         path: null,
       };
     const config = ENTITY_CONFIG[entityType];
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     const delegate = (this.prisma as any)[entityType];
     const row = await delegate.findFirst({
       where: { id: entityId, deletedAt: null },

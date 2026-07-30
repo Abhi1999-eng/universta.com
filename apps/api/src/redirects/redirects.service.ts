@@ -64,10 +64,7 @@ function notFound(): NotFoundException {
 
 function normalizePath(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim())
-    throw badRequest(
-      'REDIRECT_PATH_REQUIRED',
-      `${field} is required`,
-    );
+    throw badRequest('REDIRECT_PATH_REQUIRED', `${field} is required`);
   const trimmed = value.trim();
   if (!INTERNAL_PATH.test(trimmed))
     throw badRequest(

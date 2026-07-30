@@ -20,9 +20,11 @@ function data(response: { body: unknown }): RecordValue {
 }
 function errorCode(response: { body: unknown }): string {
   const value = body(response).error;
-  return value && typeof value === 'object'
-    ? String((value as RecordValue).code ?? '')
-    : '';
+  const code =
+    value && typeof value === 'object'
+      ? (value as RecordValue).code
+      : undefined;
+  return typeof code === 'string' ? code : '';
 }
 
 describe('Redirect management admin screen (e2e)', () => {
@@ -32,10 +34,7 @@ describe('Redirect management admin screen (e2e)', () => {
   const suffix = randomUUID().slice(0, 8);
   const createdIds: string[] = [];
 
-  const admin = (
-    method: 'get' | 'post' | 'patch' | 'delete',
-    path: string,
-  ) =>
+  const admin = (method: 'get' | 'post' | 'patch' | 'delete', path: string) =>
     request(app.getHttpServer())
       [method](path)
       .set('Authorization', `Bearer ${adminToken}`);
