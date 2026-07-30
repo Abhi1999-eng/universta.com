@@ -214,3 +214,97 @@ export class CitiesAdminController {
     return successEnvelope(req, await this.locations.saveCitySeo(id, body));
   }
 }
+
+@ApiTags('locations-admin')
+@ApiBearerAuth()
+@Controller('admin/consultant-locations')
+@UseGuards(AccessTokenGuard, RolesGuard)
+@Roles('SUPER_ADMIN')
+export class ConsultantLocationsAdminController {
+  constructor(private readonly locations: LocationsService) {}
+
+  @Get() async list(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: Record<string, string>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.locations.adminListConsultantLocations({
+        countryId: query.countryId,
+        q: query.q,
+      }),
+    );
+  }
+
+  @Get(':id') async detail(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      req,
+      await this.locations.adminDetailConsultantLocation(id),
+    );
+  }
+
+  @Post() async create(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.locations.createConsultantLocation({
+        countryId: body.countryId as string | null | undefined,
+        stateId: body.stateId as string | null | undefined,
+        cityId: body.cityId as string | null | undefined,
+        name: body.name as string,
+        slug: body.slug as string | undefined,
+        city: body.city as string,
+        state: body.state as string | null | undefined,
+        overview: body.overview as string | null | undefined,
+        status: body.status as string | undefined,
+      }),
+    );
+  }
+
+  @Patch(':id') async update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.locations.updateConsultantLocation(id, {
+        countryId: body.countryId as string | null | undefined,
+        stateId: body.stateId as string | null | undefined,
+        cityId: body.cityId as string | null | undefined,
+        name: body.name as string | undefined,
+        slug: body.slug as string | undefined,
+        city: body.city as string | undefined,
+        state: body.state as string | null | undefined,
+        overview: body.overview as string | null | undefined,
+        status: body.status as string | undefined,
+      }),
+    );
+  }
+
+  @Delete(':id') async archive(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      req,
+      await this.locations.archiveConsultantLocation(id),
+    );
+  }
+
+  @Put(':id/seo') async saveSeo(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.locations.saveConsultantLocationSeo(id, body),
+    );
+  }
+}

@@ -4,7 +4,10 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
+  Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +17,7 @@ import { Roles } from '../../auth/auth.decorators';
 import { RolesGuard } from '../../auth/roles.guard';
 import type { AuthenticatedRequest } from '../../auth/auth.types';
 import { successEnvelope } from '../../catalog/catalog.responses';
+import { CatalogLookupsService } from '../../catalog-lookups/catalog-lookups.service';
 import { CountryProfilesService } from './country-profiles.service';
 import {
   CostProfileDto,
@@ -212,10 +216,75 @@ export class AdminCountryProfilesController {
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class AdminIntakesController {
-  constructor(private readonly profiles: CountryProfilesService) {}
+  constructor(
+    private readonly profiles: CountryProfilesService,
+    private readonly lookups: CatalogLookupsService,
+  ) {}
 
   @Get()
-  async list(@Req() request: AuthenticatedRequest) {
+  async list(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: Record<string, string>,
+  ) {
+    if (query.q || query.status)
+      return successEnvelope(
+        request,
+        await this.lookups.adminListIntakes({
+          q: query.q,
+          status: query.status,
+        }),
+      );
     return successEnvelope(request, await this.profiles.activeIntakes());
+  }
+
+  @Get(':id')
+  async detail(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return successEnvelope(request, await this.lookups.adminDetailIntake(id));
+  }
+
+  @Post()
+  async create(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      request,
+      await this.lookups.createIntake({
+        name: body.name as string,
+        slug: body.slug as string | undefined,
+        monthNumber: body.monthNumber as number | null | undefined,
+        seasonName: body.seasonName as string | null | undefined,
+        shortLabel: body.shortLabel as string | null | undefined,
+        description: body.description as string | null | undefined,
+        status: body.status as string | undefined,
+        displayOrder: body.displayOrder as number | undefined,
+      }),
+    );
+  }
+
+  @Patch(':id')
+  async update(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      request,
+      await this.lookups.updateIntake(id, {
+        name: body.name as string | undefined,
+        slug: body.slug as string | undefined,
+        monthNumber: body.monthNumber as number | null | undefined,
+        seasonName: body.seasonName as string | null | undefined,
+        shortLabel: body.shortLabel as string | null | undefined,
+        description: body.description as string | null | undefined,
+        status: body.status as string | undefined,
+        displayOrder: body.displayOrder as number | undefined,
+      }),
+    );
+  }
+
+  @Delete(':id')
+  async archive(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return successEnvelope(request, await this.lookups.archiveIntake(id));
   }
 }

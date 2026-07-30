@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { CatalogLookupsModule } from '../catalog-lookups/catalog-lookups.module';
 import { AdminCountriesController } from './admin-countries.controller';
 import { CountriesController } from './countries.controller';
 import { CountriesService } from './countries.service';
@@ -15,7 +16,7 @@ import {
 import { CountryEditorialService } from './editorial/country-editorial.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CatalogLookupsModule],
   controllers: [
     AdminCountryProfilesController,
     AdminIntakesController,

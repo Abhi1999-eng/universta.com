@@ -757,7 +757,17 @@ export class ExpandedService {
         },
       },
     });
-    return location ?? this.notFound('consultant locations');
+    if (!location) return this.notFound('consultant locations');
+    const seo = await this.prisma.seoMetadata.findUnique({
+      where: {
+        ownerType_ownerId: {
+          ownerType: 'consultantLocation',
+          ownerId: location.id,
+        },
+      },
+      include: { ogMedia: true, twitterMedia: true },
+    });
+    return { ...location, seo };
   }
 
   async compare(
@@ -948,6 +958,7 @@ export class ExpandedService {
       const record = await this.prisma.page.findFirst({
         where: { id, deletedAt: null },
         include: {
+          template: true,
           sections: {
             where: { deletedAt: null },
             orderBy: { displayOrder: 'asc' },

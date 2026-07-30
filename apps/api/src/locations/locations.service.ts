@@ -453,4 +453,190 @@ export class LocationsService {
       data: { deletedAt: new Date(), status: 'ARCHIVED' },
     });
   }
+
+  // ---------- Admin: Consultant locations ----------
+  // ConsultantLocation had a real model and a public detail route (see
+  // ExpandedService#consultantLocation) but no admin CRUD of its own --
+  // it could only ever be seeded, never created or edited from the UI.
+
+  async adminListConsultantLocations(query: {
+    countryId?: string;
+    q?: string;
+  }) {
+    return this.prisma.consultantLocation.findMany({
+      where: {
+        deletedAt: null,
+        ...(query.countryId ? { countryId: query.countryId } : {}),
+        ...(query.q?.trim() ? { name: { contains: query.q.trim() } } : {}),
+      },
+      include: {
+        country: { select: { name: true, slug: true } },
+        stateRef: { select: { name: true, slug: true } },
+        cityRef: { select: { name: true, slug: true } },
+        _count: { select: { consultants: true } },
+      },
+      orderBy: [{ name: 'asc' }],
+    });
+  }
+
+  async adminDetailConsultantLocation(id: string) {
+    const location = await this.prisma.consultantLocation.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        country: { select: { id: true, name: true, slug: true } },
+        stateRef: { select: { id: true, name: true, slug: true } },
+        cityRef: { select: { id: true, name: true, slug: true } },
+      },
+    });
+    if (!location)
+      throw new NotFoundException({
+        code: 'CONSULTANT_LOCATION_NOT_FOUND',
+        message: 'Consultant location not found',
+        details: null,
+      });
+    const seo = await this.prisma.seoMetadata.findUnique({
+      where: {
+        ownerType_ownerId: { ownerType: 'consultantLocation', ownerId: id },
+      },
+      include: { ogMedia: true, twitterMedia: true },
+    });
+    return { ...location, seo };
+  }
+
+  async createConsultantLocation(body: {
+    countryId?: string | null;
+    stateId?: string | null;
+    cityId?: string | null;
+    name: string;
+    slug?: string;
+    city: string;
+    state?: string | null;
+    overview?: string | null;
+    status?: string;
+  }) {
+    const slug = body.slug?.trim() || slugify(body.name);
+    try {
+      return await this.prisma.consultantLocation.create({
+        data: {
+          countryId: body.countryId || null,
+          stateId: body.stateId || null,
+          cityId: body.cityId || null,
+          name: body.name.trim(),
+          slug,
+          city: body.city.trim(),
+          state: body.state || null,
+          overview: body.overview || null,
+          status: body.status ?? 'ACTIVE',
+        },
+      });
+    } catch (error) {
+      if (isUniqueConflict(error))
+        throw new ConflictException({
+          code: 'CONSULTANT_LOCATION_SLUG_TAKEN',
+          message: 'A consultant location with this slug already exists',
+          details: null,
+        });
+      throw error;
+    }
+  }
+
+  async updateConsultantLocation(
+    id: string,
+    body: {
+      countryId?: string | null;
+      stateId?: string | null;
+      cityId?: string | null;
+      name?: string;
+      slug?: string;
+      city?: string;
+      state?: string | null;
+      overview?: string | null;
+      status?: string;
+    },
+  ) {
+    await this.adminDetailConsultantLocation(id);
+    try {
+      return await this.prisma.consultantLocation.update({
+        where: { id },
+        data: {
+          ...(body.countryId !== undefined
+            ? { countryId: body.countryId || null }
+            : {}),
+          ...(body.stateId !== undefined
+            ? { stateId: body.stateId || null }
+            : {}),
+          ...(body.cityId !== undefined ? { cityId: body.cityId || null } : {}),
+          ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+          ...(body.slug !== undefined ? { slug: body.slug.trim() } : {}),
+          ...(body.city !== undefined ? { city: body.city.trim() } : {}),
+          ...(body.state !== undefined ? { state: body.state || null } : {}),
+          ...(body.overview !== undefined
+            ? { overview: body.overview || null }
+            : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+        },
+      });
+    } catch (error) {
+      if (isUniqueConflict(error))
+        throw new ConflictException({
+          code: 'CONSULTANT_LOCATION_SLUG_TAKEN',
+          message: 'A consultant location with this slug already exists',
+          details: null,
+        });
+      throw error;
+    }
+  }
+
+  async archiveConsultantLocation(id: string) {
+    await this.adminDetailConsultantLocation(id);
+    const mapped = await this.prisma.consultantLocationMap.count({
+      where: { locationId: id },
+    });
+    if (mapped > 0)
+      throw new ConflictException({
+        code: 'CONSULTANT_LOCATION_IN_USE',
+        message: `${mapped} consultant${mapped === 1 ? ' is' : 's are'} still linked to this location`,
+        details: null,
+      });
+    return this.prisma.consultantLocation.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
+  }
+
+  async saveConsultantLocationSeo(id: string, body: Record<string, unknown>) {
+    await this.adminDetailConsultantLocation(id);
+    const text = (value: unknown) =>
+      typeof value === 'string' && value.trim() ? value.trim() : undefined;
+    const seoTitle = text(body.seoTitle);
+    const metaDescription = text(body.metaDescription);
+    if (!seoTitle || !metaDescription)
+      throw new BadRequestException({
+        code: 'SEO_FIELDS_REQUIRED',
+        message: 'seoTitle and metaDescription are required',
+        details: null,
+      });
+    const shared = {
+      seoTitle,
+      metaDescription,
+      canonicalUrl: text(body.canonicalUrl),
+      focusKeyword: text(body.focusKeyword),
+      ogTitle: text(body.ogTitle),
+      ogDescription: text(body.ogDescription),
+      ogMediaId: text(body.ogMediaId),
+      twitterTitle: text(body.twitterTitle),
+      twitterDescription: text(body.twitterDescription),
+      twitterMediaId: text(body.twitterMediaId),
+      robotsIndex: body.robotsIndex !== false,
+      robotsFollow: body.robotsFollow !== false,
+    };
+    return this.prisma.seoMetadata.upsert({
+      where: {
+        ownerType_ownerId: { ownerType: 'consultantLocation', ownerId: id },
+      },
+      update: shared,
+      create: { ownerType: 'consultantLocation', ownerId: id, ...shared },
+      include: { ogMedia: true, twitterMedia: true },
+    });
+  }
 }

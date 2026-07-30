@@ -222,8 +222,19 @@ export function Phase1StructuredEditor({
         "metaDescription",
         "canonicalUrl",
         "focusKeyword",
+        "ogTitle",
+        "ogDescription",
+        "ogMediaId",
+        "twitterTitle",
+        "twitterDescription",
+        "twitterMediaId",
       ])
         next[key] = string(seo[key]);
+      next.robotsIndex = seo.robotsIndex === false ? "false" : "true";
+      next.robotsFollow = seo.robotsFollow === false ? "false" : "true";
+    } else {
+      next.robotsIndex = "true";
+      next.robotsFollow = "true";
     }
     next.deadline = next.deadline ? next.deadline.slice(0, 10) : "";
     next.publishedDate = next.publishedDate
@@ -450,6 +461,12 @@ export function Phase1StructuredEditor({
         metaDescription: values.metaDescription,
         canonicalUrl: values.canonicalUrl,
         focusKeyword: values.focusKeyword,
+        ogTitle: values.ogTitle,
+        ogDescription: values.ogDescription,
+        ogMediaId: values.ogMediaId || null,
+        twitterTitle: values.twitterTitle,
+        twitterDescription: values.twitterDescription,
+        twitterMediaId: values.twitterMediaId || null,
         robotsIndex: values.robotsIndex !== "false",
         robotsFollow: values.robotsFollow !== "false",
       },
@@ -622,7 +639,7 @@ export function Phase1StructuredEditor({
           media={options.media}
         />
       ) : null}
-      <SeoFields values={values} set={set} />
+      <SeoFields values={values} set={set} media={options.media} />
       <div className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-5">
         <label className="text-sm font-semibold">
           Publish state
@@ -1656,10 +1673,17 @@ function Repeater({
 function SeoFields({
   values,
   set,
+  media,
 }: {
   values: Record<string, string>;
   set: (key: string, value: string) => void;
+  media: Option[];
 }) {
+  const canonical = values.canonicalUrl ?? "";
+  const canonicalUnsafe =
+    canonical.trim() !== "" &&
+    !canonical.startsWith("/") &&
+    !/^https:\/\/[^/]*universta/i.test(canonical);
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
       <legend className="px-1 text-sm font-semibold">SEO</legend>
@@ -1674,17 +1698,81 @@ function SeoFields({
           value={values.metaDescription ?? ""}
           onChange={(value) => set("metaDescription", value)}
         />
-        <Field
-          label="Canonical URL"
-          value={values.canonicalUrl ?? ""}
-          onChange={(value) => set("canonicalUrl", value)}
-        />
+        <div>
+          <Field
+            label="Canonical URL"
+            value={canonical}
+            onChange={(value) => set("canonicalUrl", value)}
+          />
+          {canonicalUnsafe ? (
+            <p className="mt-1 text-xs font-semibold text-[#B42318]">
+              This points off-site. Use a site-relative path (starting with
+              &quot;/&quot;) unless an external canonical is intentional.
+            </p>
+          ) : null}
+        </div>
         <Field
           label="Focus keyword"
           value={values.focusKeyword ?? ""}
           onChange={(value) => set("focusKeyword", value)}
         />
       </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Open Graph title"
+          value={values.ogTitle ?? ""}
+          onChange={(value) => set("ogTitle", value)}
+        />
+        <Field
+          label="Open Graph description"
+          value={values.ogDescription ?? ""}
+          onChange={(value) => set("ogDescription", value)}
+        />
+        <Select
+          label="Open Graph image (Media Library)"
+          value={values.ogMediaId ?? ""}
+          onChange={(value) => set("ogMediaId", value)}
+          options={media}
+        />
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Twitter title"
+          value={values.twitterTitle ?? ""}
+          onChange={(value) => set("twitterTitle", value)}
+        />
+        <Field
+          label="Twitter description"
+          value={values.twitterDescription ?? ""}
+          onChange={(value) => set("twitterDescription", value)}
+        />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-6">
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={values.robotsIndex !== "false"}
+            onChange={(event) =>
+              set("robotsIndex", event.target.checked ? "true" : "false")
+            }
+          />
+          Allow search engines to index this page
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={values.robotsFollow !== "false"}
+            onChange={(event) =>
+              set("robotsFollow", event.target.checked ? "true" : "false")
+            }
+          />
+          Allow search engines to follow its links
+        </label>
+      </div>
+      <p className="mt-2 text-xs text-[#828B9B]">
+        Unpublished drafts are never indexable regardless of this setting —
+        it only takes effect once the record is Published.
+      </p>
     </fieldset>
   );
 }
