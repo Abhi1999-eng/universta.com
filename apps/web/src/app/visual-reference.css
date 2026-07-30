@@ -1583,6 +1583,7 @@ header.stuck{border-bottom-color:var(--line)}
 .city-row{display:flex;justify-content:space-between;font-size:12.5px;padding:7px 0;border-top:1px solid var(--line)}
 .city-row b{color:var(--ink);font-weight:600}
 .city-row span{color:var(--ink-3)}
+.city-b .go{display:inline-flex;align-items:center;gap:6px;margin-top:8px;color:var(--brand);font-weight:600;font-size:13.5px}
 
 /* 21 CAREERS */
 .careers{display:grid;grid-template-columns:1.1fr .9fr;gap:32px;align-items:start}

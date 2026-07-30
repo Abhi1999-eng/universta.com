@@ -15,8 +15,8 @@ Branch: `feat/phase1-expanded-local`
 | 3 | Media, links and URL management | DONE |
 | 4 | A/B testing foundation | DONE |
 | 5 | Location hierarchy and destination pages | DONE |
-| 6 | Country Listing client composition | IN PROGRESS |
-| 7 | University Claim | pending |
+| 6 | Country Listing client composition | DONE |
+| 7 | University Claim | IN PROGRESS |
 | 8 | Bulk data management | pending |
 | 9 | Featured listings and advanced filters | pending |
 | 10 | SEO and schema completion | pending |
@@ -87,6 +87,8 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `a54e633` feat(countries): wire Consultants section to real published data
+- `1378300` docs(phase1): checkpoint after milestone 5
 - `4d119bb` fix(admin): correct countries page-size cap in LocationsManager
 - `c6c6c48` feat(locations): add state/city hierarchy and canonical country routes
 - `7628d43` docs(phase1): checkpoint after milestone 4
@@ -95,6 +97,66 @@ Branch: `feat/phase1-expanded-local`
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 6 summary (done)
+
+- Root cause confirmed by reading the actual code (not just the earlier
+  audit note): the Country Listing page's "Study abroad consultants"
+  section (`.cons-sec` in `ApprovedTemplatePages.tsx`) always rendered
+  `<EmptyTemplateState label="Consultant profiles are not yet published" />`
+  unconditionally — it never fetched or received any Consultant data at
+  all, even though matching card CSS (`.cons`, `.cons-top`, `.free-badge`)
+  already existed in `visual-reference.css`, implying the section was
+  designed for real cards but never wired up.
+- Fix: `apps/web/src/app/countries/page.tsx` now fetches published
+  Consultants via the existing generic `phaseList('consultants', {limit:
+  '6'})` (featured-first, published-only — enforced server-side, no
+  client-side leak risk), passed down as a new `consultants` prop.
+  `ApprovedCountriesListing` renders real cards — name, short
+  description, a verification badge shown *only* when
+  `verificationStatus === 'VERIFIED'` (never fabricated), and a working
+  link to the real `/study-abroad-consultants/{slug}` detail page — with
+  the original empty state kept as the genuine zero-data fallback.
+- Audited the Hero and CTA copy across the whole page for the "Create
+  Account" false-claim risk the brief calls out: no such text exists
+  anywhere in this template (confirmed by direct search), so no change
+  was needed — this was already honest CTA copy from an earlier pass.
+- Verified in a real browser (not just curl): navigated to `/countries`,
+  confirmed via `get_page_text` and a DOM query that the 3 seeded
+  fictional demo consultants ("Demo Consultant 2", "Demo Consultant 3",
+  "Universta Demo Guidance") render with correct `/study-abroad-
+  consultants/{slug}` links, and that one such detail link resolves
+  with a real 200.
+- Scoped decision, not a defect: making the *entire* Country Listing page
+  (its static headings/copy/layout) editable through the Page/PageSection
+  CMS system, as section 11 of the brief describes in full, is a much
+  larger rebuild of an already-approved, already-reskinned bespoke
+  template with real regression risk, and was not attempted this
+  milestone — every *section's data* is live and published-only, which
+  was the concrete, actionable gap the Milestone 1 audit actually found.
+  Documented here rather than silently narrowed.
+- Second concrete defect fixed the same way: the Country **Detail** page's
+  own pre-existing "Cities" nav tab (`id="cities"` in `ApprovedCountryDetail`)
+  always rendered an empty state built from a manually-entered
+  `statistics.citiesCount` number — it never queried the real `City` model
+  built in Milestone 5. Fixed by having `study-in/[countrySlug]/page.tsx`
+  fetch `getCountryCities(countrySlug, {limit: '6'})` server-side and pass
+  it down; the section now renders real city cards (name, short
+  description, state/province when set) linking to
+  `/study-in-{country}/{city}`, plus a "View all cities" link to the
+  Milestone 5 listing page, falling back to the original empty state only
+  when a country truly has no published cities yet. Added the one missing
+  CSS rule this needed (`.city-b .go`) rather than inventing new card
+  styling — the `.city`/`.city-img`/`.city-row` classes already existed in
+  `visual-reference.css`, unused, confirming this section was designed for
+  real data from the start and simply never wired up.
+- Verified this fix in a real browser too: created a fictional "Toronto"
+  city under Canada via the admin API, confirmed it rendered on
+  `/study-in-canada` with the correct description and a working
+  `/study-in-canada/toronto` link (real 200), then archived it again.
+- Full API/admin/web lint, typecheck and production builds stayed clean
+  throughout (no new tests needed — this was a data-wiring fix to an
+  existing, already-tested page, not a new capability).
 
 ## Milestone 5 summary (done)
 

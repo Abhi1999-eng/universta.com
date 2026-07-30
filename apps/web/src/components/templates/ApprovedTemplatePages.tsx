@@ -31,6 +31,15 @@ type ConsultantDirectoryEntry = {
   isFeatured?: boolean;
 };
 
+type CityDirectoryEntry = {
+  id: string;
+  name?: string;
+  slug?: string;
+  shortDescription?: string | null;
+  isFeatured?: boolean;
+  state?: { name?: string; slug?: string } | null;
+};
+
 type IconName =
   | 'arrow'
   | 'book'
@@ -898,7 +907,7 @@ function CountrySection({
   );
 }
 
-export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
+export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage; cities?: CityDirectoryEntry[] }) {
   const { country, profiles, sections, faqs, consultantCards } = page;
   const work = profiles.work;
   const statistics = profiles.statistics;
@@ -1051,7 +1060,33 @@ export function ApprovedCountryDetail({ page }: { page: CountryPage }) {
         <div className="events"><EmptyTemplateState label="No events are currently published" /></div>
       </CountrySection>
       <CountrySection id="cities" eyebrow="Choose your base" title={`Popular cities in ${country.name}`} alternate>
-        <div className="cities"><EmptyTemplateState label={`${statistics?.citiesCount ?? 0} cities are recorded; city profiles are not yet published`} /></div>
+        {cities.length ? (
+          <>
+            <div className="cities">
+              {cities.map((city) => (
+                <article className="city" key={city.id}>
+                  <div className="city-img">
+                    <h3>{city.name ?? 'City'}</h3>
+                  </div>
+                  <div className="city-b">
+                    <p>{city.shortDescription ?? 'Published city profile.'}</p>
+                    {city.state?.name ? (
+                      <div className="city-row"><span>State/Province</span><b>{city.state.name}</b></div>
+                    ) : null}
+                    <Link className="go" href={`/study-in-${country.slug}/${city.slug ?? ''}`}>
+                      Explore {city.name} <Icon name="arrow" size={13} />
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="cta2-btns" style={{ marginTop: 20 }}>
+              <Link href={`/study-in-${country.slug}/cities`} className="btn btn-s btn-lg">View all cities</Link>
+            </div>
+          </>
+        ) : (
+          <div className="cities"><EmptyTemplateState label={`${statistics?.citiesCount ?? 0} cities are recorded; city profiles are not yet published`} /></div>
+        )}
       </CountrySection>
       <CountrySection id="living" eyebrow="Monthly planning" title="Living costs">
         <div className="living-grid">
