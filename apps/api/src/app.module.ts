@@ -25,6 +25,7 @@ import { ExperimentsModule } from './experiments/experiments.module';
 import { LocationsModule } from './locations/locations.module';
 import { UniversityClaimsModule } from './university-claims/university-claims.module';
 import { BulkModule } from './bulk/bulk.module';
+import { RedirectsModule } from './redirects/redirects.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { BulkModule } from './bulk/bulk.module';
     LocationsModule,
     UniversityClaimsModule,
     BulkModule,
+    RedirectsModule,
   ],
   controllers: [AppController],
   providers: [
