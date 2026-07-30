@@ -102,7 +102,7 @@ seeded data (not just a 200 status).
 | XLSX export | MISSING | Same. |
 | Bulk update | MISSING | Admin manager is single-record only, no multi-select. |
 | Bulk delete/archive | MISSING | Same. |
-| Featured listings | PARTIAL | `isFeatured` exists and sorts correctly for University/Scholarship/Consultant/Course; no `featuredPriority`/`featuredFrom`/`featuredUntil` windowing. |
+| Featured listings | PARTIAL (Milestone 9) | `featuredPriority`/`featuredFrom`/`featuredUntil` added to University/Offering/Scholarship/Consultant schemas; read-time effective-featured sort (expired windows stop counting) wired for University and Scholarship public listings only. Consultant/Offering have the fields (admin-settable via bulk/API) but still sort on the plain `isFeatured` boolean. Course/Job/Event out of scope — Job/Event have no `isFeatured` field at all. |
 | Internal linking (structured) | MISSING | Any cross-links in seeded content are hardcoded paths, not entity references. |
 | Custom URL / redirect management | MISSING | `Redirect` model exists in the schema; zero references to it anywhere outside the generated Prisma client. |
 
@@ -152,7 +152,8 @@ based filtering (blocked on section C).
 | --- | --- | --- |
 | Country | budget band, IELTS-optional, intake, visa success, PR pathway | Region/State/City (blocked on C) |
 | Course (generic) | subject, sub-subject, course level, study mode, intake, min tuition, scholarship-available, post-study-work-available | max tuition ceiling not present (min only) |
-| University | country, institution type, subject | City/State (blocked on C), tuition/intake (these belong on Offering per the client's own semantic guidance in section 18 — reasonable, not a gap) |
+| University | country, institution type, subject, city, state (Milestone 9 — matches against campus city/state text, since University has no direct City/State model relation) | — |
+| University Course Offering | tuitionMin, tuitionMax, courseLevel (Milestone 9) | — |
 | Scholarship | country, university, type, deadline | amount range, degree level |
 | Consultant | location, country, service, language, verified | — |
 
@@ -163,10 +164,15 @@ for University/Scholarship/Consultant.
 
 ## H. Featured listings (section 8.8)
 
-PARTIAL — boolean `isFeatured` works and affects sort order for University,
-Scholarship, Consultant, Course. No `featuredPriority`, no time-bounded
-featuring window, so "expired featured windows stop influencing sorting" is
-not applicable (nothing to expire).
+PARTIAL, updated Milestone 9 — `featuredPriority`/`featuredFrom`/
+`featuredUntil` added to University, UniversityCourseOffering, Scholarship,
+Consultant. Read-time effective-featured sort (an expired `featuredUntil`
+now genuinely stops a row from outranking active content, verified by a new
+e2e test) is wired for University and Scholarship public listings; Consultant
+and Offering keep the plain `isFeatured desc` sort for now (fields are
+admin-settable but not yet read at list time), scoped the same deliberate way
+as Milestone 8's bulk-resource subset. Course, Job, and Event were not
+touched — Job and Event have no `isFeatured` field in the schema at all.
 
 ## I. SEO / schema (sections 21, 10, 22)
 

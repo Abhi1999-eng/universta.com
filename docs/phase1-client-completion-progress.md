@@ -18,7 +18,7 @@ Branch: `feat/phase1-expanded-local`
 | 6 | Country Listing client composition | DONE |
 | 7 | University Claim | DONE |
 | 8 | Bulk data management | DONE (7 of ~13 modules — see summary) |
-| 9 | Featured listings and advanced filters | IN PROGRESS |
+| 9 | Featured listings and advanced filters | DONE (scoped — see summary) |
 | 10 | SEO and schema completion | pending |
 | 11 | Full integration and defect fixing | pending |
 | 12 | Final Phase 1 acceptance | pending |
@@ -87,6 +87,7 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `68e3fba` feat(catalog): add featured-window scheduling and location/tuition filters
 - `892a9be` feat(admin): add Bulk data admin UI
 - `61eab27` feat(admin): add safe catalog bulk operations engine (API)
 - `c89312f` docs(phase1): checkpoint after milestone 7
@@ -102,6 +103,64 @@ Branch: `feat/phase1-expanded-local`
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 9 summary (done — scoped subset)
+
+- Migration `20260730083831_add_featured_windows` adds `featuredPriority`
+  (`Int @default(0)`), `featuredFrom`/`featuredUntil` (`DateTime?`) to
+  University, UniversityCourseOffering, Scholarship, and Consultant —
+  purely additive. Job and Event were **not** touched: neither model has
+  an `isFeatured` field at all in this schema, so there is no existing
+  boolean to extend into a window; adding one from scratch was scoped out.
+- Read-time "effective featured" sort (mirrors the existing
+  `effectivePublicationWhere()` read-time-gate pattern from Milestone 2,
+  just for a boolean instead of a status): a row only counts as featured
+  if `isFeatured` is true AND `now` falls inside the optional
+  `[featuredFrom, featuredUntil)` window. Prisma can't express that as a
+  DB-level `ORDER BY` without raw SQL, so `expanded.service.ts` fetches up
+  to `FEATURED_FETCH_CAP` (500) matching rows, sorts in JS by
+  `[effectiveFeatured desc, featuredPriority asc, displayOrder asc, name/title asc]`
+  (Scholarship additionally tiebreaks on `deadline` before displayOrder,
+  preserving its prior "soonest deadline first" behavior), then slices in
+  JS for the requested page. 500 is far above any real per-resource count
+  in this local/demo dataset.
+- **Scoped deliberately to University and Scholarship only** — the two
+  most-browsed public listings. Consultant and UniversityCourseOffering
+  got the schema fields and are admin-settable (structured editor for
+  University/Scholarship; API/bulk for the others), but their public list
+  queries still sort on the plain `isFeatured desc` boolean, matching the
+  same "scoped subset, honestly documented" call made in Milestone 8.
+- New filters, both server-side query params validated against real Prisma
+  `where` clauses: `city`/`state` on the `universities` list (matched
+  against `UniversityCampus.city`/`.state` free text — University has no
+  direct FK to the Milestone 5 City/State models, only its campuses do),
+  and `tuitionMin`/`tuitionMax`/`courseLevel` on the
+  `universities/:slug/courses` listing (course level matched by
+  `CourseLevel.code`; tuition matched as a range overlap so a null bound
+  on either side of a row doesn't wrongly exclude it).
+- Admin: `Phase1StructuredEditor.tsx` gained a shared "Featured placement"
+  fieldset (checkbox + priority number + two `datetime-local` inputs),
+  rendered for University and Scholarship only. `expanded.service.ts`'s
+  per-resource field allow-list (`writeData()`) now accepts `isFeatured`/
+  `featuredPriority`/`featuredFrom`/`featuredUntil` for those two
+  resources — previously `isFeatured` itself wasn't admin-writable for
+  *any* resource through this path, a pre-existing gap this milestone
+  also closed for University/Scholarship specifically.
+- 3 new e2e tests (`featured-listings.e2e-spec.ts`): an expired featured
+  window is confirmed to rank behind an actively-featured row (and
+  `featuredPriority` breaks ties among actively-featured rows); city/state
+  campus filters match/exclude correctly; tuition-range and course-level
+  filters on offerings match/exclude correctly. Full regression after:
+  140 API e2e + 44 API unit, admin build, all green.
+- Real browser verification: logged into the local admin UI, opened
+  "Ember Demo Institute" (a pre-existing fictional seed university),
+  checked Featured + set priority 1 through the new UI, saved, confirmed
+  it re-sorted to the top of both the admin list and the public
+  `/universities` page, then reverted it back to unfeatured (direct SQL,
+  since the admin UI's editor state got into a stale-ref condition
+  mid-revert-attempt in the browser-automation tool — not a product bug,
+  just a browser-automation hiccup) and re-confirmed the public page
+  returned to its normal alphabetical order.
 
 ## Milestone 8 summary (done — scoped subset)
 
@@ -403,11 +462,8 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 9 — Featured listings and advanced filters: `featuredPriority`/
-`featuredFrom`/`featuredUntil` time-windowed featured ordering (currently
-only a plain `isFeatured` boolean exists on most models) across
-Universities, Courses/Offerings, Scholarships, Consultants, Jobs, Events;
-City/State-based location filters on the University/Consultant/Event/Job
-listings now that the Milestone 5 location hierarchy exists; tuition-range
-and Degree-Level filter completeness on University Course Offerings;
-stable URL query state, dependent filters, and mobile filter UI.
+Milestone 10 — SEO and schema completion: JSON-LD structured data for
+Course/Event/JobPosting/FAQPage/Organization, a sitemap completeness audit
+against everything now live (Countries, Cities, Universities, Scholarships,
+Consultants, Jobs, Events, success stories, testimonials), legacy-redirect
+verification, and `noindex` on comparison-combination routes.
