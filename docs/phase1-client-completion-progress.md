@@ -19,7 +19,7 @@ Branch: `feat/phase1-expanded-local`
 | 7 | University Claim | DONE |
 | 8 | Bulk data management | DONE (7 of ~13 modules — see summary) |
 | 9 | Featured listings and advanced filters | DONE (scoped — see summary) |
-| 10 | SEO and schema completion | pending |
+| 10 | SEO and schema completion | DONE (scoped — see summary) |
 | 11 | Full integration and defect fixing | pending |
 | 12 | Final Phase 1 acceptance | pending |
 
@@ -87,6 +87,8 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `e277919` feat(seo): add JobPosting/Event/FAQPage/Organization JSON-LD and fix SeoMetadata plumbing
+- `36ae4b0` docs(phase1): checkpoint after milestone 9
 - `68e3fba` feat(catalog): add featured-window scheduling and location/tuition filters
 - `892a9be` feat(admin): add Bulk data admin UI
 - `61eab27` feat(admin): add safe catalog bulk operations engine (API)
@@ -103,6 +105,69 @@ Branch: `feat/phase1-expanded-local`
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 10 summary (done — scoped subset)
+
+- **Real gap found and fixed, bigger than the JSON-LD work**: the public
+  `detail()` path in `expanded.service.ts` for universities, offerings,
+  scholarships, consultants, jobs, and events never attached `SeoMetadata`
+  to the response at all — `withSeo()` already existed but was only ever
+  called from `adminDetail()`. Separately, the web app's
+  `phaseOneMetadata()` helper (used by all six of those resources' pages)
+  never read a record's `.seo` field even when the API did send it, and
+  hardcoded `robots: {index:true, follow:true}` unconditionally. Fixed
+  both: `detail()`/`universityDetail()`/the offerings single-record branch
+  now call `withSeo()`, and `phaseOneMetadata()` now prefers
+  `seo.seoTitle`/`seo.metaDescription`/`seo.canonicalUrl`/
+  `seo.robotsIndex`/`seo.robotsFollow` over the record's own fields. Course,
+  Subject, and Country pages were already correct before this milestone —
+  only these six were silently broken.
+- JSON-LD added: `JobPosting` (`careers/[slug]/page.tsx`, employmentType/
+  jobLocation/jobLocationType mapped from the real Job model fields),
+  `Event` (`events/[slug]/page.tsx`, attendance mode and location shape
+  branch on `eventType` — Place for OFFLINE, VirtualLocation for ONLINE, an
+  array of both for HYBRID), `FAQPage` (Country detail only, built from the
+  real `CountryFaq` question/answer rows already rendered on the page —
+  deliberately **not** added to the generic `/faq` CMS page since its
+  content is free-form `heading`/`subheading` text, not genuine Q&A pairs;
+  checked the actual seeded content first and confirmed this), and
+  site-wide `Organization` (root `layout.tsx`). Course (`Course` schema)
+  and Country (`Place` schema) JSON-LD already existed from earlier work.
+  New `apps/web/src/lib/json-ld.ts` centralizes the `<script>`-breakout
+  escape (`<` → `<`) that 3 pre-existing inline JSON-LD call sites
+  already did ad hoc, so future additions can't forget it.
+- Sitemap: added Subject and Course detail URLs (previously entirely
+  absent). Removed two dead `/success-stories/{slug}` entries — no
+  `success-stories/[slug]` route exists in this app (confirmed via `find`
+  and via the listing page never linking anywhere), so every crawler
+  hitting those URLs got a 404; success-stories and testimonials are
+  listing-only by design. University Course Offerings (nested under a
+  university, a third level of URL depth) were deliberately left out of
+  the sitemap rather than built — same "scoped subset, documented, not
+  silently dropped" pattern as Milestones 8 and 9.
+- Compare-route `noindex` and legacy redirect verification: both already
+  correct from earlier milestones (all 4 `/compare/*` pages already had a
+  static `robots: {index:false}`; the `Redirect` model + `resolveRedirect()`
+  mechanism from Milestone 3 is exercised by the existing full e2e suite).
+  No code changes needed for either — confirmed, not re-built.
+- New `apps/api/test/seo-metadata.e2e-spec.ts` (2 tests): admin-configured
+  `seo` on a job round-trips through the public detail endpoint including
+  `robotsIndex:false`; a job with no configured SEO returns `seo: null`
+  rather than throwing. Extended `phase1-metadata.test.ts` with a test that
+  admin-configured SeoMetadata overrides the record's own title/description.
+  Full regression: 142 API e2e + 44 API unit + 8 web unit, all clean
+  lints/builds (api, web).
+- Real browser verification: confirmed JSON-LD renders correctly for a job
+  (`JobPosting` + `Organization`), an event (`Event` + `Organization`), and
+  Canada's country page (`Place` + `FAQPage` with its one real seeded FAQ +
+  `Organization`) by reading `document.querySelectorAll('script[type=
+  "application/ld+json"]')` in the browser console. Confirmed the
+  SeoMetadata fix end-to-end: set a custom SEO title/description/
+  `robotsIndex:false` on a real seeded job via the admin API, reloaded the
+  public page, saw the browser tab title and `<meta name="robots">`
+  actually change to the configured values, then removed the override.
+  Confirmed the fixed sitemap: `/sitemap.xml` now lists Subject/Course
+  detail URLs and no longer lists any `/success-stories/*` URL.
 
 ## Milestone 9 summary (done — scoped subset)
 
@@ -462,8 +527,8 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 10 — SEO and schema completion: JSON-LD structured data for
-Course/Event/JobPosting/FAQPage/Organization, a sitemap completeness audit
-against everything now live (Countries, Cities, Universities, Scholarships,
-Consultants, Jobs, Events, success stories, testimonials), legacy-redirect
-verification, and `noindex` on comparison-combination routes.
+Milestone 11 — Full integration and defect fixing: exercise every feature
+built across Milestones 2–10 together (not in isolation), look for
+cross-feature interaction bugs, re-run the full automated suite plus a
+broad manual pass, and fix whatever surfaces before moving to the final
+Milestone 12 acceptance checklist.

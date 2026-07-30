@@ -176,16 +176,38 @@ touched — Job and Event have no `isFeatured` field in the schema at all.
 
 ## I. SEO / schema (sections 21, 10, 22)
 
-- Sitemap: exists, but only lists 6 of ~11 dynamic resource types and **does
-  not include individual Country pages at all** — a real gap independent of
-  the URL-rename question.
-- Robots: exists, disallows `/api/` and `/compare/` (comparison pages
-  correctly excluded from indexing at the crawl level; canonical/`noindex`
-  meta tags on those pages were not yet verified this pass).
-- JSON-LD: present on Country detail only (`Place` schema). No Course,
-  JobPosting, Event, FAQPage, or Organization schema found anywhere.
-- Country canonical route does not match the client's `/study-in-{slug}`
-  example (see section J) — this is the biggest concrete SEO gap.
+**Updated Milestone 10.**
+
+- Sitemap: now also includes Country pages (added Milestone 5) plus, new
+  this pass, individual Subject and Course detail pages. Two dead
+  `/success-stories/{slug}` entries (no such route exists — 404 on every
+  crawl) were removed; success-stories and testimonials are listing-only by
+  design, confirmed by the absence of any link to a detail page anywhere in
+  their listing templates. University Course Offerings (a third level of
+  nesting under a university) are still not in the sitemap — scoped out as
+  a deliberate simplification, documented rather than silently dropped.
+- Robots: unchanged — `/api/` and all 4 `/compare/*` pages already had a
+  static `robots: {index:false, follow:true}` metadata export before this
+  milestone; confirmed correct, no code change needed.
+- JSON-LD: Course (`Course`, via the editorial course service) and Country
+  (`Place`) already existed. Added this milestone: `JobPosting` (careers
+  detail), `Event` (events detail, with `VirtualLocation`/`Place`/mixed
+  location depending on `eventType`), `FAQPage` (Country detail — real
+  question/answer pairs from the `CountryFaq` model; deliberately **not**
+  added to the generic `/faq` CMS page since its `PageSection` content is
+  free-form heading/subheading text, not genuine Q&A pairs, and misusing
+  FAQPage markup on non-Q&A content risks a Google rich-results violation),
+  and `Organization` (site-wide, in the root layout).
+- A second, larger gap found and fixed this milestone: the public detail
+  endpoints for University/Offering/Scholarship/Consultant/Job/Event never
+  attached `SeoMetadata` at all (`withSeo()` existed but was only called
+  from `adminDetail()`); the web app's `phaseOneMetadata()` helper also
+  never read a record's `.seo` field even when present. Both are fixed —
+  admin-configured SEO title/description/canonical/robots now actually
+  reach these six resources' live `<title>`/meta tags/JSON-LD, verified by
+  a new e2e test and by hand in a real browser (title, robots meta tag).
+- Country canonical route already matches the client's `/study-in-{slug}`
+  example (fixed in Milestone 5, see section J).
 
 ## J. Country/City SEO routes (section 10)
 
