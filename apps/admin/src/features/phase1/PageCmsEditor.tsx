@@ -37,7 +37,16 @@ type Section = {
   displayOrder: number;
   startsAt?: string | null;
   endsAt?: string | null;
+  configurationJson?: { visibility?: SectionVisibility } | null;
 };
+/** Per-device visibility. Absent means visible everywhere, so sections created
+ * before this feature keep rendering unchanged. */
+type SectionVisibility = { desktop?: boolean; tablet?: boolean; mobile?: boolean };
+const DEVICES: Array<{ key: keyof SectionVisibility; label: string }> = [
+  { key: "desktop", label: "Show on Desktop" },
+  { key: "tablet", label: "Show on Tablet" },
+  { key: "mobile", label: "Show on Mobile" },
+];
 type Seo = {
   seoTitle?: string | null;
   metaDescription?: string | null;
@@ -566,6 +575,56 @@ function SectionCard({
           </>
         ) : null}
       </div>
+
+      <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
+        <legend className="px-1 text-sm font-semibold">Device visibility</legend>
+        <p className="mb-3 text-xs text-[#667085]">
+          Hidden sections are removed at that screen size and leave no empty
+          space. A section must stay visible on at least one device.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          {DEVICES.map((device) => {
+            const visibility = section.configurationJson?.visibility ?? {};
+            const checked = visibility[device.key] !== false;
+            return (
+              <label key={device.key} className="flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => {
+                    const next: SectionVisibility = {
+                      desktop: visibility.desktop !== false,
+                      tablet: visibility.tablet !== false,
+                      mobile: visibility.mobile !== false,
+                      [device.key]: event.target.checked,
+                    };
+                    onChange({
+                      configurationJson: {
+                        ...(section.configurationJson ?? {}),
+                        visibility: next,
+                      },
+                    });
+                  }}
+                />
+                {device.label}
+              </label>
+            );
+          })}
+        </div>
+        {(() => {
+          const visibility = section.configurationJson?.visibility ?? {};
+          const hiddenEverywhere =
+            visibility.desktop === false &&
+            visibility.tablet === false &&
+            visibility.mobile === false;
+          return hiddenEverywhere ? (
+            <p role="alert" className="mt-3 rounded-lg bg-[#FEF3F2] px-3 py-2 text-sm font-semibold text-[#B42318]">
+              This section is hidden on every device and will never appear. Re-enable one, or archive the section instead.
+            </p>
+          ) : null;
+        })()}
+      </fieldset>
+
       <div className="mt-4">
         <SectionBodyFields
           sectionType={section.sectionType}
@@ -847,6 +906,7 @@ export function PageCmsEditor({
             mediaId: section.mediaId || null,
             bodyJson: section.bodyJson ?? null,
             status: section.status,
+            visibility: section.configurationJson?.visibility ?? undefined,
           }),
         });
       }
@@ -866,6 +926,7 @@ export function PageCmsEditor({
             status: section.status,
             startsAt: section.startsAt ?? null,
             endsAt: section.endsAt ?? null,
+            visibility: section.configurationJson?.visibility ?? undefined,
           }),
         });
       }

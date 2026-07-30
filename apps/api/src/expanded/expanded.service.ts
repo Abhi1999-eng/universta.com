@@ -1327,7 +1327,7 @@ export class ExpandedService {
     return `${base}-${randomUUID().slice(0, 6)}`;
   }
 
-  private sectionWriteData(body: Data) {
+  private sectionWriteData(body: Data, existingConfig?: unknown) {
     const sectionType = this.optionalText(body.sectionType);
     if (
       sectionType &&
@@ -1360,6 +1360,33 @@ export class ExpandedService {
       data.bodyJson = ExpandedService.sanitizeSectionBody(body.bodyJson);
     if (body.configurationJson !== undefined)
       data.configurationJson = body.configurationJson;
+    // Per-device visibility. Stored inside the existing configurationJson
+    // column (no migration) but written through a validated, structured shape
+    // so the admin never edits raw JSON. Anything already stored in
+    // configurationJson is preserved.
+    if (body.visibility !== undefined) {
+      const requested = (body.visibility ?? {}) as Record<string, unknown>;
+      const flag = (key: string) => requested[key] !== false;
+      const visibility = {
+        desktop: flag('desktop'),
+        tablet: flag('tablet'),
+        mobile: flag('mobile'),
+      };
+      if (!visibility.desktop && !visibility.tablet && !visibility.mobile)
+        throw new BadRequestException({
+          code: 'SECTION_HIDDEN_EVERYWHERE',
+          message:
+            'A section must stay visible on at least one device. Archive or remove it instead of hiding it everywhere.',
+          details: null,
+        });
+      // Merge over whatever the row already stores so writing visibility
+      // alone cannot discard unrelated configuration.
+      const base =
+        (data.configurationJson as Record<string, unknown> | undefined) ??
+        (existingConfig as Record<string, unknown> | null | undefined) ??
+        {};
+      data.configurationJson = { ...base, visibility };
+    }
     if (body.startsAt !== undefined)
       data.startsAt = this.dateValue(body.startsAt) ?? null;
     if (body.endsAt !== undefined)
@@ -1397,7 +1424,7 @@ export class ExpandedService {
     if (!section) this.notFound('page section');
     return this.prisma.pageSection.update({
       where: { id: sectionId },
-      data: this.sectionWriteData(body),
+      data: this.sectionWriteData(body, section.configurationJson),
     });
   }
 

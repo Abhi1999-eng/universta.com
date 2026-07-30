@@ -198,6 +198,29 @@ function Directory({ items }: { items: DirectoryItem[] }) {
   );
 }
 
+
+/** Admin-configured per-device visibility, stored on the section's
+ * configurationJson. Absent configuration means visible everywhere, so
+ * sections that pre-date this feature keep rendering unchanged.
+ *
+ * Hiding is done with `display:none` at the matching breakpoint rather than by
+ * omitting the markup, so a single server-rendered HTML payload is correct at
+ * every viewport (no hydration mismatch, no per-device caching) and a hidden
+ * section leaves no empty spacing behind. */
+export function visibilityClass(section: AnyRecord): string {
+  const config = section.configurationJson as
+    | { visibility?: { desktop?: boolean; tablet?: boolean; mobile?: boolean } }
+    | null
+    | undefined;
+  const visibility = config?.visibility;
+  if (!visibility) return '';
+  const classes: string[] = [];
+  if (visibility.desktop === false) classes.push('usta-hide-desktop');
+  if (visibility.tablet === false) classes.push('usta-hide-tablet');
+  if (visibility.mobile === false) classes.push('usta-hide-mobile');
+  return classes.length ? ` ${classes.join(' ')}` : '';
+}
+
 export async function PageSectionRenderer({ section }: { section: AnyRecord }) {
   const type = section.sectionType || "CUSTOM";
   const b = body(section);
@@ -269,7 +292,7 @@ export async function PageSectionRenderer({ section }: { section: AnyRecord }) {
 
   return (
     <article
-      className={`editorial-section section-type-${type.toLowerCase()}`}
+      className={`editorial-section section-type-${type.toLowerCase()}${visibilityClass(section)}`}
       key={section.id}
     >
       <p className="eyebrow">{eyebrow}</p>

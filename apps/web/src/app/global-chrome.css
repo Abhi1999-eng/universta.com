@@ -616,3 +616,29 @@ a.usta-drawer-head.is-active {
     transform: translateX(0);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Per-section responsive visibility (Website Builder → section settings).
+ *
+ * `display:none` removes the box entirely, so a hidden section leaves no empty
+ * spacing and its headings/links are out of the accessibility tree and tab
+ * order at that breakpoint. The same server-rendered HTML is emitted for every
+ * device, so hydration stays stable and crawlers still receive the full page.
+ * Breakpoints match the builder's preview sizes: mobile < 768, tablet
+ * 768-1199, desktop >= 1200.
+ * ------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .usta-hide-mobile {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .usta-hide-tablet {
+    display: none !important;
+  }
+}
+@media (min-width: 1200px) {
+  .usta-hide-desktop {
+    display: none !important;
+  }
+}

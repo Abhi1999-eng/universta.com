@@ -58,6 +58,10 @@ export type AnyRecord = {
   eyebrow?: string;
   heading?: string;
   sectionKey?: string;
+  /** Section settings such as per-device visibility (Website Builder). */
+  configurationJson?: {
+    visibility?: { desktop?: boolean; tablet?: boolean; mobile?: boolean };
+  } | null;
   sectionType?: string;
   media?: { publicUrl?: string; url?: string; altText?: string; title?: string } | null;
   ctaPrimaryUrl?: string;
