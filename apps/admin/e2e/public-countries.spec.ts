@@ -174,7 +174,14 @@ test.describe('approved public country experience', () => {
   test('publishes JSON-LD and source-aware footer copy on country detail pages', async ({ page }) => {
     await page.goto(`${listing}/canada`);
 
-    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
+    // Place (this page) + site-wide Organization (root layout) always render;
+    // FAQPage renders too whenever the country has at least one real FAQ.
+    const scripts = page.locator('script[type="application/ld+json"]');
+    await expect(scripts).toHaveCount(3);
+    const types = await scripts.evaluateAll((nodes) =>
+      nodes.map((node) => (JSON.parse(node.textContent ?? '{}') as { '@type'?: string })['@type']),
+    );
+    expect(types.sort()).toEqual(['FAQPage', 'Organization', 'Place']);
     await expect(page.getByText(/Information is editorial and may vary/)).toBeVisible();
     await expect(page.getByText(/published sources? shown above/)).toBeVisible();
   });

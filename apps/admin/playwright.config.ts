@@ -1,16 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
+import { adminBaseUrl, apiBaseUrl, webBaseUrl } from './e2e/helpers/e2e-urls';
 
 const e2eEmail = process.env.E2E_ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL;
 const e2ePassword = process.env.E2E_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
-const apiPort = process.env.E2E_API_PORT ?? '4000';
-const adminPort = process.env.E2E_ADMIN_PORT ?? '3001';
-const webPort = process.env.E2E_WEB_PORT ?? '3000';
-const apiBaseUrl =
-  process.env.E2E_API_BASE_URL ?? `http://127.0.0.1:${apiPort}`;
-const adminBaseUrl =
-  process.env.E2E_ADMIN_BASE_URL ?? `http://localhost:${adminPort}`;
-const webBaseUrl =
-  process.env.E2E_WEB_BASE_URL ?? `http://localhost:${webPort}`;
+// Ports for the webServer launch commands are derived from the same
+// *_BASE_URL values the spec files themselves navigate to (via
+// e2e/helpers/e2e-urls.ts) — this used to be a second, independent set of
+// *_PORT env vars, which silently drifted from the URLs the tests actually
+// used whenever only the *_PORT vars were set, making every non-default-port
+// run 404/origin-reject against the wrong (often a sibling checkout's) app.
+const apiPort = new URL(apiBaseUrl).port || '4000';
+const adminPort = new URL(adminBaseUrl).port || '3001';
+const webPort = new URL(webBaseUrl).port || '3000';
 
 if (!e2eEmail || !e2ePassword) {
   throw new Error('E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are required for browser tests');
@@ -55,7 +56,11 @@ export default defineConfig({
       url: `${webBaseUrl}/countries`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { API_BASE_URL: apiBaseUrl },
+      env: {
+        API_BASE_URL: apiBaseUrl,
+        NEXT_PUBLIC_WEB_ORIGIN: webBaseUrl,
+        NEXT_PUBLIC_SITE_URL: webBaseUrl,
+      },
     },
   ],
 });
