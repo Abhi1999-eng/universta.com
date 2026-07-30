@@ -576,7 +576,14 @@ export function Phase1StructuredEditor({
         />
       ) : null}
       {resource === "jobs" ? (
-        <JobFields values={values} set={set} errors={errors} />
+        <JobFields
+          values={values}
+          set={set}
+          errors={errors}
+          cities={options.cities}
+          states={options.states}
+          countries={options.countries}
+        />
       ) : null}
       {resource === "events" ? (
         <EventFields
@@ -585,6 +592,9 @@ export function Phase1StructuredEditor({
           errors={errors}
           tags={tags}
           media={options.media}
+          cities={options.cities}
+          states={options.states}
+          countries={options.countries}
           setTags={setTags}
           tagDraft={tagDraft}
           setTagDraft={setTagDraft}
@@ -713,7 +723,7 @@ function Select({
         aria-describedby={error ? errorId : undefined}
       >
         <option value="">Select {label.toLowerCase()}</option>
-        {options.map((option) => (
+        {(options ?? []).map((option) => (
           <option key={option.id} value={option.id}>
             {labelOf(option)}
           </option>
