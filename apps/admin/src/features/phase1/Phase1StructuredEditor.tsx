@@ -30,6 +30,8 @@ type Options = {
   providers: Option[];
   media: Option[];
   campuses: Option[];
+  states: Option[];
+  cities: Option[];
 };
 type Row = Record<string, unknown> & { id?: string };
 type Props = {
@@ -63,6 +65,8 @@ const emptyOptions: Options = {
   providers: [],
   media: [],
   campuses: [],
+  states: [],
+  cities: [],
 };
 
 function label(option: Option) {
@@ -204,6 +208,10 @@ export function Phase1StructuredEditor({
       "featuredPriority",
       "featuredFrom",
       "featuredUntil",
+      "publishStartsAt",
+      "publishEndsAt",
+      "cityId",
+      "stateId",
     ])
       next[key] = string(record[key]);
     next.isFeatured = record.isFeatured ? "true" : "false";
@@ -228,6 +236,12 @@ export function Phase1StructuredEditor({
       ? next.featuredUntil.slice(0, 16)
       : "";
     next.endsAt = next.endsAt ? next.endsAt.slice(0, 16) : "";
+    next.publishStartsAt = next.publishStartsAt
+      ? next.publishStartsAt.slice(0, 16)
+      : "";
+    next.publishEndsAt = next.publishEndsAt
+      ? next.publishEndsAt.slice(0, 16)
+      : "";
     if (Array.isArray(record.intakes))
       for (const item of record.intakes) {
         const intake = item as Row;
@@ -390,7 +404,14 @@ export function Phase1StructuredEditor({
     const payload: Record<string, unknown> = {
       ...values,
       displayOrder: Number(values.displayOrder || 0),
-      ...(resource === "universities" || resource === "scholarships"
+      ...([
+        "universities",
+        "offerings",
+        "scholarships",
+        "consultants",
+        "jobs",
+        "events",
+      ].includes(resource)
         ? {
             isFeatured: values.isFeatured === "true",
             featuredPriority: Number(values.featuredPriority || 0),
@@ -876,6 +897,31 @@ function FeaturedFields(p: any) {
     </fieldset>
   );
 }
+function ScheduledPublishingFields(p: any) {
+  return (
+    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+      <legend className="px-1 text-sm font-semibold">Scheduled publishing</legend>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Publish from (optional)"
+          type="datetime-local"
+          value={p.values.publishStartsAt ?? ""}
+          onChange={(value) => p.set("publishStartsAt", value)}
+        />
+        <Field
+          label="Publish until (optional)"
+          type="datetime-local"
+          value={p.values.publishEndsAt ?? ""}
+          onChange={(value) => p.set("publishEndsAt", value)}
+        />
+      </div>
+      <p className="mt-2 text-xs text-[#667085]">
+        Even while Published, this record is only publicly visible inside
+        this window. Leave blank on either side for no limit.
+      </p>
+    </fieldset>
+  );
+}
 function UniversityFields(p: any) {
   return (
     <>
@@ -912,6 +958,7 @@ function UniversityFields(p: any) {
         onChange={(value) => p.set("overview", value)}
       />
       <FeaturedFields {...p} />
+      <ScheduledPublishingFields {...p} />
       <Repeater
         title="Campuses"
         rows={p.rows.campuses}
@@ -1052,6 +1099,8 @@ function OfferingFields(p: any) {
         value={p.values.overview ?? ""}
         onChange={(value) => p.set("overview", value)}
       />
+      <FeaturedFields {...p} />
+      <ScheduledPublishingFields {...p} />
       <Multi
         legend="Intakes"
         options={p.intakes}
@@ -1152,6 +1201,7 @@ function ScholarshipFields(p: any) {
         onChange={(value) => p.set("eligibility", value)}
       />
       <FeaturedFields {...p} />
+      <ScheduledPublishingFields {...p} />
       <Multi
         legend="Eligible countries"
         options={p.countries}
@@ -1224,6 +1274,8 @@ function ConsultantFields(p: any) {
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
       />
+      <FeaturedFields {...p} />
+      <ScheduledPublishingFields {...p} />
       <Multi
         legend="Locations"
         options={p.locations}
@@ -1285,9 +1337,27 @@ function JobFields(p: any) {
           onChange={(value) => p.set("employmentType", value)}
         />
         <Field
-          label="Location"
+          label="Location (free text)"
           value={p.values.location ?? ""}
           onChange={(value) => p.set("location", value)}
+        />
+        <Select
+          label="City (optional, structured)"
+          value={p.values.cityId ?? ""}
+          onChange={(value) => p.set("cityId", value)}
+          options={p.cities}
+        />
+        <Select
+          label="State (optional, structured)"
+          value={p.values.stateId ?? ""}
+          onChange={(value) => p.set("stateId", value)}
+          options={p.states}
+        />
+        <Select
+          label="Country (optional, structured)"
+          value={p.values.countryId ?? ""}
+          onChange={(value) => p.set("countryId", value)}
+          options={p.countries}
         />
         <Field
           label="Remote state"
@@ -1335,6 +1405,8 @@ function JobFields(p: any) {
         value={p.values.qualifications ?? ""}
         onChange={(value) => p.set("qualifications", value)}
       />
+      <FeaturedFields {...p} />
+      <ScheduledPublishingFields {...p} />
     </>
   );
 }
@@ -1375,9 +1447,27 @@ function EventFields(p: any) {
           </select>
         </label>
         <Field
-          label="Venue"
+          label="Venue (free text)"
           value={p.values.venue ?? ""}
           onChange={(value) => p.set("venue", value)}
+        />
+        <Select
+          label="City (optional, structured)"
+          value={p.values.cityId ?? ""}
+          onChange={(value) => p.set("cityId", value)}
+          options={p.cities}
+        />
+        <Select
+          label="State (optional, structured)"
+          value={p.values.stateId ?? ""}
+          onChange={(value) => p.set("stateId", value)}
+          options={p.states}
+        />
+        <Select
+          label="Country (optional, structured)"
+          value={p.values.countryId ?? ""}
+          onChange={(value) => p.set("countryId", value)}
+          options={p.countries}
         />
         <Field
           label="Online URL"
@@ -1402,6 +1492,8 @@ function EventFields(p: any) {
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
       />
+      <FeaturedFields {...p} />
+      <ScheduledPublishingFields {...p} />
       <Tags
         label="Speakers"
         values={p.tags.speakers ?? []}
@@ -1461,6 +1553,7 @@ function StoryFields(p: any) {
         value={p.values.journey ?? ""}
         onChange={(value) => p.set("journey", value)}
       />
+      <ScheduledPublishingFields {...p} />
     </>
   );
 }
@@ -1505,6 +1598,7 @@ function TestimonialFields(p: any) {
         value={p.values.displayOrder ?? "0"}
         onChange={(value) => p.set("displayOrder", value)}
       />
+      <ScheduledPublishingFields {...p} />
     </>
   );
 }

@@ -119,10 +119,16 @@ describe('country structured profiles (e2e)', () => {
   });
 
   afterAll(async () => {
+    // Hard-delete rather than the admin API's soft delete: the ISO code
+    // collision check below (`iso2Code`/`iso3Code` lookup) does not exclude
+    // soft-deleted rows, so a merely-archived fixture still permanently
+    // consumes one of the tiny 36-combination candidate space this random
+    // generator draws from. Left as a soft delete across many prior runs,
+    // that space silently filled up and made this test's own setup flaky.
     if (countryId)
-      await admin('delete', `/api/v1/admin/countries/${countryId}`, {}).catch(
-        () => undefined,
-      );
+      await prisma.country
+        .deleteMany({ where: { id: countryId } })
+        .catch(() => undefined);
     await app.close();
   });
 

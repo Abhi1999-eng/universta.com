@@ -1433,6 +1433,22 @@ export class ExpandedService {
       select: { id: true, name: true, universityId: true },
       orderBy: { name: 'asc' },
     });
+    const states = await this.prisma.state.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, slug: true, countryId: true },
+      orderBy: { name: 'asc' },
+    });
+    const cities = await this.prisma.city.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        countryId: true,
+        stateId: true,
+      },
+      orderBy: { name: 'asc' },
+    });
     return {
       countries,
       universities,
@@ -1445,6 +1461,8 @@ export class ExpandedService {
       providers,
       media,
       campuses,
+      states,
+      cities,
     };
   }
 
