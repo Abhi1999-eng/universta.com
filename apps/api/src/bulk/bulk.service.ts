@@ -86,20 +86,24 @@ export class BulkOperationsService {
     };
   }
 
-  private static readonly INCLUDE_MAP: Record<string, Record<string, unknown>> = {
-    countries: { continent: { select: { slug: true } } },
-    states: { country: { select: { slug: true } } },
-    cities: {
-      country: { select: { slug: true } },
-      state: { select: { slug: true } },
-    },
-    courses: {
-      subject: { select: { slug: true } },
-      courseLevel: { select: { code: true } },
-    },
-  };
+  private static readonly INCLUDE_MAP: Record<string, Record<string, unknown>> =
+    {
+      countries: { continent: { select: { slug: true } } },
+      states: { country: { select: { slug: true } } },
+      cities: {
+        country: { select: { slug: true } },
+        state: { select: { slug: true } },
+      },
+      courses: {
+        subject: { select: { slug: true } },
+        courseLevel: { select: { code: true } },
+      },
+    };
 
-  private async fetchRecords(resourceKey: string, definition: BulkResourceDefinition) {
+  private async fetchRecords(
+    resourceKey: string,
+    definition: BulkResourceDefinition,
+  ) {
     return delegate(this.prisma, definition).findMany({
       where: { deletedAt: null },
       include: BulkOperationsService.INCLUDE_MAP[resourceKey],
@@ -113,7 +117,10 @@ export class BulkOperationsService {
   async listRecords(resourceKey: string) {
     const definition = bulkResource(resourceKey);
     const rows = await this.fetchRecords(resourceKey, definition);
-    return rows.map((row: Record<string, unknown>) => ({ id: row.id, ...definition.toExportRow(row) }));
+    return rows.map((row: Record<string, unknown>) => ({
+      id: row.id,
+      ...definition.toExportRow(row),
+    }));
   }
 
   async export(resourceKey: string, format: 'csv' | 'xlsx') {
