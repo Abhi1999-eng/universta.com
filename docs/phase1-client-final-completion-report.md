@@ -2,7 +2,8 @@
 
 Repository: `/Users/abhishekchaubey/projects/universta-phase1-leads`
 Branch: `feat/phase1-expanded-local`
-Final HEAD at time of writing: `5662f52`
+HEAD at original M1–M12 acceptance: `5662f52`
+Final HEAD after the later strict-scope pass (see §7 addendum): `4101be9`
 Environment: local-only (no AWS/EC2/S3/SSM/CloudWatch, no production
 infrastructure, no remote database, nothing pushed, no Docker).
 
@@ -229,6 +230,88 @@ These are observations, not commitments — decisions for the client/team:
   or Prisma ship a release that resolves them without a breaking
   downgrade — none are urgent for a local-only build, but they're not
   "fixed," only assessed and accepted.
+
+## 7. Addendum — later strict-scope and UI-fidelity pass (HEAD `4101be9`)
+
+Everything above (§§1–6) is the original M1–M12 report, unmodified, and
+its closing line below still stands **for that original scope**: it
+was genuinely verified at HEAD `5662f52`. After that acceptance, a
+further, stricter pass was requested on top of this build: a UI-fidelity
+audit against 18 client-supplied reference screenshots, plus a fixed
+list of 14 additional "verified remaining Phase 1 gaps." That pass's
+full, honest record lives in two new documents and is only summarized
+here:
+
+- `docs/phase1-strict-completion-progress.md` — the full day-by-day
+  record for this later pass: commits, migrations, the 14-item gap
+  list with a final status for each, before/after test baselines, and
+  every defect found and fixed.
+- `docs/phase1-ui-fidelity-final-report.md` — the UI-fidelity delta
+  against `docs/phase1-ui-fidelity-matrix.md`.
+
+**Commits added this pass** (chronological, on top of `5662f52`):
+
+```
+6f53773 docs(phase1): final Milestone 12 acceptance report
+20804d8 docs(phase1): audit strict scope and ui references
+439003f feat(cms): complete publishing scheduling, featured windows and structured locations
+944b8d8 feat(admin): expose scheduling, featured windows and structured locations in the catalog editor
+86e8fa5 feat(seed): wire structured City/State fixtures into demo catalog
+b4ac3ab feat(cms): field-based bodyJson editor and section-type-driven public rendering
+e843eda feat(cms): real pointer/touch drag-and-drop section reorder
+3d15920 feat(redirects): complete admin redirect management screen
+a8bd27b feat(links): structured internal entity/page link picker
+d420f17 feat(seo): extend SEO management to OG/Twitter/schema fields and City
+748cb99 feat(cms): Country Listing Hero and section copy become CMS-editable
+1104a7d fix(admin): Job/Event create form crashed on the structured location selects
+4101be9 fix(api): resolve the one real lint error found by the full validation pass, apply Prettier formatting
+```
+
+**Updated validation numbers at final HEAD `4101be9`** (full suite
+re-run, none decreased from the §2 baseline above):
+
+| Suite | §2 baseline | Final HEAD `4101be9` |
+| --- | --- | --- |
+| API e2e | 142 | **168** |
+| API unit | 44 | **44** |
+| Admin unit | 48 | **48** |
+| Web unit | 8 | **8** |
+| Admin Playwright | 56 | **56** |
+| Lint / build / `prisma migrate status` / secret scan / `git status` | all clean | all clean |
+
+**14-item gap-list result: 10 of 14 fully done, 1 partial, 3 not
+done** — full per-item table in
+`docs/phase1-strict-completion-progress.md` §3. The three incomplete
+items are: a reusable Admin-managed page-template system (not
+started — sized as the single largest remaining item); bulk CSV/XLSX
+import/export extended to Universities/Campuses/Offerings/
+Scholarships/Consultants/ConsultantLocations (not started this pass,
+consistent with the same items being deliberately deferred in the
+original M8 work above); and full SEO-management coverage for
+ConsultantLocation, FAQ entries, and the code-defined listing/
+comparison pages (partial — Job/Event/SuccessStory/Testimonials/City
+were completed).
+
+Two genuine defects were found and fixed while validating this pass
+(a crashing admin Job/Event create form, and one real ESLint error) —
+detail in `docs/phase1-strict-completion-progress.md` §4.
+
+**This addendum does not add a new gated closing line.** The pass's
+own governing instruction specified the line "STRICT CLIENT PHASE 1
+AND UI FIDELITY VERIFIED LOCALLY," to be written only once every item
+in the 14-item list was genuinely done and a fresh full UI-fidelity
+re-audit was complete. Neither condition is met (3 of 14 items remain
+open; the UI-fidelity work was a targeted spot-check of the one page
+touched, not a full 18-screenshot re-audit). That determination, and
+the reasoning behind it, is recorded in full in
+`docs/phase1-strict-completion-progress.md` §5 and is not repeated or
+softened here. The original line immediately below remains accurate
+for the M1–M12 scope it was written for; it does not extend to the
+14-item gap list introduced after it.
+
+Nothing in this later pass was pushed, merged, or deployed. `git
+status` is clean at final HEAD `4101be9` on `feat/phase1-expanded-local`;
+no remotes were added or modified.
 
 ---
 
