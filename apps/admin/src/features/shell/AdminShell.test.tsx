@@ -14,7 +14,7 @@ describe('AdminShell', () => {
     });
   });
 
-  it('renders the authenticated user, role, active dashboard, and truthful empty state', () => {
+  it('renders the authenticated user, role, active dashboard, and page content', () => {
     render(<AdminShell><p>Dashboard content</p></AdminShell>);
     expect(screen.getByText('admin@example.com')).toBeVisible();
     expect(screen.getAllByText('SUPER_ADMIN').length).toBeGreaterThan(0);
@@ -22,12 +22,53 @@ describe('AdminShell', () => {
     expect(screen.getByText('Dashboard content')).toBeVisible();
   });
 
-  it('exposes the implemented catalog links while keeping future modules deferred', () => {
+  it('groups every major Phase 1 resource under a labeled section with a real, non-placeholder link', () => {
     render(<AdminShell><p>Dashboard content</p></AdminShell>);
-    expect(screen.getByRole('link', { name: 'Countries' })).toHaveAttribute('href', '/countries');
-    expect(screen.getByRole('link', { name: 'Subjects' })).toHaveAttribute('href', '/subjects');
-    expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/courses');
-    expect(screen.getByRole('link', { name: 'Leads' })).toHaveAttribute('href', '/leads');
+    // Group headings required by the client-specified nav structure.
+    for (const group of [
+      'Content management',
+      'Destinations',
+      'Academics',
+      'Universities',
+      'Scholarships',
+      'Consultants',
+      'Engagement',
+      'Careers and events',
+      'Platform tools',
+    ]) {
+      expect(screen.getAllByText(group).length).toBeGreaterThan(0);
+    }
+    // A first-time admin must be able to find each of these without typing a URL.
+    const expectedLinks: Array<[string, string]> = [
+      ['Universities', '/phase1/universities'],
+      ['University course offerings', '/phase1/offerings'],
+      ['Consultants', '/phase1/consultants'],
+      ['Consultant locations', '/consultant-locations'],
+      ['Pages', '/phase1/pages'],
+      ['Page templates', '/page-templates'],
+      ['Media library', '/media'],
+      ['SEO management', '/seo'],
+      ['Redirects', '/redirects'],
+      ['Bulk import / export', '/bulk-data'],
+      ['Cities', '/locations?tab=cities'],
+      ['States / provinces', '/locations?tab=states'],
+      ['Scholarships', '/phase1/scholarships'],
+      ['Jobs', '/phase1/jobs'],
+      ['Events', '/phase1/events'],
+      ['Success stories', '/phase1/success-stories'],
+      ['Testimonials', '/phase1/testimonials'],
+      ['Counselling leads', '/leads'],
+      ['Contact enquiries', '/phase1/contact-inquiries'],
+      ['Countries', '/countries'],
+      ['Regions', '/continents'],
+      ['Subjects', '/subjects'],
+      ['Generic courses', '/courses'],
+      ['University claim requests', '/university-claims'],
+      ['A/B experiments', '/experiments'],
+    ];
+    for (const [name, href] of expectedLinks) {
+      expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+    }
   });
 
   it('opens the mobile drawer and closes it with Escape', () => {

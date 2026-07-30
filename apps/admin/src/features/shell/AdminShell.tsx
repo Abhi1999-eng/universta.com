@@ -4,13 +4,29 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { NAV_GROUPS, findNavItem } from './nav-config';
 
-const plannedItems = ['Content', 'SEO', 'Settings'];
+function currentBreadcrumb(pathname: string) {
+  if (pathname === '/dashboard' || pathname === '/') {
+    return { group: null as string | null, item: 'Overview' };
+  }
+  for (const group of NAV_GROUPS) {
+    const item = group.items.find((entry) => entry.href.split('?')[0] === pathname);
+    if (item) return { group: group.label, item: item.label };
+  }
+  const fuzzy = findNavItem(pathname);
+  if (fuzzy) {
+    const group = NAV_GROUPS.find((g) => g.items.includes(fuzzy));
+    return { group: group?.label ?? null, item: fuzzy.label };
+  }
+  return { group: null as string | null, item: 'Dashboard' };
+}
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const pageTitle = pathname.startsWith('/leads') ? 'Leads' : pathname.startsWith('/countries') ? 'Countries' : pathname.startsWith('/continents') ? 'Continents' : pathname.startsWith('/subjects') ? 'Subjects' : pathname.startsWith('/courses') ? 'Courses' : pathname.startsWith('/catalog-masters') ? 'Catalog masters' : pathname.startsWith('/media') ? 'Media library' : pathname.startsWith('/experiments') ? 'Experiments' : pathname.startsWith('/locations') ? 'States & cities' : pathname.startsWith('/university-claims') ? 'University claims' : pathname.startsWith('/bulk-data') ? 'Bulk data' : pathname.startsWith('/redirects') ? 'Redirects' : pathname.startsWith('/phase1') ? 'Expanded Phase 1' : 'Dashboard';
+  const breadcrumb = currentBreadcrumb(pathname);
+  const pageTitle = breadcrumb.item;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -123,7 +139,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <MenuIcon />
             </button>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#828B9B]">Admin workspace</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#828B9B]">
+                {breadcrumb.group ? (
+                  <>
+                    <Link href="/dashboard" className="hover:text-[#1657CF]">Admin</Link>
+                    {' / '}
+                    {breadcrumb.group}
+                  </>
+                ) : (
+                  <Link href="/dashboard" className="hover:text-[#1657CF]">Admin workspace</Link>
+                )}
+              </p>
               <h1 className="mt-1 text-lg font-semibold tracking-[-0.02em]">{pageTitle}</h1>
             </div>
           </div>
@@ -180,156 +206,57 @@ function Navigation({
   onNavigate?: () => void;
   dark?: boolean;
 }) {
+  const linkClass = (active: boolean) =>
+    `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
+      active
+        ? dark
+          ? 'bg-white/12 text-white'
+          : 'bg-[#1657CF] text-white'
+        : dark
+          ? 'text-white/65 hover:bg-white/8 hover:text-white'
+          : 'text-[#48505F] hover:bg-[#F0F4FA]'
+    }`;
   return (
     <nav aria-label="Primary navigation" className="mt-10">
       <Link
         href="/dashboard"
         onClick={onNavigate}
         aria-current={pathname === '/dashboard' ? 'page' : undefined}
-        className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname === '/dashboard' ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+        className={linkClass(pathname === '/dashboard')}
       >
         <GridIcon />
         Dashboard
       </Link>
-      <div className="mt-2 space-y-1">
-        <Link
-          href="/leads"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/leads') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/leads') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">L</span>
-          Leads
-        </Link>
-        <Link
-          href="/continents"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/continents') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/continents') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">R</span>
-          Continents
-        </Link>
-        <Link
-          href="/countries"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/countries') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/countries') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">C</span>
-          Countries
-        </Link>
-        <Link
-          href="/subjects"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/subjects') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/subjects') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">S</span>
-          Subjects
-        </Link>
-        <Link
-          href="/courses"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/courses') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/courses') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">C</span>
-          Courses
-        </Link>
-        <Link
-          href="/catalog-masters"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/catalog-masters') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/catalog-masters') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">M</span>
-          Catalog masters
-        </Link>
-        <Link
-          href="/phase1/universities"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/phase1') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/phase1') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">P1</span>
-          Phase 1 content
-        </Link>
-        <Link
-          href="/media"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/media') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/media') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">M</span>
-          Media library
-        </Link>
-        <Link
-          href="/experiments"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/experiments') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/experiments') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">AB</span>
-          Experiments
-        </Link>
-        <Link
-          href="/locations"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/locations') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/locations') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">L</span>
-          States &amp; cities
-        </Link>
-        <Link
-          href="/university-claims"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/university-claims') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/university-claims') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">UC</span>
-          University claims
-        </Link>
-        <Link
-          href="/bulk-data"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/bulk-data') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/bulk-data') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">B</span>
-          Bulk data
-        </Link>
-        <Link
-          href="/redirects"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith('/redirects') ? 'page' : undefined}
-          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname.startsWith('/redirects') ? (dark ? 'bg-white/12 text-white' : 'bg-[#1657CF] text-white') : dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
-        >
-          <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">R</span>
-          Redirects
-        </Link>
-      </div>
-      <div className="mt-8">
-        <p className={`px-3 text-[10px] font-bold uppercase tracking-[0.18em] ${dark ? 'text-white/35' : 'text-[#A0A8B6]'}`}>
-          Planned modules
-        </p>
-        <div className="mt-3 space-y-1">
-          {plannedItems.map((item) => (
-            <button
-              key={item}
-              type="button"
-              disabled
-              aria-disabled="true"
-              title={`${item} is coming soon`}
-              className={`flex w-full cursor-not-allowed items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium ${dark ? 'text-white/35' : 'text-[#9AA3B2]'}`}
-            >
-              <span className="flex items-center gap-3">{itemIcon(item)}{item}</span>
-              <span className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${dark ? 'text-white/25' : 'text-[#B0B8C5]'}`}>Soon</span>
-            </button>
-          ))}
+      {NAV_GROUPS.map((group) => (
+        <div key={group.label} className="mt-6">
+          <p
+            className={`px-3 text-[10px] font-bold uppercase tracking-[0.18em] ${dark ? 'text-white/35' : 'text-[#A0A8B6]'}`}
+          >
+            {group.label}
+          </p>
+          <div className="mt-2 space-y-1">
+            {group.items.map((item) => {
+              const base = item.href.split('?')[0];
+              const active = pathname === base || pathname.startsWith(`${base}/`);
+              return (
+                <Link
+                  key={`${group.label}-${item.label}`}
+                  href={item.href}
+                  onClick={onNavigate}
+                  title={item.note}
+                  aria-current={active ? 'page' : undefined}
+                  className={linkClass(active)}
+                >
+                  <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center text-[10px]">
+                    {item.label.slice(0, 1)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ))}
     </nav>
   );
 }
@@ -371,9 +298,6 @@ function Brand({ inverse = false }: { inverse?: boolean }) {
   );
 }
 
-function itemIcon(item: string) {
-  return <span aria-hidden="true" className="grid h-5 w-5 place-items-center text-[10px]">{item.slice(0, 1)}</span>;
-}
 
 function GridIcon() {
   return <span aria-hidden="true" className="grid h-5 w-5 grid-cols-2 gap-0.5"><i className="rounded-sm bg-current" /><i className="rounded-sm bg-current" /><i className="rounded-sm bg-current" /><i className="rounded-sm bg-current" /></span>;
