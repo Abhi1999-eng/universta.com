@@ -17,8 +17,8 @@ Branch: `feat/phase1-expanded-local`
 | 5 | Location hierarchy and destination pages | DONE |
 | 6 | Country Listing client composition | DONE |
 | 7 | University Claim | DONE |
-| 8 | Bulk data management | IN PROGRESS |
-| 9 | Featured listings and advanced filters | pending |
+| 8 | Bulk data management | DONE (7 of ~13 modules — see summary) |
+| 9 | Featured listings and advanced filters | IN PROGRESS |
 | 10 | SEO and schema completion | pending |
 | 11 | Full integration and defect fixing | pending |
 | 12 | Final Phase 1 acceptance | pending |
@@ -87,6 +87,9 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `892a9be` feat(admin): add Bulk data admin UI
+- `61eab27` feat(admin): add safe catalog bulk operations engine (API)
+- `c89312f` docs(phase1): checkpoint after milestone 7
 - `6df0a35` feat(universities): add university claim request workflow
 - `fe482f2` feat(countries): wire Country Detail's Cities tab to the real City model
 - `a54e633` feat(countries): wire Consultants section to real published data
@@ -99,6 +102,67 @@ Branch: `feat/phase1-expanded-local`
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 8 summary (done — scoped subset)
+
+- New reusable bulk-operations engine (`apps/api/src/bulk/`): a
+  dependency-free hand-rolled CSV reader/writer (`csv.util.ts`) and an
+  `exceljs`-backed XLSX reader/writer (`xlsx.util.ts`), a per-resource
+  `BulkResourceDefinition` registry (`bulk-resources.ts`) and a generic
+  `BulkOperationsService` that any registered resource gets for free:
+  downloadable template, dry-run (validates every row, writes nothing),
+  create-mode import (rejects existing slugs as row errors), upsert-mode
+  import (updates by slug), export, bulk-update (rejects any field not on
+  that resource's explicit `updatableColumns` allow-list — identity/
+  relation columns are never bulk-editable), and bulk-archive (per-row
+  dependency check, e.g. a State with cities still attached is skipped
+  and reported rather than silently orphaning those cities).
+- **Dependency choice documented explicitly**: picked `exceljs` over the
+  more commonly-reached-for `xlsx` (SheetJS) package after `npm audit`
+  showed the npm-registry `xlsx` build (0.18.5) carries two unpatched
+  HIGH-severity CVEs (prototype pollution, ReDoS) with `fixAvailable:
+  false` — a real risk specifically for a feature that parses untrusted
+  uploaded files. `exceljs`'s own audit flags are transitive
+  (archiver/glob chain) and not reachable through this code's actual
+  usage (no user-controlled paths are ever passed to those libraries
+  here) — the safer of two imperfect options, not a clean bill of health.
+- Wired for **7 of the brief's ~13 "primary modules"**: Countries,
+  States, Cities, Subjects, Generic Courses, Jobs (Careers), Events.
+  **Deliberately not wired**: Universities, Campuses, University Course
+  Offerings, Scholarships, Consultants — their relational shape (campus/
+  provider/intake/requirement graphs, multiple linked entities per row)
+  needs a materially larger per-resource mapper than the flat-to-single-
+  FK cases covered here, and giving them the same care within this
+  milestone wasn't realistic. The engine itself doesn't care which
+  resources exist — extending coverage later is adding another
+  `BulkResourceDefinition`, not new engine work. Documented here rather
+  than silently claimed as complete.
+- File security: 3MB upload cap, 2000-row cap, `.csv`/`.xlsx` extension
+  allow-list, CSV export escapes formula-injection-prone leading
+  characters (`=`, `+`, `-`, `@`) with a leading tab (verified — a
+  literal `=2+2` payload round-trips as `\t=2+2`, never as a live
+  formula), every endpoint SUPER_ADMIN-guarded, every mutating operation
+  writes an `AuditLog` row via the existing `writeAudit` helper.
+- Admin UI: new "Bulk data" section — resource picker, template/export
+  downloads (via authenticated blob download, since these need a Bearer
+  token a plain `<a href>` can't send), file upload with dry-run/import,
+  and a record picker driving bulk-update (one field + value) and
+  bulk-archive (surfaces per-row dependency-block reasons).
+- 13 new e2e tests (dry-run error reporting with no writes, create-mode
+  duplicate rejection, upsert-mode update leaving unrelated fields
+  untouched, country/state relational lookups including an
+  unknown-slug rejection path, bulk-update field allow-list enforcement,
+  bulk-archive, export round-trip, formula-injection escaping). Full
+  137-test API e2e suite green.
+- Verified the whole admin flow in a real browser, not just via curl:
+  attached a real in-memory CSV `File` to the upload input (via
+  `DataTransfer`, since a real OS file-picker isn't available to this
+  environment), ran dry-run, imported it, bulk-updated the new record's
+  status, bulk-archived it, and confirmed each step against the database
+  directly. Found and cleaned up one stray disposable row left behind by
+  an earlier (already-fixed) failing test assertion — a test-hygiene
+  note (inline cleanup after an `expect()` never runs if that expect
+  throws), not a product defect.
 
 ## Milestone 7 summary (done)
 
@@ -339,14 +403,11 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 8 — Bulk data management: reusable CSV/XLSX import + export, a
-downloadable template, dry-run validation with a row-level error report,
-create vs. upsert modes, duplicate detection, relation lookup by stable
-slug/code, bulk update (only touching explicitly-selected fields) and
-bulk archive/delete (with confirmation, dependency checks, and an audit
-record) — for the primary catalog modules (Countries, States, Cities,
-Subjects, Generic Courses, Universities, Campuses, University Course
-Offerings, Scholarships, Consultants, Jobs, Events). File-security
-requirements from the brief (extension/MIME validation, size limits,
-formula-injection sanitization on export, no local path leakage, temp
-file cleanup) apply throughout.
+Milestone 9 — Featured listings and advanced filters: `featuredPriority`/
+`featuredFrom`/`featuredUntil` time-windowed featured ordering (currently
+only a plain `isFeatured` boolean exists on most models) across
+Universities, Courses/Offerings, Scholarships, Consultants, Jobs, Events;
+City/State-based location filters on the University/Consultant/Event/Job
+listings now that the Milestone 5 location hierarchy exists; tuition-range
+and Degree-Level filter completeness on University Course Offerings;
+stable URL query state, dependent filters, and mobile filter UI.
