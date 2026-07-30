@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
 import { listEditorialMedia } from "@/features/catalog/catalog-client";
@@ -418,6 +418,9 @@ function SectionCard({
   index,
   total,
   mediaOptions,
+  dragHandleProps,
+  dragging,
+  cardRef,
   onChange,
   onMove,
   onDuplicate,
@@ -427,6 +430,9 @@ function SectionCard({
   index: number;
   total: number;
   mediaOptions: EditorialMedia[];
+  dragHandleProps?: { onPointerDown: (event: React.PointerEvent) => void };
+  dragging?: boolean;
+  cardRef?: (element: HTMLDivElement | null) => void;
   onChange: (patch: Partial<Section>) => void;
   onMove: (direction: -1 | 1) => void;
   onDuplicate: () => void;
@@ -435,9 +441,25 @@ function SectionCard({
   const scheduledFields =
     section.status === "SCHEDULED" || section.status === "ACTIVE";
   return (
-    <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+    <div
+      ref={cardRef}
+      className={`rounded-2xl border bg-white p-5 transition-shadow ${
+        dragging ? "border-[#1657CF] shadow-lg" : "border-[#E8ECF3]"
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
+          {dragHandleProps ? (
+            <button
+              type="button"
+              aria-label="Drag to reorder section"
+              onPointerDown={dragHandleProps.onPointerDown}
+              style={{ touchAction: "none" }}
+              className="cursor-grab select-none rounded-lg border border-[#E8ECF3] px-2 py-1 text-sm font-semibold text-[#828B9B] active:cursor-grabbing"
+            >
+              ⠿
+            </button>
+          ) : null}
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-bold text-[#1657CF]">
             {section.sectionType}
           </span>
@@ -597,11 +619,67 @@ export function PageCmsEditor({
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<PageRecord | null>(null);
   const [mediaOptions, setMediaOptions] = useState<EditorialMedia[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dragCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     listEditorialMedia({ limit: 24 })
       .then((result) => setMediaOptions(result.data))
       .catch(() => undefined);
+  }, []);
+
+  // Each drag gesture gets its own pair of listeners, created and torn down
+  // together, so there is no cross-render stale-closure risk from reusing a
+  // memoized handler whose identity could change between add and remove.
+  function onDragHandlePointerDown(id: string, event: React.PointerEvent) {
+    event.preventDefault();
+    dragCleanupRef.current?.();
+    dragIdRef.current = id;
+    setDraggingId(id);
+
+    function handleMove(moveEvent: PointerEvent) {
+      const dragId = dragIdRef.current;
+      if (!dragId) return;
+      let overId: string | null = null;
+      for (const [cardId, element] of cardRefs.current.entries()) {
+        const rect = element.getBoundingClientRect();
+        if (moveEvent.clientY >= rect.top && moveEvent.clientY <= rect.bottom) {
+          overId = cardId;
+          break;
+        }
+      }
+      if (!overId || overId === dragId) return;
+      setSections((current) => {
+        const fromIndex = current.findIndex((section) => section.id === dragId);
+        const toIndex = current.findIndex((section) => section.id === overId);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return current;
+        const next = current.slice();
+        const [item] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, item);
+        return next;
+      });
+    }
+
+    function handleUp() {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      dragCleanupRef.current = null;
+      if (dragIdRef.current) {
+        setDirtySections((current) => new Set(current).add("__order__"));
+      }
+      dragIdRef.current = null;
+      setDraggingId(null);
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    dragCleanupRef.current = handleUp;
+  }
+
+  useEffect(() => {
+    return () => dragCleanupRef.current?.();
   }, []);
 
   const load = useCallback(async () => {
@@ -916,6 +994,9 @@ export function PageCmsEditor({
               Add section
             </button>
           </div>
+          <p className="mt-2 text-xs text-[#828B9B]">
+            Drag the ⠿ handle to reorder, or use the ↑ / ↓ buttons.
+          </p>
           <div className="mt-4 space-y-4">
             {sections.map((section, index) => (
               <SectionCard
@@ -924,6 +1005,15 @@ export function PageCmsEditor({
                 index={index}
                 total={sections.length}
                 mediaOptions={mediaOptions}
+                dragging={draggingId === section.id}
+                dragHandleProps={{
+                  onPointerDown: (event) =>
+                    onDragHandlePointerDown(section.id, event),
+                }}
+                cardRef={(element) => {
+                  if (element) cardRefs.current.set(section.id, element);
+                  else cardRefs.current.delete(section.id);
+                }}
                 onChange={(patch) => updateExisting(section.id, patch)}
                 onMove={(direction) => move(section.id, direction)}
                 onDuplicate={() => void duplicateExisting(section.id)}
