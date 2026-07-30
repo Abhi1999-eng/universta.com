@@ -27,6 +27,7 @@ import { UniversityClaimsModule } from './university-claims/university-claims.mo
 import { BulkModule } from './bulk/bulk.module';
 import { RedirectsModule } from './redirects/redirects.module';
 import { InternalLinksModule } from './internal-links/internal-links.module';
+import { PageTemplatesModule } from './page-templates/page-templates.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { InternalLinksModule } from './internal-links/internal-links.module';
     UniversityClaimsModule,
     BulkModule,
     RedirectsModule,
+    PageTemplatesModule,
   ],
   controllers: [AppController],
   providers: [

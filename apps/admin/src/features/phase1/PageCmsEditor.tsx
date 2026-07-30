@@ -44,6 +44,7 @@ type Seo = {
   canonicalUrl?: string | null;
   focusKeyword?: string | null;
 };
+type PageTemplateOption = { id: string; name: string; pageFamily: string; isActive: boolean };
 type PageRecord = {
   id: string;
   pageType: string;
@@ -51,6 +52,8 @@ type PageRecord = {
   slug: string;
   shortDescription?: string | null;
   layoutKey?: string | null;
+  templateId?: string | null;
+  template?: PageTemplateOption | null;
   status: string;
   startsAt?: string | null;
   endsAt?: string | null;
@@ -620,6 +623,9 @@ export function PageCmsEditor({
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<PageRecord | null>(null);
   const [mediaOptions, setMediaOptions] = useState<EditorialMedia[]>([]);
+  const [templateOptions, setTemplateOptions] = useState<PageTemplateOption[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateBusy, setTemplateBusy] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -628,6 +634,10 @@ export function PageCmsEditor({
   useEffect(() => {
     listEditorialMedia({ limit: 24 })
       .then((result) => setMediaOptions(result.data))
+      .catch(() => undefined);
+    authFetch("/api/v1/admin/page-templates")
+      .then((response) => response.json())
+      .then((body: { data?: PageTemplateOption[] }) => setTemplateOptions(body.data ?? []))
       .catch(() => undefined);
   }, []);
 
@@ -692,6 +702,7 @@ export function PageCmsEditor({
     try {
       const record = await api<PageRecord>(`pages/${recordId}`);
       setPage(record);
+      setSelectedTemplateId(record.templateId ?? record.template?.id ?? "");
       setSections((record.sections ?? []).slice().sort((a, b) => a.displayOrder - b.displayOrder));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load page");
@@ -876,6 +887,43 @@ export function PageCmsEditor({
     }
   }
 
+  async function assignTemplate() {
+    if (!recordId) return;
+    setTemplateBusy(true);
+    setMessage("");
+    try {
+      await authFetch(`/api/v1/admin/page-templates/assign/${recordId}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ templateId: selectedTemplateId || null }),
+      });
+      setMessage("Template assignment saved. Existing sections were not changed.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to assign template");
+    } finally {
+      setTemplateBusy(false);
+    }
+  }
+
+  async function applyTemplateDefaults() {
+    if (!recordId) return;
+    if (!window.confirm("Add this template's default sections to the page? Existing sections are kept as-is.")) return;
+    setTemplateBusy(true);
+    setMessage("");
+    try {
+      const response = await authFetch(`/api/v1/admin/page-templates/apply-defaults/${recordId}`, { method: "POST" });
+      const body = (await response.json()) as { data?: { created: number }; error?: { message?: string } | null };
+      if (!response.ok || body.error) throw new Error(body.error?.message ?? "Unable to apply template defaults");
+      setMessage(`Added ${body.data?.created ?? 0} section(s) from the template.`);
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to apply template defaults");
+    } finally {
+      setTemplateBusy(false);
+    }
+  }
+
   async function openPreview() {
     if (!recordId) return;
     try {
@@ -904,7 +952,7 @@ export function PageCmsEditor({
             />
           </div>
           <Select
-            label="Template"
+            label="Layout"
             value={page.layoutKey ?? "default"}
             options={LAYOUT_KEYS}
             onChange={(value) => setPageField("layoutKey", value)}
@@ -955,6 +1003,49 @@ export function PageCmsEditor({
             />
           </div>
         </fieldset>
+        {recordId ? (
+          <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
+            <legend className="px-1 text-sm font-semibold">Page template</legend>
+            <p className="text-xs text-[#828B9B]">
+              Assigning a template only remembers which one this page uses — it never changes existing sections.
+              Applying its default sections is a separate action below, and skips any section this page already has.
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="text-sm font-semibold">
+                Template
+                <select
+                  value={selectedTemplateId}
+                  onChange={(event) => setSelectedTemplateId(event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">No template</option>
+                  {templateOptions.map((template) => (
+                    <option key={template.id} value={template.id} disabled={!template.isActive}>
+                      {template.name} ({template.pageFamily.replaceAll("_", " ")}){!template.isActive ? " — archived" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={templateBusy}
+                onClick={() => void assignTemplate()}
+                className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+              >
+                Save assignment
+              </button>
+              <button
+                type="button"
+                disabled={templateBusy || !page.template}
+                onClick={() => void applyTemplateDefaults()}
+                className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+                title={page.template ? undefined : "Assign a template first"}
+              >
+                Apply template&apos;s default sections
+              </button>
+            </div>
+          </fieldset>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="button"

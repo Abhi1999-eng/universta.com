@@ -55,6 +55,8 @@ model User {
   updatedSettings              SiteSetting[]                  @relation("SiteSettingUpdatedBy")
   createdPages                 Page[]                         @relation("PageCreatedBy")
   updatedPages                 Page[]                         @relation("PageUpdatedBy")
+  createdPageTemplates         PageTemplate[]                 @relation("PageTemplateCreatedBy")
+  updatedPageTemplates         PageTemplate[]                 @relation("PageTemplateUpdatedBy")
   createdExperiments           Experiment[]                   @relation("ExperimentCreatedBy")
   createdSubjects              Subject[]                      @relation("SubjectCreatedBy")
   updatedSubjects              Subject[]                      @relation("SubjectUpdatedBy")
@@ -282,6 +284,7 @@ model Page {
   shortTitle       String?   @map("short_title") @db.VarChar(150)
   slug             String    @unique @db.VarChar(255)
   layoutKey        String?   @map("layout_key") @db.VarChar(100)
+  templateId       String?   @map("template_id") @db.Char(36)
   shortDescription String?   @map("short_description") @db.VarChar(1000)
   status           String    @default("DRAFT") @db.VarChar(30)
   isHomepage       Boolean   @default(false) @map("is_homepage")
@@ -297,13 +300,40 @@ model Page {
 
   createdBy       User?            @relation("PageCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   updatedBy       User?            @relation("PageUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  template        PageTemplate?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
   sections        PageSection[]
   navigationItems NavigationItem[]
 
   @@index([createdByUserId])
   @@index([updatedByUserId])
   @@index([pageType, status, displayOrder])
+  @@index([templateId])
   @@map("pages")
+}
+
+model PageTemplate {
+  id                  String    @id @default(uuid()) @db.Char(36)
+  name                String    @db.VarChar(255)
+  templateKey         String    @unique @map("template_key") @db.VarChar(100)
+  description         String?   @db.VarChar(1000)
+  pageFamily          String    @map("page_family") @db.VarChar(60)
+  defaultSectionsJson Json      @map("default_sections_json") @db.Json
+  layoutConfigJson    Json?     @map("layout_config_json") @db.Json
+  isActive            Boolean   @default(true) @map("is_active")
+  createdByUserId     String?   @map("created_by_user_id") @db.Char(36)
+  updatedByUserId     String?   @map("updated_by_user_id") @db.Char(36)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt           DateTime? @map("deleted_at") @db.DateTime(3)
+
+  createdBy User?  @relation("PageTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?  @relation("PageTemplateUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  pages     Page[]
+
+  @@index([pageFamily, isActive])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@map("page_templates")
 }
 
 model PageSection {
