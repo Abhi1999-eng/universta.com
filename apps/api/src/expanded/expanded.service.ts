@@ -195,6 +195,7 @@ export class ExpandedService {
         sections: {
           where: effectivePublicationWhere(['ACTIVE', 'SCHEDULED'], now),
           orderBy: { displayOrder: 'asc' },
+          include: { media: true },
         },
       },
     });
@@ -950,6 +951,7 @@ export class ExpandedService {
           sections: {
             where: { deletedAt: null },
             orderBy: { displayOrder: 'asc' },
+            include: { media: true },
           },
         },
       });
@@ -1114,12 +1116,50 @@ export class ExpandedService {
     'HERO',
     'RICH_TEXT',
     'CTA',
+    'IMAGE',
     'IMAGE_TEXT',
+    'CARD_GRID',
     'STATS',
     'FAQ_GROUP',
     'RELATED_LINKS',
+    'COUNTRY_DIRECTORY',
+    'UNIVERSITY_DIRECTORY',
+    'COURSE_DIRECTORY',
+    'SCHOLARSHIP_DIRECTORY',
+    'CONSULTANT_DIRECTORY',
+    'TESTIMONIALS',
+    'SUCCESS_STORIES',
+    'LEAD_GENERATION',
     'CUSTOM',
   ] as const;
+
+  /** Section content is modeled as plain-text fields (paragraphs, labels,
+   * questions/answers), never raw HTML -- there is no rich-text-as-markup
+   * path anywhere in this feature, so there is nothing for a renderer to
+   * unsafely inject. This strips any stray `html`/`__html` key a client
+   * might send so that invariant holds regardless of what the admin UI
+   * sends, and caps how deep/wide a client-supplied body can get. */
+  private static sanitizeSectionBody(value: unknown, depth = 0): unknown {
+    if (depth > 4) return null;
+    if (Array.isArray(value))
+      return value
+        .slice(0, 50)
+        .map((item) => ExpandedService.sanitizeSectionBody(item, depth + 1));
+    if (value && typeof value === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [key, item] of Object.entries(
+        value as Record<string, unknown>,
+      )) {
+        if (key === 'html' || key === '__html' || key === 'dangerouslySetInnerHTML')
+          continue;
+        out[key] = ExpandedService.sanitizeSectionBody(item, depth + 1);
+      }
+      return out;
+    }
+    if (typeof value === 'string') return value.slice(0, 5000);
+    if (typeof value === 'number' || typeof value === 'boolean') return value;
+    return null;
+  }
 
   private async requirePage(pageId: string) {
     const page = await this.prisma.page.findFirst({
@@ -1169,7 +1209,8 @@ export class ExpandedService {
       if (body[key] !== undefined) data[key] = this.optionalText(body[key]);
     if (body.subheading !== undefined)
       data.subheading = this.optionalText(body.subheading);
-    if (body.bodyJson !== undefined) data.bodyJson = body.bodyJson;
+    if (body.bodyJson !== undefined)
+      data.bodyJson = ExpandedService.sanitizeSectionBody(body.bodyJson);
     if (body.configurationJson !== undefined)
       data.configurationJson = body.configurationJson;
     if (body.startsAt !== undefined)
@@ -1298,6 +1339,7 @@ export class ExpandedService {
         sections: {
           where: { deletedAt: null },
           orderBy: { displayOrder: 'asc' },
+          include: { media: true },
         },
       },
     });

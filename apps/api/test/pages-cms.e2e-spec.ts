@@ -229,4 +229,74 @@ describe('Phase 1 Page CMS (e2e)', () => {
       .send({ sectionType: 'NOT_A_REAL_TYPE', heading: 'Bad section' })
       .expect(400);
   });
+
+  it('accepts every documented section type and round-trips a structured bodyJson', async () => {
+    const created = await admin(
+      'post',
+      `/api/v1/admin/phase1/pages/${pageId}/sections`,
+    )
+      .send({
+        sectionType: 'FAQ_GROUP',
+        heading: 'Frequently asked',
+        status: 'ACTIVE',
+        bodyJson: {
+          items: [
+            { label: 'Is this fictional?', value: 'Yes, entirely.' },
+            { label: 'Another question?', value: 'Another answer.' },
+          ],
+        },
+      })
+      .expect(201);
+    const id = String(data(created).id);
+    expect((data(created).bodyJson as RecordValue).items).toHaveLength(2);
+
+    const detail = await admin(
+      'get',
+      `/api/v1/admin/phase1/pages/${pageId}`,
+    ).expect(200);
+    const sections = (data(detail).sections as RecordValue[]) ?? [];
+    const stored = sections.find((section) => section.id === id);
+    expect((stored?.bodyJson as RecordValue).items).toHaveLength(2);
+
+    for (const sectionType of [
+      'HERO',
+      'CTA',
+      'IMAGE',
+      'IMAGE_TEXT',
+      'CARD_GRID',
+      'STATS',
+      'RELATED_LINKS',
+      'COUNTRY_DIRECTORY',
+      'UNIVERSITY_DIRECTORY',
+      'COURSE_DIRECTORY',
+      'SCHOLARSHIP_DIRECTORY',
+      'CONSULTANT_DIRECTORY',
+      'TESTIMONIALS',
+      'SUCCESS_STORIES',
+      'LEAD_GENERATION',
+    ]) {
+      await admin('post', `/api/v1/admin/phase1/pages/${pageId}/sections`)
+        .send({ sectionType, heading: `Block for ${sectionType}` })
+        .expect(201);
+    }
+  });
+
+  it('strips a stray html key from bodyJson so no raw markup can ever be persisted', async () => {
+    const created = await admin(
+      'post',
+      `/api/v1/admin/phase1/pages/${pageId}/sections`,
+    )
+      .send({
+        sectionType: 'RICH_TEXT',
+        heading: 'Sanitization check',
+        bodyJson: {
+          paragraphs: ['Safe text.'],
+          html: '<script>alert(1)</script>',
+        },
+      })
+      .expect(201);
+    const body = data(created).bodyJson as RecordValue;
+    expect(body.paragraphs).toEqual(['Safe text.']);
+    expect(body.html).toBeUndefined();
+  });
 });

@@ -2,7 +2,24 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
+import { listEditorialMedia } from "@/features/catalog/catalog-client";
+import type { EditorialMedia } from "@/features/catalog/catalog.types";
 
+type SectionRow = {
+  label: string;
+  value: string;
+  description?: string;
+  url?: string;
+};
+type SectionBody = {
+  paragraphs?: string[];
+  supportingText?: string;
+  caption?: string;
+  imagePosition?: "left" | "right";
+  items?: SectionRow[];
+  limit?: number;
+};
 type Section = {
   id: string;
   sectionKey: string;
@@ -12,6 +29,9 @@ type Section = {
   subheading?: string | null;
   ctaPrimaryLabel?: string | null;
   ctaPrimaryUrl?: string | null;
+  mediaId?: string | null;
+  media?: { id: string; publicUrl?: string; url?: string; altText?: string | null; title?: string | null } | null;
+  bodyJson?: SectionBody | null;
   status: string;
   displayOrder: number;
   startsAt?: string | null;
@@ -41,15 +61,53 @@ const SECTION_TYPES = [
   "HERO",
   "RICH_TEXT",
   "CTA",
+  "IMAGE",
   "IMAGE_TEXT",
+  "CARD_GRID",
   "STATS",
   "FAQ_GROUP",
   "RELATED_LINKS",
+  "COUNTRY_DIRECTORY",
+  "UNIVERSITY_DIRECTORY",
+  "COURSE_DIRECTORY",
+  "SCHOLARSHIP_DIRECTORY",
+  "CONSULTANT_DIRECTORY",
+  "TESTIMONIALS",
+  "SUCCESS_STORIES",
+  "LEAD_GENERATION",
   "CUSTOM",
 ];
 const PAGE_STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
 const SECTION_STATUSES = ["DRAFT", "SCHEDULED", "ACTIVE", "ARCHIVED"];
 const LAYOUT_KEYS = ["default", "editorial", "landing"];
+
+const DIRECTORY_TYPES = new Set([
+  "COUNTRY_DIRECTORY",
+  "UNIVERSITY_DIRECTORY",
+  "COURSE_DIRECTORY",
+  "SCHOLARSHIP_DIRECTORY",
+  "CONSULTANT_DIRECTORY",
+  "TESTIMONIALS",
+  "SUCCESS_STORIES",
+]);
+const DIRECTORY_LABELS: Record<string, string> = {
+  COUNTRY_DIRECTORY: "published countries",
+  UNIVERSITY_DIRECTORY: "published universities",
+  COURSE_DIRECTORY: "published generic courses",
+  SCHOLARSHIP_DIRECTORY: "published scholarships",
+  CONSULTANT_DIRECTORY: "published consultants",
+  TESTIMONIALS: "published testimonials",
+  SUCCESS_STORIES: "published success stories",
+};
+const ROW_TYPES: Record<
+  string,
+  { legend: string; primary: string; secondary?: string; hasUrl?: boolean }
+> = {
+  CARD_GRID: { legend: "Cards", primary: "Title", secondary: "Description", hasUrl: true },
+  FAQ_GROUP: { legend: "Questions", primary: "Question", secondary: "Answer" },
+  STATS: { legend: "Stats", primary: "Label (e.g. Partner universities)", secondary: "Value (e.g. 120+)" },
+  RELATED_LINKS: { legend: "Links", primary: "Link label", hasUrl: true },
+};
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
@@ -147,10 +205,219 @@ function Select({
   );
 }
 
+function SectionRowsEditor({
+  config,
+  rows,
+  onChange,
+}: {
+  config: { legend: string; primary: string; secondary?: string; hasUrl?: boolean };
+  rows: SectionRow[];
+  onChange: (rows: SectionRow[]) => void;
+}) {
+  const items = rows.length ? rows : [{ label: "", value: "" }];
+  function update(index: number, patch: Partial<SectionRow>) {
+    onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+  return (
+    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+      <legend className="px-1 text-sm font-semibold">{config.legend}</legend>
+      <div className="space-y-3">
+        {items.map((row, index) => (
+          <div key={index} className="rounded-lg border border-[#E8ECF3] p-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label={config.primary}
+                value={row.label}
+                onChange={(value) => update(index, { label: value })}
+              />
+              {config.secondary ? (
+                <Field
+                  label={config.secondary}
+                  value={row.value}
+                  onChange={(value) => update(index, { value })}
+                />
+              ) : null}
+              {config.hasUrl ? (
+                <Field
+                  label="Link URL (optional)"
+                  value={row.url ?? ""}
+                  onChange={(value) => update(index, { url: value })}
+                />
+              ) : null}
+            </div>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((_, i) => i !== index))}
+                className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700"
+              >
+                Remove row
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange([...items, { label: "", value: "" }])}
+        className="mt-3 rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+      >
+        Add row
+      </button>
+    </fieldset>
+  );
+}
+
+function SectionBodyFields({
+  sectionType,
+  mediaId,
+  media,
+  mediaOptions,
+  body,
+  onMediaChange,
+  onBodyChange,
+}: {
+  sectionType: string;
+  mediaId?: string | null;
+  media?: EditorialMedia[];
+  mediaOptions: EditorialMedia[];
+  body: SectionBody;
+  onMediaChange: (mediaId: string) => void;
+  onBodyChange: (body: SectionBody) => void;
+}) {
+  if (sectionType === "RICH_TEXT") {
+    const paragraphs = body.paragraphs?.length ? body.paragraphs : [""];
+    return (
+      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+        <legend className="px-1 text-sm font-semibold">Paragraphs</legend>
+        <div className="space-y-3">
+          {paragraphs.map((paragraph, index) => (
+            <div key={index} className="flex gap-2">
+              <textarea
+                aria-label={`Paragraph ${index + 1}`}
+                value={paragraph}
+                onChange={(event) =>
+                  onBodyChange({
+                    ...body,
+                    paragraphs: paragraphs.map((item, i) =>
+                      i === index ? event.target.value : item,
+                    ),
+                  })
+                }
+                className={`${inputClass} min-h-20`}
+              />
+              {paragraphs.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onBodyChange({
+                      ...body,
+                      paragraphs: paragraphs.filter((_, i) => i !== index),
+                    })
+                  }
+                  className="self-start rounded-lg border border-[#E8ECF3] px-2 py-2 text-xs font-semibold"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => onBodyChange({ ...body, paragraphs: [...paragraphs, ""] })}
+          className="mt-3 rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+        >
+          Add paragraph
+        </button>
+        <p className="mt-2 text-xs text-[#828B9B]">
+          Plain text only — rendered safely without any HTML markup.
+        </p>
+      </fieldset>
+    );
+  }
+  if (sectionType === "CTA") {
+    return (
+      <Field
+        label="Supporting text (optional)"
+        value={body.supportingText ?? ""}
+        onChange={(value) => onBodyChange({ ...body, supportingText: value })}
+        textarea
+      />
+    );
+  }
+  if (sectionType === "IMAGE" || sectionType === "IMAGE_TEXT") {
+    return (
+      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+        <legend className="px-1 text-sm font-semibold">Image</legend>
+        <div className="space-y-3">
+          <MediaPickerDialog
+            label="Image"
+            value={mediaId ?? ""}
+            media={media?.length ? media : mediaOptions}
+            onChange={onMediaChange}
+          />
+          <Field
+            label="Caption (optional)"
+            value={body.caption ?? ""}
+            onChange={(value) => onBodyChange({ ...body, caption: value })}
+          />
+          {sectionType === "IMAGE_TEXT" ? (
+            <Select
+              label="Image position"
+              value={body.imagePosition ?? "left"}
+              options={["left", "right"]}
+              onChange={(value) =>
+                onBodyChange({ ...body, imagePosition: value as "left" | "right" })
+              }
+            />
+          ) : null}
+        </div>
+      </fieldset>
+    );
+  }
+  if (ROW_TYPES[sectionType]) {
+    return (
+      <SectionRowsEditor
+        config={ROW_TYPES[sectionType]}
+        rows={body.items ?? []}
+        onChange={(items) => onBodyChange({ ...body, items })}
+      />
+    );
+  }
+  if (DIRECTORY_TYPES.has(sectionType)) {
+    return (
+      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+        <legend className="px-1 text-sm font-semibold">Live directory</legend>
+        <Field
+          label="How many to show"
+          type="number"
+          value={String(body.limit ?? 6)}
+          onChange={(value) => onBodyChange({ ...body, limit: Number(value) || 6 })}
+        />
+        <p className="mt-2 text-xs text-[#828B9B]">
+          This block loads real {DIRECTORY_LABELS[sectionType]} from the database at
+          render time — there is no manual content to enter here.
+        </p>
+      </fieldset>
+    );
+  }
+  if (sectionType === "LEAD_GENERATION") {
+    return (
+      <p className="text-xs text-[#828B9B]">
+        Renders the existing enquiry form. The heading and body above become the
+        form&apos;s intro copy.
+      </p>
+    );
+  }
+  return null;
+}
+
 function SectionCard({
   section,
   index,
   total,
+  mediaOptions,
   onChange,
   onMove,
   onDuplicate,
@@ -159,6 +426,7 @@ function SectionCard({
   section: Section;
   index: number;
   total: number;
+  mediaOptions: EditorialMedia[];
   onChange: (patch: Partial<Section>) => void;
   onMove: (direction: -1 | 1) => void;
   onDuplicate: () => void;
@@ -272,6 +540,30 @@ function SectionCard({
           </>
         ) : null}
       </div>
+      <div className="mt-4">
+        <SectionBodyFields
+          sectionType={section.sectionType}
+          mediaId={section.mediaId}
+          media={
+            section.media
+              ? [
+                  {
+                    id: section.media.id,
+                    url: section.media.publicUrl ?? section.media.url ?? "",
+                    title: section.media.title ?? null,
+                    alt: section.media.altText ?? null,
+                    width: null,
+                    height: null,
+                  },
+                ]
+              : undefined
+          }
+          mediaOptions={mediaOptions}
+          body={section.bodyJson ?? {}}
+          onMediaChange={(mediaId) => onChange({ mediaId })}
+          onBodyChange={(bodyJson) => onChange({ bodyJson })}
+        />
+      </div>
     </div>
   );
 }
@@ -304,6 +596,13 @@ export function PageCmsEditor({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<PageRecord | null>(null);
+  const [mediaOptions, setMediaOptions] = useState<EditorialMedia[]>([]);
+
+  useEffect(() => {
+    listEditorialMedia({ limit: 24 })
+      .then((result) => setMediaOptions(result.data))
+      .catch(() => undefined);
+  }, []);
 
   const load = useCallback(async () => {
     if (!recordId) {
@@ -455,6 +754,8 @@ export function PageCmsEditor({
             subheading: section.subheading || null,
             ctaPrimaryLabel: section.ctaPrimaryLabel || null,
             ctaPrimaryUrl: section.ctaPrimaryUrl || null,
+            mediaId: section.mediaId || null,
+            bodyJson: section.bodyJson ?? null,
             status: section.status,
           }),
         });
@@ -470,6 +771,8 @@ export function PageCmsEditor({
             subheading: section.subheading || null,
             ctaPrimaryLabel: section.ctaPrimaryLabel || null,
             ctaPrimaryUrl: section.ctaPrimaryUrl || null,
+            mediaId: section.mediaId || null,
+            bodyJson: section.bodyJson ?? null,
             status: section.status,
             startsAt: section.startsAt ?? null,
             endsAt: section.endsAt ?? null,
@@ -620,6 +923,7 @@ export function PageCmsEditor({
                 section={section}
                 index={index}
                 total={sections.length}
+                mediaOptions={mediaOptions}
                 onChange={(patch) => updateExisting(section.id, patch)}
                 onMove={(direction) => move(section.id, direction)}
                 onDuplicate={() => void duplicateExisting(section.id)}
@@ -632,6 +936,7 @@ export function PageCmsEditor({
                 section={section}
                 index={index}
                 total={newSections.length}
+                mediaOptions={mediaOptions}
                 onChange={(patch) => updateNew(section.id, patch)}
                 onMove={() => {}}
                 onDuplicate={() => {}}

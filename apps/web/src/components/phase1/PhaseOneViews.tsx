@@ -58,6 +58,8 @@ export type AnyRecord = {
   eyebrow?: string;
   heading?: string;
   sectionKey?: string;
+  sectionType?: string;
+  media?: { publicUrl?: string; url?: string; altText?: string; title?: string } | null;
   ctaPrimaryUrl?: string;
   ctaPrimaryLabel?: string;
   experimentKey?: string;

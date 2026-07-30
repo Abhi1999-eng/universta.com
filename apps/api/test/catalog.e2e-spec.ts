@@ -118,17 +118,22 @@ describe('catalog core (e2e)', () => {
   });
 
   afterAll(async () => {
-    for (const id of countryIds) {
-      await admin('delete', `/api/v1/admin/countries/${id}`, {}).catch(
-        () => undefined,
-      );
-    }
+    // Hard-delete rather than the admin API's soft delete: `code` is a real
+    // unique column and the conflict check above does not exclude
+    // soft-deleted rows, so a merely-archived fixture still permanently
+    // consumes one of only 1000 possible `T` + 3-digit codes. Left as a soft
+    // delete across many prior runs, that space slowly filled up and made
+    // this test's own continent-creation step intermittently fail. The same
+    // soft-delete-only cleanup left ~70 leftover country fixtures behind
+    // across past runs, so countries are hard-deleted here too.
+    if (countryIds.length)
+      await prisma.country
+        .deleteMany({ where: { id: { in: countryIds } } })
+        .catch(() => undefined);
     if (continentId)
-      await admin(
-        'delete',
-        `/api/v1/admin/continents/${continentId}`,
-        {},
-      ).catch(() => undefined);
+      await prisma.continent
+        .deleteMany({ where: { id: continentId } })
+        .catch(() => undefined);
     await app.close();
   });
 

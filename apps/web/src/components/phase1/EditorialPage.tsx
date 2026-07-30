@@ -1,20 +1,7 @@
 import Link from "next/link";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
-import { ExperimentCta } from "./ExperimentCta";
+import { PageSectionRenderer } from "./PageSectionRenderer";
 import type { AnyRecord } from "./PhaseOneViews";
-
-function body(section: AnyRecord) {
-  const data = section.bodyJson;
-  if (typeof data === "string") return data;
-  if (
-    data &&
-    typeof data === "object" &&
-    "text" in data &&
-    typeof data.text === "string"
-  )
-    return data.text;
-  return section.subheading ?? "";
-}
 
 export function EditorialPage({
   page,
@@ -54,20 +41,7 @@ export function EditorialPage({
       <section className="shell phase1-editorial">
         {sections.length ? (
           sections.map((section: AnyRecord) => (
-            <article className="editorial-section" key={section.id}>
-              <p className="eyebrow">{section.eyebrow ?? "Universta"}</p>
-              <h2>{section.heading ?? section.sectionKey}</h2>
-              <p>{body(section)}</p>
-              {section.ctaPrimaryUrl && section.ctaPrimaryLabel ? (
-                <ExperimentCta
-                  className="text-link"
-                  href={section.ctaPrimaryUrl}
-                  experimentKey={section.experimentKey}
-                >
-                  {section.ctaPrimaryLabel} →
-                </ExperimentCta>
-              ) : null}
-            </article>
+            <PageSectionRenderer section={section} key={section.id} />
           ))
         ) : (
           <>
