@@ -14,10 +14,16 @@ test('protects the dashboard, restores the session, and logs out', async ({ page
   page.on('requestfailed', (request) => {
     const target = new URL(request.url());
     const failure = request.failure()?.errorText ?? 'unknown failure';
+    const aborted = /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    // Signing out navigates away mid-flight, which cancels any prefetch the
+    // sidebar had already started. Those cancellations are caused by the
+    // navigation this test performs, not by a broken request: exempt the RSC
+    // payload fetches and the prefetched /login?returnTo=... redirects that
+    // protected sidebar links resolve to. Anything else still fails the test.
     const isExpectedNavigationCancellation =
-      target.searchParams.has('_rsc') &&
-      request.resourceType() === 'fetch' &&
-      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+      aborted &&
+      ((target.searchParams.has('_rsc') && request.resourceType() === 'fetch') ||
+        (target.pathname === '/login' && target.searchParams.has('returnTo')));
     if (!isExpectedNavigationCancellation) {
       failedRequests.push(`${request.url()} (${failure})`);
     }

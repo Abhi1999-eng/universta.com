@@ -26,7 +26,8 @@ describe('AdminShell', () => {
     render(<AdminShell><p>Dashboard content</p></AdminShell>);
     // Group headings required by the client-specified nav structure.
     for (const group of [
-      'Content management',
+      'Website Builder',
+      'Content records',
       'Destinations',
       'Academics',
       'Universities',
@@ -40,6 +41,11 @@ describe('AdminShell', () => {
     }
     // A first-time admin must be able to find each of these without typing a URL.
     const expectedLinks: Array<[string, string]> = [
+      // Website Builder must be reachable from the sidebar, not only by URL.
+      ['Website Pages', '/website'],
+      ['Global Header', '/website/header'],
+      ['Global Footer', '/website/footer'],
+      ['Navigation menus', '/phase1/navigation-menus'],
       ['Universities', '/phase1/universities'],
       ['University course offerings', '/phase1/offerings'],
       ['Consultants', '/phase1/consultants'],

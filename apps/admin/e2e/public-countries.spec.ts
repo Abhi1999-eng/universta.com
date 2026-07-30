@@ -11,7 +11,9 @@ test.describe('approved public country experience', () => {
     await expect(page.getByRole('combobox', { name: 'Search a country' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Browse every destination A–Z' })).toBeVisible();
     await expect(page.getByRole('link', { name: /Explore Canada/ })).toBeVisible();
-    await expect(page.locator('.visual-countries-page > footer')).toBeVisible();
+    // The footer is now the single Admin-managed one rendered by the root
+    // layout, rather than a per-template footer inside the page.
+    await expect(page.locator('footer.usta-footer')).toBeVisible();
 
     expect(await page.evaluate(() => ({
       local: Object.keys(localStorage),

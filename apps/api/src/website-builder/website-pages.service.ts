@@ -47,46 +47,250 @@ type RegistryEntry = {
 };
 
 export const WEBSITE_PAGES: RegistryEntry[] = [
-  { key: 'home', label: 'Home', family: 'Core', publicPath: '/', pageSlug: 'home', seoKey: 'home' },
-  { key: 'about', label: 'About Us', family: 'Core', publicPath: '/about', pageSlug: 'about' },
-  { key: 'contact', label: 'Contact Us', family: 'Core', publicPath: '/contact' },
-  { key: 'counselling', label: 'Book Free Counselling', family: 'Core', publicPath: '/counselling' },
-  { key: 'faq', label: 'FAQ', family: 'Core', publicPath: '/faq', pageSlug: 'faq', seoKey: 'faq' },
+  {
+    key: 'home',
+    label: 'Home',
+    family: 'Core',
+    publicPath: '/',
+    pageSlug: 'home',
+    seoKey: 'home',
+  },
+  {
+    key: 'about',
+    label: 'About Us',
+    family: 'Core',
+    publicPath: '/about',
+    pageSlug: 'about',
+    seoKey: 'about',
+  },
+  {
+    key: 'contact',
+    label: 'Contact Us',
+    family: 'Core',
+    publicPath: '/contact',
+    seoKey: 'contact',
+  },
+  {
+    key: 'counselling',
+    label: 'Book Free Counselling',
+    family: 'Core',
+    publicPath: '/counselling',
+    seoKey: 'counselling',
+  },
+  {
+    key: 'faq',
+    label: 'FAQ',
+    family: 'Core',
+    publicPath: '/faq',
+    pageSlug: 'faq',
+    seoKey: 'faq',
+  },
 
-  { key: 'countries-listing', label: 'Countries Listing', family: 'Destinations', publicPath: '/countries', pageSlug: 'countries', seoKey: 'countries-listing' },
-  { key: 'country-detail', label: 'Country Detail Template', family: 'Destinations', publicPath: '/study-in-canada', templateKey: 'country-detail' },
-  { key: 'cities-listing', label: 'Cities Listing', family: 'Destinations', publicPath: '/cities', seoKey: 'cities-listing' },
-  { key: 'city-detail', label: 'City Detail Template', family: 'Destinations', publicPath: '/study-in-canada/demo-city', templateKey: 'city-detail' },
+  {
+    key: 'countries-listing',
+    label: 'Countries Listing',
+    family: 'Destinations',
+    publicPath: '/countries',
+    pageSlug: 'countries',
+    seoKey: 'countries-listing',
+  },
+  {
+    key: 'country-detail',
+    label: 'Country Detail Template',
+    family: 'Destinations',
+    publicPath: '/study-in-canada',
+    templateKey: 'country-detail',
+  },
+  {
+    key: 'cities-listing',
+    label: 'Cities Listing',
+    family: 'Destinations',
+    publicPath: '/cities',
+    seoKey: 'cities-listing',
+  },
+  {
+    key: 'city-detail',
+    label: 'City Detail Template',
+    family: 'Destinations',
+    publicPath: '/study-in-canada/demo-city',
+    templateKey: 'city-detail',
+  },
 
-  { key: 'universities-listing', label: 'Universities Listing', family: 'Universities', publicPath: '/universities', seoKey: 'universities-listing' },
-  { key: 'university-detail', label: 'University Detail Template', family: 'Universities', publicPath: '/universities', templateKey: 'university-detail' },
-  { key: 'university-courses', label: 'University Courses Template', family: 'Universities', publicPath: '/universities', templateKey: 'university-courses' },
-  { key: 'university-course-offering', label: 'Single University Course Offering Template', family: 'Universities', publicPath: '/universities', templateKey: 'university-course-offering' },
+  {
+    key: 'universities-listing',
+    label: 'Universities Listing',
+    family: 'Universities',
+    publicPath: '/universities',
+    seoKey: 'universities-listing',
+  },
+  {
+    key: 'university-detail',
+    label: 'University Detail Template',
+    family: 'Universities',
+    publicPath: '/universities',
+    templateKey: 'university-detail',
+  },
+  {
+    key: 'university-courses',
+    label: 'University Courses Template',
+    family: 'Universities',
+    publicPath: '/universities',
+    templateKey: 'university-courses',
+  },
+  {
+    key: 'university-course-offering',
+    label: 'Single University Course Offering Template',
+    family: 'Universities',
+    publicPath: '/universities',
+    templateKey: 'university-course-offering',
+  },
 
-  { key: 'subjects-listing', label: 'Subject Listing', family: 'Academics', publicPath: '/subjects', seoKey: 'subjects-listing' },
-  { key: 'subject-detail', label: 'Subject Detail Template', family: 'Academics', publicPath: '/subjects', templateKey: 'subject-detail' },
-  { key: 'specializations-listing', label: 'Specialization Listing', family: 'Academics', publicPath: '/subjects' },
-  { key: 'courses-listing', label: 'Generic Courses Listing', family: 'Academics', publicPath: '/courses', seoKey: 'courses-listing' },
-  { key: 'course-detail', label: 'Generic Course Detail Template', family: 'Academics', publicPath: '/courses', templateKey: 'course-detail' },
+  {
+    key: 'subjects-listing',
+    label: 'Subject Listing',
+    family: 'Academics',
+    publicPath: '/subjects',
+    seoKey: 'subjects-listing',
+  },
+  {
+    key: 'subject-detail',
+    label: 'Subject Detail Template',
+    family: 'Academics',
+    publicPath: '/subjects',
+    templateKey: 'subject-detail',
+  },
+  // Per-subject route (/subjects/{slug}/specializations), so its presentation
+  // is owned by a template rather than one static SEO record.
+  {
+    key: 'specializations-listing',
+    label: 'Specialization Listing',
+    family: 'Academics',
+    publicPath: '/subjects',
+    templateKey: 'specialization-listing',
+  },
+  {
+    key: 'courses-listing',
+    label: 'Generic Courses Listing',
+    family: 'Academics',
+    publicPath: '/courses',
+    seoKey: 'courses-listing',
+  },
+  {
+    key: 'course-detail',
+    label: 'Generic Course Detail Template',
+    family: 'Academics',
+    publicPath: '/courses',
+    templateKey: 'course-detail',
+  },
 
-  { key: 'scholarships-listing', label: 'Scholarship Listing', family: 'Scholarships', publicPath: '/scholarships', seoKey: 'scholarships-listing' },
-  { key: 'scholarship-detail', label: 'Scholarship Detail Template', family: 'Scholarships', publicPath: '/scholarships', templateKey: 'scholarship-detail' },
+  {
+    key: 'scholarships-listing',
+    label: 'Scholarship Listing',
+    family: 'Scholarships',
+    publicPath: '/scholarships',
+    seoKey: 'scholarships-listing',
+  },
+  {
+    key: 'scholarship-detail',
+    label: 'Scholarship Detail Template',
+    family: 'Scholarships',
+    publicPath: '/scholarships',
+    templateKey: 'scholarship-detail',
+  },
 
-  { key: 'consultants-listing', label: 'Consultants Listing', family: 'Consultants', publicPath: '/study-abroad-consultants', seoKey: 'consultants-listing' },
-  { key: 'consultant-detail', label: 'Consultant Detail Template', family: 'Consultants', publicPath: '/study-abroad-consultants', templateKey: 'consultant-detail' },
-  { key: 'consultant-location', label: 'Consultant Location Template', family: 'Consultants', publicPath: '/study-abroad-consultants', templateKey: 'consultant-location' },
+  {
+    key: 'consultants-listing',
+    label: 'Consultants Listing',
+    family: 'Consultants',
+    publicPath: '/study-abroad-consultants',
+    seoKey: 'consultants-listing',
+  },
+  {
+    key: 'consultant-detail',
+    label: 'Consultant Detail Template',
+    family: 'Consultants',
+    publicPath: '/study-abroad-consultants',
+    templateKey: 'consultant-detail',
+  },
+  {
+    key: 'consultant-location',
+    label: 'Consultant Location Template',
+    family: 'Consultants',
+    publicPath: '/study-abroad-consultants',
+    templateKey: 'consultant-location',
+  },
 
-  { key: 'compare-countries', label: 'Country Comparison', family: 'Comparison', publicPath: '/compare/countries', seoKey: 'compare-countries' },
-  { key: 'compare-universities', label: 'University Comparison', family: 'Comparison', publicPath: '/compare/universities', seoKey: 'compare-universities' },
-  { key: 'compare-courses', label: 'Course Comparison', family: 'Comparison', publicPath: '/compare/courses', seoKey: 'compare-courses' },
-  { key: 'compare-consultants', label: 'Consultant Comparison', family: 'Comparison', publicPath: '/compare/consultants', seoKey: 'compare-consultants' },
+  {
+    key: 'compare-countries',
+    label: 'Country Comparison',
+    family: 'Comparison',
+    publicPath: '/compare/countries',
+    seoKey: 'compare-countries',
+  },
+  {
+    key: 'compare-universities',
+    label: 'University Comparison',
+    family: 'Comparison',
+    publicPath: '/compare/universities',
+    seoKey: 'compare-universities',
+  },
+  {
+    key: 'compare-courses',
+    label: 'Course Comparison',
+    family: 'Comparison',
+    publicPath: '/compare/courses',
+    seoKey: 'compare-courses',
+  },
+  {
+    key: 'compare-consultants',
+    label: 'Consultant Comparison',
+    family: 'Comparison',
+    publicPath: '/compare/consultants',
+    seoKey: 'compare-consultants',
+  },
 
-  { key: 'success-stories', label: 'Success Stories', family: 'Content', publicPath: '/success-stories', seoKey: 'success-stories-listing' },
-  { key: 'testimonials', label: 'Testimonials', family: 'Content', publicPath: '/testimonials', seoKey: 'testimonials-listing' },
-  { key: 'careers', label: 'Careers', family: 'Content', publicPath: '/careers', seoKey: 'careers-listing' },
-  { key: 'job-detail', label: 'Job Detail Template', family: 'Content', publicPath: '/careers', templateKey: 'job-detail' },
-  { key: 'events-listing', label: 'Events Listing', family: 'Content', publicPath: '/events', seoKey: 'events-listing' },
-  { key: 'event-detail', label: 'Event Detail Template', family: 'Content', publicPath: '/events', templateKey: 'event-detail' },
+  {
+    key: 'success-stories',
+    label: 'Success Stories',
+    family: 'Content',
+    publicPath: '/success-stories',
+    seoKey: 'success-stories-listing',
+  },
+  {
+    key: 'testimonials',
+    label: 'Testimonials',
+    family: 'Content',
+    publicPath: '/testimonials',
+    seoKey: 'testimonials-listing',
+  },
+  {
+    key: 'careers',
+    label: 'Careers',
+    family: 'Content',
+    publicPath: '/careers',
+    seoKey: 'careers-listing',
+  },
+  {
+    key: 'job-detail',
+    label: 'Job Detail Template',
+    family: 'Content',
+    publicPath: '/careers',
+    templateKey: 'job-detail',
+  },
+  {
+    key: 'events-listing',
+    label: 'Events Listing',
+    family: 'Content',
+    publicPath: '/events',
+    seoKey: 'events-listing',
+  },
+  {
+    key: 'event-detail',
+    label: 'Event Detail Template',
+    family: 'Content',
+    publicPath: '/events',
+    templateKey: 'event-detail',
+  },
 ];
 
 @Injectable()
@@ -123,7 +327,9 @@ export class WebsitePagesService {
     ]);
 
     const pageBySlug = new Map(pages.map((row) => [row.slug, row]));
-    const templateByKey = new Map(templates.map((row) => [row.templateKey, row]));
+    const templateByKey = new Map(
+      templates.map((row) => [row.templateKey, row]),
+    );
     const seoByKey = new Map(seoRows.map((row) => [row.ownerId, row]));
 
     return WEBSITE_PAGES.map((entry) => {
@@ -158,7 +364,8 @@ export class WebsitePagesService {
         templateKey: entry.templateKey ?? null,
         seoKey: entry.seoKey ?? null,
         hasSeoRecord: Boolean(seo),
-        updatedAt: page?.updatedAt ?? template?.updatedAt ?? seo?.updatedAt ?? null,
+        updatedAt:
+          page?.updatedAt ?? template?.updatedAt ?? seo?.updatedAt ?? null,
         /** Whether this entry can be created as a CMS page on demand. */
         canCreatePage: Boolean(entry.pageSlug) && !page,
       };

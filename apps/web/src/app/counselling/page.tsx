@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   CounsellingForm,
@@ -9,15 +8,18 @@ import {
   CatalogHeader,
 } from '@/components/templates/ApprovedTemplatePages';
 import { getCounsellingOptions } from '@/lib/counselling';
+import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Free study abroad counselling | Universta',
-  description:
+export async function generateMetadata() {
+  return staticPageMetadata(
+    'counselling',
+    'Free study abroad counselling',
     'Request personalised study abroad counselling using Universta’s published country, subject and course information.',
-  alternates: { canonical: '/counselling' },
-};
+    '/counselling',
+  );
+}
 
 type Search = Record<string, string | string[] | undefined>;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

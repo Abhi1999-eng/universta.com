@@ -377,3 +377,18 @@ a.usta-drawer-head.is-active {
   padding: 40px 24px;
   margin: 0;
 }
+
+/* globals.css carries an unscoped `nav { display: flex; gap: 28px }` that the
+ * older page templates rely on. The chrome's own <nav> elements must not
+ * inherit it: the mobile drawer groups and the footer columns are vertical
+ * stacks, and picking up a horizontal flex row makes them overflow sideways. */
+.usta-drawer nav,
+.usta-footer nav {
+  display: block;
+  gap: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+.usta-nav {
+  gap: 0;
+}

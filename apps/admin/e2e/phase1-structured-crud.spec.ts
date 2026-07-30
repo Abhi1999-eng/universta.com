@@ -188,7 +188,16 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await chooseOne(form, 'Eligible universities');
     await chooseOne(form, 'Eligible university course offerings');
     const edit = await saveAndOpenEdit(page, 'scholarships', scholarshipTitle);
-    await expect(edit.getByRole('group', { name: 'Eligible countries' }).getByRole('checkbox')).toHaveCount(await edit.getByRole('group', { name: 'Eligible countries' }).getByRole('checkbox').count());
+    // Asserts the relationship control actually re-rendered after reopening.
+    // (Previously this compared the locator's count against a second, racing
+    // read of the same count, so it asserted nothing and flaked when the
+    // group had not painted yet.)
+    await expect(
+      edit.getByRole('group', { name: 'Eligible countries' }).getByRole('checkbox').first(),
+    ).toBeVisible();
+    await expect(
+      edit.getByRole('group', { name: 'Eligible countries' }).getByRole('checkbox', { checked: true }),
+    ).not.toHaveCount(0);
     await edit.getByLabel('Amount').fill('3000');
     const reloaded = await saveEdit(page, 'scholarships', scholarshipTitle);
     await expect(reloaded.getByLabel('Amount')).toHaveValue('3000');

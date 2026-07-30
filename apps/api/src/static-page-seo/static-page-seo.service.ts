@@ -65,6 +65,13 @@ export const STATIC_PAGES: {
     defaultRobotsIndex: true,
   },
   { key: 'faq', label: 'FAQ page', defaultRobotsIndex: true },
+  { key: 'about', label: 'About Us', defaultRobotsIndex: true },
+  { key: 'contact', label: 'Contact Us', defaultRobotsIndex: true },
+  {
+    key: 'counselling',
+    label: 'Book Free Counselling',
+    defaultRobotsIndex: true,
+  },
   {
     // Backs the real global /cities index. Previously registered as
     // "city-listing-base", which had no route to attach to.

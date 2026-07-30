@@ -38,8 +38,11 @@ test.describe('approved public subject and course discovery', () => {
 
     await expect(page).toHaveURL(webBaseUrl);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Explore countries/i })).toHaveAttribute('href', '/countries');
-    await expect(page.getByRole('link', { name: /Book free counselling/i })).toHaveAttribute('href', '/counselling');
+    // Scope to the page body: the shared header/footer also expose a
+    // counselling CTA, which is intended.
+    const hero = page.locator('main');
+    await expect(hero.getByRole('link', { name: /Explore countries/i })).toHaveAttribute('href', '/countries');
+    await expect(hero.getByRole('link', { name: /Book free counselling/i }).first()).toHaveAttribute('href', '/counselling');
   });
 
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {
@@ -342,12 +345,14 @@ test.describe('approved public subject and course discovery', () => {
       }
 
       await page.goto(subjects);
-      const subjectMenu = page.getByRole('button', { name: /menu/ });
+      // The mobile menu is now the shared Admin-managed drawer in the root
+      // layout, so it is asserted on every template rather than per page.
+      const subjectMenu = page.getByRole('button', { name: /menu/i });
       await expect(subjectMenu).toBeVisible();
       await subjectMenu.click();
       await expect(subjectMenu).toHaveAttribute('aria-expanded', 'true');
       await expect(
-        page.getByRole('navigation', { name: 'Primary navigation' }),
+        page.getByRole('navigation', { name: 'Mobile navigation' }),
       ).toBeVisible();
     }
   });

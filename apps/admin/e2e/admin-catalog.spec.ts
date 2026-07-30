@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
 import { apiBaseUrl } from './helpers/e2e-urls';
 
+
 test.describe.serial('catalog management', () => {
   const suffix = `E2E ${Date.now()}`;
   const continentName = `Browser Region ${suffix}`;
@@ -16,12 +17,6 @@ test.describe.serial('catalog management', () => {
   });
 
   test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }) => {
-    const codeSeed = `Q${randomUUID()
-      .replace(/-/g, '')
-      .match(/../g)
-      ?.slice(0, 2)
-      .map((pair) => String.fromCharCode(65 + (Number.parseInt(pair, 16) % 26)))
-      .join('') ?? 'AA'}`;
     await loginAsAdmin(page);
     await page.goto('/continents');
     await expect(page).not.toHaveURL(/\/login/);
@@ -40,12 +35,33 @@ test.describe.serial('catalog management', () => {
     await page.getByLabel('Country name *').fill(countryName);
     countrySlug = countryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     await page.getByLabel('Slug *').fill(countrySlug);
-    await page.getByLabel('ISO alpha-2 *').fill(codeSeed.slice(0, 2));
-    await page.getByLabel('ISO alpha-3 *').fill(codeSeed.slice(0, 3));
     await page.getByLabel('Page heading *').fill(`Study in ${countryName}`);
     await page.getByLabel('Short description *').fill('An isolated browser E2E catalog record.');
-    await page.getByRole('button', { name: 'Save draft' }).click();
-    await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/);
+
+    // ISO alpha-2/alpha-3 are DB-unique and ignore soft deletes, so a code a
+    // previous run used stays taken forever even after that fixture is removed
+    // through the UI. Restricting the first letter to "Q" keeps the fixture in
+    // an ISO 3166 private-use range (no real country is impersonated) but only
+    // leaves 26 alpha-2 values, so walk them until one is actually free rather
+    // than guessing once and flaking when the guess is already burned.
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    let saved = false;
+    for (const letter of letters) {
+      await page.getByLabel('ISO alpha-2 *').fill(`Q${letter}`);
+      await page.getByLabel('ISO alpha-3 *').fill(`Q${letter}X`);
+      await page.getByRole('button', { name: 'Save draft' }).click();
+      try {
+        await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/, { timeout: 3_000 });
+        saved = true;
+        break;
+      } catch {
+        await expect(
+          page.getByText('Country ISO code already exists'),
+          'Save draft failed for a reason other than an ISO code clash',
+        ).toBeVisible();
+      }
+    }
+    expect(saved, 'every QA-QZ ISO code is already taken locally').toBe(true);
     const publishingStatus = page.getByRole('status', { name: 'Country publishing status' });
     await expect(publishingStatus).toHaveText('DRAFT');
     await expect(page.getByRole('heading', { name: 'Profile editors' })).toBeVisible();

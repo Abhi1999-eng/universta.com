@@ -295,8 +295,10 @@ export class ExpandedService {
       openInNewTab: row.openInNewTab,
       displayOrder: row.displayOrder,
     });
-    const byOrder = (a: { displayOrder: number }, b: { displayOrder: number }) =>
-      a.displayOrder - b.displayOrder;
+    const byOrder = (
+      a: { displayOrder: number },
+      b: { displayOrder: number },
+    ) => a.displayOrder - b.displayOrder;
     const children = new Map<string, ReturnType<typeof shape>[]>();
     for (const row of rows) {
       if (!row.parentItemId) continue;
@@ -306,16 +308,18 @@ export class ExpandedService {
       bucket.push(resolved);
       children.set(row.parentItemId, bucket);
     }
-    return rows
-      .filter((row) => !row.parentItemId)
-      .sort(byOrder)
-      .map((row) => ({
-        ...shape(row),
-        children: (children.get(row.id) ?? []).sort(byOrder),
-      }))
-      // Keep a top-level entry if it links somewhere itself, or is a dropdown
-      // parent with at least one resolvable child.
-      .filter((item) => item.href || item.children.length > 0);
+    return (
+      rows
+        .filter((row) => !row.parentItemId)
+        .sort(byOrder)
+        .map((row) => ({
+          ...shape(row),
+          children: (children.get(row.id) ?? []).sort(byOrder),
+        }))
+        // Keep a top-level entry if it links somewhere itself, or is a dropdown
+        // parent with at least one resolvable child.
+        .filter((item) => item.href || item.children.length > 0)
+    );
   }
 
   async list(

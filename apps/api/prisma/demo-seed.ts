@@ -2872,6 +2872,17 @@ async function main() {
       ],
     },
     {
+      templateKey: 'specialization-listing',
+      name: 'Specialization Listing',
+      pageFamily: 'Academics',
+      description: "Layout for a subject's specialization listing.",
+      sections: [
+        ['hero', 'HERO', 'Specializations hero'],
+        ['specializations', 'CARD_GRID', 'Specializations'],
+        ['counselling', 'LEAD_GENERATION', 'Talk to a counsellor'],
+      ],
+    },
+    {
       templateKey: 'course-detail',
       name: 'Generic Course Detail',
       pageFamily: 'Academics',
