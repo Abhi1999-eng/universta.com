@@ -26,6 +26,7 @@ import { LocationsModule } from './locations/locations.module';
 import { UniversityClaimsModule } from './university-claims/university-claims.module';
 import { BulkModule } from './bulk/bulk.module';
 import { RedirectsModule } from './redirects/redirects.module';
+import { InternalLinksModule } from './internal-links/internal-links.module';
 
 @Module({
   imports: [
@@ -49,6 +50,12 @@ import { RedirectsModule } from './redirects/redirects.module';
     StudyModesModule,
     CoursesModule,
     LeadsModule,
+    // Registered before ExpandedModule: its public routes live under the
+    // same "phase1" prefix, and ExpandedPublicController's generic
+    // `phase1/:resource/:slug` route would otherwise match (and swallow)
+    // `phase1/internal-links/resolve` first, since Nest/Express route
+    // matching is registration-order-first for equally-specific patterns.
+    InternalLinksModule,
     ExpandedModule,
     MediaModule,
     ExperimentsModule,

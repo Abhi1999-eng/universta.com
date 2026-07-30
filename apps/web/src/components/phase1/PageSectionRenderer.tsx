@@ -5,6 +5,7 @@ import type { AnyRecord } from "./PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCourses } from "@/lib/catalog";
+import { resolveHref } from "@/lib/internal-links";
 /* Section media can come from approved external asset hosts, same as elsewhere in this app. */
 /* eslint-disable @next/next/no-img-element */
 
@@ -155,13 +156,20 @@ function Stats({ items }: { items: SectionRow[] }) {
     </div>
   );
 }
-function RelatedLinks({ items }: { items: SectionRow[] }) {
+async function RelatedLinks({ items }: { items: SectionRow[] }) {
   if (!items.length) return null;
+  const resolved = await Promise.all(
+    items.map((item) => resolveHref(item.url)),
+  );
+  const visible = items
+    .map((item, index) => ({ item, href: resolved[index] }))
+    .filter((row): row is { item: SectionRow; href: string } => Boolean(row.href));
+  if (!visible.length) return null;
   return (
     <ul className="editorial-related-links">
-      {items.map((item, index) => (
+      {visible.map(({ item, href }, index) => (
         <li key={`${item.label}-${index}`}>
-          <Link href={item.url || "#"}>{item.label} →</Link>
+          <Link href={href}>{item.label} →</Link>
         </li>
       ))}
     </ul>
@@ -195,11 +203,14 @@ export async function PageSectionRenderer({ section }: { section: AnyRecord }) {
   const b = body(section);
   const heading = string(section.title) || section.heading || section.sectionKey;
   const eyebrow = section.eyebrow ?? "Universta";
+  const ctaHref = section.ctaPrimaryUrl
+    ? await resolveHref(section.ctaPrimaryUrl)
+    : null;
   const cta =
-    section.ctaPrimaryUrl && section.ctaPrimaryLabel ? (
+    ctaHref && section.ctaPrimaryLabel ? (
       <ExperimentCta
         className="text-link"
-        href={section.ctaPrimaryUrl}
+        href={ctaHref}
         experimentKey={section.experimentKey}
       >
         {section.ctaPrimaryLabel} →

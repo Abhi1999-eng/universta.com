@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
+import { InternalLinkPicker } from "./InternalLinkPicker";
 import { listEditorialMedia } from "@/features/catalog/catalog-client";
 import type { EditorialMedia } from "@/features/catalog/catalog.types";
 
@@ -238,7 +239,7 @@ function SectionRowsEditor({
                 />
               ) : null}
               {config.hasUrl ? (
-                <Field
+                <InternalLinkPicker
                   label="Link URL (optional)"
                   value={row.url ?? ""}
                   onChange={(value) => update(index, { url: value })}
@@ -536,7 +537,7 @@ function SectionCard({
           value={section.ctaPrimaryLabel ?? ""}
           onChange={(value) => onChange({ ctaPrimaryLabel: value })}
         />
-        <Field
+        <InternalLinkPicker
           label="CTA URL (optional)"
           value={section.ctaPrimaryUrl ?? ""}
           onChange={(value) => onChange({ ctaPrimaryUrl: value })}
