@@ -1291,6 +1291,78 @@ async function main() {
     where: { status: 'ACTIVE' },
   });
 
+  // Structured location demo fixtures: gives City Listing/City Detail real
+  // content after a clean seed (previously zero State/City rows existed no
+  // matter how many times the seed ran), and lets Campus/ConsultantLocation/
+  // Job records below link to a real City/State via FK, not only free text.
+  // Idempotent by (countryId, slug); reruns update rather than duplicate.
+  let demoState: Awaited<ReturnType<typeof prisma.state.upsert>> | null = null;
+  let demoCity: Awaited<ReturnType<typeof prisma.city.upsert>> | null = null;
+  let demoCityHarbour: Awaited<ReturnType<typeof prisma.city.upsert>> | null =
+    null;
+  if (demoCountry) {
+    demoState = await prisma.state.upsert({
+      where: {
+        countryId_slug: { countryId: demoCountry.id, slug: 'demo-province' },
+      },
+      update: { name: 'Demo Province', status: 'PUBLISHED', deletedAt: null },
+      create: {
+        countryId: demoCountry.id,
+        name: 'Demo Province',
+        slug: 'demo-province',
+        status: 'PUBLISHED',
+      },
+    });
+    demoCity = await prisma.city.upsert({
+      where: {
+        countryId_slug: { countryId: demoCountry.id, slug: 'demo-city' },
+      },
+      update: {
+        stateId: demoState.id,
+        name: 'Demo City',
+        shortDescription:
+          'Clearly fictional demo city fixture for local filtering and comparison.',
+        status: 'PUBLISHED',
+        publishedAt: now,
+        deletedAt: null,
+      },
+      create: {
+        countryId: demoCountry.id,
+        stateId: demoState.id,
+        name: 'Demo City',
+        slug: 'demo-city',
+        shortDescription:
+          'Clearly fictional demo city fixture for local filtering and comparison.',
+        status: 'PUBLISHED',
+        publishedAt: now,
+      },
+    });
+    demoCityHarbour = await prisma.city.upsert({
+      where: {
+        countryId_slug: { countryId: demoCountry.id, slug: 'demo-harbour' },
+      },
+      update: {
+        stateId: demoState.id,
+        name: 'Demo Harbour',
+        shortDescription:
+          'Clearly fictional demo city fixture for local filtering and comparison.',
+        status: 'PUBLISHED',
+        publishedAt: now,
+        deletedAt: null,
+      },
+      create: {
+        countryId: demoCountry.id,
+        stateId: demoState.id,
+        name: 'Demo Harbour',
+        slug: 'demo-harbour',
+        shortDescription:
+          'Clearly fictional demo city fixture for local filtering and comparison.',
+        status: 'PUBLISHED',
+        publishedAt: now,
+      },
+    });
+  }
+
   if (demoCountry) {
     const university = await prisma.university.upsert({
       where: { slug: 'northstar-demonstration-university' },
@@ -1335,6 +1407,8 @@ async function main() {
       update: {
         name: 'Demo City Campus',
         city: 'Demo City',
+        cityId: demoCity?.id,
+        stateId: demoState?.id,
         overview: 'Fictional local campus fixture.',
         status: 'ACTIVE',
         deletedAt: null,
@@ -1344,6 +1418,8 @@ async function main() {
         name: 'Demo City Campus',
         slug: 'demo-city-campus',
         city: 'Demo City',
+        cityId: demoCity?.id,
+        stateId: demoState?.id,
         overview: 'Fictional local campus fixture.',
         status: 'ACTIVE',
       },
@@ -1617,6 +1693,8 @@ async function main() {
         countryId: demoCountry.id,
         name: 'Demo City',
         city: 'Demo City',
+        cityId: demoCity?.id,
+        stateId: demoState?.id,
         overview: 'Fictional local location fixture.',
         status: 'ACTIVE',
         deletedAt: null,
@@ -1626,6 +1704,8 @@ async function main() {
         name: 'Demo City',
         slug: 'demo-city',
         city: 'Demo City',
+        cityId: demoCity?.id,
+        stateId: demoState?.id,
         overview: 'Fictional local location fixture.',
         status: 'ACTIVE',
       },
@@ -1717,6 +1797,9 @@ async function main() {
       department: 'Demonstration',
       employmentType: 'FULL_TIME',
       location: 'Demo City',
+      cityId: demoCity?.id,
+      stateId: demoState?.id,
+      countryId: demoCountry?.id,
       remoteStatus: 'HYBRID',
       applicationUrl: 'https://example.com/universta/local-demo/jobs/apply',
       publishedDate: new Date('2026-07-01'),
@@ -1733,6 +1816,9 @@ async function main() {
       department: 'Demonstration',
       employmentType: 'FULL_TIME',
       location: 'Demo City',
+      cityId: demoCity?.id,
+      stateId: demoState?.id,
+      countryId: demoCountry?.id,
       remoteStatus: 'HYBRID',
       applicationUrl: 'https://example.com/universta/local-demo/jobs/apply',
       publishedDate: new Date('2026-07-01'),
@@ -1835,6 +1921,14 @@ async function main() {
           publishedAt: now,
         },
       });
+      // Structured cityId/stateId only apply when this university's country
+      // matches demoState/demoCity's owning country (demoCountry) -- the two
+      // are independent lookups (demoCountries[] vs. demoCountry) and are not
+      // guaranteed to resolve to the same country.
+      const inDemoCountry = demoCountry ? country.id === demoCountry.id : false;
+      const campusCity = campusName.includes('Harbour')
+        ? demoCityHarbour
+        : demoCity;
       const campus = await prisma.universityCampus.upsert({
         where: {
           universityId_slug: {
@@ -1845,6 +1939,8 @@ async function main() {
         update: {
           name: campusName,
           city: 'Demo City',
+          cityId: inDemoCountry ? campusCity?.id : null,
+          stateId: inDemoCountry ? demoState?.id : null,
           overview: 'Fictional demo campus.',
           status: 'ACTIVE',
           deletedAt: null,
@@ -1854,6 +1950,8 @@ async function main() {
           name: campusName,
           slug: `${slug}-campus`,
           city: 'Demo City',
+          cityId: inDemoCountry ? campusCity?.id : undefined,
+          stateId: inDemoCountry ? demoState?.id : undefined,
           overview: 'Fictional demo campus.',
           status: 'ACTIVE',
         },
@@ -1876,6 +1974,8 @@ async function main() {
       update: {
         name: 'Northstar Demo Research Campus',
         city: 'Demo City',
+        cityId: demoCity?.id,
+        stateId: demoState?.id,
         overview: 'Fictional additional local demo campus.',
         status: 'ACTIVE',
         deletedAt: null,
@@ -1885,6 +1985,8 @@ async function main() {
         name: 'Northstar Demo Research Campus',
         slug: 'northstar-demo-research-campus',
         city: 'Demo City',
+        cityId: demoCity?.id,
+        stateId: demoState?.id,
         overview: 'Fictional additional local demo campus.',
         status: 'ACTIVE',
       },
@@ -2156,28 +2258,38 @@ async function main() {
       ['demo-innovation-district', 'Demo Innovation District', 1],
     ] as const;
     const locations = [];
-    for (const [slug, name, countryIndex] of locationSpecs)
+    for (const [slug, name, countryIndex] of locationSpecs) {
+      const locationCountry = demoCountries[countryIndex];
+      const inDemoCountry = demoCountry
+        ? locationCountry.id === demoCountry.id
+        : false;
+      const locationCity = slug === 'demo-harbour' ? demoCityHarbour : demoCity;
       locations.push(
         await prisma.consultantLocation.upsert({
           where: { slug },
           update: {
-            countryId: demoCountries[countryIndex].id,
+            countryId: locationCountry.id,
             name,
             city: name,
+            cityId: inDemoCountry ? locationCity?.id : null,
+            stateId: inDemoCountry ? demoState?.id : null,
             overview: 'Fictional demo consultant location.',
             status: 'ACTIVE',
             deletedAt: null,
           },
           create: {
-            countryId: demoCountries[countryIndex].id,
+            countryId: locationCountry.id,
             name,
             slug,
             city: name,
+            cityId: inDemoCountry ? locationCity?.id : undefined,
+            stateId: inDemoCountry ? demoState?.id : undefined,
             overview: 'Fictional demo consultant location.',
             status: 'ACTIVE',
           },
         }),
       );
+    }
     const consultantSpecs = [
       'lakeside-demo-consultant',
       'ember-demo-consultant',
@@ -2286,6 +2398,9 @@ async function main() {
           department: 'Demonstration',
           employmentType: 'FULL_TIME',
           location: 'Demo City',
+          cityId: demoCity?.id,
+          stateId: demoState?.id,
+          countryId: demoCountry?.id,
           remoteStatus: 'HYBRID',
           expiryDate: expired ? new Date('2025-01-01') : new Date('2027-01-01'),
           applicationUrl: `https://example.test/universta/demo/${slug}`,
@@ -2303,6 +2418,9 @@ async function main() {
           department: 'Demonstration',
           employmentType: 'FULL_TIME',
           location: 'Demo City',
+          cityId: demoCity?.id,
+          stateId: demoState?.id,
+          countryId: demoCountry?.id,
           remoteStatus: 'HYBRID',
           expiryDate: expired ? new Date('2025-01-01') : new Date('2027-01-01'),
           applicationUrl: `https://example.test/universta/demo/${slug}`,
@@ -2332,6 +2450,9 @@ async function main() {
           timezone: 'Asia/Kolkata',
           eventType: index === 0 ? 'OFFLINE' : 'ONLINE',
           venue: index === 0 ? 'Fictional Demo Venue' : null,
+          cityId: index === 0 ? demoCity?.id : null,
+          stateId: index === 0 ? demoState?.id : null,
+          countryId: index === 0 ? demoCountry?.id : null,
           onlineUrl:
             index === 0 ? null : `https://example.test/universta/demo/${slug}`,
           registrationUrl: `https://example.test/universta/demo/${slug}/register`,
@@ -2353,6 +2474,9 @@ async function main() {
           timezone: 'Asia/Kolkata',
           eventType: index === 0 ? 'OFFLINE' : 'ONLINE',
           venue: index === 0 ? 'Fictional Demo Venue' : null,
+          cityId: index === 0 ? demoCity?.id : undefined,
+          stateId: index === 0 ? demoState?.id : undefined,
+          countryId: index === 0 ? demoCountry?.id : undefined,
           onlineUrl:
             index === 0 ? null : `https://example.test/universta/demo/${slug}`,
           registrationUrl: `https://example.test/universta/demo/${slug}/register`,
