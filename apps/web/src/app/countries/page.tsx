@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ApprovedCountriesListing } from '@/components/templates/ApprovedTemplatePages';
 import { getContinents, getCountries, getDirectory } from '@/lib/countries';
+import { phaseList } from '@/lib/phase1';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Study destinations | Universta', description: 'Explore structured study destinations and plan your next step with Universta.' };
@@ -20,12 +22,13 @@ function apiFilters(filters: ListingFilters) {
 }
 async function loadData(filters: ListingFilters) {
   try {
-    const [countries, continents, directory] = await Promise.all([
+    const [countries, continents, directory, consultants] = await Promise.all([
       getCountries({ ...apiFilters(filters), limit: '12' }),
       getContinents(),
       getDirectory({ limit: '100' }),
+      phaseList<AnyRecord>('consultants', { limit: '6' }).catch(() => ({ data: [] as AnyRecord[] })),
     ]);
-    return { countries: countries.data, meta: countries.meta, continents, directory: directory.data, directoryMeta: directory.meta };
+    return { countries: countries.data, meta: countries.meta, continents, directory: directory.data, directoryMeta: directory.meta, consultants: consultants.data };
   } catch { return null; }
 }
 
@@ -34,5 +37,5 @@ export default async function CountriesPage({ searchParams }: { searchParams: Pr
   const data = await loadData(filters);
   if (!data) return <main className="shell error-page"><p className="eyebrow">Countries</p><h1>Destinations are temporarily unavailable</h1><p>Please try again shortly.</p><Link className="button" href="/countries">Retry</Link></main>;
   const activeContinents = data.continents.filter((item) => item.status === 'ACTIVE');
-  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} filters={filters} />;
+  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} consultants={data.consultants} filters={filters} />;
 }

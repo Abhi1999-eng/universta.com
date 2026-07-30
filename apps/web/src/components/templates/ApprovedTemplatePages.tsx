@@ -22,6 +22,15 @@ import type {
   SubjectDetail,
 } from '@/lib/catalog';
 
+type ConsultantDirectoryEntry = {
+  id: string;
+  name?: string;
+  slug?: string;
+  shortDescription?: string;
+  verificationStatus?: string;
+  isFeatured?: boolean;
+};
+
 type IconName =
   | 'arrow'
   | 'book'
@@ -306,6 +315,7 @@ export function ApprovedCountriesListing({
   continents,
   directory,
   directoryMeta,
+  consultants,
   filters: initialFilters,
 }: {
   countries: Country[];
@@ -313,6 +323,7 @@ export function ApprovedCountriesListing({
   continents: Array<{ id: string; name: string; slug: string; status: string }>;
   directory: DirectoryRecord[];
   directoryMeta: PaginationMeta;
+  consultants: ConsultantDirectoryEntry[];
   filters: Record<string, string | undefined>;
 }) {
   const router = useRouter();
@@ -785,8 +796,32 @@ export function ApprovedCountriesListing({
         <div className="wrap">
           <div className="eyebrow">Study abroad consultants</div>
           <h2 className="sec-h" style={{ marginTop: 12 }}>Guidance from people who know your destination.</h2>
-          <p className="sec-p">Connect with guidance once a published consultant profile is available for your destination.</p>
-          <div className="cons-grid"><EmptyTemplateState label="Consultant profiles are not yet published" /></div>
+          <p className="sec-p">Connect with published consultant profiles before you talk to a counsellor.</p>
+          {consultants.length ? (
+            <div className="cons-grid">
+              {consultants.map((consultant) => (
+                <article className="cons" key={consultant.id}>
+                  <div className="cons-top">
+                    <span className="fl" aria-hidden="true">{(consultant.name ?? '?').slice(0, 1)}</span>
+                    {consultant.verificationStatus === 'VERIFIED' ? (
+                      <span className="free-badge"><Icon name="check" size={13} />Verified</span>
+                    ) : null}
+                  </div>
+                  <h3>{consultant.name ?? 'Consultant'}</h3>
+                  <p>{consultant.shortDescription ?? 'Published consultant profile.'}</p>
+                  <Link className="view" href={`/study-abroad-consultants/${consultant.slug ?? ''}`}>
+                    View profile <Icon name="arrow" size={16} />
+                  </Link>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="cons-grid"><EmptyTemplateState label="Consultant profiles are not yet published" /></div>
+          )}
+          <div className="cta2-btns" style={{ marginTop: 28 }}>
+            <Link href={counsellingHref({ source: 'general', from: '/countries' })} className="btn btn-p btn-lg">Talk to a counsellor</Link>
+            <Link href="/study-abroad-consultants" className="btn btn-s btn-lg">Browse all consultants</Link>
+          </div>
         </div>
       </section>
       <section className="final">
