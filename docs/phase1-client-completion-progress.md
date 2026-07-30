@@ -16,8 +16,8 @@ Branch: `feat/phase1-expanded-local`
 | 4 | A/B testing foundation | DONE |
 | 5 | Location hierarchy and destination pages | DONE |
 | 6 | Country Listing client composition | DONE |
-| 7 | University Claim | IN PROGRESS |
-| 8 | Bulk data management | pending |
+| 7 | University Claim | DONE |
+| 8 | Bulk data management | IN PROGRESS |
 | 9 | Featured listings and advanced filters | pending |
 | 10 | SEO and schema completion | pending |
 | 11 | Full integration and defect fixing | pending |
@@ -87,6 +87,8 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `6df0a35` feat(universities): add university claim request workflow
+- `fe482f2` feat(countries): wire Country Detail's Cities tab to the real City model
 - `a54e633` feat(countries): wire Consultants section to real published data
 - `1378300` docs(phase1): checkpoint after milestone 5
 - `4d119bb` fix(admin): correct countries page-size cap in LocationsManager
@@ -97,6 +99,48 @@ Branch: `feat/phase1-expanded-local`
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 7 summary (done)
+
+- New schema: `UniversityClaimRequest` (claimant contact fields, status,
+  reviewer, `claimNumber`), `UniversityClaimNote` (mirrors `LeadNote`
+  naming), `UniversityClaimStatusHistory` (mirrors `LeadStatusHistory`
+  naming — `oldStatus`/`newStatus`/`changedByUserId`/`reason`) — migration
+  `20260730073024_add_university_claim_workflow`, purely additive.
+- New dedicated `UniversityClaimsModule`: public `POST
+  phase1/university-claims` (honeypot silently no-ops, 10s rate limit per
+  email+university mirroring the existing ContactInquiry convention,
+  duplicate-open-request detection separate from the rate limiter, full
+  field validation); admin `GET/GET-one/DELETE admin/university-claims`,
+  `PATCH .../:id/status` (validated against the 6-state enum, writes a
+  status-history row in the same transaction), `POST .../:id/notes`.
+- Public: "Claim this university" link on the University Detail hero
+  actions leads to `/universities/{slug}/claim` — a real form (name,
+  work email, job title, organization, phone, official website, message,
+  consent, honeypot) reusing the existing `.phase1-contact-form` CSS
+  pattern from the Contact page rather than inventing new styling. A new
+  web BFF route (`/api/university-claims`) forwards to the API using the
+  same origin-check pattern as the existing contact-inquiries route.
+- Admin: new "University claims" section (`UniversityClaimsManager.tsx`)
+  — status-filterable queue, detail view with all claimant fields, a
+  status-change dropdown with an optional reason, full status-history
+  and notes display, note-adding, archive.
+- 13 new e2e tests (validation, honeypot silently drops the row,
+  duplicate-vs-rate-limit distinguished via a `Date.now` mock rather than
+  a real 10s sleep, invalid status rejected, notes, full status-history
+  transition, confirms approving a claim exposes no access-granting
+  fields). Full 124-test API e2e suite green.
+- Verified the entire flow in a real browser end-to-end: submitted a
+  claim through the actual public form for the real seeded "Ember Demo
+  Institute" university, reviewed it in the actual admin UI, added a
+  note, transitioned SUBMITTED → UNDER_REVIEW → APPROVED, and confirmed
+  via a direct login attempt that the claimant's email still cannot
+  authenticate anywhere — approving a claim creates no account and no
+  access, exactly as required. Archived the test claim afterward.
+- Scope boundary honored explicitly: no University partner portal, no
+  automatic ownership/access grant on approval, no domain-ownership
+  auto-verification — all per the brief's own instruction not to build
+  Phase 2/3 functionality here.
 
 ## Milestone 6 summary (done)
 
@@ -295,9 +339,14 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 6 — Country Listing client composition: wire the Country detail
-page's own pre-existing "Cities" nav tab to the real City model built in
-Milestone 5 (it currently shows placeholder content); fix the audit-identified
-Consultants-section data wiring and CTA copy on the Country Listing page in
-this repo specifically (this repo has its own older, unpolished Country
-Listing template, distinct from the `universta` repo's reskinned one).
+Milestone 8 — Bulk data management: reusable CSV/XLSX import + export, a
+downloadable template, dry-run validation with a row-level error report,
+create vs. upsert modes, duplicate detection, relation lookup by stable
+slug/code, bulk update (only touching explicitly-selected fields) and
+bulk archive/delete (with confirmation, dependency checks, and an audit
+record) — for the primary catalog modules (Countries, States, Cities,
+Subjects, Generic Courses, Universities, Campuses, University Course
+Offerings, Scholarships, Consultants, Jobs, Events). File-security
+requirements from the brief (extension/MIME validation, size limits,
+formula-injection sanitization on export, no local path leakage, temp
+file cleanup) apply throughout.
