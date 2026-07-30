@@ -65,6 +65,24 @@ function publishedWhere() {
 }
 
 /**
+ * Extends publishedWhere() with the optional [publishStartsAt, publishEndsAt)
+ * scheduling window now available on University/Offering/Scholarship/
+ * Consultant/Job/Event/SuccessStory/Testimonial/City. A PUBLISHED row is only
+ * effectively live once `now` falls inside its window — this is the sole
+ * enforcement point (no cron flips status), mirroring the existing
+ * effectivePublicationWhere() pattern used for Pages/Sections.
+ */
+function publishedWhereScheduled(now: Date): Record<string, unknown> {
+  return {
+    ...publishedWhere(),
+    AND: [
+      { OR: [{ publishStartsAt: null }, { publishStartsAt: { lte: now } }] },
+      { OR: [{ publishEndsAt: null }, { publishEndsAt: { gt: now } }] },
+    ],
+  };
+}
+
+/**
  * Read-time visibility for scheduled content: a PUBLISHED or SCHEDULED page
  * (or section, with 'ACTIVE' standing in for 'SCHEDULED' target state) is
  * only effectively live once `now` is inside its optional [startsAt, endsAt)
@@ -250,9 +268,10 @@ export class ExpandedService {
   ) {
     const { page, limit, skip } = pageOf(query);
     const q = contains(query.q);
+    const now = new Date();
     if (resource === 'universities') {
       const where: any = {
-        ...publishedWhere(),
+        ...publishedWhereScheduled(now),
         ...(q ? { OR: [{ name: q }, { shortDescription: q }] } : {}),
         ...(query.country
           ? {
@@ -269,7 +288,7 @@ export class ExpandedService {
               offerings: {
                 some: {
                   genericCourse: { subject: { slug: query.subject } },
-                  ...publishedWhere(),
+                  ...publishedWhereScheduled(now),
                 },
               },
             }
@@ -284,7 +303,6 @@ export class ExpandedService {
           ? { campuses: { some: { state: { contains: query.state } } } }
           : {}),
       };
-      const now = new Date();
       const all = await this.prisma.university.findMany({
         where,
         take: FEATURED_FETCH_CAP,
@@ -294,7 +312,9 @@ export class ExpandedService {
             where: { status: 'ACTIVE', deletedAt: null },
             select: { id: true },
           },
-          _count: { select: { offerings: { where: publishedWhere() } } },
+          _count: {
+            select: { offerings: { where: publishedWhereScheduled(now) } },
+          },
         },
       });
       const sorted = sortByFeatured(all, now, (row) => row.name);
@@ -304,7 +324,7 @@ export class ExpandedService {
     }
     if (resource === 'scholarships') {
       const where: any = {
-        ...publishedWhere(),
+        ...publishedWhereScheduled(now),
         ...(q ? { OR: [{ title: q }, { summary: q }] } : {}),
         ...(query.country
           ? { countries: { some: { country: { slug: query.country } } } }
@@ -316,12 +336,40 @@ export class ExpandedService {
               },
             }
           : {}),
+        ...(query.offering
+          ? { offerings: { some: { offering: { slug: query.offering } } } }
+          : {}),
+        ...(query.subject
+          ? {
+              offerings: {
+                some: {
+                  offering: {
+                    genericCourse: { subject: { slug: query.subject } },
+                  },
+                },
+              },
+            }
+          : {}),
+        ...(query.degreeLevel
+          ? {
+              offerings: {
+                some: {
+                  offering: { courseLevel: { code: query.degreeLevel } },
+                },
+              },
+            }
+          : {}),
         ...(query.type ? { benefitType: query.type } : {}),
+        ...(query.amountMin
+          ? { amount: { gte: Number(query.amountMin) } }
+          : {}),
+        ...(query.amountMax
+          ? { amount: { lte: Number(query.amountMax) } }
+          : {}),
         ...(query.deadline === 'open'
           ? { OR: [{ deadline: null }, { deadline: { gte: new Date() } }] }
           : {}),
       };
-      const now = new Date();
       const all = await this.prisma.scholarship.findMany({
         where,
         take: FEATURED_FETCH_CAP,
@@ -352,7 +400,7 @@ export class ExpandedService {
     }
     if (resource === 'consultants') {
       const where: any = {
-        ...publishedWhere(),
+        ...publishedWhereScheduled(now),
         ...(q
           ? { OR: [{ name: q }, { shortDescription: q }, { description: q }] }
           : {}),
@@ -372,6 +420,41 @@ export class ExpandedService {
         ...(query.country
           ? { countries: { some: { country: { slug: query.country } } } }
           : {}),
+        ...(query.region
+          ? {
+              countries: {
+                some: { country: { continent: { slug: query.region } } },
+              },
+            }
+          : {}),
+        ...(query.state
+          ? {
+              locations: {
+                some: {
+                  location: {
+                    OR: [
+                      { state: { contains: query.state } },
+                      { stateRef: { slug: query.state } },
+                    ],
+                  },
+                },
+              },
+            }
+          : {}),
+        ...(query.city
+          ? {
+              locations: {
+                some: {
+                  location: {
+                    OR: [
+                      { city: { contains: query.city } },
+                      { cityRef: { slug: query.city } },
+                    ],
+                  },
+                },
+              },
+            }
+          : {}),
         ...(query.service
           ? { services: { some: { slug: query.service } } }
           : {}),
@@ -382,27 +465,88 @@ export class ExpandedService {
           ? { verificationStatus: 'VERIFIED' }
           : {}),
       };
-      const [data, total] = await this.prisma.$transaction([
-        this.prisma.consultant.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: [
-            { isFeatured: 'desc' },
-            { displayOrder: 'asc' },
-            { name: 'asc' },
-          ],
-          include: {
-            locations: { include: { location: true } },
-            countries: {
-              include: { country: { select: { name: true, slug: true } } },
-            },
-            services: true,
-            languages: true,
+      const all = await this.prisma.consultant.findMany({
+        where,
+        take: FEATURED_FETCH_CAP,
+        include: {
+          locations: { include: { location: true } },
+          countries: {
+            include: { country: { select: { name: true, slug: true } } },
           },
-        }),
-        this.prisma.consultant.count({ where }),
-      ]);
+          services: true,
+          languages: true,
+        },
+      });
+      const sorted = sortByFeatured(all, now, (row) => row.name);
+      const total = sorted.length;
+      const data = sorted.slice(skip, skip + limit);
+      return { data, meta: meta(page, limit, total) };
+    }
+    if (resource === 'jobs') {
+      const where: any = {
+        ...publishedWhereScheduled(now),
+        ...(q ? { title: q } : {}),
+        ...(query.location ? { location: { contains: query.location } } : {}),
+        ...(query.city ? { city: { slug: query.city } } : {}),
+        ...(query.state ? { state: { slug: query.state } } : {}),
+        ...(query.country ? { country: { slug: query.country } } : {}),
+        ...(query.remote ? { remoteStatus: query.remote } : {}),
+        ...(query.department ? { department: query.department } : {}),
+        ...(query.type ? { employmentType: query.type } : {}),
+        ...(query.active === 'true'
+          ? { OR: [{ expiryDate: null }, { expiryDate: { gte: now } }] }
+          : query.active === 'false'
+            ? { expiryDate: { lt: now } }
+            : { OR: [{ expiryDate: null }, { expiryDate: { gte: now } }] }),
+      };
+      const all = await this.prisma.job.findMany({
+        where,
+        take: FEATURED_FETCH_CAP,
+        include: {
+          city: { select: { name: true, slug: true } },
+          state: { select: { name: true, slug: true } },
+          country: { select: { name: true, slug: true } },
+        },
+      });
+      const sorted = sortByFeatured(all, now, (row) => row.title);
+      const total = sorted.length;
+      const data = sorted.slice(skip, skip + limit);
+      return { data, meta: meta(page, limit, total) };
+    }
+    if (resource === 'events') {
+      const where: any = {
+        ...publishedWhereScheduled(now),
+        ...(q ? { title: q } : {}),
+        ...(query.location ? { venue: { contains: query.location } } : {}),
+        ...(query.city ? { city: { slug: query.city } } : {}),
+        ...(query.state ? { state: { slug: query.state } } : {}),
+        ...(query.country ? { country: { slug: query.country } } : {}),
+        ...(query.mode ? { eventType: query.mode } : {}),
+        ...(query.when === 'past'
+          ? { startsAt: { lt: now } }
+          : query.when === 'upcoming'
+            ? { startsAt: { gte: now } }
+            : {}),
+        ...(query.from ? { startsAt: { gte: new Date(query.from) } } : {}),
+        ...(query.to ? { startsAt: { lte: new Date(query.to) } } : {}),
+      };
+      const all = await this.prisma.event.findMany({
+        where,
+        take: FEATURED_FETCH_CAP,
+        include: {
+          city: { select: { name: true, slug: true } },
+          state: { select: { name: true, slug: true } },
+          country: { select: { name: true, slug: true } },
+        },
+      });
+      const sorted = sortByFeatured(
+        all,
+        now,
+        (row) => row.title,
+        (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+      );
+      const total = sorted.length;
+      const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };
     }
     // Prisma's generated delegates are selected by a validated resource key.
@@ -412,20 +556,15 @@ export class ExpandedService {
     ] as any;
     const titleField = resource === 'testimonials' ? 'quote' : 'title';
     const where: any = {
-      ...publishedWhere(),
+      ...publishedWhereScheduled(now),
       ...(q ? { [titleField]: q } : {}),
     };
-    if (resource === 'jobs')
-      where.OR = [{ expiryDate: null }, { expiryDate: { gte: new Date() } }];
     const [data, total] = await Promise.all([
       delegate.findMany({
         where,
         skip,
         take: limit,
-        orderBy:
-          resource === 'events'
-            ? [{ startsAt: 'asc' }]
-            : [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+        orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
       }),
       delegate.count({ where }),
     ]);
@@ -439,10 +578,11 @@ export class ExpandedService {
     >,
     slug: string,
   ) {
+    const now = new Date();
     if (resource === 'universities') return this.universityDetail(slug);
     if (resource === 'scholarships') {
       const row = await this.prisma.scholarship.findFirst({
-        where: { slug, ...publishedWhere() },
+        where: { slug, ...publishedWhereScheduled(now) },
         include: {
           provider: true,
           countries: { include: { country: true } },
@@ -464,7 +604,7 @@ export class ExpandedService {
     }
     if (resource === 'consultants') {
       const row = await this.prisma.consultant.findFirst({
-        where: { slug, ...publishedWhere() },
+        where: { slug, ...publishedWhereScheduled(now) },
         include: {
           locations: {
             include: { location: { include: { country: true } } },
@@ -482,14 +622,15 @@ export class ExpandedService {
       resourceModel[resource] as keyof PrismaService
     ] as any;
     const row = await delegate.findFirst({
-      where: { slug, ...publishedWhere() },
+      where: { slug, ...publishedWhereScheduled(now) },
     });
     return this.withSeo(resource, row ?? this.notFound(resource));
   }
 
   private async universityDetail(slug: string) {
+    const now = new Date();
     const row = await this.prisma.university.findFirst({
-      where: { slug, ...publishedWhere() },
+      where: { slug, ...publishedWhereScheduled(now) },
       include: {
         country: true,
         campuses: {
@@ -501,7 +642,7 @@ export class ExpandedService {
           orderBy: { displayOrder: 'asc' },
         },
         offerings: {
-          where: publishedWhere(),
+          where: publishedWhereScheduled(now),
           include: {
             genericCourse: { include: { subject: true, courseLevel: true } },
             campus: true,
@@ -519,14 +660,15 @@ export class ExpandedService {
     offeringSlug?: string,
     query: Query = {},
   ) {
+    const now = new Date();
     const university = await this.prisma.university.findFirst({
-      where: { slug: universitySlug, ...publishedWhere() },
+      where: { slug: universitySlug, ...publishedWhereScheduled(now) },
       select: { id: true, name: true, slug: true },
     });
     if (!university) return this.notFound('universities');
     const where: any = {
       universityId: university.id,
-      ...publishedWhere(),
+      ...publishedWhereScheduled(now),
       ...(offeringSlug ? { slug: offeringSlug } : {}),
     };
     if (offeringSlug) {
@@ -553,6 +695,13 @@ export class ExpandedService {
       ...(query.courseLevel
         ? { courseLevel: { code: query.courseLevel } }
         : {}),
+      ...(query.studyMode ? { studyMode: query.studyMode } : {}),
+      ...(query.intake
+        ? { intakes: { some: { intake: { slug: query.intake } } } }
+        : {}),
+      ...(query.scholarshipAvailable === 'true'
+        ? { scholarships: { some: {} } }
+        : {}),
       ...(query.tuitionMin
         ? {
             OR: [
@@ -574,24 +723,18 @@ export class ExpandedService {
           }
         : {}),
     };
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.universityCourseOffering.findMany({
-        where: listingWhere,
-        skip,
-        take: limit,
-        orderBy: [
-          { isFeatured: 'desc' },
-          { displayOrder: 'asc' },
-          { name: 'asc' },
-        ],
-        include: {
-          campus: true,
-          genericCourse: { include: { subject: true, courseLevel: true } },
-          intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
-        },
-      }),
-      this.prisma.universityCourseOffering.count({ where: listingWhere }),
-    ]);
+    const all = await this.prisma.universityCourseOffering.findMany({
+      where: listingWhere,
+      take: FEATURED_FETCH_CAP,
+      include: {
+        campus: true,
+        genericCourse: { include: { subject: true, courseLevel: true } },
+        intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
+      },
+    });
+    const sorted = sortByFeatured(all, now, (row) => row.name);
+    const total = sorted.length;
+    const data = sorted.slice(skip, skip + limit);
     return { university, data, meta: meta(page, limit, total) };
   }
 
@@ -626,6 +769,7 @@ export class ExpandedService {
       ),
     ].slice(0, 3);
     if (!slugs.length) return { items: [], invalid: [] };
+    const now = new Date();
     if (type === 'countries') {
       const rows = await this.prisma.country.findMany({
         where: { slug: { in: slugs }, ...publishedWhere() },
@@ -643,12 +787,14 @@ export class ExpandedService {
       return this.ordered(
         slugs,
         await this.prisma.university.findMany({
-          where: { slug: { in: slugs }, ...publishedWhere() },
+          where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
           include: {
             country: true,
             campuses: true,
             accreditations: true,
-            _count: { select: { offerings: { where: publishedWhere() } } },
+            _count: {
+              select: { offerings: { where: publishedWhereScheduled(now) } },
+            },
           },
         }),
       );
@@ -656,7 +802,7 @@ export class ExpandedService {
       return this.ordered(
         slugs,
         await this.prisma.universityCourseOffering.findMany({
-          where: { slug: { in: slugs }, ...publishedWhere() },
+          where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
           include: {
             university: true,
             campus: true,
@@ -669,7 +815,7 @@ export class ExpandedService {
     return this.ordered(
       slugs,
       await this.prisma.consultant.findMany({
-        where: { slug: { in: slugs }, ...publishedWhere() },
+        where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
         include: {
           locations: { include: { location: true } },
           countries: { include: { country: true } },
@@ -1585,6 +1731,8 @@ export class ExpandedService {
         'featuredPriority',
         'featuredFrom',
         'featuredUntil',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       offerings: new Set([
@@ -1608,6 +1756,12 @@ export class ExpandedService {
         'sourceReference',
         'featuredMediaId',
         'status',
+        'isFeatured',
+        'featuredPriority',
+        'featuredFrom',
+        'featuredUntil',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       scholarships: new Set([
@@ -1629,6 +1783,8 @@ export class ExpandedService {
         'featuredPriority',
         'featuredFrom',
         'featuredUntil',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       consultants: new Set([
@@ -1643,6 +1799,12 @@ export class ExpandedService {
         'sourceReference',
         'featuredMediaId',
         'status',
+        'isFeatured',
+        'featuredPriority',
+        'featuredFrom',
+        'featuredUntil',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       jobs: new Set([
@@ -1652,6 +1814,9 @@ export class ExpandedService {
         'department',
         'employmentType',
         'location',
+        'cityId',
+        'stateId',
+        'countryId',
         'remoteStatus',
         'description',
         'responsibilities',
@@ -1661,6 +1826,12 @@ export class ExpandedService {
         'applicationUrl',
         'applicationEmail',
         'status',
+        'isFeatured',
+        'featuredPriority',
+        'featuredFrom',
+        'featuredUntil',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       events: new Set([
@@ -1673,10 +1844,19 @@ export class ExpandedService {
         'timezone',
         'eventType',
         'venue',
+        'cityId',
+        'stateId',
+        'countryId',
         'onlineUrl',
         'registrationUrl',
         'featuredMediaId',
         'status',
+        'isFeatured',
+        'featuredPriority',
+        'featuredFrom',
+        'featuredUntil',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       'success-stories': new Set([
@@ -1690,6 +1870,8 @@ export class ExpandedService {
         'attributionNote',
         'featuredMediaId',
         'status',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
       testimonials: new Set([
@@ -1700,6 +1882,8 @@ export class ExpandedService {
         'attributionNote',
         'imageMediaId',
         'status',
+        'publishStartsAt',
+        'publishEndsAt',
         'displayOrder',
       ]),
     };
@@ -1801,12 +1985,34 @@ export class ExpandedService {
       normalizeDecimal('amount');
       normalizeDate('deadline');
     }
-    if (resource === 'universities' || resource === 'scholarships') {
+    const FEATURED_RESOURCES = new Set([
+      'universities',
+      'offerings',
+      'scholarships',
+      'consultants',
+      'jobs',
+      'events',
+    ]);
+    if (FEATURED_RESOURCES.has(resource)) {
       normalizeDate('featuredFrom');
       normalizeDate('featuredUntil');
       if ('isFeatured' in data)
         data.isFeatured =
           data.isFeatured === true || data.isFeatured === 'true';
+    }
+    const SCHEDULED_RESOURCES = new Set([
+      'universities',
+      'offerings',
+      'scholarships',
+      'consultants',
+      'jobs',
+      'events',
+      'success-stories',
+      'testimonials',
+    ]);
+    if (SCHEDULED_RESOURCES.has(resource)) {
+      normalizeDate('publishStartsAt');
+      normalizeDate('publishEndsAt');
     }
     if (resource === 'jobs') {
       normalizeDate('publishedDate');

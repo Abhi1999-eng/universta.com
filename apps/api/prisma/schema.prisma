@@ -757,6 +757,8 @@ model Country {
   consultantLocations  ConsultantLocation[]
   successStories       SuccessStory[]
   preferredByLeads     Lead[]                      @relation("LeadPreferredCountry")
+  jobs                 Job[]                       @relation("JobCountry")
+  events               Event[]                     @relation("EventCountry")
 
   @@index([continentId, status, displayOrder])
   @@index([status, isFeatured, isPopular])
@@ -1033,8 +1035,12 @@ model State {
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
 
-  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  cities  City[]
+  country             Country              @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  cities              City[]
+  campuses            UniversityCampus[]   @relation("CampusState")
+  consultantLocations ConsultantLocation[] @relation("ConsultantLocationState")
+  jobs                Job[]                @relation("JobState")
+  events              Event[]              @relation("EventState")
 
   @@unique([countryId, slug])
   @@index([countryId, status, displayOrder])
@@ -1052,6 +1058,8 @@ model City {
   heroMediaId      String?   @map("hero_media_id") @db.Char(36)
   isFeatured       Boolean   @default(false) @map("is_featured")
   status           String    @default("DRAFT") @db.VarChar(30)
+  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdByUserId  String?   @map("created_by_user_id") @db.Char(36)
@@ -1060,11 +1068,15 @@ model City {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  country   Country     @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  state     State?      @relation(fields: [stateId], references: [id], onDelete: SetNull)
-  heroMedia MediaAsset? @relation("CityHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
-  createdBy User?       @relation("CityCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy User?       @relation("CityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  country             Country              @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  state               State?               @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  heroMedia           MediaAsset?          @relation("CityHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  createdBy           User?                @relation("CityCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy           User?                @relation("CityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  campuses            UniversityCampus[]   @relation("CampusCity")
+  consultantLocations ConsultantLocation[] @relation("ConsultantLocationCity")
+  jobs                Job[]                @relation("JobCity")
+  events              Event[]              @relation("EventCity")
 
   @@unique([countryId, slug])
   @@index([countryId, status, displayOrder])
@@ -1095,6 +1107,11 @@ model Course {
   salaryCurrencyCode    String?   @map("salary_currency_code") @db.Char(3)
   status                String    @default("DRAFT") @db.VarChar(30)
   isFeatured            Boolean   @default(false) @map("is_featured")
+  featuredPriority      Int       @default(0) @map("featured_priority")
+  featuredFrom          DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil         DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt       DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt         DateTime? @map("publish_ends_at") @db.DateTime(3)
   popularityScore       Decimal   @default(0) @map("popularity_score") @db.Decimal(10, 2)
   displayOrder          Int       @default(0) @map("display_order")
   publishedAt           DateTime? @map("published_at") @db.DateTime(3)
@@ -1519,6 +1536,8 @@ model University {
   featuredPriority Int       @default(0) @map("featured_priority")
   featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
   featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1607,6 +1626,8 @@ model UniversityCampus {
   slug         String    @db.VarChar(255)
   city         String?   @db.VarChar(150)
   state        String?   @db.VarChar(150)
+  cityId       String?   @map("city_id") @db.Char(36)
+  stateId      String?   @map("state_id") @db.Char(36)
   address      String?   @db.Text
   overview     String?   @db.Text
   status       String    @default("ACTIVE") @db.VarChar(30)
@@ -1617,9 +1638,13 @@ model UniversityCampus {
 
   university University                 @relation(fields: [universityId], references: [id], onDelete: Cascade)
   offerings  UniversityCourseOffering[]
+  cityRef    City?                      @relation("CampusCity", fields: [cityId], references: [id], onDelete: SetNull)
+  stateRef   State?                     @relation("CampusState", fields: [stateId], references: [id], onDelete: SetNull)
 
   @@unique([universityId, slug])
   @@index([universityId, status, displayOrder])
+  @@index([cityId])
+  @@index([stateId])
   @@map("university_campuses")
 }
 
@@ -1670,6 +1695,8 @@ model UniversityCourseOffering {
   featuredPriority Int       @default(0) @map("featured_priority")
   featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
   featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1769,6 +1796,8 @@ model Scholarship {
   featuredPriority Int       @default(0) @map("featured_priority")
   featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
   featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1836,6 +1865,8 @@ model Consultant {
   featuredPriority   Int       @default(0) @map("featured_priority")
   featuredFrom       DateTime? @map("featured_from") @db.DateTime(3)
   featuredUntil      DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt    DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt      DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder       Int       @default(0) @map("display_order")
   publishedAt        DateTime? @map("published_at") @db.DateTime(3)
   createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1858,6 +1889,8 @@ model ConsultantLocation {
   slug      String    @unique @db.VarChar(255)
   city      String    @db.VarChar(150)
   state     String?   @db.VarChar(150)
+  cityId    String?   @map("city_id") @db.Char(36)
+  stateId   String?   @map("state_id") @db.Char(36)
   overview  String?   @db.Text
   status    String    @default("ACTIVE") @db.VarChar(30)
   createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1866,8 +1899,12 @@ model ConsultantLocation {
 
   country     Country?                @relation(fields: [countryId], references: [id], onDelete: SetNull)
   consultants ConsultantLocationMap[]
+  cityRef     City?                   @relation("ConsultantLocationCity", fields: [cityId], references: [id], onDelete: SetNull)
+  stateRef    State?                  @relation("ConsultantLocationState", fields: [stateId], references: [id], onDelete: SetNull)
 
   @@index([countryId, status])
+  @@index([cityId])
+  @@index([stateId])
   @@map("consultant_locations")
 }
 
@@ -1956,6 +1993,8 @@ model SuccessStory {
   attributionNote String?   @map("attribution_note") @db.VarChar(500)
   featuredMediaId String?   @map("featured_media_id") @db.Char(36)
   status          String    @default("DRAFT") @db.VarChar(30)
+  publishStartsAt DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt   DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder    Int       @default(0) @map("display_order")
   publishedAt     DateTime? @map("published_at") @db.DateTime(3)
   createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1979,6 +2018,8 @@ model Testimonial {
   attributionNote String?                   @map("attribution_note") @db.VarChar(500)
   imageMediaId    String?                   @map("image_media_id") @db.Char(36)
   status          String                    @default("DRAFT") @db.VarChar(30)
+  publishStartsAt DateTime?                 @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt   DateTime?                 @map("publish_ends_at") @db.DateTime(3)
   displayOrder    Int                       @default(0) @map("display_order")
   publishedAt     DateTime?                 @map("published_at") @db.DateTime(3)
   createdAt       DateTime                  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1998,6 +2039,9 @@ model Job {
   department       String?   @db.VarChar(150)
   employmentType   String?   @map("employment_type") @db.VarChar(80)
   location         String?   @db.VarChar(255)
+  cityId           String?   @map("city_id") @db.Char(36)
+  stateId          String?   @map("state_id") @db.Char(36)
+  countryId        String?   @map("country_id") @db.Char(36)
   remoteStatus     String?   @map("remote_status") @db.VarChar(50)
   summary          String?   @db.VarChar(1000)
   description      String?   @db.LongText
@@ -2008,38 +2052,67 @@ model Job {
   publishedDate    DateTime? @map("published_date") @db.Date
   expiryDate       DateTime? @map("expiry_date") @db.Date
   status           String    @default("DRAFT") @db.VarChar(30)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  featuredPriority Int       @default(0) @map("featured_priority")
+  featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
+  city    City?    @relation("JobCity", fields: [cityId], references: [id], onDelete: SetNull)
+  state   State?   @relation("JobState", fields: [stateId], references: [id], onDelete: SetNull)
+  country Country? @relation("JobCountry", fields: [countryId], references: [id], onDelete: SetNull)
+
   @@index([status, expiryDate, displayOrder])
+  @@index([cityId])
+  @@index([stateId])
+  @@index([countryId])
   @@map("jobs")
 }
 
 model Event {
-  id              String    @id @default(uuid()) @db.Char(36)
-  title           String    @db.VarChar(255)
-  slug            String    @unique @db.VarChar(255)
-  summary         String?   @db.VarChar(1000)
-  description     String?   @db.LongText
-  startsAt        DateTime  @map("starts_at") @db.DateTime(3)
-  endsAt          DateTime? @map("ends_at") @db.DateTime(3)
-  timezone        String    @default("Asia/Kolkata") @db.VarChar(100)
-  eventType       String    @default("OFFLINE") @map("event_type") @db.VarChar(30)
-  venue           String?   @db.VarChar(500)
-  onlineUrl       String?   @map("online_url") @db.VarChar(2048)
-  speakersJson    Json?     @map("speakers_json") @db.Json
-  registrationUrl String?   @map("registration_url") @db.VarChar(2048)
-  featuredMediaId String?   @map("featured_media_id") @db.Char(36)
-  status          String    @default("DRAFT") @db.VarChar(30)
-  displayOrder    Int       @default(0) @map("display_order")
-  publishedAt     DateTime? @map("published_at") @db.DateTime(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
-  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+  id               String    @id @default(uuid()) @db.Char(36)
+  title            String    @db.VarChar(255)
+  slug             String    @unique @db.VarChar(255)
+  summary          String?   @db.VarChar(1000)
+  description      String?   @db.LongText
+  startsAt         DateTime  @map("starts_at") @db.DateTime(3)
+  endsAt           DateTime? @map("ends_at") @db.DateTime(3)
+  timezone         String    @default("Asia/Kolkata") @db.VarChar(100)
+  eventType        String    @default("OFFLINE") @map("event_type") @db.VarChar(30)
+  venue            String?   @db.VarChar(500)
+  cityId           String?   @map("city_id") @db.Char(36)
+  stateId          String?   @map("state_id") @db.Char(36)
+  countryId        String?   @map("country_id") @db.Char(36)
+  onlineUrl        String?   @map("online_url") @db.VarChar(2048)
+  speakersJson     Json?     @map("speakers_json") @db.Json
+  registrationUrl  String?   @map("registration_url") @db.VarChar(2048)
+  featuredMediaId  String?   @map("featured_media_id") @db.Char(36)
+  status           String    @default("DRAFT") @db.VarChar(30)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  featuredPriority Int       @default(0) @map("featured_priority")
+  featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+
+  city    City?    @relation("EventCity", fields: [cityId], references: [id], onDelete: SetNull)
+  state   State?   @relation("EventState", fields: [stateId], references: [id], onDelete: SetNull)
+  country Country? @relation("EventCountry", fields: [countryId], references: [id], onDelete: SetNull)
 
   @@index([status, startsAt, displayOrder])
+  @@index([cityId])
+  @@index([stateId])
+  @@index([countryId])
   @@map("events")
 }
