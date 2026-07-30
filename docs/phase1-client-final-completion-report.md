@@ -583,4 +583,121 @@ follows this addendum, on `feat/phase1-expanded-local`.
 
 ---
 
+## Addendum 3 — public navigation, Website Builder, and the chrome consolidation
+
+Starting HEAD `8138dc5` → final HEAD after this pass's three commits
+(`70750d9`, `1a8c9a3`, `c4f9940`). Branch `feat/phase1-expanded-local`.
+Nothing pushed, merged or deployed; no remotes touched; all database
+URLs remain `127.0.0.1`.
+
+**Root cause behind two long-standing complaints.** The public site had
+**six** divergent header/footer implementations (`CatalogHeader`,
+`CountryHeader`, `PhaseOneHeader`, a `countries/SiteChrome` pair, and
+three inline ones in the older catalog views). That single fact
+explains both "most Phase 1 pages are not discoverable" (each chrome
+hardcoded 3–5 links, so ~20 page types were URL-only) and "some
+Header/Footer variants do not consume saved Settings" (only
+`CatalogFooter` ever read them). This pass replaced all six with one
+Admin-driven Header/Footer rendered once in the root layout. The six
+legacy components are now no-ops rather than deleted, so the ~38 call
+sites across page templates compile unchanged and cannot reintroduce a
+second, divergent header.
+
+**Public discoverability — verified, not asserted.** All 33 required
+public routes return 200 with exactly one `<header>` and one
+`<footer>`, 8 nav groups and zero `href="#"` links. All 20 required
+listing/static pages are linked directly from the header or footer;
+every detail page is one click from its listing (so ≤3 clicks from
+Home). Invalid slugs still 404. Verified at 1536×1024, 768×1024 and
+390×844 with no horizontal overflow.
+
+**New public surface**: a global `/cities` index (plus a
+`phase1/cities` endpoint), because city detail pages were previously
+reachable only after choosing a country — which also left the
+previously-registered-but-unwired `city-listing-base` SEO key with
+nothing to point at. That key is now `cities-listing` and backs a real
+route.
+
+**Website Builder** is a first-class Admin section (sidebar +
+Dashboard) containing Website Pages, Global Header, Global Footer,
+Navigation menus, Page templates, Reusable sections, Media library and
+SEO management. **Website Pages** lists all 33 managed pages and
+templates in one searchable selector with page-family and managed-as
+filters, per-row Edit / SEO / Preview, and a "Create editable page"
+action. Each row states honestly how that page is managed — full
+section editor, layout template, or SEO-only for a code-composed route
+— rather than implying identical controls everywhere.
+
+The template system previously had **zero records**, so it was not
+demonstrable; 13 detail-page templates are now seeded and the selector
+reports 4 Pages / 13 Templates / 16 Routes.
+
+**Admin → public proven live**, not inferred: renaming the header CTA
+to "Talk to an advisor" and enabling the announcement bar in Global
+Header appeared on the public site immediately; both were reverted
+afterwards.
+
+**Defects found and fixed this pass**
+1. Mobile drawer groups and footer columns laid out horizontally and
+   overflowed, because `globals.css` carries an unscoped
+   `nav { display: flex }` the older templates rely on. The chrome's
+   own navs now opt out.
+2. Header overflowed at 1536px — "Contact" collided with the CTA.
+   Tightened spacing and moved the drawer breakpoint to 1200px.
+3. `GET /api/v1/phase1/:resource` threw a bare `Error` for unmapped
+   resources, returning 500 instead of 404 (found while adding
+   `phase1/cities`).
+4. `admin-catalog` E2E burned one of only 26 `QA`–`QZ` ISO codes per
+   run, because `iso2Code`/`iso3Code` are DB-unique and ignore
+   `deletedAt`. 12 were already burned, so it failed ~half of full
+   runs. Purged the stale fixtures locally and made the test walk the
+   range for a genuinely free code.
+5. The scholarship CRUD test compared a locator's count against a
+   second, racing read of the same count — it asserted nothing and
+   flaked. Now asserts the relationship control actually rendered.
+6. About / Contact / Counselling had no Admin-managed SEO record at
+   all; they now do.
+
+**Regression at final HEAD**: API unit **54** (was 44), API e2e
+**173/173**, Admin unit **48**, Web unit **8**, Playwright **62** (was
+56) — green on two consecutive full runs. All three lints 0 errors (57
+/ 0 / 4 pre-existing warnings), all three production builds clean,
+Prisma format/validate clean, migrations up to date, demo seed run
+twice with identical counts, `git diff --check` clean, no tracked
+`.env`, no secrets, no build artifacts, package-lock unchanged.
+
+**Honest caveat on API e2e**: 173/173 passes reliably with
+`--runInBand`. Under the default parallel workers, with three dev
+servers and a browser also running on this machine, individual suites
+intermittently hit Jest's 5s hook timeout (module compile / login).
+That is local resource contention, not a logic failure — the same
+suite passed 173/173 in parallel earlier in the session on a quieter
+machine.
+
+**Genuinely open, stated plainly**
+- The Playwright structured-CRUD spec still creates one
+  `Acceptance Demo <runId>` record set per run and never removes it, so
+  repeated local runs inflate public listings until purged. Purged this
+  pass; the underlying test-hygiene gap remains.
+- Website Pages routes an admin to the correct editor; it is not itself
+  a drag-and-drop canvas. Section add/reorder/show-hide/duplicate and
+  the field-based (non-JSON) editor already exist inside the page
+  editor and are reached from here — but per-section
+  desktop/tablet/mobile visibility toggles, section-level version
+  history/restore, and a device-framed live preview are **not**
+  implemented.
+- Universities, Scholarships and Consultants **listing** pages remain
+  on the plain, previously-deferred template. Their detail pages are
+  polished.
+- Header/Footer are now genuinely global, but page-level chrome
+  overrides are not implemented.
+
+This addendum does not add a gated closing line, for the same reason as
+the previous two: several page-builder capabilities named in the brief
+(responsive per-section visibility, version restore, device preview)
+are honestly not built, and claiming otherwise would misrepresent the
+state.
+
+---
+
 COMPLETE CLIENT-DEFINED PHASE 1 VERIFIED LOCALLY
