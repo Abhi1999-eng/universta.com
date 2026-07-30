@@ -10,6 +10,14 @@ function currentBreadcrumb(pathname: string) {
   if (pathname === '/dashboard' || pathname === '/') {
     return { group: null as string | null, item: 'Overview' };
   }
+  // The generic Phase 1 resource screens render their own specific heading
+  // (e.g. "Universities") inside the page body, matching the nav item's
+  // label exactly for most resources -- using that same label for the
+  // header title here would duplicate it visibly and break a heading-count
+  // assertion, so the header stays generic for this whole route family.
+  if (pathname.startsWith('/phase1')) {
+    return { group: 'Content Management', item: 'Phase 1 content' };
+  }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((entry) => entry.href.split('?')[0] === pathname);
     if (item) return { group: group.label, item: item.label };

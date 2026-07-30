@@ -62,6 +62,7 @@ export function PageTemplatesManager() {
   const [rows, setRows] = useState<TemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"error" | "info">("error");
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<TemplateRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -80,6 +81,7 @@ export function PageTemplatesManager() {
     try {
       setRows(await api<TemplateRow[]>(`?includeArchived=${showArchived}`));
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "Unable to load templates");
     } finally {
       setLoading(false);
@@ -145,6 +147,7 @@ export function PageTemplatesManager() {
       setEditing(null);
       await load();
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "Unable to save template");
     } finally {
       setSaving(false);
@@ -154,9 +157,11 @@ export function PageTemplatesManager() {
   async function duplicate(row: TemplateRow) {
     try {
       await api(`/${row.id}/duplicate`, { method: "POST" });
+      setMessageTone("info");
       setMessage(`Duplicated "${row.name}" as an inactive draft copy.`);
       await load();
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "Unable to duplicate template");
     }
   }
@@ -167,6 +172,7 @@ export function PageTemplatesManager() {
       await api(`/${row.id}`, { method: "DELETE" });
       await load();
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "Unable to archive template");
     }
   }
@@ -191,7 +197,14 @@ export function PageTemplatesManager() {
         </div>
       </div>
 
-      {message ? <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">{message}</p> : null}
+      {message ? (
+        <p
+          className={`mt-4 text-sm font-semibold ${messageTone === "error" ? "text-[#B42318]" : "text-[#18794E]"}`}
+          role={messageTone === "error" ? "alert" : "status"}
+        >
+          {message}
+        </p>
+      ) : null}
 
       {loading ? (
         <p className="mt-8 text-sm text-[#667085]">Loading…</p>

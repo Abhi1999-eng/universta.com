@@ -298,10 +298,7 @@ describe('Bulk data import/export (e2e)', () => {
         .expect(201);
       expect(data(bad).failed).toBe(1);
 
-      const good = await admin(
-        'post',
-        '/api/v1/admin/bulk/universities/import',
-      )
+      const good = await admin('post', '/api/v1/admin/bulk/universities/import')
         .field('mode', 'create')
         .attach(
           'file',
@@ -321,10 +318,7 @@ describe('Bulk data import/export (e2e)', () => {
     });
 
     it('auto-generates a campus slug prefixed with its university slug to avoid cross-university collisions', async () => {
-      const response = await admin(
-        'post',
-        '/api/v1/admin/bulk/campuses/import',
-      )
+      const response = await admin('post', '/api/v1/admin/bulk/campuses/import')
         .field('mode', 'create')
         .attach(
           'file',
@@ -366,9 +360,9 @@ describe('Bulk data import/export (e2e)', () => {
         )
         .expect(201);
       expect(data(response).created).toBe(1);
-      const offering = await prisma.universityCourseOffering.findFirstOrThrow(
-        { where: { slug: offeringSlug } },
-      );
+      const offering = await prisma.universityCourseOffering.findFirstOrThrow({
+        where: { slug: offeringSlug },
+      });
       offeringId = offering.id;
       expect(offering.campusId).toBe(campusId);
     });
@@ -392,7 +386,8 @@ describe('Bulk data import/export (e2e)', () => {
         .attach(
           'file',
           Buffer.from(
-            'slug,title,status\n' + `${scholarshipSlug},Bulk E2E Scholarship,DRAFT`,
+            'slug,title,status\n' +
+              `${scholarshipSlug},Bulk E2E Scholarship,DRAFT`,
             'utf8',
           ),
           'scholarships.csv',
@@ -408,7 +403,8 @@ describe('Bulk data import/export (e2e)', () => {
         .attach(
           'file',
           Buffer.from(
-            'slug,name,status\n' + `${consultantSlug},Bulk E2E Consultant,DRAFT`,
+            'slug,name,status\n' +
+              `${consultantSlug},Bulk E2E Consultant,DRAFT`,
             'utf8',
           ),
           'consultants.csv',

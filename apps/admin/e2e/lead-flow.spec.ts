@@ -42,7 +42,12 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
 
   await page.goto(`${adminBaseUrl}/login`);
   await loginAsAdmin(page);
-  await page.getByRole('link', { name: 'Leads' }).click();
+  // Scoped to the sidebar (not the Dashboard's own quick-link cards, which
+  // repeat the same "Counselling leads" label as a shortcut into this page).
+  await page
+    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('link', { name: 'Counselling leads' })
+    .click();
   await expect(page).toHaveURL(/\/leads$/);
   await page.getByLabel('Search').fill(email);
   await page.getByRole('button', { name: 'Apply filters' }).click();
