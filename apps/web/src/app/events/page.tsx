@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Events | Universta",
-  alternates: { canonical: "/events" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "events-listing",
+    "Events",
+    "Explore currently published Universta events and info sessions.",
+    "/events",
+  );
+}
 
 export default async function EventsPage() {
   let rows: AnyRecord[] = [];

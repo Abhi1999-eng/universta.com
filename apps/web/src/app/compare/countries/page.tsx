@@ -1,13 +1,18 @@
 import { CompareView } from "@/components/phase1/CompareView";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phaseCompare } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Compare countries | Universta",
-  robots: { index: false, follow: true },
-  alternates: { canonical: "/compare/countries" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "compare-countries",
+    "Compare countries",
+    "Compare published tuition, post-study work and intake information side by side.",
+    "/compare/countries",
+    false,
+  );
+}
 type Comparison = { items: AnyRecord[]; invalid: string[] };
 
 export default async function CompareCountries({

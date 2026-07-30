@@ -32,7 +32,7 @@ describe('AdminShell', () => {
       'Universities',
       'Scholarships',
       'Consultants',
-      'Engagement',
+      'Enquiries and Counselling',
       'Careers and events',
       'Platform tools',
     ]) {
@@ -60,7 +60,7 @@ describe('AdminShell', () => {
       ['Counselling leads', '/leads'],
       ['Contact enquiries', '/phase1/contact-inquiries'],
       ['Countries', '/countries'],
-      ['Regions', '/continents'],
+      ['Continents', '/continents'],
       ['Subjects', '/subjects'],
       ['Generic courses', '/courses'],
       ['University claim requests', '/university-claims'],

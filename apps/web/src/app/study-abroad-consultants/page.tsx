@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Study abroad consultants | Universta",
-  alternates: { canonical: "/study-abroad-consultants" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "consultants-listing",
+    "Study abroad consultants",
+    "Explore currently published study abroad consultants.",
+    "/study-abroad-consultants",
+  );
+}
 
 export default async function ConsultantsPage({
   searchParams,

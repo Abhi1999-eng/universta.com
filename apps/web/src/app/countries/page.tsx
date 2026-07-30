@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import type { Metadata } from 'next';
 import { ApprovedCountriesListing, type CountryListingOverrides } from '@/components/templates/ApprovedTemplatePages';
 import { getContinents, getCountries, getDirectory } from '@/lib/countries';
 import { phaseList, phasePage } from '@/lib/phase1';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { staticPageMetadata } from '@/lib/static-page-seo';
 
 /** Section keys an admin can use, via the generic Page CMS (Phase 1 content
  * -> Pages -> a page with slug "countries"), to override this listing's
@@ -39,7 +39,14 @@ async function loadContentOverrides(): Promise<CountryListingOverrides> {
 }
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Study destinations | Universta', description: 'Explore structured study destinations and plan your next step with Universta.' };
+export async function generateMetadata() {
+  return staticPageMetadata(
+    'countries-listing',
+    'Study destinations',
+    'Explore structured study destinations and plan your next step with Universta.',
+    '/countries',
+  );
+}
 
 type SearchParams = Record<string, string | string[] | undefined>;
 const allowed = ['q', 'region', 'budgetBand', 'ieltsOptional', 'intake', 'visaSuccessBand', 'pathwayStrength', 'hasTopRankedUniversities', 'page'] as const;

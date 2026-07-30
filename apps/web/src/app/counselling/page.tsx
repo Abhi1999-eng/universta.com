@@ -75,7 +75,7 @@ export default async function CounsellingPage({
   ]);
   return (
     <main className="visual-courses-page visual-counselling-page">
-      <CatalogHeader active="countries" />
+      <CatalogHeader />
       <div className="wrap crumbs">
         <nav aria-label="Breadcrumb">
           <ol>

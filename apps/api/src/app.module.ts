@@ -28,6 +28,8 @@ import { BulkModule } from './bulk/bulk.module';
 import { RedirectsModule } from './redirects/redirects.module';
 import { InternalLinksModule } from './internal-links/internal-links.module';
 import { PageTemplatesModule } from './page-templates/page-templates.module';
+import { SettingsModule } from './settings/settings.module';
+import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
 
 @Module({
   imports: [
@@ -57,6 +59,8 @@ import { PageTemplatesModule } from './page-templates/page-templates.module';
     // `phase1/internal-links/resolve` first, since Nest/Express route
     // matching is registration-order-first for equally-specific patterns.
     InternalLinksModule,
+    SettingsModule,
+    StaticPageSeoModule,
     ExpandedModule,
     MediaModule,
     ExperimentsModule,

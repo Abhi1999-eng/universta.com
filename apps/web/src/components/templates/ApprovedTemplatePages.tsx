@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { consultationTarget } from '@/lib/country-experience';
 import { counsellingHref } from '@/lib/counselling-link';
+import { useSiteSettings } from '@/lib/site-settings-client';
 import type {
   Country,
   CountryPage,
@@ -99,7 +100,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | 'courses' }) {
+export function CatalogHeader({ active }: { active?: 'countries' | 'subjects' | 'courses' }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="nav" id="siteNav">
@@ -115,7 +116,7 @@ export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | '
             className="btn btn-primary btn-sm"
             href={counsellingHref({
               source: 'general',
-              from: `/${active}`,
+              from: active ? `/${active}` : undefined,
             })}
           >
             Get free counselling
@@ -136,13 +137,14 @@ export function CatalogHeader({ active }: { active: 'countries' | 'subjects' | '
 }
 
 export function CatalogFooter() {
+  const settings = useSiteSettings();
   return (
     <footer className="site">
       <div className="wrap">
         <div className="foot-grid">
           <div className="foot-brand">
             <Link href="/" className="logo">Univer<b>sta</b></Link>
-            <p>Compare published study destinations, subjects and courses in one place.</p>
+            <p>{settings?.footer.description ?? 'Compare published study destinations, subjects and courses in one place.'}</p>
           </div>
           {[
             ['Subjects', [['All subjects', '/subjects'], ['Computer Science', '/subjects/computer-science']]],
@@ -161,7 +163,7 @@ export function CatalogFooter() {
           ))}
         </div>
         <div className="foot-bottom">
-          <span>© 2026 Universta · Verify important information with official sources.</span>
+          <span>{settings?.footer.copyrightText ?? '© 2026 Universta · Verify important information with official sources.'}</span>
           <span>Made for students worldwide</span>
         </div>
       </div>
@@ -1197,6 +1199,101 @@ function SubjectCard({ subject }: { subject: Subject }) {
         <div className="subj-foot"><span>{subject.availableCountryCount} countries</span><span className="go">Explore <Icon name="arrow" size={14} /></span></div>
       </div>
     </Link>
+  );
+}
+
+type HomeStats = {
+  countries: number;
+  universities: number;
+  subjects: number;
+  courses: number;
+  scholarships: number;
+  consultants: number;
+};
+
+const HOME_QUICK_LINKS: Array<{ href: string; icon: IconName; label: string; description: string }> = [
+  { href: '/countries', icon: 'globe', label: 'Countries', description: 'Compare study destinations by cost, intakes and visa pathway.' },
+  { href: '/universities', icon: 'cap', label: 'Universities', description: 'Browse published university profiles and their course offerings.' },
+  { href: '/subjects', icon: 'book', label: 'Subjects', description: 'Find your field of study and its available specializations.' },
+  { href: '/courses', icon: 'briefcase', label: 'Courses', description: 'Search published courses by level, study mode and intake.' },
+  { href: '/scholarships', icon: 'money', label: 'Scholarships', description: 'Explore published scholarship listings from partner providers.' },
+  { href: '/study-abroad-consultants', icon: 'users', label: 'Consultants', description: 'Connect with study-abroad consultants by location and service.' },
+];
+
+export function ApprovedHome({
+  stats,
+  heading,
+  subheading,
+}: {
+  stats: HomeStats;
+  heading?: string;
+  subheading?: string;
+}) {
+  return (
+    <main className="visual-subjects-page">
+      <CatalogHeader />
+      <section className="hero">
+        <div className="wrap hero-inner">
+          <span className="hero-pill">
+            <span className="dot" />
+            <b>{stats.countries}</b> destinations · <b>{stats.universities}</b> universities
+          </span>
+          <h1>
+            {heading ?? (
+              <>
+                Plan your study abroad<br /><span>journey with clarity</span>
+              </>
+            )}
+          </h1>
+          <p className="lede">
+            {subheading ??
+              'Explore published countries, subjects, courses, universities and scholarships, then speak with a counsellor when you are ready.'}
+          </p>
+          <div className="hero-ctas">
+            <Link href="/countries" className="btn btn-primary">Explore countries</Link>
+            <Link href="/counselling" className="btn btn-outline">Book free counselling</Link>
+          </div>
+          <div className="hero-stats">
+            <div className="hstat"><span className="num">{stats.countries}</span><span className="lbl">Destinations</span></div>
+            <div className="hstat"><span className="num">{stats.universities}</span><span className="lbl">Universities</span></div>
+            <div className="hstat"><span className="num">{stats.courses}</span><span className="lbl">Courses</span></div>
+            <div className="hstat"><span className="num">{stats.scholarships}</span><span className="lbl">Scholarships</span></div>
+          </div>
+        </div>
+      </section>
+      <div className="wrap">
+        <section className="section" style={{ paddingTop: 0 }}>
+          <div className="section-head">
+            <span className="eyebrow">Start exploring</span>
+            <h2>Where do you want to begin?</h2>
+            <p className="sub">Jump straight into the published catalog.</p>
+          </div>
+          <div className="grid g3">
+            {HOME_QUICK_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="card subj-card">
+                <div className="subj-img"><div className="si"><Icon name={link.icon} /></div></div>
+                <div className="subj-body">
+                  <h3>{link.label}</h3>
+                  <p>{link.description}</p>
+                  <div className="subj-foot"><span /><span className="go">Explore <Icon name="arrow" size={14} /></span></div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+      <section className="section wrap">
+        <div className="final-cta">
+          <h2>Ready to take the next step?</h2>
+          <p>Explore the published catalog or talk through your study goals with our team.</p>
+          <div className="cta-row">
+            <Link href="/countries" className="btn btn-secondary">Browse countries</Link>
+            <Link href={counsellingHref({ source: 'general', from: '/' })} className="btn btn-outline">Get study guidance</Link>
+          </div>
+        </div>
+      </section>
+      <CatalogFooter />
+    </main>
   );
 }
 

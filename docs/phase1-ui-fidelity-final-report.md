@@ -176,3 +176,49 @@ diff.
 
 No fabricated statistic, ranking, or third-party logo was introduced.
 No new visible regression was found in what was actually checked.
+
+## Addendum — Home rebuild and closing parity pass
+
+**Home (`/`) rebuilt.** It previously rendered only the generic CMS
+editorial template — a bare "Home" heading with no hero, stats, or
+discovery grammar, unlike every other reference page. Built a real
+`ApprovedHome` component (`apps/web/src/components/templates/
+ApprovedTemplatePages.tsx`) matching the established design language:
+hero pill + headline + lede, a live stat strip (Destinations,
+Universities, Courses, Scholarships — all pulled from the real
+catalog APIs, no invented numbers), a 6-card quick-link grid to every
+major vertical, and a final CTA band. Verified clean across all 6
+required breakpoints (1536×1024/1440×900/1280×800/1024×768/768×1024/
+390×844) — no overflow, no truncation, stat grid reflows 4→2→1 columns
+correctly. This also incidentally resolved the duplicate "Home"
+heading noted above, since the CMS page's own "intro" section heading
+is no longer rendered as the page's primary heading.
+
+**Fresh spot-checks this pass** (desktop 1536×1024 unless noted):
+Countries, Study in Canada, Universities listing, Single University,
+University Courses, Single University Course, Subjects listing,
+Sub-Subject Listing (Specializations), Single Subject (including the
+"related universities/courses" state), Scholarships listing, Single
+Scholarship, the country-filtered and degree-filtered Scholarships
+states, and Book Free Counselling — all render correctly with no
+console errors. Universities, Scholarships, and Consultants listing
+pages remain on the plain, previously-deferred template (their detail
+pages are polished; their listings are not) — unchanged from the
+matrix's existing documentation.
+
+**One real defect found and fixed**: the Counselling page's header
+hardcoded the "Countries" nav tab as active regardless of the actual
+current page. `CatalogHeader`'s `active` prop is now optional; the
+Counselling page no longer forces a value.
+
+**Still not done as literal, individually-screenshotted checks**: this
+pass did not re-execute the full 96-cell (16 pages × 6 breakpoints)
+matrix as 96 discrete screenshots. It re-verified all 16 pages at the
+primary desktop breakpoint, verified Home across all 6 breakpoints, and
+spot-checked a representative sample of the remaining pages (Universities
+listing, Single University, Country Listing, Single Subject, Counselling)
+at mobile and/or additional breakpoints — reasoning that pages sharing
+the same underlying `@scope`-scoped CSS module share responsive
+behavior, so a representative sample is a genuine (if not exhaustive)
+check. No pixel-diff against the reference PNGs was performed here
+either, consistent with every prior pass in this document family.

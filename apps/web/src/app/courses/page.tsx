@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
@@ -8,13 +7,17 @@ import {
 } from '@/lib/catalog';
 import { legacyCourseDiscoveryUrl } from '@/lib/course-discovery-url';
 import { ApprovedCoursesListing } from '@/components/templates/CourseCatalogTemplate';
+import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = {
-  title: 'Courses | Universta',
-  description:
+export async function generateMetadata() {
+  return staticPageMetadata(
+    'courses-listing',
+    'Courses',
     'Search published courses by subject, level, study mode, intake, and country.',
-};
+    '/courses',
+  );
+}
 
 type SearchParams = Record<string, string | string[] | undefined>;
 const keys = [

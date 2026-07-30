@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Universities | Universta",
-  alternates: { canonical: "/universities" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "universities-listing",
+    "Universities",
+    "Explore currently published universities and their study options.",
+    "/universities",
+  );
+}
 
 export default async function UniversitiesPage({
   searchParams,

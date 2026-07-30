@@ -33,7 +33,7 @@ const CONTENT = [
 type Content = (typeof CONTENT)[number];
 function content(value: string): Content {
   if (!(CONTENT as readonly string[]).includes(value))
-    throw new Error('Unknown public content resource');
+    throw new NotFoundException('Public resource not found');
   return value as Content;
 }
 

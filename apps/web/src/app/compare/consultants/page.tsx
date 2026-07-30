@@ -1,13 +1,18 @@
 import { CompareView } from "@/components/phase1/CompareView";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phaseCompare } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Compare consultants | Universta",
-  robots: { index: false, follow: true },
-  alternates: { canonical: "/compare/consultants" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "compare-consultants",
+    "Compare consultants",
+    "Compare published study-abroad consultants side by side.",
+    "/compare/consultants",
+    false,
+  );
+}
 type Comparison = { items: AnyRecord[]; invalid: string[] };
 
 export default async function CompareConsultants({

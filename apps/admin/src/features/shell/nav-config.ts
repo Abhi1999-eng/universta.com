@@ -25,8 +25,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Destinations",
     items: [
+      { label: "Continents", href: "/continents" },
       { label: "Countries", href: "/countries" },
-      { label: "Regions", href: "/continents" },
       { label: "States / provinces", href: "/locations?tab=states" },
       { label: "Cities", href: "/locations?tab=cities" },
     ],
@@ -69,7 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Engagement",
+    label: "Enquiries and Counselling",
     items: [
       { label: "Contact enquiries", href: "/phase1/contact-inquiries" },
       { label: "Counselling leads", href: "/leads" },
@@ -89,6 +89,18 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Redirects", href: "/redirects" },
       { label: "SEO management", href: "/seo" },
       { label: "A/B experiments", href: "/experiments" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { label: "General site settings", href: "/settings" },
+      { label: "Branding", href: "/settings" },
+      { label: "Contact details", href: "/settings" },
+      { label: "Social links", href: "/settings" },
+      { label: "Header settings", href: "/settings" },
+      { label: "Footer settings", href: "/settings" },
+      { label: "Default SEO settings", href: "/settings" },
     ],
   },
 ];

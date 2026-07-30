@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Scholarships | Universta",
-  alternates: { canonical: "/scholarships" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "scholarships-listing",
+    "Scholarships",
+    "Explore currently published scholarships and their eligibility information.",
+    "/scholarships",
+  );
+}
 
 export default async function ScholarshipsPage({
   searchParams,

@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Success stories | Universta",
-  alternates: { canonical: "/success-stories" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "success-stories-listing",
+    "Success stories",
+    "Explore currently published Universta student success stories.",
+    "/success-stories",
+  );
+}
 
 export default async function StoriesPage() {
   let rows: AnyRecord[] = [];

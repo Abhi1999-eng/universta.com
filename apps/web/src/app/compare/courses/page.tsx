@@ -1,13 +1,18 @@
 import { CompareView } from "@/components/phase1/CompareView";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phaseCompare } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Compare university courses | Universta",
-  robots: { index: false, follow: true },
-  alternates: { canonical: "/compare/courses" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "compare-courses",
+    "Compare university courses",
+    "Compare published course offering tuition, intakes and durations side by side.",
+    "/compare/courses",
+    false,
+  );
+}
 type Comparison = { items: AnyRecord[]; invalid: string[] };
 
 export default async function CompareCourses({

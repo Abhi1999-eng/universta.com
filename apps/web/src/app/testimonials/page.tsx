@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Testimonials | Universta",
-  alternates: { canonical: "/testimonials" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "testimonials-listing",
+    "Testimonials",
+    "Explore currently published Universta student testimonials.",
+    "/testimonials",
+  );
+}
 
 export default async function TestimonialsPage() {
   let rows: AnyRecord[] = [];

@@ -2,8 +2,17 @@ import Link from 'next/link';
 import { getCountries } from '@/lib/countries';
 import { getCourseLevels, getSubjects } from '@/lib/catalog';
 import { ApprovedSubjectsListing } from '@/components/templates/AcademicTemplatePages';
+import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
+export async function generateMetadata() {
+  return staticPageMetadata(
+    'subjects-listing',
+    'Subjects',
+    'Explore published academic subjects and their available courses.',
+    '/subjects',
+  );
+}
 
 type SearchParams = Record<string, string | string[] | undefined>;
 

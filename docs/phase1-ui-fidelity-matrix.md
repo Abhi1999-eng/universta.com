@@ -337,3 +337,14 @@ including a further addendum (its final section) covering a later
 Listing, Single Country, Cities, Consultants and Universities — real
 verification, not a full re-run of the 16-page matrix above, which
 still stands as the authoritative per-page baseline.
+
+A further addendum in that same final report covers a closing pass
+that rebuilt Home (row 1 above) from the generic CMS-editorial
+fallback into a real polished template with a live stat strip and
+quick-link grid, verified across all 6 required breakpoints, and
+re-verified all 16 rows above at the primary desktop breakpoint plus a
+representative sample at additional breakpoints. Row 4 (University
+Listing), row 12 (Scholarship Listing), and the Consultants listing
+(not itself a numbered row here, but the same template family) remain
+on the plain, previously-deferred template — this matrix's own
+per-page notes for those rows are otherwise unchanged.

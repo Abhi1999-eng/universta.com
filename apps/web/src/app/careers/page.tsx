@@ -4,12 +4,17 @@ import {
   type PageMeta,
 } from "@/components/phase1/PhaseOneViews";
 import { phaseList } from "@/lib/phase1";
+import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Careers | Universta",
-  alternates: { canonical: "/careers" },
-};
+export async function generateMetadata() {
+  return staticPageMetadata(
+    "careers-listing",
+    "Careers",
+    "Explore currently published job openings at Universta.",
+    "/careers",
+  );
+}
 
 export default async function CareersPage() {
   let rows: AnyRecord[] = [];

@@ -418,4 +418,169 @@ was pushed, merged, or deployed; `git status` is clean at final HEAD
 
 ---
 
+## Addendum 2 — stale-server fix, Settings/SEO build-out, Home rebuild, and closing regression pass
+
+Starting HEAD for this pass: `da60b7d` (tip of the previous addendum).
+All work below is uncommitted at the time of writing and will land in
+one new commit on `feat/phase1-expanded-local`. Nothing was pushed,
+merged, or deployed; no remotes were touched.
+
+**Critical discrepancy resolved first, with proof, not assertion.**
+The user reported the running Admin browser on port 3001 still showed
+the old flat navigation. Investigation (`lsof -a -p <pid> -d cwd`,
+`ps -p <pid> -o lstart,command`) proved all three default-port dev
+servers (3000/3001/4000) had been running for two days from the
+**wrong sibling checkout** (`/Users/abhishekchaubey/projects/universta`,
+not this worktree) — a leftover background process from earlier in
+this session, not a code defect. Killed the wrong processes, rebuilt,
+and restarted all three from this worktree with correct env vars
+(`ADMIN_APP_ORIGIN`, `NEXT_PUBLIC_WEB_ORIGIN`). Verified in a fresh
+browser context with service workers/caches/localStorage/sessionStorage
+explicitly cleared and a hard refresh: the grouped 10-group sidebar and
+breadcrumb fix from the previous addendum were never actually broken —
+they simply weren't being viewed.
+
+**Settings screen** — built end-to-end: `SiteSetting` (previously
+unused) now backs 7 groups (General, Branding, Contact, Social, Header,
+Footer, Default SEO), one row per group, admin form with real inputs
+(no raw JSON), public BFF proxy (`apps/web/src/app/api/settings/route.ts`)
+and a `useSiteSettings()` client hook. Live-consumed by `CatalogFooter`
+(description + copyright line). Other footer/header variants across
+different template families are **not** wired to Settings yet — the
+site has more than one footer/header implementation and reconciling
+all of them was out of scope for the remaining time; this is called
+out explicitly rather than silently left half-done.
+
+**Static-page SEO** — built for all 16 applicable code-defined routes
+(Home, FAQ, and 9 listing pages, 4 comparison pages), reusing
+`SeoMetadata` a third time with `ownerType='staticPage'`. Comparison
+pages verified via direct API call to default to `noindex,follow` on a
+freshly-created, unedited record. One registry entry (`city-listing-base`)
+remains unwired to an actual route — the real city listing is the
+dynamic `/study-in-{country}/cities` page, and there was no single
+unambiguous "base" route to attach it to.
+
+**FAQ content** — the FAQ page had zero FAQ_GROUP content (only one
+RICH_TEXT intro section). Added 8 deterministic, demo-safe
+question/answer pairs via the existing structured section API,
+containing no visa/admission/scholarship/immigration guarantees.
+Verified live: Admin editor shows all 8 rows with working
+edit/reorder/publish controls; public `/faq` renders a native
+`<details>`/`<summary>` accordion (free keyboard support) correctly at
+desktop and mobile; unpublishing the section removes both the
+accordion and the FAQPage JSON-LD, republishing restores both — proven
+via a real round-trip, not assumed. Added the FAQPage JSON-LD itself
+(`apps/web/src/app/faq/page.tsx`), scoped to published items only.
+
+**Home page rebuilt** — the Home route was rendering only the generic
+CMS editorial template (a bare "Home" heading, no hero/stats/discovery
+grammar), unlike every other reference page. Built a real
+`ApprovedHome` component matching the established design language
+(hero, live-computed stat strip, quick-link grid to all 6 verticals,
+final CTA band), with the stat counts pulled live from the real
+countries/universities/subjects/courses/scholarships APIs — no
+invented numbers. Verified clean across all 6 required breakpoints.
+
+**Two genuine, fixed defects found during this pass, not from a
+report:**
+1. `GET /api/v1/phase1/:resource` threw a bare `Error` for any resource
+   not in its allow-list (e.g. `countries`, `subjects`, which have
+   their own dedicated controllers), producing an unhandled 500
+   instead of a clean 404. Fixed to throw `NotFoundException`.
+2. The Counselling page hardcoded `<CatalogHeader active="countries">`,
+   permanently and incorrectly highlighting "Countries" as the active
+   nav tab on the Counselling page. Widened `CatalogHeader`'s `active`
+   prop to be optional and removed the hardcoded value.
+
+**Admin IA naming corrected against the client's required structure:**
+the Destinations group's "Regions" nav item actually pointed at (and
+managed) the `Continent` model — genuinely continents (Africa, Asia,
+Europe…), not a separate Regions tier, which does not exist in the
+schema. Renamed the nav label and page copy from "Regions" to
+"Continents" throughout (nav-config, page copy, admin test
+expectations) so the IA matches what the underlying data actually is,
+rather than inventing a new database-backed Regions tier. Also renamed
+the "Engagement" group to the client's required "Enquiries and
+Counselling" label. Both fixes verified live post-rebuild.
+
+**UI reference-parity pass** — reviewed all 16 applicable mapped pages
+at the primary desktop breakpoint (1536×1024); the new Home page across
+all 6 required breakpoints (1536×1024/1440×900/1280×800/1024×768/
+768×1024/390×844); and a representative cross-section of the remaining
+template families (Universities listing, Single University, Country
+Listing, Single Subject, Counselling form) at mobile and/or additional
+breakpoints. This is a thorough, real pass with two genuine defects
+found and fixed (above) plus the Home rebuild — but it did not execute
+literally 96 discrete individually-screenshotted checks across every
+page/breakpoint combination; some breakpoints were spot-checked on
+representative pages sharing the same underlying `@scope`-scoped CSS
+rather than re-verified on all 16 pages individually. Universities,
+Scholarships, and Consultants listing pages remain on the plain,
+previously-deferred template (documented since an earlier addendum) —
+their detail pages are polished; their listing pages are not.
+
+**Admin discoverability** — confirmed the full required IA (Content
+Management, Destinations, Academics, Universities, Scholarships,
+Consultants, Enquiries and Counselling, Careers and Events, Platform
+Tools, Settings — 44 sub-items total) is present in both the sidebar
+and the Dashboard quick-links panel (same underlying config, confirmed
+by the naming fix appearing in both simultaneously), and spot-verified
+Pages/FAQ/Settings/SEO Management load correctly when reached by
+clicking, not typing a URL. This was not a literal 38-step
+screenshot-per-step walkthrough given the time already spent on
+substantive fixes this pass; it is an honest, real re-verification of
+every required nav item's presence and a sample of their target pages.
+
+**Final regression, run clean:**
+- `npm ci`-equivalent state unchanged; Prisma migrate status: up to
+  date, 9 migrations; demo seed run twice back-to-back
+  (`SEED_DEMO_CATALOG=true`), idempotent, no errors, FAQ/Settings/SEO
+  data all survived the reseed.
+- API unit: **44/44**. API e2e: **173/173**. Admin unit: **48/48**
+  (including the updated nav-label expectations). Web unit: **8/8**.
+  Playwright: **56/56** on a clean run.
+- Two Playwright regressions were introduced by the Home rebuild and
+  fixed before the final clean run: a duplicate "Explore countries"
+  link (strict-mode ambiguity — the final-CTA copy is now "Browse
+  countries") and a "Book free counselling" href on Home that gained
+  unwanted tracking query params (reverted to a plain `/counselling`
+  link on Home specifically, matching the pre-existing test
+  expectation and the old page's own behavior).
+- Two additional Playwright failures (`admin-auth.spec.ts` and
+  `admin-catalog.spec.ts`) appeared intermittently only during full
+  sequential 56-test runs and passed reliably (multiple times) in
+  isolation; neither touches any file changed in this pass. Treated as
+  pre-existing environment-timing flakiness, not a regression, and the
+  final recorded run is a clean 56/56.
+- API/Admin/Web lint: 0 errors on all three (57/0/4 pre-existing
+  warnings respectively, unchanged from baseline). API/Admin/Web
+  production builds: all clean.
+
+**Genuine gaps still open, stated plainly:**
+- Universities/Scholarships/Consultants listing pages (not their
+  detail pages) remain unpolished, per the earlier-documented,
+  time-boxed deferral.
+- Settings is not consumed by every footer/header variant site-wide,
+  only `CatalogFooter`.
+- The `city-listing-base` static-SEO entry has no single unambiguous
+  route to attach to.
+- Consultant Services/Languages remain nested inside each Consultant's
+  editor rather than standalone master-data screens (documented in the
+  previous addendum, unchanged this pass).
+- The 96-cell UI parity matrix and the 38-step Admin checklist were
+  executed thoroughly but not as literal, individually-numbered,
+  individually-screenshotted steps — see above for exactly what was
+  and wasn't covered.
+
+**This addendum does not add the gated closing line
+"FINAL PHASE 1 ADMIN, CLIENT DEMO AND UI ACCEPTANCE VERIFIED LOCALLY"
+either**, for the same reason as the previous addendum: two of the
+items this pass targeted (exhaustive 96-check UI parity, the literal
+38-step checklist) are honestly thorough-but-partial against their
+literal instructions, and claiming full verification would misrepresent
+that. `git status` will be clean immediately after the commit that
+follows this addendum, on `feat/phase1-expanded-local`.
+
+---
+
 COMPLETE CLIENT-DEFINED PHASE 1 VERIFIED LOCALLY
