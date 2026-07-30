@@ -91,6 +91,58 @@ function contains(value: string | undefined) {
   return value?.trim() ? { contains: value.trim() } : undefined;
 }
 
+/**
+ * Bounded fetch-all cap for resources whose public listing needs an
+ * application-level "effectively featured" sort (Prisma cannot express the
+ * featuredFrom/featuredUntil window check as an ORDER BY without raw SQL).
+ * Local/demo catalogs never approach this size per resource, so a single
+ * bounded query plus in-memory sort is safe and avoids raw SQL.
+ */
+const FEATURED_FETCH_CAP = 500;
+
+type FeaturedRow = {
+  isFeatured: boolean;
+  featuredFrom: Date | null;
+  featuredUntil: Date | null;
+  featuredPriority: number;
+  displayOrder: number;
+};
+
+function isEffectivelyFeatured(row: FeaturedRow, now: Date): boolean {
+  if (!row.isFeatured) return false;
+  if (row.featuredFrom && row.featuredFrom > now) return false;
+  if (row.featuredUntil && row.featuredUntil <= now) return false;
+  return true;
+}
+
+/**
+ * Effective-featured first, then featuredPriority ascending (lower number =
+ * shown earlier among featured items), then displayOrder, then name — mirrors
+ * the isFeatured/displayOrder/name ordering already used elsewhere, just with
+ * the boolean replaced by the time-windowed effective value.
+ */
+function sortByFeatured<T extends FeaturedRow>(
+  rows: T[],
+  now: Date,
+  nameOf: (row: T) => string,
+  tiebreak?: (a: T, b: T) => number,
+): T[] {
+  return [...rows].sort((a, b) => {
+    const fa = isEffectivelyFeatured(a, now);
+    const fb = isEffectivelyFeatured(b, now);
+    if (fa !== fb) return fa ? -1 : 1;
+    if (a.featuredPriority !== b.featuredPriority)
+      return a.featuredPriority - b.featuredPriority;
+    if (tiebreak) {
+      const result = tiebreak(a, b);
+      if (result !== 0) return result;
+    }
+    if (a.displayOrder !== b.displayOrder)
+      return a.displayOrder - b.displayOrder;
+    return nameOf(a).localeCompare(nameOf(b));
+  });
+}
+
 function idFrom(actor: { sub?: string } | undefined) {
   if (!actor?.sub)
     throw new BadRequestException('Authenticated admin is required');
@@ -222,28 +274,32 @@ export class ExpandedService {
               },
             }
           : {}),
+        // University has no direct City/State relation — only its campuses
+        // carry freeform city/state text, so these filters match against
+        // that campus text rather than the Country-scoped City/State models.
+        ...(query.city
+          ? { campuses: { some: { city: { contains: query.city } } } }
+          : {}),
+        ...(query.state
+          ? { campuses: { some: { state: { contains: query.state } } } }
+          : {}),
       };
-      const [data, total] = await this.prisma.$transaction([
-        this.prisma.university.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: [
-            { isFeatured: 'desc' },
-            { displayOrder: 'asc' },
-            { name: 'asc' },
-          ],
-          include: {
-            country: { select: { name: true, slug: true } },
-            campuses: {
-              where: { status: 'ACTIVE', deletedAt: null },
-              select: { id: true },
-            },
-            _count: { select: { offerings: { where: publishedWhere() } } },
+      const now = new Date();
+      const all = await this.prisma.university.findMany({
+        where,
+        take: FEATURED_FETCH_CAP,
+        include: {
+          country: { select: { name: true, slug: true } },
+          campuses: {
+            where: { status: 'ACTIVE', deletedAt: null },
+            select: { id: true },
           },
-        }),
-        this.prisma.university.count({ where }),
-      ]);
+          _count: { select: { offerings: { where: publishedWhere() } } },
+        },
+      });
+      const sorted = sortByFeatured(all, now, (row) => row.name);
+      const total = sorted.length;
+      const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'scholarships') {
@@ -265,28 +321,33 @@ export class ExpandedService {
           ? { OR: [{ deadline: null }, { deadline: { gte: new Date() } }] }
           : {}),
       };
-      const [data, total] = await this.prisma.$transaction([
-        this.prisma.scholarship.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: [
-            { isFeatured: 'desc' },
-            { deadline: 'asc' },
-            { title: 'asc' },
-          ],
-          include: {
-            provider: true,
-            countries: {
-              include: { country: { select: { name: true, slug: true } } },
-            },
-            universities: {
-              include: { university: { select: { name: true, slug: true } } },
-            },
+      const now = new Date();
+      const all = await this.prisma.scholarship.findMany({
+        where,
+        take: FEATURED_FETCH_CAP,
+        include: {
+          provider: true,
+          countries: {
+            include: { country: { select: { name: true, slug: true } } },
           },
-        }),
-        this.prisma.scholarship.count({ where }),
-      ]);
+          universities: {
+            include: { university: { select: { name: true, slug: true } } },
+          },
+        },
+      });
+      const sorted = sortByFeatured(
+        all,
+        now,
+        (row) => row.title,
+        (a, b) => {
+          if (a.deadline === b.deadline) return 0;
+          if (a.deadline === null) return 1;
+          if (b.deadline === null) return -1;
+          return a.deadline.getTime() - b.deadline.getTime();
+        },
+      );
+      const total = sorted.length;
+      const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'consultants') {
@@ -487,9 +548,35 @@ export class ExpandedService {
       return row ?? this.notFound('offerings');
     }
     const { page, limit, skip } = pageOf(query);
+    const listingWhere: any = {
+      ...where,
+      ...(query.courseLevel
+        ? { courseLevel: { code: query.courseLevel } }
+        : {}),
+      ...(query.tuitionMin
+        ? {
+            OR: [
+              { tuitionMax: null },
+              { tuitionMax: { gte: Number(query.tuitionMin) } },
+            ],
+          }
+        : {}),
+      ...(query.tuitionMax
+        ? {
+            AND: [
+              {
+                OR: [
+                  { tuitionMin: null },
+                  { tuitionMin: { lte: Number(query.tuitionMax) } },
+                ],
+              },
+            ],
+          }
+        : {}),
+    };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.universityCourseOffering.findMany({
-        where,
+        where: listingWhere,
         skip,
         take: limit,
         orderBy: [
@@ -503,7 +590,7 @@ export class ExpandedService {
           intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
         },
       }),
-      this.prisma.universityCourseOffering.count({ where }),
+      this.prisma.universityCourseOffering.count({ where: listingWhere }),
     ]);
     return { university, data, meta: meta(page, limit, total) };
   }
@@ -1494,6 +1581,10 @@ export class ExpandedService {
         'featuredMediaId',
         'sourceReference',
         'status',
+        'isFeatured',
+        'featuredPriority',
+        'featuredFrom',
+        'featuredUntil',
         'displayOrder',
       ]),
       offerings: new Set([
@@ -1534,6 +1625,10 @@ export class ExpandedService {
         'sourceReference',
         'featuredMediaId',
         'status',
+        'isFeatured',
+        'featuredPriority',
+        'featuredFrom',
+        'featuredUntil',
         'displayOrder',
       ]),
       consultants: new Set([
@@ -1705,6 +1800,13 @@ export class ExpandedService {
     if (resource === 'scholarships') {
       normalizeDecimal('amount');
       normalizeDate('deadline');
+    }
+    if (resource === 'universities' || resource === 'scholarships') {
+      normalizeDate('featuredFrom');
+      normalizeDate('featuredUntil');
+      if ('isFeatured' in data)
+        data.isFeatured =
+          data.isFeatured === true || data.isFeatured === 'true';
     }
     if (resource === 'jobs') {
       normalizeDate('publishedDate');

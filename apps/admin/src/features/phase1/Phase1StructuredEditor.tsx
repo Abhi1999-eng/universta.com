@@ -201,8 +201,12 @@ export function Phase1StructuredEditor({
       "attributionNote",
       "imageMediaId",
       "displayOrder",
+      "featuredPriority",
+      "featuredFrom",
+      "featuredUntil",
     ])
       next[key] = string(record[key]);
+    next.isFeatured = record.isFeatured ? "true" : "false";
     if (record.seo && typeof record.seo === "object") {
       const seo = record.seo as Row;
       for (const key of [
@@ -219,6 +223,10 @@ export function Phase1StructuredEditor({
       : "";
     next.expiryDate = next.expiryDate ? next.expiryDate.slice(0, 10) : "";
     next.startsAt = next.startsAt ? next.startsAt.slice(0, 16) : "";
+    next.featuredFrom = next.featuredFrom ? next.featuredFrom.slice(0, 16) : "";
+    next.featuredUntil = next.featuredUntil
+      ? next.featuredUntil.slice(0, 16)
+      : "";
     next.endsAt = next.endsAt ? next.endsAt.slice(0, 16) : "";
     if (Array.isArray(record.intakes))
       for (const item of record.intakes) {
@@ -382,6 +390,12 @@ export function Phase1StructuredEditor({
     const payload: Record<string, unknown> = {
       ...values,
       displayOrder: Number(values.displayOrder || 0),
+      ...(resource === "universities" || resource === "scholarships"
+        ? {
+            isFeatured: values.isFeatured === "true",
+            featuredPriority: Number(values.featuredPriority || 0),
+          }
+        : {}),
       ...(resource === "events" ? { speakers: tags.speakers } : {}),
       ...(resource === "universities"
         ? { campuses: rows.campuses, accreditations: rows.accreditations }
@@ -822,6 +836,46 @@ function Core({
     </div>
   );
 }
+function FeaturedFields(p: any) {
+  return (
+    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+      <legend className="px-1 text-sm font-semibold">Featured placement</legend>
+      <label className="flex items-center gap-2 text-sm font-semibold">
+        <input
+          type="checkbox"
+          checked={p.values.isFeatured === "true"}
+          onChange={(event) =>
+            p.set("isFeatured", event.target.checked ? "true" : "false")
+          }
+        />
+        Featured
+      </label>
+      <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Priority (lower shows first)"
+          type="number"
+          value={p.values.featuredPriority ?? "0"}
+          onChange={(value) => p.set("featuredPriority", value)}
+        />
+        <Field
+          label="Featured from (optional)"
+          type="datetime-local"
+          value={p.values.featuredFrom ?? ""}
+          onChange={(value) => p.set("featuredFrom", value)}
+        />
+        <Field
+          label="Featured until (optional)"
+          type="datetime-local"
+          value={p.values.featuredUntil ?? ""}
+          onChange={(value) => p.set("featuredUntil", value)}
+        />
+      </div>
+      <p className="mt-2 text-xs text-[#667085]">
+        Outside this window (or unchecked), the record shows in normal order.
+      </p>
+    </fieldset>
+  );
+}
 function UniversityFields(p: any) {
   return (
     <>
@@ -857,6 +911,7 @@ function UniversityFields(p: any) {
         value={p.values.overview ?? ""}
         onChange={(value) => p.set("overview", value)}
       />
+      <FeaturedFields {...p} />
       <Repeater
         title="Campuses"
         rows={p.rows.campuses}
@@ -1096,6 +1151,7 @@ function ScholarshipFields(p: any) {
         value={p.values.eligibility ?? ""}
         onChange={(value) => p.set("eligibility", value)}
       />
+      <FeaturedFields {...p} />
       <Multi
         legend="Eligible countries"
         options={p.countries}

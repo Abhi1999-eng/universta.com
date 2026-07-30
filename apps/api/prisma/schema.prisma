@@ -44,43 +44,43 @@ model User {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt           DateTime? @map("deleted_at") @db.DateTime(3)
 
-  avatarMedia               MediaAsset?          @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
-  userRoles                 UserRole[]
-  assignedUserRoles         UserRole[]           @relation("UserRoleAssigner")
-  refreshTokens             RefreshToken[]
-  passwordResetTokens       PasswordResetToken[]
-  loginAttempts             LoginAttempt[]
-  auditLogs                 AuditLog[]
-  uploadedMedia             MediaAsset[]         @relation("MediaUploadedBy")
-  updatedSettings           SiteSetting[]        @relation("SiteSettingUpdatedBy")
-  createdPages              Page[]               @relation("PageCreatedBy")
-  updatedPages              Page[]               @relation("PageUpdatedBy")
-  createdExperiments        Experiment[]         @relation("ExperimentCreatedBy")
-  createdSubjects           Subject[]            @relation("SubjectCreatedBy")
-  updatedSubjects           Subject[]            @relation("SubjectUpdatedBy")
-  createdSubSubjects        SubSubject[]         @relation("SubSubjectCreatedBy")
-  updatedSubSubjects        SubSubject[]         @relation("SubSubjectUpdatedBy")
-  createdCountries          Country[]            @relation("CountryCreatedBy")
-  updatedCountries          Country[]            @relation("CountryUpdatedBy")
-  createdCities             City[]               @relation("CityCreatedBy")
-  updatedCities             City[]               @relation("CityUpdatedBy")
-  createdCountryFaqs        CountryFaq[]         @relation("CountryFaqCreatedBy")
-  updatedCountryFaqs        CountryFaq[]         @relation("CountryFaqUpdatedBy")
-  createdCourses            Course[]             @relation("CourseCreatedBy")
-  updatedCourses            Course[]             @relation("CourseUpdatedBy")
-  assignedLeads             Lead[]               @relation("LeadAssignedTo")
-  assignedBookings          CounsellingBooking[] @relation("BookingAssignedTo")
-  reviewedUniversityClaims  UniversityClaimRequest[]       @relation("UniversityClaimReviewedBy")
-  universityClaimNotes      UniversityClaimNote[]
+  avatarMedia                  MediaAsset?                    @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  userRoles                    UserRole[]
+  assignedUserRoles            UserRole[]                     @relation("UserRoleAssigner")
+  refreshTokens                RefreshToken[]
+  passwordResetTokens          PasswordResetToken[]
+  loginAttempts                LoginAttempt[]
+  auditLogs                    AuditLog[]
+  uploadedMedia                MediaAsset[]                   @relation("MediaUploadedBy")
+  updatedSettings              SiteSetting[]                  @relation("SiteSettingUpdatedBy")
+  createdPages                 Page[]                         @relation("PageCreatedBy")
+  updatedPages                 Page[]                         @relation("PageUpdatedBy")
+  createdExperiments           Experiment[]                   @relation("ExperimentCreatedBy")
+  createdSubjects              Subject[]                      @relation("SubjectCreatedBy")
+  updatedSubjects              Subject[]                      @relation("SubjectUpdatedBy")
+  createdSubSubjects           SubSubject[]                   @relation("SubSubjectCreatedBy")
+  updatedSubSubjects           SubSubject[]                   @relation("SubSubjectUpdatedBy")
+  createdCountries             Country[]                      @relation("CountryCreatedBy")
+  updatedCountries             Country[]                      @relation("CountryUpdatedBy")
+  createdCities                City[]                         @relation("CityCreatedBy")
+  updatedCities                City[]                         @relation("CityUpdatedBy")
+  createdCountryFaqs           CountryFaq[]                   @relation("CountryFaqCreatedBy")
+  updatedCountryFaqs           CountryFaq[]                   @relation("CountryFaqUpdatedBy")
+  createdCourses               Course[]                       @relation("CourseCreatedBy")
+  updatedCourses               Course[]                       @relation("CourseUpdatedBy")
+  assignedLeads                Lead[]                         @relation("LeadAssignedTo")
+  assignedBookings             CounsellingBooking[]           @relation("BookingAssignedTo")
+  reviewedUniversityClaims     UniversityClaimRequest[]       @relation("UniversityClaimReviewedBy")
+  universityClaimNotes         UniversityClaimNote[]
   universityClaimStatusChanges UniversityClaimStatusHistory[] @relation("UniversityClaimStatusChangedBy")
-  leadNotes                 LeadNote[]
-  changedLeadStatuses       LeadStatusHistory[]  @relation("LeadStatusChangedBy")
-  createdEmailTemplates     EmailTemplate[]      @relation("EmailTemplateCreatedBy")
-  updatedEmailTemplates     EmailTemplate[]      @relation("EmailTemplateUpdatedBy")
-  createdRedirects          Redirect[]           @relation("RedirectCreatedBy")
-  createdContinents         Continent[]          @relation("ContinentCreatedBy")
-  updatedContinents         Continent[]          @relation("ContinentUpdatedBy")
-  convertedContactInquiries ContactInquiry[]     @relation("ContactInquiryConvertedBy")
+  leadNotes                    LeadNote[]
+  changedLeadStatuses          LeadStatusHistory[]            @relation("LeadStatusChangedBy")
+  createdEmailTemplates        EmailTemplate[]                @relation("EmailTemplateCreatedBy")
+  updatedEmailTemplates        EmailTemplate[]                @relation("EmailTemplateUpdatedBy")
+  createdRedirects             Redirect[]                     @relation("RedirectCreatedBy")
+  createdContinents            Continent[]                    @relation("ContinentCreatedBy")
+  updatedContinents            Continent[]                    @relation("ContinentUpdatedBy")
+  convertedContactInquiries    ContactInquiry[]               @relation("ContactInquiryConvertedBy")
 
   @@index([avatarMediaId])
   @@index([status, deletedAt])
@@ -330,9 +330,9 @@ model PageSection {
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt         DateTime? @map("deleted_at") @db.DateTime(3)
 
-  page            Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  media           MediaAsset? @relation("PageSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
-  backgroundMedia MediaAsset? @relation("PageSectionBackgroundMedia", fields: [backgroundMediaId], references: [id], onDelete: SetNull)
+  page            Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  media           MediaAsset?  @relation("PageSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  backgroundMedia MediaAsset?  @relation("PageSectionBackgroundMedia", fields: [backgroundMediaId], references: [id], onDelete: SetNull)
   experiments     Experiment[]
 
   @@unique([pageId, sectionKey])
@@ -1516,6 +1516,9 @@ model University {
   verifiedAt       DateTime? @map("verified_at") @db.DateTime(3)
   status           String    @default("DRAFT") @db.VarChar(30)
   isFeatured       Boolean   @default(false) @map("is_featured")
+  featuredPriority Int       @default(0) @map("featured_priority")
+  featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1538,25 +1541,25 @@ model University {
 }
 
 model UniversityClaimRequest {
-  id              String    @id @default(uuid()) @db.Char(36)
-  universityId    String    @map("university_id") @db.Char(36)
-  claimNumber     String    @unique @map("claim_number") @db.VarChar(50)
-  claimantName    String    @map("claimant_name") @db.VarChar(255)
-  workEmail       String    @map("work_email") @db.VarChar(255)
-  jobTitle        String?   @map("job_title") @db.VarChar(255)
-  organization    String?   @db.VarChar(255)
-  phoneNumber     String?   @map("phone_number") @db.VarChar(50)
-  officialWebsite String?   @map("official_website") @db.VarChar(2048)
-  message         String    @db.Text
-  status          String    @default("SUBMITTED") @db.VarChar(30)
-  reviewedByUserId String?  @map("reviewed_by_user_id") @db.Char(36)
-  reviewedAt      DateTime? @map("reviewed_at") @db.DateTime(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
-  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+  id               String    @id @default(uuid()) @db.Char(36)
+  universityId     String    @map("university_id") @db.Char(36)
+  claimNumber      String    @unique @map("claim_number") @db.VarChar(50)
+  claimantName     String    @map("claimant_name") @db.VarChar(255)
+  workEmail        String    @map("work_email") @db.VarChar(255)
+  jobTitle         String?   @map("job_title") @db.VarChar(255)
+  organization     String?   @db.VarChar(255)
+  phoneNumber      String?   @map("phone_number") @db.VarChar(50)
+  officialWebsite  String?   @map("official_website") @db.VarChar(2048)
+  message          String    @db.Text
+  status           String    @default("SUBMITTED") @db.VarChar(30)
+  reviewedByUserId String?   @map("reviewed_by_user_id") @db.Char(36)
+  reviewedAt       DateTime? @map("reviewed_at") @db.DateTime(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  university    University                        @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  reviewedBy    User?                              @relation("UniversityClaimReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  university    University                     @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  reviewedBy    User?                          @relation("UniversityClaimReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   notes         UniversityClaimNote[]
   statusHistory UniversityClaimStatusHistory[]
 
@@ -1566,11 +1569,11 @@ model UniversityClaimRequest {
 }
 
 model UniversityClaimNote {
-  id           String   @id @default(uuid()) @db.Char(36)
-  claimId      String   @map("claim_id") @db.Char(36)
-  userId       String   @map("user_id") @db.Char(36)
-  note         String   @db.LongText
-  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  id        String   @id @default(uuid()) @db.Char(36)
+  claimId   String   @map("claim_id") @db.Char(36)
+  userId    String   @map("user_id") @db.Char(36)
+  note      String   @db.LongText
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
   claim UniversityClaimRequest @relation(fields: [claimId], references: [id], onDelete: Cascade)
   user  User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -1664,6 +1667,9 @@ model UniversityCourseOffering {
   featuredMediaId  String?   @map("featured_media_id") @db.Char(36)
   status           String    @default("DRAFT") @db.VarChar(30)
   isFeatured       Boolean   @default(false) @map("is_featured")
+  featuredPriority Int       @default(0) @map("featured_priority")
+  featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
   displayOrder     Int       @default(0) @map("display_order")
   publishedAt      DateTime? @map("published_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1743,28 +1749,31 @@ model ScholarshipProvider {
 }
 
 model Scholarship {
-  id              String    @id @default(uuid()) @db.Char(36)
-  providerId      String?   @map("provider_id") @db.Char(36)
-  title           String    @db.VarChar(255)
-  slug            String    @unique @db.VarChar(255)
-  summary         String?   @db.VarChar(1000)
-  description     String?   @db.LongText
-  benefitType     String?   @map("benefit_type") @db.VarChar(80)
-  amount          Decimal?  @db.Decimal(12, 2)
-  currencyCode    String?   @map("currency_code") @db.Char(3)
-  eligibility     String?   @db.LongText
-  deadline        DateTime? @db.Date
-  applicationUrl  String?   @map("application_url") @db.VarChar(2048)
-  sourceReference String?   @map("source_reference") @db.VarChar(2048)
-  verifiedAt      DateTime? @map("verified_at") @db.DateTime(3)
-  featuredMediaId String?   @map("featured_media_id") @db.Char(36)
-  status          String    @default("DRAFT") @db.VarChar(30)
-  isFeatured      Boolean   @default(false) @map("is_featured")
-  displayOrder    Int       @default(0) @map("display_order")
-  publishedAt     DateTime? @map("published_at") @db.DateTime(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
-  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+  id               String    @id @default(uuid()) @db.Char(36)
+  providerId       String?   @map("provider_id") @db.Char(36)
+  title            String    @db.VarChar(255)
+  slug             String    @unique @db.VarChar(255)
+  summary          String?   @db.VarChar(1000)
+  description      String?   @db.LongText
+  benefitType      String?   @map("benefit_type") @db.VarChar(80)
+  amount           Decimal?  @db.Decimal(12, 2)
+  currencyCode     String?   @map("currency_code") @db.Char(3)
+  eligibility      String?   @db.LongText
+  deadline         DateTime? @db.Date
+  applicationUrl   String?   @map("application_url") @db.VarChar(2048)
+  sourceReference  String?   @map("source_reference") @db.VarChar(2048)
+  verifiedAt       DateTime? @map("verified_at") @db.DateTime(3)
+  featuredMediaId  String?   @map("featured_media_id") @db.Char(36)
+  status           String    @default("DRAFT") @db.VarChar(30)
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  featuredPriority Int       @default(0) @map("featured_priority")
+  featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
+  displayOrder     Int       @default(0) @map("display_order")
+  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
   provider     ScholarshipProvider?                  @relation(fields: [providerId], references: [id], onDelete: SetNull)
   countries    ScholarshipCountry[]
@@ -1824,6 +1833,9 @@ model Consultant {
   featuredMediaId    String?   @map("featured_media_id") @db.Char(36)
   status             String    @default("DRAFT") @db.VarChar(30)
   isFeatured         Boolean   @default(false) @map("is_featured")
+  featuredPriority   Int       @default(0) @map("featured_priority")
+  featuredFrom       DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil      DateTime? @map("featured_until") @db.DateTime(3)
   displayOrder       Int       @default(0) @map("display_order")
   publishedAt        DateTime? @map("published_at") @db.DateTime(3)
   createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
