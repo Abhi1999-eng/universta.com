@@ -139,6 +139,60 @@ function isEffectivelyFeatured(row: FeaturedRow, now: Date): boolean {
  * the isFeatured/displayOrder/name ordering already used elsewhere, just with
  * the boolean replaced by the time-windowed effective value.
  */
+/** Optional, additive result ordering for the public listing pages.
+ *
+ * The default stays exactly as before -- featured-first, then priority,
+ * displayOrder, name -- so omitting `sort` cannot change any existing
+ * response. Only an explicit, recognised `sort` value replaces the ordering,
+ * and an unrecognised value falls back to the default rather than erroring,
+ * so a stale bookmarked URL still renders. */
+export function applyListSort<T extends Record<string, unknown>>(
+  rows: T[],
+  sort: string | undefined,
+  fields: { name: (row: T) => string; amount?: (row: T) => number | null; deadline?: (row: T) => Date | null },
+): T[] {
+  if (!sort) return rows;
+  const byName = (a: T, b: T) => fields.name(a).localeCompare(fields.name(b));
+  const dateOf = (row: T) => {
+    const value = (row.publishedAt ?? row.createdAt) as Date | string | null;
+    return value ? new Date(value).getTime() : 0;
+  };
+  const nullsLast = (a: number | null, b: number | null, dir: 1 | -1) => {
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return (a - b) * dir;
+  };
+  switch (sort) {
+    case 'name-asc':
+      return [...rows].sort(byName);
+    case 'name-desc':
+      return [...rows].sort((a, b) => byName(b, a));
+    case 'newest':
+      return [...rows].sort((a, b) => dateOf(b) - dateOf(a));
+    case 'amount-desc':
+      return fields.amount
+        ? [...rows].sort((a, b) => nullsLast(fields.amount!(a), fields.amount!(b), -1))
+        : rows;
+    case 'amount-asc':
+      return fields.amount
+        ? [...rows].sort((a, b) => nullsLast(fields.amount!(a), fields.amount!(b), 1))
+        : rows;
+    case 'deadline':
+      return fields.deadline
+        ? [...rows].sort((a, b) =>
+            nullsLast(
+              fields.deadline!(a)?.getTime() ?? null,
+              fields.deadline!(b)?.getTime() ?? null,
+              1,
+            ),
+          )
+        : rows;
+    default:
+      return rows;
+  }
+}
+
 function sortByFeatured<T extends FeaturedRow>(
   rows: T[],
   now: Date,
@@ -380,7 +434,11 @@ export class ExpandedService {
           },
         },
       });
-      const sorted = sortByFeatured(all, now, (row) => row.name);
+      const sorted = applyListSort(
+        sortByFeatured(all, now, (row) => row.name),
+        query.sort,
+        { name: (row) => row.name },
+      );
       const total = sorted.length;
       const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };
@@ -446,15 +504,23 @@ export class ExpandedService {
           },
         },
       });
-      const sorted = sortByFeatured(
-        all,
-        now,
-        (row) => row.title,
-        (a, b) => {
-          if (a.deadline === b.deadline) return 0;
-          if (a.deadline === null) return 1;
-          if (b.deadline === null) return -1;
-          return a.deadline.getTime() - b.deadline.getTime();
+      const sorted = applyListSort(
+        sortByFeatured(
+          all,
+          now,
+          (row) => row.title,
+          (a, b) => {
+            if (a.deadline === b.deadline) return 0;
+            if (a.deadline === null) return 1;
+            if (b.deadline === null) return -1;
+            return a.deadline.getTime() - b.deadline.getTime();
+          },
+        ),
+        query.sort,
+        {
+          name: (row) => row.title,
+          amount: (row) => (row.amount === null ? null : Number(row.amount)),
+          deadline: (row) => row.deadline,
         },
       );
       const total = sorted.length;
@@ -540,7 +606,11 @@ export class ExpandedService {
           languages: true,
         },
       });
-      const sorted = sortByFeatured(all, now, (row) => row.name);
+      const sorted = applyListSort(
+        sortByFeatured(all, now, (row) => row.name),
+        query.sort,
+        { name: (row) => row.name },
+      );
       const total = sorted.length;
       const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };

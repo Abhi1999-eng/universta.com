@@ -19,6 +19,9 @@ if (!e2eEmail || !e2ePassword) {
 
 export default defineConfig({
   testDir: './e2e',
+  // Backstop that guarantees "repeated runs leave zero acceptance records"
+  // even when a run crashes before the spec's own cleanup executes.
+  globalTeardown: './e2e/global-teardown.ts',
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

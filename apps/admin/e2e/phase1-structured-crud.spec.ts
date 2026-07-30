@@ -2,6 +2,11 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
 import { webBaseUrl } from './helpers/e2e-urls';
+import {
+  countAcceptanceRecords,
+  purgeAcceptanceRecords,
+  totalAcceptanceRecords,
+} from './helpers/acceptance-cleanup';
 
 // CI may provide a stable run id; local reruns remain isolated after a failed run.
 const runId = process.env.PHASE1_ACCEPTANCE_RUN_ID ?? randomUUID().slice(0, 8);
@@ -106,6 +111,14 @@ async function publishAndVerify(
 }
 
 test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () => {
+  // Every record this spec creates carries the acceptance-owned marker, so
+  // cleanup is scoped by that marker rather than by ids gathered during the
+  // run. That keeps it correct even when an earlier assertion failed and the
+  // later records were never created.
+  test.afterAll(async () => {
+    await purgeAcceptanceRecords();
+  });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
   });
@@ -311,5 +324,25 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toHaveCount(0);
+  });
+
+  test('leaves no acceptance-owned records behind', async () => {
+    // Runs last in this serial block, after every record above has been
+    // created and exercised. Purging here (rather than only in the global
+    // teardown) means a single-file run is self-cleaning too.
+    const before = totalAcceptanceRecords(await countAcceptanceRecords());
+    expect(before, 'the spec above should have created acceptance records').toBeGreaterThan(0);
+    await purgeAcceptanceRecords();
+    const after = await countAcceptanceRecords();
+    expect(after, 'acceptance records must not survive the suite').toEqual({
+      universities: 0,
+      offerings: 0,
+      scholarships: 0,
+      consultants: 0,
+      jobs: 0,
+      events: 0,
+      successStories: 0,
+      testimonials: 0,
+    });
   });
 });

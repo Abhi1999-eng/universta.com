@@ -392,3 +392,227 @@ a.usta-drawer-head.is-active {
 .usta-nav {
   gap: 0;
 }
+
+/* ---------------------------------------------------------------------------
+ * Polished listing pages (Universities / Scholarships / Consultants).
+ *
+ * These reuse the proven `.visual-courses-page` filter sidebar, results bar,
+ * cards and pagination. The extra `.usta-listing` wrapper class carries only
+ * the deltas those pages need -- a third column for the counselling rail and
+ * a few controls the courses page happens not to use -- so the courses page
+ * itself is untouched. Selectors are two classes deep so they win over the
+ * single-class rules inside the `@scope` block without needing !important.
+ * ------------------------------------------------------------------------- */
+
+.usta-listing .discovery {
+  grid-template-columns: 272px minmax(0, 1fr) 300px;
+  gap: 24px;
+}
+.usta-listing .side {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 16px;
+}
+.usta-listing .side-card {
+  background: #fff;
+  border: 1px solid #e7ecf3;
+  border-radius: 20px;
+  padding: 22px;
+}
+.usta-listing .side-card h3 {
+  font-size: 19px;
+  margin: 10px 0 8px;
+}
+.usta-listing .side-card p {
+  font-size: 14.5px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.usta-listing .btn-block {
+  width: 100%;
+}
+
+.usta-listing .fgroup-btn {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0b1220;
+  padding: 14px 16px 8px;
+}
+.usta-listing .fgroup-body {
+  padding: 0 16px 14px;
+}
+.usta-listing .fgroup-body select,
+.usta-listing .fgroup-body input[type='text'],
+.usta-listing .fgroup-body input[type='number'] {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: #0b1220;
+  background: #fff;
+  border: 1px solid #d9e0ea;
+  border-radius: 10px;
+  padding: 9px 11px;
+}
+.usta-listing .fgroup-body select:focus-visible,
+.usta-listing .fgroup-body input:focus-visible,
+.usta-listing .results-bar select:focus-visible {
+  outline: 3px solid #dee8ff;
+  outline-offset: 1px;
+  border-color: #2563eb;
+}
+.usta-listing .fcheck {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.usta-listing .template-empty {
+  background: #fff;
+  border: 1px dashed #c9d3e2;
+  border-radius: 20px;
+  padding: 46px 24px;
+  text-align: center;
+}
+.usta-listing .template-empty h3 {
+  font-size: 19px;
+  margin-bottom: 8px;
+}
+.usta-listing .template-empty p {
+  color: #64748b;
+  margin-bottom: 18px;
+}
+
+.usta-listing .cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+/* Result cards -------------------------------------------------------------- */
+.usta-listing .listing-card {
+  display: block;
+  background: #fff;
+  border: 1px solid #e7ecf3;
+  border-radius: 18px;
+  padding: 20px 22px;
+  text-decoration: none;
+  transition: 0.18s ease;
+}
+.usta-listing .listing-card:hover {
+  border-color: #dee8ff;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.07);
+  transform: translateY(-2px);
+}
+.usta-listing .listing-card:focus-within {
+  outline: 3px solid #dee8ff;
+  outline-offset: 2px;
+}
+.usta-listing .lc-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.usta-listing .lc-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+  background: #eef2f8;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.usta-listing .lc-tag.is-featured {
+  color: #1657cf;
+  background: #eef4ff;
+}
+.usta-listing .lc-tag.is-verified {
+  color: #047857;
+  background: #ecfdf5;
+}
+.usta-listing .listing-card h3 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 0 0 6px;
+  color: #0b1220;
+}
+.usta-listing .listing-card p {
+  font-size: 14.5px;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+.usta-listing .lc-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13.5px;
+  color: #475569;
+  margin-bottom: 14px;
+}
+.usta-listing .lc-facts b {
+  color: #0b1220;
+  font-weight: 600;
+}
+.usta-listing .lc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.usta-listing .lc-actions .go {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2563eb;
+  text-decoration: none;
+}
+.usta-listing .lc-actions .go:hover {
+  text-decoration: underline;
+}
+
+.usta-listing .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1200px) {
+  .usta-listing .discovery {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+  .usta-listing .side {
+    grid-column: 1 / -1;
+    position: static;
+  }
+}
+@media (max-width: 900px) {
+  .usta-listing .discovery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The shared `.filters` drawer slides in from the left. Restated at higher
+   * specificity than the `@scope`d `.filters.open` rule so the open state
+   * reliably wins inside this page family. */
+  .usta-listing .filters {
+    transform: translateX(-105%);
+  }
+  .usta-listing .filters.open {
+    transform: translateX(0);
+  }
+}
