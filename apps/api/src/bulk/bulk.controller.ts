@@ -60,6 +60,13 @@ export class BulkOperationsController {
     );
   }
 
+  @Get(':resource/records') async records(
+    @Req() req: AuthenticatedRequest,
+    @Param('resource') resource: string,
+  ) {
+    return successEnvelope(req, await this.bulk.listRecords(resource));
+  }
+
   @Get(':resource/template') async template(
     @Param('resource') resource: string,
     @Query('format') formatQuery: string | undefined,

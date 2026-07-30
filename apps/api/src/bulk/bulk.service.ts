@@ -86,25 +86,39 @@ export class BulkOperationsService {
     };
   }
 
-  async export(resourceKey: string, format: 'csv' | 'xlsx') {
-    const definition = bulkResource(resourceKey);
-    const includeMap: Record<string, Record<string, unknown>> = {
-      countries: { continent: { select: { slug: true } } },
-      states: { country: { select: { slug: true } } },
-      cities: {
-        country: { select: { slug: true } },
-        state: { select: { slug: true } },
-      },
-      courses: {
-        subject: { select: { slug: true } },
-        courseLevel: { select: { code: true } },
-      },
-    };
-    const rows = await delegate(this.prisma, definition).findMany({
+  private static readonly INCLUDE_MAP: Record<string, Record<string, unknown>> = {
+    countries: { continent: { select: { slug: true } } },
+    states: { country: { select: { slug: true } } },
+    cities: {
+      country: { select: { slug: true } },
+      state: { select: { slug: true } },
+    },
+    courses: {
+      subject: { select: { slug: true } },
+      courseLevel: { select: { code: true } },
+    },
+  };
+
+  private async fetchRecords(resourceKey: string, definition: BulkResourceDefinition) {
+    return delegate(this.prisma, definition).findMany({
       where: { deletedAt: null },
-      include: includeMap[resourceKey],
+      include: BulkOperationsService.INCLUDE_MAP[resourceKey],
       orderBy: { createdAt: 'asc' },
     });
+  }
+
+  /** Lightweight JSON listing (id + the same field set as export) used by
+   * the admin bulk-update/bulk-archive record picker — the file-download
+   * `export` endpoint returns a binary buffer, not something a UI can list. */
+  async listRecords(resourceKey: string) {
+    const definition = bulkResource(resourceKey);
+    const rows = await this.fetchRecords(resourceKey, definition);
+    return rows.map((row: Record<string, unknown>) => ({ id: row.id, ...definition.toExportRow(row) }));
+  }
+
+  async export(resourceKey: string, format: 'csv' | 'xlsx') {
+    const definition = bulkResource(resourceKey);
+    const rows = await this.fetchRecords(resourceKey, definition);
     const exportRows = rows.map((row: Record<string, unknown>) =>
       definition.toExportRow(row),
     );
