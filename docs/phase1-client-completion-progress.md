@@ -20,7 +20,7 @@ Branch: `feat/phase1-expanded-local`
 | 8 | Bulk data management | DONE (7 of ~13 modules — see summary) |
 | 9 | Featured listings and advanced filters | DONE (scoped — see summary) |
 | 10 | SEO and schema completion | DONE (scoped — see summary) |
-| 11 | Full integration and defect fixing | pending |
+| 11 | Full integration and defect fixing | DONE — see summary |
 | 12 | Final Phase 1 acceptance | pending |
 
 ## Local environment notes (read before running anything)
@@ -40,13 +40,24 @@ Branch: `feat/phase1-expanded-local`
   3010, admin 3011) because the sibling `universta` checkout already had
   3000/3001/4000 bound. Admin needs `ADMIN_APP_ORIGIN=http://localhost:3011`
   set (its CSRF-style origin check defaults to `:3001` otherwise, which
-  silently 403s every login from a differently-ported dev server).
-  Full start commands:
+  silently 403s every login from a differently-ported dev server). The
+  API's own `.env` `CORS_ORIGINS` must also list `:3010,:3011` (its own
+  server-side allow-list, separate from any client-side origin env var) —
+  without it, the public counselling-lead form 403s with "This request
+  could not be accepted" from `LeadProtectionService.assertOrigin()`,
+  discovered running the full Playwright suite on these alternate ports
+  during Milestone 11. `.env` is gitignored, so this must be redone if it's
+  regenerated. Full start commands:
   ```
   cd apps/api && set -a && source .env && set +a && PORT=4010 npm run start:dev
   cd apps/web && API_BASE_URL=http://127.0.0.1:4010 NEXT_PUBLIC_SITE_URL=http://localhost:3010 npx next dev -p 3010
   cd apps/admin && API_BASE_URL=http://127.0.0.1:4010 ADMIN_APP_ORIGIN=http://localhost:3011 npx next dev -p 3011
   ```
+  For the admin app's Playwright suite (`apps/admin/playwright.config.ts`),
+  set `E2E_API_BASE_URL`/`E2E_ADMIN_BASE_URL`/`E2E_WEB_BASE_URL` (full
+  URLs) rather than the old `E2E_*_PORT` vars — the config now derives
+  ports from these URLs directly (see Milestone 11 summary; the two used
+  to be independent and could silently drift apart).
 - Running the API's Jest e2e suite with default parallel workers causes
   cross-file interference (rate-limit/lockout and leftover fixture data)
   against this single local MySQL instance. Use `--runInBand` for a reliable
@@ -87,6 +98,7 @@ Branch: `feat/phase1-expanded-local`
 
 ## Commits this effort (newest first)
 
+- `f96ab2f` fix(e2e): consolidate Playwright base-URL env vars and fix JSON-LD count assertion
 - `e277919` feat(seo): add JobPosting/Event/FAQPage/Organization JSON-LD and fix SeoMetadata plumbing
 - `36ae4b0` docs(phase1): checkpoint after milestone 9
 - `68e3fba` feat(catalog): add featured-window scheduling and location/tuition filters
@@ -105,6 +117,72 @@ Branch: `feat/phase1-expanded-local`
 - `dc44146` docs(phase1): checkpoint after milestone 2
 - `2366555` feat(cms): complete phase1 page builder and publishing workflows
 - `afd58fb` docs(phase1): audit complete client scope
+
+## Milestone 11 summary (done)
+
+Ran the full Playwright browser suite (`apps/admin/playwright.config.ts`,
+56 tests across admin auth, catalog CRUD, structured Phase 1 CRUD, lead
+capture, comparisons, and public country/subject/course discovery) for the
+first time this effort — it exercises admin + web + API together, which is
+exactly the cross-feature interaction Milestone 11 is for. It found real
+defects the per-app unit/e2e suites couldn't have caught:
+
+- **`playwright.config.ts` and `e2e/helpers/e2e-urls.ts` used two
+  independent env-var schemes for the same three URLs** — the config read
+  `E2E_API_PORT`/`E2E_ADMIN_PORT`/`E2E_WEB_PORT` to decide what to launch,
+  while every spec file imported `adminBaseUrl`/`apiBaseUrl`/`webBaseUrl`
+  from `e2e-urls.ts`, which read a completely different
+  `E2E_*_BASE_URL` set (defaulting to `:3001`/`:4000`/`:3000`). Running
+  with only the `_PORT` vars set (the seemingly natural choice, and the
+  only one `playwright.config.ts` itself references) launched the correct
+  dev servers on the alternate ports but then silently ran every test
+  against the *other*, sibling `universta` checkout's stale servers on the
+  default ports — 15 failures and 9 skipped tests, none of them a real
+  product defect, all of them this one env-var drift. Fixed by having
+  `playwright.config.ts` import the same three constants from
+  `e2e-urls.ts` and derive its launch ports from them, so there is exactly
+  one source of truth. See `docs/phase1-client-completion-progress.md`'s
+  environment notes for the corrected invocation.
+- **The API's `.env` `CORS_ORIGINS` didn't list the alternate ports either**
+  — a second, unrelated origin allow-list (`LeadProtectionService.
+  assertOrigin()`, server-side, distinct from the web app's own
+  `NEXT_PUBLIC_WEB_ORIGIN` check) rejected the counselling-lead and
+  contact-inquiry forms with "This request could not be accepted" /
+  "Request origin is not allowed" whenever the web app ran on `:3010`.
+  Fixed locally by adding `:3010,:3011` to `.env`'s `CORS_ORIGINS` (not
+  committed — `.env` is gitignored; documented in the environment notes so
+  it's not mistaken for a regression next session).
+- **`playwright.config.ts`'s web dev-server launch never set
+  `NEXT_PUBLIC_WEB_ORIGIN`** at all, only `API_BASE_URL` — meaning even
+  with the URL/port drift fixed, the lead-capture tests would still have
+  403'd. Added `NEXT_PUBLIC_WEB_ORIGIN`/`NEXT_PUBLIC_SITE_URL` to that
+  block.
+- **A real, self-inflicted assertion staleness**: `public-countries.spec.ts`
+  asserted exactly 1 `<script type="application/ld+json">` on a country
+  detail page — true before Milestone 10, false after (Place + FAQPage +
+  site-wide Organization now render there). Updated the test to assert 3
+  scripts and check their `@type`s, rather than loosening it to "at least
+  one" — the specific count is exactly what should be caught if this ever
+  regresses again.
+- **One confirmed-transient flaky test, left alone deliberately**: "offers
+  API-backed subject suggestions with keyboard selection" failed 1 run in
+  4 with `net::ERR_ABORTED` on the type-ahead's debounced suggestions
+  fetch — an intentional `AbortController.abort()` from the debounce logic
+  racing the test's keystroke timing, not a missing endpoint (the
+  `/api/subjects/suggestions` BFF route and its upstream `/subjects?q=`
+  list-endpoint call both already existed and work; briefly suspected and
+  then ruled out adding a dedicated `/subjects/suggestions` API endpoint
+  for this — reverted that speculative addition once the real cause was
+  confirmed). Documented as known-flaky rather than "fixed" by masking a
+  legitimate abort as a false failure.
+- Real browser cross-feature walkthrough beyond what the suites cover:
+  university detail (Milestone 9/10 SEO-aware metadata) → claim form
+  (Milestone 7) submitted successfully end-to-end on the currently-running
+  stack, confirming the claim workflow still works unmodified alongside
+  everything built since. Cleaned up the test claim row afterward.
+- Final regression after all fixes: 142 API e2e + 44 API unit + 48 admin
+  unit + 8 web unit + all 56 Playwright tests green; clean lints and
+  builds across api/admin/web.
 
 ## Milestone 10 summary (done — scoped subset)
 
@@ -527,8 +605,10 @@ Branch: `feat/phase1-expanded-local`
 
 ## Next milestone
 
-Milestone 11 — Full integration and defect fixing: exercise every feature
-built across Milestones 2–10 together (not in isolation), look for
-cross-feature interaction bugs, re-run the full automated suite plus a
-broad manual pass, and fix whatever surfaces before moving to the final
-Milestone 12 acceptance checklist.
+Milestone 12 — Final Phase 1 acceptance: the full local validation suite
+(`npm ci`, Prisma format/validate/generate/migrate status, every automated
+test, every lint, every build, a secret scan, a package-lock review, clean
+`git status`), the 37-item manual browser acceptance checklist from the
+original brief, and the final `docs/phase1-client-final-completion-report.md`
+per its exact template — including an explicit note that a staging-deployment
+rehearsal is out of reach in this local-only environment.
