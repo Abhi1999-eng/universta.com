@@ -1,9 +1,42 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ApprovedCountriesListing } from '@/components/templates/ApprovedTemplatePages';
+import { ApprovedCountriesListing, type CountryListingOverrides } from '@/components/templates/ApprovedTemplatePages';
 import { getContinents, getCountries, getDirectory } from '@/lib/countries';
-import { phaseList } from '@/lib/phase1';
+import { phaseList, phasePage } from '@/lib/phase1';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+
+/** Section keys an admin can use, via the generic Page CMS (Phase 1 content
+ * -> Pages -> a page with slug "countries"), to override this listing's
+ * Hero and editorial section copy. The live country/consultant/directory
+ * data these sections wrap always stays data-driven -- only eyebrow/
+ * heading/subheading text can be overridden this way. */
+const COUNTRY_LISTING_SECTION_KEYS = new Set([
+  'hero',
+  'region',
+  'ctaBand',
+  'az',
+  'ctaTwo',
+  'consultants',
+  'final',
+]);
+async function loadContentOverrides(): Promise<CountryListingOverrides> {
+  try {
+    const page = await phasePage<AnyRecord>('countries');
+    const overrides: CountryListingOverrides = {};
+    for (const section of page?.sections ?? []) {
+      const key = section.sectionKey;
+      if (!key || !COUNTRY_LISTING_SECTION_KEYS.has(key)) continue;
+      overrides[key as keyof CountryListingOverrides] = {
+        eyebrow: section.eyebrow,
+        heading: section.heading,
+        subheading: section.subheading,
+      };
+    }
+    return overrides;
+  } catch {
+    return {};
+  }
+}
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Study destinations | Universta', description: 'Explore structured study destinations and plan your next step with Universta.' };
@@ -34,8 +67,8 @@ async function loadData(filters: ListingFilters) {
 
 export default async function CountriesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const filters = parseFilters(await searchParams);
-  const data = await loadData(filters);
+  const [data, content] = await Promise.all([loadData(filters), loadContentOverrides()]);
   if (!data) return <main className="shell error-page"><p className="eyebrow">Countries</p><h1>Destinations are temporarily unavailable</h1><p>Please try again shortly.</p><Link className="button" href="/countries">Retry</Link></main>;
   const activeContinents = data.continents.filter((item) => item.status === 'ACTIVE');
-  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} consultants={data.consultants} filters={filters} />;
+  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} consultants={data.consultants} filters={filters} content={content} />;
 }

@@ -318,6 +318,23 @@ function searchRecord(params: URLSearchParams) {
   return Object.fromEntries(params.entries());
 }
 
+export type CountryListingSectionKey =
+  | 'hero'
+  | 'region'
+  | 'ctaBand'
+  | 'az'
+  | 'ctaTwo'
+  | 'consultants'
+  | 'final';
+export type CountryListingOverride = {
+  eyebrow?: string | null;
+  heading?: string | null;
+  subheading?: string | null;
+};
+export type CountryListingOverrides = Partial<
+  Record<CountryListingSectionKey, CountryListingOverride>
+>;
+
 export function ApprovedCountriesListing({
   countries,
   meta,
@@ -326,6 +343,7 @@ export function ApprovedCountriesListing({
   directoryMeta,
   consultants,
   filters: initialFilters,
+  content = {},
 }: {
   countries: Country[];
   meta: PaginationMeta;
@@ -334,7 +352,15 @@ export function ApprovedCountriesListing({
   directoryMeta: PaginationMeta;
   consultants: ConsultantDirectoryEntry[];
   filters: Record<string, string | undefined>;
+  /** Admin-editable copy overrides for the Hero and each editorial section,
+   * sourced from a CMS Page (slug "countries") when one exists -- see
+   * apps/web/src/app/countries/page.tsx. The live country/consultant/
+   * directory data these sections wrap is never overridden here, only the
+   * surrounding eyebrow/heading/subheading copy. */
+  content?: CountryListingOverrides;
 }) {
+  const copy = (key: CountryListingSectionKey, field: keyof CountryListingOverride, fallback: string) =>
+    content[key]?.[field] || fallback;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -506,8 +532,8 @@ export function ApprovedCountriesListing({
       <section className="hero">
         <div className="wrap center">
           <div className="hero-badge"><Icon name="globe" size={15} /><b>{meta.total}</b> destinations · <b>{universityTotal.toLocaleString()}</b> universities</div>
-          <h1>Where will your degree <em>take you?</em></h1>
-          <p className="hero-sub">Don&apos;t just browse countries — compare what actually decides your choice, side by side.</p>
+          <h1>{content.hero?.heading || <>Where will your degree <em>take you?</em></>}</h1>
+          <p className="hero-sub">{copy('hero', 'subheading', "Don't just browse countries — compare what actually decides your choice, side by side.")}</p>
           <div className="compare-chips">
             {[
               ['money', 'Tuition fees'],
@@ -619,9 +645,9 @@ export function ApprovedCountriesListing({
       <section className="region-sec" id="regions">
         <div className="wrap">
           <div>
-            <div className="eyebrow">Browse by region</div>
-            <h2 className="sec-h" style={{ marginTop: 12 }}>Start with the part of the world you&apos;re drawn to.</h2>
-            <p className="sec-p">Every published destination with the available tuition, post-study work and intake information.</p>
+            <div className="eyebrow">{copy('region', 'eyebrow', 'Browse by region')}</div>
+            <h2 className="sec-h" style={{ marginTop: 12 }}>{copy('region', 'heading', "Start with the part of the world you're drawn to.")}</h2>
+            <p className="sec-p">{copy('region', 'subheading', 'Every published destination with the available tuition, post-study work and intake information.')}</p>
           </div>
           <div className="tabbar">
             <div className="tabs">
@@ -723,8 +749,8 @@ export function ApprovedCountriesListing({
       <div className="wrap">
         <section className="cta-band">
           <div>
-            <h2>Confused about choosing the right country?</h2>
-            <p>Talk with a counsellor and build a clear plan around the published options.</p>
+            <h2>{copy('ctaBand', 'heading', 'Confused about choosing the right country?')}</h2>
+            <p>{copy('ctaBand', 'subheading', 'Talk with a counsellor and build a clear plan around the published options.')}</p>
             <ul className="cta-list">
               {['Profile evaluation', 'University shortlisting', 'Scholarship guidance', 'Visa assistance'].map((item) => <li key={item}><Icon name="check" />{item}</li>)}
             </ul>
@@ -738,9 +764,9 @@ export function ApprovedCountriesListing({
       </div>
       <section className="az-sec" id="az">
         <div className="wrap">
-          <div className="eyebrow">Every destination</div>
-          <h2 className="sec-h" style={{ marginTop: 12 }}>Browse every destination A–Z</h2>
-          <p className="sec-p">Jump straight to a country and see what is currently published.</p>
+          <div className="eyebrow">{copy('az', 'eyebrow', 'Every destination')}</div>
+          <h2 className="sec-h" style={{ marginTop: 12 }}>{copy('az', 'heading', 'Browse every destination A–Z')}</h2>
+          <p className="sec-p">{copy('az', 'subheading', 'Jump straight to a country and see what is currently published.')}</p>
           <div className="alpha" aria-label="Country directory letters">
             {Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index)).map((letter) => {
               const items = directoryByLetter.get(letter) ?? [];
@@ -793,8 +819,8 @@ export function ApprovedCountriesListing({
       </section>
       <div className="wrap">
         <section className="cta2">
-          <h2>Ready to start your study abroad journey?</h2>
-          <p>Share your goals and get help turning published destinations into a practical shortlist.</p>
+          <h2>{copy('ctaTwo', 'heading', 'Ready to start your study abroad journey?')}</h2>
+          <p>{copy('ctaTwo', 'subheading', 'Share your goals and get help turning published destinations into a practical shortlist.')}</p>
           <div className="cta2-btns">
             <Link href={counsellingHref({ source: 'general', from: '/countries' })} className="btn btn-p btn-lg">Request counselling</Link>
             <Link href="/courses" className="btn btn-s btn-lg">Explore courses</Link>
@@ -803,9 +829,9 @@ export function ApprovedCountriesListing({
       </div>
       <section className="cons-sec" id="consultants">
         <div className="wrap">
-          <div className="eyebrow">Study abroad consultants</div>
-          <h2 className="sec-h" style={{ marginTop: 12 }}>Guidance from people who know your destination.</h2>
-          <p className="sec-p">Connect with published consultant profiles before you talk to a counsellor.</p>
+          <div className="eyebrow">{copy('consultants', 'eyebrow', 'Study abroad consultants')}</div>
+          <h2 className="sec-h" style={{ marginTop: 12 }}>{copy('consultants', 'heading', 'Guidance from people who know your destination.')}</h2>
+          <p className="sec-p">{copy('consultants', 'subheading', 'Connect with published consultant profiles before you talk to a counsellor.')}</p>
           {consultants.length ? (
             <div className="cons-grid">
               {consultants.map((consultant) => (
@@ -835,9 +861,9 @@ export function ApprovedCountriesListing({
       </section>
       <section className="final">
         <div className="wrap">
-          <div className="eyebrow">Personalised shortlist</div>
-          <h2>Not sure which country fits you?</h2>
-          <p>Start with the published catalog and get help turning it into a shortlist.</p>
+          <div className="eyebrow">{copy('final', 'eyebrow', 'Personalised shortlist')}</div>
+          <h2>{copy('final', 'heading', 'Not sure which country fits you?')}</h2>
+          <p>{copy('final', 'subheading', 'Start with the published catalog and get help turning it into a shortlist.')}</p>
           <div className="final-btns">
             <Link href={counsellingHref({ source: 'general', from: '/countries' })} className="btn btn-w btn-lg">Talk to a counsellor</Link>
             <Link href="/courses" className="btn btn-o btn-lg">Explore courses</Link>
