@@ -77,6 +77,12 @@ describe('Bulk data import/export (e2e)', () => {
         'courses',
         'jobs',
         'events',
+        'universities',
+        'campuses',
+        'offerings',
+        'scholarships',
+        'consultants',
+        'consultant-locations',
       ]),
     );
   });
@@ -262,5 +268,202 @@ describe('Bulk data import/export (e2e)', () => {
     expect(response.text).toContain('\t=2+2');
     expect(response.text).not.toMatch(/[^\t]=2\+2/);
     await prisma.job.deleteMany({ where: { slug } });
+  });
+
+  describe('University/Scholarship/Consultant bulk coverage', () => {
+    const uniSlug = `bulk-e2e-uni-${suffix}`;
+    const campusName = 'Bulk E2E Campus';
+    const offeringSlug = `bulk-e2e-offering-${suffix}`;
+    const scholarshipSlug = `bulk-e2e-scholarship-${suffix}`;
+    const consultantSlug = `bulk-e2e-consultant-${suffix}`;
+    const locationSlug = `bulk-e2e-location-${suffix}`;
+    let genericCourseSlug = '';
+    let uniId = '';
+    let campusId = '';
+    let campusSlug = '';
+    let offeringId = '';
+
+    it('imports a university via a countrySlug lookup, rejecting an unknown one', async () => {
+      const bad = await admin('post', '/api/v1/admin/bulk/universities/import')
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,countrySlug,shortDescription,status\n' +
+              `bulk-e2e-uni-bad-${suffix},Bad,not-a-real-country,Demo,DRAFT`,
+            'utf8',
+          ),
+          'universities.csv',
+        )
+        .expect(201);
+      expect(data(bad).failed).toBe(1);
+
+      const good = await admin(
+        'post',
+        '/api/v1/admin/bulk/universities/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,countrySlug,shortDescription,status\n' +
+              `${uniSlug},Bulk E2E University,canada,Demo,DRAFT`,
+            'utf8',
+          ),
+          'universities.csv',
+        )
+        .expect(201);
+      expect(data(good).created).toBe(1);
+      const uni = await prisma.university.findFirstOrThrow({
+        where: { slug: uniSlug },
+      });
+      uniId = uni.id;
+    });
+
+    it('auto-generates a campus slug prefixed with its university slug to avoid cross-university collisions', async () => {
+      const response = await admin(
+        'post',
+        '/api/v1/admin/bulk/campuses/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,universitySlug,city,status\n' +
+              `,${campusName},${uniSlug},Toronto,ACTIVE`,
+            'utf8',
+          ),
+          'campuses.csv',
+        )
+        .expect(201);
+      expect(data(response).created).toBe(1);
+      const campus = await prisma.universityCampus.findFirstOrThrow({
+        where: { universityId: uniId, name: campusName },
+      });
+      campusId = campus.id;
+      campusSlug = campus.slug;
+      expect(campusSlug).toBe(`${uniSlug}-bulk-e2e-campus`);
+    });
+
+    it('imports an offering resolving university/course/campus/course-level relations', async () => {
+      const course = await prisma.course.findFirst({
+        where: { deletedAt: null },
+      });
+      genericCourseSlug = course!.slug;
+      const response = await admin(
+        'post',
+        '/api/v1/admin/bulk/offerings/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,universitySlug,genericCourseSlug,campusSlug,status\n' +
+              `${offeringSlug},Bulk E2E Offering,${uniSlug},${genericCourseSlug},${campusSlug},DRAFT`,
+            'utf8',
+          ),
+          'offerings.csv',
+        )
+        .expect(201);
+      expect(data(response).created).toBe(1);
+      const offering = await prisma.universityCourseOffering.findFirstOrThrow(
+        { where: { slug: offeringSlug } },
+      );
+      offeringId = offering.id;
+      expect(offering.campusId).toBe(campusId);
+    });
+
+    it('blocks archiving a university that still has a campus and an offering attached', async () => {
+      const response = await admin(
+        'post',
+        '/api/v1/admin/bulk/universities/bulk-archive',
+      )
+        .send({ ids: [uniId] })
+        .expect(404);
+      expect(errorCode(response)).toBe('NO_RECORDS_ARCHIVABLE');
+    });
+
+    it('imports scholarships, consultants and consultant-locations with their own relation lookups', async () => {
+      const scholarship = await admin(
+        'post',
+        '/api/v1/admin/bulk/scholarships/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,title,status\n' + `${scholarshipSlug},Bulk E2E Scholarship,DRAFT`,
+            'utf8',
+          ),
+          'scholarships.csv',
+        )
+        .expect(201);
+      expect(data(scholarship).created).toBe(1);
+
+      const consultant = await admin(
+        'post',
+        '/api/v1/admin/bulk/consultants/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,status\n' + `${consultantSlug},Bulk E2E Consultant,DRAFT`,
+            'utf8',
+          ),
+          'consultants.csv',
+        )
+        .expect(201);
+      expect(data(consultant).created).toBe(1);
+
+      const badLocation = await admin(
+        'post',
+        '/api/v1/admin/bulk/consultant-locations/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,city,countrySlug,status\n' +
+              `bulk-e2e-location-bad-${suffix},Bad,Nowhere,not-a-real-country,ACTIVE`,
+            'utf8',
+          ),
+          'consultant-locations.csv',
+        )
+        .expect(201);
+      expect(data(badLocation).failed).toBe(1);
+
+      const location = await admin(
+        'post',
+        '/api/v1/admin/bulk/consultant-locations/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,name,city,countrySlug,status\n' +
+              `${locationSlug},Bulk E2E Location,Vancouver,canada,ACTIVE`,
+            'utf8',
+          ),
+          'consultant-locations.csv',
+        )
+        .expect(201);
+      expect(data(location).created).toBe(1);
+    });
+
+    afterAll(async () => {
+      if (offeringId)
+        await prisma.universityCourseOffering.deleteMany({
+          where: { id: offeringId },
+        });
+      if (campusId)
+        await prisma.universityCampus.deleteMany({ where: { id: campusId } });
+      await prisma.university.deleteMany({ where: { slug: uniSlug } });
+      await prisma.scholarship.deleteMany({ where: { slug: scholarshipSlug } });
+      await prisma.consultant.deleteMany({ where: { slug: consultantSlug } });
+      await prisma.consultantLocation.deleteMany({
+        where: { slug: locationSlug },
+      });
+    });
   });
 });

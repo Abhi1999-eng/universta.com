@@ -98,6 +98,16 @@ export class BulkOperationsService {
         subject: { select: { slug: true } },
         courseLevel: { select: { code: true } },
       },
+      universities: { country: { select: { slug: true } } },
+      campuses: { university: { select: { slug: true } } },
+      offerings: {
+        university: { select: { slug: true } },
+        genericCourse: { select: { slug: true } },
+        campus: { select: { slug: true } },
+        courseLevel: { select: { code: true } },
+      },
+      scholarships: { provider: { select: { slug: true } } },
+      'consultant-locations': { country: { select: { slug: true } } },
     };
 
   private async fetchRecords(
