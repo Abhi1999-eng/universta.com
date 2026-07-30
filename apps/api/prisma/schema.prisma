@@ -70,6 +70,9 @@ model User {
   updatedCourses            Course[]             @relation("CourseUpdatedBy")
   assignedLeads             Lead[]               @relation("LeadAssignedTo")
   assignedBookings          CounsellingBooking[] @relation("BookingAssignedTo")
+  reviewedUniversityClaims  UniversityClaimRequest[]       @relation("UniversityClaimReviewedBy")
+  universityClaimNotes      UniversityClaimNote[]
+  universityClaimStatusChanges UniversityClaimStatusHistory[] @relation("UniversityClaimStatusChangedBy")
   leadNotes                 LeadNote[]
   changedLeadStatuses       LeadStatusHistory[]  @relation("LeadStatusChangedBy")
   createdEmailTemplates     EmailTemplate[]      @relation("EmailTemplateCreatedBy")
@@ -1526,11 +1529,72 @@ model University {
   scholarships   ScholarshipUniversity[]
   successStories SuccessStory[]
   testimonials   Testimonial[]
+  claimRequests  UniversityClaimRequest[]
 
   @@unique([countryId, name])
   @@index([countryId, status, displayOrder])
   @@index([status, institutionType, isFeatured])
   @@map("universities")
+}
+
+model UniversityClaimRequest {
+  id              String    @id @default(uuid()) @db.Char(36)
+  universityId    String    @map("university_id") @db.Char(36)
+  claimNumber     String    @unique @map("claim_number") @db.VarChar(50)
+  claimantName    String    @map("claimant_name") @db.VarChar(255)
+  workEmail       String    @map("work_email") @db.VarChar(255)
+  jobTitle        String?   @map("job_title") @db.VarChar(255)
+  organization    String?   @db.VarChar(255)
+  phoneNumber     String?   @map("phone_number") @db.VarChar(50)
+  officialWebsite String?   @map("official_website") @db.VarChar(2048)
+  message         String    @db.Text
+  status          String    @default("SUBMITTED") @db.VarChar(30)
+  reviewedByUserId String?  @map("reviewed_by_user_id") @db.Char(36)
+  reviewedAt      DateTime? @map("reviewed_at") @db.DateTime(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(3)
+
+  university    University                        @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  reviewedBy    User?                              @relation("UniversityClaimReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  notes         UniversityClaimNote[]
+  statusHistory UniversityClaimStatusHistory[]
+
+  @@index([universityId, status])
+  @@index([workEmail, status])
+  @@map("university_claim_requests")
+}
+
+model UniversityClaimNote {
+  id           String   @id @default(uuid()) @db.Char(36)
+  claimId      String   @map("claim_id") @db.Char(36)
+  userId       String   @map("user_id") @db.Char(36)
+  note         String   @db.LongText
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  claim UniversityClaimRequest @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  user  User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([claimId, createdAt])
+  @@index([userId])
+  @@map("university_claim_notes")
+}
+
+model UniversityClaimStatusHistory {
+  id              String   @id @default(uuid()) @db.Char(36)
+  claimId         String   @map("claim_id") @db.Char(36)
+  oldStatus       String?  @map("old_status") @db.VarChar(30)
+  newStatus       String   @map("new_status") @db.VarChar(30)
+  changedByUserId String?  @map("changed_by_user_id") @db.Char(36)
+  reason          String?  @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  claim     UniversityClaimRequest @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  changedBy User?                  @relation("UniversityClaimStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([claimId, createdAt])
+  @@index([changedByUserId])
+  @@map("university_claim_status_history")
 }
 
 model UniversityCampus {

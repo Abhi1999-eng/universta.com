@@ -451,6 +451,12 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
               >
                 Talk to a counsellor
               </Link>
+              <Link
+                className="text-link"
+                href={`/universities/${slugFor(row)}/claim`}
+              >
+                Claim this university
+              </Link>
             </div>
           </div>
           <div className="hero-card">

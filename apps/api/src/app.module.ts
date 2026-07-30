@@ -23,6 +23,7 @@ import { ExpandedModule } from './expanded/expanded.module';
 import { MediaModule } from './media/media.module';
 import { ExperimentsModule } from './experiments/experiments.module';
 import { LocationsModule } from './locations/locations.module';
+import { UniversityClaimsModule } from './university-claims/university-claims.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { LocationsModule } from './locations/locations.module';
     MediaModule,
     ExperimentsModule,
     LocationsModule,
+    UniversityClaimsModule,
   ],
   controllers: [AppController],
   providers: [
