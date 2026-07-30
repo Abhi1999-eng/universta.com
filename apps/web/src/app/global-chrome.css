@@ -642,3 +642,36 @@ a.usta-drawer-head.is-active {
     display: none !important;
   }
 }
+
+/* --- Draft preview target (/preview) ------------------------------------
+   Only ever rendered inside the Website Builder's device frame. The banner
+   makes it unmistakable that the frame is showing unpublished content. */
+.usta-preview-banner {
+  margin: 0;
+  padding: 10px 16px;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.usta-preview-banner b {
+  color: #fcd34d;
+}
+.usta-preview-empty {
+  max-width: 560px;
+  margin: 64px auto;
+  padding: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  text-align: center;
+}
+.usta-preview-empty h1 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+.usta-preview-empty p {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.6;
+}

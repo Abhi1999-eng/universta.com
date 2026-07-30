@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { DevicePreview } from "./DevicePreview";
 
 /** Website Pages -- the front door of Website Builder.
  *
@@ -53,6 +54,7 @@ export function WebsitePagesManager() {
   const [family, setFamily] = useState("");
   const [kind, setKind] = useState("");
   const [reload, setReload] = useState(0);
+  const [preview, setPreview] = useState<{ slug: string; title: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,6 +188,19 @@ export function WebsitePagesManager() {
         </p>
       ) : null}
 
+      {preview ? (
+        <div className="mt-5">
+          {/* Keyed on the slug so switching pages mounts a fresh preview
+              rather than briefly showing the previous page's frame. */}
+          <DevicePreview
+            key={preview.slug}
+            slug={preview.slug}
+            title={preview.title}
+            onClose={() => setPreview(null)}
+          />
+        </div>
+      ) : null}
+
       <p className="mt-5 text-sm text-[#667085]">
         {loading
           ? "Loading website pages…"
@@ -250,13 +265,29 @@ export function WebsitePagesManager() {
                         SEO
                       </Link>
                     ) : null}
+                    {/* Only a real Page has draft content to preview. For a
+                        template or a code-composed route there is nothing
+                        unpublished to show, so those keep the honest "View
+                        live" link rather than a preview that would be
+                        identical to the public page. */}
+                    {row.kind === "PAGE" && row.pageSlug ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreview({ slug: row.pageSlug as string, title: row.label })
+                        }
+                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                      >
+                        Preview
+                      </button>
+                    ) : null}
                     <a
                       href={`${WEB_ORIGIN}${row.publicPath}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-semibold text-[#667085] focus:underline focus:outline-none"
                     >
-                      Preview
+                      View live
                     </a>
                   </td>
                 </tr>

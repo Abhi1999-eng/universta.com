@@ -31,6 +31,7 @@ import { PageTemplatesModule } from './page-templates/page-templates.module';
 import { SettingsModule } from './settings/settings.module';
 import { WebsiteBuilderModule } from './website-builder/website-builder.module';
 import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
+import { PreviewModule } from './preview/preview.module';
 
 @Module({
   imports: [
@@ -66,6 +67,8 @@ import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
     // Same reason: its literal `phase1/cities` route must win over
     // ExpandedPublicController's generic `phase1/:resource`.
     LocationsModule,
+    // Same reason again: literal `phase1/preview/page`.
+    PreviewModule,
     ExpandedModule,
     MediaModule,
     ExperimentsModule,

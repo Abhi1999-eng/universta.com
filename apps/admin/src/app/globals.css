@@ -42,3 +42,129 @@ h4 {
   border-color: #1657cf;
   box-shadow: 0 0 0 3px #dce8ff;
 }
+
+/* --- Website Builder device preview -------------------------------------
+   The frame keeps its real logical width (1440 / 768 / 390) and is scaled
+   visually to fit; the page inside therefore matches the same media queries
+   the real device does. */
+.wb-preview {
+  border: 1px solid #d9e0ea;
+  border-radius: 0.9rem;
+  background: #f6f8fb;
+  overflow: hidden;
+}
+.wb-preview-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e5eaf2;
+  font-size: 0.875rem;
+}
+.wb-preview-slug {
+  color: #5b6779;
+}
+.wb-preview-devices {
+  display: flex;
+  gap: 0.35rem;
+}
+.wb-preview-devices button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 44px;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.6rem;
+  background: #fff;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.wb-preview-devices button small {
+  font-size: 0.6875rem;
+  color: #6b7688;
+}
+.wb-preview-devices button.is-active {
+  border-color: #1657cf;
+  background: #eef4ff;
+  color: #1657cf;
+}
+.wb-preview-devices button.is-active small {
+  color: #1657cf;
+}
+.wb-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.wb-preview-actions button,
+.wb-preview-actions a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.6rem;
+  background: #fff;
+  color: #0d1524;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.wb-preview-actions .wb-preview-close {
+  border-color: #1657cf;
+  background: #1657cf;
+  color: #fff;
+}
+.wb-preview-note {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background: #fff8e6;
+  border-bottom: 1px solid #f0e2b8;
+  color: #6b5312;
+  font-size: 0.8125rem;
+}
+.wb-preview-stage {
+  padding: 1.25rem;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.wb-preview-state {
+  margin: 2rem 0;
+  color: #5b6779;
+  font-size: 0.875rem;
+  text-align: center;
+}
+.wb-preview-state-error {
+  color: #a4262c;
+}
+.wb-preview-state-error button {
+  margin-top: 0.6rem;
+  min-height: 40px;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid #a4262c;
+  border-radius: 0.6rem;
+  background: #fff;
+  cursor: pointer;
+}
+.wb-preview-shrink {
+  position: relative;
+  flex: 0 0 auto;
+}
+.wb-preview-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.6rem;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(13, 21, 36, 0.14);
+  overflow: hidden;
+}
+.wb-preview-frame iframe {
+  display: block;
+  border: 0;
+}
