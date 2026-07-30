@@ -331,4 +331,9 @@ BLOCKED.
 - NOT APPLICABLE: 2 (both Exam images, by design)
 
 This matrix is the baseline. `docs/phase1-ui-fidelity-final-report.md`
-records what changed against this baseline by the end of this work pass.
+records what changed against this baseline by the end of this work pass,
+including a further addendum (its final section) covering a later
+"remaining Phase 1 work" pass's live spot-check of Home, Country
+Listing, Single Country, Cities, Consultants and Universities — real
+verification, not a full re-run of the 16-page matrix above, which
+still stands as the authoritative per-page baseline.

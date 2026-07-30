@@ -130,3 +130,49 @@ surface, and found no regression in either. Every page's fidelity
 status is otherwise exactly what `docs/phase1-ui-fidelity-matrix.md`
 already documented — that file, not this one, remains the authoritative
 per-page detail record.
+
+## Addendum — later "remaining Phase 1 work" pass (HEAD `1ed5f9f`)
+
+A further pass added Admin discoverability, the Page Template system,
+the 6-resource bulk extension, and additional SEO coverage (see
+`docs/phase1-client-final-completion-report.md` §9 for the full
+summary). It also asked for a fresh UI reference-parity pass across all
+16 mapped pages at up to 6 breakpoints.
+
+**What was actually done**: a live browser spot-check, not the full
+16-page × 6-breakpoint matrix. With three dev servers running locally
+(API/Admin/Web), the following were opened and inspected at desktop
+(1280×800) and mobile (375×812), with console and network checked for
+errors:
+
+- Home (`/`) — renders, no console errors; still the same generic
+  CMS-editorial fallback as the baseline (duplicate "Home" heading
+  from its own section content, pre-existing, not touched this pass).
+- Country Listing (`/countries`) — renders correctly with live counts
+  (13 destinations, 942 universities), no console errors, no visible
+  regression from this pass's CMS-copy wiring.
+- Single Country (`/study-in-canada`) — renders correctly, no console
+  errors; confirms the country profile sections (cost, language,
+  intakes, etc.) still render from real data.
+- Cities (`/study-in-canada/cities`) — **"2 published cities"**,
+  confirming the City data populated in an earlier pass now flows
+  through to this listing (previously empty).
+- Consultants listing (`/study-abroad-consultants`) — renders, 5
+  published consultants, no console errors.
+- Universities listing (`/universities`) — renders at both desktop and
+  mobile with no horizontal overflow, 5 published universities, no
+  console errors.
+
+**Not done in this pass**: University Detail, University Courses,
+Single University Course, Subject Listing, Sub-Subject Listing, Single
+Subject (both variants), Single Scholarship, the two Scholarship
+filtered-state pages, and Book Free Counselling were not re-opened this
+pass. Their status remains exactly what the sections above and
+`docs/phase1-ui-fidelity-matrix.md` already document. No screenshot
+pixel-comparison against the reference PNGs was performed for any page
+in this pass, on this pass or prior ones — every fidelity judgment in
+this whole document family is a structural/visual read, not a pixel
+diff.
+
+No fabricated statistic, ranking, or third-party logo was introduced.
+No new visible regression was found in what was actually checked.

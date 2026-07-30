@@ -3,7 +3,8 @@
 Repository: `/Users/abhishekchaubey/projects/universta-phase1-leads`
 Branch: `feat/phase1-expanded-local`
 HEAD at original M1–M12 acceptance: `5662f52`
-Final HEAD after the later strict-scope pass (see §7 addendum): `4101be9`
+HEAD after the strict-scope pass (see §7 addendum): `4101be9`
+Final HEAD after the "remaining Phase 1 work" pass (see §9 addendum): `1ed5f9f`
 Environment: local-only (no AWS/EC2/S3/SSM/CloudWatch, no production
 infrastructure, no remote database, nothing pushed, no Docker).
 
@@ -312,6 +313,108 @@ for the M1–M12 scope it was written for; it does not extend to the
 Nothing in this later pass was pushed, merged, or deployed. `git
 status` is clean at final HEAD `4101be9` on `feat/phase1-expanded-local`;
 no remotes were added or modified.
+
+## 9. Second addendum — "remaining Phase 1 work" pass (HEAD `1ed5f9f`)
+
+A further pass, continuing from HEAD `4101be9`, targeted the 3 items
+§7 left open (template system, bulk extension, part of SEO coverage)
+plus explicit Admin-discoverability and UI-parity requirements. Commits
+this pass (chronological):
+
+```
+06c273d feat(admin): grouped sidebar navigation, breadcrumbs and dashboard quick links
+0038d50 feat(cms): reusable Admin-managed Page Template system
+39e84cd feat(bulk): extend CSV/XLSX engine to Universities, Campuses, Offerings, Scholarships, Consultants and Consultant locations
+820cb78 feat(seo): close remaining SEO gaps -- OG/robots UI, Consultant locations, Intakes and Scholarship providers
+1ed5f9f fix(admin): resolve regressions found during live browser verification of the sidebar/template rollout
+```
+
+**Admin discoverability** — DONE. The flat "Phase 1 content" catch-all
+is replaced by a single `nav-config.ts` driving a 9-group sidebar
+(Content Management, Destinations, Academics, Universities,
+Scholarships, Consultants, Engagement, Careers and Events, Platform
+Tools), breadcrumbs, and Dashboard quick-link cards. Live-verified: a
+1280×2400 full-height screenshot shows all ~30 nav entries with correct
+labels and hrefs in one shot; every item opens a real screen (nested-
+only items like Campuses/Specializations/Services point at the parent
+editor they're actually managed in, with an explanatory note, rather
+than a non-existent standalone screen).
+
+**Page Template system** — DONE (was NOT DONE in §7). New `PageTemplate`
+model + `Page.templateId`, full admin CRUD (create/edit/duplicate/
+archive/preview), each holding a type-validated ordered list of default
+sections. Assigning a template only ever sets `templateId`; applying its
+defaults is a separate, idempotent action (verified live: a template
+with a HERO + CARD_GRID default pair was created, previewed, assigned
+to the real "About Universta" page, "Apply defaults" appended exactly
+those 2 sections after the page's existing 2 — which were left
+untouched — a second "Apply" call created 0 new sections, and the test
+template/sections/assignment were all cleaned up afterward).
+
+**Bulk CSV/XLSX extension** — DONE (was NOT DONE in §7). Universities,
+Campuses, Offerings, Scholarships, Consultants and Consultant Locations
+are now registered on the same fully generic engine the original 7
+resources use — no engine changes, only 6 new column/relation mappings.
+Verified live end-to-end for all 6 (template download, dry-run with no
+DB mutation, create-mode import, duplicate-slug rejection,
+invalid-relation row error, export, dependency-blocked archive, cleanup)
+via direct API calls, plus new e2e coverage (18 tests, all passing) in
+`bulk.e2e-spec.ts`.
+
+**Remaining SEO gaps** — mostly closed (was PARTIAL in §7). The 9
+"expanded" resources' SEO form now exposes OG title/description/image
+(via Media Library), Twitter title/description, and robots index/follow
+checkboxes — previously only seoTitle/metaDescription/canonicalUrl/
+focusKeyword were editable, and a latent bug silently reset robots
+flags to `true` on every save regardless of prior value. ConsultantLocation
+gets full admin CRUD plus the same SEO editor pattern City uses (it had
+neither before). Intake and ScholarshipProvider get real CRUD (were
+read-only dropdown-feeding lookups). A new Platform Tools > SEO
+management hub page links to every SEO-enabled resource type. **Still
+not built**: dedicated SEO controls for FAQ entries (nested, no
+standalone SEO record in the schema) and the code-defined listing/
+comparison routes (Careers, Events, Compare) — these remain a real,
+named gap, not silently dropped.
+
+**UI reference-parity pass** — partial. A live spot-check (not the full
+16-page × 6-breakpoint matrix) covered Home, Country Listing, Single
+Country, Cities, Consultants listing and Universities listing at
+desktop and mobile with zero console errors; see
+`docs/phase1-ui-fidelity-final-report.md`'s addendum for exactly what
+was and wasn't covered.
+
+**Manual demo** — partial. Live-verified: full Admin login and sidebar
+walkthrough; the complete Page Template create → preview → assign →
+apply-defaults → cleanup flow; all 6 new bulk resources end-to-end; a
+public-site spot-check (6 pages, 2 breakpoints, no console errors). The
+literal 38-step demo script in the governing prompt was not executed
+step-by-step, though the automated Playwright suite (56/56 passing)
+already exercises the counselling-lead, contact-inquiry-to-lead,
+university-claim, and comparison flows that script also covers.
+
+**Validation**: full suite re-run at final HEAD `1ed5f9f` — `npm ci`
+clean (1671 packages); Prisma format/validate/generate clean, 9
+migrations, schema up to date; demo seed run twice back-to-back with
+no errors and stable record counts (idempotent); API unit 44/44; API
+e2e **173/173** (up from 168); Admin unit 48/48; Web unit 8/8;
+Playwright **56/56**; API/Admin/Web lint all clean at their existing
+warning baselines (57/0/4); API/Admin/Web production builds all clean;
+no tracked `.env` files, no secrets found, no generated build artifacts
+tracked, `git diff --check` clean, package-lock reviewed (one benign
+optional-platform SWC binary entry from `npm ci`, no unexplained
+dependency changes). Three real regressions were found only because the
+full suite and a live browser session were actually run (a duplicate
+admin page-title heading, an ambiguous sidebar/dashboard link test
+selector, and a success message styled as an error) — all three fixed
+in commit `1ed5f9f`, detailed above.
+
+**This addendum does not add a new gated closing line either.** Two of
+the five items this pass targeted (SEO coverage, UI reference parity)
+are honestly partial, not complete, against the literal instructions
+that requested them. Writing "REMAINING PHASE 1 WORK AND FULL CLIENT
+DEMO VERIFIED LOCALLY" would misrepresent that. Nothing in this pass
+was pushed, merged, or deployed; `git status` is clean at final HEAD
+`1ed5f9f` on `feat/phase1-expanded-local`; no remotes were touched.
 
 ---
 
