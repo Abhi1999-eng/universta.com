@@ -334,15 +334,11 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     expect(before, 'the spec above should have created acceptance records').toBeGreaterThan(0);
     await purgeAcceptanceRecords();
     const after = await countAcceptanceRecords();
-    expect(after, 'acceptance records must not survive the suite').toEqual({
-      universities: 0,
-      offerings: 0,
-      scholarships: 0,
-      consultants: 0,
-      jobs: 0,
-      events: 0,
-      successStories: 0,
-      testimonials: 0,
-    });
+    // Asserted per key rather than against a hardcoded object, so adding a new
+    // tracked record type to the cleanup helper strengthens this test instead
+    // of breaking it on shape.
+    const nonZero = Object.entries(after).filter(([, count]) => count !== 0);
+    expect(nonZero, 'acceptance records must not survive the suite').toEqual([]);
+    expect(totalAcceptanceRecords(after)).toBe(0);
   });
 });

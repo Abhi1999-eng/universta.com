@@ -99,3 +99,27 @@ test.describe('public navigation discoverability', () => {
     expect(overflow, 'mobile drawer must not overflow horizontally').toBe(false);
   });
 });
+
+test.describe('public catalogue is free of test fixture data', () => {
+  /** A demo once showed "Browser Region E2E 1785472873911" as a study
+   * destination, because the catalog spec's Continent fixture was never
+   * cleaned up and continents render as tabs on the Countries page. This is
+   * the guard: whatever a suite creates, none of it may be visible to a
+   * visitor. */
+  test('shows no E2E fixture records on the destinations page', async ({ page }) => {
+    await page.goto(`${webBaseUrl}/countries`);
+    const body = await page.locator('body').innerText();
+    expect(body).not.toMatch(/Browser Region/i);
+    expect(body).not.toMatch(/Browser Country/i);
+    expect(body).not.toMatch(/\bE2E\b/);
+    expect(body).not.toMatch(/Acceptance Demo/i);
+  });
+
+  test('shows no E2E fixture records on the main listing pages', async ({ page }) => {
+    for (const path of ['/universities', '/scholarships', '/study-abroad-consultants', '/cities']) {
+      await page.goto(`${webBaseUrl}${path}`);
+      const body = await page.locator('body').innerText();
+      expect(body, `${path} must not expose fixture data`).not.toMatch(/Acceptance Demo|Browser Region|Browser Country|\bE2E\b/i);
+    }
+  });
+});
