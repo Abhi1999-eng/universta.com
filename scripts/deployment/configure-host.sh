@@ -252,6 +252,27 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'JSON'
 JSON
 
 nginx -t
+
+# The site file written above is HTTP-only, and it is rewritten on every
+# deploy. TLS lives outside this repo: certbot owns the certificate and adds
+# the `listen 443` blocks itself. So regenerating the file silently strips
+# HTTPS and the deploy then fails its own smoke test with the site reachable
+# only over plain HTTP -- which is exactly how it failed once.
+#
+# Re-apply the certificate that is already on the host. `certbot install` only
+# edits nginx: it makes no ACME request, so nothing is re-issued and no rate
+# limit is touched. On a host with no certificate yet this is skipped and the
+# site stays HTTP-only, which is the correct starting state for one.
+if command -v certbot >/dev/null 2>&1 &&
+  certbot certificates 2>/dev/null | grep -q "Certificate Name: ${web_host}$"; then
+  certbot install --nginx --redirect --non-interactive \
+    --cert-name "${web_host}" >/dev/null
+  nginx -t
+  log "Re-applied the existing TLS certificate to the regenerated nginx site."
+else
+  log "No certbot certificate for ${web_host}; leaving nginx on HTTP only."
+fi
+
 systemctl daemon-reload
 systemctl enable "${UNIVERSTA_SERVICES[@]}" nginx
 systemctl reload nginx
