@@ -42,3 +42,7 @@ pnpm-debug.log*
 # artefacts produced for a specific demo session and are never part of the
 # source tree.
 .local-demo-recordings/
+
+# Playwright run output (screenshots, traces, error contexts). Never committed.
+test-results/
+playwright-report/
