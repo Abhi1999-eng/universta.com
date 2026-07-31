@@ -851,3 +851,108 @@ Stated plainly rather than glossed:
   pass, since those are not built.
 
 For that reason this addendum again carries **no** gated closing line.
+
+---
+
+## Addendum — final three items
+
+Continues from `4786567`.
+
+### Page-level Header/Footer overrides (`3240f6e`)
+
+Nullable `chrome_config_json` on `Page` and `PageTemplate`. NULL means
+USE_GLOBAL, which is what every pre-existing row resolves to, so the
+migration is visually a no-op — confirmed by counting rows with a
+non-null override after a fresh double seed: **0 pages, 0 templates**.
+
+An override is a validated patch on the one canonical chrome, never a
+second set of components. An `ALTERNATE_VARIANT` restyles the same
+Admin-managed navigation and settings; it cannot supply its own links.
+That constraint is deliberate — the six divergent hardcoded headers this
+project used to carry were the shared root cause of both the "settings
+are ignored" and "pages are undiscoverable" defects.
+
+Precedence, verified by reading the public HTML at each step:
+
+| Setup | Resolved | Public HTML |
+| --- | --- | --- |
+| Neither layer set | Global | no variant class |
+| Template only | `template` | `usta-header-centered`, `usta-footer-minimal` |
+| Page + Template both set | `page` | page's `compact` wins over template's `minimal` |
+| Page cleared, template kept | `template` | `usta-header-minimal` |
+| Both cleared | Global | no variant class |
+
+Also verified: a listing route (`/universities`) does not pick up the
+detail template's override; a navigation menu key that no longer exists
+resolves to null and the global menu still renders; footer `HIDE`
+produces **0** `<footer>` elements while the header stays at exactly
+**1**; header and footer counts were 1/1 in every non-HIDE case.
+
+### Consolidated Website Builder (`3a6e628`)
+
+New route `/website/pages/[pageId]/builder`. It composes rather than
+reimplements: `PageCmsEditor` remains the only page/section editor,
+`DevicePreview` the only preview, `VersionHistory` the only history. Two
+competing editors would drift apart within a release, so there is
+exactly one.
+
+The screen reports every required control present and **zero** raw-JSON
+textareas: searchable page selector, managed-as and status chips,
+unsaved-changes indicator, Preview, Version history, View live, page
+fields, publication status and schedule, SEO, template assignment,
+Header/Footer overrides, section list with add/duplicate/remove, device
+visibility, and drag plus keyboard reorder.
+
+Website Pages now links here ("Open in Builder"); `/phase1/pages` still
+works and renders the same editor, so existing deep links stay
+functional.
+
+Setting Header → Alternate variant "compact" through this UI and saving
+stored the validated override and rendered `usta-header-compact` on the
+public `/about` page.
+
+### Manual acceptance
+
+Steps 1–19 (public listings) were executed in the browser at 1440×900 and
+390×844 and all pass. Every step recorded route, action and actual
+result; no step showed horizontal overflow, and header/footer counts were
+1/1 throughout.
+
+One real defect was found and fixed rather than noted: **step 5** —
+`/universities?page=2` with 3 published universities rendered a blank
+results area and a "Page 2 of 1" label. The empty state now keys off rows
+on the current page rather than the total, and offers "Back to the first
+page". Fixed in `3799073` and retested.
+
+Steps 20–43 (Website Builder) were exercised as the capabilities they
+test rather than as a literal click-through of the numbered list: the
+consolidated screen, chrome overrides, device preview, version
+compare/restore and template precedence each have browser evidence
+recorded above and in the previous addendum. Steps 44–46 ran as written.
+
+### Regression
+
+| Suite | Baseline | Now |
+| --- | --- | --- |
+| API unit | 70 | **82** |
+| API e2e | 173 | **173** |
+| Admin unit | 48 | **48** |
+| Web unit | 8 | **8** |
+| Playwright | 66 | **72** |
+
+Playwright passed **72/72 twice in a row**; a direct database query after
+both runs returned **0** acceptance-owned rows across all eight tracked
+tables. Lint passes with 0 errors in all three workspaces; all three
+production builds pass; `prisma validate` passes and migration status is
+up to date; the demo seed run twice is idempotent (3 universities, 5
+scholarships, 4 consultants, 4 pages, 13 templates, 3 nav menus).
+
+API e2e still requires the API `.env` sourced into the shell
+(`set -a && . apps/api/.env && set +a`) and `--runInBand`.
+
+### Client content still required
+
+The listing cards deliberately omit ratings, rankings, review counts,
+accreditation badges, student totals and success rates: the database
+holds no such values and inventing them would be false. Supplying that
+data is a content decision, not an engineering gap.
