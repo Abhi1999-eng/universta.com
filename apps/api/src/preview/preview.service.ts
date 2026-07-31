@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { RuntimeConfigService } from '../config/runtime-config.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StatsPillsService } from '../stats-pills/stats-pills.service';
 
 /** Draft preview for Website Builder.
  *
@@ -37,6 +38,7 @@ export class PreviewService {
     private readonly jwt: JwtService,
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly prisma: PrismaService,
+    private readonly statsPills: StatsPillsService,
   ) {}
 
   async issue(target: string, ref: string, actorUserId: string) {
@@ -49,8 +51,12 @@ export class PreviewService {
         audience: PREVIEW_AUDIENCE,
       },
     );
+    const previewUrl = new URL('/preview', this.runtimeConfig.webOrigin);
+    previewUrl.searchParams.set('slug', ref);
+    previewUrl.searchParams.set('token', token);
     return {
       token,
+      previewUrl: previewUrl.toString(),
       expiresAt: new Date(
         Date.now() + PREVIEW_TTL_SECONDS * 1000,
       ).toISOString(),
@@ -104,6 +110,6 @@ export class PreviewService {
         message: 'That page no longer exists.',
         details: null,
       });
-    return page;
+    return { ...page, statsPill: await this.statsPills.previewForPage(slug) };
   }
 }

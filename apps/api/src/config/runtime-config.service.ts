@@ -52,6 +52,27 @@ export class RuntimeConfigService {
     return this.value.corsOrigins;
   }
 
+  /** Public web origin used for links minted by the API. The API sees the
+   * runtime deployment origins; unlike NEXT_PUBLIC_* values this is not frozen
+   * into an Admin bundle during CI. */
+  get webOrigin(): string {
+    const parsed = this.corsOrigins.flatMap((origin) => {
+      try {
+        return [new URL(origin)];
+      } catch {
+        return [];
+      }
+    });
+    const web = parsed.find(
+      (url) =>
+        !url.hostname.toLowerCase().startsWith('admin.') && url.port !== '3001',
+    );
+    if (!web) {
+      throw new Error('CORS_ORIGINS must include the public web origin');
+    }
+    return web.origin;
+  }
+
   get swaggerEnabled(): boolean {
     return this.value.swaggerEnabled;
   }

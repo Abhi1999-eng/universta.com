@@ -1,4 +1,9 @@
 import { WEBSITE_PAGES } from './website-pages.service';
+import {
+  STATS_PILL_DEFAULTS,
+  STATS_PILL_SECTION_KEY,
+  statsPillEnvelope,
+} from '../stats-pills/stats-pill.contract';
 
 /** Website Builder registration for a normal (non-demo) deployment.
  *
@@ -24,10 +29,16 @@ import { WEBSITE_PAGES } from './website-pages.service';
  * script or from Nest without dragging in either one's client type. */
 type RegistrationClient = {
   page: {
-    findFirst(args: unknown): Promise<{ id: string } | null>;
+    findFirst(
+      args: unknown,
+    ): Promise<{ id: string; deletedAt?: Date | null } | null>;
     create(args: unknown): Promise<{ id: string }>;
   };
   pageTemplate: {
+    findFirst(args: unknown): Promise<{ id: string } | null>;
+    create(args: unknown): Promise<{ id: string }>;
+  };
+  pageSection: {
     findFirst(args: unknown): Promise<{ id: string } | null>;
     create(args: unknown): Promise<{ id: string }>;
   };
@@ -218,6 +229,8 @@ export type RegistrationResult = {
   pagesExisting: number;
   templatesCreated: string[];
   templatesExisting: number;
+  statsPillsCreated: string[];
+  statsPillsExisting: number;
 };
 
 /** Idempotent. Returns what it actually had to create, so a caller (or a
@@ -231,6 +244,8 @@ export async function registerWebsiteBuilderRecords(
     pagesExisting: 0,
     templatesCreated: [],
     templatesExisting: 0,
+    statsPillsCreated: [],
+    statsPillsExisting: 0,
   };
 
   for (const entry of WEBSITE_PAGES) {
@@ -241,26 +256,53 @@ export async function registerWebsiteBuilderRecords(
     // admin deletion.
     const existing = await prisma.page.findFirst({
       where: { slug: entry.pageSlug },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
+    let pageId: string;
     if (existing) {
       result.pagesExisting += 1;
-      continue;
+      if (existing.deletedAt) continue;
+      pageId = existing.id;
+    } else {
+      const created = await prisma.page.create({
+        data: {
+          pageType: entry.managementType,
+          title: entry.label,
+          slug: entry.pageSlug,
+          // Published because the public route it frames is already live; a
+          // DRAFT here would wrongly imply the route is not.
+          status: 'PUBLISHED',
+          publishedAt: new Date(),
+          createdByUserId: actorUserId ?? null,
+          updatedByUserId: actorUserId ?? null,
+        },
+      });
+      pageId = created.id;
+      result.pagesCreated.push(entry.pageSlug);
     }
-    await prisma.page.create({
-      data: {
-        pageType: entry.managementType,
-        title: entry.label,
-        slug: entry.pageSlug,
-        // Published because the public route it frames is already live; a
-        // DRAFT here would wrongly imply the route is not.
-        status: 'PUBLISHED',
-        publishedAt: new Date(),
-        createdByUserId: actorUserId ?? null,
-        updatedByUserId: actorUserId ?? null,
-      },
-    });
-    result.pagesCreated.push(entry.pageSlug);
+
+    const pill = STATS_PILL_DEFAULTS[entry.pageSlug];
+    if (pill) {
+      const existingSection = await prisma.pageSection.findFirst({
+        where: { pageId, sectionKey: STATS_PILL_SECTION_KEY },
+        select: { id: true },
+      });
+      if (existingSection) result.statsPillsExisting += 1;
+      else {
+        await prisma.pageSection.create({
+          data: {
+            pageId,
+            sectionKey: STATS_PILL_SECTION_KEY,
+            sectionType: 'STATS',
+            heading: 'Statistics pill',
+            bodyJson: statsPillEnvelope(pill),
+            displayOrder: 0,
+            status: 'ACTIVE',
+          },
+        });
+        result.statsPillsCreated.push(entry.pageSlug);
+      }
+    }
   }
 
   for (const template of PAGE_TEMPLATE_DEFINITIONS) {
@@ -300,8 +342,11 @@ export async function registerWebsiteBuilderRecords(
 }
 
 export function describeRegistration(result: RegistrationResult): string {
-  const created = result.pagesCreated.length + result.templatesCreated.length;
+  const created =
+    result.pagesCreated.length +
+    result.templatesCreated.length +
+    result.statsPillsCreated.length;
   if (created === 0)
-    return `Website Builder already registered (${result.pagesExisting} pages, ${result.templatesExisting} templates) - no changes.`;
-  return `Website Builder registered ${result.pagesCreated.length} page(s) and ${result.templatesCreated.length} template(s); ${result.pagesExisting} page(s) and ${result.templatesExisting} template(s) already present.`;
+    return `Website Builder already registered (${result.pagesExisting} pages, ${result.templatesExisting} templates, ${result.statsPillsExisting} statistics pills) - no changes.`;
+  return `Website Builder registered ${result.pagesCreated.length} page(s), ${result.templatesCreated.length} template(s), and ${result.statsPillsCreated.length} statistics pill(s); ${result.pagesExisting} page(s), ${result.templatesExisting} template(s), and ${result.statsPillsExisting} statistics pill(s) already present.`;
 }
