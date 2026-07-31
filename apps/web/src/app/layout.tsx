@@ -5,11 +5,12 @@ import {
   SiteChromeHeader,
 } from "@/components/chrome/SiteChrome";
 import { jsonLdString } from "@/lib/json-ld";
+import { siteOrigin } from "@/lib/site-origin";
 import "./globals.css";
 import "./visual-reference.css";
 import "./global-chrome.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = siteOrigin;
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",

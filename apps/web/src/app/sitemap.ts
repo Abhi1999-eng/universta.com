@@ -4,8 +4,9 @@ import { phaseList } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
 import { getCourses, getSubjects } from "@/lib/catalog";
+import { siteOrigin } from "@/lib/site-origin";
 
-const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const base = siteOrigin;
 // success-stories and testimonials are listing-only — there is no
 // success-stories/[slug] or testimonials/[slug] detail route, so neither
 // belongs in the dynamic-routes list below (a prior version generated dead
