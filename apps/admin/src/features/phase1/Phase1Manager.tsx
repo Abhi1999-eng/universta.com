@@ -147,6 +147,12 @@ export function Phase1Manager({ resource }: { resource: string }) {
 
       {editor && isPageCms ? (
         <PageCmsEditor
+          // Remounted per target: without a distinct key React reuses the
+          // mounted editor when the row changes, so opening B after A kept A's
+          // field values, and switching from a row to Create left the new-record
+          // form pre-filled with the last edited row. A fresh instance cannot
+          // leak either way, and it restores the loading state for each load.
+          key={editingId ?? 'create'}
           recordId={editingId ?? undefined}
           onSaved={afterSave}
           onCancel={() => {
@@ -157,6 +163,9 @@ export function Phase1Manager({ resource }: { resource: string }) {
       ) : null}
       {editor && structured ? (
         <Phase1StructuredEditor
+          // See the note on PageCmsEditor above: one editor instance per record
+          // (and one for Create) is what keeps their state apart.
+          key={`${resource}:${editingId ?? 'create'}`}
           resource={resource}
           recordId={editingId ?? undefined}
           onSaved={afterSave}

@@ -115,10 +115,10 @@ export class SubjectListQueryDto {
   @IsBoolean()
   featured?: boolean;
   @ApiPropertyOptional({
-    enum: ['displayOrder', 'name', 'createdAt', 'updatedAt'],
+    enum: ['displayOrder', 'name', 'createdAt', 'updatedAt', 'featured'],
   })
   @IsOptional()
-  @IsIn(['displayOrder', 'name', 'createdAt', 'updatedAt'])
+  @IsIn(['displayOrder', 'name', 'createdAt', 'updatedAt', 'featured'])
   sort?: string;
   @ApiPropertyOptional({ default: DEFAULT_PAGE })
   @Transform(num)

@@ -127,3 +127,86 @@ export function findNavItem(pathname: string): NavItem | undefined {
     .filter((item) => pathname.startsWith(item.href.split("?")[0]) && item.href !== "/")
     .sort((a, b) => b.href.length - a.href.length)[0];
 }
+
+/** A stable identity for one sidebar entry. Labels repeat across groups, and
+ * several entries deliberately share an href, so neither alone identifies a
+ * row. */
+export function navItemKey(groupLabel: string, itemLabel: string): string {
+  return `${groupLabel}::${itemLabel}`;
+}
+
+/** Strips the query string, hash and any trailing slash, so `/subjects?page=2`,
+ * `/subjects#top` and `/subjects/` all resolve like `/subjects`. */
+function normalizePath(value: string): string {
+  const path = value.split('#')[0].split('?')[0];
+  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
+/** True when `path` is `base` or sits underneath it.
+ *
+ * Segment-safe on purpose: a plain `startsWith` would light up `/subjects` for
+ * `/subjects-archive`, and `/courses` for `/course-levels`. */
+function matchesBase(path: string, base: string): boolean {
+  if (base === '/') return path === '/';
+  return path === base || path.startsWith(`${base}/`);
+}
+
+/** The single sidebar entry that owns the current route, or null.
+ *
+ * Exactly one, which is the whole point. Several entries intentionally share a
+ * destination -- Specializations points at /subjects, Campuses and
+ * Accreditations at /phase1/universities, and seven Settings entries at
+ * /settings -- because those things are edited inside their parent screen
+ * rather than on one of their own. Marking every entry whose href matched lit
+ * all of them blue at once, so the sidebar showed two, three, even seven
+ * selected options for a single page.
+ *
+ * Resolution, in order:
+ *   1. deepest matching href wins, so /phase1/universities beats /phase1;
+ *   2. among entries sharing that href, the real destination wins over a
+ *      signpost -- a `note` marks an entry whose subject is managed elsewhere,
+ *      so Subjects is selected rather than Specializations;
+ *   3. declaration order settles anything still tied, so the result is stable.
+ */
+export function resolveActiveNavItem(
+  pathname: string,
+  groups: NavGroup[] = NAV_GROUPS,
+): { key: string; group: string; item: NavItem } | null {
+  const path = normalizePath(pathname);
+  let best: {
+    key: string;
+    group: string;
+    item: NavItem;
+    depth: number;
+    isSignpost: boolean;
+    order: number;
+  } | null = null;
+  let order = 0;
+
+  for (const group of groups) {
+    for (const item of group.items) {
+      const base = normalizePath(item.href);
+      const position = order++;
+      if (!matchesBase(path, base)) continue;
+      const candidate = {
+        key: navItemKey(group.label, item.label),
+        group: group.label,
+        item,
+        depth: base.length,
+        isSignpost: Boolean(item.note),
+        order: position,
+      };
+      if (
+        !best ||
+        candidate.depth > best.depth ||
+        (candidate.depth === best.depth &&
+          !candidate.isSignpost &&
+          best.isSignpost)
+      ) {
+        best = candidate;
+      }
+    }
+  }
+
+  return best ? { key: best.key, group: best.group, item: best.item } : null;
+}

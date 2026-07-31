@@ -911,11 +911,21 @@ export class SubjectsService {
     name?: 'asc' | 'desc';
     createdAt?: 'asc' | 'desc';
     updatedAt?: 'asc' | 'desc';
+    isFeatured?: 'asc' | 'desc';
     id?: 'asc' | 'desc';
   }> {
     if (sort === 'name') return [{ name: 'asc' }, { id: 'asc' }];
     if (sort === 'createdAt') return [{ createdAt: 'desc' }, { id: 'asc' }];
     if (sort === 'updatedAt') return [{ updatedAt: 'desc' }, { id: 'asc' }];
+    // Featured first, then the normal curated order within each group -- the
+    // same shape Countries already uses, so the two screens sort alike.
+    if (sort === 'featured')
+      return [
+        { isFeatured: 'desc' },
+        { displayOrder: 'asc' },
+        { name: 'asc' },
+        { id: 'asc' },
+      ];
     return [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
   }
   private coursePublicInclude() {

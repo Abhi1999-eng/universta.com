@@ -6,6 +6,10 @@ import {
   describeRegistration,
   registerWebsiteBuilderRecords,
 } from '../src/website-builder/register-website-pages';
+import {
+  describeNavigationRegistration,
+  registerWebsiteNavigation,
+} from '../src/website-builder/register-website-navigation';
 
 function required(name: string): string {
   const value = process.env[name];
@@ -237,6 +241,13 @@ async function main() {
   // content -- so it belongs here rather than in the demo catalogue seed.
   console.log(
     describeRegistration(await registerWebsiteBuilderRecords(prisma, admin.id)),
+  );
+
+  // The public header and footer render Admin-owned menus. Without these
+  // records the site ships with an empty navigation bar, so the seed creates
+  // them once -- and leaves them alone forever after.
+  console.log(
+    describeNavigationRegistration(await registerWebsiteNavigation(prisma)),
   );
 
   console.log(`Seeded foundation data for ${admin.email}.`);

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { NAV_GROUPS, findNavItem } from './nav-config';
+import { NAV_GROUPS, findNavItem, navItemKey, resolveActiveNavItem } from './nav-config';
 
 function currentBreadcrumb(pathname: string) {
   if (pathname === '/dashboard' || pathname === '/') {
@@ -110,7 +110,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             role="dialog"
             aria-modal="true"
             aria-label="Admin navigation"
-            className="fixed inset-y-0 left-0 z-50 flex w-[min(86vw,340px)] flex-col bg-[#0D1524] p-5 text-white shadow-2xl lg:hidden"
+            data-admin-nav-scroll
+            className="fixed inset-y-0 left-0 z-50 flex w-[min(86vw,340px)] flex-col overflow-y-auto bg-[#0D1524] p-5 text-white shadow-2xl lg:hidden"
           >
             <div className="flex items-center justify-between">
               <Brand inverse />
@@ -194,7 +195,10 @@ function DesktopSidebar({
   loggingOut: boolean;
 }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col overflow-y-auto bg-[#0D1524] p-6 text-white lg:flex">
+    <aside
+      data-admin-nav-scroll
+      className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col overflow-y-auto bg-[#0D1524] p-6 text-white lg:flex"
+    >
       <Brand inverse />
       <p className="mt-2 pl-1 text-xs font-medium text-white/40">ADMIN CONSOLE</p>
       <Navigation pathname={pathname} />
@@ -214,6 +218,37 @@ function Navigation({
   onNavigate?: () => void;
   dark?: boolean;
 }) {
+  // One winner for the whole sidebar, resolved once per route rather than
+  // per item -- see resolveActiveNavItem for why matching each href
+  // independently lit several entries at once.
+  const activeKey = resolveActiveNavItem(pathname)?.key ?? null;
+  const dashboardActive = pathname === '/dashboard' && activeKey === null;
+  const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // Bring the selected entry into view when the route changes. The sidebar is
+  // long enough that the active item is often off-screen after a direct URL
+  // load or a Back/Forward step.
+  useEffect(() => {
+    const link = activeLinkRef.current;
+    const container = navRef.current?.closest<HTMLElement>('[data-admin-nav-scroll]');
+    if (!link || !container) return;
+
+    const view = container.getBoundingClientRect();
+    const target = link.getBoundingClientRect();
+    // Already fully visible: do nothing. Without this the effect would fight a
+    // user who has scrolled the sidebar themselves.
+    if (target.top >= view.top && target.bottom <= view.bottom) return;
+
+    // Smallest movement that reveals it, matching `block: 'nearest'`. Adjusting
+    // scrollTop directly -- rather than scrollIntoView -- guarantees only this
+    // container moves; scrollIntoView also scrolls ancestors, which would drag
+    // the main page content along with it. Focus is deliberately untouched.
+    const delta =
+      target.top < view.top ? target.top - view.top : target.bottom - view.bottom;
+    container.scrollTop += delta;
+  }, [pathname, activeKey]);
+
   const linkClass = (active: boolean) =>
     `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
       active
@@ -225,11 +260,12 @@ function Navigation({
           : 'text-[#48505F] hover:bg-[#F0F4FA]'
     }`;
   return (
-    <nav aria-label="Primary navigation" className="mt-10">
+    <nav ref={navRef} aria-label="Primary navigation" className="mt-10">
       <Link
         href="/dashboard"
         onClick={onNavigate}
-        aria-current={pathname === '/dashboard' ? 'page' : undefined}
+        ref={dashboardActive ? activeLinkRef : undefined}
+        aria-current={dashboardActive ? 'page' : undefined}
         className={linkClass(pathname === '/dashboard')}
       >
         <GridIcon />
@@ -244,14 +280,15 @@ function Navigation({
           </p>
           <div className="mt-2 space-y-1">
             {group.items.map((item) => {
-              const base = item.href.split('?')[0];
-              const active = pathname === base || pathname.startsWith(`${base}/`);
+              const key = navItemKey(group.label, item.label);
+              const active = key === activeKey;
               return (
                 <Link
-                  key={`${group.label}-${item.label}`}
+                  key={key}
                   href={item.href}
                   onClick={onNavigate}
                   title={item.note}
+                  ref={active ? activeLinkRef : undefined}
                   aria-current={active ? 'page' : undefined}
                   className={linkClass(active)}
                 >
