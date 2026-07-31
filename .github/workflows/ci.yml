@@ -191,9 +191,12 @@ jobs:
       AWS_ROLE_ARN: arn:aws:iam::771413672221:role/universta-demo-github-deploy-role
       AWS_ARTIFACT_BUCKET: universta-demo-artifacts-771413672221-us-east-1
       AWS_INSTANCE_ID: i-0288a3283c26638b3
-      DEPLOY_WEB_URL: http://54.162.49.131
-      DEPLOY_ADMIN_URL: http://admin.54.162.49.131.nip.io
-      DEPLOY_API_URL: http://api.54.162.49.131.nip.io
+      # HTTPS, and the certificate's own names -- the bare IP is not on the
+      # certificate, and http:// now answers with a 301 whose body is not JSON,
+      # which the health check below feeds to jq.
+      DEPLOY_WEB_URL: https://54.162.49.131.nip.io
+      DEPLOY_ADMIN_URL: https://admin.54.162.49.131.nip.io
+      DEPLOY_API_URL: https://api.54.162.49.131.nip.io
 
     steps:
       - name: Checkout deployment scripts
