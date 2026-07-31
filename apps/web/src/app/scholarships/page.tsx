@@ -102,6 +102,7 @@ export default async function ScholarshipsPage({
       sortOptions={SORTS}
       filters={filters}
       meta={meta}
+      resultsOnPage={rows.length}
       emptyTitle="No scholarships match these filters"
       emptyBody="Clear one or more filters to return to the published directory."
       ctaHeading="Need help finding funding?"

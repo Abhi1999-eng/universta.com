@@ -105,6 +105,7 @@ export default async function UniversitiesPage({
       sortOptions={SORTS}
       filters={filters}
       meta={meta}
+      resultsOnPage={rows.length}
       emptyTitle="No universities match these filters"
       emptyBody="Clear one or more filters to return to the published directory."
       ctaHeading="Not sure which university fits?"

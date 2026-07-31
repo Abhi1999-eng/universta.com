@@ -40,6 +40,7 @@ export function PolishedListing({
   sortOptions,
   filters,
   meta,
+  resultsOnPage,
   children,
   emptyTitle,
   emptyBody,
@@ -62,6 +63,10 @@ export function PolishedListing({
   sortOptions: FilterOption[];
   filters: Record<string, string>;
   meta: ListingMeta;
+  /** Rows rendered on the current page. Distinct from `meta.total`: a page
+   * beyond the last one has rows 0 while total is still positive, and that
+   * case needs its own message rather than a silently blank results area. */
+  resultsOnPage: number;
   children: ReactNode;
   emptyTitle: string;
   emptyBody: string;
@@ -112,7 +117,10 @@ export function PolishedListing({
     setDrawerOpen(false);
   };
 
-  const hasResults = meta.total > 0;
+  const hasResults = resultsOnPage > 0;
+  // Past the last page: the filters are fine, the page number is not, so say
+  // that rather than "no results match".
+  const pastLastPage = !hasResults && meta.total > 0;
   const filterFormKey = filterGroups.map((group) => `${group.key}=${filters[group.key] ?? ''}`).join('&');
 
   return (
@@ -279,7 +287,9 @@ export function PolishedListing({
               <div className="results-count" role="status">
                 <b>{meta.total}</b> {meta.total === 1 ? noun.one : noun.many}{' '}
                 {meta.total === 1 ? 'matches' : 'match'} your search
-                {meta.totalPages > 1 ? ` · page ${meta.page} of ${meta.totalPages}` : ''}
+                {meta.totalPages > 1 && !pastLastPage
+                  ? ` · page ${meta.page} of ${meta.totalPages}`
+                  : ''}
               </div>
               <div className="sort-wrap">
                 <label htmlFor="listing-sort">Sort by</label>
@@ -308,10 +318,22 @@ export function PolishedListing({
                 children
               ) : (
                 <div className="template-empty course-zero-state">
-                  <h3>{emptyTitle}</h3>
-                  <p>{emptyBody}</p>
-                  <button type="button" className="btn btn-outline btn-sm" onClick={clearAll}>
-                    Clear all filters
+                  <h3>{pastLastPage ? 'Nothing on this page' : emptyTitle}</h3>
+                  <p>
+                    {pastLastPage
+                      ? `There ${meta.total === 1 ? 'is' : 'are'} ${meta.total} ${
+                          meta.total === 1 ? noun.one : noun.many
+                        } across ${Math.max(meta.totalPages, 1)} page${
+                          Math.max(meta.totalPages, 1) === 1 ? '' : 's'
+                        }. Go back to the first page to see them.`
+                      : emptyBody}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => (pastLastPage ? navigate({ page: undefined }) : clearAll())}
+                  >
+                    {pastLastPage ? 'Back to the first page' : 'Clear all filters'}
                   </button>
                 </div>
               )}
@@ -327,7 +349,11 @@ export function PolishedListing({
                 >
                   Previous
                 </button>
-                <span aria-current="page">Page {meta.page} of {Math.max(meta.totalPages, 1)}</span>
+                <span aria-current="page">
+                  {pastLastPage
+                    ? `Page ${meta.page} — past the last page (${Math.max(meta.totalPages, 1)})`
+                    : `Page ${meta.page} of ${Math.max(meta.totalPages, 1)}`}
+                </span>
                 <button
                   type="button"
                   aria-label="Next results page"
