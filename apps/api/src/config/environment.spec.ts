@@ -1,4 +1,8 @@
-import { parseCorsOrigins, validateEnvironment } from './environment';
+import {
+  parseCorsOrigins,
+  requiresSecureCookies,
+  validateEnvironment,
+} from './environment';
 
 const validEnvironment = {
   NODE_ENV: 'test',
@@ -81,5 +85,80 @@ describe('CORS origin parsing', () => {
     expect(() => parseCorsOrigins('http://localhost:3000/path')).toThrow(
       'CORS_ORIGINS',
     );
+  });
+});
+
+describe('Secure cookies and origin scheme', () => {
+  const base = {
+    DATABASE_URL: 'mysql://user:pw@127.0.0.1:3306/universta',
+    JWT_ACCESS_SECRET: 'a'.repeat(40),
+    JWT_REFRESH_SECRET: 'b'.repeat(40),
+    PORT: '4000',
+  };
+
+  it('refuses to start a production runtime with an http origin', () => {
+    // A Secure cookie is simply not sent over http://, so the API would come up
+    // healthy and every authenticated request would silently fail.
+    expect(() =>
+      validateEnvironment({
+        ...base,
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'https://admin.example.test,http://example.test',
+      }),
+    ).toThrow(/Secure session cookies/);
+  });
+
+  it('names the offending origin so the fix is obvious', () => {
+    expect(() =>
+      validateEnvironment({
+        ...base,
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'http://example.test',
+      }),
+    ).toThrow(/http:\/\/example\.test/);
+  });
+
+  it('applies the same rule to staging', () => {
+    expect(() =>
+      validateEnvironment({
+        ...base,
+        NODE_ENV: 'staging',
+        CORS_ORIGINS: 'http://example.test',
+      }),
+    ).toThrow(/Secure session cookies/);
+  });
+
+  it('accepts a production runtime whose origins are all https', () => {
+    expect(() =>
+      validateEnvironment({
+        ...base,
+        NODE_ENV: 'production',
+        CORS_ORIGINS:
+          'https://54.162.49.131.nip.io,https://admin.54.162.49.131.nip.io',
+      }),
+    ).not.toThrow();
+  });
+
+  it('leaves local development on http alone', () => {
+    // Development does not set Secure, so http origins are correct there and
+    // the check must not make localhost unusable.
+    for (const nodeEnv of ['development', 'test']) {
+      expect(() =>
+        validateEnvironment({
+          ...base,
+          NODE_ENV: nodeEnv,
+          CORS_ORIGINS: 'http://localhost:3000,http://localhost:3001',
+        }),
+      ).not.toThrow();
+    }
+  });
+
+  it('agrees with the cookie policy about which environments are Secure', () => {
+    // If these ever disagree, the check either blocks a valid config or lets
+    // the broken one through.
+    expect(requiresSecureCookies('production')).toBe(true);
+    expect(requiresSecureCookies('staging')).toBe(true);
+    expect(requiresSecureCookies('development')).toBe(false);
+    expect(requiresSecureCookies('test')).toBe(false);
   });
 });

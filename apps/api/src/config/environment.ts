@@ -84,6 +84,46 @@ export function parseCorsOrigins(value: unknown): string[] {
   return uniqueOrigins;
 }
 
+/** Environments in which the API issues `Secure` session cookies. */
+const SECURE_COOKIE_ENVIRONMENTS: readonly EnvironmentName[] = [
+  'production',
+  'staging',
+];
+
+export function requiresSecureCookies(nodeEnv: EnvironmentName): boolean {
+  return SECURE_COOKIE_ENVIRONMENTS.includes(nodeEnv);
+}
+
+/** Refuses to start a Secure-cookie environment that is serving plain HTTP.
+ *
+ * The two settings are silently incompatible, which is the dangerous part: a
+ * browser will not send a `Secure` cookie over http://, so the API comes up
+ * healthy, login appears to succeed, and every subsequent request arrives
+ * unauthenticated. That reads as a broken session, not as a misconfiguration,
+ * and it is a miserable thing to debug in a deployed environment. Failing at
+ * startup with the reason named is far cheaper.
+ *
+ * Development and test are untouched: they do not set Secure, so http://
+ * origins are correct there. */
+export function assertOriginsMatchCookiePolicy(
+  nodeEnv: EnvironmentName,
+  corsOrigins: readonly string[],
+): void {
+  if (!requiresSecureCookies(nodeEnv)) return;
+
+  const insecure = corsOrigins.filter(
+    (origin) => new URL(origin).protocol !== 'https:',
+  );
+  if (insecure.length === 0) return;
+
+  throw new Error(
+    `Invalid configuration: NODE_ENV=${nodeEnv} issues Secure session cookies, ` +
+      'which browsers refuse to send over http://, so authentication would fail ' +
+      'for every request. Configure HTTPS origins in CORS_ORIGINS. Insecure ' +
+      `origins: ${insecure.join(', ')}`,
+  );
+}
+
 function requiredString(env: Record<string, unknown>, name: string): string {
   const value = env[name];
   if (typeof value !== 'string' || value.trim() === '') {
@@ -194,6 +234,7 @@ export function validateEnvironment(
   if (accessSecret === refreshSecret) {
     throw new Error('Invalid configuration variable: JWT_REFRESH_SECRET');
   }
+  assertOriginsMatchCookiePolicy(nodeEnv, corsOrigins);
 
   return {
     NODE_ENV: nodeEnv,

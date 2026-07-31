@@ -25,9 +25,12 @@ api_pending="${env_dir}/api.env.pending"
 web_pending="${env_dir}/web.env.pending"
 admin_pending="${env_dir}/admin.env.pending"
 
+# The API runs as a production environment. Besides the usual hardening, this is
+# what makes the refresh cookie `Secure`, so it is only ever sent over the HTTPS
+# origins below -- and it makes the demo-catalog seed guard refuse to run here.
 {
-  printf 'NODE_ENV=development\n'
-  printf 'APP_ENV=development\n'
+  printf 'NODE_ENV=production\n'
+  printf 'APP_ENV=production\n'
   printf 'DEPLOYMENT_ENV=demo\n'
   printf 'PORT=4000\n'
   printf 'DATABASE_URL=%s\n' "${database_url}"
@@ -52,6 +55,10 @@ admin_pending="${env_dir}/admin.env.pending"
   printf 'NODE_ENV=production\n'
   printf 'PORT=3000\n'
   printf 'HOSTNAME=127.0.0.1\n'
+  # Loopback on purpose: this is the Next server talking to the API on the same
+  # host, never a browser request, so it is not mixed content. Routing it back
+  # out through the public HTTPS name would add a TLS handshake and a proxy hop
+  # to every server-side fetch for no benefit.
   printf 'API_BASE_URL=http://127.0.0.1:4000\n'
   printf 'WEB_ORIGIN=%s\n' "${web_origin}"
 } > "${web_pending}"
