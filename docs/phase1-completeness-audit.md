@@ -261,3 +261,94 @@ families are still outstanding. The `NOT VERIFIED` rows in Matrix 1 (media
 library, bulk import/export, scheduled publishing, internal linking, A/B
 behaviour, comparison selection mechanics, multi-select bulk actions) remain
 open and are the substantive body of work left.
+
+---
+
+# Checkpoint — Stage 1 and Stage 2 complete
+
+**Branch** `fix/admin-nav-catalog-ux` · **HEAD** `9fe26e6` · **remote `main`** `9fe26e6`
+**Live release** `9fe26e6` · **Rollback target for the next deployment** `9b2e4f4`
+
+## Stage 1 — CI dirty-output blocker: RESOLVED
+
+**Root cause.** `apps/api`'s lint script is `eslint "{src,apps,libs,test}/**/*.ts" --fix`
+— a *mutating* lint. CI runs `npm run lint` before `npm run build`, and the gate
+`git diff --check && git diff --exit-code` runs after. I had committed
+`register-website-navigation.spec.ts` without running the repo's own lint, so
+eslint applied two fixes on the runner (dropping two `as { id: string }`
+assertions it judged redundant, and reflowing one object literal). That left a
+tracked modification and the gate correctly failed.
+
+Not nondeterminism, not Prisma, not line endings, not a build artifact: a
+legitimate tracked source file that was simply not lint-clean when committed.
+
+**Fix.** Commit eslint's own output (`ecc4d54`). The gate is untouched.
+Replaying CI's exact order locally afterwards: lint → 0 changes, build → 0
+changes, `git diff --check` clean, `git diff --exit-code` passes.
+
+## Stage 2 — deployed and verified
+
+CI run 30636456817 fully green; deploy job succeeded.
+
+Foundation seed on the host (`npm run db:seed`, demo catalogue **not** run):
+
+```
+Website Builder already registered (20 pages, 13 templates) - no changes.
+Navigation created header, footer (33 item(s) created).
+Seeded foundation data for demo-admin@universta.com.
+```
+
+Health: all four services active, 0 restarts, 0 5xx in the last 300 requests,
+all three HTTPS origins 200 with valid TLS, database up, disk 47%.
+
+### Public acceptance — 5/5 passed
+
+| Check | Result |
+| --- | --- |
+| `site-chrome` returns a non-empty Admin-owned `headerMenu` | **8 items** (was `[]`) |
+| Desktop navbar renders those destinations and each opens | pass |
+| Mobile drawer mirrors the desktop navigation | pass |
+| Every country card reads `Study in {Country}` | pass |
+| No heading/badge intersection, no card overflow, no clipped facts | pass |
+| Flags contained, aspect ratio preserved | pass |
+| Desktop 1536 / tablet 768 / mobile 390 | pass |
+
+Evidence: `.local-demo-recordings/deployed/prod-cards-{desktop,tablet,mobile}.png`
+
+### Admin acceptance — 5/5 passed
+
+| Check | Result |
+| --- | --- |
+| `/subjects` shows no `Invalid catalog request` | pass — 5 subjects listed |
+| Filters, status, featured, Clear issue valid requests (no 4xx) | pass |
+| Exactly one sidebar leaf active on 5 shared-destination routes | pass |
+| `/subjects` selects Subjects, not Specializations | pass |
+| Active row scrolled into the sidebar, `window.scrollY` unchanged | pass |
+| Active option survives reload, Back and Forward | pass |
+
+Evidence: `prod-admin-subjects.png`, `prod-admin-sidebar.png`
+
+### Not exercisable on production
+
+**Edit A → Edit B → Create.** `/phase1/universities` has **zero rows** on the
+host: the fictional demo catalogue is deliberately never seeded there, and the
+foundation seed creates only countries, subjects and CMS structure. The fix is
+covered by 8 local tests, one of which fails when the fix is reverted, but it
+has no production records to act on. Recording this rather than claiming a
+hosted verification I did not perform.
+
+### Production data observation
+
+`Study in United Arab Emirates` renders tuition as `120,000–55,000!.-/yr`. The
+stored AED currency symbol is `?.?`, and the mangled RTL characters reorder the
+digits so the range also looks inverted. Japan's `¥` renders correctly, so this
+is one bad row rather than an encoding fault — a UTF-8 round trip through the
+Prisma driver returns the exact string. Cosmetic, single row, not fixed here
+because it is a production data edit rather than a code change.
+
+## Remaining
+
+Stages 3–6 are **not** done: audit revalidation against hosted behaviour, and
+implementation of media library, bulk import/export, multi-select bulk actions,
+scheduled publishing, internal linking, functional A/B, and comparison selection
+mechanics. Those remain as classified in Matrix 1 above.
