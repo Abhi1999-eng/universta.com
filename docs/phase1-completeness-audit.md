@@ -493,3 +493,25 @@ clean GitHub Actions lane. New E2E coverage performs the statistics
 Draft → Preview → Publish → partial hide → full hide → restore lifecycle and
 walks every sidebar leaf plus query-scoped Back/Forward. Production is not
 claimed fixed until that lane and hosted checks complete.
+
+## Hosted listing-heading regression found after the first deployment
+
+PR #19 passed its complete CI lane and its squash commit `96bdf11` deployed
+successfully. Independent hosted HTML verification then found that the
+Universities, Scholarships, and Consultants listing headings rendered as
+`Statistics pill`, even though all seven pill endpoints and the pill values
+themselves were correct.
+
+**Root cause.** `getListingPageContent` deliberately treats the first active
+PageSection as the hero fallback when no explicit `HERO` block exists. The new
+CMS-owned `stats-pill` utility block was the first/only section on those three
+Pages, so its Builder title was interpreted as editorial hero copy.
+
+**Resolution.** The listing-content resolver excludes only
+`sectionKey = stats-pill` from the implicit hero fallback. Explicit `HERO`
+blocks and the first ordinary editorial section keep their existing precedence.
+Regression tests cover both the utility-block exclusion and preservation of the
+ordinary first-section fallback. Before the hotfix commit: Web **12/12**,
+targeted Web lint, Web production build (50 routes), and `git diff --check`
+passed. Hosted acceptance of the corrected headings remains gated by the
+hotfix PR, merged-SHA CI, deployment, and a fresh read-only HTML check.
