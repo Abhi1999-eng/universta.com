@@ -12,6 +12,7 @@ import {
 import { getCountries } from "@/lib/countries";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
+import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -90,7 +91,7 @@ export default async function ConsultantsPage({
 
   // Editorial framing from the managed "consultants-listing" Page. Rows above are
   // untouched -- they always come from the real records.
-  const managed = await getListingPageContent("consultants-listing");
+  const [managed, pill] = await Promise.all([getListingPageContent("consultants-listing"), getStatsPill('consultants-listing')]);
 
   return (
     <PolishedListing
@@ -115,6 +116,7 @@ export default async function ConsultantsPage({
       railHeading="How listings work"
       railBody="Listings are published records only. Verification reflects the status stored on each profile, not an endorsement."
       counsellingSource="general"
+      pill={pill}
     >
       {rows.map((row) => (
         <ConsultantCard row={row} key={row.id} />

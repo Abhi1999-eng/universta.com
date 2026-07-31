@@ -468,7 +468,6 @@
   }
 
 }
-
 /* Dynamic academic-page additions that preserve the approved template rhythm. */
 .template-empty-action{margin-top:16px;align-self:flex-start}
 
@@ -1170,6 +1169,11 @@ header.stuck{border-bottom-color:var(--line)}
 .hero::before{content:'';position:absolute;top:-120px;left:50%;transform:translateX(-50%);width:900px;height:520px;background:radial-gradient(ellipse at center,var(--brand-50) 0%,rgba(251,250,248,0) 68%);z-index:-1}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 16px;font-size:14px;font-weight:500;color:var(--ink-2);box-shadow:var(--sh-sm);margin-bottom:var(--s3)}
 .hero-badge b{color:var(--ink);font-weight:600}
+.stats-pill{max-width:100%;flex-wrap:wrap;justify-content:center;white-space:normal}
+.stats-pill-item{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.stats-pill-separator{margin-right:5px;color:var(--slate)}
+.stats-pill[data-item-count="1"]{justify-content:center}
+@media(max-width:520px){.stats-pill{font-size:13px;padding-inline:13px}.stats-pill-item span:last-child{overflow-wrap:anywhere}}
 .hero h1{font-size:clamp(38px,5.6vw,66px);font-weight:800;max-width:900px;margin:0 auto}
 .hero h1 em{font-style:normal;color:var(--brand)}
 .hero-sub{font-size:18px;color:var(--ink-2);max-width:660px;margin:var(--s3) auto 0}

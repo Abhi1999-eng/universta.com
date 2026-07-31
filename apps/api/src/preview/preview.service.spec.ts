@@ -12,12 +12,17 @@ function build(
   page: unknown = { id: 'p1', slug: 'about', status: 'DRAFT', sections: [] },
 ) {
   const jwt = new JwtService({});
-  const runtimeConfig = { jwtAccessSecret: SECRET } as never;
+  const runtimeConfig = {
+    jwtAccessSecret: SECRET,
+    webOrigin: 'https://web.example.test',
+  } as never;
   const prisma = {
     page: { findFirst: jest.fn().mockResolvedValue(page) },
   } as never;
   return {
-    service: new PreviewService(jwt, runtimeConfig, prisma),
+    service: new PreviewService(jwt, runtimeConfig, prisma, {
+      previewForPage: jest.fn().mockResolvedValue(null),
+    } as never),
     jwt,
     prisma,
   };
@@ -37,6 +42,7 @@ describe('PreviewService', () => {
     expect(issued.ttlSeconds).toBe(1800);
     expect(new Date(issued.expiresAt).getTime()).toBeGreaterThan(Date.now());
     expect(issued.token.split('.')).toHaveLength(3);
+    expect(issued.previewUrl).toContain('https://web.example.test/preview?');
   });
 
   it('returns draft content for a valid token', async () => {

@@ -3,6 +3,7 @@ import { getCountries } from '@/lib/countries';
 import { getCourseLevels, getSubjects } from '@/lib/catalog';
 import { ApprovedSubjectsListing } from '@/components/templates/AcademicTemplatePages';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
@@ -44,6 +45,7 @@ export default async function SubjectsPage({
           slug: country.slug,
         })),
       ),
+      getStatsPill('subjects-listing'),
     ]);
   } catch {
     return (
@@ -57,7 +59,7 @@ export default async function SubjectsPage({
       </main>
     );
   }
-  const [subjects, levels, countries] = catalog;
+  const [subjects, levels, countries, pill] = catalog;
   return (
     <ApprovedSubjectsListing
       subjects={subjects.data}
@@ -65,6 +67,7 @@ export default async function SubjectsPage({
       query={query}
       levels={levels}
       countries={countries}
+      pill={pill}
     />
   );
 }

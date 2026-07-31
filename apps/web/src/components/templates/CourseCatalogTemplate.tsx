@@ -4,6 +4,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
+import { StatsPill } from '@/components/StatsPill';
+import type { ResolvedStatsPill } from '@/lib/stats-pill';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   type KeyboardEvent,
@@ -289,12 +291,14 @@ export function ApprovedCoursesListing({
   subjects,
   filterOptions,
   filters: initialFilters,
+  pill,
 }: {
   courses: Course[];
   meta: PageMeta;
   subjects: Subject[];
   filterOptions: CourseFilterOptions;
   filters: Record<string, string>;
+  pill?: ResolvedStatsPill | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -587,11 +591,7 @@ export function ApprovedCoursesListing({
 
       <section className="hero">
         <div className="wrap hero-inner">
-          <span className="hero-pill">
-            <span className="dot" />
-            <b>{meta.total}</b> programs ·{' '}
-            <b>{filterOptions.countries.length}</b> destinations
-          </span>
+          <StatsPill pill={pill} />
           <h1>
             Find the Perfect Course
             <br />

@@ -8,6 +8,7 @@ import {
 import { legacyCourseDiscoveryUrl } from '@/lib/course-discovery-url';
 import { ApprovedCoursesListing } from '@/components/templates/CourseCatalogTemplate';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
@@ -81,11 +82,12 @@ export default async function CoursesPage({
       getCourses(filters),
       getSubjects({ limit: '100' }).then((result) => result.data),
       getCourseFilterOptions(filters),
+      getStatsPill('courses-listing'),
     ]);
   } catch {
     return unavailable();
   }
-  const [courses, subjects, filterOptions] = catalog;
+  const [courses, subjects, filterOptions, pill] = catalog;
   return (
     <ApprovedCoursesListing
       courses={courses.data}
@@ -93,6 +95,7 @@ export default async function CoursesPage({
       subjects={subjects}
       filterOptions={filterOptions}
       filters={filters}
+      pill={pill}
     />
   );
 }

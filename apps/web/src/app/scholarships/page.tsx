@@ -13,6 +13,7 @@ import { getCountries } from "@/lib/countries";
 import { getCourseLevels, getSubjects } from "@/lib/catalog";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
+import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -90,7 +91,7 @@ export default async function ScholarshipsPage({
 
   // Editorial framing from the managed "scholarships-listing" Page. Rows above are
   // untouched -- they always come from the real records.
-  const managed = await getListingPageContent("scholarships-listing");
+  const [managed, pill] = await Promise.all([getListingPageContent("scholarships-listing"), getStatsPill('scholarships-listing')]);
 
   return (
     <PolishedListing
@@ -115,6 +116,7 @@ export default async function ScholarshipsPage({
       railHeading="Check before you apply"
       railBody="Eligibility, amounts and deadlines are set by the provider. Always confirm directly with them."
       counsellingSource="general"
+      pill={pill}
     >
       {rows.map((row) => (
         <ScholarshipCard row={row} key={row.id} />

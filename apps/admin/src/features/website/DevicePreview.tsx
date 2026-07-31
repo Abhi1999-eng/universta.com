@@ -22,8 +22,6 @@ export const PREVIEW_DEVICES = [
 
 export type PreviewDeviceKey = (typeof PREVIEW_DEVICES)[number]["key"];
 
-const WEB_ORIGIN = process.env.NEXT_PUBLIC_WEB_ORIGIN ?? "http://localhost:3000";
-
 export function DevicePreview({
   slug,
   title,
@@ -44,7 +42,7 @@ export function DevicePreview({
   framesLiveRoute?: boolean;
 }) {
   const [device, setDevice] = useState<PreviewDeviceKey>("desktop");
-  const [token, setToken] = useState<string | null>(null);
+  const [issuedPreviewUrl, setIssuedPreviewUrl] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -65,9 +63,9 @@ export function DevicePreview({
         body: JSON.stringify({ target: "page", ref: slug }),
       });
       const body = await response.json();
-      if (!response.ok || body?.error || !body?.data?.token)
+      if (!response.ok || body?.error || !body?.data?.previewUrl)
         throw new Error(body?.error?.message ?? "Could not create a preview link.");
-      setToken(body.data.token as string);
+      setIssuedPreviewUrl(body.data.previewUrl as string);
       setExpiresAt((body.data.expiresAt as string) ?? null);
       setStatus("ready");
     } catch (cause) {
@@ -105,12 +103,10 @@ export function DevicePreview({
 
   const frame = PREVIEW_DEVICES.find((entry) => entry.key === device) ?? PREVIEW_DEVICES[0];
   const scale = stageWidth > 0 ? Math.min(1, stageWidth / frame.width) : 1;
-  const liveRoute = framesLiveRoute && publicPath ? `${WEB_ORIGIN}${publicPath}` : null;
-  const previewUrl =
-    liveRoute ??
-    (token
-      ? `${WEB_ORIGIN}/preview?slug=${encodeURIComponent(slug)}&token=${encodeURIComponent(token)}`
-      : null);
+  const liveRoute = framesLiveRoute && publicPath && issuedPreviewUrl
+    ? new URL(publicPath, issuedPreviewUrl).toString()
+    : null;
+  const previewUrl = liveRoute ?? issuedPreviewUrl;
 
   return (
     <div className="wb-preview" role="dialog" aria-modal="true" aria-label={`Preview of ${title}`}>
@@ -193,7 +189,7 @@ export function DevicePreview({
               }}
             >
               <iframe
-                key={`${device}-${nonce}-${token}`}
+                key={`${device}-${nonce}-${issuedPreviewUrl}`}
                 title={`${frame.label} preview of ${title}`}
                 src={previewUrl}
                 width={frame.width}

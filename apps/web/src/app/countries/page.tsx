@@ -4,6 +4,7 @@ import { getContinents, getCountries, getDirectory } from '@/lib/countries';
 import { phaseList, phasePage } from '@/lib/phase1';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import { getStatsPill } from '@/lib/stats-pill';
 
 /** Section keys an admin can use, via the generic Page CMS (Phase 1 content
  * -> Pages -> a page with slug "countries"), to override this listing's
@@ -74,8 +75,8 @@ async function loadData(filters: ListingFilters) {
 
 export default async function CountriesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const filters = parseFilters(await searchParams);
-  const [data, content] = await Promise.all([loadData(filters), loadContentOverrides()]);
+  const [data, content, pill] = await Promise.all([loadData(filters), loadContentOverrides(), getStatsPill('countries')]);
   if (!data) return <main className="shell error-page"><p className="eyebrow">Countries</p><h1>Destinations are temporarily unavailable</h1><p>Please try again shortly.</p><Link className="button" href="/countries">Retry</Link></main>;
   const activeContinents = data.continents.filter((item) => item.status === 'ACTIVE');
-  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} consultants={data.consultants} filters={filters} content={content} />;
+  return <ApprovedCountriesListing countries={data.countries} meta={data.meta} continents={activeContinents} directory={data.directory} directoryMeta={data.directoryMeta} consultants={data.consultants} filters={filters} content={content} pill={pill} />;
 }

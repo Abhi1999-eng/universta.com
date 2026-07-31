@@ -4,6 +4,7 @@ import { getCountries } from "@/lib/countries";
 import { getSubjects, getCourses } from "@/lib/catalog";
 import { phaseList, phasePage } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
+import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,6 @@ async function loadHeroOverride() {
 }
 
 export default async function HomePage() {
-  const [stats, hero] = await Promise.all([loadStats(), loadHeroOverride()]);
-  return <ApprovedHome stats={stats} heading={hero.heading} subheading={hero.subheading} />;
+  const [stats, hero, pill] = await Promise.all([loadStats(), loadHeroOverride(), getStatsPill('home')]);
+  return <ApprovedHome stats={stats} heading={hero.heading} subheading={hero.subheading} pill={pill} />;
 }

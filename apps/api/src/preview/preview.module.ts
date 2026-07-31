@@ -5,9 +5,10 @@ import {
   PreviewPublicController,
 } from './preview.controller';
 import { PreviewService } from './preview.service';
+import { StatsPillsModule } from '../stats-pills/stats-pills.module';
 
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), StatsPillsModule],
   controllers: [PreviewAdminController, PreviewPublicController],
   providers: [PreviewService],
 })

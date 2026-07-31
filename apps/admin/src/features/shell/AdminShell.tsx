@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { NAV_GROUPS, findNavItem, navItemKey, resolveActiveNavItem } from './nav-config';
@@ -33,7 +33,9 @@ function currentBreadcrumb(pathname: string) {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const breadcrumb = currentBreadcrumb(pathname);
+  const searchParams = useSearchParams();
+  const location = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`;
+  const breadcrumb = currentBreadcrumb(location);
   const pageTitle = breadcrumb.item;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -96,7 +98,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#FAFBFD] text-[#0D1524]">
-      <DesktopSidebar pathname={pathname} onLogout={handleLogout} loggingOut={loggingOut} />
+      <DesktopSidebar pathname={location} onLogout={handleLogout} loggingOut={loggingOut} />
       {mobileOpen ? (
         <>
           <button
@@ -125,7 +127,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <CloseIcon />
               </button>
             </div>
-            <Navigation pathname={pathname} onNavigate={() => setMobileOpen(false)} dark />
+            <Navigation pathname={location} onNavigate={() => setMobileOpen(false)} dark />
             <div className="mt-auto border-t border-white/10 pt-5">
               <UserSummary user={user} dark />
               <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} dark />
@@ -283,11 +285,10 @@ function Navigation({
               const key = navItemKey(group.label, item.label);
               const active = key === activeKey;
               return (
+                <div key={key}>
                 <Link
-                  key={key}
                   href={item.href}
                   onClick={onNavigate}
-                  title={item.note}
                   ref={active ? activeLinkRef : undefined}
                   aria-current={active ? 'page' : undefined}
                   className={linkClass(active)}
@@ -297,6 +298,8 @@ function Navigation({
                   </span>
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 </Link>
+                {item.hints?.length ? <p className="px-3 pb-2 pl-11 text-[11px] leading-4 text-white/40">{item.hints.join(' · ')} are managed here</p> : null}
+                </div>
               );
             })}
           </div>

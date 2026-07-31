@@ -10,6 +10,7 @@ import {
 } from "@/features/website/ChromeOverridePanel";
 import { listEditorialMedia } from "@/features/catalog/catalog-client";
 import type { EditorialMedia } from "@/features/catalog/catalog.types";
+import { StatsPillEditor } from './StatsPillEditor';
 
 type SectionRow = {
   label: string;
@@ -933,6 +934,7 @@ export function PageCmsEditor({
         });
       }
       for (const section of sections) {
+        if (section.sectionKey === 'stats-pill') continue;
         if (!dirtySections.has(section.id) && !dirtySections.has("__order__")) continue;
         await api(`pages/${recordId}/sections/${section.id}`, {
           method: "PATCH",
@@ -1181,7 +1183,15 @@ export function PageCmsEditor({
             Drag the ⠿ handle to reorder, or use the ↑ / ↓ buttons.
           </p>
           <div className="mt-4 space-y-4">
-            {sections.map((section, index) => (
+            {sections.map((section, index) => section.sectionKey === 'stats-pill' ? (
+              <StatsPillEditor
+                key={section.id}
+                pageId={recordId}
+                index={index}
+                total={sections.length}
+                onMove={(direction) => move(section.id, direction)}
+              />
+            ) : (
               <SectionCard
                 key={section.id}
                 section={section}

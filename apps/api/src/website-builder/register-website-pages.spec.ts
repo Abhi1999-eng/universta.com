@@ -18,6 +18,7 @@ function fakeClient(seed: { pages?: Row[]; templates?: Row[] } = {}) {
   const pages = [...(seed.pages ?? [])];
   const templates = [...(seed.templates ?? [])];
   const calls: string[] = [];
+  const sections: Row[] = [];
 
   const match = (rows: Row[], field: string, where: Row) => {
     calls.push(`findFirst:${field}:${JSON.stringify(where)}`);
@@ -32,6 +33,7 @@ function fakeClient(seed: { pages?: Row[]; templates?: Row[] } = {}) {
     pages,
     templates,
     calls,
+    sections,
     page: {
       findFirst: async ({ where }: { where: Row }) =>
         match(pages, 'page', where) as { id: string } | null,
@@ -52,6 +54,16 @@ function fakeClient(seed: { pages?: Row[]; templates?: Row[] } = {}) {
         return row;
       },
     },
+    pageSection: {
+      findFirst: async ({ where }: { where: Row }) =>
+        match(sections, 'section', where) as { id: string } | null,
+      create: async ({ data }: { data: Row }) => {
+        calls.push('pageSection.create');
+        const row = { id: `section-${sections.length + 1}`, ...data };
+        sections.push(row);
+        return row;
+      },
+    },
   };
 }
 
@@ -68,6 +80,7 @@ describe('registerWebsiteBuilderRecords', () => {
     expect(result.templatesCreated).toHaveLength(
       PAGE_TEMPLATE_DEFINITIONS.length,
     );
+    expect(result.statsPillsCreated).toHaveLength(7);
     expect({
       pages: result.pagesExisting,
       templates: result.templatesExisting,
@@ -95,6 +108,7 @@ describe('registerWebsiteBuilderRecords', () => {
     const countAfterFirst = {
       pages: client.pages.length,
       templates: client.templates.length,
+      sections: client.sections.length,
     };
 
     const second = await registerWebsiteBuilderRecords(client, 'admin-1');
@@ -104,6 +118,7 @@ describe('registerWebsiteBuilderRecords', () => {
     expect({
       pages: client.pages.length,
       templates: client.templates.length,
+      sections: client.sections.length,
     }).toEqual(countAfterFirst);
   });
 
@@ -118,6 +133,19 @@ describe('registerWebsiteBuilderRecords', () => {
     // findFirst and create, so a regression that reintroduces an upsert would
     // fail here rather than silently overwriting an admin's content.
     expect(client.calls.filter((call) => call.includes('create'))).toEqual([]);
+  });
+
+  it('does not recreate a deliberately removed statistics pill', async () => {
+    const client = fakeClient();
+    await registerWebsiteBuilderRecords(client, 'admin-1');
+    const removed = client.sections[0];
+    removed.deletedAt = new Date('2026-01-01');
+    const count = client.sections.length;
+
+    await registerWebsiteBuilderRecords(client, 'admin-1');
+
+    expect(client.sections).toHaveLength(count);
+    expect(client.sections[0]).toBe(removed);
   });
 
   it('preserves a page an admin has customised', async () => {
@@ -243,6 +271,8 @@ describe('describeRegistration', () => {
         pagesExisting: 20,
         templatesCreated: [],
         templatesExisting: 13,
+        statsPillsCreated: [],
+        statsPillsExisting: 7,
       }),
     ).toContain('no changes');
   });
@@ -253,6 +283,8 @@ describe('describeRegistration', () => {
       pagesExisting: 19,
       templatesCreated: [],
       templatesExisting: 13,
+      statsPillsCreated: [],
+      statsPillsExisting: 7,
     });
     expect(message).toContain('1 page(s)');
     expect(message).not.toContain('no changes');

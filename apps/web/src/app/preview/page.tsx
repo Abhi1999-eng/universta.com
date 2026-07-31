@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { PageSectionRenderer } from "@/components/phase1/PageSectionRenderer";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { StatsPill } from '@/components/StatsPill';
+import type { ResolvedStatsPill } from '@/lib/stats-pill';
 
 /** Draft preview target for the Admin Website Builder.
  *
@@ -34,6 +36,7 @@ type PreviewPage = {
   shortDescription?: string | null;
   status?: string | null;
   sections?: AnyRecord[] | null;
+  statsPill?: ResolvedStatsPill | null;
 };
 
 async function loadDraft(slug: string, token: string) {
@@ -115,13 +118,14 @@ export default async function PreviewRoute({
       <section className="listing-hero">
         <div className="shell">
           <p className="eyebrow">Preview</p>
+          <StatsPill pill={page.statsPill} />
           <h1>{String(page.title ?? page.slug ?? "Untitled page")}</h1>
           {page.shortDescription ? <p>{String(page.shortDescription)}</p> : null}
         </div>
       </section>
       <section className="shell phase1-editorial">
-        {sections.length ? (
-          sections.map((section) => <PageSectionRenderer section={section} key={String(section.id)} />)
+        {sections.filter((section) => section.sectionKey !== 'stats-pill').length ? (
+          sections.filter((section) => section.sectionKey !== 'stats-pill').map((section) => <PageSectionRenderer section={section} key={String(section.id)} />)
         ) : (
           <article className="editorial-section">
             <h2>No sections yet</h2>

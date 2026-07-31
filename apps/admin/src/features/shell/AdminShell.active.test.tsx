@@ -12,7 +12,7 @@ const mockUseAuth = vi.fn();
 vi.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockUseAuth() }));
 
 const pathname = vi.fn(() => '/dashboard');
-vi.mock('next/navigation', () => ({ usePathname: () => pathname() }));
+vi.mock('next/navigation', () => ({ usePathname: () => pathname().split('?')[0], useSearchParams: () => new URLSearchParams(pathname().split('?')[1] ?? '') }));
 
 /** Selected rows in the desktop sidebar. The drawer is not rendered until it is
  * opened, so scoping to the primary navigation keeps the count unambiguous. */

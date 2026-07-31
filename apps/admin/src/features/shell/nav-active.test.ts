@@ -74,7 +74,20 @@ describe('exactly one sidebar entry is active', () => {
   it('picks one of the seven entries that share /settings', () => {
     const active = resolveActiveNavItem('/settings');
     expect(active).not.toBeNull();
-    expect(active!.item.href).toBe('/settings');
+    expect(active!.item.href).toBe('/settings?section=general');
+  });
+
+  it.each([
+    ['/locations?tab=states', 'States / provinces'],
+    ['/locations?tab=cities', 'Cities'],
+    ['/catalog-masters?section=course-levels', 'Course levels'],
+    ['/catalog-masters?section=study-modes', 'Study modes'],
+    ['/catalog-masters?section=intakes', 'Intakes'],
+    ['/catalog-masters?section=scholarship-providers', 'Scholarship providers'],
+    ['/settings?section=branding', 'Branding'],
+    ['/settings?section=footer', 'Footer settings'],
+  ])('uses query context to select %s', (location, label) => {
+    expect(activeLabel(location)).toBe(label);
   });
 });
 

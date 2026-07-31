@@ -42,7 +42,7 @@ export function DashboardContent() {
                   </span>
                   <span>
                     {item.label}
-                    {item.note ? <span className="mt-0.5 block text-xs font-normal text-[#9AA3B2]">{item.note}</span> : null}
+                    {item.hints?.length ? <span className="mt-0.5 block text-xs font-normal text-[#9AA3B2]">Also manages {item.hints.join(' and ')}</span> : null}
                   </span>
                 </Link>
               ))}
