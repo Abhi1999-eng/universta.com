@@ -29,7 +29,7 @@ function fakeClient(seed: { menus?: Row[]; items?: Row[] } = {}) {
         calls.push(`menu.create:${String(data.menuKey)}`);
         const row = { id: `menu-${menus.length + 1}`, ...data };
         menus.push(row);
-        return row as { id: string };
+        return row;
       },
     },
     navigationItem: {
@@ -39,7 +39,7 @@ function fakeClient(seed: { menus?: Row[]; items?: Row[] } = {}) {
         calls.push(`item.create:${String(data.label)}`);
         const row = { id: `item-${items.length + 1}`, ...data };
         items.push(row);
-        return row as { id: string };
+        return row;
       },
     },
   };
@@ -89,7 +89,9 @@ describe('registerWebsiteNavigation', () => {
     // The failure this prevents: a deploy quietly replacing the client's
     // curated header with the canonical one.
     const client = fakeClient({
-      menus: [{ id: 'existing-header', menuKey: 'header', name: 'Client Menu' }],
+      menus: [
+        { id: 'existing-header', menuKey: 'header', name: 'Client Menu' },
+      ],
       items: [
         { id: 'their-item', menuId: 'existing-header', label: 'Their Link' },
       ],
@@ -104,8 +106,9 @@ describe('registerWebsiteNavigation', () => {
     ).toEqual([
       { id: 'their-item', menuId: 'existing-header', label: 'Their Link' },
     ]);
-    expect(client.calls.filter((call) => call.startsWith('menu.create:header')))
-      .toEqual([]);
+    expect(
+      client.calls.filter((call) => call.startsWith('menu.create:header')),
+    ).toEqual([]);
   });
 
   it('populates a menu that exists but is empty', async () => {
@@ -195,8 +198,10 @@ describe('registerWebsiteNavigation', () => {
     await registerWebsiteNavigation(client);
 
     const resources = client.items.find((item) => item.label === 'Resources')!;
-    expect({ linkType: resources.linkType, customUrl: resources.customUrl })
-      .toEqual({ linkType: 'NONE', customUrl: null });
+    expect({
+      linkType: resources.linkType,
+      customUrl: resources.customUrl,
+    }).toEqual({ linkType: 'NONE', customUrl: null });
   });
 
   it('orders siblings from one, so the header renders in the approved order', async () => {
