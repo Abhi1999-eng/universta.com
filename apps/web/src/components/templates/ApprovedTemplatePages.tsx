@@ -161,13 +161,19 @@ function CountryTemplateCard({ country }: { country: Country }) {
   const intakes = country.profiles?.intakes.map((item) => item.shortLabel ?? item.name).join(', ');
   return (
     <article className="card">
-      {country.profiles?.work?.immigrationPathwayStrength === 'STRONG' ? (
-        <span className="pr-badge"><Icon name="home" size={14} />PR friendly</span>
-      ) : null}
+      {/* Always rendered, even with no badge, so every card's heading starts on
+          the same line and the grid keeps a consistent rhythm. The badge used to
+          be absolutely positioned in the top-right corner, where a long heading
+          ran straight underneath it. */}
+      <div className="card-badges">
+        {country.profiles?.work?.immigrationPathwayStrength === 'STRONG' ? (
+          <span className="pr-badge"><Icon name="home" size={14} />PR friendly</span>
+        ) : null}
+      </div>
       <div className="card-head">
         <div className="flag">{flagFor(country)}</div>
-        <div>
-          <h3>{country.name}</h3>
+        <div className="card-title">
+          <h3>Study in {country.name}</h3>
           <div className="sub">
             {statistics?.universitiesCount != null
               ? `${statistics.universitiesCount.toLocaleString()} universities`

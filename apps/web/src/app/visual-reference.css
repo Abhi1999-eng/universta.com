@@ -1222,18 +1222,30 @@ header.stuck{border-bottom-color:var(--line)}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px;display:flex;flex-direction:column;transition:all .3s var(--ease);position:relative}
 .card:hover{transform:translateY(-4px);box-shadow:var(--sh-lg);border-color:var(--line-2)}
+/* Badge sits in its own row rather than absolutely in the corner: with the
+   heading now reading "Study in <Country>", an absolute badge overlapped it on
+   any card whose name wrapped. The row is always present so headings across the
+   grid stay on one baseline. */
+.card-badges{display:flex;flex-wrap:wrap;gap:8px;min-height:26px;margin-bottom:6px}
 .card-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
-.flag{width:48px;height:48px;border-radius:14px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;line-height:1}
-.card h3{font-size:20px;font-weight:700}
-.card .sub{font-size:13.5px;color:var(--ink-3);font-weight:500;margin-top:1px}
-.pr-badge{position:absolute;top:22px;right:22px;background:var(--brand-50);color:var(--brand);border:1px solid var(--brand-100);font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+.card-title{min-width:0}
+.flag{width:48px;height:48px;border-radius:14px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;line-height:1;overflow:hidden}
+/* contain, not cover: a flag's proportions carry meaning, so it is never
+   cropped or stretched to fill the tile. */
+.card .flag img{width:100%;height:100%;object-fit:contain;padding:6px;display:block}
+.card h3{font-size:20px;font-weight:700;overflow-wrap:anywhere;line-height:1.25}
+.card .sub{font-size:13.5px;color:var(--ink-3);font-weight:500;margin-top:2px;overflow-wrap:anywhere}
+.pr-badge{position:static;background:var(--brand-50);color:var(--brand);border:1px solid var(--brand-100);font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .pr-badge svg{width:12px;height:12px}
-.card .desc{font-size:15px;color:var(--ink-2);flex:1;margin-bottom:20px}
-.facts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-bottom:20px}
-.fact{background:var(--surface);padding:13px 12px}
-.fact span{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.card .desc{font-size:15px;color:var(--ink-2);flex:1;margin-bottom:20px;overflow-wrap:anywhere}
+/* One labelled row per fact. The old three-column grid gave each value about a
+   third of the card, so "Up to 3 yrs" and multi-intake lists were cramped or
+   clipped at tablet width. */
+.facts{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-bottom:20px}
+.fact{background:var(--surface);padding:11px 13px;display:flex;align-items:baseline;justify-content:space-between;gap:14px}
+.fact span{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);flex-shrink:0}
 .fact span svg{width:12px;height:12px}
-.fact b{font-family:var(--font-jakarta);font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:-.01em;display:block;line-height:1.3}
+.fact b{font-family:var(--font-jakarta);font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:-.01em;line-height:1.3;min-width:0;text-align:right;overflow-wrap:anywhere}
 .card-cta{display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:15px;color:var(--brand);padding-top:2px}
 .card-cta svg{width:17px;height:17px;transition:transform .25s var(--ease)}
 .card:hover .card-cta svg{transform:translateX(4px)}
@@ -1329,7 +1341,6 @@ footer{background:var(--ink);color:rgba(255,255,255,.45);font-size:14px;text-ali
   .searchbar{border-radius:var(--r-lg);flex-wrap:wrap;padding:14px}
   .searchbar input{width:100%;flex-basis:100%;padding:4px 0 12px}
   .searchbar .btn{width:100%;justify-content:center}
-  .facts{grid-template-columns:1fr;gap:1px}
   .cta-list{grid-template-columns:1fr}
   .cta-band,.cta2{padding:36px 24px;border-radius:var(--r-lg)}
   .region-sec,.az-sec,.cons-sec{padding:var(--s6) 0 var(--s5)}
