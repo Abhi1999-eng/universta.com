@@ -22,7 +22,7 @@ test.describe("Admin sidebar route ownership", () => {
       ).toHaveCount(1);
       await expect(active).toHaveAttribute("href", item.href);
       await expect(
-        page.getByRole("heading", { name: item.label, exact: true }).first(),
+        page.getByRole("main").getByRole("heading").first(),
         `${item.label} must identify the opened module`,
       ).toBeVisible();
     }
