@@ -348,3 +348,25 @@ Listing), row 12 (Scholarship Listing), and the Consultants listing
 (not itself a numbered row here, but the same template family) remain
 on the plain, previously-deferred template — this matrix's own
 per-page notes for those rows are otherwise unchanged.
+
+---
+
+## Matrix update
+
+| Page | Previous state | Now |
+| --- | --- | --- |
+| Universities listing | Plain template (deferred) | Polished listing system |
+| Scholarships listing | Plain template (deferred) | Polished listing system |
+| Consultants listing | Plain template (deferred) | Polished listing system |
+
+No public page family remains on the plain template.
+
+Card elements present in the reference but deliberately **not** rendered,
+because the database holds no such values and inventing them would be
+false: star ratings, review counts, world/national rankings,
+accreditation badges, enrolled-student totals, placement or success
+rates. The consultant "Verified" chip is the stored
+`verificationStatus`, not an endorsement.
+
+Breakpoints checked this pass: 1536×1024, 1440×900, 1024×768, 768×1024,
+390×844.

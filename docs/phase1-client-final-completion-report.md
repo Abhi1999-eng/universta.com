@@ -701,3 +701,153 @@ state.
 ---
 
 COMPLETE CLIENT-DEFINED PHASE 1 VERIFIED LOCALLY
+
+---
+
+## Addendum — remaining Website Builder work (this pass)
+
+Continues from `363592e`. Every item below was exercised in the running
+Admin and public browser, not only in code.
+
+### Delivered and browser-verified
+
+**1. Universities / Scholarships / Consultants listings** (`804d23f`)
+Moved onto the established design system: breadcrumbs, hero with live
+published count, search, sort, left filter sidebar with a mobile drawer,
+polished result cards, counselling rail, pagination, empty state and CTA
+band. Routes, API contracts, publication rules and filter keys are
+unchanged; each page declares only the filters its own endpoint honours.
+No ratings, rankings, accreditations or outcome claims are rendered —
+the reference mockups show those slots but the database has no such
+data. The consultant "Verified" chip reflects the stored
+`verificationStatus` and is labelled as such, not as an endorsement.
+
+Fixed during verification: filter and search inputs kept stale values
+after browser Back/Forward (uncontrolled inputs never remounted — now
+keyed on the applied filter state), and the mobile filter drawer opened
+but rendered off-screen (a scoped single-class rule out-specified the
+`.open` transform).
+
+**2. Per-section responsive visibility** (`5c06028`)
+Desktop/Tablet/Mobile checkboxes per section in the page editor, stored
+in the existing `PageSection.configurationJson` (no migration). Sections
+with no stored visibility stay visible everywhere, so nothing that
+existed before this change moved. Hidden sections are removed at the
+breakpoint via `display:none`, which keeps one SSR payload and stable
+hydration, leaves no empty spacing, and drops the content from the
+accessibility tree and tab order. Disabling all three is refused with
+`SECTION_HIDDEN_EVERYWHERE` and an in-editor warning.
+
+Verified at 390px (`display: none`, height 0) and 1536px (`display:
+block`, height 745) on the same section.
+
+**3. Device-framed draft preview** (`12bb9f3`)
+Desktop 1440 / Tablet 768 / Mobile 390 frames rendering the real page in
+an iframe at that exact logical width, scaled visually to fit the admin
+column — the mobile frame shows the hamburger drawer, confirming the
+page inside matches the device's media queries and not the scaled
+footprint. Refresh, New link, Open in new tab, loading and error states
+are all present.
+
+Draft isolation is the point of the design, so it is stated precisely:
+
+- `POST /admin/preview-tokens` is Super Admin only and returns a JWT
+  scoped to one page, typed `preview`, expiring in 30 minutes.
+- `GET /phase1/preview/page` redeems it with no bearer session (the
+  iframe has none) and returns 403 for an absent, malformed, expired,
+  forged, wrongly-typed or wrongly-scoped token — all eight cases were
+  exercised against the running API, including a token signed with the
+  real secret but a past `exp`, and one signed with a different secret.
+- `/preview` sets `noindex, nofollow, nocache`, has no canonical, is
+  disallowed in `robots.txt` and never appears in the sitemap.
+
+A DRAFT section added to `/about` appeared in the preview and was absent
+from the public page and its HTML.
+
+**4. Version history, comparison and restore** (`54c5966`)
+One `ContentVersion` table covering Pages, Page Sections, Page
+Templates and the Global Header/Footer settings groups. Versions record
+resource type, id, version number, full snapshot, change summary, source
+action, timestamp, admin user and `restoredFromVersion`.
+
+The invariants, because these are the ones that would be destructive if
+reversed:
+
+- `versionNumber` is monotonic per resource and restore **appends**. No
+  code path deletes or renumbers a version.
+- Restore never touches publication — `status` (and a template's
+  `isActive`) are excluded from the write, so restoring an old draft
+  cannot silently publish it.
+- Snapshots are full states, validated before being applied; an
+  unreadable or incomplete snapshot is refused rather than written over
+  live content.
+- `ensureBaseline` captures the pre-change state on first edit,
+  otherwise the first change to any page would be unrecoverable.
+- Restoring a page touches only sections that still exist: it neither
+  resurrects deleted sections nor deletes ones added since.
+- Every restore writes an `audit_logs` `RESTORE_VERSION` row.
+
+The Admin list is newest-first, each row states in words what changed
+and who changed it, comparison is a field-by-field table with humanised
+labels and values (no raw JSON anywhere in the interface), and restore
+confirms first, naming what will and will not happen.
+
+Verified in the browser: compare showed `Title: About Universta (v2
+edit) → About Universta` and named the changed sections; restore rolled
+the page back, saved as v3 badged "restored from v1", left v1 and v2 in
+place, kept the page `PUBLISHED`, and wrote the audit row.
+
+**6. Playwright acceptance-data cleanup** (folded into `804d23f`)
+Marker-scoped cleanup in `afterAll` plus a `globalTeardown` backstop that
+runs even when a run crashes, and a regression test asserting the
+acceptance-owned count is zero. The helper refuses to run against a
+non-local `DATABASE_URL`.
+
+Confirmed by direct database query after **two** complete suite runs:
+all eight acceptance-owned counts are `0`.
+
+Also root-caused a genuine flake rather than retrying it: `admin-catalog`
+failed roughly half of full runs because `iso2Code`/`iso3Code` are
+DB-unique and ignore `deletedAt`, so soft-deleted fixtures had
+permanently burned 12 of the 26 `QA`–`QZ` private-use codes. Stale rows
+purged and the test now walks the range for a genuinely free code.
+
+### Regression
+
+| Suite | Baseline | Now |
+| --- | --- | --- |
+| API unit | 54 | **70** |
+| API e2e | 173 | **173** |
+| Admin unit | 48 | **48** |
+| Web unit | 8 | **8** |
+| Playwright | 62 | **66** |
+
+No test was deleted or weakened. API e2e requires the API `.env` to be
+sourced into the shell (`set -a && . apps/api/.env && set +a`) and
+`--runInBand`; without the former, login returns 400 and every suite
+fails on setup — that is an environment issue, not a regression.
+
+### Not implemented in this pass
+
+Stated plainly rather than glossed:
+
+- **Page-level Header/Footer overrides (item 5).** Not started. Global
+  header and footer remain genuinely global and Admin-managed; there is
+  no per-page Use Global / Hide / alternate-variant control, no
+  per-page announcement-bar or CTA override, and no per-page alternate
+  nav menu. This needs a schema column on `Page` and `PageTemplate` plus
+  a path-aware chrome resolver, and starting it without finishing it
+  would have left a partial migration committed.
+- **Item 7's remaining surface.** Preview, Version History, device
+  visibility, section add/edit/duplicate/show-hide/drag-and-keyboard
+  reorder, template assignment, SEO, publish/unpublish and scheduling all
+  exist and are reachable, but they are still split between the Website
+  Pages selector and the page editor rather than presented as one
+  consolidated editor screen per page.
+- **The 46-step manual acceptance script (item 8)** was not executed
+  step-by-step end to end. The capabilities in items 1, 2, 3, 4 and 6
+  were each verified individually in the running browser as described
+  above; steps covering item 5 and the consolidated item 7 screen cannot
+  pass, since those are not built.
+
+For that reason this addendum again carries **no** gated closing line.

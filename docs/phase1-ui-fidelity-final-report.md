@@ -222,3 +222,45 @@ the same underlying `@scope`-scoped CSS module share responsive
 behavior, so a representative sample is a genuine (if not exhaustive)
 check. No pixel-diff against the reference PNGs was performed here
 either, consistent with every prior pass in this document family.
+
+---
+
+## Update — the three deferred listing pages are no longer deferred
+
+Universities (`/universities`), Scholarships (`/scholarships`) and
+Consultants (`/study-abroad-consultants`) were the last public pages
+still on the plain template. They now share `PolishedListing`, the same
+`visual-courses-page` scope the rest of the catalogue uses: breadcrumbs,
+hero with a live published count, search, sort, left filter sidebar with
+a mobile drawer, polished result cards, counselling rail, pagination,
+empty state and CTA band.
+
+Two deliberate departures from the reference, both for the same reason:
+
+- The mockups show star ratings, rankings, review counts, accreditation
+  badges, student numbers and success rates on these cards. None of that
+  exists in the database, so none of it is rendered. Inventing it would
+  make the page look closer to the mockup and be false.
+- The consultant card's "Verified" chip reflects the stored
+  `verificationStatus` value and is documented in the component as
+  reflecting that field rather than being an endorsement.
+
+Checked at 1536×1024, 1440×900, 1024×768, 768×1024 and 390×844: no
+horizontal overflow, no console errors, no failed API calls, filter
+state survives refresh and Back/Forward, pagination is URL-backed, and
+every filter control has an accessible label.
+
+Two real defects were found and fixed during that check rather than
+noted for later: uncontrolled filter and search inputs kept stale values
+after Back/Forward, and the mobile filter drawer opened but rendered
+off-screen behind a scoped single-class rule.
+
+### Admin-side surfaces added since the last fidelity pass
+
+- **Device preview** (Desktop 1440 / Tablet 768 / Mobile 390) renders
+  the real page in a framed iframe at that logical width, scaled to fit.
+  This is now the fastest way to check breakpoint fidelity against the
+  reference without resizing a browser.
+- **Per-section device visibility** means a section can be shown on
+  desktop and hidden on mobile, so the two breakpoints no longer have to
+  carry identical content to stay faithful to the reference.
