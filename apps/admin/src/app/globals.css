@@ -355,3 +355,139 @@ h4 {
   color: #0d1524;
   white-space: nowrap;
 }
+
+/* --- Website Builder workspace ------------------------------------------
+   The consolidated editing screen. Layout only: the editor, preview and
+   history inside it are the same components used elsewhere. */
+.wb-workspace {
+  display: block;
+}
+.wb-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.9rem;
+  background: #fff;
+}
+.wb-topbar-select {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.wb-topbar-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #828b9b;
+}
+.wb-topbar-select input,
+.wb-topbar-select select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.6rem;
+  font-size: 0.875rem;
+  background: #fff;
+}
+.wb-topbar-select select {
+  min-width: 260px;
+}
+.wb-topbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.wb-chip {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #f2f5f9;
+  color: #5b6779;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.wb-chip.is-status {
+  background: #eef4ff;
+  color: #1657cf;
+}
+.wb-chip.is-status.is-published {
+  background: #ecfdf5;
+  color: #047857;
+}
+.wb-chip.is-dirty {
+  background: #fff8e6;
+  color: #6b5312;
+}
+.wb-topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.wb-topbar-actions button,
+.wb-topbar-actions a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.6rem;
+  background: #fff;
+  color: #0d1524;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.wb-topbar-actions button.is-active {
+  border-color: #1657cf;
+  background: #eef4ff;
+  color: #1657cf;
+}
+.wb-hint {
+  margin: 0.9rem 0 0;
+  max-width: 80ch;
+  color: #667085;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+.wb-notice,
+.wb-error {
+  margin: 0.9rem 0 0;
+  padding: 0.65rem 0.95rem;
+  border-radius: 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.wb-notice {
+  background: #ecfdf5;
+  color: #047857;
+}
+.wb-error {
+  background: #fef3f2;
+  color: #b42318;
+}
+.wb-panel {
+  margin-top: 1rem;
+}
+.wb-editor {
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 700px) {
+  .wb-topbar-select select {
+    min-width: 0;
+    width: 100%;
+  }
+  .wb-topbar,
+  .wb-topbar-select,
+  .wb-topbar-actions {
+    width: 100%;
+  }
+}

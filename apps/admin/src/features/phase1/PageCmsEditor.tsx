@@ -4,6 +4,10 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
 import { InternalLinkPicker } from "./InternalLinkPicker";
+import {
+  ChromeOverridePanel,
+  type ChromeOverrideValue,
+} from "@/features/website/ChromeOverridePanel";
 import { listEditorialMedia } from "@/features/catalog/catalog-client";
 import type { EditorialMedia } from "@/features/catalog/catalog.types";
 
@@ -68,6 +72,8 @@ type PageRecord = {
   endsAt?: string | null;
   sections?: Section[];
   seo?: Seo | null;
+  /** Per-page Header/Footer override. null/absent means "use Global". */
+  chromeConfigJson?: ChromeOverrideValue;
 };
 
 const SECTION_TYPES = [
@@ -674,6 +680,8 @@ export function PageCmsEditor({
     seo: {},
   });
   const [sections, setSections] = useState<Section[]>([]);
+  const [chrome, setChrome] = useState<ChromeOverrideValue>(null);
+  const [menuOptions, setMenuOptions] = useState<Array<{ menuKey: string; name: string }>>([]);
   const [dirtySections, setDirtySections] = useState<Set<string>>(new Set());
   const [newSections, setNewSections] = useState<Section[]>([]);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
@@ -762,7 +770,19 @@ export function PageCmsEditor({
       const record = await api<PageRecord>(`pages/${recordId}`);
       setPage(record);
       setSelectedTemplateId(record.templateId ?? record.template?.id ?? "");
+      setChrome(record.chromeConfigJson ?? null);
       setSections((record.sections ?? []).slice().sort((a, b) => a.displayOrder - b.displayOrder));
+      // Navigation menus are what an alternate variant can choose between.
+      try {
+        const menus = await api<Array<{ menuKey: string; name: string }>>(
+          "navigation-menus?limit=100",
+        );
+        setMenuOptions(menus.map((menu) => ({ menuKey: menu.menuKey, name: menu.name })));
+      } catch {
+        // A menu-list outage must not block editing the page itself; the
+        // variant selector simply offers "use the Global menu" only.
+        setMenuOptions([]);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load page");
     } finally {
@@ -793,6 +813,8 @@ export function PageCmsEditor({
         status: page.status,
         startsAt: page.status === "SCHEDULED" ? fromDateTimeLocal(toDateTimeLocal(page.startsAt)) : null,
         endsAt: fromDateTimeLocal(toDateTimeLocal(page.endsAt)),
+        // null clears the override, which is how the panel says "use Global".
+        chrome,
         seo: {
           seoTitle: page.seo?.seoTitle ?? "",
           metaDescription: page.seo?.metaDescription ?? "",
@@ -1064,6 +1086,14 @@ export function PageCmsEditor({
             />
           </div>
         </fieldset>
+        <div className="mt-4">
+          <ChromeOverridePanel
+            value={chrome}
+            onChange={setChrome}
+            menuOptions={menuOptions}
+            scopeLabel="This page"
+          />
+        </div>
         {recordId ? (
           <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
             <legend className="px-1 text-sm font-semibold">Page template</legend>

@@ -41,7 +41,11 @@ const KIND_LABEL: Record<WebsitePage["kind"], string> = {
 };
 
 function editHref(row: WebsitePage) {
-  if (row.kind === "PAGE") return `/phase1/pages?open=${row.pageId ?? ""}`;
+  // A real Page opens in the consolidated Builder workspace, where its
+  // sections, settings, Header/Footer, SEO, preview and history are all on one
+  // screen. Templates and code-composed routes still route to the screen that
+  // genuinely owns them.
+  if (row.kind === "PAGE") return `/website/pages/${row.pageId ?? ""}/builder`;
   if (row.kind === "TEMPLATE") return `/page-templates`;
   return `/seo`;
 }
@@ -275,7 +279,7 @@ export function WebsitePagesManager() {
                         href={editHref(row)}
                         className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
                       >
-                        Edit page
+                        Open in Builder
                       </Link>
                     )}
                     {row.seoKey ? (
