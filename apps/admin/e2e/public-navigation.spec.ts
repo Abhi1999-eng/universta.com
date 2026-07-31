@@ -85,14 +85,25 @@ test.describe('public navigation discoverability', () => {
   });
 
   test('exposes every top-level group in the mobile drawer', async ({ page }) => {
+    // Count the desktop groups first: the desktop nav is hidden below the
+    // breakpoint, so it cannot be measured once the viewport is mobile.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(webBaseUrl);
+    const desktopGroups = await page.locator('header .usta-nav-item').count();
+    expect(desktopGroups, 'desktop header rendered no groups').toBeGreaterThan(0);
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(webBaseUrl);
     await expect(page.locator('header nav.usta-nav')).toBeHidden();
     await page.getByRole('button', { name: 'Open menu' }).click();
     const drawer = page.locator('.usta-drawer');
     await expect(drawer).toBeVisible();
-    // Same eight groups as the desktop header.
-    await expect(drawer.locator('.usta-drawer-group')).toHaveCount(8);
+    // The drawer must mirror the desktop header exactly. Asserting that
+    // relationship rather than a fixed number is the actual contract, and it
+    // holds for whatever menu the client has configured -- a hard-coded count
+    // only described one particular seed, and broke the moment the foundation
+    // seed began creating the canonical menu.
+    await expect(drawer.locator('.usta-drawer-group')).toHaveCount(desktopGroups);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth,
     );
