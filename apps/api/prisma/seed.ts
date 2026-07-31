@@ -2,6 +2,10 @@ import 'dotenv/config';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../src/generated/prisma/client';
+import {
+  describeRegistration,
+  registerWebsiteBuilderRecords,
+} from '../src/website-builder/register-website-pages';
 
 function required(name: string): string {
   const value = process.env[name];
@@ -227,6 +231,13 @@ async function main() {
       },
     });
   }
+
+  // Every approved Phase 1 route needs a backing Page or PageTemplate before
+  // it is editable in the Website Builder. Structural only -- no catalogue
+  // content -- so it belongs here rather than in the demo catalogue seed.
+  console.log(
+    describeRegistration(await registerWebsiteBuilderRecords(prisma, admin.id)),
+  );
 
   console.log(`Seeded foundation data for ${admin.email}.`);
 }
