@@ -27,6 +27,10 @@ if (!e2eEmail || !e2ePassword) {
 
 export default defineConfig({
   testDir: './e2e',
+  // Playwright owns `.spec.ts`; the `.test.ts` files beside the helpers are
+  // vitest unit tests for the cleanup guards and would otherwise be collected
+  // here, where vitest's imports do not resolve.
+  testMatch: '**/*.spec.ts',
   // Backstop that guarantees "repeated runs leave zero acceptance records"
   // even when a run crashes before the spec's own cleanup executes.
   globalTeardown: './e2e/global-teardown.ts',
