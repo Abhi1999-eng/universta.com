@@ -28,10 +28,20 @@ export function DevicePreview({
   slug,
   title,
   onClose,
+  publicPath,
+  framesLiveRoute = false,
 }: {
   slug: string;
   title: string;
   onClose: () => void;
+  /** The real public route this page frames, for listing/comparison/functional
+   * pages whose rows come from live records. */
+  publicPath?: string | null;
+  /** When true the frame shows that live route rather than the draft-only
+   * view. A listing page's own record holds framing copy, not the listing --
+   * previewing just that record would show an almost-empty page and tell the
+   * admin nothing about what visitors see. */
+  framesLiveRoute?: boolean;
 }) {
   const [device, setDevice] = useState<PreviewDeviceKey>("desktop");
   const [token, setToken] = useState<string | null>(null);
@@ -95,9 +105,12 @@ export function DevicePreview({
 
   const frame = PREVIEW_DEVICES.find((entry) => entry.key === device) ?? PREVIEW_DEVICES[0];
   const scale = stageWidth > 0 ? Math.min(1, stageWidth / frame.width) : 1;
-  const previewUrl = token
-    ? `${WEB_ORIGIN}/preview?slug=${encodeURIComponent(slug)}&token=${encodeURIComponent(token)}`
-    : null;
+  const liveRoute = framesLiveRoute && publicPath ? `${WEB_ORIGIN}${publicPath}` : null;
+  const previewUrl =
+    liveRoute ??
+    (token
+      ? `${WEB_ORIGIN}/preview?slug=${encodeURIComponent(slug)}&token=${encodeURIComponent(token)}`
+      : null);
 
   return (
     <div className="wb-preview" role="dialog" aria-modal="true" aria-label={`Preview of ${title}`}>
@@ -137,7 +150,13 @@ export function DevicePreview({
         </div>
       </div>
 
-      {expiresAt && status === "ready" ? (
+      {liveRoute ? (
+        <p className="wb-preview-note">
+          Framing the live <strong>{publicPath}</strong> route, because its rows come from
+          published records rather than from this page. Saved framing changes appear here
+          once the page is published.
+        </p>
+      ) : expiresAt && status === "ready" ? (
         <p className="wb-preview-note">
           This preview link shows unpublished draft content, is not indexed, and expires at{" "}
           {new Date(expiresAt).toLocaleTimeString()}. Use “New link” if it stops working.
@@ -145,8 +164,10 @@ export function DevicePreview({
       ) : null}
 
       <div className="wb-preview-stage" ref={stageRef}>
-        {status === "loading" ? <p className="wb-preview-state">Preparing preview…</p> : null}
-        {status === "error" ? (
+        {status === "loading" && !liveRoute ? (
+          <p className="wb-preview-state">Preparing preview…</p>
+        ) : null}
+        {status === "error" && !liveRoute ? (
           <div className="wb-preview-state wb-preview-state-error" role="alert">
             <p>{error}</p>
             <button type="button" onClick={reissue}>
@@ -154,7 +175,7 @@ export function DevicePreview({
             </button>
           </div>
         ) : null}
-        {status === "ready" && previewUrl ? (
+        {(status === "ready" || liveRoute) && previewUrl ? (
           <div
             className="wb-preview-shrink"
             /* Reserves only the scaled-down footprint, so the admin page never

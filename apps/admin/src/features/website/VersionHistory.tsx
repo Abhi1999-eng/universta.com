@@ -57,7 +57,28 @@ function readable(value: unknown): string {
     const shown = named.slice(0, 4).join(" · ");
     return named.length > 4 ? `${shown} · +${named.length - 4} more` : shown;
   }
-  const entries = Object.entries(value as Record<string, unknown>);
+  const record = value as Record<string, unknown>;
+
+  // A Header/Footer override is the one nested object an admin reads often, so
+  // it is spelled out rather than summarised by its keys -- "footer, header"
+  // on both sides of a diff tells the reader nothing about what changed.
+  if (record.header || record.footer) {
+    const describe = (block: unknown, name: string) => {
+      if (!block || typeof block !== "object") return `${name}: Use Global`;
+      const b = block as Record<string, unknown>;
+      const mode = String(b.mode ?? "USE_GLOBAL");
+      if (mode === "USE_GLOBAL") return `${name}: Use Global`;
+      if (mode === "HIDE") return `${name}: Hidden`;
+      const extras = [
+        b.variant ? String(b.variant) : null,
+        b.navigationMenuKey ? `menu ${String(b.navigationMenuKey)}` : null,
+      ].filter(Boolean);
+      return `${name}: Alternate variant${extras.length ? ` (${extras.join(", ")})` : ""}`;
+    };
+    return [describe(record.header, "Header"), describe(record.footer, "Footer")].join(" · ");
+  }
+
+  const entries = Object.entries(record);
   return entries
     .slice(0, 4)
     .map(([key, inner]) =>
@@ -68,6 +89,7 @@ function readable(value: unknown): string {
 
 const FIELD_LABELS: Record<string, string> = {
   bodyJson: "Body content",
+  chromeConfigJson: "Header & Footer override",
   configurationJson: "Section settings (incl. device visibility)",
   ctaPrimaryLabel: "Primary button label",
   ctaPrimaryUrl: "Primary button link",

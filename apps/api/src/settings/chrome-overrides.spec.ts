@@ -126,7 +126,12 @@ describe('public path resolution', () => {
     expect(pageSlugForPath('/about')).toBe('about');
     expect(pageSlugForPath('/about/')).toBe('about');
     expect(pageSlugForPath('/about?x=1')).toBe('about');
-    expect(pageSlugForPath('/universities')).toBeNull();
+    // Listing routes are now Website Builder-managed too: each has a Page
+    // record supplying its editorial framing and chrome override.
+    expect(pageSlugForPath('/universities')).toBe('universities-listing');
+    expect(pageSlugForPath('/compare/countries')).toBe('compare-countries');
+    // A dynamic detail route still has no Page of its own.
+    expect(pageSlugForPath('/universities/oxford')).toBeNull();
   });
 
   it('maps dynamic detail routes to the template that renders them', () => {

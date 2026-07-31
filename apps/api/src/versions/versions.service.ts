@@ -38,6 +38,10 @@ const PAGE_FIELDS = [
   'layoutKey',
   'templateId',
   'shortDescription',
+  // The Header/Footer override is part of the page's state: leaving it out
+  // made compare report "identical" after a real change, and made an override
+  // unrestorable.
+  'chromeConfigJson',
   'status',
   'isHomepage',
   'displayOrder',
@@ -72,6 +76,7 @@ const TEMPLATE_FIELDS = [
   'pageFamily',
   'defaultSectionsJson',
   'layoutConfigJson',
+  'chromeConfigJson',
   'isActive',
 ] as const;
 

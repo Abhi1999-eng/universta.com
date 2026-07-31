@@ -52,6 +52,7 @@ export function PolishedListing({
 }: {
   eyebrow: string;
   heading: string;
+  /** Empty when a managed Page supplies the whole heading. */
   headingAccent: string;
   lede: string;
   crumbLabel: string;
@@ -141,7 +142,15 @@ export function PolishedListing({
             <b>{meta.total}</b> published {meta.total === 1 ? noun.one : noun.many}
           </span>
           <h1>
-            {heading} <span>{headingAccent}</span>
+            {/* A managed listing Page supplies one complete heading; the
+                built-in copy keeps the accent split. */}
+            {headingAccent ? (
+              <>
+                {heading} <span>{headingAccent}</span>
+              </>
+            ) : (
+              heading
+            )}
           </h1>
           <p className="lede">{lede}</p>
           <form

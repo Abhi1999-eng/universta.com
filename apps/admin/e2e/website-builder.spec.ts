@@ -32,7 +32,7 @@ test.describe('consolidated Website Builder', () => {
     await expect(page.locator('#wb-page-search')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Preview' }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Version history' })).toBeVisible();
-    await expect(page.locator('.wb-chip', { hasText: 'Page — sections editable' })).toBeVisible();
+    await expect(page.locator('.wb-chip', { hasText: 'Static page' })).toBeVisible();
 
     // Page settings, SEO, template, chrome
     const body = page.locator('body');
@@ -104,5 +104,87 @@ test.describe('public chrome stays global by default', () => {
     // class should be present on a clean database.
     await expect(page.locator('header.usta-header-compact')).toHaveCount(0);
     await expect(page.locator('footer.usta-footer-minimal')).toHaveCount(0);
+  });
+});
+
+test.describe('Website Builder registration', () => {
+  test('lists every approved Phase 1 page and template in one selector', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`${adminBaseUrl}/website`);
+
+    // Every approved entry, by the label the client uses.
+    const required = [
+      'Home', 'About Us', 'Contact Us', 'Book Free Counselling', 'Success Stories',
+      'Testimonials', 'FAQ', 'Countries Listing', 'Country Detail Template',
+      'Cities Listing', 'City Detail Template', 'Universities Listing',
+      'University Detail Template', 'University Courses Template',
+      'Single University Course Offering Template', 'Subjects Listing',
+      'Subject Detail Template', 'Specializations Listing', 'Generic Courses Listing',
+      'Generic Course Detail Template', 'Scholarships Listing',
+      'Scholarship Detail Template', 'Consultants Listing', 'Consultant Detail Template',
+      'Consultant Location Template', 'Country Comparison', 'University Comparison',
+      'Course Comparison', 'Consultant Comparison', 'Careers Listing',
+      'Job Detail Template', 'Events Listing', 'Event Detail Template',
+    ];
+    await expect(page.getByRole('row').first()).toBeVisible();
+    for (const label of required) {
+      await expect(
+        page.getByRole('row').filter({ hasText: new RegExp(`^${label}`) }).first(),
+        `"${label}" must be visible in the Website Pages selector`,
+      ).toBeVisible();
+    }
+    await expect(page.getByRole('row')).toHaveCount(required.length + 1); // + header row
+  });
+
+  test('every entry opens a real Builder workspace, none needs creating first', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`${adminBaseUrl}/website`);
+
+    const builderLinks = page.getByRole('link', { name: 'Open in Builder' });
+    // Wait for the table to finish loading before counting.
+    await expect(builderLinks.first()).toBeVisible();
+    const hrefs = await builderLinks.evaluateAll((links) =>
+      links.map((link) => link.getAttribute('href') ?? ''),
+    );
+    expect(hrefs).toHaveLength(33);
+    // Nothing may fall back to /seo, and nothing may still require the
+    // "Create editable page" action.
+    expect(hrefs.every((href) => /\/website\/(pages|templates)\/[0-9a-f-]+\/builder$/.test(href))).toBe(true);
+    await expect(page.getByRole('button', { name: 'Create editable page' })).toHaveCount(0);
+  });
+
+  test('opens a listing page and a detail template from the same selector', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`${adminBaseUrl}/website`);
+
+    for (const label of [
+      'Universities Listing', 'Scholarships Listing', 'Consultants Listing',
+      'Country Comparison', 'University Comparison', 'Course Comparison', 'Consultant Comparison',
+    ]) {
+      await page.goto(`${adminBaseUrl}/website`);
+      const row = page.getByRole('row').filter({ hasText: new RegExp(`^${label}`) }).first();
+      await expect(row).toBeVisible();
+      await row.getByRole('link', { name: 'Open in Builder' }).click();
+      await expect(page).toHaveURL(/\/website\/pages\/[0-9a-f-]+\/builder$/);
+      await expect(page.locator('body')).toContainText('Header & Footer');
+    }
+  });
+
+  test('a detail template previews against a real published entity', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`${adminBaseUrl}/website`);
+    const tplRow = page.getByRole('row').filter({ hasText: /^University Detail Template/ }).first();
+    await expect(tplRow).toBeVisible();
+    await tplRow.getByRole('link', { name: 'Open in Builder' }).click();
+    await expect(page).toHaveURL(/\/website\/templates\/[0-9a-f-]+\/builder$/);
+
+    const picker = page.locator('#tpl-entity');
+    await expect(picker).toBeVisible();
+    // Entities come from real records, so the list must not be empty and the
+    // frame must point at the genuine public route.
+    expect(await picker.locator('option').count()).toBeGreaterThan(0);
+    await expect(page.locator('.wb-preview-frame iframe')).toHaveAttribute(
+      'src', /\/universities\/[a-z0-9-]+$/,
+    );
   });
 });

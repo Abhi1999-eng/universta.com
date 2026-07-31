@@ -204,12 +204,32 @@ const TEMPLATE_ROUTES: Array<{ pattern: RegExp; templateKey: string }> = [
   { pattern: /^\/events\/[^/]+$/, templateKey: 'event-detail' },
 ];
 
-/** Static routes that are backed by an editable CMS Page. */
+/** Public routes backed by a managed CMS Page.
+ *
+ * The Page supplies editorial framing and chrome overrides for the route; it
+ * is not itself a URL. Keys here are the real public paths, values the Page
+ * slugs registered by the Website Builder registry. */
 const PAGE_ROUTES: Record<string, string> = {
   '/': 'home',
   '/about': 'about',
   '/faq': 'faq',
+  '/contact': 'contact',
+  '/counselling': 'counselling',
   '/countries': 'countries',
+  '/cities': 'cities-listing',
+  '/universities': 'universities-listing',
+  '/subjects': 'subjects-listing',
+  '/courses': 'courses-listing',
+  '/scholarships': 'scholarships-listing',
+  '/study-abroad-consultants': 'consultants-listing',
+  '/success-stories': 'success-stories-listing',
+  '/testimonials': 'testimonials-listing',
+  '/careers': 'careers-listing',
+  '/events': 'events-listing',
+  '/compare/countries': 'compare-countries',
+  '/compare/universities': 'compare-universities',
+  '/compare/courses': 'compare-courses',
+  '/compare/consultants': 'compare-consultants',
 };
 
 export function templateKeyForPath(path: string): string | null {

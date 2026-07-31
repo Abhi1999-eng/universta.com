@@ -1,3 +1,4 @@
+import { getListingPageContent } from "@/lib/listing-page-content";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import {
   PolishedListing,
@@ -87,12 +88,16 @@ export default async function ConsultantsPage({
     { key: "verified", label: "Verified consultants only", kind: "toggle", onValue: "true" },
   ];
 
+  // Editorial framing from the managed "consultants-listing" Page. Rows above are
+  // untouched -- they always come from the real records.
+  const managed = await getListingPageContent("consultants-listing");
+
   return (
     <PolishedListing
       eyebrow="Published directory"
-      heading="Find a study abroad"
-      headingAccent="consultant"
-      lede="Browse published consultants by location, service and language, then contact them directly."
+      heading={managed.heading ?? "Find a study abroad"}
+      headingAccent={managed.heading ? "" : "consultant"}
+      lede={managed.lede ?? "Browse published consultants by location, service and language, then contact them directly."}
       crumbLabel="Consultants"
       basePath="/study-abroad-consultants"
       noun={{ one: "consultant", many: "consultants" }}
@@ -105,8 +110,8 @@ export default async function ConsultantsPage({
       resultsOnPage={rows.length}
       emptyTitle="No consultants match these filters"
       emptyBody="Clear one or more filters to return to the published directory."
-      ctaHeading="Prefer to start with a counsellor?"
-      ctaBody="Book a free session and we will point you to the right next step."
+      ctaHeading={managed.ctaHeading ?? "Prefer to start with a counsellor?"}
+      ctaBody={managed.ctaBody ?? "Book a free session and we will point you to the right next step."}
       railHeading="How listings work"
       railBody="Listings are published records only. Verification reflects the status stored on each profile, not an endorsement."
       counsellingSource="general"

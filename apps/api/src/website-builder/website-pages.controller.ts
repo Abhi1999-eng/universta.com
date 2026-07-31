@@ -19,6 +19,18 @@ export class WebsitePagesAdminController {
     return successEnvelope(req, await this.pages.list());
   }
 
+  /** Idempotent: safe to press repeatedly, converges on the same rows. */
+  @Post('register-all') async registerAll(@Req() req: AuthenticatedRequest) {
+    return successEnvelope(req, await this.pages.registerAll(req.user?.sub));
+  }
+
+  @Get('templates/:templateKey/preview-entities') async previewEntities(
+    @Req() req: AuthenticatedRequest,
+    @Param('templateKey') templateKey: string,
+  ) {
+    return successEnvelope(req, await this.pages.previewEntities(templateKey));
+  }
+
   @Post(':key/page') async ensurePage(
     @Req() req: AuthenticatedRequest,
     @Param('key') key: string,

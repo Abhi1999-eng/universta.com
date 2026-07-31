@@ -17,6 +17,15 @@ import { PrismaClient } from '../../../api/src/generated/prisma/client';
 
 export const ACCEPTANCE_SLUG_MARKER = 'acceptance-demo-';
 export const ACCEPTANCE_TEXT_MARKER = 'Acceptance Demo ';
+/** The catalog spec creates a Country using an ISO 3166 private-use code
+ * (QA-QZ / QAX-QZX), which impersonates no real country.
+ *
+ * Those columns are DB-unique and ignore `deletedAt`, so the admin API's soft
+ * delete permanently burns a code. With only 26 available, repeated local runs
+ * exhaust the range and the spec then fails with "every QA-QZ ISO code is
+ * already taken locally" -- which reads like a product bug and is not one.
+ * Hard-removing them here is what keeps repeated runs viable. */
+const PRIVATE_USE_ISO2 = /^Q[A-Z]$/;
 
 function client() {
   const url = process.env.DATABASE_URL;
@@ -104,6 +113,21 @@ export async function purgeAcceptanceRecords(): Promise<AcceptanceCounts> {
     removed.universities = (
       await prisma.university.deleteMany({ where: { slug } })
     ).count;
+    // Free the private-use ISO codes the catalog spec consumes. Scoped to
+    // soft-deleted rows only, so a country an admin is genuinely working on is
+    // never touched.
+    const burned = await prisma.country.findMany({
+      where: { deletedAt: { not: null } },
+      select: { id: true, iso2Code: true },
+    });
+    const reclaim = burned.filter((row) => PRIVATE_USE_ISO2.test(row.iso2Code ?? ''));
+    removed.privateUseCountries = reclaim.length
+      ? (
+          await prisma.country.deleteMany({
+            where: { id: { in: reclaim.map((row) => row.id) } },
+          })
+        ).count
+      : 0;
     return removed;
   } finally {
     await prisma.$disconnect();

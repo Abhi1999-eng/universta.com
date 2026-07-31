@@ -18,6 +18,15 @@ type WebsitePage = {
   label: string;
   family: string;
   kind: "PAGE" | "TEMPLATE" | "ROUTE";
+  managementType:
+    | "STATIC_PAGE"
+    | "LISTING_PAGE"
+    | "DETAIL_TEMPLATE"
+    | "FUNCTIONAL_PAGE"
+    | "COMPARISON_PAGE";
+  /** Where this entry opens in the Builder. Null only if it has no backing
+   * record yet, which registration is meant to prevent. */
+  builderPath: string | null;
   status: string;
   publicPath: string;
   pageId: string | null;
@@ -34,20 +43,21 @@ type WebsitePage = {
 const WEB_ORIGIN =
   process.env.NEXT_PUBLIC_WEB_ORIGIN ?? "http://localhost:3000";
 
-const KIND_LABEL: Record<WebsitePage["kind"], string> = {
-  PAGE: "Page — sections editable",
-  TEMPLATE: "Template — layout for every record of this type",
-  ROUTE: "Code-composed route — SEO managed here",
+/** The client's vocabulary, not ours: an admin looking for "the Universities
+ * page" should not have to know whether it is a CMS Page or a code route. */
+const MANAGEMENT_LABEL: Record<WebsitePage["managementType"], string> = {
+  STATIC_PAGE: "Static page — full section editor",
+  LISTING_PAGE: "Listing page — editorial framing, rows from live records",
+  DETAIL_TEMPLATE: "Detail template — layout for every record of this type",
+  FUNCTIONAL_PAGE: "Functional page — configurable blocks around the form",
+  COMPARISON_PAGE: "Comparison page — editorial framing, results from records",
 };
 
+/** Every registered entry has a Builder workspace: Pages open the page
+ * builder, detail templates open the template builder. `/seo` is only the
+ * fallback for an entry that somehow has no backing record. */
 function editHref(row: WebsitePage) {
-  // A real Page opens in the consolidated Builder workspace, where its
-  // sections, settings, Header/Footer, SEO, preview and history are all on one
-  // screen. Templates and code-composed routes still route to the screen that
-  // genuinely owns them.
-  if (row.kind === "PAGE") return `/website/pages/${row.pageId ?? ""}/builder`;
-  if (row.kind === "TEMPLATE") return `/page-templates`;
-  return `/seo`;
+  return row.builderPath ?? "/seo";
 }
 
 export function WebsitePagesManager() {
@@ -95,13 +105,14 @@ export function WebsitePagesManager() {
     () =>
       rows.filter((row) => {
         if (family && row.family !== family) return false;
-        if (kind && row.kind !== kind) return false;
+        if (kind && row.managementType !== kind) return false;
         if (!query.trim()) return true;
         const needle = query.trim().toLowerCase();
         return (
           row.label.toLowerCase().includes(needle) ||
           row.publicPath.toLowerCase().includes(needle) ||
-          row.family.toLowerCase().includes(needle)
+          row.family.toLowerCase().includes(needle) ||
+          row.managementType.toLowerCase().includes(needle)
         );
       }),
     [rows, family, kind, query],
@@ -176,9 +187,11 @@ export function WebsitePagesManager() {
             className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
           >
             <option value="">All types</option>
-            <option value="PAGE">Page (sections)</option>
-            <option value="TEMPLATE">Template (layout)</option>
-            <option value="ROUTE">Code-composed route</option>
+            <option value="STATIC_PAGE">Static page</option>
+            <option value="LISTING_PAGE">Listing page</option>
+            <option value="DETAIL_TEMPLATE">Detail template</option>
+            <option value="FUNCTIONAL_PAGE">Functional page</option>
+            <option value="COMPARISON_PAGE">Comparison page</option>
           </select>
         </label>
       </div>
@@ -258,7 +271,7 @@ export function WebsitePagesManager() {
                   </td>
                   <td className="px-5 py-4 text-[#667085]">{row.family}</td>
                   <td className="px-5 py-4 text-[#667085]">
-                    {KIND_LABEL[row.kind]}
+                    {MANAGEMENT_LABEL[row.managementType]}
                   </td>
                   <td className="px-5 py-4">
                     <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-xs font-semibold text-[#1657CF]">

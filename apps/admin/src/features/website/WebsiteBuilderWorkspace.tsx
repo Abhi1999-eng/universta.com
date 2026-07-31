@@ -26,6 +26,12 @@ type WebsitePage = {
   label: string;
   family: string;
   kind: "PAGE" | "TEMPLATE" | "ROUTE";
+  managementType:
+    | "STATIC_PAGE"
+    | "LISTING_PAGE"
+    | "DETAIL_TEMPLATE"
+    | "FUNCTIONAL_PAGE"
+    | "COMPARISON_PAGE";
   status: string;
   publicPath: string;
   pageId: string | null;
@@ -33,6 +39,15 @@ type WebsitePage = {
   sectionCount: number | null;
   templateId: string | null;
   templateKey: string | null;
+};
+
+/** Same vocabulary the selector uses, so the chip and the row agree. */
+const MANAGEMENT_LABEL: Record<WebsitePage["managementType"], string> = {
+  STATIC_PAGE: "Static page",
+  LISTING_PAGE: "Listing page — rows come from live records",
+  DETAIL_TEMPLATE: "Detail template",
+  FUNCTIONAL_PAGE: "Functional page",
+  COMPARISON_PAGE: "Comparison page — results come from live records",
 };
 
 type Panel = "preview" | "history" | null;
@@ -159,7 +174,7 @@ export function WebsiteBuilderWorkspace({ pageId }: { pageId: string }) {
           {current ? (
             <>
               <span className="wb-chip">{current.publicPath}</span>
-              <span className="wb-chip">Page — sections editable</span>
+              <span className="wb-chip">{MANAGEMENT_LABEL[current.managementType]}</span>
               <span className={`wb-chip is-status is-${current.status.toLowerCase()}`}>
                 {current.status}
               </span>
@@ -221,6 +236,8 @@ export function WebsiteBuilderWorkspace({ pageId }: { pageId: string }) {
             key={current.pageSlug}
             slug={current.pageSlug}
             title={current.label}
+            publicPath={current.publicPath}
+            framesLiveRoute={current.managementType !== "STATIC_PAGE"}
             onClose={() => setPanel(null)}
           />
         </div>

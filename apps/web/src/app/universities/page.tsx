@@ -1,3 +1,4 @@
+import { getListingPageContent } from "@/lib/listing-page-content";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import {
   PolishedListing,
@@ -90,12 +91,16 @@ export default async function UniversitiesPage({
     { key: "city", label: "City", kind: "text", placeholder: "e.g. Toronto" },
   ];
 
+  // Editorial framing from the managed "universities-listing" Page. Rows above are
+  // untouched -- they always come from the real records.
+  const managed = await getListingPageContent("universities-listing");
+
   return (
     <PolishedListing
       eyebrow="Published directory"
-      heading="Find your"
-      headingAccent="university"
-      lede="Search published universities, then filter by destination, subject and location to shortlist the ones worth a closer look."
+      heading={managed.heading ?? "Find your"}
+      headingAccent={managed.heading ? "" : "university"}
+      lede={managed.lede ?? "Search published universities, then filter by destination, subject and location to shortlist the ones worth a closer look."}
       crumbLabel="Universities"
       basePath="/universities"
       noun={{ one: "university", many: "universities" }}
@@ -108,8 +113,8 @@ export default async function UniversitiesPage({
       resultsOnPage={rows.length}
       emptyTitle="No universities match these filters"
       emptyBody="Clear one or more filters to return to the published directory."
-      ctaHeading="Not sure which university fits?"
-      ctaBody="Talk through your shortlist with a counsellor before you apply."
+      ctaHeading={managed.ctaHeading ?? "Not sure which university fits?"}
+      ctaBody={managed.ctaBody ?? "Talk through your shortlist with a counsellor before you apply."}
       railHeading="Shortlist with confidence"
       railBody="Verify tuition, entry requirements and intakes with the university before deciding."
       counsellingSource="general"

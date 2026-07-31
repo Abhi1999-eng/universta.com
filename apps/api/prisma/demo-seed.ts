@@ -8,6 +8,7 @@ import {
   type Subject,
   type SubSubject,
 } from '../src/generated/prisma/client';
+import { WEBSITE_PAGES } from '../src/website-builder/website-pages.service';
 import { assertDemoCatalogSeedAllowed } from '../src/prisma/demo-seed-policy';
 
 assertDemoCatalogSeedAllowed();
@@ -3060,6 +3061,40 @@ async function main() {
       },
     });
   }
+
+  // Register every Phase 1 public page in the Website Builder selector.
+  //
+  // Idempotent by construction: each entry is keyed on its registry slug, so a
+  // repeat run finds the existing row and creates nothing. These are content
+  // records that frame an already-live route -- registering
+  // `universities-listing` adds no public URL, and the listing's rows keep
+  // coming from the University records.
+  const registered: string[] = [];
+  for (const entry of WEBSITE_PAGES) {
+    if (!entry.pageSlug) continue;
+    const existing = await prisma.page.findFirst({
+      where: { slug: entry.pageSlug, deletedAt: null },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.page.create({
+      data: {
+        pageType: entry.managementType,
+        title: entry.label,
+        slug: entry.pageSlug,
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+        createdByUserId: admin.id,
+        updatedByUserId: admin.id,
+      },
+    });
+    registered.push(entry.pageSlug);
+  }
+  console.log(
+    registered.length
+      ? `Registered ${registered.length} Website Builder page(s): ${registered.join(', ')}`
+      : 'Website Builder pages already registered (no changes).',
+  );
 
   console.log(`Seeded demo catalog data for ${admin.email}.`);
 }

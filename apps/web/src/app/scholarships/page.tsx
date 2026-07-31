@@ -1,3 +1,4 @@
+import { getListingPageContent } from "@/lib/listing-page-content";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import {
   PolishedListing,
@@ -87,12 +88,16 @@ export default async function ScholarshipsPage({
     { key: "deadline", label: "Only open deadlines", kind: "toggle", onValue: "open" },
   ];
 
+  // Editorial framing from the managed "scholarships-listing" Page. Rows above are
+  // untouched -- they always come from the real records.
+  const managed = await getListingPageContent("scholarships-listing");
+
   return (
     <PolishedListing
       eyebrow="Published directory"
-      heading="Find a"
-      headingAccent="scholarship"
-      lede="Search published scholarships, then narrow by destination, level and award to the ones you may be eligible for."
+      heading={managed.heading ?? "Find a"}
+      headingAccent={managed.heading ? "" : "scholarship"}
+      lede={managed.lede ?? "Search published scholarships, then narrow by destination, level and award to the ones you may be eligible for."}
       crumbLabel="Scholarships"
       basePath="/scholarships"
       noun={{ one: "scholarship", many: "scholarships" }}
@@ -105,8 +110,8 @@ export default async function ScholarshipsPage({
       resultsOnPage={rows.length}
       emptyTitle="No scholarships match these filters"
       emptyBody="Clear one or more filters to return to the published directory."
-      ctaHeading="Need help finding funding?"
-      ctaBody="A counsellor can help you match your profile to published scholarships."
+      ctaHeading={managed.ctaHeading ?? "Need help finding funding?"}
+      ctaBody={managed.ctaBody ?? "A counsellor can help you match your profile to published scholarships."}
       railHeading="Check before you apply"
       railBody="Eligibility, amounts and deadlines are set by the provider. Always confirm directly with them."
       counsellingSource="general"
