@@ -956,3 +956,67 @@ The listing cards deliberately omit ratings, rankings, review counts,
 accreditation badges, student totals and success rates: the database
 holds no such values and inventing them would be false. Supplying that
 data is a content decision, not an engineering gap.
+
+---
+
+## Addendum — final two gaps closed
+
+Continues from `63eea32`.
+
+### Every Phase 1 page registered in Website Builder
+
+All **33** approved entries now appear in the one searchable selector and
+each opens a real Builder workspace — 20 Page-backed, 13 Template-backed,
+none falling through to `/seo`, and no "Create editable page" action left
+anywhere.
+
+| Management type | Count | Entries |
+| --- | --- | --- |
+| STATIC_PAGE | 3 | Home, About Us, FAQ |
+| FUNCTIONAL_PAGE | 2 | Contact Us, Book Free Counselling |
+| LISTING_PAGE | 11 | Countries, Cities, Universities, Subjects, Generic Courses, Scholarships, Consultants, Success Stories, Testimonials, Careers, Events |
+| COMPARISON_PAGE | 4 | Country, University, Course, Consultant |
+| DETAIL_TEMPLATE | 13 | Country, City, University, University Courses, Single Course Offering, Subject, Specializations, Generic Course, Scholarship, Consultant, Consultant Location, Job, Event |
+
+A registered Page is a content record, not a route: nothing resolves a URL
+by page slug, so `universities-listing` adds no public URL. `/universities`
+remains the one listing route and its rows still come from University
+records. Registration is idempotent — first run created 16, second reported
+"already registered"; 20 pages, 13 templates, 0 duplicate slugs, keys,
+paths or template keys.
+
+### Steps 20–43, executed literally
+
+All 24 steps pass. Three defects were found by running them and were fixed
+and retested rather than noted:
+
+| Step | Defect | Fix |
+| --- | --- | --- |
+| 32 | Listing framing keyed off a magic `sectionKey` of `hero`, so a heading typed in the Builder never appeared publicly | Keyed on the structured **Block type** the admin picks, first section as hero fallback |
+| 26–28 | A listing page's preview framed its near-empty Page record instead of the real `/universities` route | Listing/comparison/functional previews frame the live route, labelled as such |
+| 35 | `chromeConfigJson` was absent from version snapshots, so compare said "identical" after a real Header/Footer change and the override could not be restored | Added to Page and Template snapshots; rendered as `Header: Alternate variant (compact) · Footer: Use Global` |
+
+Override precedence re-verified on real routes: template-only resolved
+`minimal` from `template` on `/universities/northstar-…`; with both set the
+listing Page's `compact` won from `page`; after restore both resolved to
+`global` with the built-in heading back and exactly one `<header>` and one
+`<footer>`.
+
+### Regression
+
+| Suite | Previous | Now |
+| --- | --- | --- |
+| API unit | 82 | **90** |
+| API e2e | 173 | **173** |
+| Admin unit | 48 | **48** |
+| Web unit | 8 | **8** |
+| Playwright | 72 | **76** |
+
+Playwright passed **76/76 twice consecutively** with **0** acceptance-owned
+rows after both runs. Lint 0 errors ×3, builds pass ×3, `prisma validate`
+passes, migrations up to date, seed idempotent.
+
+Also fixed the recurring `admin-catalog` ISO flake at its source: the
+spec's private-use country codes are DB-unique and ignore `deletedAt`, so
+soft deletes permanently burned the QA–QZ range. Cleanup now hard-removes
+soft-deleted private-use countries only. 10 codes reclaimed.
