@@ -4,7 +4,7 @@ import { AdminShell } from './AdminShell';
 
 const mockUseAuth = vi.fn();
 vi.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockUseAuth() }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard', useSearchParams: () => new URLSearchParams() }));
 
 describe('AdminShell', () => {
   beforeEach(() => {

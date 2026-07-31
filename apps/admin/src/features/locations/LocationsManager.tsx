@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { authFetch } from "@/features/auth/auth-client";
 
 type CountryOption = { id: string; name: string; slug: string };
@@ -201,9 +201,14 @@ function CitySeoEditor({
 
 export function LocationsManager() {
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<"states" | "cities">(
-    searchParams.get("tab") === "states" ? "states" : "cities",
-  );
+  const pathname = usePathname();
+  const router = useRouter();
+  const tab: "states" | "cities" = searchParams.get("tab") === "states" ? "states" : "cities";
+  function setTab(next: "states" | "cities") {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", next);
+    router.push(`${pathname}?${params.toString()}`);
+  }
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [states, setStates] = useState<StateRow[]>([]);
   const [cities, setCities] = useState<CityRow[]>([]);

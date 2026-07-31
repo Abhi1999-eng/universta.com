@@ -1,4 +1,4 @@
-export type NavItem = { label: string; href: string; note?: string };
+export type NavItem = { label: string; href: string; hints?: string[] };
 export type NavGroup = { label: string; items: NavItem[] };
 
 /** Single source of truth for the Admin sidebar, breadcrumbs, and the
@@ -17,8 +17,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Global Header", href: "/website/header" },
       { label: "Global Footer", href: "/website/footer" },
       { label: "Navigation menus", href: "/phase1/navigation-menus" },
-      { label: "Page templates", href: "/page-templates" },
-      { label: "Reusable sections", href: "/page-templates", note: "Default section sets live on each template" },
+      { label: "Page templates", href: "/page-templates", hints: ["Reusable sections"] },
       { label: "Media library", href: "/media" },
       { label: "SEO management", href: "/seo" },
     ],
@@ -26,9 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Content records",
     items: [
-      { label: "Pages", href: "/phase1/pages" },
-      { label: "Page sections / content blocks", href: "/phase1/pages", note: "Managed within each page's editor" },
-      { label: "FAQs", href: "/countries", note: "Managed within each Country's editor" },
+      { label: "Pages", href: "/phase1/pages", hints: ["Page sections / content blocks"] },
       { label: "Success stories", href: "/phase1/success-stories" },
       { label: "Testimonials", href: "/phase1/testimonials" },
     ],
@@ -37,7 +34,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Destinations",
     items: [
       { label: "Continents", href: "/continents" },
-      { label: "Countries", href: "/countries" },
+      { label: "Countries", href: "/countries", hints: ["FAQs"] },
       { label: "States / provinces", href: "/locations?tab=states" },
       { label: "Cities", href: "/locations?tab=cities" },
     ],
@@ -45,21 +42,18 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Academics",
     items: [
-      { label: "Subjects", href: "/subjects" },
-      { label: "Specializations", href: "/subjects", note: "Managed within each Subject's editor" },
+      { label: "Subjects", href: "/subjects", hints: ["Specializations"] },
       { label: "Generic courses", href: "/courses" },
-      { label: "Course levels", href: "/catalog-masters" },
-      { label: "Study modes", href: "/catalog-masters" },
-      { label: "Intakes", href: "/catalog-masters" },
+      { label: "Course levels", href: "/catalog-masters?section=course-levels" },
+      { label: "Study modes", href: "/catalog-masters?section=study-modes" },
+      { label: "Intakes", href: "/catalog-masters?section=intakes" },
     ],
   },
   {
     label: "Universities",
     items: [
-      { label: "Universities", href: "/phase1/universities" },
-      { label: "Campuses", href: "/phase1/universities", note: "Managed within each University's editor" },
+      { label: "Universities", href: "/phase1/universities", hints: ["Campuses", "Accreditations"] },
       { label: "University course offerings", href: "/phase1/offerings" },
-      { label: "Accreditations", href: "/phase1/universities", note: "Managed within each University's editor" },
       { label: "University claim requests", href: "/university-claims" },
     ],
   },
@@ -67,16 +61,14 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Scholarships",
     items: [
       { label: "Scholarships", href: "/phase1/scholarships" },
-      { label: "Scholarship providers", href: "/catalog-masters" },
+      { label: "Scholarship providers", href: "/catalog-masters?section=scholarship-providers" },
     ],
   },
   {
     label: "Consultants",
     items: [
-      { label: "Consultants", href: "/phase1/consultants" },
+      { label: "Consultants", href: "/phase1/consultants", hints: ["Services", "Languages"] },
       { label: "Consultant locations", href: "/consultant-locations" },
-      { label: "Services", href: "/phase1/consultants", note: "Managed within each Consultant's editor" },
-      { label: "Languages", href: "/phase1/consultants", note: "Managed within each Consultant's editor" },
     ],
   },
   {
@@ -104,13 +96,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Settings",
     items: [
-      { label: "General site settings", href: "/settings" },
-      { label: "Branding", href: "/settings" },
-      { label: "Contact details", href: "/settings" },
-      { label: "Social links", href: "/settings" },
-      { label: "Header settings", href: "/settings" },
-      { label: "Footer settings", href: "/settings" },
-      { label: "Default SEO settings", href: "/settings" },
+      { label: "General site settings", href: "/settings?section=general" },
+      { label: "Branding", href: "/settings?section=branding" },
+      { label: "Contact details", href: "/settings?section=contact" },
+      { label: "Social links", href: "/settings?section=social" },
+      { label: "Header settings", href: "/settings?section=header" },
+      { label: "Footer settings", href: "/settings?section=footer" },
+      { label: "Default SEO settings", href: "/settings?section=seo" },
     ],
   },
 ];
@@ -120,12 +112,7 @@ export function flatNavItems(): NavItem[] {
 }
 
 export function findNavItem(pathname: string): NavItem | undefined {
-  const items = flatNavItems();
-  const exact = items.find((item) => item.href.split("?")[0] === pathname);
-  if (exact) return exact;
-  return items
-    .filter((item) => pathname.startsWith(item.href.split("?")[0]) && item.href !== "/")
-    .sort((a, b) => b.href.length - a.href.length)[0];
+  return resolveActiveNavItem(pathname)?.item;
 }
 
 /** A stable identity for one sidebar entry. Labels repeat across groups, and
@@ -140,6 +127,17 @@ export function navItemKey(groupLabel: string, itemLabel: string): string {
 function normalizePath(value: string): string {
   const path = value.split('#')[0].split('?')[0];
   return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
+function queryMatches(location: string, href: string): boolean {
+  const expected = new URLSearchParams(href.split('?')[1] ?? '');
+  if (expected.size === 0) return true;
+  const actual = new URLSearchParams(location.split('#')[0].split('?')[1] ?? '');
+  // A bare shared-screen URL intentionally falls back to that screen's first
+  // leaf. Once any expected discriminator is present, it must match exactly so
+  // Back/Forward between ?tab= or ?section= entries cannot highlight a sibling.
+  if (![...expected.keys()].some((key) => actual.has(key))) return true;
+  return [...expected].every(([key, value]) => actual.get(key) === value);
 }
 
 /** True when `path` is `base` or sits underneath it.
@@ -187,13 +185,13 @@ export function resolveActiveNavItem(
     for (const item of group.items) {
       const base = normalizePath(item.href);
       const position = order++;
-      if (!matchesBase(path, base)) continue;
+      if (!matchesBase(path, base) || !queryMatches(pathname, item.href)) continue;
       const candidate = {
         key: navItemKey(group.label, item.label),
         group: group.label,
         item,
         depth: base.length,
-        isSignpost: Boolean(item.note),
+        isSignpost: false,
         order: position,
       };
       if (

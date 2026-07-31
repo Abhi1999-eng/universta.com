@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { useSectionFocus } from "@/features/shell/use-section-focus";
 
 type FieldType = "text" | "textarea" | "color" | "checkbox" | "media" | "url" | "email";
 type FieldDef = { key: string; label: string; type: FieldType; placeholder?: string };
@@ -238,6 +239,7 @@ export function SettingsManager({
   title?: string;
   intro?: string;
 } = {}) {
+  const focused = useSectionFocus(GROUP_ORDER);
   const [groups, setGroups] = useState<{ group: string; values: Record<string, unknown> }[]>([]);
   const [media, setMedia] = useState<MediaOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +281,7 @@ export function SettingsManager({
         <p className="mt-8 text-sm text-[#667085]">Loading…</p>
       ) : (
         <div className="mt-8 grid gap-6">
-          {(only ?? GROUP_ORDER).map((group) => {
+          {(only ?? (focused ? [focused] : GROUP_ORDER)).map((group) => {
             const row = groups.find((g) => g.group === group);
             if (!row) return null;
             return <GroupForm key={group} group={group} values={row.values} media={media} onSaved={onSaved} />;
