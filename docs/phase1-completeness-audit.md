@@ -352,3 +352,144 @@ Stages 3–6 are **not** done: audit revalidation against hosted behaviour, and
 implementation of media library, bulk import/export, multi-select bulk actions,
 scheduled publishing, internal linking, functional A/B, and comparison selection
 mechanics. Those remain as classified in Matrix 1 above.
+
+---
+
+# Phase 1 defect completion batch — 2026-07-31
+
+This section supersedes the earlier sidebar/preview counts only for the three
+defects below. The broader `NOT VERIFIED` items in Matrix 1 remain open and are
+not being reclassified by this batch.
+
+## Defect 1 — sidebar route/module mismatch
+
+**Root cause.** Eight destinations were represented by multiple clickable
+leaves, even when the child concept was only editable inside its owner. Shared
+screens (`/catalog-masters`, `/settings`, `/locations`) also lacked durable URL
+context, and the active-route resolver received only `usePathname()`, which
+discarded the query string. `/locations` read `?tab=` only in a `useState`
+initializer, so client navigation could highlight one leaf while rendering the
+previous table.
+
+**Resolution.** The sidebar now has one clickable owner for embedded concepts,
+with visible hints for FAQs, specializations, campuses, accreditations,
+services, languages, reusable sections, and page sections. Shared screens use
+`?section=` or `?tab=` and a common focus hook. The shell resolves
+`pathname + searchParams`; Locations treats the URL as its state. Resolver and
+browser coverage pins exactly one active leaf, all unique destinations, and
+Back/Forward correctness.
+
+## Defect 3 — Page Preview opened the wrong origin
+
+**Root cause.** `DevicePreview` constructed URLs from
+`NEXT_PUBLIC_WEB_ORIGIN ?? http://localhost:3000`. No deployment configuration
+sets that build-time variable, so the production Admin bundle pointed Preview
+at the administrator's own localhost.
+
+**Resolution and security.** The API, which owns the runtime CORS/origin
+configuration and already signs the preview token, now returns one absolute
+`previewUrl`. Admin renders that URL without reconstructing it. Existing
+short-lived JWT signing, target/ref scoping, expiry, Super Admin issuance,
+`noindex`, and private/no-store response behaviour remain intact. Tests cover
+production and localhost origin selection, malformed origins, and rejection of
+an Admin-only origin.
+
+## Defect 2 — shared CMS-managed statistics pills
+
+### Corrected premise and inventory
+
+The rendered numbers were never numeric frontend literals. They already came
+from public API totals. The defect was that labels, visibility, order, icon,
+and Manual/Automatic selection were not CMS-manageable.
+
+| Route | Page slug | Existing presentation | Initial automatic sources |
+| --- | --- | --- | --- |
+| `/` | `home` | destinations · universities | published countries · published universities |
+| `/countries` | `countries` | badge variant; destinations · universities | published countries · published universities |
+| `/subjects` | `subjects-listing` | subjects · programs | published subjects · published courses |
+| `/courses` | `courses-listing` | programs · destinations | published courses · distinct published countries with published courses |
+| `/universities` | `universities-listing` | published universities | published universities |
+| `/scholarships` | `scholarships-listing` | published scholarships | published scholarships |
+| `/study-abroad-consultants` | `consultants-listing` | published consultants | published consultants |
+
+`destinations` means published countries. On Courses it deliberately means
+the narrower set of published countries that have an active, available or
+limited mapping to a published course. It is never cities, regions, or
+continents.
+
+No pill is registered for `/cities`, detail routes, `/about`, `/contact`,
+`/faq`, `/counselling`, `/careers`, `/events`, `/success-stories`,
+`/testimonials`, or `/compare/*`. Dead implementations in
+`ApprovedTemplatePages.tsx` are not wired to Subjects or Courses and were not
+used as integration points.
+
+### Storage and lifecycle
+
+No migration is required. Each eligible Page owns exactly one existing
+`PageSection` with `sectionKey = stats-pill`, protected by
+`@@unique([pageId, sectionKey])`. `bodyJson` contains a validated versioned
+envelope with independent `draft` and `published` snapshots; `displayOrder`
+participates in the existing section reorder flow; and `PageSection.status` is
+the canonical published whole-block visibility predicate. Publishing copies
+draft to published and sets the section `ACTIVE` or `ARCHIVED`. Page A is
+always addressed by Page id/slug and cannot load or write Page B.
+
+The foundation seed registers only the seven audited pills, in Automatic mode,
+only when no section (including a soft-deleted one) already exists. Re-running
+the seed never overwrites Admin changes and never recreates an intentionally
+removed pill. No catalogue/demo records and no frontend numeric fallbacks were
+added.
+
+### Server resolver and validation
+
+The API exposes a typed allow-list of supported sources; Admin cannot provide a
+model/table/query expression. Public resolution is server-side and no-store.
+Canonical public predicates require `PUBLISHED` plus `deletedAt: null`, with
+publication windows where the model supports them. The public pill endpoint
+also requires a currently published, in-window Page and an active, in-window
+section. Automatic sources are de-duplicated and resolved concurrently to avoid
+N+1 calls.
+
+Manual values accept only whole numbers from 0 through 999,999,999. Negative,
+decimal, malformed, missing, overflow, duplicate ids, invalid order, invalid
+labels, and unsupported source values return field-specific validation errors.
+Singular labels are selected when the resolved value is one.
+
+### Admin and public rendering
+
+The structured Page Builder editor provides whole-block and per-statistic
+visibility, label, icon visibility/selection, source mode, safe source
+selection, current automatic count, manual value, statistic ordering, section
+ordering, Save Draft, secure Preview, and explicit Publish. Manual input is
+disabled in Automatic mode; Preview/Publish are disabled until local edits are
+saved; duplicate submissions are blocked. Switching Page records forces an
+exact-id reload.
+
+One shared renderer handles pill/badge variants, one/two-item balance, hidden
+and empty states, icon visibility, long labels, mobile wrapping, zero and large
+values. It returns `null` for an absent/hidden block, leaving no wrapper or
+spacing. Draft Preview receives the draft-resolved pill through the existing
+scoped preview response; canonical pages receive only published configuration.
+
+## Verification at commit time
+
+| Check | Result |
+| --- | --- |
+| API unit | 23 suites, **149/149** |
+| Admin source unit/integration | 17 files, **132/132** |
+| Web unit | 6 files, **10/10** |
+| API build | pass |
+| Admin build | pass, 34 routes |
+| Web build | pass, 50 routes |
+| API lint | 0 errors, 58 pre-existing warnings |
+| Admin lint | 0 errors, 1 pre-existing warning |
+| Web lint | 0 errors, 5 pre-existing warnings |
+| Prisma format / validate / generate | pass |
+| `git diff --check` | pass |
+
+MySQL-backed API E2E, the complete Playwright suite, exact-SHA CI packaging,
+deployment, and hosted verification are intentionally left to the repository's
+clean GitHub Actions lane. New E2E coverage performs the statistics
+Draft → Preview → Publish → partial hide → full hide → restore lifecycle and
+walks every sidebar leaf plus query-scoped Back/Forward. Production is not
+claimed fixed until that lane and hosted checks complete.
