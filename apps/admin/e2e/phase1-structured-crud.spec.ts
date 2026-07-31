@@ -1,5 +1,4 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
 import { webBaseUrl } from './helpers/e2e-urls';
 import {
@@ -7,24 +6,32 @@ import {
   purgeAcceptanceRecords,
   totalAcceptanceRecords,
 } from './helpers/acceptance-cleanup';
+import {
+  acceptanceEmail,
+  acceptanceRunId,
+  acceptanceSlugPrefix,
+  acceptanceTextPrefix,
+} from './helpers/acceptance-run';
 
-// CI may provide a stable run id; local reruns remain isolated after a failed run.
-const runId = process.env.PHASE1_ACCEPTANCE_RUN_ID ?? randomUUID().slice(0, 8);
-const prefix = `Acceptance Demo ${runId}`;
+// The run id every acceptance record is tagged with, shared with the cleanup
+// helper so it can recognise exactly the rows this run created.
+const runId = acceptanceRunId();
+const prefix = acceptanceTextPrefix(runId);
+const slugPrefix = acceptanceSlugPrefix(runId);
 const universityName = `${prefix} University`;
-const universitySlug = `acceptance-demo-${runId}-university`;
+const universitySlug = `${slugPrefix}university`;
 const offeringName = `${prefix} Offering`;
-const offeringSlug = `acceptance-demo-${runId}-offering`;
+const offeringSlug = `${slugPrefix}offering`;
 const scholarshipTitle = `${prefix} Scholarship`;
-const scholarshipSlug = `acceptance-demo-${runId}-scholarship`;
+const scholarshipSlug = `${slugPrefix}scholarship`;
 const consultantName = `${prefix} Consultant`;
-const consultantSlug = `acceptance-demo-${runId}-consultant`;
+const consultantSlug = `${slugPrefix}consultant`;
 const jobTitle = `${prefix} Job`;
-const jobSlug = `acceptance-demo-${runId}-job`;
+const jobSlug = `${slugPrefix}job`;
 const eventTitle = `${prefix} Event`;
-const eventSlug = `acceptance-demo-${runId}-event`;
+const eventSlug = `${slugPrefix}event`;
 const storyTitle = `${prefix} Story`;
-const storySlug = `acceptance-demo-${runId}-story`;
+const storySlug = `${slugPrefix}story`;
 const testimonialQuote = `${prefix} testimonial is fictional local acceptance content.`;
 
 async function chooseFirst(form: Locator, label: string) {
@@ -221,7 +228,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const form = await openCreate(page, 'consultants');
     await form.getByLabel('Name', { exact: true }).fill(consultantName);
     await form.getByLabel('Slug', { exact: true }).fill(consultantSlug);
-    await form.getByLabel('Email').fill('acceptance-demo@example.invalid');
+    await form.getByLabel('Email').fill(acceptanceEmail('acceptance-demo'));
     await form.getByLabel('Verification state').selectOption('VERIFIED');
     await form.getByLabel('Description', { exact: true }).fill('Fictional local consultant.');
     await chooseOne(form, 'Locations');

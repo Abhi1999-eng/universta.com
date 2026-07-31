@@ -12,7 +12,13 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      // Playwright's own helpers issue deleteMany against a real database, so
+      // their ownership and safety guards are unit-tested here rather than
+      // only exercised as a side effect of an e2e run.
+      'e2e/helpers/**/*.test.ts',
+    ],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,

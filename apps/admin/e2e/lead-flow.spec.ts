@@ -1,13 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { loginAsAdmin } from './helpers/admin-auth';
 import { adminBaseUrl, webBaseUrl } from './helpers/e2e-urls';
+import { acceptanceEmail } from './helpers/acceptance-run';
 
 test('captures a contextual counselling lead and manages it in Admin', async ({
   page,
 }) => {
   const unique = Date.now();
   const fullName = `Fictional Lead ${unique}`;
-  const email = `phase1-lead-${unique}@example.invalid`;
+  const email = acceptanceEmail(`phase1-lead-${unique}`);
   const phone = `+1555${String(unique).slice(-8)}`;
   const internalNote = `<script>alert("qa")</script> Fictional follow-up note ${unique}`;
 
@@ -145,7 +146,7 @@ test('keeps a contact enquiry traceable and converts it to exactly one counselli
 }) => {
   const unique = Date.now();
   const fullName = `Manual UAT Contact ${unique}`;
-  const email = `manual-uat-contact-${unique}@example.invalid`;
+  const email = acceptanceEmail(`manual-uat-contact-${unique}`);
 
   await page.goto(`${webBaseUrl}/contact`);
   await page.getByLabel('Full name').fill(fullName);

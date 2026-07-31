@@ -1,13 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
+import {
+  acceptanceContinentName,
+  acceptanceCountryName,
+} from './helpers/acceptance-run';
 import { apiBaseUrl } from './helpers/e2e-urls';
 
 
 test.describe.serial('catalog management', () => {
-  const suffix = `E2E ${Date.now()}`;
-  const continentName = `Browser Region ${suffix}`;
-  const countryName = `Browser Country ${suffix}`;
+  const continentName = acceptanceContinentName();
+  const countryName = acceptanceCountryName();
   const continentCode = `E${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
   let countrySlug = '';
 

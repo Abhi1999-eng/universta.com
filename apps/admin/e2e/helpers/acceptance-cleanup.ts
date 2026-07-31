@@ -1,67 +1,95 @@
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../../../api/src/generated/prisma/client';
+import {
+  acceptanceContinentName,
+  acceptanceCountryName,
+  acceptanceEmailSuffix,
+  acceptanceRunId,
+  acceptanceSlugPrefix,
+  acceptanceTextPrefix,
+} from './acceptance-run';
 
-/** Test-only cleanup for the records the structured-CRUD acceptance spec
- * creates.
+/** Test-only cleanup for the records an acceptance run creates.
  *
  * This is Playwright infrastructure, not application code: it is never
- * imported by the API or either Next app, and it only ever touches rows whose
- * slug (or quote, for testimonials, which have no slug) carries the
- * unmistakable acceptance-owned marker below. Deterministic demo-seed records
- * do not carry it and are never matched.
+ * imported by the API or either Next app, and `no-production-import.test.ts`
+ * fails if that ever changes.
+ *
+ * Two properties make it safe to point at a database:
+ *
+ *  1. **Run ownership.** Every predicate anchors on a marker containing this
+ *     run's own id -- `startsWith` a run-scoped prefix, or `endsWith` a
+ *     run-scoped email suffix. It never searches for a substring inside a
+ *     value. A record from a different run, and a real record that merely
+ *     contains similar text, are both left alone. This matters beyond
+ *     tidiness: `contains: 'example.invalid'` would delete a genuine enquiry
+ *     from someone whose address happened to include that string.
+ *  2. **A local-only hard guard.** `assertLocalDatabase` refuses any
+ *     non-loopback DATABASE_URL, so even a correct predicate cannot run
+ *     against a hosted database.
+ *
+ * Nothing here is scoped by ids collected during the test, so cleanup works
+ * identically after a run that crashed half-way through.
  *
  * The admin API's delete is a soft delete, which is correct for real content
- * but leaves the row behind. Repeated local runs then accumulate rows forever,
+ * but leaves the row behind. Repeated runs would then accumulate rows forever,
  * which is what previously inflated the public listings. Cleanup therefore
- * removes the rows outright, in dependency order. */
+ * removes owned rows outright, in dependency order. */
 
-export const ACCEPTANCE_SLUG_MARKER = 'acceptance-demo-';
-export const ACCEPTANCE_TEXT_MARKER = 'Acceptance Demo ';
-/** The catalog spec creates a Country using an ISO 3166 private-use code
- * (QA-QZ / QAX-QZX), which impersonates no real country.
+/** The private-use ISO 3166 range (QA-QZ), which impersonates no real country.
  *
- * Those columns are DB-unique and ignore `deletedAt`, so the admin API's soft
- * delete permanently burns a code. With only 26 available, repeated local runs
- * exhaust the range and the spec then fails with "every QA-QZ ISO code is
- * already taken locally" -- which reads like a product bug and is not one.
- * Hard-removing them here is what keeps repeated runs viable. */
+ * `iso2Code` is DB-unique and ignores `deletedAt`, so a soft delete burns a
+ * code permanently. With only 26 available, repeated runs exhaust the range and
+ * the spec then fails with "every QA-QZ ISO code is already taken locally" --
+ * which reads like a product bug and is not one.
+ *
+ * This is the one predicate that cannot carry a run id, because the column is
+ * two characters wide. It is therefore additionally constrained to rows that
+ * are already soft-deleted, so a country an admin is genuinely working on is
+ * never touched. */
 const PRIVATE_USE_ISO2 = /^Q[A-Z]$/;
-/** The catalog spec also creates a Continent and a Country named
- * "Browser Region E2E <timestamp>" / "Browser Country E2E <timestamp>".
- *
- * These were not covered before, and unlike the catalogue records they are not
- * soft-deleted by the spec -- so every run left a continent behind, and those
- * continents render as destination tabs on the public Countries page. A client
- * demo showing "Browser Region E2E 1785472873911" as a study destination is
- * exactly the kind of leak this cleanup exists to prevent. */
-export const BROWSER_FIXTURE_MARKER = 'E2E ';
-const BROWSER_CONTINENT_PREFIX = 'Browser Region ';
-const BROWSER_COUNTRY_PREFIX = 'Browser Country ';
-/** Enquiries, leads and claims submitted by automated or manual UAT runs.
- *
- * Matched on the reserved `.invalid` TLD (RFC 2606), which is guaranteed never
- * to belong to a real person -- so this can never delete a genuine enquiry. A
- * demo that opens the Leads screen and shows two dozen
- * "Manual UAT Contact 1785477575150" rows undermines the whole pitch. */
-const TEST_EMAIL_DOMAIN = 'example.invalid';
 
-function client() {
-  const url = process.env.DATABASE_URL;
+/** Rejects any database that is not on this machine.
+ *
+ * Exported so the guard itself is testable: it is the last line of defence if
+ * a cleanup helper is ever run with the wrong environment loaded. */
+export function assertLocalDatabase(url: string | undefined): string {
   if (!url) throw new Error('DATABASE_URL is required for acceptance cleanup');
   if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
-    // Belt and braces: this deletes rows, so refuse to run anywhere but local.
-    throw new Error('Acceptance cleanup refuses to run against a non-local database');
+    throw new Error(
+      'Acceptance cleanup refuses to run against a non-local database',
+    );
   }
+  return url;
+}
+
+function client() {
+  const url = assertLocalDatabase(process.env.DATABASE_URL);
   return new PrismaClient({ adapter: new PrismaMariaDb(url) });
+}
+
+/** The predicates identifying rows owned by `runId`. Built in one place so the
+ * count and the purge can never drift apart. */
+export function acceptanceOwnership(runId: string = acceptanceRunId()) {
+  return {
+    runId,
+    slug: { startsWith: acceptanceSlugPrefix(runId) },
+    text: { startsWith: acceptanceTextPrefix(runId) },
+    email: { endsWith: acceptanceEmailSuffix(runId) },
+    continentName: acceptanceContinentName(runId),
+    countryName: acceptanceCountryName(runId),
+  };
 }
 
 export type AcceptanceCounts = Record<string, number>;
 
-/** Counts acceptance-owned rows still present, including soft-deleted ones. */
-export async function countAcceptanceRecords(): Promise<AcceptanceCounts> {
+/** Counts rows owned by `runId` that are still present, soft-deleted included. */
+export async function countAcceptanceRecords(
+  runId: string = acceptanceRunId(),
+): Promise<AcceptanceCounts> {
   const prisma = client();
-  const slug = { contains: ACCEPTANCE_SLUG_MARKER };
-  const text = { contains: ACCEPTANCE_TEXT_MARKER };
+  const own = acceptanceOwnership(runId);
+  const { slug, text, email } = own;
   try {
     const [
       universities,
@@ -83,19 +111,17 @@ export async function countAcceptanceRecords(): Promise<AcceptanceCounts> {
       prisma.testimonial.count({ where: { quote: text } }),
     ]);
     const browserContinents = await prisma.continent.count({
-      where: { name: { startsWith: BROWSER_CONTINENT_PREFIX } },
+      where: { name: own.continentName },
     });
     const browserCountries = await prisma.country.count({
-      where: { name: { startsWith: BROWSER_COUNTRY_PREFIX } },
+      where: { name: own.countryName },
     });
     const testInquiries = await prisma.contactInquiry.count({
-      where: { email: { contains: TEST_EMAIL_DOMAIN } },
+      where: { email },
     });
-    const testLeads = await prisma.lead.count({
-      where: { email: { contains: TEST_EMAIL_DOMAIN } },
-    });
+    const testLeads = await prisma.lead.count({ where: { email } });
     const testClaims = await prisma.universityClaimRequest.count({
-      where: { workEmail: { contains: TEST_EMAIL_DOMAIN } },
+      where: { workEmail: email },
     });
     return {
       testInquiries,
@@ -121,13 +147,15 @@ export function totalAcceptanceRecords(counts: AcceptanceCounts) {
   return Object.values(counts).reduce((sum, value) => sum + value, 0);
 }
 
-/** Removes every acceptance-owned row. Safe to call repeatedly and safe to
- * call when a run failed part-way through, since each delete is scoped by the
+/** Removes every row owned by `runId`. Safe to call repeatedly, and safe after
+ * a run that failed part-way through, since each delete is scoped by the run
  * marker rather than by ids collected during the test. */
-export async function purgeAcceptanceRecords(): Promise<AcceptanceCounts> {
+export async function purgeAcceptanceRecords(
+  runId: string = acceptanceRunId(),
+): Promise<AcceptanceCounts> {
   const prisma = client();
-  const slug = { contains: ACCEPTANCE_SLUG_MARKER };
-  const text = { contains: ACCEPTANCE_TEXT_MARKER };
+  const own = acceptanceOwnership(runId);
+  const { slug, text, email } = own;
   try {
     const removed: AcceptanceCounts = {};
     // Children before parents: offerings reference universities.
@@ -151,42 +179,48 @@ export async function purgeAcceptanceRecords(): Promise<AcceptanceCounts> {
     removed.universities = (
       await prisma.university.deleteMany({ where: { slug } })
     ).count;
-    // Enquiries, leads and claims from test runs. Children first: notes and
+
+    // Enquiries, leads and claims from this run. Children first: notes and
     // status history reference their lead/claim, and an inquiry references the
     // lead it was converted into.
     const testLeadIds = (
-      await prisma.lead.findMany({
-        where: { email: { contains: TEST_EMAIL_DOMAIN } },
-        select: { id: true },
-      })
+      await prisma.lead.findMany({ where: { email }, select: { id: true } })
     ).map((row) => row.id);
     const testClaimIds = (
       await prisma.universityClaimRequest.findMany({
-        where: { workEmail: { contains: TEST_EMAIL_DOMAIN } },
+        where: { workEmail: email },
         select: { id: true },
       })
     ).map((row) => row.id);
     if (testLeadIds.length) {
-      await prisma.leadNote.deleteMany({ where: { leadId: { in: testLeadIds } } });
-      await prisma.leadStatusHistory.deleteMany({ where: { leadId: { in: testLeadIds } } });
+      await prisma.leadNote.deleteMany({
+        where: { leadId: { in: testLeadIds } },
+      });
+      await prisma.leadStatusHistory.deleteMany({
+        where: { leadId: { in: testLeadIds } },
+      });
+      // Clear the back-reference before deleting the lead, so an inquiry from
+      // another run that was converted into this run's lead is detached rather
+      // than blocked or cascaded away.
       await prisma.contactInquiry.updateMany({
         where: { convertedLeadId: { in: testLeadIds } },
         data: { convertedLeadId: null },
       });
     }
     if (testClaimIds.length) {
-      await prisma.universityClaimNote.deleteMany({ where: { claimId: { in: testClaimIds } } });
+      await prisma.universityClaimNote.deleteMany({
+        where: { claimId: { in: testClaimIds } },
+      });
       await prisma.universityClaimStatusHistory.deleteMany({
         where: { claimId: { in: testClaimIds } },
       });
     }
     removed.testInquiries = (
-      await prisma.contactInquiry.deleteMany({
-        where: { email: { contains: TEST_EMAIL_DOMAIN } },
-      })
+      await prisma.contactInquiry.deleteMany({ where: { email } })
     ).count;
     removed.testLeads = testLeadIds.length
-      ? (await prisma.lead.deleteMany({ where: { id: { in: testLeadIds } } })).count
+      ? (await prisma.lead.deleteMany({ where: { id: { in: testLeadIds } } }))
+          .count
       : 0;
     removed.testClaims = testClaimIds.length
       ? (
@@ -196,26 +230,24 @@ export async function purgeAcceptanceRecords(): Promise<AcceptanceCounts> {
         ).count
       : 0;
 
-    // The catalog spec's continent/country fixtures. Countries go first
-    // because they reference a continent.
+    // The catalog spec's location fixtures. Countries go first because they
+    // reference a continent.
     removed.browserCountries = (
-      await prisma.country.deleteMany({
-        where: { name: { startsWith: BROWSER_COUNTRY_PREFIX } },
-      })
+      await prisma.country.deleteMany({ where: { name: own.countryName } })
     ).count;
     removed.browserContinents = (
-      await prisma.continent.deleteMany({
-        where: { name: { startsWith: BROWSER_CONTINENT_PREFIX } },
-      })
+      await prisma.continent.deleteMany({ where: { name: own.continentName } })
     ).count;
-    // Free the private-use ISO codes the catalog spec consumes. Scoped to
-    // soft-deleted rows only, so a country an admin is genuinely working on is
-    // never touched.
+
+    // Free the private-use ISO codes this run consumed. Restricted to
+    // soft-deleted rows, since the column is too narrow to carry a run id.
     const burned = await prisma.country.findMany({
       where: { deletedAt: { not: null } },
       select: { id: true, iso2Code: true },
     });
-    const reclaim = burned.filter((row) => PRIVATE_USE_ISO2.test(row.iso2Code ?? ''));
+    const reclaim = burned.filter((row) =>
+      PRIVATE_USE_ISO2.test(row.iso2Code ?? ''),
+    );
     removed.privateUseCountries = reclaim.length
       ? (
           await prisma.country.deleteMany({

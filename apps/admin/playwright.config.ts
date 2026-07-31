@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 import { adminBaseUrl, apiBaseUrl, webBaseUrl } from './e2e/helpers/e2e-urls';
+import { acceptanceRunId } from './e2e/helpers/acceptance-run';
+
+// Establish this run's ownership marker here, in the main process, before any
+// worker is forked. Workers inherit it through the environment, so the specs
+// that create records and the teardown that deletes them agree on exactly which
+// rows belong to this run. A worker that minted its own id would leave records
+// the teardown could not recognise.
+const acceptanceRun = acceptanceRunId();
 
 const e2eEmail = process.env.E2E_ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL;
 const e2ePassword = process.env.E2E_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
@@ -22,6 +30,8 @@ export default defineConfig({
   // Backstop that guarantees "repeated runs leave zero acceptance records"
   // even when a run crashes before the spec's own cleanup executes.
   globalTeardown: './e2e/global-teardown.ts',
+  // Surfaced so a failed run's leftovers can be identified by marker.
+  metadata: { acceptanceRunId: acceptanceRun },
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
