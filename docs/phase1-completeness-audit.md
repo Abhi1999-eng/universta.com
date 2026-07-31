@@ -220,8 +220,44 @@ more instructive than the result.
    and database are `utf8mb4`, and the demo catalogue is never seeded in
    production. Stale local rows only.
 
+## Regression block (run in full this session)
+
+| Suite | Baseline | This run |
+| --- | --- | --- |
+| API unit | 126 | **126** |
+| API E2E | 187 | **196** |
+| Admin unit | 137 | **137** |
+| Web unit | 8 | **8** |
+| Playwright | 82 | **82** |
+| API build | pass | pass |
+| Admin build | pass | pass (4 consecutive, after the flake fix) |
+| Web build | pass | pass |
+| Lint | 0 errors | 0 errors (6 warnings) |
+| `git diff --check` | clean | clean |
+| Tracked artifacts | 0 | 0 |
+
+## Defect 4 — intermittent admin build failure
+
+`next build` failed roughly one run in six with "Cannot read properties of null
+(reading 'useContext')" while static-exporting a page under `(protected)` -- a
+different page each time. It was patched once before on `/` alone, which only
+moved the failure to the next page in the queue.
+
+I initially concluded my own sidebar changes had caused it, on the strength of
+one failing build followed by one passing build with those changes reverted.
+That was wrong: with the changes fully restored the build then passed four
+times in a row. One failure and one pass is not a controlled comparison, and I
+should not have called it confirmed.
+
+Fixed by declaring the whole protected segment `dynamic = 'force-dynamic'`,
+which is what it should have been regardless -- every screen there sits behind a
+session check and renders per-request data.
+
 ## Not yet executed
 
-Full API E2E, Playwright, Admin/Web suites and production builds in one block;
-visual verification of the remaining page families; merge, push, deploy;
-production acceptance; recordings; disk prune.
+Merge, push, deploy; production acceptance; recordings; disk prune. Visual
+verification covered the country cards at three widths; the remaining page
+families are still outstanding. The `NOT VERIFIED` rows in Matrix 1 (media
+library, bulk import/export, scheduled publishing, internal linking, A/B
+behaviour, comparison selection mechanics, multi-select bulk actions) remain
+open and are the substantive body of work left.
