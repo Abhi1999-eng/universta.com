@@ -8,6 +8,8 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../generated/prisma/client';
 import { slugify } from '../catalog/catalog.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { DbNull } from '../generated/prisma/internal/prismaNamespaceBrowser';
+import { parseChromeConfig } from '../settings/chrome-overrides';
 
 export const PAGE_FAMILIES = [
   'HOME',
@@ -200,6 +202,9 @@ export class PageTemplatesService {
       defaultSections?: unknown;
       layoutConfig?: Record<string, unknown> | null;
       isActive?: boolean;
+      /** Structured Header/Footer override applied to every dynamic page
+       * rendered from this template. Validated, never stored raw. */
+      chrome?: unknown;
     },
     actorUserId?: string,
   ) {
@@ -227,6 +232,9 @@ export class PageTemplatesService {
             : {}),
           ...(body.description !== undefined
             ? { description: body.description || null }
+            : {}),
+          ...(body.chrome !== undefined
+            ? { chromeConfigJson: parseChromeConfig(body.chrome) ?? DbNull }
             : {}),
           ...(body.pageFamily !== undefined
             ? { pageFamily: body.pageFamily }

@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -33,8 +34,10 @@ export class SettingsPublicController {
 export class SiteChromePublicController {
   constructor(private readonly settings: SettingsService) {}
 
-  @Get() async chrome(@Req() req: RequestWithId) {
-    return successEnvelope(req, await this.settings.publicChrome());
+  @Get() async chrome(@Req() req: RequestWithId, @Query('path') path?: string) {
+    // `path` is optional: without it the caller gets the plain global chrome,
+    // which is what every pre-existing consumer expects.
+    return successEnvelope(req, await this.settings.publicChrome(path));
   }
 }
 

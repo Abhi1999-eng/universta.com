@@ -21,6 +21,10 @@ export function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-anon-id", anonymousId);
+  // The root layout renders the one Header/Footer for every route but, in the
+  // App Router, a layout cannot read the pathname. Forwarding it here is what
+  // lets the layout ask the API for that route's chrome override.
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   if (!isBot && !existing) {

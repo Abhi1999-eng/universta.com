@@ -1,4 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  parseChromeConfig,
+  pageSlugForPath,
+  resolveChrome,
+  templateKeyForPath,
+  type ChromeConfig,
+} from './chrome-overrides';
 import type { Prisma } from '../generated/prisma/client';
 import { ExpandedService } from '../expanded/expanded.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -159,16 +166,27 @@ export class SettingsService {
   /** One call that returns everything the public Header and Footer need.
    * Every public page renders both, so composing them server-side here keeps
    * each page to a single chrome round-trip instead of three. */
-  async publicChrome() {
+  /** Resolves the chrome for one public path.
+   *
+   * `path` is optional so an existing caller that wants the plain global
+   * chrome keeps working unchanged; when it is supplied, any Page-level or
+   * Template-level override for that route is applied on top. */
+  async publicChrome(path?: string) {
     const settings = await this.publicGetAll();
-    const headerKey =
+    const chrome = await this.resolveChromeForPath(path);
+    const globalHeaderKey =
       typeof settings.header?.menuKey === 'string' && settings.header.menuKey
         ? settings.header.menuKey
         : 'header';
-    const footerKey =
+    const globalFooterKey =
       typeof settings.footer?.menuKey === 'string' && settings.footer.menuKey
         ? settings.footer.menuKey
         : 'footer';
+    // An alternate variant may swap in a different Admin-managed menu. It is
+    // still an Admin-managed NavigationMenu -- the override picks which one,
+    // it never supplies its own links.
+    const headerKey = chrome.header.navigationMenuKey || globalHeaderKey;
+    const footerKey = chrome.footer.navigationMenuKey || globalFooterKey;
     const menus = await this.prisma.navigationMenu.findMany({
       where: { menuKey: { in: [headerKey, footerKey] }, status: 'ACTIVE' },
       include: {
@@ -187,7 +205,58 @@ export class SettingsService {
       settings,
       headerMenu: treeFor(headerKey),
       footerMenu: treeFor(footerKey),
+      chrome,
     };
+  }
+
+  /** Looks up the Page and/or PageTemplate that owns a public path and applies
+   * the documented precedence. A path that matches nothing resolves to the
+   * global chrome, which is also what a deleted or unparseable override
+   * degrades to. */
+  private async resolveChromeForPath(path?: string) {
+    if (!path) return resolveChrome(null, null);
+    const slug = pageSlugForPath(path);
+    const templateKeyFromRoute = templateKeyForPath(path);
+
+    let pageConfig: ChromeConfig | null = null;
+    let templateKey: string | null = templateKeyFromRoute;
+
+    if (slug) {
+      const page = await this.prisma.page.findFirst({
+        where: { slug, deletedAt: null },
+        select: {
+          chromeConfigJson: true,
+          template: { select: { templateKey: true, deletedAt: true } },
+        },
+      });
+      pageConfig = parseChromeConfig(page?.chromeConfigJson);
+      // A Page's assigned template supplies the fallback layer. A soft-deleted
+      // template is ignored rather than trusted.
+      if (page?.template && !page.template.deletedAt)
+        templateKey = page.template.templateKey;
+    }
+
+    let templateConfig: ChromeConfig | null = null;
+    if (templateKey) {
+      const template = await this.prisma.pageTemplate.findFirst({
+        where: { templateKey, deletedAt: null },
+        select: { chromeConfigJson: true },
+      });
+      templateConfig = parseChromeConfig(template?.chromeConfigJson);
+    }
+
+    const resolved = resolveChrome(pageConfig, templateConfig);
+    // An alternate variant may name a navigation menu. If that menu has since
+    // been deleted or deactivated, fall back to the global menu rather than
+    // rendering a header with no links.
+    for (const block of [resolved.header, resolved.footer]) {
+      if (!block.navigationMenuKey) continue;
+      const exists = await this.prisma.navigationMenu.count({
+        where: { menuKey: block.navigationMenuKey, status: 'ACTIVE' },
+      });
+      if (!exists) block.navigationMenuKey = null;
+    }
+    return resolved;
   }
 
   async update(

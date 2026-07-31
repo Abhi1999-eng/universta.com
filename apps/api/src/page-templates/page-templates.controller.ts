@@ -93,6 +93,7 @@ export class PageTemplatesAdminController {
         layoutConfig: body.layoutConfig as
           Record<string, unknown> | null | undefined,
         isActive: body.isActive as boolean | undefined,
+        chrome: body.chrome,
       },
       req.user?.sub,
     );

@@ -120,15 +120,30 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
     if (drawerOpen) setDrawerOpen(false);
   }
 
+  // A page/template override refines the global settings; it never replaces
+  // this component. `undefined` on an override field means "no opinion", so
+  // the global value stands.
+  const override = chrome.chrome?.header;
+  const announcementAllowed =
+    override?.announcementVisible ?? header.announcementVisible;
   const announcement =
-    header.announcementVisible && header.announcementText?.trim()
+    announcementAllowed && header.announcementText?.trim()
       ? header.announcementText.trim()
       : null;
-  const ctaVisible = header.ctaVisible !== false && header.ctaUrl?.trim();
+  const ctaUrl = override?.ctaUrl?.trim() || header.ctaUrl?.trim();
+  const ctaLabel =
+    override?.ctaLabel?.trim() || header.ctaLabel || 'Book free counselling';
+  const ctaVisible =
+    (override?.ctaVisible ?? header.ctaVisible !== false) && ctaUrl;
   // Stays hidden until an admin configures a destination -- no student-account
   // feature is implied or implemented by this link.
   const accountVisible =
     header.accountCtaUrl?.trim() && header.accountCtaLabel?.trim();
+
+  const variantClass =
+    override?.mode === 'ALTERNATE_VARIANT' && override.variant
+      ? ` usta-header-${override.variant}`
+      : '';
 
   return (
     <>
@@ -142,7 +157,7 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
         </div>
       ) : null}
       <header
-        className={`usta-header${header.sticky === false ? '' : ' is-sticky'}`}
+        className={`usta-header${header.sticky === false ? '' : ' is-sticky'}${variantClass}`}
       >
         <div className="usta-header-inner">
           <Link href="/" className="usta-logo">
@@ -180,8 +195,8 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
               </Link>
             ) : null}
             {ctaVisible ? (
-              <Link href={header.ctaUrl!.trim()} className="usta-cta">
-                {header.ctaLabel ?? 'Book free counselling'}
+              <Link href={ctaUrl!} className="usta-cta">
+                {ctaLabel}
               </Link>
             ) : null}
             <button
@@ -262,6 +277,13 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
 
 export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
   const { footer, contact, social, general } = chrome.settings;
+  const override = chrome.chrome?.footer;
+  const counsellingVisible =
+    override?.counsellingCtaVisible ?? footer.counsellingCtaVisible !== false;
+  const variantClass =
+    override?.mode === 'ALTERNATE_VARIANT' && override.variant
+      ? ` usta-footer-${override.variant}`
+      : '';
   const socialLinks = Object.entries(social ?? {}).filter(
     ([, value]) => typeof value === 'string' && value.trim(),
   );
@@ -271,7 +293,7 @@ export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
   ].filter(Boolean) as Array<{ label: string; href: string }>;
 
   return (
-    <footer className="usta-footer">
+    <footer className={`usta-footer${variantClass}`}>
       <div className="usta-footer-inner">
         <div className="usta-footer-brand">
           <Link href="/" className="usta-logo">
@@ -279,8 +301,7 @@ export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
             <span aria-hidden="true">.</span>
           </Link>
           {footer.description ? <p>{footer.description}</p> : null}
-          {footer.counsellingCtaVisible !== false &&
-          footer.counsellingCtaUrl?.trim() ? (
+          {counsellingVisible && footer.counsellingCtaUrl?.trim() ? (
             <Link href={footer.counsellingCtaUrl.trim()} className="usta-cta">
               {footer.counsellingCtaLabel ?? 'Book free counselling'}
             </Link>

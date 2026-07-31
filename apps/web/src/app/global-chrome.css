@@ -675,3 +675,41 @@ a.usta-drawer-head.is-active {
   color: #4b5563;
   line-height: 1.6;
 }
+
+/* --- Alternate Header/Footer variants -----------------------------------
+   A variant restyles the ONE canonical chrome; it never swaps in a different
+   component. Each still renders the same Admin-managed navigation, settings
+   and CTAs -- only the presentation changes. */
+.usta-header-compact .usta-header-inner {
+  min-height: 56px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.usta-header-compact .usta-logo {
+  font-size: 18px;
+}
+.usta-header-centered .usta-header-inner {
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.usta-header-centered .usta-header-actions {
+  justify-content: center;
+}
+/* "minimal" keeps the brand and CTA and drops the nav, for focused pages such
+   as a single-purpose landing route. The nav is removed rather than hidden so
+   it leaves no gap and no unreachable tab stops. */
+.usta-header-minimal .usta-header-inner > nav {
+  display: none;
+}
+.usta-footer-compact .usta-footer-inner {
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+.usta-footer-compact .usta-footer-cols {
+  gap: 20px;
+}
+.usta-footer-minimal .usta-footer-cols {
+  display: none;
+}

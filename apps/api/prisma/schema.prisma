@@ -287,6 +287,10 @@ model Page {
   layoutKey        String?   @map("layout_key") @db.VarChar(100)
   templateId       String?   @map("template_id") @db.Char(36)
   shortDescription String?   @map("short_description") @db.VarChar(1000)
+  /// Optional per-page Header/Footer override. NULL means "use the Global
+  /// Header/Footer", which is what every existing page resolves to, so adding
+  /// this column changes nothing that is already published.
+  chromeConfigJson Json?     @map("chrome_config_json") @db.Json
   status           String    @default("DRAFT") @db.VarChar(30)
   isHomepage       Boolean   @default(false) @map("is_homepage")
   displayOrder     Int       @default(0) @map("display_order")
@@ -320,6 +324,9 @@ model PageTemplate {
   pageFamily          String    @map("page_family") @db.VarChar(60)
   defaultSectionsJson Json      @map("default_sections_json") @db.Json
   layoutConfigJson    Json?     @map("layout_config_json") @db.Json
+  /// Same contract as Page.chromeConfigJson, applied to every dynamic detail
+  /// page rendered through this template. A page's own override wins over it.
+  chromeConfigJson    Json?     @map("chrome_config_json") @db.Json
   isActive            Boolean   @default(true) @map("is_active")
   createdByUserId     String?   @map("created_by_user_id") @db.Char(36)
   updatedByUserId     String?   @map("updated_by_user_id") @db.Char(36)

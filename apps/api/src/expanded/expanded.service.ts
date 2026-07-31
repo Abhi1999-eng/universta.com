@@ -9,6 +9,8 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../generated/prisma/client';
 import { ExperimentsService } from '../experiments/experiments.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DbNull } from '../generated/prisma/internal/prismaNamespaceBrowser';
+import { parseChromeConfig } from '../settings/chrome-overrides';
 
 export type Resource =
   | 'universities'
@@ -1957,6 +1959,11 @@ export class ExpandedService {
       'languages',
       'speakers',
       'providerName',
+      // Never written straight from the body: an override is validated from
+      // the structured `chrome` key below so a malformed or hand-crafted
+      // payload cannot reach the column.
+      'chromeConfigJson',
+      'chrome',
     ]);
     const allowed: Partial<
       Record<Exclude<Resource, 'contact-inquiries'>, Set<string>>
@@ -2187,6 +2194,9 @@ export class ExpandedService {
       });
     if (resource === 'events' && Array.isArray(body.speakers))
       data.speakersJson = body.speakers;
+    if (resource === 'pages' && body.chrome !== undefined)
+      // null clears the override, which is how the Admin says "use Global".
+      data.chromeConfigJson = parseChromeConfig(body.chrome) ?? DbNull;
     const normalizeDate = (key: string) => {
       if (!(key in data)) return;
       if (data[key] === null || data[key] === '') {
