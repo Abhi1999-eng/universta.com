@@ -68,7 +68,12 @@ export async function getListingPageContent(
       sections.find(
         (section) => (section.sectionType ?? "").toUpperCase() === type,
       );
-    const hero = byType("HERO") ?? sections[0];
+    // `stats-pill` is a utility block whose title describes the Builder
+    // control, not public hero copy. It can be the first (or only) registered
+    // section on listing pages, so never use it as the editorial fallback.
+    const hero =
+      byType("HERO") ??
+      sections.find((section) => section.sectionKey !== "stats-pill");
     const cta = byType("CTA");
 
     return {
