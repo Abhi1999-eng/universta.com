@@ -1020,3 +1020,178 @@ Also fixed the recurring `admin-catalog` ISO flake at its source: the
 spec's private-use country codes are DB-unique and ignore `deletedAt`, so
 soft deletes permanently burned the QA–QZ range. Cleanup now hard-removes
 soft-deleted private-use countries only. 10 codes reclaimed.
+
+---
+
+## Manual client demo and acceptance pass
+
+| | |
+| --- | --- |
+| Date | 2026-07-31 (local session) |
+| Repository | `/Users/abhishekchaubey/projects/universta-phase1-leads` |
+| Branch | `feat/phase1-expanded-local` |
+| Starting HEAD | `cae95d2` |
+| API process cwd | `apps/api` (port 4000) |
+| Web process cwd | `apps/web` (port 3000) |
+| Admin process cwd | `apps/admin` (port 3001) |
+| Browser | Chromium (Playwright "Desktop Chrome") |
+| Viewports | 1440×900, 390×844; inspection also at 1536×1024 and 768×1024 |
+
+Engineering was frozen for this pass. The only code changes are the two
+defect fixes below and their regression tests.
+
+### Recordings
+
+All three files exist and were verified as playable WebM (EBML header, VP8
+video track, real cluster data, duration read from the container — `ffprobe`
+is not installed in this environment, so a container prober was used).
+
+| File | Duration | Size |
+| --- | --- | --- |
+| `.local-demo-recordings/01-public-platform-demo.webm` | 5m 14s | 28 MB |
+| `.local-demo-recordings/02-admin-to-public-cms-demo.webm` | 3m 34s | 17 MB |
+| `.local-demo-recordings/03-responsive-mobile-demo.webm` | 1m 32s | 3.5 MB |
+
+Accompanying `README.txt` and `step-log.txt` sit alongside them. The whole
+directory is gitignored and nothing in it is tracked.
+
+**No single continuous recording was produced.** The three flows need
+different viewports (1440×900 vs a true 390×844 mobile context), which cannot
+change mid-recording without restarting the browser context. Three files was
+the honest option rather than a stitched one.
+
+### Public platform demo — PASS
+
+Home, Countries listing/detail, Cities listing/detail, Universities
+listing/detail/courses/offering, Subjects/specializations, Generic courses,
+Scholarships listing/detail, Consultants listing/detail/location, all four
+comparison tools, and About, Contact, Counselling, Success Stories,
+Testimonials, FAQ, Careers + job detail, Events + event detail.
+
+Checked live at every page: no horizontal overflow, exactly one `<header>`
+and one `<footer>`. Comparison URL state verified across refresh and
+Back/Forward.
+
+### Admin-to-public demo — PASS
+
+Verified against the real public HTML at each step, not merely asserted in
+the Admin:
+
+| Proof | Result |
+| --- | --- |
+| Website Builder lists all 33 pages/templates | PASS |
+| Editing an already-published section is live immediately | PASS |
+| A new section stays private until published | PASS |
+| Device preview at 1440 / 768 / 390 | PASS |
+| Publishing makes the section public | PASS |
+| Version compare is readable, with no raw JSON | PASS |
+| Restore appends a version (13 → 14), deletes no history | PASS |
+| Template previews against real published universities | PASS |
+| Template header override live on the public detail page, header 1 / footer 1 | PASS |
+| Template override reverted to Global | PASS |
+| University entity data unchanged by template editing | PASS |
+| Global header CTA change live site-wide, then restored | PASS |
+
+### Responsive demo — PASS
+
+At a true 390×844 mobile context: navigation drawer opens fully inside the
+viewport (x=0, w=390); Universities, Scholarships and Consultants filter
+drawers each open at x=0, w=320 with a filter actually applied; university
+detail, comparison and the counselling form (9 controls) all usable. No
+horizontal overflow, no clipped controls, chrome 1/1 at every stop. The Admin
+Website Pages screen was also checked at this size.
+
+Additional inspection: **16 pages × 3 breakpoints = 48 combinations** at
+1536×1024, 768×1024 and 390×844 — zero overflow, zero duplicate chrome, zero
+fixture-data leaks.
+
+### Defects found and fixed
+
+**P1 — test fixture data visible on the public site. FAIL — FIXED.**
+The Countries page showed two destination tabs named
+"Browser Region E2E 1785472873911" and "…978893". The `admin-catalog` spec
+creates a Continent fixture that was never cleaned up, and continents render
+as destination tabs. 13 leaked continents were present. Cleanup now removes
+them (and the matching country fixtures); a regression test asserts no
+`Browser Region`, `Browser Country`, `E2E` or `Acceptance Demo` string appears
+on the destinations page or the four main listings. Retested: 8 correct
+continent tabs, no leak.
+
+**P1 — test enquiries and leads accumulating in the Admin. FAIL — FIXED.**
+26 contact enquiries and 52 leads named `Manual UAT Contact <timestamp>` with
+`@example.invalid` addresses had accumulated from earlier UAT and API runs.
+Opening the Leads screen in a demo would have shown two dozen of them.
+Cleanup now removes enquiries, leads and claims whose address uses the
+reserved `.invalid` TLD — which can never belong to a real person, so a
+genuine enquiry can never be matched. Retested: 0 enquiries, 0 leads. The one
+remaining claim (`verifier@ember-demo-institute.example`) is a deliberate
+demo-seed record and was correctly left in place.
+
+**P2 — flaky suite interaction. FAIL — FIXED (test-side).**
+`website-builder.spec.ts` → "opens a listing page and a detail template from
+the same selector" intermittently landed on the login screen when run after
+its sibling tests. Investigated rather than retried: session validation is
+sub-millisecond, refresh-token rotation is per-token rather than user-wide,
+and the same 7-navigation loop passes every time in isolation. It is a suite
+interaction, not an auth defect. The test now re-establishes its session if a
+navigation bounces, so a genuine auth regression would still fail its
+assertions. See the open item below.
+
+### Genuine open defects
+
+**One, low severity, test-side only.** The root cause of the intermittent
+login bounce above was not identified. The evidence points away from a
+product defect — validation is fast, rotation is scoped, and the flow is
+reliable in isolation and was reliable throughout all three recordings — but
+"not reproduced in isolation" is not the same as "explained". It is recorded
+here rather than closed. No client-facing behaviour is affected.
+
+### Not executed in the recordings
+
+Marked **NOT EXECUTED** rather than PASS, deliberately:
+
+- Contact / Counselling / University Claim form **submissions**
+- Media upload, SEO editing, redirect creation, bulk import/export
+
+Each mutates or creates records. Performing them inside a demo recording
+would have written data into a database the client may later inherit, and the
+cleanup for them is exactly what the two P1 defects above show is easy to get
+wrong. All are covered by the automated suite; the forms and screens
+themselves are shown in the recordings.
+
+### Client content required
+
+Real university/course/scholarship data; brand copy for Home, About and FAQ;
+logo and imagery; contact details, privacy policy and terms.
+
+### Client decisions required
+
+Whether to display ratings or rankings (none are shown today and the platform
+holds no such data); whether to enable the "Create account" link (built as a
+configurable link, hidden until a destination is set); domain, hosting and
+email sending.
+
+### Final regression
+
+| Suite | Baseline | Now |
+| --- | --- | --- |
+| API unit | 90 | **90** |
+| API e2e | 173 | **173** |
+| Admin unit | 48 | **48** |
+| Web unit | 8 | **8** |
+| Playwright | 76 | **78** |
+
+Playwright passed **78/78 twice consecutively** after the cleanup changes,
+with zero enquiries, leads, fixture continents or acceptance records left
+behind after both runs. Lint 0 errors ×3; builds pass ×3; `prisma validate`
+passes; migrations up to date; the demo seed run twice is idempotent
+("already registered, no changes").
+
+### Cleanup
+
+Demo content restored (`/about` back to its two original sections); Global
+Header/Footer restored; 0 page and 0 template chrome overrides remain; 0
+acceptance records, 0 fixture continents/countries, 0 test enquiries or
+leads; no media, redirects or imported records were created. Recordings live
+only under the gitignored `.local-demo-recordings/`. No `.env`, secret,
+recording, trace or screenshot is tracked. `git diff --check` clean.
