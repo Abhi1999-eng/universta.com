@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type ReactNode } from 'react';
 import { counsellingHref } from '@/lib/counselling-link';
+import { StatsPill } from '@/components/StatsPill';
+import type { ResolvedStatsPill } from '@/lib/stats-pill';
 
 /** Shared presentation for the three listing pages that were still on the
  * plain template (Universities, Scholarships, Consultants).
@@ -49,6 +51,7 @@ export function PolishedListing({
   railHeading,
   railBody,
   counsellingSource,
+  pill,
 }: {
   eyebrow: string;
   heading: string;
@@ -76,6 +79,7 @@ export function PolishedListing({
   railHeading: string;
   railBody: string;
   counsellingSource: 'general';
+  pill?: ResolvedStatsPill | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -138,9 +142,7 @@ export function PolishedListing({
 
       <section className="hero">
         <div className="wrap hero-inner">
-          <span className="hero-pill">
-            <b>{meta.total}</b> published {meta.total === 1 ? noun.one : noun.many}
-          </span>
+          <StatsPill pill={pill} />
           <h1>
             {/* A managed listing Page supplies one complete heading; the
                 built-in copy keeps the accent split. */}

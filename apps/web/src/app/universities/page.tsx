@@ -13,6 +13,7 @@ import { getCountries } from "@/lib/countries";
 import { getSubjects } from "@/lib/catalog";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
+import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -93,7 +94,7 @@ export default async function UniversitiesPage({
 
   // Editorial framing from the managed "universities-listing" Page. Rows above are
   // untouched -- they always come from the real records.
-  const managed = await getListingPageContent("universities-listing");
+  const [managed, pill] = await Promise.all([getListingPageContent("universities-listing"), getStatsPill('universities-listing')]);
 
   return (
     <PolishedListing
@@ -118,6 +119,7 @@ export default async function UniversitiesPage({
       railHeading="Shortlist with confidence"
       railBody="Verify tuition, entry requirements and intakes with the university before deciding."
       counsellingSource="general"
+      pill={pill}
     >
       {rows.map((row) => (
         <UniversityCard row={row} key={row.id} />

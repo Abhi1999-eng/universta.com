@@ -6,6 +6,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { StatsPill } from '@/components/StatsPill';
+import type { ResolvedStatsPill } from '@/lib/stats-pill';
 import { consultationTarget } from '@/lib/country-experience';
 import { counsellingHref } from '@/lib/counselling-link';
 import type {
@@ -273,6 +275,7 @@ export function ApprovedCountriesListing({
   consultants,
   filters: initialFilters,
   content = {},
+  pill,
 }: {
   countries: Country[];
   meta: PaginationMeta;
@@ -287,6 +290,7 @@ export function ApprovedCountriesListing({
    * directory data these sections wrap is never overridden here, only the
    * surrounding eyebrow/heading/subheading copy. */
   content?: CountryListingOverrides;
+  pill?: ResolvedStatsPill | null;
 }) {
   const copy = (key: CountryListingSectionKey, field: keyof CountryListingOverride, fallback: string) =>
     content[key]?.[field] || fallback;
@@ -460,7 +464,7 @@ export function ApprovedCountriesListing({
       <CountryHeader />
       <section className="hero">
         <div className="wrap center">
-          <div className="hero-badge"><Icon name="globe" size={15} /><b>{meta.total}</b> destinations · <b>{universityTotal.toLocaleString()}</b> universities</div>
+          <StatsPill pill={pill} />
           <h1>{content.hero?.heading || <>Where will your degree <em>take you?</em></>}</h1>
           <p className="hero-sub">{copy('hero', 'subheading', "Don't just browse countries — compare what actually decides your choice, side by side.")}</p>
           <div className="compare-chips">
@@ -1151,20 +1155,19 @@ export function ApprovedHome({
   stats,
   heading,
   subheading,
+  pill,
 }: {
   stats: HomeStats;
   heading?: string;
   subheading?: string;
+  pill?: ResolvedStatsPill | null;
 }) {
   return (
     <main className="visual-subjects-page">
       <CatalogHeader />
       <section className="hero">
         <div className="wrap hero-inner">
-          <span className="hero-pill">
-            <span className="dot" />
-            <b>{stats.countries}</b> destinations · <b>{stats.universities}</b> universities
-          </span>
+          <StatsPill pill={pill} />
           <h1>
             {heading ?? (
               <>

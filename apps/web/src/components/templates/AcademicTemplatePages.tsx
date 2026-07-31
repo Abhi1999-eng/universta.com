@@ -4,6 +4,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
+import { StatsPill } from '@/components/StatsPill';
+import type { ResolvedStatsPill } from '@/lib/stats-pill';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   type FormEvent,
@@ -216,12 +218,14 @@ export function ApprovedSubjectsListing({
   query = '',
   levels,
   countries,
+  pill,
 }: {
   subjects: Subject[];
   meta: PageMeta;
   query?: string;
   levels: CourseLevelOption[];
   countries: ListingCountry[];
+  pill?: ResolvedStatsPill | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -401,10 +405,7 @@ export function ApprovedSubjectsListing({
 
       <section className="hero">
         <div className="wrap hero-inner">
-          <span className="hero-pill">
-            <span className="dot" />
-            <b>{meta.total}</b> subjects · <b>{totalCourses}</b> programs
-          </span>
+          <StatsPill pill={pill} />
           <h1>
             Explore <span>Subjects</span>
           </h1>
