@@ -22,7 +22,7 @@ import { RequestContextService } from '../common/request-context.service';
 import type { ResponseEnvelope } from '../common/http.types';
 import { RuntimeConfigService } from '../config/runtime-config.service';
 import { AccessTokenGuard } from './access-token.guard';
-import { AuthService } from './auth.service';
+import { AuthService, isSupersededRefreshToken } from './auth.service';
 import { CurrentUser } from './auth.decorators';
 import {
   type AccessTokenPayload,
@@ -176,7 +176,12 @@ export class AuthController {
       this.setRefreshCookie(response, result.refreshToken);
       return envelope(request, safeAuthResponse(result));
     } catch (error) {
-      this.clearRefreshCookie(response);
+      // A refresh that merely lost a rotation race must not clear the cookie:
+      // the winning rotation has already issued a good one, and clearing here
+      // would log the admin out of a session that is perfectly alive.
+      if (!isSupersededRefreshToken(error)) {
+        this.clearRefreshCookie(response);
+      }
       throw error;
     }
   }

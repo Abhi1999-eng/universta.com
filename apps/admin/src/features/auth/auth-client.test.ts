@@ -109,11 +109,63 @@ describe('memory-only admin auth client', () => {
     const assign = vi.spyOn(window.location, 'assign');
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(errorResponse('INVALID_REFRESH_TOKEN', 401))
       .mockResolvedValueOnce(errorResponse('INVALID_REFRESH_TOKEN', 401));
     vi.stubGlobal('fetch', fetchMock);
     const result = await authFetch('/api/future');
     expect(result.status).toBe(401);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // The guarded request itself is attempted once and never replayed. Refresh
+    // gets a second attempt because a single 401 there usually means another
+    // tab rotated the token first, not that the session ended.
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String((input as Request).url ?? input).endsWith('/api/future'),
+      ),
+    ).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(assign).toHaveBeenCalled();
+  });
+
+  it('recovers when a refresh loses the rotation race to another tab', async () => {
+    // The refresh 401s because something else rotated the cookie first. The
+    // browser is already holding that rotation's new token, so the retry
+    // succeeds and the admin keeps working -- previously this logged them out.
+    setAuthenticatedSession('old-token', user);
+    const assign = vi.spyOn(window.location, 'assign');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(errorResponse('INVALID_REFRESH_TOKEN', 401))
+      .mockResolvedValueOnce(
+        response({ accessToken: 'rotated-by-other-tab', tokenType: 'Bearer', expiresIn: 900, user }),
+      )
+      .mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await authFetch('/api/future');
+
+    expect(result.status).toBe(200);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('keeps the session when refresh fails for a reason other than rejection', async () => {
+    // A 503 or a dropped connection says nothing about the session. Ending it
+    // here would sign an admin out over a momentary API hiccup.
+    setAuthenticatedSession('old-token', user);
+    const assign = vi.spyOn(window.location, 'assign');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(errorResponse('AUTH_SERVICE_UNAVAILABLE', 503));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await authFetch('/api/future');
+
+    // One refresh attempt only: a 503 is not the rotation race, so retrying
+    // would just hammer a struggling API.
+    expect(
+      fetchMock.mock.calls.filter(
+        ([input]) => input === '/api/v1/admin/auth/refresh',
+      ),
+    ).toHaveLength(1);
+    expect(assign).not.toHaveBeenCalled();
   });
 });

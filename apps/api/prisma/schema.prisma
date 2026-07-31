@@ -116,6 +116,10 @@ model RefreshToken {
   revokedAt         DateTime? @map("revoked_at") @db.DateTime(3)
   revocationReason  String?   @map("revocation_reason") @db.VarChar(255)
   replacedByTokenId String?   @map("replaced_by_token_id") @db.Char(36)
+  /// How many read-only session validations this token has satisfied *after*
+  /// being rotated away. Bounded so a superseded token cannot be replayed
+  /// indefinitely by a navigation that raced the rotation.
+  graceUseCount     Int       @default(0) @map("grace_use_count")
   createdIp         String?   @map("created_ip") @db.VarChar(45)
   userAgent         String?   @map("user_agent") @db.VarChar(1000)
   createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(3)

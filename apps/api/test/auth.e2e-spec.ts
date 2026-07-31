@@ -223,13 +223,22 @@ describe('Super Admin authentication (e2e)', () => {
     expect(JSON.stringify(bodyOf(refresh))).not.toContain(
       newCookie.split('=')[1],
     );
-    await request(app.getHttpServer())
+    // Replay is refused outright -- rotation is single-use, and no grace
+    // applies to minting tokens. The code distinguishes "already rotated" from
+    // "not a valid token" so the caller knows not to tear down a session that
+    // a competing rotation just legitimately established; it is still a 401.
+    const replay = await request(app.getHttpServer())
       .post('/api/v1/admin/auth/refresh')
       .set('Cookie', oldCookie)
-      .expect(401)
-      .expect((response) =>
-        expect(errorOf(bodyOf(response)).code).toBe('INVALID_REFRESH_TOKEN'),
-      );
+      .expect(401);
+    expect(errorOf(bodyOf(replay)).code).toBe('REFRESH_TOKEN_SUPERSEDED');
+    expect(dataOf(bodyOf(replay)).accessToken).toBeUndefined();
+    // And it must not clear the cookie the winning rotation just issued.
+    expect(
+      setCookieHeaders(replay).filter((header) =>
+        header.startsWith('universta_admin_refresh=;'),
+      ),
+    ).toEqual([]);
     const stored = await prisma.refreshToken.findFirst({
       where: { userId: user.id, revocationReason: 'ROTATED' },
       orderBy: { createdAt: 'desc' },

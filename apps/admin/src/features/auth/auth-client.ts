@@ -130,20 +130,53 @@ export async function login(
   return data;
 }
 
+/** True for a definitive "this credential is no good" from the API, as opposed
+ * to a network failure or a 5xx, which say nothing about the session. */
+function isAuthRejection(error: unknown): boolean {
+  return (
+    error instanceof AuthClientError &&
+    (error.status === 401 || error.status === 403)
+  );
+}
+
+async function attemptRefresh(generation: number): Promise<string | null> {
+  const data = await authRequest<AuthResponseData>(AUTH_PATHS.refresh, {
+    method: 'POST',
+    headers: { 'x-universta-admin-client': 'web' },
+  });
+  if (generation !== sessionGeneration) {
+    return null;
+  }
+  accessToken = data.accessToken;
+  return data.accessToken;
+}
+
 async function performRefresh(generation: number): Promise<string | null> {
   try {
-    const data = await authRequest<AuthResponseData>(AUTH_PATHS.refresh, {
-      method: 'POST',
-      headers: { 'x-universta-admin-client': 'web' },
-    });
-    if (generation !== sessionGeneration) {
+    return await attemptRefresh(generation);
+  } catch (error) {
+    if (!isAuthRejection(error)) {
+      // A timeout, a dropped connection or a 502 is not a verdict on the
+      // session. Ending it here would log an admin out over a hiccup, so the
+      // caller is told the refresh did not happen and the session stands.
       return null;
     }
-    accessToken = data.accessToken;
-    return data.accessToken;
-  } catch {
-    clearAuthenticatedSession();
-    return null;
+
+    // A 401 here is usually not "your session is over" -- it is "someone else
+    // rotated this token first": another tab, or a parallel request that hit
+    // 401 at the same moment. Rotation is single-use by design, so the loser of
+    // that race is rejected even though the session is perfectly alive, and the
+    // browser is already holding the winner's new cookie. One retry uses it.
+    try {
+      return await attemptRefresh(generation);
+    } catch (retryError) {
+      if (isAuthRejection(retryError)) {
+        // Rejected twice with a cookie that has had time to be replaced. The
+        // session really is over.
+        clearAuthenticatedSession();
+      }
+      return null;
+    }
   }
 }
 
@@ -230,8 +263,13 @@ export async function authFetch(
 
   const nextToken = await refreshSession();
   if (!nextToken) {
-    clearAuthenticatedSession();
-    redirectToLogin();
+    // performRefresh has already ended the session if the API definitively
+    // rejected the credential. If it has not, the refresh merely failed to
+    // happen -- a timeout, a dropped connection, a 502 -- and signing the admin
+    // out over that would be exactly the overreaction this fix removes.
+    if (getAuthenticatedUser() === null) {
+      redirectToLogin();
+    }
     return response;
   }
 

@@ -25,6 +25,37 @@ import {
 } from './auth.types';
 import type { LoginDto } from './dto/login.dto';
 
+/** How long after a rotation the superseded refresh token still satisfies a
+ * read-only session validation.
+ *
+ * Rotation revokes the old token the instant the new one is issued. A protected
+ * navigation that was already in flight then presents a token that became
+ * invalid microseconds ago, and the browser is logged out despite holding a
+ * perfectly good new cookie. This window covers exactly that overlap: long
+ * enough for a request that had already left the browser to land, short enough
+ * that a stolen superseded token is worthless.
+ *
+ * It is *not* a timeout being nudged upwards -- the superseded token buys only
+ * the right to be told "your session is alive". It can never mint new tokens;
+ * `refresh` rejects it, so an attacker cannot use it to establish a session. */
+export const ROTATION_GRACE_MS = 15_000;
+/** How many validations one superseded token may satisfy inside that window.
+ *
+ * Bounded rather than unlimited, so a leaked token cannot be replayed freely
+ * even briefly. The size is measured rather than guessed: a single Admin
+ * navigation costs *two* claims, because Next runs the route guard for both the
+ * document request and its RSC follow-up. A cap of three would therefore cover
+ * barely one navigation and would start signing people out again as soon as two
+ * tabs were open. Eight leaves room for a handful of overlapping tabs while
+ * still being a hard ceiling.
+ *
+ * The exposure this buys an attacker is small and worth stating plainly: within
+ * a 15-second window, a stolen superseded token can ask "is this session alive?"
+ * a few more times. It still cannot mint a token, because `refresh` rejects it
+ * outright. Claims are counted atomically, so concurrent requests cannot
+ * collectively exceed the cap. */
+export const ROTATION_GRACE_MAX_USES = 8;
+
 const USER_ROLES_INCLUDE = { include: { role: true } } as const;
 const USER_INCLUDE = { userRoles: USER_ROLES_INCLUDE } as const;
 
@@ -42,6 +73,34 @@ function invalidRefreshToken(): UnauthorizedException {
     message: 'Invalid refresh token',
     details: null,
   });
+}
+
+/** Distinguishes "another rotation beat you to it" from "this credential is
+ * dead".
+ *
+ * Rotation is single-use, so when two refreshes race -- two tabs, or a retry
+ * overlapping the original -- the loser is rejected even though the session is
+ * perfectly alive and the winner has just issued a good cookie. Callers must be
+ * able to tell that apart, because clearing the cookie here would destroy the
+ * session the winner just established. */
+export const SUPERSEDED_REFRESH_TOKEN = 'REFRESH_TOKEN_SUPERSEDED';
+
+function supersededRefreshToken(): UnauthorizedException {
+  return new UnauthorizedException({
+    code: SUPERSEDED_REFRESH_TOKEN,
+    message: 'Refresh token was already rotated',
+    details: null,
+  });
+}
+
+export function isSupersededRefreshToken(error: unknown): boolean {
+  if (!(error instanceof UnauthorizedException)) return false;
+  const body = error.getResponse();
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    (body as { code?: string }).code === SUPERSEDED_REFRESH_TOKEN
+  );
 }
 
 function invalidAuthenticatedAdmin(): UnauthorizedException {
@@ -182,11 +241,62 @@ export class AuthService {
   async validateRefreshSession(
     rawRefreshToken: string | undefined,
   ): Promise<AuthenticatedAdmin> {
-    const { admin } = await this.validatedRefreshSession(rawRefreshToken);
+    const { admin } = await this.validatedRefreshSession(rawRefreshToken, true);
     return admin;
   }
 
-  private async validatedRefreshSession(rawRefreshToken: string | undefined) {
+  /**
+   * Consumes one bounded grace use of a token that was rotated away, or throws.
+   *
+   * The claim is a single conditional UPDATE rather than a read followed by a
+   * write: concurrent navigations racing the same rotation would otherwise each
+   * read a count below the cap and all proceed, turning a bounded allowance
+   * into an unbounded one. Letting the database do the comparison means at most
+   * `ROTATION_GRACE_MAX_USES` rows are ever affected in total.
+   */
+  private async claimRotationGrace(stored: {
+    id: string;
+    userId: string;
+    revokedAt: Date | null;
+    revocationReason: string | null;
+  }): Promise<void> {
+    if (stored.revocationReason !== 'ROTATED') throw invalidRefreshToken();
+    const claimed = await this.prisma.refreshToken.updateMany({
+      where: {
+        id: stored.id,
+        revocationReason: 'ROTATED',
+        revokedAt: { gt: new Date(Date.now() - ROTATION_GRACE_MS) },
+        graceUseCount: { lt: ROTATION_GRACE_MAX_USES },
+      },
+      data: { graceUseCount: { increment: 1 } },
+    });
+    if (claimed.count === 0) throw invalidRefreshToken();
+
+    // Audited: a superseded token being presented is normal during rotation but
+    // is also what credential replay looks like, so it must be reviewable.
+    await this.prisma.auditLog.create({
+      data: {
+        userId: stored.userId,
+        module: 'AUTH',
+        entityType: 'REFRESH_TOKEN',
+        entityId: stored.id,
+        action: 'ROTATION_GRACE_VALIDATE',
+        description:
+          'Session validated with a refresh token superseded moments earlier',
+        requestId: this.context.getRequestId(),
+      },
+    });
+  }
+
+  /**
+   * @param allowRotationGrace Accept a token that was rotated away moments ago.
+   * Only ever true for read-only validation. Rotation and logout must see the
+   * strict view, or a superseded token could fork the session.
+   */
+  private async validatedRefreshSession(
+    rawRefreshToken: string | undefined,
+    allowRotationGrace = false,
+  ) {
     if (!rawRefreshToken) {
       throw invalidRefreshToken();
     }
@@ -220,11 +330,28 @@ export class AuthService {
     if (
       !stored ||
       stored.userId !== payload.sub ||
-      stored.revokedAt ||
       stored.expiresAt <= new Date() ||
       !hashesMatch(stored.tokenHash, tokenHash(rawRefreshToken))
     ) {
       throw invalidRefreshToken();
+    }
+
+    if (stored.revokedAt) {
+      // Expiry, identity and hash are already proven above; only the
+      // revocation is in question, and only a rotation may be forgiven. A
+      // token revoked by logout or by an administrator stays dead.
+      if (!allowRotationGrace) {
+        // Rotation and logout get the strict view, but a caller still needs to
+        // know *why* it was refused, so it does not tear down a live session.
+        if (
+          stored.revocationReason === 'ROTATED' &&
+          stored.revokedAt.getTime() > Date.now() - ROTATION_GRACE_MS
+        ) {
+          throw supersededRefreshToken();
+        }
+        throw invalidRefreshToken();
+      }
+      await this.claimRotationGrace(stored);
     }
 
     const hasSuperAdminRole = stored.user.userRoles.some(
