@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AccessTokenGuard } from '../auth/access-token.guard';
 import { Roles } from '../auth/auth.decorators';
@@ -23,7 +31,11 @@ export class PreviewAdminController {
   ) {
     return successEnvelope(
       req,
-      await this.preview.issue(body?.target ?? 'page', body?.ref ?? '', req.user?.sub ?? ''),
+      await this.preview.issue(
+        body?.target ?? 'page',
+        body?.ref ?? '',
+        req.user?.sub ?? '',
+      ),
     );
   }
 }
@@ -37,7 +49,14 @@ export class PreviewPublicController {
   constructor(private readonly preview: PreviewService) {}
 
   @Get('page')
-  async page(@Req() req: AuthenticatedRequest, @Query('slug') slug: string, @Query('token') token: string) {
-    return successEnvelope(req, await this.preview.previewPage(slug ?? '', token ?? ''));
+  async page(
+    @Req() req: AuthenticatedRequest,
+    @Query('slug') slug: string,
+    @Query('token') token: string,
+  ) {
+    return successEnvelope(
+      req,
+      await this.preview.previewPage(slug ?? '', token ?? ''),
+    );
   }
 }

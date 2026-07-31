@@ -32,6 +32,7 @@ import { SettingsModule } from './settings/settings.module';
 import { WebsiteBuilderModule } from './website-builder/website-builder.module';
 import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
 import { PreviewModule } from './preview/preview.module';
+import { VersionsModule } from './versions/versions.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { PreviewModule } from './preview/preview.module';
     LocationsModule,
     // Same reason again: literal `phase1/preview/page`.
     PreviewModule,
+    VersionsModule,
     ExpandedModule,
     MediaModule,
     ExperimentsModule,

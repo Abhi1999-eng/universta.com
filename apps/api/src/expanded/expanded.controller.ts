@@ -19,6 +19,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import type { RequestWithId } from '../common/http.types';
+import { VersionsService } from '../versions/versions.service';
 import { ExpandedService, type Resource } from './expanded.service';
 
 const CONTENT = [
@@ -182,7 +183,42 @@ export class ExpandedPublicController {
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class ExpandedAdminController {
-  constructor(private readonly service: ExpandedService) {}
+  constructor(
+    private readonly service: ExpandedService,
+    private readonly versions: VersionsService,
+  ) {}
+
+  /** Records a version after a successful Website Builder write.
+   *
+   * This lives in the controller rather than inside ExpandedService because
+   * only the Website Builder resources are versioned, while the service's
+   * generic CRUD is shared by every editorial resource. Recording after the
+   * write means the newest version always equals the live state. */
+  /** Captures the pre-change state the first time a resource is edited. */
+  private async baseline(
+    resourceType: 'PAGE' | 'PAGE_SECTION',
+    resourceId: string,
+    req: AuthenticatedRequest,
+  ) {
+    await this.versions.ensureBaseline(resourceType, resourceId, req.user?.sub);
+  }
+
+  private async version(
+    resourceType: 'PAGE' | 'PAGE_SECTION',
+    resourceId: string,
+    changeSummary: string,
+    sourceAction: string,
+    req: AuthenticatedRequest,
+  ) {
+    await this.versions.record({
+      resourceType,
+      resourceId,
+      changeSummary,
+      sourceAction,
+      actorUserId: req.user?.sub ?? null,
+    });
+  }
+
   @Get('form-options') async formOptions(@Req() req: AuthenticatedRequest) {
     return successEnvelope(req, await this.service.formOptions());
   }
@@ -209,10 +245,13 @@ export class ExpandedAdminController {
     @Param('resource') resource: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(
-      req,
-      await this.service.adminCreate(writableAdminContent(resource), body),
+    const created = await this.service.adminCreate(
+      writableAdminContent(resource),
+      body,
     );
+    if (resource === 'pages' && created?.id)
+      await this.version('PAGE', created.id, 'Page created', 'create', req);
+    return successEnvelope(req, created);
   }
   @Patch(':resource/:id') async update(
     @Req() req: AuthenticatedRequest,
@@ -220,34 +259,55 @@ export class ExpandedAdminController {
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(
-      req,
-      await this.service.adminUpdate(writableAdminContent(resource), id, body),
+    if (resource === 'pages') await this.baseline('PAGE', id, req);
+    const updated = await this.service.adminUpdate(
+      writableAdminContent(resource),
+      id,
+      body,
     );
+    if (resource === 'pages')
+      await this.version(
+        'PAGE',
+        id,
+        `Page details updated (${
+          Object.keys(body ?? {})
+            .slice(0, 6)
+            .join(', ') || 'no fields'
+        })`,
+        'update',
+        req,
+      );
+    return successEnvelope(req, updated);
   }
   @Post(':resource/:id/publish') async publish(
     @Req() req: AuthenticatedRequest,
     @Param('resource') resource: string,
     @Param('id') id: string,
   ) {
-    return successEnvelope(
-      req,
-      await this.service.adminPublish(writableAdminContent(resource), id, true),
+    if (resource === 'pages') await this.baseline('PAGE', id, req);
+    const published = await this.service.adminPublish(
+      writableAdminContent(resource),
+      id,
+      true,
     );
+    if (resource === 'pages')
+      await this.version('PAGE', id, 'Page published', 'publish', req);
+    return successEnvelope(req, published);
   }
   @Post(':resource/:id/unpublish') async unpublish(
     @Req() req: AuthenticatedRequest,
     @Param('resource') resource: string,
     @Param('id') id: string,
   ) {
-    return successEnvelope(
-      req,
-      await this.service.adminPublish(
-        writableAdminContent(resource),
-        id,
-        false,
-      ),
+    if (resource === 'pages') await this.baseline('PAGE', id, req);
+    const unpublished = await this.service.adminPublish(
+      writableAdminContent(resource),
+      id,
+      false,
     );
+    if (resource === 'pages')
+      await this.version('PAGE', id, 'Page unpublished', 'unpublish', req);
+    return successEnvelope(req, unpublished);
   }
   @Delete(':resource/:id') async remove(
     @Req() req: AuthenticatedRequest,
@@ -279,7 +339,17 @@ export class ExpandedAdminController {
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(req, await this.service.createPageSection(id, body));
+    await this.baseline('PAGE', id, req);
+    const section = await this.service.createPageSection(id, body);
+    await this.version(
+      'PAGE_SECTION',
+      section.id,
+      `Section "${section.heading ?? section.sectionKey}" added`,
+      'create',
+      req,
+    );
+    await this.version('PAGE', id, 'Section added to page', 'section-add', req);
+    return successEnvelope(req, section);
   }
   @Patch('pages/:id/sections/:sectionId') async updateSection(
     @Req() req: AuthenticatedRequest,
@@ -287,39 +357,72 @@ export class ExpandedAdminController {
     @Param('sectionId') sectionId: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(
+    await this.baseline('PAGE_SECTION', sectionId, req);
+    const section = await this.service.updatePageSection(id, sectionId, body);
+    // "visibility" is the only key on a device-visibility save, so naming it
+    // makes the history readable without opening each version.
+    const summary =
+      body && Object.keys(body).length === 1 && 'visibility' in body
+        ? 'Device visibility changed'
+        : `Section "${section.heading ?? section.sectionKey}" edited`;
+    await this.version(
+      'PAGE_SECTION',
+      sectionId,
+      summary,
+      'visibility' in (body ?? {}) ? 'visibility' : 'update',
       req,
-      await this.service.updatePageSection(id, sectionId, body),
     );
+    return successEnvelope(req, section);
   }
   @Delete('pages/:id/sections/:sectionId') async deleteSection(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Param('sectionId') sectionId: string,
   ) {
-    return successEnvelope(
+    await this.baseline('PAGE', id, req);
+    const removed = await this.service.deletePageSection(id, sectionId);
+    await this.version(
+      'PAGE',
+      id,
+      'Section removed from page',
+      'section-remove',
       req,
-      await this.service.deletePageSection(id, sectionId),
     );
+    return successEnvelope(req, removed);
   }
   @Post('pages/:id/sections/:sectionId/duplicate') async duplicateSection(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Param('sectionId') sectionId: string,
   ) {
-    return successEnvelope(
+    const copy = await this.service.duplicatePageSection(id, sectionId);
+    await this.version(
+      'PAGE_SECTION',
+      copy.id,
+      'Section duplicated',
+      'duplicate',
       req,
-      await this.service.duplicatePageSection(id, sectionId),
     );
+    await this.version(
+      'PAGE',
+      id,
+      'Section duplicated on page',
+      'section-add',
+      req,
+    );
+    return successEnvelope(req, copy);
   }
   @Post('pages/:id/sections/reorder') async reorderSections(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() body: { order?: string[] },
   ) {
-    return successEnvelope(
-      req,
-      await this.service.reorderPageSections(id, body.order ?? []),
+    await this.baseline('PAGE', id, req);
+    const ordered = await this.service.reorderPageSections(
+      id,
+      body.order ?? [],
     );
+    await this.version('PAGE', id, 'Sections reordered', 'reorder', req);
+    return successEnvelope(req, ordered);
   }
 }

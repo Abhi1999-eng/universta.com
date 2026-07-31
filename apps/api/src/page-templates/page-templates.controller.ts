@@ -16,6 +16,7 @@ import { Roles } from '../auth/auth.decorators';
 import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { successEnvelope } from '../catalog/catalog.responses';
+import { VersionsService } from '../versions/versions.service';
 import { PageTemplatesService } from './page-templates.service';
 
 @ApiTags('page-templates-admin')
@@ -24,7 +25,10 @@ import { PageTemplatesService } from './page-templates.service';
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class PageTemplatesAdminController {
-  constructor(private readonly templates: PageTemplatesService) {}
+  constructor(
+    private readonly templates: PageTemplatesService,
+    private readonly versions: VersionsService,
+  ) {}
 
   @Get() async list(
     @Req() req: AuthenticatedRequest,
@@ -50,22 +54,27 @@ export class PageTemplatesAdminController {
     @Req() req: AuthenticatedRequest,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(
-      req,
-      await this.templates.create(
-        {
-          name: body.name as string,
-          templateKey: body.templateKey as string | undefined,
-          description: body.description as string | null | undefined,
-          pageFamily: body.pageFamily as string,
-          defaultSections: body.defaultSections,
-          layoutConfig: body.layoutConfig as
-            Record<string, unknown> | null | undefined,
-          isActive: body.isActive as boolean | undefined,
-        },
-        req.user?.sub,
-      ),
+    const created = await this.templates.create(
+      {
+        name: body.name as string,
+        templateKey: body.templateKey as string | undefined,
+        description: body.description as string | null | undefined,
+        pageFamily: body.pageFamily as string,
+        defaultSections: body.defaultSections,
+        layoutConfig: body.layoutConfig as
+          Record<string, unknown> | null | undefined,
+        isActive: body.isActive as boolean | undefined,
+      },
+      req.user?.sub,
     );
+    await this.versions.record({
+      resourceType: 'PAGE_TEMPLATE',
+      resourceId: created.id,
+      changeSummary: 'Template created',
+      sourceAction: 'create',
+      actorUserId: req.user?.sub ?? null,
+    });
+    return successEnvelope(req, created);
   }
 
   @Patch(':id') async update(
@@ -73,23 +82,28 @@ export class PageTemplatesAdminController {
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(
-      req,
-      await this.templates.update(
-        id,
-        {
-          name: body.name as string | undefined,
-          templateKey: body.templateKey as string | undefined,
-          description: body.description as string | null | undefined,
-          pageFamily: body.pageFamily as string | undefined,
-          defaultSections: body.defaultSections,
-          layoutConfig: body.layoutConfig as
-            Record<string, unknown> | null | undefined,
-          isActive: body.isActive as boolean | undefined,
-        },
-        req.user?.sub,
-      ),
+    const updated = await this.templates.update(
+      id,
+      {
+        name: body.name as string | undefined,
+        templateKey: body.templateKey as string | undefined,
+        description: body.description as string | null | undefined,
+        pageFamily: body.pageFamily as string | undefined,
+        defaultSections: body.defaultSections,
+        layoutConfig: body.layoutConfig as
+          Record<string, unknown> | null | undefined,
+        isActive: body.isActive as boolean | undefined,
+      },
+      req.user?.sub,
     );
+    await this.versions.record({
+      resourceType: 'PAGE_TEMPLATE',
+      resourceId: id,
+      changeSummary: 'Template updated',
+      sourceAction: 'update',
+      actorUserId: req.user?.sub ?? null,
+    });
+    return successEnvelope(req, updated);
   }
 
   @Post(':id/duplicate') async duplicate(

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { DevicePreview } from "./DevicePreview";
+import { VersionHistory } from "./VersionHistory";
 
 /** Website Pages -- the front door of Website Builder.
  *
@@ -55,6 +56,7 @@ export function WebsitePagesManager() {
   const [kind, setKind] = useState("");
   const [reload, setReload] = useState(0);
   const [preview, setPreview] = useState<{ slug: string; title: string } | null>(null);
+  const [history, setHistory] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +203,25 @@ export function WebsitePagesManager() {
         </div>
       ) : null}
 
+      {history ? (
+        <div className="mt-5">
+          <VersionHistory
+            key={history.id}
+            resourceType="PAGE"
+            resourceId={history.id}
+            title={history.title}
+            onRestored={() => setReload((value) => value + 1)}
+          />
+          <button
+            type="button"
+            className="mt-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+            onClick={() => setHistory(null)}
+          >
+            Close version history
+          </button>
+        </div>
+      ) : null}
+
       <p className="mt-5 text-sm text-[#667085]">
         {loading
           ? "Loading website pages…"
@@ -279,6 +300,17 @@ export function WebsitePagesManager() {
                         className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
                       >
                         Preview
+                      </button>
+                    ) : null}
+                    {row.kind === "PAGE" && row.pageId ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setHistory({ id: row.pageId as string, title: row.label })
+                        }
+                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                      >
+                        History
                       </button>
                     ) : null}
                     <a

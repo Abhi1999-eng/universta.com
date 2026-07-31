@@ -51,7 +51,9 @@ export class PreviewService {
     );
     return {
       token,
-      expiresAt: new Date(Date.now() + PREVIEW_TTL_SECONDS * 1000).toISOString(),
+      expiresAt: new Date(
+        Date.now() + PREVIEW_TTL_SECONDS * 1000,
+      ).toISOString(),
       ttlSeconds: PREVIEW_TTL_SECONDS,
     };
   }

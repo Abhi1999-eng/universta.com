@@ -8,11 +8,19 @@ import { PreviewService } from './preview.service';
 const SECRET = 'test-preview-secret';
 const OTHER_SECRET = 'a-different-secret';
 
-function build(page: unknown = { id: 'p1', slug: 'about', status: 'DRAFT', sections: [] }) {
+function build(
+  page: unknown = { id: 'p1', slug: 'about', status: 'DRAFT', sections: [] },
+) {
   const jwt = new JwtService({});
   const runtimeConfig = { jwtAccessSecret: SECRET } as never;
-  const prisma = { page: { findFirst: jest.fn().mockResolvedValue(page) } } as never;
-  return { service: new PreviewService(jwt, runtimeConfig, prisma), jwt, prisma };
+  const prisma = {
+    page: { findFirst: jest.fn().mockResolvedValue(page) },
+  } as never;
+  return {
+    service: new PreviewService(jwt, runtimeConfig, prisma),
+    jwt,
+    prisma,
+  };
 }
 
 async function expectForbidden(promise: Promise<unknown>, code: string) {
@@ -37,15 +45,21 @@ describe('PreviewService', () => {
     const page = await service.previewPage('about', token);
     expect(page).toMatchObject({ slug: 'about', status: 'DRAFT' });
     // No status filter: a draft page must be reachable, a deleted one must not.
-    const where = (prisma as unknown as { page: { findFirst: jest.Mock } }).page.findFirst.mock
-      .calls[0][0].where;
+    const where = (prisma as unknown as { page: { findFirst: jest.Mock } }).page
+      .findFirst.mock.calls[0][0].where;
     expect(where).toEqual({ slug: 'about', deletedAt: null });
   });
 
   it('rejects an empty or malformed token', async () => {
     const { service } = build();
-    await expectForbidden(service.previewPage('about', ''), 'PREVIEW_TOKEN_INVALID');
-    await expectForbidden(service.previewPage('about', 'not.a.jwt'), 'PREVIEW_TOKEN_INVALID');
+    await expectForbidden(
+      service.previewPage('about', ''),
+      'PREVIEW_TOKEN_INVALID',
+    );
+    await expectForbidden(
+      service.previewPage('about', 'not.a.jwt'),
+      'PREVIEW_TOKEN_INVALID',
+    );
   });
 
   it('rejects an expired token', async () => {
@@ -59,7 +73,10 @@ describe('PreviewService', () => {
         audience: 'universta-preview',
       },
     );
-    await expectForbidden(service.previewPage('about', expired), 'PREVIEW_TOKEN_INVALID');
+    await expectForbidden(
+      service.previewPage('about', expired),
+      'PREVIEW_TOKEN_INVALID',
+    );
   });
 
   it('rejects a token signed with the wrong secret', async () => {
@@ -73,7 +90,10 @@ describe('PreviewService', () => {
         audience: 'universta-preview',
       },
     );
-    await expectForbidden(service.previewPage('about', forged), 'PREVIEW_TOKEN_INVALID');
+    await expectForbidden(
+      service.previewPage('about', forged),
+      'PREVIEW_TOKEN_INVALID',
+    );
   });
 
   it('rejects an access token presented as a preview token', async () => {
@@ -87,18 +107,27 @@ describe('PreviewService', () => {
         audience: 'universta-preview',
       },
     );
-    await expectForbidden(service.previewPage('about', accessShaped), 'PREVIEW_TOKEN_INVALID');
+    await expectForbidden(
+      service.previewPage('about', accessShaped),
+      'PREVIEW_TOKEN_INVALID',
+    );
   });
 
   it('rejects a valid token issued for a different page', async () => {
     const { service } = build();
     const { token } = await service.issue('page', 'about', 'admin-1');
-    await expectForbidden(service.previewPage('faq', token), 'PREVIEW_TOKEN_SCOPE');
+    await expectForbidden(
+      service.previewPage('faq', token),
+      'PREVIEW_TOKEN_SCOPE',
+    );
   });
 
   it('reports a missing page without leaking whether it ever existed', async () => {
     const { service } = build(null);
     const { token } = await service.issue('page', 'about', 'admin-1');
-    await expectForbidden(service.previewPage('about', token), 'PREVIEW_TARGET_MISSING');
+    await expectForbidden(
+      service.previewPage('about', token),
+      'PREVIEW_TARGET_MISSING',
+    );
   });
 });

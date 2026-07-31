@@ -149,7 +149,11 @@ function isEffectivelyFeatured(row: FeaturedRow, now: Date): boolean {
 export function applyListSort<T extends Record<string, unknown>>(
   rows: T[],
   sort: string | undefined,
-  fields: { name: (row: T) => string; amount?: (row: T) => number | null; deadline?: (row: T) => Date | null },
+  fields: {
+    name: (row: T) => string;
+    amount?: (row: T) => number | null;
+    deadline?: (row: T) => Date | null;
+  },
 ): T[] {
   if (!sort) return rows;
   const byName = (a: T, b: T) => fields.name(a).localeCompare(fields.name(b));
@@ -172,11 +176,15 @@ export function applyListSort<T extends Record<string, unknown>>(
       return [...rows].sort((a, b) => dateOf(b) - dateOf(a));
     case 'amount-desc':
       return fields.amount
-        ? [...rows].sort((a, b) => nullsLast(fields.amount!(a), fields.amount!(b), -1))
+        ? [...rows].sort((a, b) =>
+            nullsLast(fields.amount!(a), fields.amount!(b), -1),
+          )
         : rows;
     case 'amount-asc':
       return fields.amount
-        ? [...rows].sort((a, b) => nullsLast(fields.amount!(a), fields.amount!(b), 1))
+        ? [...rows].sort((a, b) =>
+            nullsLast(fields.amount!(a), fields.amount!(b), 1),
+          )
         : rows;
     case 'deadline':
       return fields.deadline

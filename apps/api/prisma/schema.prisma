@@ -57,6 +57,7 @@ model User {
   updatedPages                 Page[]                         @relation("PageUpdatedBy")
   createdPageTemplates         PageTemplate[]                 @relation("PageTemplateCreatedBy")
   updatedPageTemplates         PageTemplate[]                 @relation("PageTemplateUpdatedBy")
+  contentVersions              ContentVersion[]               @relation("ContentVersionCreatedBy")
   createdExperiments           Experiment[]                   @relation("ExperimentCreatedBy")
   createdSubjects              Subject[]                      @relation("SubjectCreatedBy")
   updatedSubjects              Subject[]                      @relation("SubjectUpdatedBy")
@@ -2145,4 +2146,41 @@ model Event {
   @@index([stateId])
   @@index([countryId])
   @@map("events")
+}
+
+/// Version history for Website Builder content.
+///
+/// One table for every versioned resource rather than a snapshot column per
+/// model: the Admin list, compare and restore flows are identical across
+/// Pages, Page Sections, Page Templates and the Global Header/Footer settings
+/// groups, and a single table keeps them that way.
+///
+/// `snapshotJson` holds the full state of the resource at that point, so a
+/// restore never has to reconstruct anything from diffs. `versionNumber` is
+/// per-resource and monotonic: a restore appends a new highest version rather
+/// than rewinding the counter, so later history is never lost.
+model ContentVersion {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  /// PAGE | PAGE_SECTION | PAGE_TEMPLATE | GLOBAL_HEADER | GLOBAL_FOOTER
+  resourceType        String   @map("resource_type") @db.VarChar(40)
+  /// Page/section/template id, or the settings group key for header/footer.
+  resourceId          String   @map("resource_id") @db.VarChar(150)
+  versionNumber       Int      @map("version_number")
+  snapshotJson        Json     @map("snapshot_json") @db.Json
+  /// Human-readable summary of what changed, shown in the Admin list.
+  changeSummary       String   @map("change_summary") @db.VarChar(500)
+  /// The editor action that produced this version (update, reorder,
+  /// visibility, publish, restore, ...), for filtering and audit.
+  sourceAction        String   @map("source_action") @db.VarChar(60)
+  /// Set only on versions produced by a restore, naming the version restored.
+  restoredFromVersion Int?     @map("restored_from_version")
+  createdByUserId     String?  @map("created_by_user_id") @db.Char(36)
+  createdAt           DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  createdBy User? @relation("ContentVersionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([resourceType, resourceId, versionNumber])
+  @@index([resourceType, resourceId, createdAt])
+  @@index([createdByUserId])
+  @@map("content_versions")
 }

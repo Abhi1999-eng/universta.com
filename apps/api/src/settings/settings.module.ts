@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { VersionsModule } from '../versions/versions.module';
 import {
   SettingsAdminController,
   SettingsPublicController,
@@ -8,7 +9,7 @@ import {
 import { SettingsService } from './settings.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, VersionsModule],
   controllers: [
     SettingsPublicController,
     SiteChromePublicController,

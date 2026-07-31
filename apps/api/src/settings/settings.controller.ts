@@ -14,6 +14,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import type { RequestWithId } from '../common/http.types';
+import { VersionsService } from '../versions/versions.service';
 import { SettingsService } from './settings.service';
 
 @ApiTags('settings-public')
@@ -43,7 +44,10 @@ export class SiteChromePublicController {
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class SettingsAdminController {
-  constructor(private readonly settings: SettingsService) {}
+  constructor(
+    private readonly settings: SettingsService,
+    private readonly versions: VersionsService,
+  ) {}
 
   @Get() async all(@Req() req: AuthenticatedRequest) {
     return successEnvelope(req, await this.settings.adminGetAll());
@@ -54,9 +58,22 @@ export class SettingsAdminController {
     @Param('group') group: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return successEnvelope(
-      req,
-      await this.settings.update(group, body, req.user?.sub),
-    );
+    const updated = await this.settings.update(group, body, req.user?.sub);
+    // Only the two chrome groups are versioned: they are the ones the
+    // Website Builder edits and the ones an admin would want to roll back.
+    const versioned = {
+      header: 'GLOBAL_HEADER',
+      footer: 'GLOBAL_FOOTER',
+    } as const;
+    const resourceType = versioned[group as keyof typeof versioned];
+    if (resourceType)
+      await this.versions.record({
+        resourceType,
+        resourceId: group,
+        changeSummary: `Global ${group} settings updated`,
+        sourceAction: 'update',
+        actorUserId: req.user?.sub ?? null,
+      });
+    return successEnvelope(req, updated);
   }
 }

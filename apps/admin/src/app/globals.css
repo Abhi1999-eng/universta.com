@@ -168,3 +168,190 @@ h4 {
   display: block;
   border: 0;
 }
+
+/* --- Website Builder version history ------------------------------------ */
+.wb-history {
+  border: 1px solid #d9e0ea;
+  border-radius: 0.9rem;
+  background: #fff;
+  padding: 1.25rem;
+}
+.wb-history-head h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.wb-history-head p {
+  margin: 0.4rem 0 0;
+  max-width: 60ch;
+  color: #667085;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.wb-history-error,
+.wb-history-notice,
+.wb-history-empty {
+  margin: 0.9rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.6rem;
+  font-size: 0.8125rem;
+}
+.wb-history-error {
+  background: #fef3f2;
+  color: #b42318;
+  font-weight: 600;
+}
+.wb-history-notice {
+  background: #ecfdf5;
+  color: #047857;
+  font-weight: 600;
+}
+.wb-history-empty {
+  background: #f6f8fb;
+  color: #667085;
+}
+.wb-history-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.wb-history-list > li {
+  border: 1px solid #eef1f5;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.9rem;
+}
+.wb-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.wb-history-summary {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0d1524;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.wb-history-version {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1657cf;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.wb-history-badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #6b5312;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+.wb-history-meta {
+  margin: 0.3rem 0 0;
+  color: #828b9b;
+  font-size: 0.75rem;
+}
+.wb-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.wb-history-actions button {
+  min-height: 40px;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #d9e0ea;
+  border-radius: 0.6rem;
+  background: #fff;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.wb-history-actions .wb-history-restore {
+  border-color: #1657cf;
+  color: #1657cf;
+  font-weight: 600;
+}
+.wb-history-current {
+  color: #047857;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.wb-history-confirm {
+  margin-top: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid #f0e2b8;
+  border-radius: 0.6rem;
+  background: #fff8e6;
+}
+.wb-history-confirm p {
+  margin: 0 0 0.6rem;
+  color: #6b5312;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.wb-history-confirm div {
+  display: flex;
+  gap: 0.5rem;
+}
+.wb-history-confirm button {
+  min-height: 40px;
+  padding: 0.35rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid #d9e0ea;
+  background: #fff;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.wb-history-confirm button:first-child {
+  border-color: #b42318;
+  background: #b42318;
+  color: #fff;
+  font-weight: 600;
+}
+.wb-history-compare {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+}
+.wb-history-compare h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0d1524;
+}
+.wb-history-compare table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.wb-history-compare th,
+.wb-history-compare td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #eef1f5;
+  text-align: left;
+  vertical-align: top;
+}
+.wb-history-compare thead th {
+  background: #fafbfd;
+  color: #828b9b;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.wb-history-compare tbody th {
+  font-weight: 600;
+  color: #0d1524;
+  white-space: nowrap;
+}
