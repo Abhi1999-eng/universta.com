@@ -23,6 +23,18 @@ function errorCode(response: { body: unknown }): string {
   return record(body(response).error).code as string;
 }
 
+function binaryParser(
+  response: NodeJS.ReadableStream,
+  callback: (error: Error | null, body: Buffer) => void,
+): void {
+  const chunks: Buffer[] = [];
+  response.on('data', (chunk: Buffer | string) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  });
+  response.on('end', () => callback(null, Buffer.concat(chunks)));
+  response.on('error', (error: Error) => callback(error, Buffer.alloc(0)));
+}
+
 describe('Bulk data import/export (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -102,7 +114,10 @@ describe('Bulk data import/export (e2e)', () => {
     const response = await admin(
       'get',
       '/api/v1/admin/bulk/jobs/template?format=xlsx',
-    ).expect(200);
+    )
+      .buffer(true)
+      .parse(binaryParser)
+      .expect(200);
     expect(response.headers['content-type']).toContain(
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
@@ -244,7 +259,10 @@ describe('Bulk data import/export (e2e)', () => {
     const response = await admin(
       'get',
       '/api/v1/admin/bulk/jobs/export?format=xlsx',
-    ).expect(200);
+    )
+      .buffer(true)
+      .parse(binaryParser)
+      .expect(200);
     expect(Buffer.isBuffer(response.body)).toBe(true);
     const rows = await parseXlsx(response.body as Buffer);
     const slugIndex = rows[0].indexOf('slug');
