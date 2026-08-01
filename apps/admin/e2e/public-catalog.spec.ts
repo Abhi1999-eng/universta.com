@@ -33,16 +33,22 @@ function observePageHealth(page: Page) {
 }
 
 test.describe('approved public subject and course discovery', () => {
-  test('renders the editorial home route with primary discovery actions', async ({ page }) => {
+  test('renders the Countries listing as the home route', async ({ page }) => {
+    // The Countries listing is the site's homepage: "/" renders it directly,
+    // and "/countries" is kept only as a redirect to the same content.
     await page.goto(webBaseUrl);
 
     await expect(page).toHaveURL(webBaseUrl);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    // Scope to the page body: the shared header/footer also expose a
+    await expect(page.getByLabel('Search a country')).toBeVisible();
+    // Scope to the page body: the shared header/footer also expose their own
     // counselling CTA, which is intended.
     const hero = page.locator('main');
-    await expect(hero.getByRole('link', { name: /Explore countries/i })).toHaveAttribute('href', '/countries');
-    await expect(hero.getByRole('link', { name: /Book free counselling/i }).first()).toHaveAttribute('href', '/counselling');
+    await expect(hero.getByRole('link', { name: /counsel/i }).first()).toHaveAttribute('href', /counselling/);
+
+    await page.goto(`${webBaseUrl}/countries`);
+    await expect(page).toHaveURL(webBaseUrl);
+    await expect(page.getByLabel('Search a country')).toBeVisible();
   });
 
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {

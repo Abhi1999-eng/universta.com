@@ -77,10 +77,19 @@ test.describe('public navigation discoverability', () => {
   });
 
   test('opens dropdowns and reaches a nested destination', async ({ page }) => {
+    // "Study Destinations" is a plain top-level link, not a dropdown --
+    // "Resources" is the header's only real dropdown (see
+    // register-website-navigation.ts), so it is what this exercises.
     await page.goto(webBaseUrl);
-    await page.getByRole('button', { name: 'Study Destinations' }).click();
-    await page.getByRole('link', { name: 'Cities', exact: true }).click();
-    await expect(page).toHaveURL(`${webBaseUrl}/cities`);
+    // The dropdown opens on hover, which is how a mouse user actually reaches
+    // it. Its trigger button also has its own onClick toggle for touch and
+    // keyboard use -- clicking it here would fire that toggle right after the
+    // hover has just opened the panel, immediately closing it again.
+    await page.getByRole('button', { name: 'Resources' }).hover();
+    // The footer also links to FAQ in its own group, so the click must be
+    // scoped to the header dropdown that was just opened.
+    await page.locator('header').getByRole('link', { name: 'FAQ', exact: true }).click();
+    await expect(page).toHaveURL(`${webBaseUrl}/faq`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 

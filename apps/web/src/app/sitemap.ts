@@ -21,11 +21,13 @@ const resources = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
+    // "/countries" now redirects to "/", which serves that same content as
+    // the homepage -- listing both here would put two canonical URLs for
+    // identical content in the sitemap.
     "/",
     "/about",
     "/contact",
     "/faq",
-    "/countries",
     "/subjects",
     "/courses",
     "/universities",
