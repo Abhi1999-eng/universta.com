@@ -76,6 +76,7 @@ export default defineConfig({
       env: {
         API_BASE_URL: apiBaseUrl,
         NEXT_PUBLIC_WEB_ORIGIN: webBaseUrl,
+        ADMIN_APP_ORIGIN: adminBaseUrl,
         NEXT_PUBLIC_SITE_URL: webBaseUrl,
       },
     },

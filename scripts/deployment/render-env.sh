@@ -61,6 +61,10 @@ admin_pending="${env_dir}/admin.env.pending"
   # to every server-side fetch for no benefit.
   printf 'API_BASE_URL=http://127.0.0.1:4000\n'
   printf 'WEB_ORIGIN=%s\n' "${web_origin}"
+  # Used by the public /preview response's frame-ancestors policy. Normal
+  # public pages remain unframeable; only the protected Admin may embed a
+  # short-lived draft preview.
+  printf 'ADMIN_APP_ORIGIN=%s\n' "${admin_origin}"
   # Absolute URLs in sitemap, robots and page metadata. Set at runtime because
   # the build happens in CI, which does not know the host's origin.
   printf 'NEXT_PUBLIC_SITE_URL=%s\n' "${web_origin}"
