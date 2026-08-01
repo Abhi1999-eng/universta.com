@@ -231,7 +231,7 @@ function CourseTemplateCard({
           </div>
           <div className="v">
             {tuition?.min
-              ? `${tuition.currencyCode ?? ''} ${Number(tuition.min).toLocaleString()}`
+              ? `${tuition.currencyCode ?? ''} ${Number(tuition.min).toLocaleString('en-US')}`
               : 'Select a destination'}
           </div>
         </div>

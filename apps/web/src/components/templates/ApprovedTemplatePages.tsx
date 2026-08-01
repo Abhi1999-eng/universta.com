@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/format';
 
 /* API-selected media can come from approved external asset hosts. */
 /* eslint-disable @next/next/no-img-element */
@@ -136,7 +137,7 @@ function EmptyTemplateState({ label }: { label: string }) {
 function moneyRange(profile: ProfileSummary['cost'] | undefined) {
   if (!profile?.tuitionMin) return null;
   const symbol = profile.currencySymbol ?? profile.currencyCode;
-  return `${symbol}${Number(profile.tuitionMin).toLocaleString()}${profile.tuitionMax ? `–${Number(profile.tuitionMax).toLocaleString()}` : '+'}/yr`;
+  return `${symbol}${Number(profile.tuitionMin).toLocaleString('en-US')}${profile.tuitionMax ? `–${Number(profile.tuitionMax).toLocaleString('en-US')}` : '+'}/yr`;
 }
 
 function postStudyWork(country: Country) {
@@ -178,7 +179,7 @@ function CountryTemplateCard({ country }: { country: Country }) {
           <h3>Study in {country.name}</h3>
           <div className="sub">
             {statistics?.universitiesCount != null
-              ? `${statistics.universitiesCount.toLocaleString()} universities`
+              ? `${statistics.universitiesCount.toLocaleString('en-US')} universities`
               : country.continent.name}
           </div>
         </div>
@@ -567,9 +568,9 @@ export function ApprovedCountriesListing({
           </div>
           <div className="stats">
             <div className="stat"><b>{meta.total}</b><span>Destinations</span></div>
-            <div className="stat"><b>{universityTotal.toLocaleString()}</b><span>Universities</span></div>
-            <div className="stat"><b>{courseTotal.toLocaleString()}</b><span>Courses</span></div>
-            <div className="stat"><b>{scholarshipTotal.toLocaleString()}</b><span>Scholarships</span></div>
+            <div className="stat"><b>{universityTotal.toLocaleString('en-US')}</b><span>Universities</span></div>
+            <div className="stat"><b>{courseTotal.toLocaleString('en-US')}</b><span>Courses</span></div>
+            <div className="stat"><b>{scholarshipTotal.toLocaleString('en-US')}</b><span>Scholarships</span></div>
             <div className="stat"><b>{continents.length}</b><span>Regions</span></div>
             <div className="stat"><b>{countries.filter((item) => item.featured).length}</b><span>Featured</span></div>
           </div>
@@ -821,7 +822,7 @@ function profileMoney(page: CountryPage, field: 'tuition' | 'living') {
   const max = field === 'tuition' ? cost.tuitionMax : cost.livingCostMax;
   const period = field === 'tuition' ? cost.tuitionPeriod : cost.livingCostPeriod;
   if (!min) return 'Not published';
-  return `${symbol}${Number(min).toLocaleString()}${max ? `–${Number(max).toLocaleString()}` : '+'}/${period === 'PER_MONTH' ? 'mo' : 'yr'}`;
+  return `${symbol}${Number(min).toLocaleString('en-US')}${max ? `–${Number(max).toLocaleString('en-US')}` : '+'}/${period === 'PER_MONTH' ? 'mo' : 'yr'}`;
 }
 
 function ProfileSource({
@@ -834,7 +835,7 @@ function ProfileSource({
     <p className="profile-source">
       <strong>Source:</strong> {profile.sourceReference}
       {profile.verifiedAt
-        ? ` · verified ${new Date(profile.verifiedAt).toLocaleDateString('en', { dateStyle: 'medium' })}`
+        ? ` · verified ${formatDate(profile.verifiedAt)}`
         : ''}
     </p>
   );
@@ -1058,8 +1059,8 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
       {statistics ? (
         <CountrySection id="structured-statistics" eyebrow="Verified profile" title="Destination statistics">
           <div className="cost-grid">
-            <article className="cost-card"><span>Universities</span><strong>{statistics.universitiesCount.toLocaleString()}</strong><p>Published destination count</p></article>
-            <article className="cost-card"><span>Courses</span><strong>{statistics.coursesCount.toLocaleString()}</strong><p>Published course count</p></article>
+            <article className="cost-card"><span>Universities</span><strong>{statistics.universitiesCount.toLocaleString('en-US')}</strong><p>Published destination count</p></article>
+            <article className="cost-card"><span>Courses</span><strong>{statistics.coursesCount.toLocaleString('en-US')}</strong><p>Published course count</p></article>
           </div>
           <ProfileSource profile={statistics} />
         </CountrySection>
@@ -1468,7 +1469,7 @@ function CourseTemplateCard({
       </div>
       <div className="course-facts">
         <div className="fact"><div className="k"><Icon name="clock" size={13} />Duration</div><div className="v">{duration}</div></div>
-        <div className="fact"><div className="k"><Icon name="money" size={13} />Tuition</div><div className="v">{tuition?.min ? `${tuition.currencyCode ?? ''} ${Number(tuition.min).toLocaleString()}` : 'Not published'}</div></div>
+        <div className="fact"><div className="k"><Icon name="money" size={13} />Tuition</div><div className="v">{tuition?.min ? `${tuition.currencyCode ?? ''} ${Number(tuition.min).toLocaleString('en-US')}` : 'Not published'}</div></div>
         <div className="fact"><div className="k"><Icon name="calendar" size={13} />Next intake</div><div className="v">{intake}</div></div>
         <div className="fact"><div className="k"><Icon name="globe" size={13} />Countries</div><div className="v">{course.availableCountryCount}</div></div>
       </div>

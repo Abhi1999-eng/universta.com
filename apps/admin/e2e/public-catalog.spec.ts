@@ -367,7 +367,7 @@ test.describe('approved public subject and course discovery', () => {
     await page.goto(`${courses}/diploma-cybersecurity?country=canada`);
     await page.getByRole('link', { name: 'Talk to a counsellor' }).click();
 
-    await expect(page.getByText('Started from: Course · diploma cybersecurity · canada')).toBeVisible();
+    await expect(page.getByText('Started from: Course · Diploma Cybersecurity · Canada')).toBeVisible();
     await expect(page.getByLabel('Interested country')).toHaveValue('canada');
   });
 });
