@@ -27,6 +27,22 @@ export function middleware(request: NextRequest) {
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+  if (request.nextUrl.pathname === "/preview") {
+    const configuredAdminOrigin = process.env.ADMIN_APP_ORIGIN;
+    const adminOrigin = configuredAdminOrigin ?? (
+      request.nextUrl.hostname === "localhost"
+        ? "http://localhost:3001"
+        : `${request.nextUrl.protocol}//admin.${request.nextUrl.hostname}${request.nextUrl.port ? `:${request.nextUrl.port}` : ""}`
+    );
+    response.headers.set(
+      "Content-Security-Policy",
+      `frame-ancestors 'self' ${adminOrigin}`,
+    );
+  } else {
+    // Draft preview is intentionally framed by the Admin origin above. Every
+    // other public document rejects framing to prevent clickjacking.
+    response.headers.set("X-Frame-Options", "DENY");
+  }
   if (!isBot && !existing) {
     response.cookies.set(COOKIE_NAME, anonymousId, {
       httpOnly: true,
