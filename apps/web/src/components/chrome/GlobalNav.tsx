@@ -34,6 +34,15 @@ function externalProps(node: { openInNewTab: boolean; href: string | null }) {
 function NavDropdown({ node, pathname }: { node: NavNode; pathname: string }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLLIElement>(null);
+  // Which pointer, if any, was pressed on the trigger immediately before the
+  // click now firing. A real mouse click always fires pointerenter (opening
+  // the panel below) before its own click, so a click that follows a mouse
+  // pointerdown is the second half of an interaction hover already resolved
+  // -- toggling here would instantly re-close what hover just opened. Cleared
+  // after every click so a stale value never survives to the next one; a
+  // keyboard Enter/Space activation never sets it, and a touch tap sets it to
+  // 'touch', so both fall through to the toggle below.
+  const lastPointerType = useRef<string | null>(null);
   const menuId = useId();
   const active = branchActive(pathname, node);
 
@@ -61,8 +70,15 @@ function NavDropdown({ node, pathname }: { node: NavNode; pathname: string }) {
     <li
       ref={wrapRef}
       className="usta-nav-item usta-has-menu"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onPointerEnter={(event) => {
+        // Filtered to a real mouse: touch devices can fire a synthetic hover
+        // after a tap ("ghost hover"), which would otherwise leave the panel
+        // stuck open with no un-hover to close it.
+        if (event.pointerType === 'mouse') setOpen(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse') setOpen(false);
+      }}
     >
       <button
         type="button"
@@ -70,7 +86,15 @@ function NavDropdown({ node, pathname }: { node: NavNode; pathname: string }) {
         aria-expanded={open}
         aria-controls={menuId}
         aria-current={active ? 'true' : undefined}
-        onClick={() => setOpen((value) => !value)}
+        onPointerDown={(event) => {
+          lastPointerType.current = event.pointerType;
+        }}
+        onClick={() => {
+          const pointerType = lastPointerType.current;
+          lastPointerType.current = null;
+          if (pointerType === 'mouse') return;
+          setOpen((value) => !value);
+        }}
       >
         {node.label}
         <svg viewBox="0 0 24 24" aria-hidden="true" className="usta-caret">
