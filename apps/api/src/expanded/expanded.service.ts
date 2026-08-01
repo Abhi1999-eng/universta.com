@@ -11,6 +11,7 @@ import { ExperimentsService } from '../experiments/experiments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DbNull } from '../generated/prisma/internal/prismaNamespaceBrowser';
 import { parseChromeConfig } from '../settings/chrome-overrides';
+import { isCanonicalPublicSlug } from '../common/public-slug';
 
 export type Resource =
   | 'universities'
@@ -430,20 +431,22 @@ export class ExpandedService {
           ? { campuses: { some: { state: { contains: query.state } } } }
           : {}),
       };
-      const all = await this.prisma.university.findMany({
-        where,
-        take: FEATURED_FETCH_CAP,
-        include: {
-          country: { select: { name: true, slug: true } },
-          campuses: {
-            where: { status: 'ACTIVE', deletedAt: null },
-            select: { id: true },
+      const all = (
+        await this.prisma.university.findMany({
+          where,
+          take: FEATURED_FETCH_CAP,
+          include: {
+            country: { select: { name: true, slug: true } },
+            campuses: {
+              where: { status: 'ACTIVE', deletedAt: null },
+              select: { id: true },
+            },
+            _count: {
+              select: { offerings: { where: publishedWhereScheduled(now) } },
+            },
           },
-          _count: {
-            select: { offerings: { where: publishedWhereScheduled(now) } },
-          },
-        },
-      });
+        })
+      ).filter((row) => isCanonicalPublicSlug(row.slug));
       const sorted = applyListSort(
         sortByFeatured(all, now, (row) => row.name),
         query.sort,
@@ -939,17 +942,19 @@ export class ExpandedService {
     if (type === 'universities')
       return this.ordered(
         slugs,
-        await this.prisma.university.findMany({
-          where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
-          include: {
-            country: true,
-            campuses: true,
-            accreditations: true,
-            _count: {
-              select: { offerings: { where: publishedWhereScheduled(now) } },
+        (
+          await this.prisma.university.findMany({
+            where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
+            include: {
+              country: true,
+              campuses: true,
+              accreditations: true,
+              _count: {
+                select: { offerings: { where: publishedWhereScheduled(now) } },
+              },
             },
-          },
-        }),
+          })
+        ).filter((row) => isCanonicalPublicSlug(row.slug)),
       );
     if (type === 'courses')
       return this.ordered(
@@ -985,28 +990,36 @@ export class ExpandedService {
     const now = new Date();
     const select = { slug: true, name: true } as const;
     if (type === 'countries')
-      return this.prisma.country.findMany({
-        where: publishedWhere(),
-        select,
-        orderBy: { name: 'asc' },
-      });
+      return (
+        await this.prisma.country.findMany({
+          where: publishedWhere(),
+          select,
+          orderBy: { name: 'asc' },
+        })
+      ).filter((row) => isCanonicalPublicSlug(row.slug));
     if (type === 'universities')
-      return this.prisma.university.findMany({
+      return (
+        await this.prisma.university.findMany({
+          where: publishedWhereScheduled(now),
+          select,
+          orderBy: { name: 'asc' },
+        })
+      ).filter((row) => isCanonicalPublicSlug(row.slug));
+    if (type === 'courses')
+      return (
+        await this.prisma.universityCourseOffering.findMany({
+          where: publishedWhereScheduled(now),
+          select: { slug: true, name: true },
+          orderBy: { name: 'asc' },
+        })
+      ).filter((row) => isCanonicalPublicSlug(row.slug));
+    return (
+      await this.prisma.consultant.findMany({
         where: publishedWhereScheduled(now),
         select,
         orderBy: { name: 'asc' },
-      });
-    if (type === 'courses')
-      return this.prisma.universityCourseOffering.findMany({
-        where: publishedWhereScheduled(now),
-        select: { slug: true, name: true },
-        orderBy: { name: 'asc' },
-      });
-    return this.prisma.consultant.findMany({
-      where: publishedWhereScheduled(now),
-      select,
-      orderBy: { name: 'asc' },
-    });
+      })
+    ).filter((row) => isCanonicalPublicSlug(row.slug));
   }
 
   private ordered(slugs: string[], rows: Array<{ slug: string }>) {
@@ -2220,6 +2233,17 @@ export class ExpandedService {
       throw new UnprocessableEntityException({
         code: 'SLUG_REQUIRED',
         message: 'A slug is required',
+        details: null,
+      });
+    if (
+      typeof data.slug === 'string' &&
+      data.slug.length > 0 &&
+      !isCanonicalPublicSlug(data.slug)
+    )
+      throw new UnprocessableEntityException({
+        code: 'SLUG_INVALID',
+        message:
+          'Slug must contain lowercase letters and numbers separated by single hyphens',
         details: null,
       });
     if (resource === 'events' && Array.isArray(body.speakers))
