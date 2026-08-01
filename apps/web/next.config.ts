@@ -2,6 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['localhost', '127.0.0.1'],
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+    ];
+  },
   // The App Router's file-system matcher does not register a route for a
   // segment that mixes literal text with a bracket in the same folder name
   // (e.g. `study-in-[countrySlug]` never appears in routes-manifest.json,
