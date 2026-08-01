@@ -8,12 +8,24 @@ function build() {
       findFirst: jest.fn(),
       update: jest.fn().mockResolvedValue({}),
     },
-    country: { count: jest.fn().mockResolvedValue(13) },
-    university: { count: jest.fn().mockResolvedValue(942) },
-    subject: { count: jest.fn().mockResolvedValue(8) },
-    course: { count: jest.fn().mockResolvedValue(25) },
-    scholarship: { count: jest.fn().mockResolvedValue(4) },
-    consultant: { count: jest.fn().mockResolvedValue(3) },
+    country: {
+      findMany: jest.fn().mockResolvedValue(
+        Array.from({ length: 13 }, (_, index) => ({
+          slug: `country-${index}`,
+        })),
+      ),
+    },
+    university: {
+      findMany: jest.fn().mockResolvedValue([{ slug: 'valid-university' }]),
+    },
+    subject: { findMany: jest.fn().mockResolvedValue([{ slug: 'subject' }]) },
+    course: { findMany: jest.fn().mockResolvedValue([{ slug: 'course' }]) },
+    scholarship: {
+      findMany: jest.fn().mockResolvedValue([{ slug: 'scholarship' }]),
+    },
+    consultant: {
+      findMany: jest.fn().mockResolvedValue([{ slug: 'consultant' }]),
+    },
     countryCourse: {
       findMany: jest
         .fn()
@@ -27,12 +39,13 @@ describe('StatsPillsService', () => {
   it('uses the canonical public country predicate', async () => {
     const { prisma, service } = build();
     await expect(service.count('PUBLISHED_COUNTRIES')).resolves.toBe(13);
-    expect(prisma.country.count).toHaveBeenCalledWith({
+    expect(prisma.country.findMany).toHaveBeenCalledWith({
       where: {
         status: 'PUBLISHED',
         deletedAt: null,
         continent: { status: 'ACTIVE', deletedAt: null },
       },
+      select: { slug: true },
     });
   });
 
@@ -52,7 +65,7 @@ describe('StatsPillsService', () => {
       prisma.scholarship,
       prisma.consultant,
     ]) {
-      expect(model.count).toHaveBeenCalledWith({
+      expect(model.findMany).toHaveBeenCalledWith({
         where: expect.objectContaining({
           status: 'PUBLISHED',
           deletedAt: null,
@@ -60,6 +73,7 @@ describe('StatsPillsService', () => {
             expect.objectContaining({ OR: expect.any(Array) }),
           ]),
         }),
+        select: { slug: true },
       });
     }
   });
