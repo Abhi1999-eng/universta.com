@@ -3,6 +3,10 @@ export interface CityState { name: string; slug: string }
 export interface CitySummary { id: string; name: string; slug: string; shortDescription: string | null; isFeatured: boolean; state: CityState | null; heroMedia: LocationMedia | null; }
 export interface CityDetail extends CitySummary { overview: string | null; country: { id: string; name: string; slug: string }; }
 export interface PaginationMeta { page: number; limit: number; total: number; totalPages: number; }
+/** The country-scoped city list also names the country it was scoped to, so a
+ * caller can title the page with the country's real display name rather than
+ * re-deriving one from the URL slug (which yields "canada", not "Canada"). */
+export interface CountryCityMeta extends PaginationMeta { country?: CityState }
 interface Envelope<T> { data: T | null; meta: unknown; error: { code: string; message: string } | null; }
 
 const baseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
@@ -21,7 +25,7 @@ export function getCountryStates(countrySlug: string) {
 export async function getCountryCities(countrySlug: string, params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
   const result = await request<CitySummary[]>(`/countries/${encodeURIComponent(countrySlug)}/cities${query ? `?${query}` : ''}`);
-  return { data: result.data, meta: result.meta as PaginationMeta };
+  return { data: result.data, meta: result.meta as CountryCityMeta };
 }
 
 /** Every published city, across every published country. Backs the global

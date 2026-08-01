@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CounsellingOptions } from '@/lib/counselling';
+import { labelFromSlug } from '@/lib/slug-label';
 
 export interface CounsellingContext {
   sourceType: 'general' | 'country' | 'subject' | 'specialization' | 'course';
@@ -75,11 +76,14 @@ function contextLabel(context: CounsellingContext): string {
     course: context.sourceCourseSlug,
   }[context.sourceType];
   if (context.sourceType === 'general' || !detail) return 'General counselling';
+  // These arrive from the URL as slugs, so they are title-cased for display:
+  // printing them verbatim showed visitors "Course · diploma cybersecurity ·
+  // canada" on the counselling form.
   const country =
     context.sourceType === 'course' && context.sourceCountrySlug
-      ? ` · ${context.sourceCountrySlug.replace(/-/g, ' ')}`
+      ? ` · ${labelFromSlug(context.sourceCountrySlug)}`
       : '';
-  return `${context.sourceType[0].toUpperCase()}${context.sourceType.slice(1)} · ${detail.replace(/-/g, ' ')}${country}`;
+  return `${context.sourceType[0].toUpperCase()}${context.sourceType.slice(1)} · ${labelFromSlug(detail)}${country}`;
 }
 
 function sameOriginReferrer(): string | undefined {
