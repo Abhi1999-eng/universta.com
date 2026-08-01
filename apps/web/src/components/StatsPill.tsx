@@ -48,7 +48,7 @@ export function StatsPill({ pill }: { pill?: ResolvedStatsPill | null }) {
               ·
             </span>
           ) : null}
-          <b>{item.value.toLocaleString()}</b> <span>{item.label}</span>
+          <b>{item.value.toLocaleString('en-US')}</b> <span>{item.label}</span>
         </span>
       ))}
     </span>

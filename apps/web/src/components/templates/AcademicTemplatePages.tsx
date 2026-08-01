@@ -1335,7 +1335,11 @@ export function ApprovedSpecializations({
             Part of <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
           </span>
           <h1>
-            Explore <span>{subject.name}</span>
+            {/* The explicit space survives into textContent -- what a screen
+                reader announces and a crawler indexes. A bare <br /> renders
+                the line break but leaves the words joined, which is how this
+                shipped as "…ScienceSpecializations". */}
+            Explore <span>{subject.name}</span>{' '}
             <br />
             Specializations
           </h1>

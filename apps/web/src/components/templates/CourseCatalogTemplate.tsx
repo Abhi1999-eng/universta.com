@@ -231,7 +231,7 @@ function CourseTemplateCard({
           </div>
           <div className="v">
             {tuition?.min
-              ? `${tuition.currencyCode ?? ''} ${Number(tuition.min).toLocaleString()}`
+              ? `${tuition.currencyCode ?? ''} ${Number(tuition.min).toLocaleString('en-US')}`
               : 'Select a destination'}
           </div>
         </div>
@@ -593,7 +593,10 @@ export function ApprovedCoursesListing({
         <div className="wrap hero-inner">
           <StatsPill pill={pill} />
           <h1>
-            Find the Perfect Course
+            {/* Explicit space: a bare <br /> gives the visual line break but
+                leaves textContent as "Courseto", which is what screen readers
+                announce and crawlers index. */}
+            Find the Perfect Course{' '}
             <br />
             to <span>Study Abroad</span>
           </h1>

@@ -20,7 +20,7 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
   await expect(page).toHaveURL(
     /\/counselling\?source=country&country=canada/,
   );
-  await expect(page.getByText(/Started from: Country · canada/)).toBeVisible();
+  await expect(page.getByText(/Started from: Country · Canada/)).toBeVisible();
   await expect(page.getByLabel('Interested country')).toHaveValue('canada');
 
   await page.getByLabel('Full name').fill(fullName);
