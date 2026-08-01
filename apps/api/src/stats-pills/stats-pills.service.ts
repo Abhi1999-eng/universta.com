@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { countCanonicalPublicSlugs } from '../common/public-slug';
 import {
   parseStatsPillConfig,
   parseStatsPillEnvelope,
@@ -107,25 +108,51 @@ export class StatsPillsService {
     };
     switch (source) {
       case 'PUBLISHED_COUNTRIES':
-        return this.prisma.country.count({
-          where: {
-            status: 'PUBLISHED',
-            deletedAt: null,
-            continent: { status: 'ACTIVE', deletedAt: null },
-          },
-        });
+        return countCanonicalPublicSlugs(
+          await this.prisma.country.findMany({
+            where: {
+              status: 'PUBLISHED',
+              deletedAt: null,
+              continent: { status: 'ACTIVE', deletedAt: null },
+            },
+            select: { slug: true },
+          }),
+        );
       case 'PUBLISHED_UNIVERSITIES':
-        return this.prisma.university.count({ where: scheduled });
+        return countCanonicalPublicSlugs(
+          await this.prisma.university.findMany({
+            where: scheduled,
+            select: { slug: true },
+          }),
+        );
       case 'PUBLISHED_SUBJECTS':
-        return this.prisma.subject.count({
-          where: { status: 'PUBLISHED', deletedAt: null },
-        });
+        return countCanonicalPublicSlugs(
+          await this.prisma.subject.findMany({
+            where: { status: 'PUBLISHED', deletedAt: null },
+            select: { slug: true },
+          }),
+        );
       case 'PUBLISHED_COURSES':
-        return this.prisma.course.count({ where: scheduled });
+        return countCanonicalPublicSlugs(
+          await this.prisma.course.findMany({
+            where: scheduled,
+            select: { slug: true },
+          }),
+        );
       case 'PUBLISHED_SCHOLARSHIPS':
-        return this.prisma.scholarship.count({ where: scheduled });
+        return countCanonicalPublicSlugs(
+          await this.prisma.scholarship.findMany({
+            where: scheduled,
+            select: { slug: true },
+          }),
+        );
       case 'PUBLISHED_CONSULTANTS':
-        return this.prisma.consultant.count({ where: scheduled });
+        return countCanonicalPublicSlugs(
+          await this.prisma.consultant.findMany({
+            where: scheduled,
+            select: { slug: true },
+          }),
+        );
       case 'COURSE_DESTINATIONS': {
         const rows = await this.prisma.countryCourse.findMany({
           where: {
