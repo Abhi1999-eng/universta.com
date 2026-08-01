@@ -41,7 +41,13 @@ test.describe('published Phase 1 comparisons', () => {
         await input.fill(slug);
         await page.getByRole('button', { name: /^Add / }).first().click();
       }
-      await expect(page.getByRole('button', { name: /^Add / }).first()).toBeDisabled();
+      await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
+      await expect(page.getByRole('button', { name: 'Compare selected' })).toBeEnabled();
+      expect(
+        await page.getByRole('button', { name: /^Add / }).evaluateAll((buttons) =>
+          buttons.every((button) => (button as HTMLButtonElement).disabled),
+        ),
+      ).toBe(true);
       await page.getByRole('button', { name: 'Compare selected' }).click();
       await expect(page).toHaveURL(new RegExp(`/compare/${comparison.type}\\?items=`));
       expect(new URL(page.url()).searchParams.get('items')).toBe(items);
