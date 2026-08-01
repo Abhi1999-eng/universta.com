@@ -1677,7 +1677,9 @@ export function ApprovedCoursesListing({
       <section className="hero">
         <div className="wrap hero-inner">
           <span className="hero-pill"><span className="dot" /><b>{meta.total}</b> published programs</span>
-          <h1>Find the Perfect Course<br />to <span>Study Abroad</span></h1>
+          {/* The space before <br /> is deliberate: without it textContent
+              reads "Courseto", which is what screen readers announce. */}
+          <h1>Find the Perfect Course <br />to <span>Study Abroad</span></h1>
           <p className="lede">Explore published programs and compare duration, tuition, intakes and destination availability.</p>
           <div className="course-search-area" ref={searchAreaRef}>
             <form

@@ -157,7 +157,13 @@ engines and to anyone the client demonstrates the platform to.
 **Reproduction.** Observed `canonical: null` at all three viewports in the
 route sweep; every sibling route returned a canonical.
 
-**Status.** OPEN.
+**Fix.** `generateMetadata` now declares
+`alternates.canonical = /subjects/{slug}/specializations`, matching every
+other public route (including on the not-found branch).
+
+**Files changed.** `subjects/[slug]/specializations/page.tsx`
+
+**PR.** #30 · **Status.** Fix written, CI pending, not yet deployed.
 
 ---
 
@@ -180,7 +186,16 @@ content, which is what screen readers announce and what search engines index.
 Visually these wrap onto separate lines, so the defect is invisible on screen
 but present in the accessibility tree.
 
-**Status.** OPEN.
+**Root cause.** JSX strips the whitespace surrounding a `<br />`, so the
+element supplies the visual line break but no text separator.
+
+**Fix.** An explicit `{' '}` before each `<br />`, in all three headings
+(the two observed plus a duplicate of the courses hero in a second template).
+
+**Files changed.** `AcademicTemplatePages.tsx`, `CourseCatalogTemplate.tsx`,
+`ApprovedTemplatePages.tsx`
+
+**PR.** #30 · **Status.** Fix written, CI pending, not yet deployed.
 
 ---
 
@@ -192,5 +207,5 @@ but present in the accessibility tree.
 | ISS-002 | Critical | Fixed in PR #30, not deployed |
 | ISS-003 | Major | Fixed in PR #30, not deployed |
 | ISS-004 | Major | OPEN |
-| ISS-005 | Major | OPEN |
-| ISS-006 | Minor | OPEN |
+| ISS-005 | Major | Fixed in PR #30, not deployed |
+| ISS-006 | Minor | Fixed in PR #30, not deployed |
