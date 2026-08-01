@@ -180,7 +180,30 @@ more instructive than the result.
 
 | Requirement | Status | Evidence | Missing |
 | --- | --- | --- | --- |
-| Countries / universities / courses / consultants | PARTIAL | all four routes 200; `/compare/countries` renders an empty state with 0 articles | **selection, add/remove, duplicate prevention, min/max rules, refresh/direct-URL behaviour and deleted-entity handling not verified** |
+| Countries / universities / courses / consultants | LOCALLY COMPLETE; HOSTED PENDING | Shared searchable published-record selector; server-side option registry uses the same publication/scheduling predicates as comparison resolution; 2–3 selection, duplicate exclusion, remove/re-add and shareable URL state covered by focused Playwright | deploy and run hosted lifecycle at 1536/768/390 |
+
+The earlier broader-acceptance commit `3f84067` was never pushed and could not
+be recovered from GitHub. The comparison branch was therefore reimplemented
+from the recorded contract against `main` (`0aee70a`). Raw comma-separated slug
+editing is no longer the product UI. Canonical comparison URLs retain the
+comma-separated `items` query representation so reload, direct links and
+Back/Forward remain stable.
+
+## Sidebar auto-scroll assertion root cause
+
+The intermittent hosted assertion combined a fixed network wait with a local
+unit test that stubbed geometry on one rendered tree and then called a second
+independent `render()`. The reveal effect therefore ran against unstubbed DOM
+and the test never asserted the sidebar's exact movement. The product reveal
+now uses `useLayoutEffect`, and the unit test rerenders the same mounted tree,
+provides geometry dynamically for the newly active row, and asserts the exact
+nearest-edge delta (`scrollTop = 640`) while proving document scroll remains
+unchanged.
+
+The Admin unit lane also previously collected the database cleanup integration
+test without a `DATABASE_URL`. It now has an explicit `test:db` Vitest lane;
+the normal unit command remains deterministic while CI can still run the real
+MySQL cleanup proof rather than silently dropping it.
 
 ### M. Marketing and supporting pages
 

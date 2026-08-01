@@ -60,6 +60,11 @@ export function phaseCompare<T>(type: string, items: string[]) {
     `/compare/${encodeURIComponent(type)}?items=${encodeURIComponent(items.join(","))}`,
   ).then((result) => result.data);
 }
+export function phaseComparisonOptions<T>(type: string) {
+  return request<T[]>(`/compare/${encodeURIComponent(type)}/options`).then(
+    (result) => result.data,
+  );
+}
 
 export type RedirectMatch = { targetPath: string; httpStatusCode: number };
 /** Unlike `request`, tolerates a null result — most paths have no redirect. */

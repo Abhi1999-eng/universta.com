@@ -36,9 +36,13 @@ test.describe('published Phase 1 comparisons', () => {
       const items = comparison.items.join(',');
       await page.goto(path);
 
-      const input = page.getByLabel('Published slugs (up to three)');
-      await input.fill(items);
-      await page.getByRole('button', { name: 'Compare' }).click();
+      const input = page.getByLabel(`Search published ${comparison.type}`);
+      for (const slug of comparison.items) {
+        await input.fill(slug);
+        await page.getByRole('button', { name: /^Add / }).first().click();
+      }
+      await expect(page.getByRole('button', { name: /^Add / }).first()).toBeDisabled();
+      await page.getByRole('button', { name: 'Compare selected' }).click();
       await expect(page).toHaveURL(new RegExp(`/compare/${comparison.type}\\?items=`));
       expect(new URL(page.url()).searchParams.get('items')).toBe(items);
       await expect(
@@ -46,11 +50,17 @@ test.describe('published Phase 1 comparisons', () => {
       ).toHaveCount(4);
 
       await page.reload();
-      await expect(input).toHaveValue(items);
+      await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
       await page.goBack({ waitUntil: 'commit' });
       await expect(page).toHaveURL(path);
       await page.goForward({ waitUntil: 'commit' });
-      await expect(input).toHaveValue(items);
+      await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
+
+      const firstLabel = await page.getByLabel('Selected comparison items').locator('span').first().innerText();
+      await page.getByRole('button', { name: new RegExp(`Remove ${firstLabel.replace('×', '').trim()}`) }).click();
+      await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(2);
+      await input.fill(comparison.items[0]);
+      await page.getByRole('button', { name: /^Add / }).first().click();
 
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
         'content',

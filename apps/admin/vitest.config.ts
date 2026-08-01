@@ -19,6 +19,7 @@ export default defineConfig({
       // only exercised as a side effect of an e2e run.
       'e2e/helpers/**/*.test.ts',
     ],
+    exclude: ['e2e/helpers/**/*.db.test.ts'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,

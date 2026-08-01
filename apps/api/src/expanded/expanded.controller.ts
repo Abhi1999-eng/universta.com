@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -150,6 +151,15 @@ export class ExpandedPublicController {
       req,
       await this.service.compare(type, raw.split(',')),
     );
+  }
+  @Get('compare/:type/options') async comparisonOptions(
+    @Req() req: RequestWithId,
+    @Param('type')
+    type: 'countries' | 'universities' | 'courses' | 'consultants',
+  ) {
+    if (!['countries', 'universities', 'courses', 'consultants'].includes(type))
+      throw new BadRequestException('Unknown comparison type');
+    return successEnvelope(req, await this.service.comparisonOptions(type));
   }
   @Get('redirects') async redirect(
     @Req() req: RequestWithId,

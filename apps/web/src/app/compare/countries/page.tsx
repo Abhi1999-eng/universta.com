@@ -1,6 +1,6 @@
 import { CompareView } from "@/components/phase1/CompareView";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { phaseCompare } from "@/lib/phase1";
+import { phaseCompare, phaseComparisonOptions } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +25,12 @@ export default async function CompareCountries({
     .filter(Boolean)
     .slice(0, 3);
   let result: Comparison = { items: [], invalid: [] };
+  let options: { slug: string; name: string }[] = [];
   try {
-    result = await phaseCompare<Comparison>("countries", items);
+    [result, options] = await Promise.all([
+      phaseCompare<Comparison>("countries", items),
+      phaseComparisonOptions<{ slug: string; name: string }>("countries"),
+    ]);
   } catch {}
-  return <CompareView type="countries" result={result} items={items} />;
+  return <CompareView type="countries" result={result} items={items} options={options} />;
 }

@@ -979,6 +979,36 @@ export class ExpandedService {
     );
   }
 
+  async comparisonOptions(
+    type: 'countries' | 'universities' | 'courses' | 'consultants',
+  ) {
+    const now = new Date();
+    const select = { slug: true, name: true } as const;
+    if (type === 'countries')
+      return this.prisma.country.findMany({
+        where: publishedWhere(),
+        select,
+        orderBy: { name: 'asc' },
+      });
+    if (type === 'universities')
+      return this.prisma.university.findMany({
+        where: publishedWhereScheduled(now),
+        select,
+        orderBy: { name: 'asc' },
+      });
+    if (type === 'courses')
+      return this.prisma.universityCourseOffering.findMany({
+        where: publishedWhereScheduled(now),
+        select: { slug: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+    return this.prisma.consultant.findMany({
+      where: publishedWhereScheduled(now),
+      select,
+      orderBy: { name: 'asc' },
+    });
+  }
+
   private ordered(slugs: string[], rows: Array<{ slug: string }>) {
     const bySlug = new Map(rows.map((row) => [row.slug, row]));
     return {
