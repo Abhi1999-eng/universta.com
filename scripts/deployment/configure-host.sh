@@ -121,6 +121,7 @@ server {
     server_name ${web_host} _;
     server_tokens off;
     client_max_body_size 2m;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -140,6 +141,7 @@ server {
     server_name ${admin_host};
     server_tokens off;
     client_max_body_size 2m;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
@@ -163,6 +165,7 @@ server {
     server_name ${api_host};
     server_tokens off;
     client_max_body_size 2m;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     location / {
         proxy_pass http://127.0.0.1:4000;

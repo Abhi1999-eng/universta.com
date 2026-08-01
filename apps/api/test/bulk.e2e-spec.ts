@@ -6,6 +6,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApplication } from '../src/bootstrap';
+import { parseXlsx, toXlsx } from '../src/bulk/xlsx.util';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 type RecordValue = Record<string, unknown>;
@@ -97,6 +98,28 @@ describe('Bulk data import/export (e2e)', () => {
     );
   });
 
+  it('downloads a valid XLSX template with the expected header', async () => {
+    const response = await admin(
+      'get',
+      '/api/v1/admin/bulk/jobs/template?format=xlsx',
+    ).expect(200);
+    expect(response.headers['content-type']).toContain(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    const rows = await parseXlsx(response.body as Buffer);
+    expect(rows[0]).toEqual([
+      'slug',
+      'title',
+      'department',
+      'employmentType',
+      'location',
+      'remoteStatus',
+      'summary',
+      'status',
+    ]);
+  });
+
   it('dry-run reports a row-level error without writing anything', async () => {
     const before = await prisma.job.count({ where: { slug: jobSlugA } });
     const csv = 'slug,title,status\n' + `${jobSlugA},,DRAFT`;
@@ -110,6 +133,23 @@ describe('Bulk data import/export (e2e)', () => {
     expect(errors[0].errors[0]).toMatch(/title is required/);
     const after = await prisma.job.count({ where: { slug: jobSlugA } });
     expect(after).toBe(before);
+  });
+
+  it('parses XLSX uploads during dry-run without writing anything', async () => {
+    const before = await prisma.job.count({ where: { slug: jobSlugA } });
+    const workbook = await toXlsx(
+      ['slug', 'title', 'status'],
+      [{ slug: jobSlugA, title: '', status: 'DRAFT' }],
+    );
+    const response = await admin('post', '/api/v1/admin/bulk/jobs/dry-run')
+      .attach('file', workbook, 'jobs.xlsx')
+      .expect(201);
+    const result = data(response);
+    expect(result.totalRows).toBe(1);
+    const errors = result.errors as { line: number; errors: string[] }[];
+    expect(errors).toHaveLength(1);
+    expect(errors[0].errors[0]).toMatch(/title is required/);
+    expect(await prisma.job.count({ where: { slug: jobSlugA } })).toBe(before);
   });
 
   it('imports a valid CSV row in create mode', async () => {
@@ -198,6 +238,18 @@ describe('Bulk data import/export (e2e)', () => {
     ).expect(200);
     expect(response.text).toContain(jobSlugA);
     expect(response.text).toContain(jobSlugB);
+  });
+
+  it('exports a valid XLSX workbook including both rows', async () => {
+    const response = await admin(
+      'get',
+      '/api/v1/admin/bulk/jobs/export?format=xlsx',
+    ).expect(200);
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    const rows = await parseXlsx(response.body as Buffer);
+    const slugIndex = rows[0].indexOf('slug');
+    const slugs = rows.slice(1).map((row) => row[slugIndex]);
+    expect(slugs).toEqual(expect.arrayContaining([jobSlugA, jobSlugB]));
   });
 
   it('bulk-archives the selected records, which then disappear from the public listing', async () => {
