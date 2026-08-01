@@ -147,6 +147,52 @@ describe('memory-only admin auth client', () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it('waits and makes one more attempt when the retry also loses to the same rotation', async () => {
+    // Reproduces the intermittent hosted logout: the immediate retry can land
+    // before the browser has applied the winning tab's Set-Cookie, so it also
+    // comes back superseded. Previously this cleared a session that was never
+    // actually over; the fix is a short wait before one final attempt.
+    setAuthenticatedSession('old-token', user);
+    const assign = vi.spyOn(window.location, 'assign');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(errorResponse('REFRESH_TOKEN_SUPERSEDED', 401))
+      .mockResolvedValueOnce(errorResponse('REFRESH_TOKEN_SUPERSEDED', 401))
+      .mockResolvedValueOnce(
+        response({ accessToken: 'recovered-token', tokenType: 'Bearer', expiresIn: 900, user }),
+      )
+      .mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await authFetch('/api/future');
+
+    expect(result.status).toBe(200);
+    expect(assign).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBe('recovered-token');
+    expect(
+      fetchMock.mock.calls.filter(([input]) => input === '/api/v1/admin/auth/refresh'),
+    ).toHaveLength(3);
+  });
+
+  it('gives up once the bounded superseded retries are exhausted', async () => {
+    setAuthenticatedSession('old-token', user);
+    const assign = vi.spyOn(window.location, 'assign');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(errorResponse('REFRESH_TOKEN_SUPERSEDED', 401))
+      .mockResolvedValueOnce(errorResponse('REFRESH_TOKEN_SUPERSEDED', 401))
+      .mockResolvedValueOnce(errorResponse('REFRESH_TOKEN_SUPERSEDED', 401));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await authFetch('/api/future');
+
+    expect(assign).toHaveBeenCalled();
+    expect(getAccessToken()).toBeNull();
+    expect(
+      fetchMock.mock.calls.filter(([input]) => input === '/api/v1/admin/auth/refresh'),
+    ).toHaveLength(3);
+  });
+
   it('keeps the session when refresh fails for a reason other than rejection', async () => {
     // A 503 or a dropped connection says nothing about the session. Ending it
     // here would sign an admin out over a momentary API hiccup.

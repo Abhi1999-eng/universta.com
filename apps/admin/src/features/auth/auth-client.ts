@@ -139,6 +139,25 @@ function isAuthRejection(error: unknown): boolean {
   );
 }
 
+/** True only for the specific "someone else rotated this token first" code,
+ * as opposed to a token that is actually invalid or expired. */
+function isSupersededRejection(error: unknown): boolean {
+  return error instanceof AuthClientError && error.code === 'REFRESH_TOKEN_SUPERSEDED';
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// The browser applies a concurrent winning rotation's Set-Cookie
+// asynchronously. Under real network latency an immediate retry can read the
+// cookie jar before that update lands, fail as superseded a second time, and
+// (previously) log the admin out of a session that was never actually over.
+// This wait is deliberately fixed and short: it only needs to outlast the gap
+// between two responses that are already in flight together, not a real
+// round trip.
+const SUPERSEDED_RETRY_DELAY_MS = 300;
+
 async function attemptRefresh(generation: number): Promise<string | null> {
   const data = await authRequest<AuthResponseData>(AUTH_PATHS.refresh, {
     method: 'POST',
@@ -170,12 +189,29 @@ async function performRefresh(generation: number): Promise<string | null> {
     try {
       return await attemptRefresh(generation);
     } catch (retryError) {
-      if (isAuthRejection(retryError)) {
-        // Rejected twice with a cookie that has had time to be replaced. The
-        // session really is over.
-        clearAuthenticatedSession();
+      if (!isAuthRejection(retryError)) {
+        return null;
       }
-      return null;
+      if (!isSupersededRejection(retryError)) {
+        // Rejected twice for a reason other than a rotation race -- an
+        // actually invalid or expired token. The session really is over.
+        clearAuthenticatedSession();
+        return null;
+      }
+
+      // Still superseded: the retry above most likely landed before the
+      // browser had applied the winning rotation's Set-Cookie. Give it a
+      // moment, then make one bounded final attempt before concluding the
+      // session is actually gone.
+      await delay(SUPERSEDED_RETRY_DELAY_MS);
+      try {
+        return await attemptRefresh(generation);
+      } catch (finalError) {
+        if (isAuthRejection(finalError)) {
+          clearAuthenticatedSession();
+        }
+        return null;
+      }
     }
   }
 }

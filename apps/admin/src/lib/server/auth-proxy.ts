@@ -19,6 +19,11 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   INVALID_ACCESS_TOKEN: 'Invalid access token',
   INVALID_CREDENTIALS: 'Invalid email or password',
   INVALID_REFRESH_TOKEN: 'Invalid refresh token',
+  // Was missing from this whitelist, so `safeError` collapsed it to the
+  // generic AUTH_REQUEST_FAILED before it ever reached the browser. The admin
+  // client's rotation-race recovery depends on telling this code apart from a
+  // genuinely invalid token -- collapsing it made that recovery impossible.
+  REFRESH_TOKEN_SUPERSEDED: 'Refresh token was already rotated',
   VALIDATION_ERROR: 'Invalid request',
 };
 
