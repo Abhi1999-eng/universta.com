@@ -135,7 +135,7 @@ describe('sidebar reveals the selected row', () => {
 
   it('scrolls an off-screen selection into view and moves nothing else', () => {
     pathname.mockReturnValue('/settings');
-    const { container } = render(
+    const { container, rerender } = render(
       <AdminShell>
         <p>content</p>
       </AdminShell>,
@@ -147,11 +147,18 @@ describe('sidebar reveals the selected row', () => {
 
     const documentScrollBefore = window.scrollY;
     scroller.scrollTop = 0;
-    stubGeometry(scroller, 900);
+    scroller.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 300, height: 300 }) as DOMRect;
+    const originalRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.getAttribute('aria-current') === 'page')
+        return ({ top: 900, bottom: 940, height: 40 }) as DOMRect;
+      return originalRect.call(this);
+    };
 
     // Re-render so the reveal effect runs against the stubbed geometry.
     pathname.mockReturnValue('/media');
-    render(
+    rerender(
       <AdminShell>
         <p>content</p>
       </AdminShell>,
@@ -159,6 +166,8 @@ describe('sidebar reveals the selected row', () => {
 
     // The main document was never scrolled; only the sidebar container may move.
     expect(window.scrollY).toBe(documentScrollBefore);
+    expect(scroller.scrollTop).toBe(640);
+    HTMLElement.prototype.getBoundingClientRect = originalRect;
   });
 
   it('does not scroll when the selected row is already visible', () => {

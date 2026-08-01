@@ -224,6 +224,12 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .phase1-honeypot { position: absolute; left: -10000px; }
 .phase1-contact-form p, .phase1-notice { color: var(--body); line-height: 1.6; }
 .phase1-compare { padding: 72px 0 104px; }
+.comparison-selector { display: grid; gap: 12px; margin-bottom: 28px; }
+.comparison-selector > input { min-height: 48px; border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; }
+.comparison-options, .comparison-selected { display: flex; flex-wrap: wrap; gap: 8px; }
+.comparison-options button, .comparison-selected span { border: 1px solid var(--line); border-radius: 999px; background: white; padding: 8px 12px; }
+.comparison-selected span { background: var(--soft); }
+.comparison-selected button { border: 0; background: transparent; margin-left: 8px; cursor: pointer; }
 .phase1-compare-desktop { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: white; }
 .phase1-compare-desktop table { width: 100%; min-width: 720px; border-collapse: collapse; }
 .phase1-compare-desktop th, .phase1-compare-desktop td { padding: 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }

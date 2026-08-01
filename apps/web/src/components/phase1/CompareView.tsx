@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
 import type { AnyRecord } from "./PhaseOneViews";
+import { ComparisonSelector, type ComparisonOption } from "./ComparisonSelector";
 
 function title(row: AnyRecord) {
   return row.name ?? row.title ?? "Published item";
@@ -52,10 +53,12 @@ export function CompareView({
   type,
   result,
   items,
+  options,
 }: {
   type: string;
   result: { items: AnyRecord[]; invalid: string[] };
   items: string[];
+  options: ComparisonOption[];
 }) {
   const fields =
     type === "countries"
@@ -80,20 +83,7 @@ export function CompareView({
         </div>
       </section>
       <section className="shell phase1-compare">
-        <form action={`/compare/${type}`} className="catalog-toolbar">
-          <div>
-            <label htmlFor="items">Published slugs (up to three)</label>
-            <div className="catalog-search">
-              <input
-                id="items"
-                name="items"
-                defaultValue={items.join(",")}
-                placeholder="first-slug,second-slug"
-              />
-              <button className="button">Compare</button>
-            </div>
-          </div>
-        </form>
+        <ComparisonSelector type={type} initial={items} options={options} />
         {result.invalid.length ? (
           <p className="phase1-notice">
             Unavailable or unpublished: {result.invalid.join(", ")}

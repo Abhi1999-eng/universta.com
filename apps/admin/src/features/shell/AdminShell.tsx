@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { NAV_GROUPS, findNavItem, navItemKey, resolveActiveNavItem } from './nav-config';
 
@@ -44,7 +44,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const drawerRef = useRef<HTMLElement>(null);
   const wasMobileOpen = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mobileOpen) {
       document.body.style.overflow = '';
       if (wasMobileOpen.current) {
