@@ -54,7 +54,9 @@ fi
 
 rm -rf \
   "${staging}/apps/web/.next/cache" \
-  "${staging}/apps/admin/.next/cache"
+  "${staging}/apps/admin/.next/cache" \
+  "${staging}/apps/web/.next/dev" \
+  "${staging}/apps/admin/.next/dev"
 
 printf '%s\n' "${sha}" > "${staging}/DEPLOYMENT_SHA"
 commit_time="$(git show -s --format=%ct "${sha}")"
@@ -69,6 +71,11 @@ if tar --version 2>/dev/null | grep -q 'GNU tar'; then
     -C "${staging}" .
 else
   COPYFILE_DISABLE=1 tar -czf "${archive}" -C "${staging}" .
+fi
+
+if tar -tzf "${archive}" | grep -Eq '^\./apps/(web|admin)/\.next/(cache|dev)/'; then
+  printf 'Release archive unexpectedly contains a Next.js cache or dev tree.\n' >&2
+  exit 1
 fi
 
 (
