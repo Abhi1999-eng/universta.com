@@ -15,8 +15,13 @@ export function ComparisonSelector({ type, initial, options }: {
   const [query, setQuery] = useState("");
   const available = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return options.filter((option) => !selected.includes(option.slug) &&
-      (!needle || (option.name ?? option.title ?? option.slug).toLowerCase().includes(needle)));
+    return options.filter((option) => {
+      if (selected.includes(option.slug)) return false;
+      if (!needle) return true;
+      const label = option.name ?? option.title ?? option.slug;
+      return label.toLowerCase().includes(needle) ||
+        option.slug.toLowerCase().includes(needle);
+    });
   }, [options, query, selected]);
   const compare = () => {
     if (selected.length < 2) return;
