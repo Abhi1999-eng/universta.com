@@ -19,6 +19,33 @@ case "${action}" in
       exit 1
     }
     remote_script="set -euo pipefail
+# Recovery must happen before the artifact is downloaded or even its deploy
+# scripts are extracted: a full root volume cannot create the temporary
+# directory needed to run the normal deploy cleanup.
+releases_root='/opt/universta/releases'
+current_release=\$(readlink -f /opt/universta/current 2>/dev/null || true)
+previous_release=\$(readlink -f /opt/universta/previous 2>/dev/null || true)
+for protected in \"\${current_release}\" \"\${previous_release}\"; do
+  case \"\${protected}\" in
+    \"\${releases_root}\"/[0-9a-f]*)
+      rm -rf \
+        \"\${protected}/apps/web/.next/dev\" \
+        \"\${protected}/apps/admin/.next/dev\"
+      ;;
+    '') ;;
+    *) printf 'Refusing unexpected protected release path: %s\\n' \"\${protected}\" >&2; exit 1 ;;
+  esac
+done
+if [[ -d \"\${releases_root}\" ]]; then
+  for candidate in \"\${releases_root}\"/* \"\${releases_root}\"/.*.staging; do
+    [[ -e \"\${candidate}\" ]] || continue
+    [[ \"\${candidate}\" == \"\${current_release}\" || \"\${candidate}\" == \"\${previous_release}\" ]] && continue
+    name=\$(basename \"\${candidate}\")
+    if [[ \"\${name}\" =~ ^[0-9a-f]{40}\$ || \"\${name}\" =~ ^\\.[0-9a-f]{40}\\.staging\$ ]]; then
+      rm -rf \"\${candidate}\"
+    fi
+  done
+fi
 temp_dir=\$(mktemp -d /tmp/universta-deploy.XXXXXX)
 trap 'rm -rf \"\${temp_dir}\"' EXIT
 artifact=\"\${temp_dir}/universta-${sha}.tar.gz\"
