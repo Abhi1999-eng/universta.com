@@ -9,6 +9,7 @@ import {
 import type { Prisma } from '../generated/prisma/client';
 import { ExpandedService } from '../expanded/expanded.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StructuredLogger } from '../common/structured-logger.service';
 
 /** Every "General platform configuration" screen the client asked for maps
  * to exactly one SiteSetting row per group (settingKey === group name),
@@ -132,7 +133,10 @@ function sanitizeGroup(group: SettingsGroup, body: Record<string, unknown>) {
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: StructuredLogger,
+  ) {}
 
   async adminGetAll() {
     const rows = await this.prisma.siteSetting.findMany({
@@ -187,8 +191,13 @@ export class SettingsService {
     // it never supplies its own links.
     const headerKey = chrome.header.navigationMenuKey || globalHeaderKey;
     const footerKey = chrome.footer.navigationMenuKey || globalFooterKey;
-    const menus = await this.prisma.navigationMenu.findMany({
-      where: { menuKey: { in: [headerKey, footerKey] }, status: 'ACTIVE' },
+    // Fetched without the status filter so a menu that exists but is
+    // INACTIVE can be told apart from one that was never created -- the
+    // public site previously rendered both as an empty nav with nothing in
+    // the logs, which is exactly how the header menu sat empty in production
+    // for hours after an unrelated change deactivated it.
+    const allMenus = await this.prisma.navigationMenu.findMany({
+      where: { menuKey: { in: [headerKey, footerKey] } },
       include: {
         items: {
           where: { status: 'ACTIVE' },
@@ -197,8 +206,20 @@ export class SettingsService {
         },
       },
     });
+    for (const key of [headerKey, footerKey]) {
+      const menu = allMenus.find((row) => row.menuKey === key);
+      if (menu && menu.status !== 'ACTIVE') {
+        this.logger.logError('site chrome menu resolved to an inactive menu', {
+          menuKey: key,
+          menuId: menu.id,
+          status: menu.status,
+        });
+      }
+    }
     const treeFor = (key: string) => {
-      const menu = menus.find((row) => row.menuKey === key);
+      const menu = allMenus.find(
+        (row) => row.menuKey === key && row.status === 'ACTIVE',
+      );
       return menu ? ExpandedService.navigationTree(menu.items) : [];
     };
     return {
