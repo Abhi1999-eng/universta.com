@@ -57,6 +57,18 @@ test.describe('published Phase 1 comparisons', () => {
 
       await page.reload();
       await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
+
+      // Prove Back/Forward independently from reload. A reload may replace the
+      // current browser history entry, so create a fresh base -> comparison
+      // transition before asserting traversal in both directions.
+      await page.goto(path);
+      await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(0);
+      for (const slug of comparison.items) {
+        await input.fill(slug);
+        await page.getByRole('button', { name: /^Add / }).first().click();
+      }
+      await page.getByRole('button', { name: 'Compare selected' }).click();
+      await expect(page).toHaveURL(new RegExp(`/compare/${comparison.type}\\?items=`));
       await page.goBack({ waitUntil: 'commit' });
       await expect(page).toHaveURL(path);
       await page.goForward({ waitUntil: 'commit' });
