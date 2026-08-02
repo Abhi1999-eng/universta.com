@@ -2208,6 +2208,29 @@ export class ExpandedService {
         'publishEndsAt',
         'displayOrder',
       ]),
+      // ISS-023. Every other resource above whitelists its writable columns;
+      // 'pages' had no entry at all, so `!allowed[resource]` short-circuited
+      // true and let any body key reach Prisma unfiltered -- including a
+      // request that omitted the required, non-defaulted `pageType` column,
+      // which Prisma rejects with a validation error the generic catch below
+      // doesn't recognise, surfacing as a raw 500.
+      pages: new Set([
+        'pageType',
+        'title',
+        'shortTitle',
+        'slug',
+        'layoutKey',
+        'templateId',
+        'shortDescription',
+        'status',
+        'isHomepage',
+        'displayOrder',
+        // The page-scheduling UI (PageCmsEditor) already writes these on
+        // every save -- they must stay whitelisted or this fix would silently
+        // break that existing feature.
+        'startsAt',
+        'endsAt',
+      ]),
     };
     const data: Data = {};
     for (const [key, value] of Object.entries(body))
@@ -2242,6 +2265,15 @@ export class ExpandedService {
       throw new UnprocessableEntityException({
         code: 'QUOTE_REQUIRED',
         message: 'A testimonial quote is required',
+        details: null,
+      });
+    // ISS-023. `pageType` has no default in the schema, so a create that
+    // omits it used to reach Prisma and crash with an unhandled
+    // PrismaClientValidationError (a raw 500) instead of a normal 422.
+    if (resource === 'pages' && !partial && !this.optionalText(data.pageType))
+      throw new UnprocessableEntityException({
+        code: 'PAGE_TYPE_REQUIRED',
+        message: 'A page type is required',
         details: null,
       });
     if (
