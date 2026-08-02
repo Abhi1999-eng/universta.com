@@ -199,13 +199,211 @@ element supplies the visual line break but no text separator.
 
 ---
 
+---
+
+## ISS-007 — Success stories returned 500 instead of naming the missing field
+
+**Where.** `POST /admin/expanded/success-stories`
+
+**Symptom.** Creating a success story without a journey body answered HTTP 500.
+A server error tells an admin nothing about what to correct, and the record
+could not be created at all through the intended workflow.
+
+**Root cause.** The journey field was dereferenced before it was validated.
+
+**Fix.** A `JOURNEY_REQUIRED` guard, so the API answers a validation error that
+names the field.
+
+**Files changed.** `apps/api/src/expanded/expanded.service.ts`
+
+**PR.** #31 · **Status.** Fixed and deployed.
+
+---
+
+## ISS-008 — A blank Subject slug was rejected despite the field inviting it
+
+**Where.** Admin → Subjects → Create subject
+
+**Symptom.** The Slug field's placeholder reads "Generated from name", but
+leaving it blank failed with `VALIDATION_ERROR` — "slug must be longer than or
+equal to 1 characters". The advertised default creation path did not work.
+
+**Root cause.** The form held the untouched field as `""` and sent that. The
+API types slug as *optional*; an empty string is not the same as an absent key.
+
+**Proven against production.** `POST` with `slug: ""` → 422. `POST` with the
+key omitted → 201 with the slug derived from the name.
+
+**Fix.** Blank optional values are dropped from the payload — `JSON.stringify`
+removes `undefined` keys, which is what lets the server derive the slug.
+
+**Files changed.** `apps/admin/src/features/catalog/SubjectForm.tsx`
+
+**PR.** #32 · **Status.** Fixed and deployed. Pinned by `subject-slug-payload.test.ts`.
+
+---
+
+## ISS-009 — A Subject could not be created without choosing media
+
+**Where.** Admin → Subjects → Create subject
+
+**Symptom.** Creating a subject without picking an icon, listing or hero image
+failed with "iconMediaId must be a UUID". Since all three pickers are optional,
+a default creation could not succeed at all.
+
+**Root cause.** Same as ISS-008 — the three unset pickers were sent as `""`
+against fields typed as optional UUIDs.
+
+**Fix.** Unset media ids are omitted from the payload so the server stores null.
+
+**Files changed.** `apps/admin/src/features/catalog/SubjectForm.tsx`
+
+**PR.** #32 · **Status.** Fixed and deployed. Pinned by `subject-slug-payload.test.ts`.
+
+---
+
+## ISS-010 — The Subject editor opened blank for every subject without SEO
+
+**Where.** Admin → Subjects → Edit (all five production subjects)
+
+**Symptom.** The editor rendered with empty fields and "Catalog request
+failed". The module was effectively uneditable.
+
+**Root cause.** The SEO endpoints answer `{ data: null }` to mean "no SEO
+configured yet". The shared `request` helper treated *any* null payload as a
+failure and threw. Because the editor loads the record and its SEO with
+`Promise.all`, that rejection discarded the record too.
+
+**Fix.** A `requestNullable` helper for endpoints where a null payload is a
+legitimate answer; `getSubjectSeo` and `getCourseSeo` use it. A real API error
+still throws, so genuine failures are not swallowed.
+
+**Files changed.** `apps/admin/src/features/catalog/catalog-client.ts`
+
+**PR.** #33 · **Status.** Fixed and deployed. Pinned by `seo-nullable.test.ts`.
+
+---
+
+## ISS-011 — Every media picker failed to load its library
+
+**Where.** Admin → Subjects → Edit, and Admin → Courses → Edit
+
+**Symptom.** All three Subject media pickers showed "No media selected" — even
+for records that already had an image attached — and opening a picker offered
+an empty library.
+
+**Root cause.** `MediaOptionsQueryDto` validates `limit` with `@Max(50)`. Both
+editors requested `limit: 100`, so the endpoint answered 400 and neither ever
+received a media list. The Subject editor swallowed the rejection with
+`.catch(() => undefined)`, which is why it surfaced as "no media" rather than
+as an error.
+
+**Proven against production.**
+
+| Request | Result |
+| --- | --- |
+| `/admin/media-options?limit=100` | `400` — `limit must not be greater than 50` |
+| `/admin/media-options?limit=50` | `200` |
+| `/admin/media-options` | `200` |
+
+**Fix.** `listEditorialMedia` clamps `limit` to the documented maximum so no
+call site can exceed the contract; both editors ask for 50; and the Subject
+editor surfaces a media-load failure instead of hiding it.
+
+**Files changed.** `catalog-client.ts`, `SubjectForm.tsx`, `CourseForm.tsx`
+
+**PR.** #34 · **Status.** Fixed and deployed. Pinned by `media-options-limit.test.ts`.
+
+---
+
+## ISS-012 — The console could hang on "Checking your admin session…" forever
+
+**Severity.** Critical — the admin becomes unusable until a hard reload.
+
+**Where.** Any protected admin route.
+
+**Symptom.** Observed against production during this acceptance pass: an editor
+URL held the "Checking your admin session…" screen for a full 60 seconds
+instead of rendering its form. This is the same failure family as the
+previously reported intermittent login bounce.
+
+**Root cause.** Two compounding faults.
+
+1. The auth `fetch` carried no abort signal, so a connection that opened but
+   was never answered stayed pending indefinitely.
+2. `initializeSession` awaited `refreshSession()` with no catch, and nothing
+   re-runs that effect. `ProtectedBoundary` renders the checking screen while
+   `status === 'initializing'`, so a step that neither resolved nor rejected
+   stranded the console there permanently.
+
+`refreshSession` also shares one module-level promise between all callers, so a
+single stalled refresh handed every later caller the same hung promise.
+
+**Fix.** Auth requests are bounded by a 15s timeout so they always settle, and
+`initializeSession` always reaches a terminal status. A timeout is not a
+verdict on the session — `performRefresh` already treats a non-rejection
+failure as "the refresh did not happen" and leaves the session standing.
+
+**Files changed.** `auth-client.ts`, `AuthProvider.tsx`
+
+**PR.** #35 · **Status.** Fixed and deployed. Pinned by `session-init.test.tsx`
+and `auth-timeout.test.ts`. The regression guard was verified to fail without
+the fix.
+
+---
+
+## ISS-013 — A junk record sits in the production Universities list
+
+**Severity.** Major — it is publicly visible.
+
+**Where.** Admin → Universities; public `/universities`
+
+**Symptom.** A record named `hvhjhj` with the slug `/lk` is present and
+**PUBLISHED**, so it appears on the public universities listing among the five
+real institutions.
+
+**Assessment.** This is leftover keyboard-mash test input in the client's own
+data, not a code defect. It is listed here because it is client-visible and
+must be removed before any demonstration.
+
+**Status.** OPEN — flagged for removal. Not deleted unilaterally: it is the
+client's production record, and deletion is theirs to authorise.
+
+---
+
+## ISS-014 — "Add Campuse" is not a word
+
+**Severity.** Cosmetic.
+
+**Where.** Admin → Universities → editor, repeatable groups.
+
+**Symptom.** The button reads **"Add Campuse"**. The label is built by
+singularising "Campuses" by trimming a trailing "s", which is wrong for a word
+whose plural adds "es". "Add Accreditation" beside it is correct.
+
+**Status.** OPEN — cosmetic, batched for a later pass.
+
+---
+
 ## Summary
 
-| ID | Severity | Status |
-| --- | --- | --- |
-| ISS-001 | Blocker | OPEN |
-| ISS-002 | Critical | Fixed in PR #30, not deployed |
-| ISS-003 | Major | Fixed in PR #30, not deployed |
-| ISS-004 | Major | OPEN |
-| ISS-005 | Major | Fixed in PR #30, not deployed |
-| ISS-006 | Minor | Fixed in PR #30, not deployed |
+| ID | Severity | Area | Status |
+| --- | --- | --- | --- |
+| ISS-001 | Blocker | Content data | Fixed — seven modules populated |
+| ISS-002 | Critical | Web rendering | Fixed, deployed (PR #30) |
+| ISS-003 | Major | Web rendering | Fixed, deployed (PR #30) |
+| ISS-004 | Major | Content copy | **OPEN** |
+| ISS-005 | Major | SEO | Fixed, deployed (PR #30) |
+| ISS-006 | Minor | Accessibility | Fixed, deployed (PR #30) |
+| ISS-007 | Major | API | Fixed, deployed (PR #31) |
+| ISS-008 | Major | Admin — Subjects | Fixed, deployed (PR #32) |
+| ISS-009 | Major | Admin — Subjects | Fixed, deployed (PR #32) |
+| ISS-010 | Critical | Admin — Subjects | Fixed, deployed (PR #33) |
+| ISS-011 | Major | Admin — media | Fixed, deployed (PR #34) |
+| ISS-012 | Critical | Admin — auth | Fixed, deployed (PR #35) |
+| ISS-013 | Major | Client data | **OPEN** — needs client sign-off to delete |
+| ISS-014 | Cosmetic | Admin — Universities | **OPEN** |
+
+Twelve of fourteen are fixed and deployed. Of the two that remain open, ISS-013
+is a client-owned production record and ISS-004 is client-owned copy; both are
+data decisions rather than code, and ISS-014 is cosmetic.
