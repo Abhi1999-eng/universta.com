@@ -131,6 +131,7 @@ export class StaticPageSeoService {
     return STATIC_PAGES.map((definition) => ({
       key: definition.key,
       label: definition.label,
+      defaultRobotsIndex: definition.defaultRobotsIndex,
       seo: byKey.get(definition.key) ?? null,
     }));
   }
