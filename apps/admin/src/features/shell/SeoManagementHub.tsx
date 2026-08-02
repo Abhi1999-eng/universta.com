@@ -30,7 +30,7 @@ type StaticSeo = {
   robotsIndex: boolean;
   robotsFollow: boolean;
 };
-type StaticRow = { key: string; label: string; seo: StaticSeo | null };
+type StaticRow = { key: string; label: string; defaultRobotsIndex: boolean; seo: StaticSeo | null };
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
@@ -49,7 +49,7 @@ function StaticSeoEditor({ row, onSaved }: { row: StaticRow; onSaved: (key: stri
   const [seoTitle, setSeoTitle] = useState(row.seo?.seoTitle ?? "");
   const [metaDescription, setMetaDescription] = useState(row.seo?.metaDescription ?? "");
   const [canonicalUrl, setCanonicalUrl] = useState(row.seo?.canonicalUrl ?? "");
-  const [robotsIndex, setRobotsIndex] = useState(row.seo?.robotsIndex ?? true);
+  const [robotsIndex, setRobotsIndex] = useState(row.seo?.robotsIndex ?? row.defaultRobotsIndex);
   const [robotsFollow, setRobotsFollow] = useState(row.seo?.robotsFollow ?? true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
