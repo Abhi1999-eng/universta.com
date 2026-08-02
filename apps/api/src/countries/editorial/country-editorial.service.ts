@@ -73,6 +73,15 @@ function inputJson(value: unknown): Prisma.InputJsonValue | undefined {
 function trim(value: string | undefined): string | undefined {
   return value === undefined ? undefined : value.trim();
 }
+/** ISS-028. `mediaIds()` already treats '' as "nothing selected"
+ * (`Boolean('')` is false), but the upsert below wrote `dto.ogMediaId` /
+ * `dto.twitterMediaId` straight through -- an empty string landed in a
+ * MediaAsset foreign key column, which MySQL rejects as a reference to a
+ * row that doesn't exist. Every save of a Country's SEO metadata without an
+ * Open Graph or Twitter image crashed with an unhandled 500. */
+function mediaIdOrNull(value: string | undefined): string | null {
+  return value ? value : null;
+}
 function scalarValues(
   record: Record<string, unknown>,
 ): Record<string, string | number | boolean | null> {
@@ -615,10 +624,10 @@ export class CountryEditorialService {
         focusKeyword: trim(dto.focusKeyword),
         ogTitle: trim(dto.ogTitle),
         ogDescription: trim(dto.ogDescription),
-        ogMediaId: dto.ogMediaId,
+        ogMediaId: mediaIdOrNull(dto.ogMediaId),
         twitterTitle: trim(dto.twitterTitle),
         twitterDescription: trim(dto.twitterDescription),
-        twitterMediaId: dto.twitterMediaId,
+        twitterMediaId: mediaIdOrNull(dto.twitterMediaId),
         robotsIndex: dto.robotsIndex ?? true,
         robotsFollow: dto.robotsFollow ?? true,
         schemaJson: inputJson(dto.schemaJson),
@@ -631,10 +640,10 @@ export class CountryEditorialService {
         focusKeyword: trim(dto.focusKeyword),
         ogTitle: trim(dto.ogTitle),
         ogDescription: trim(dto.ogDescription),
-        ogMediaId: dto.ogMediaId,
+        ogMediaId: mediaIdOrNull(dto.ogMediaId),
         twitterTitle: trim(dto.twitterTitle),
         twitterDescription: trim(dto.twitterDescription),
-        twitterMediaId: dto.twitterMediaId,
+        twitterMediaId: mediaIdOrNull(dto.twitterMediaId),
         robotsIndex: dto.robotsIndex ?? true,
         robotsFollow: dto.robotsFollow ?? true,
         schemaJson: inputJson(dto.schemaJson),
