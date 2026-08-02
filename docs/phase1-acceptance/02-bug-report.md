@@ -448,6 +448,35 @@ CR-32). Only the missing per-field breakdown was a defect — that is ISS-015.
 
 ---
 
+## ISS-016 — University course offerings holds zero records
+
+**Severity.** Major — it makes three admin controls unusable and leaves a gap
+in the catalog.
+
+**Where.** Admin → University course offerings. Surfaces as an empty relation
+in Success stories, Testimonials and Scholarships.
+
+**Symptom.** `GET /admin/phase1/offerings` answers `200` with an empty array.
+Because there are no offerings, the "University course offering (optional)"
+select in the Success story and Testimonial editors offers nothing but its
+placeholder, and the Scholarship editor's "Eligible university course
+offerings" matrix has no rows to tick.
+
+**Assessment.** This is not a code defect. The control renders correctly and
+would populate the moment an offering existed — it was verified against the API
+rather than inferred from the empty select, which is why it is recorded as
+*not applicable* in the coverage sheet rather than as a failure.
+
+It is a **content gap**, in the same family as ISS-001: an offering is what
+connects a university to a course, so without any, a visitor cannot get from a
+university to what it actually teaches, and three admin controls can never be
+used.
+
+**Status.** OPEN — client-owned data. The module and its import path already
+work; it needs records.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -466,8 +495,9 @@ CR-32). Only the missing per-field breakdown was a defect — that is ISS-015.
 | ISS-012 | Critical | Admin — auth | Fixed, deployed (PR #35) |
 | ISS-013 | Major | Client data | **OPEN** — needs client sign-off to delete |
 | ISS-014 | Cosmetic | Admin — Universities | **OPEN** |
-| ISS-015 | Major | Admin — proxy | Fixed (PR #36), awaiting deploy |
+| ISS-015 | Major | Admin — proxy | Fixed, deployed (PR #36) |
+| ISS-016 | Major | Content data | **OPEN** — client-owned |
 
-Twelve are fixed and deployed, one is merged pending deploy. Of the three still
-open, ISS-013 is a client-owned production record and ISS-004 is client-owned
-copy — both are data decisions rather than code — and ISS-014 is cosmetic.
+Twelve are fixed and deployed. The four that remain open are all decisions
+about content rather than code: two are client-owned records (ISS-013,
+ISS-016), one is client-owned copy (ISS-004), and one is cosmetic (ISS-014).
