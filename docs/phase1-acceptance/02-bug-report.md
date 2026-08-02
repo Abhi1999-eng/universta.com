@@ -477,6 +477,48 @@ work; it needs records.
 
 ---
 
+## ISS-019 — Navigation menu links cannot be managed from the admin
+
+**Severity.** Major — the client cannot change their own site navigation.
+
+**Where.** Admin → Navigation menus (`/phase1/navigation-menus`).
+
+**Symptom.** The three menus are listed, but there is **no way to open one**.
+The row offers Publish, Unpublish and Archive — and no Edit. The only editing
+surface anywhere in the module is an "Advanced JSON draft" textarea on the
+create form.
+
+The links themselves are equally unreachable through the API:
+
+| Request | Result |
+| --- | --- |
+| `GET /admin/phase1/navigation-menus` | 200 — no `items` in the payload |
+| `GET /admin/phase1/navigation-menus/{id}` | 200 — no `items` in the payload |
+| `GET /admin/phase1/navigation-menus/{id}/items` | 404 |
+| `GET /admin/phase1/navigation-menu-items` | 404 |
+| `GET /admin/phase1/navigation-items` | 404 |
+
+**The links do exist.** `NavigationMenu` has an `items NavigationItem[]`
+relation, the public site-chrome query loads them with
+`include: { items: { where: { status: 'ACTIVE' } } }`, and the live header and
+footer render fully — verified at all three viewports. So the data is real and
+correct; only the admin's access to it is missing.
+
+**Why it matters here in particular.** The comment above that same query records
+that the header menu "sat empty in production for hours after an unrelated
+change deactivated it". If that recurs, the admin has Publish/Unpublish and
+nothing else — there is no screen on which to inspect or repair the links.
+
+**Also found.** A third menu, "Primary" (`menuKey: primary`), sits beside
+"Primary Navigation" (`menuKey: header`). The site chrome only ever reads
+`header` and `footer`, so `primary` is an orphan: an admin editing it — the
+obvious-looking one — would see no effect on the site.
+
+**Status.** OPEN — needs development: an items API and an edit screen. This is
+the largest remaining gap found in the acceptance pass.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -484,7 +526,7 @@ work; it needs records.
 | ISS-001 | Blocker | Content data | Fixed — seven modules populated |
 | ISS-002 | Critical | Web rendering | Fixed, deployed (PR #30) |
 | ISS-003 | Major | Web rendering | Fixed, deployed (PR #30) |
-| ISS-004 | Major | Content copy | **OPEN** |
+| ISS-004 | Major | Content copy | **OPEN** — content |
 | ISS-005 | Major | SEO | Fixed, deployed (PR #30) |
 | ISS-006 | Minor | Accessibility | Fixed, deployed (PR #30) |
 | ISS-007 | Major | API | Fixed, deployed (PR #31) |
@@ -493,11 +535,15 @@ work; it needs records.
 | ISS-010 | Critical | Admin — Subjects | Fixed, deployed (PR #33) |
 | ISS-011 | Major | Admin — media | Fixed, deployed (PR #34) |
 | ISS-012 | Critical | Admin — auth | Fixed, deployed (PR #35) |
-| ISS-013 | Major | Client data | **OPEN** — needs client sign-off to delete |
-| ISS-014 | Cosmetic | Admin — Universities | **OPEN** |
+| ISS-013 | Major | Client data | **OPEN** — content |
+| ISS-014 | Cosmetic | Admin — Universities | **OPEN** — cosmetic |
 | ISS-015 | Major | Admin — proxy | Fixed, deployed (PR #36) |
-| ISS-016 | Major | Content data | **OPEN** — client-owned |
+| ISS-016 | Major | Content data | **OPEN** — content |
+| ISS-017 | Major | Content data | **OPEN** — content |
+| ISS-018 | Minor | Admin — Website Builder | **OPEN** — small code fix |
+| ISS-019 | Major | Admin — Navigation | **OPEN** — needs development |
 
-Twelve are fixed and deployed. The four that remain open are all decisions
-about content rather than code: two are client-owned records (ISS-013,
-ISS-016), one is client-owned copy (ISS-004), and one is cosmetic (ISS-014).
+Twelve are fixed and deployed. Of the seven open, four are content decisions
+(ISS-004, ISS-013, ISS-016, ISS-017), one is cosmetic (ISS-014), one is a
+single mis-targeted link (ISS-018), and **ISS-019 is the only one that needs
+real development work**.
