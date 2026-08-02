@@ -16,7 +16,16 @@ const AUTH_PATHS = {
 let accessToken: string | null = null;
 let authenticatedUser: AuthenticatedAdmin | null = null;
 let refreshPromise: Promise<string | null> | null = null;
+// Bumped only by clearAuthenticatedSession. attemptRefresh's success path
+// compares against a snapshot of this to detect "a logout already happened
+// while this refresh was resolving" and avoid resurrecting a stale token.
 let sessionGeneration = 0;
+// Bumped only by a real login (setAuthenticatedSession), never by a clear.
+// A caller that snapshots this before an async check can tell whether a
+// login has landed since, without also tripping on the ordinary "there was
+// no session" outcome, which calls clearAuthenticatedSession but must not
+// count as a login having superseded anything.
+let loginGeneration = 0;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -26,10 +35,15 @@ export function getAuthenticatedUser(): AuthenticatedAdmin | null {
   return authenticatedUser;
 }
 
+export function getLoginGeneration(): number {
+  return loginGeneration;
+}
+
 export function setAuthenticatedSession(
   token: string,
   user: AuthenticatedAdmin,
 ): void {
+  loginGeneration += 1;
   accessToken = token;
   authenticatedUser = user;
 }
@@ -186,6 +200,12 @@ async function attemptRefresh(generation: number): Promise<string | null> {
 }
 
 async function performRefresh(generation: number): Promise<string | null> {
+  // Snapshotting loginGeneration here (rather than reusing sessionGeneration,
+  // which clearAuthenticatedSession itself bumps) means the guard below can
+  // only ever be tripped by an actual login landing mid-flight -- never by
+  // this same call's own upcoming, entirely ordinary "there was no session"
+  // outcome.
+  const startLoginGeneration = loginGeneration;
   try {
     return await attemptRefresh(generation);
   } catch (error) {
@@ -209,8 +229,14 @@ async function performRefresh(generation: number): Promise<string | null> {
       }
       if (!isSupersededRejection(retryError)) {
         // Rejected twice for a reason other than a rotation race -- an
-        // actually invalid or expired token. The session really is over.
-        clearAuthenticatedSession();
+        // actually invalid or expired token. The session really is over --
+        // unless a login already landed since this attempt started (e.g. a
+        // pre-login speculative refresh that had no cookie to send yet), in
+        // which case clearing here would wipe out a session that is
+        // perfectly fresh.
+        if (loginGeneration === startLoginGeneration) {
+          clearAuthenticatedSession();
+        }
         return null;
       }
 
@@ -222,7 +248,7 @@ async function performRefresh(generation: number): Promise<string | null> {
       try {
         return await attemptRefresh(generation);
       } catch (finalError) {
-        if (isAuthRejection(finalError)) {
+        if (isAuthRejection(finalError) && loginGeneration === startLoginGeneration) {
           clearAuthenticatedSession();
         }
         return null;

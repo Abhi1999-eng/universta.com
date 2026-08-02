@@ -4,6 +4,7 @@ import {
   clearAuthenticatedSession,
   getAccessToken,
   getCurrentUser,
+  getLoginGeneration,
   login,
   refreshSession,
   setAuthenticatedSession,
@@ -191,6 +192,56 @@ describe('memory-only admin auth client', () => {
     expect(
       fetchMock.mock.calls.filter(([input]) => input === '/api/v1/admin/auth/refresh'),
     ).toHaveLength(3);
+  });
+
+  it('bumps the login generation on every login', async () => {
+    const before = getLoginGeneration();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      response({ accessToken: 'access-3', tokenType: 'Bearer', expiresIn: 900, user }),
+    ));
+    await login('admin@example.com', 'password');
+    expect(getLoginGeneration()).toBe(before + 1);
+  });
+
+  it('does not bump the login generation when a refresh simply finds no session', async () => {
+    // This is the exact self-contamination that caused a real regression:
+    // an earlier draft of the login-bounce fix reused clearAuthenticatedSession's
+    // OWN generation counter to detect "a login already happened". But a
+    // refresh that legitimately finds no session also calls
+    // clearAuthenticatedSession -- so that counter looked "stale to itself"
+    // on every ordinary first visit, and AuthProvider's initializeSession
+    // skipped setting 'unauthenticated' forever, wedging every login screen.
+    // getLoginGeneration must stay untouched by an ordinary clear.
+    const before = getLoginGeneration();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse('INVALID_REFRESH_TOKEN', 401)));
+    expect(await refreshSession()).toBeNull();
+    expect(getLoginGeneration()).toBe(before);
+  });
+
+  it('does not clear a fresh login when a pre-login speculative refresh rejects afterward', async () => {
+    // Reproduces the hosted "login bounce": AuthProvider's initial mount fires
+    // a refresh before any credentials exist. If login lands while that
+    // refresh is still in flight, its eventual definitive rejection must not
+    // wipe out the session login() just established.
+    let resolveFirstAttempt: ((r: Response) => void) | undefined;
+    let resolveRetryAttempt: ((r: Response) => void) | undefined;
+    const firstAttempt = new Promise<Response>((resolve) => { resolveFirstAttempt = resolve; });
+    const retryAttempt = new Promise<Response>((resolve) => { resolveRetryAttempt = resolve; });
+    const fetchMock = vi.fn()
+      .mockReturnValueOnce(firstAttempt)
+      .mockResolvedValueOnce(response({ accessToken: 'login-token', tokenType: 'Bearer', expiresIn: 900, user }))
+      .mockReturnValueOnce(retryAttempt);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const staleRefresh = refreshSession();
+    await login('admin@example.com', 'password');
+    expect(getAccessToken()).toBe('login-token');
+
+    resolveFirstAttempt?.(errorResponse('INVALID_REFRESH_TOKEN', 401));
+    resolveRetryAttempt?.(errorResponse('INVALID_REFRESH_TOKEN', 401));
+
+    expect(await staleRefresh).toBeNull();
+    expect(getAccessToken()).toBe('login-token');
   });
 
   it('keeps the session when refresh fails for a reason other than rejection', async () => {

@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import {
   clearAuthenticatedSession,
   getCurrentUser,
+  getLoginGeneration,
   login as loginRequest,
   logout as logoutRequest,
   refreshSession,
@@ -41,8 +42,21 @@ async function initializeSession(
   setStatus: (status: AuthStatus) => void,
   setUser: (user: AuthenticatedAdmin | null) => void,
 ): Promise<void> {
+  // This runs once, unconditionally, on the very first mount -- including on
+  // the login screen, before any credentials exist. If a login lands while
+  // that speculative refresh is still in flight (a fast Playwright script
+  // reproduces this every time; a human can too), this call's eventual
+  // verdict must not stomp on the fresh, authenticated state login() already
+  // set. getLoginGeneration() is bumped only by a real login, never by a
+  // clear -- so this call's own, entirely ordinary "there was no session"
+  // outcome (which does call clearAuthenticatedSession) can never make its
+  // own snapshot look stale to itself, the way reusing the session-rotation
+  // generation counter did.
+  const startGeneration = getLoginGeneration();
+  const stale = () => getLoginGeneration() !== startGeneration;
   try {
     const token = await refreshSession();
+    if (stale()) return;
     if (!token) {
       setUser(null);
       setStatus('unauthenticated');
@@ -51,9 +65,11 @@ async function initializeSession(
 
     try {
       const user = await getCurrentUser(token);
+      if (stale()) return;
       setUser(user);
       setStatus('authenticated');
     } catch {
+      if (stale()) return;
       clearAuthenticatedSession();
       setUser(null);
       setStatus('unauthenticated');
@@ -61,6 +77,7 @@ async function initializeSession(
   } catch {
     // refreshSession is written to resolve rather than reject, but a spinner
     // that never ends is a worse failure than a trip through the login screen.
+    if (stale()) return;
     setUser(null);
     setStatus('unauthenticated');
   }
@@ -104,7 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const refresh = useCallback(async () => {
+    const startGeneration = getLoginGeneration();
+    const stale = () => getLoginGeneration() !== startGeneration;
     const token = await refreshSession();
+    if (stale()) return true;
     if (!token) {
       setUser(null);
       setStatus('unauthenticated');
@@ -112,10 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const currentUser = await getCurrentUser(token);
+      if (stale()) return true;
       setUser(currentUser);
       setStatus('authenticated');
       return true;
     } catch {
+      if (stale()) return true;
       clearAuthenticatedSession();
       setUser(null);
       setStatus('unauthenticated');
