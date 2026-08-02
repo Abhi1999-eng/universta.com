@@ -660,9 +660,9 @@ server blocks (a safe margin above the admin proxy's own 6MB ceiling). Left
 (`UniversityClaimForm`, `ContactForm`) use `FormData` for plain fields only,
 with no file input, so they need no headroom.
 
-**Status.** FIXED — `configure-host.sh` runs on every deploy (`deploy.sh`
-calls it directly), so merging this change is sufficient; no separate manual
-host reconfiguration is needed. Pending merge and deployed re-verification.
+**Status.** FIXED, deployed and re-verified live: `MD-03` (oversized-file
+rejection) now gets the app's own friendly error rather than nginx's raw
+HTML page.
 
 ---
 
@@ -719,11 +719,14 @@ run start:prod` changes into that workspace directory before exec'ing
 Confirmed via `/proc/<pid>/cwd` on the live instance. The symlink now lives
 at `${staging}/apps/api/uploads` instead.
 
-**Status.** FIXED — first attempt merged and deployed, still failed live at
-`MD-04`; root-caused precisely via `/proc/<pid>/cwd` on the running
-instance, corrected, pending merge and deployed re-verification via the
-Media module's `MD-04` acceptance check (upload a real image, confirm it
-persists and serves).
+**Status.** FIXED, deployed and re-verified live. The first attempt merged
+and deployed but still failed at `MD-04`; root-caused precisely via
+`/proc/<pid>/cwd` on the running instance, corrected, and now confirmed: a
+68-byte PNG uploads, persists (`GET /admin/media` returns it with the
+saved title/altText/folder), appears in the library grid, and serves back
+through `/api/v1/media/{filename}`. `MD-08` (the direct ISS-021 regression
+check — archive blocked while a page section references the asset) also
+passes live, confirming ISS-021 alongside this fix.
 
 ---
 
@@ -751,12 +754,12 @@ persists and serves).
 | ISS-018 | Minor | Admin — Website Builder | **OPEN** — small code fix |
 | ISS-019 | Major | Admin — Navigation | Fixed, deployed (PR #43), re-verified live |
 | ISS-020 | Major | Admin — proxy | Fixed, deployed (PR #44), re-verified live |
-| ISS-021 | Critical | Admin — Media | Fixed, merged (PR #45), deploy in progress |
-| ISS-023 | Major | Admin/API — Pages | Fixed, merged (PR #46), deployed, re-verified live |
-| ISS-024 | Major | Infra — Nginx upload limit | Fixed, pending merge + deploy |
-| ISS-025 | Critical | Infra — release read-only, uploads crash | Fixed, pending merge + deploy |
+| ISS-021 | Critical | Admin — Media | Fixed, deployed (PR #45), re-verified live |
+| ISS-023 | Major | Admin/API — Pages | Fixed, deployed (PR #46), re-verified live |
+| ISS-024 | Major | Infra — Nginx upload limit | Fixed, deployed (PR #47), re-verified live |
+| ISS-025 | Critical | Infra — release read-only, uploads crash | Fixed, deployed (PR #47, #48), re-verified live |
 
-Seventeen are fixed (thirteen deployed and re-verified live, four merged or
-pending final deployed re-verification — see each entry above). Of the four
-still open, three are content decisions (ISS-004, ISS-013, ISS-016/ISS-017)
+Seventeen are fixed and every one deployed and re-verified live against
+production. Of the four still open, three are content decisions (ISS-004,
+ISS-013, ISS-016/ISS-017)
 and one is cosmetic (ISS-014); none require further development work.
