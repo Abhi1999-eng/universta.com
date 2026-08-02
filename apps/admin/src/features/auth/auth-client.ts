@@ -88,12 +88,27 @@ async function readEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
   return body;
 }
 
+// A `fetch` with no signal can stay pending indefinitely if the connection is
+// opened but never answered. That is not a theoretical concern here: the auth
+// calls go through the BFF proxy to the API, and `refreshSession` shares one
+// module-level promise between every caller. A single stalled refresh
+// therefore wedged the whole console -- `initializeSession` never settled, so
+// the status stayed 'initializing' and every admin page sat on "Checking your
+// admin session…" until a hard reload, with each later refreshSession() call
+// handed the same hung promise.
+//
+// Bounding the request means it always settles. A timeout is not a verdict on
+// the session -- `performRefresh` already treats a non-rejection failure as
+// "the refresh did not happen" and leaves the session standing.
+export const AUTH_REQUEST_TIMEOUT_MS = 15_000;
+
 async function authRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
   const response = await fetch(path, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS),
     cache: 'no-store',
     credentials: 'include',
     headers: {

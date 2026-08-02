@@ -30,23 +30,37 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Resolves the session exactly once on mount.
+ *
+ * Every path out of here must set a terminal status. 'initializing' renders
+ * the "Checking your admin session…" screen and nothing ever re-runs this
+ * effect, so a step that neither resolves nor rejects leaves the console stuck
+ * on that screen for good -- which is what an unbounded refresh request used
+ * to do. The outer catch is the backstop for the same failure mode. */
 async function initializeSession(
   setStatus: (status: AuthStatus) => void,
   setUser: (user: AuthenticatedAdmin | null) => void,
 ): Promise<void> {
-  const token = await refreshSession();
-  if (!token) {
-    setUser(null);
-    setStatus('unauthenticated');
-    return;
-  }
-
   try {
-    const user = await getCurrentUser(token);
-    setUser(user);
-    setStatus('authenticated');
+    const token = await refreshSession();
+    if (!token) {
+      setUser(null);
+      setStatus('unauthenticated');
+      return;
+    }
+
+    try {
+      const user = await getCurrentUser(token);
+      setUser(user);
+      setStatus('authenticated');
+    } catch {
+      clearAuthenticatedSession();
+      setUser(null);
+      setStatus('unauthenticated');
+    }
   } catch {
-    clearAuthenticatedSession();
+    // refreshSession is written to resolve rather than reject, but a spinner
+    // that never ends is a worse failure than a trip through the login screen.
     setUser(null);
     setStatus('unauthenticated');
   }
