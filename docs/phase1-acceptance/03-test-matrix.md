@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**164 checks across 4 completed modules — 163 pass, 0 fail, 1 not applicable.**
+**203 checks across 5 completed modules — 202 pass, 0 fail, 1 not applicable.**
 
 ## Module roll-up
 
@@ -14,8 +14,9 @@ and checked for its effect on the public site at three viewports.
 | Subjects | 30 | 30 | 0 | 0 |
 | Universities | 42 | 42 | 0 | 0 |
 | Courses | 61 | 60 | 0 | 1 |
+| Scholarships | 39 | 39 | 0 | 0 |
 
-Modules not yet reached: 18 — scholarships, consultants, jobs, events, success stories, testimonials, pages, homepage, navigation, footer, media, seo, internal linking, comparisons, bulk actions, scheduling, settings, auth roles.
+Modules not yet reached: 17 — consultants, jobs, events, success stories, testimonials, pages, homepage, navigation, footer, media, seo, internal linking, comparisons, bulk actions, scheduling, settings, auth roles.
 
 ## Countries
 
@@ -200,4 +201,48 @@ Modules not yet reached: 18 — scholarships, consultants, jobs, events, success
 | CR-59 | Courses | /courses/eae2658f-8076-4e64-aadc-9e6c279a81e3 | checkbox | Country availability — Scholarship available | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m04-courses.spec.ts CR-40..CR-60 | — | PASS |
 | CR-60 | Courses | /courses/eae2658f-8076-4e64-aadc-9e6c279a81e3 | checkbox | Country availability — Featured mapping | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m04-courses.spec.ts CR-40..CR-60 | — | PASS |
 | CR-39 | Courses | /courses | cleanup | QA record removal | — | eae2658f-8076-4e64-aadc-9e6c279a81e3 | — | The purpose-created QA course is removed after testing | remaining QA records: 0; module now holds 12 course(s) | YES | — | — | — | — | — | — | — | m04-courses.spec.ts CR-39 | Courses returned to production-only data | PASS |
+
+## Scholarships
+
+| ID | Module | Admin page | Control | Field | Original value | Test value | Invalid input tried | Expected (admin) | Actual (admin) | API verified | Frontend URL | Expected (frontend) | Actual (frontend) | Desktop | Tablet | Mobile | Issue | Evidence | Restored | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| SC-01 | Scholarships | /phase1/scholarships | text | Title | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-02 | Scholarships | /phase1/scholarships | text | Slug | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-03 | Scholarships | /phase1/scholarships | text | Short summary | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-04 | Scholarships | /phase1/scholarships | number | Display order | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-05 | Scholarships | /phase1/scholarships | select | Provider | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-06 | Scholarships | /phase1/scholarships | text | Benefit type | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-07 | Scholarships | /phase1/scholarships | number | Amount | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-08 | Scholarships | /phase1/scholarships | text | Currency | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-09 | Scholarships | /phase1/scholarships | date | Deadline | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-10 | Scholarships | /phase1/scholarships | text | Application URL | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-11 | Scholarships | /phase1/scholarships | text | Source URL | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-12 | Scholarships | /phase1/scholarships | select | Media (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-13 | Scholarships | /phase1/scholarships | textarea | Description | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-14 | Scholarships | /phase1/scholarships | textarea | Eligibility | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-15 | Scholarships | /phase1/scholarships | checkbox | Featured | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-16 | Scholarships | /phase1/scholarships | number | Priority (lower shows first) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-17 | Scholarships | /phase1/scholarships | datetime-local | Featured from (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-18 | Scholarships | /phase1/scholarships | datetime-local | Featured until (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-19 | Scholarships | /phase1/scholarships | datetime-local | Publish from (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-20 | Scholarships | /phase1/scholarships | datetime-local | Publish until (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-21 | Scholarships | /phase1/scholarships | text | SEO title | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-22 | Scholarships | /phase1/scholarships | text | Meta description | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-SETUP | — | PASS |
+| SC-23 | Scholarships | /phase1/scholarships | checkbox matrix | Eligible countries | — | — | — | One checkbox per published country | matrix present and individually selectable | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-23 | — | PASS |
+| SC-24 | Scholarships | /phase1/scholarships | checkbox matrix | Eligible universities | — | — | — | One checkbox per university | matrix present and individually selectable | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-24 | — | PASS |
+| SC-25 | Scholarships | /phase1/scholarships | form | Required-field validation (Title, Slug) | — | — | save with every field empty | Save is blocked and the missing fields are named | blocked, drawer stayed open: "This field is required" | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-25 | — | PASS |
+| SC-26 | Scholarships | /phase1/scholarships | button | Create draft | — | QA Scholarship Alpha 854232 | — | Creates a DRAFT scholarship with the slug given | id=26504290-9bda-417b-9095-1a266df28c30, slug="qa-scholarship-alpha-854232", status=DRAFT | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-26 | — | PASS |
+| SC-27 | Scholarships | /phase1/scholarships | text | Title | — | QA Scholarship Alpha 854232 | — | Saved value reloads when the editor is reopened | loaded "QA Scholarship Alpha 854232" | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-27..SC-29 | — | PASS |
+| SC-28 | Scholarships | /phase1/scholarships | text | Short summary | — | QA-Schol-Summary-001-854232 demonstration summary. | — | Saved value reloads when the editor is reopened | loaded "QA-Schol-Summary-001-854232 demonstration summary." | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-27..SC-29 | — | PASS |
+| SC-29 | Scholarships | /phase1/scholarships | text | Eligibility | — | QA-Schol-Elig-001-854232 eligibility criteria body. | — | Saved value reloads when the editor is reopened | loaded "QA-Schol-Elig-001-854232 eligibility criteria body" | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-27..SC-29 | — | PASS |
+| SC-30 | Scholarships | /phase1/scholarships | status | status = DRAFT | — | DRAFT | — | Record exists but is not published | status DRAFT | YES | https://54.162.49.131.nip.io/scholarships and /scholarships/qa-scholarship-alpha-854232 | Absent from the public listing; detail route not publicly served | listing contains name = false; detail HTTP 404 | PASS | — | — | — | m05-scholarships.spec.ts SC-30 | — | PASS |
+| SC-31 | Scholarships | /phase1/scholarships | button | Publish (from list) | DRAFT | PUBLISHED | — | Status becomes PUBLISHED | confirmation modal shown = false; status = PUBLISHED | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-31 | — | PASS |
+| SC-32 | Scholarships | /phase1/scholarships | status | Published scholarship on the public listing | — | QA Scholarship Alpha 854232 | — | — | — | — | https://54.162.49.131.nip.io/scholarships | It appears on the public listing at every viewport | desktop=true tablet=true mobile=true | PASS | PASS | PASS | — | m05-scholarships.spec.ts SC-32 | — | PASS |
+| SC-33 | Scholarships | /phase1/scholarships | route | Public detail page | — | qa-scholarship-alpha-854232 | — | — | — | — | https://54.162.49.131.nip.io/scholarships/qa-scholarship-alpha-854232 | Detail serves 200 with a canonical and shows the saved summary | HTTP 200, canonical="/scholarships/qa-scholarship-alpha-854232", summary desktop=true tablet=true mobile=true | PASS | PASS | PASS | — | m05-scholarships.spec.ts SC-33 | — | PASS |
+| SC-34 | Scholarships | /phase1/scholarships | text | Short summary (edit) | QA-Schol-Summary-001-854232 demonstration summary. | QA-Schol-Summary-002-854232 revised summary. | — | — | — | YES | https://54.162.49.131.nip.io/scholarships/qa-scholarship-alpha-854232 | Detail shows the new summary and no longer the old one | new desktop=true tablet=true mobile=true; old removed=true | PASS | PASS | PASS | — | m05-scholarships.spec.ts SC-34 | — | PASS |
+| SC-35 | Scholarships | /phase1/scholarships | text | Title (edit) + slug stability | QA Scholarship Alpha 854232 | QA Scholarship Beta 854232 | — | Rename saves and the slug does not silently change | title="QA Scholarship Beta 854232" slug="qa-scholarship-alpha-854232" | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-35 | — | PASS |
+| SC-36 | Scholarships | /phase1/scholarships | checkbox matrix | Eligible country "Canada" (on, then off) | unchecked | checked then unchecked | — | Selecting a country persists; clearing it reverses the change exactly | after on=true, after off=false | — | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-36 | Eligibility returned to its original empty state | PASS |
+| SC-37 | Scholarships | /phase1/scholarships | checkbox | Featured (on, then off) | false | true then false | — | Turning it on sets the flag; turning it off reverses it exactly | after on=true, after off=false | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-37 | Featured returned to its original off state | PASS |
+| SC-38 | Scholarships | /phase1/scholarships | button | Unpublish | PUBLISHED | DRAFT | — | Status returns to DRAFT | status = DRAFT | YES | https://54.162.49.131.nip.io/scholarships | The scholarship leaves the public listing | listing still shows it = false | PASS | — | — | — | m05-scholarships.spec.ts SC-38 | — | PASS |
+| SC-39 | Scholarships | /phase1/scholarships | cleanup | QA record removal | — | 26504290-9bda-417b-9095-1a266df28c30 | — | The purpose-created QA scholarship is removed after testing | remaining QA records: 0; module now holds 3 record(s) | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-39 | Scholarships returned to production-only data | PASS |
 
