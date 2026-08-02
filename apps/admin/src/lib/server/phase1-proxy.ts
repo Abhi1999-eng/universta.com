@@ -71,13 +71,32 @@ export async function proxyPhase1Admin(
     (segments.length === 4 &&
       (segments[3] === "reorder" || /^[-\w]+$/.test(segments[3]))) || // PATCH/DELETE pages/:id/sections/:sectionId, POST .../reorder
     (segments.length === 5 && segments[4] === "duplicate"); // POST pages/:id/sections/:sectionId/duplicate
+  // ISS-020. Navigation menus own an items sub-resource the same shape as
+  // page sections (list/create at 3 segments, edit/delete/reorder at 4), but
+  // this proxy only ever special-cased "pages" for that depth. The API side
+  // (ISS-019's fix) had working routes at /navigation-menus/:id/items* the
+  // whole time; every request to them 404'd here, before ever reaching the
+  // API, because "items" fell through to the generic action allow-list
+  // (publish/unpublish/convert) and 4-segment paths were rejected outright.
+  const isNavigationItemsPath =
+    resource === "navigation-menus" && segments[2] === "items";
+  const navigationItemsShapeIsValid =
+    !isNavigationItemsPath ||
+    segments.length === 3 || // GET/POST navigation-menus/:id/items
+    (segments.length === 4 &&
+      (segments[3] === "reorder" || /^[-\w]+$/.test(segments[3]))); // PATCH/DELETE .../items/:itemId, POST .../items/reorder
   if (
     !resource ||
-    (!isPageSectionPath && !isPagePreviewPath && segments.length > 3) ||
+    (!isPageSectionPath &&
+      !isPagePreviewPath &&
+      !isNavigationItemsPath &&
+      segments.length > 3) ||
     (isPageSectionPath && !pageSectionShapeIsValid) ||
+    (isNavigationItemsPath && !navigationItemsShapeIsValid) ||
     (!isFormOptions && !RESOURCES.has(resource)) ||
     (!isPageSectionPath &&
       !isPagePreviewPath &&
+      !isNavigationItemsPath &&
       action &&
       !["publish", "unpublish", "convert"].includes(action))
   )
