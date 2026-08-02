@@ -159,7 +159,13 @@ export function getSuggestions(q: string, limit = 5) {
 }
 
 export function getCountryEditorial(id: string) { return request<CountryEditorialBundle>(`/api/v1/admin/countries/${id}/editorial`); }
-export function listEditorialMedia(params: { q?: string; limit?: number } = {}) { return request<EditorialMedia[]>(`/api/v1/admin/media-options${query(params)}`); }
+/* The media-options endpoint caps `limit` at 50 and rejects anything larger
+ * with a 400. The Subject and Course editors both asked for 100, so their
+ * media pickers loaded nothing -- and because the Subject editor swallowed the
+ * rejection, an image that was already attached still rendered as "No media
+ * selected". Clamping here keeps every call site inside the contract. */
+export const MEDIA_OPTIONS_MAX_LIMIT = 50;
+export function listEditorialMedia(params: { q?: string; limit?: number } = {}) { const limit = params.limit === undefined ? undefined : Math.min(params.limit, MEDIA_OPTIONS_MAX_LIMIT); return request<EditorialMedia[]>(`/api/v1/admin/media-options${query({ ...params, limit })}`); }
 export function createEditorialSection(id: string, data: Record<string, unknown>) { return request<EditorialSection>(`/api/v1/admin/countries/${id}/content-sections`, { method: 'POST', body: JSON.stringify(data) }); }
 export function updateEditorialSection(countryId: string, sectionId: string, data: Record<string, unknown>) { return request<EditorialSection>(`/api/v1/admin/countries/${countryId}/content-sections/${sectionId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
 export function deleteEditorialSection(countryId: string, sectionId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/countries/${countryId}/content-sections/${sectionId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
