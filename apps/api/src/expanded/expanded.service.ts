@@ -2216,6 +2216,20 @@ export class ExpandedService {
         message: 'A testimonial quote is required',
         details: null,
       });
+    // SuccessStory.journey is NOT NULL with no default. Without this guard the
+    // omission reached Prisma and surfaced as a bare 500 "Internal server
+    // error", telling an admin nothing about which field was missing -- unlike
+    // every sibling resource, which names it.
+    if (
+      resource === 'success-stories' &&
+      !partial &&
+      !this.optionalText(data.journey)
+    )
+      throw new UnprocessableEntityException({
+        code: 'JOURNEY_REQUIRED',
+        message: 'A success story journey is required',
+        details: null,
+      });
     if (
       [
         'universities',

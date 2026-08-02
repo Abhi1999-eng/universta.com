@@ -37,7 +37,32 @@ seven modules. The homepage statistics pill reads "0 universities".
 **Impact.** Blocks the demo-data requirement, and blocks detail-route acceptance
 for 7 modules (their `[slug]` routes have no slug to visit).
 
-**Status.** OPEN — data creation not yet performed.
+**Fix.** Created professional demonstration records through the Admin API —
+the same path a client uses — rather than the repo's `demo-seed.ts`, which is
+deliberately forbidden in production by `assertDemoCatalogSeedAllowed` and is
+also the source of ISS-004's wording. Institution, provider and consultancy
+names are plausible and professional but deliberately name no real
+organisation, and every overview states that it is demonstration content, so
+nothing here reads as an unverified claim about a real institution.
+
+**Result (verified on the live public API):**
+
+| Resource | Before | After |
+| --- | ---: | ---: |
+| universities | 0 | 5 |
+| scholarships | 0 | 3 |
+| consultants | 0 | 3 |
+| jobs | 0 | 2 |
+| events | 0 | 2 |
+| success-stories | 0 | 3 |
+| testimonials | 0 | 3 |
+
+All 10 Phase 1 content modules now hold data (was 3 of 10). Detail routes that
+previously had no slug to visit now resolve — e.g.
+`/universities/northlake-institute-of-technology` returns 200 with the correct
+`<h1>`. `/compare/universities` now offers real selectable records.
+
+**Status.** RESOLVED — verified on production.
 
 ---
 
@@ -203,9 +228,41 @@ element supplies the visual line break but no text separator.
 
 | ID | Severity | Status |
 | --- | --- | --- |
-| ISS-001 | Blocker | OPEN |
-| ISS-002 | Critical | Fixed in PR #30, not deployed |
-| ISS-003 | Major | Fixed in PR #30, not deployed |
+| ISS-001 | Blocker | RESOLVED (production data created) |
+| ISS-002 | Critical | RESOLVED — deployed `63f7f3c`, verified live |
+| ISS-003 | Major | RESOLVED — deployed `63f7f3c`, verified live |
 | ISS-004 | Major | OPEN |
-| ISS-005 | Major | Fixed in PR #30, not deployed |
-| ISS-006 | Minor | Fixed in PR #30, not deployed |
+| ISS-005 | Major | RESOLVED — deployed `63f7f3c`, verified live |
+| ISS-006 | Minor | RESOLVED — deployed `63f7f3c`, verified live |
+| ISS-007 | Major | OPEN — found while creating demo data |
+
+---
+
+## ISS-007 — Creating a success story without `journey` returns HTTP 500
+
+| | |
+| --- | --- |
+| **Severity** | Major |
+| **Module** | Admin → Success stories |
+| **Environment** | Production |
+
+**Description.** `POST /api/v1/admin/phase1/success-stories` without a
+`journey` value returns `500 INTERNAL_ERROR` instead of a `422` naming the
+missing field.
+
+**Reproduction.** Observed three times while creating demonstration content:
+```
+POST /admin/phase1/success-stories {title, slug, status}
+→ 500 {"code":"INTERNAL_ERROR","message":"Internal server error"}
+```
+By contrast, every sibling resource returns a precise 422:
+`TITLE_REQUIRED`, `QUOTE_REQUIRED`, `EVENT_START_REQUIRED`.
+
+**Root cause.** `SuccessStory.journey` is `String @db.LongText` — NOT NULL with
+no default — but `expanded.service.ts` has no required-field guard for it, so
+the Prisma write throws and surfaces as a generic 500.
+
+**Impact.** An admin who leaves the story body empty gets an opaque "Internal
+server error" with no indication of which field is wrong.
+
+**Status.** OPEN.
