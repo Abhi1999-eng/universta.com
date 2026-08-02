@@ -59,6 +59,29 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<{ data:
   return { data: body.data, meta: body.meta };
 }
 
+/** Same as `request`, but for endpoints where `data: null` is a legitimate
+ * answer rather than a failure.
+ *
+ * The SEO endpoints return `{ data: null }` to mean "no SEO configured yet".
+ * `request` treats any null payload as an error, so `getSubjectSeo` threw for
+ * every subject without SEO -- and because the editor loaded the record and
+ * its SEO with `Promise.all`, that rejection discarded the record too and the
+ * form rendered blank with "Catalog request failed". */
+async function requestNullable<T>(path: string, init: RequestInit = {}): Promise<{ data: T | null; meta: PageMeta | null }> {
+  const response = await authFetch(path, {
+    ...init,
+    headers: { ...(init.headers ?? {}), ...(init.body ? { 'content-type': 'application/json' } : {}) },
+  });
+  let body: CatalogEnvelope<T>;
+  try {
+    body = (await response.json()) as CatalogEnvelope<T>;
+  } catch {
+    throw Object.assign(new Error('Catalog service is temporarily unavailable'), { code: 'CATALOG_SERVICE_UNAVAILABLE', status: response.status, details: null });
+  }
+  if (!response.ok || body.error) throw errorFrom(response, body);
+  return { data: body.data ?? null, meta: body.meta };
+}
+
 export function listContinents(params: CatalogListParams = {}, signal?: AbortSignal) {
   return request<ContinentRecord[]>(`/api/v1/admin/continents${query(params)}`, { signal });
 }
@@ -194,9 +217,9 @@ export function updateCourseFaq(courseId: string, faqId: string, data: Record<st
 export function deleteCourseFaq(courseId: string, faqId: string, expectedUpdatedAt?: string) { return request<{ deleted: true }>(`/api/v1/admin/courses/${courseId}/faqs/${faqId}`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
 export function listCourseRelated(id: string) { return request<CourseRelatedRecord[]>(`/api/v1/admin/courses/${id}/related`); }
 export function replaceCourseRelated(id: string, related: Array<Record<string, unknown>>, expectedUpdatedAt?: string) { return request<CourseRelatedRecord[]>(`/api/v1/admin/courses/${id}/related`, { method: 'PUT', body: JSON.stringify({ related, expectedUpdatedAt }) }); }
-export function getSubjectSeo(id: string) { return request<EditorialSeo | null>(`/api/v1/admin/subjects/${id}/seo`); }
+export function getSubjectSeo(id: string) { return requestNullable<EditorialSeo>(`/api/v1/admin/subjects/${id}/seo`); }
 export function saveSubjectSeo(id: string, data: Record<string, unknown>) { return request<EditorialSeo>(`/api/v1/admin/subjects/${id}/seo`, { method: 'PUT', body: JSON.stringify(data) }); }
 export function deleteSubjectSeo(id: string, expectedUpdatedAt?: string) { return request<{ deleted: boolean }>(`/api/v1/admin/subjects/${id}/seo`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
-export function getCourseSeo(id: string) { return request<EditorialSeo | null>(`/api/v1/admin/courses/${id}/seo`); }
+export function getCourseSeo(id: string) { return requestNullable<EditorialSeo>(`/api/v1/admin/courses/${id}/seo`); }
 export function saveCourseSeo(id: string, data: Record<string, unknown>) { return request<EditorialSeo>(`/api/v1/admin/courses/${id}/seo`, { method: 'PUT', body: JSON.stringify(data) }); }
 export function deleteCourseSeo(id: string, expectedUpdatedAt?: string) { return request<{ deleted: boolean }>(`/api/v1/admin/courses/${id}/seo`, { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt }) }); }
