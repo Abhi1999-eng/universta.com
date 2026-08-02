@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**203 checks across 5 completed modules — 202 pass, 0 fail, 1 not applicable.**
+**244 checks across 6 completed modules — 243 pass, 0 fail, 1 not applicable.**
 
 ## Module roll-up
 
@@ -15,8 +15,9 @@ and checked for its effect on the public site at three viewports.
 | Universities | 42 | 42 | 0 | 0 |
 | Courses | 61 | 60 | 0 | 1 |
 | Scholarships | 39 | 39 | 0 | 0 |
+| Consultants | 41 | 41 | 0 | 0 |
 
-Modules not yet reached: 17 — consultants, jobs, events, success stories, testimonials, pages, homepage, navigation, footer, media, seo, internal linking, comparisons, bulk actions, scheduling, settings, auth roles.
+Modules not yet reached: 16 — jobs, events, success stories, testimonials, pages, homepage, navigation, footer, media, seo, internal linking, comparisons, bulk actions, scheduling, settings, auth roles.
 
 ## Countries
 
@@ -245,4 +246,50 @@ Modules not yet reached: 17 — consultants, jobs, events, success stories, test
 | SC-37 | Scholarships | /phase1/scholarships | checkbox | Featured (on, then off) | false | true then false | — | Turning it on sets the flag; turning it off reverses it exactly | after on=true, after off=false | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-37 | Featured returned to its original off state | PASS |
 | SC-38 | Scholarships | /phase1/scholarships | button | Unpublish | PUBLISHED | DRAFT | — | Status returns to DRAFT | status = DRAFT | YES | https://54.162.49.131.nip.io/scholarships | The scholarship leaves the public listing | listing still shows it = false | PASS | — | — | — | m05-scholarships.spec.ts SC-38 | — | PASS |
 | SC-39 | Scholarships | /phase1/scholarships | cleanup | QA record removal | — | 26504290-9bda-417b-9095-1a266df28c30 | — | The purpose-created QA scholarship is removed after testing | remaining QA records: 0; module now holds 3 record(s) | YES | — | — | — | — | — | — | — | m05-scholarships.spec.ts SC-39 | Scholarships returned to production-only data | PASS |
+
+## Consultants
+
+| ID | Module | Admin page | Control | Field | Original value | Test value | Invalid input tried | Expected (admin) | Actual (admin) | API verified | Frontend URL | Expected (frontend) | Actual (frontend) | Desktop | Tablet | Mobile | Issue | Evidence | Restored | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| CN-01 | Consultants | /phase1/consultants | text | Name | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-02 | Consultants | /phase1/consultants | text | Slug | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-03 | Consultants | /phase1/consultants | text | Short summary | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-04 | Consultants | /phase1/consultants | number | Display order | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-05 | Consultants | /phase1/consultants | text | Email | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-06 | Consultants | /phase1/consultants | text | Phone | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-07 | Consultants | /phase1/consultants | text | Website URL | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-08 | Consultants | /phase1/consultants | text | Source URL | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-09 | Consultants | /phase1/consultants | select | Media (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-10 | Consultants | /phase1/consultants | textarea | Description | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-11 | Consultants | /phase1/consultants | checkbox | Featured | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-12 | Consultants | /phase1/consultants | number | Priority (lower shows first) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-13 | Consultants | /phase1/consultants | datetime-local | Featured from (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-14 | Consultants | /phase1/consultants | datetime-local | Featured until (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-15 | Consultants | /phase1/consultants | datetime-local | Publish from (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-16 | Consultants | /phase1/consultants | datetime-local | Publish until (optional) | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-17 | Consultants | /phase1/consultants | text | SEO title | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-18 | Consultants | /phase1/consultants | text | Meta description | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-19 | Consultants | /phase1/consultants | text | Canonical URL | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-20 | Consultants | /phase1/consultants | text | Focus keyword | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-21 | Consultants | /phase1/consultants | text | Open Graph title | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-22 | Consultants | /phase1/consultants | text | Open Graph description | — | — | — | Control is visible and correctly labelled | visible, label matches | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-SETUP | — | PASS |
+| CN-23 | Consultants | /phase1/consultants | checkbox matrix | Destination countries | — | — | — | One checkbox per published country, individually selectable | matrix present and individually selectable | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-23 | — | PASS |
+| CN-24 | Consultants | /phase1/consultants | select | Verification state | — | — | — | Offers UNVERIFIED and VERIFIED | options: ["UNVERIFIED","VERIFIED"] | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-24 | — | PASS |
+| CN-24b | Consultants | /phase1/consultants | tag entry | Services | — | — | — | A free-text entry that is named for assistive technology | present, accessible name "Add Services" | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-24b | — | PASS |
+| CN-24c | Consultants | /phase1/consultants | tag entry | Languages | — | — | — | A free-text entry that is named for assistive technology | present, accessible name "Add Languages" | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-24c | — | PASS |
+| CN-25 | Consultants | /phase1/consultants | form | Required-field validation (Name, Slug) | — | — | save with every field empty | Save is blocked and the missing fields are named | blocked, drawer stayed open: "This field is required" | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-25 | — | PASS |
+| CN-26 | Consultants | /phase1/consultants | button | Create draft | — | QA Consultant Alpha 423507 | — | Creates a DRAFT scholarship with the slug given | id=8158a9ce-fadb-4f43-9ea9-057cc718ef93, slug="qa-consultant-alpha-423507", status=DRAFT | YES | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-26 | — | PASS |
+| CN-27 | Consultants | /phase1/consultants | text | Name | — | QA Consultant Alpha 423507 | — | Saved value reloads when the editor is reopened | loaded "QA Consultant Alpha 423507" | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-27..CN-29 | — | PASS |
+| CN-28 | Consultants | /phase1/consultants | text | Short summary | — | QA-Cons-Summary-001-423507 demonstration summary. | — | Saved value reloads when the editor is reopened | loaded "QA-Cons-Summary-001-423507 demonstration summary." | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-27..CN-29 | — | PASS |
+| CN-29 | Consultants | /phase1/consultants | text | Description | — | QA-Cons-Body-001-423507 consultancy description body. | — | Saved value reloads when the editor is reopened | loaded "QA-Cons-Body-001-423507 consultancy description bo" | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-27..CN-29 | — | PASS |
+| CN-30 | Consultants | /phase1/consultants | status | status = DRAFT | — | DRAFT | — | Record exists but is not published | status DRAFT | YES | https://54.162.49.131.nip.io/study-abroad-consultants and /study-abroad-consultants/qa-consultant-alpha-423507 | Absent from the public listing; detail route not publicly served | listing contains name = false; detail HTTP 404 | PASS | — | — | — | m06-consultants.spec.ts CN-30 | — | PASS |
+| CN-31 | Consultants | /phase1/consultants | button | Publish (from list) | DRAFT | PUBLISHED | — | Status becomes PUBLISHED | confirmation modal shown = false; status = PUBLISHED | YES | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-31 | — | PASS |
+| CN-32 | Consultants | /phase1/consultants | status | Published consultant on the public listing | — | QA Consultant Alpha 423507 | — | — | — | — | https://54.162.49.131.nip.io/study-abroad-consultants | It appears on the public listing at every viewport | desktop=true tablet=true mobile=true | PASS | PASS | PASS | — | m06-consultants.spec.ts CN-32 | — | PASS |
+| CN-33 | Consultants | /phase1/consultants | route | Public detail page | — | qa-consultant-alpha-423507 | — | — | — | — | https://54.162.49.131.nip.io/study-abroad-consultants/qa-consultant-alpha-423507 | Detail serves 200 with a canonical and shows the saved summary | HTTP 200, canonical="/study-abroad-consultants/qa-consultant-alpha-423507", summary desktop=true tablet=true mobile=true | PASS | PASS | PASS | — | m06-consultants.spec.ts CN-33 | — | PASS |
+| CN-34 | Consultants | /phase1/consultants | text | Short summary (edit) | QA-Cons-Summary-001-423507 demonstration summary. | QA-Cons-Summary-002-423507 revised summary. | — | — | — | YES | https://54.162.49.131.nip.io/study-abroad-consultants/qa-consultant-alpha-423507 | Detail shows the new summary and no longer the old one | new desktop=true tablet=true mobile=true; old removed=true | PASS | PASS | PASS | — | m06-consultants.spec.ts CN-34 | — | PASS |
+| CN-35 | Consultants | /phase1/consultants | text | Name (edit) + slug stability | QA Consultant Alpha 423507 | QA Consultant Beta 423507 | — | Rename saves and the slug does not silently change | name="QA Consultant Beta 423507" slug="qa-consultant-alpha-423507" | YES | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-35 | — | PASS |
+| CN-36 | Consultants | /phase1/consultants | checkbox matrix | Destination country "Canada" (on, then off) | unchecked | checked then unchecked | — | Selecting a destination country persists; clearing it reverses the change exactly | after on=true, after off=false | — | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-36 | Destination countries returned to their original empty state | PASS |
+| CN-37 | Consultants | /phase1/consultants | checkbox | Featured (on, then off) | false | true then false | — | Turning it on sets the flag; turning it off reverses it exactly | after on=true, after off=false | YES | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-37 | Featured returned to its original off state | PASS |
+| CN-38 | Consultants | /phase1/consultants | button | Unpublish | PUBLISHED | DRAFT | — | Status returns to DRAFT | status = DRAFT | YES | https://54.162.49.131.nip.io/study-abroad-consultants | The consultant leaves the public listing | listing still shows it = false | PASS | — | — | — | m06-consultants.spec.ts CN-38 | — | PASS |
+| CN-39 | Consultants | /phase1/consultants | cleanup | QA record removal | — | 8158a9ce-fadb-4f43-9ea9-057cc718ef93 | — | The purpose-created QA consultant is removed after testing | remaining QA records: 0; module now holds 3 record(s) | YES | — | — | — | — | — | — | — | m06-consultants.spec.ts CN-39 | Consultants returned to production-only data | PASS |
 
