@@ -24,6 +24,7 @@ const getCurrentUser = vi.fn();
 vi.mock('./auth-client', () => ({
   refreshSession: (...args: unknown[]) => refreshSession(...args),
   getCurrentUser: (...args: unknown[]) => getCurrentUser(...args),
+  getSessionGeneration: () => 0,
   clearAuthenticatedSession: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),

@@ -26,10 +26,19 @@ export function getAuthenticatedUser(): AuthenticatedAdmin | null {
   return authenticatedUser;
 }
 
+/** Bumped by every definitive session transition (a login, or
+ * clearAuthenticatedSession). Callers that started an async check against an
+ * earlier generation can tell their result is stale and a more current
+ * transition has already happened, rather than overwriting it. */
+export function getSessionGeneration(): number {
+  return sessionGeneration;
+}
+
 export function setAuthenticatedSession(
   token: string,
   user: AuthenticatedAdmin,
 ): void {
+  sessionGeneration += 1;
   accessToken = token;
   authenticatedUser = user;
 }
@@ -209,8 +218,14 @@ async function performRefresh(generation: number): Promise<string | null> {
       }
       if (!isSupersededRejection(retryError)) {
         // Rejected twice for a reason other than a rotation race -- an
-        // actually invalid or expired token. The session really is over.
-        clearAuthenticatedSession();
+        // actually invalid or expired token. The session really is over --
+        // unless a login already landed since this attempt started (e.g. a
+        // pre-login speculative refresh that had no cookie to send yet). In
+        // that case sessionGeneration has already moved on, and clearing here
+        // would wipe out a session that is perfectly fresh.
+        if (generation === sessionGeneration) {
+          clearAuthenticatedSession();
+        }
         return null;
       }
 
@@ -222,7 +237,7 @@ async function performRefresh(generation: number): Promise<string | null> {
       try {
         return await attemptRefresh(generation);
       } catch (finalError) {
-        if (isAuthRejection(finalError)) {
+        if (isAuthRejection(finalError) && generation === sessionGeneration) {
           clearAuthenticatedSession();
         }
         return null;

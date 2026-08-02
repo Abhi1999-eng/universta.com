@@ -12,7 +12,9 @@ import {
 import { useRouter } from 'next/navigation';
 import {
   clearAuthenticatedSession,
+  getAuthenticatedUser,
   getCurrentUser,
+  getSessionGeneration,
   login as loginRequest,
   logout as logoutRequest,
   refreshSession,
@@ -41,8 +43,19 @@ async function initializeSession(
   setStatus: (status: AuthStatus) => void,
   setUser: (user: AuthenticatedAdmin | null) => void,
 ): Promise<void> {
+  // This runs once, unconditionally, on the very first mount -- including on
+  // the login screen, before any credentials exist. If a login lands while
+  // that speculative refresh is still in flight (a fast Playwright script
+  // reproduces this every time; a human can too), its eventual failure must
+  // not stomp on the fresh, authenticated state login() just set. Comparing
+  // the generation snapshotted here against the current one after each await
+  // detects exactly that: a definitive transition (login/logout) already
+  // happened, so this stale result is discarded instead of applied.
+  const startGeneration = getSessionGeneration();
+  const stale = () => getSessionGeneration() !== startGeneration;
   try {
     const token = await refreshSession();
+    if (stale()) return;
     if (!token) {
       setUser(null);
       setStatus('unauthenticated');
@@ -51,9 +64,11 @@ async function initializeSession(
 
     try {
       const user = await getCurrentUser(token);
+      if (stale()) return;
       setUser(user);
       setStatus('authenticated');
     } catch {
+      if (stale()) return;
       clearAuthenticatedSession();
       setUser(null);
       setStatus('unauthenticated');
@@ -61,6 +76,7 @@ async function initializeSession(
   } catch {
     // refreshSession is written to resolve rather than reject, but a spinner
     // that never ends is a worse failure than a trip through the login screen.
+    if (stale()) return;
     setUser(null);
     setStatus('unauthenticated');
   }
@@ -104,7 +120,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const refresh = useCallback(async () => {
+    const startGeneration = getSessionGeneration();
+    const stale = () => getSessionGeneration() !== startGeneration;
     const token = await refreshSession();
+    // A stale result reports whatever is actually true right now, rather than
+    // guessing from a snapshot that a more current login/logout has already
+    // superseded.
+    if (stale()) return Boolean(getAuthenticatedUser());
     if (!token) {
       setUser(null);
       setStatus('unauthenticated');
@@ -112,10 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const currentUser = await getCurrentUser(token);
+      if (stale()) return Boolean(getAuthenticatedUser());
       setUser(currentUser);
       setStatus('authenticated');
       return true;
     } catch {
+      if (stale()) return Boolean(getAuthenticatedUser());
       clearAuthenticatedSession();
       setUser(null);
       setStatus('unauthenticated');
