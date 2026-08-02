@@ -12,9 +12,8 @@ import {
 import { useRouter } from 'next/navigation';
 import {
   clearAuthenticatedSession,
-  getAuthenticatedUser,
   getCurrentUser,
-  getSessionGeneration,
+  getLoginGeneration,
   login as loginRequest,
   logout as logoutRequest,
   refreshSession,
@@ -46,13 +45,15 @@ async function initializeSession(
   // This runs once, unconditionally, on the very first mount -- including on
   // the login screen, before any credentials exist. If a login lands while
   // that speculative refresh is still in flight (a fast Playwright script
-  // reproduces this every time; a human can too), its eventual failure must
-  // not stomp on the fresh, authenticated state login() just set. Comparing
-  // the generation snapshotted here against the current one after each await
-  // detects exactly that: a definitive transition (login/logout) already
-  // happened, so this stale result is discarded instead of applied.
-  const startGeneration = getSessionGeneration();
-  const stale = () => getSessionGeneration() !== startGeneration;
+  // reproduces this every time; a human can too), this call's eventual
+  // verdict must not stomp on the fresh, authenticated state login() already
+  // set. getLoginGeneration() is bumped only by a real login, never by a
+  // clear -- so this call's own, entirely ordinary "there was no session"
+  // outcome (which does call clearAuthenticatedSession) can never make its
+  // own snapshot look stale to itself, the way reusing the session-rotation
+  // generation counter did.
+  const startGeneration = getLoginGeneration();
+  const stale = () => getLoginGeneration() !== startGeneration;
   try {
     const token = await refreshSession();
     if (stale()) return;
@@ -120,13 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const refresh = useCallback(async () => {
-    const startGeneration = getSessionGeneration();
-    const stale = () => getSessionGeneration() !== startGeneration;
+    const startGeneration = getLoginGeneration();
+    const stale = () => getLoginGeneration() !== startGeneration;
     const token = await refreshSession();
-    // A stale result reports whatever is actually true right now, rather than
-    // guessing from a snapshot that a more current login/logout has already
-    // superseded.
-    if (stale()) return Boolean(getAuthenticatedUser());
+    if (stale()) return true;
     if (!token) {
       setUser(null);
       setStatus('unauthenticated');
@@ -134,12 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const currentUser = await getCurrentUser(token);
-      if (stale()) return Boolean(getAuthenticatedUser());
+      if (stale()) return true;
       setUser(currentUser);
       setStatus('authenticated');
       return true;
     } catch {
-      if (stale()) return Boolean(getAuthenticatedUser());
+      if (stale()) return true;
       clearAuthenticatedSession();
       setUser(null);
       setStatus('unauthenticated');

@@ -4,7 +4,7 @@ import {
   clearAuthenticatedSession,
   getAccessToken,
   getCurrentUser,
-  getSessionGeneration,
+  getLoginGeneration,
   login,
   refreshSession,
   setAuthenticatedSession,
@@ -194,13 +194,28 @@ describe('memory-only admin auth client', () => {
     ).toHaveLength(3);
   });
 
-  it('bumps the session generation on every login', async () => {
-    const before = getSessionGeneration();
+  it('bumps the login generation on every login', async () => {
+    const before = getLoginGeneration();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       response({ accessToken: 'access-3', tokenType: 'Bearer', expiresIn: 900, user }),
     ));
     await login('admin@example.com', 'password');
-    expect(getSessionGeneration()).toBe(before + 1);
+    expect(getLoginGeneration()).toBe(before + 1);
+  });
+
+  it('does not bump the login generation when a refresh simply finds no session', async () => {
+    // This is the exact self-contamination that caused a real regression:
+    // an earlier draft of the login-bounce fix reused clearAuthenticatedSession's
+    // OWN generation counter to detect "a login already happened". But a
+    // refresh that legitimately finds no session also calls
+    // clearAuthenticatedSession -- so that counter looked "stale to itself"
+    // on every ordinary first visit, and AuthProvider's initializeSession
+    // skipped setting 'unauthenticated' forever, wedging every login screen.
+    // getLoginGeneration must stay untouched by an ordinary clear.
+    const before = getLoginGeneration();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse('INVALID_REFRESH_TOKEN', 401)));
+    expect(await refreshSession()).toBeNull();
+    expect(getLoginGeneration()).toBe(before);
   });
 
   it('does not clear a fresh login when a pre-login speculative refresh rejects afterward', async () => {

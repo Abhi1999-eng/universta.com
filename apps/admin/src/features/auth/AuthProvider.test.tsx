@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './AuthProvider';
 const authMocks = vi.hoisted(() => ({
   clearAuthenticatedSession: vi.fn(),
   getCurrentUser: vi.fn(),
-  getSessionGeneration: vi.fn(() => 0),
+  getLoginGeneration: vi.fn(() => 0),
   login: vi.fn(),
   logout: vi.fn(),
   refreshSession: vi.fn(),
@@ -42,7 +42,7 @@ describe('AuthProvider lifecycle', () => {
     authMocks.refreshSession.mockResolvedValue('access-token');
     authMocks.getCurrentUser.mockResolvedValue(user);
     authMocks.logout.mockResolvedValue(undefined);
-    authMocks.getSessionGeneration.mockReturnValue(0);
+    authMocks.getLoginGeneration.mockReturnValue(0);
   });
 
   it('refreshes then calls /me before marking the session authenticated', async () => {
@@ -78,9 +78,9 @@ describe('AuthProvider lifecycle', () => {
       new Promise((resolve) => { resolveRefresh = resolve; }),
     );
     authMocks.login.mockImplementation(async () => {
-      // The real auth-client bumps the generation counter as part of
-      // setAuthenticatedSession(); this mock stands in for that side effect.
-      authMocks.getSessionGeneration.mockReturnValue(1);
+      // setAuthenticatedSession() bumps the login generation as part of a
+      // real login; this mock stands in for that side effect.
+      authMocks.getLoginGeneration.mockReturnValue(1);
       return { accessToken: 'login-token', tokenType: 'Bearer', expiresIn: 900, user };
     });
 
@@ -97,6 +97,17 @@ describe('AuthProvider lifecycle', () => {
 
     expect(screen.getByTestId('status')).toHaveTextContent('authenticated');
     expect(screen.getByTestId('email')).toHaveTextContent('admin@example.com');
+  });
+
+  it('still resolves unauthenticated normally when no login ever happens', async () => {
+    // Guards against a fix that swallows every "no session" verdict: this is
+    // the ordinary case (a stale tab, or first ever visit) with no race and
+    // no intervening login -- clearAuthenticatedSession() runs as usual and
+    // getAuthenticatedUser() genuinely stays null, so the status must still
+    // resolve to 'unauthenticated'.
+    authMocks.refreshSession.mockResolvedValue(null);
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'));
   });
 
   it('clears state and redirects after logout', async () => {

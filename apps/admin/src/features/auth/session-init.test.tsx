@@ -24,7 +24,9 @@ const getCurrentUser = vi.fn();
 vi.mock('./auth-client', () => ({
   refreshSession: (...args: unknown[]) => refreshSession(...args),
   getCurrentUser: (...args: unknown[]) => getCurrentUser(...args),
-  getSessionGeneration: () => 0,
+  // None of these tests exercise a concurrent login, so a fixed generation
+  // is fine -- initializeSession's staleness check never trips.
+  getLoginGeneration: () => 0,
   clearAuthenticatedSession: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
