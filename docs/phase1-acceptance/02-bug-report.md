@@ -730,6 +730,155 @@ passes live, confirming ISS-021 alongside this fix.
 
 ---
 
+## ISS-017 — Every SEO record in production was an empty row
+
+**Severity.** Major — every code-defined route and every Country fell back to
+its code-level default title/description; the admin's SEO editors existed but
+nothing had ever been saved through them.
+
+**Where.** `/seo` (Static Page SEO), the Country editorial SEO fieldset, and
+the Phase1 structured-editor SEO fieldset shared by Universities/Offerings/
+Scholarships/Consultants/Jobs/Events/Success stories/Testimonials.
+
+**Symptom.** `SeoMetadata` rows existed with `ownerType`/`ownerId` set but no
+real `seoTitle`/`metaDescription` — the public routes rendered correctly
+because every page has a code-level fallback, but the admin override had
+never actually been exercised for real content.
+
+**Fix.** Not a code fix — this is closed by doing the thing the admin was
+built for: real, durable SEO title/meta description copy was written through
+the admin UI for all 19 static/listing pages (SEO-03) and for a representative
+Country (Canada, SEO-09/10). Two genuine code defects surfaced and were fixed
+along the way while exercising this path for real (see ISS-026, ISS-027,
+ISS-028 below) — without doing the real save, those would never have
+surfaced.
+
+**Status.** FIXED. `GET /phase1/static-page-seo/{key}` returns the saved
+title/description for all 19 keys; `GET /admin/countries/{id}/seo` returns the
+saved values for Canada; the live `/study-in-canada` page's `<title>` and meta
+description match the saved copy at desktop/tablet/mobile viewports
+(SEO-04..07, SEO-11). The same fieldset and save path were also verified for a
+University (SEO-13/14), confirming the shared Phase1 structured-editor SEO
+code path independently of Country's own editor.
+
+---
+
+## ISS-026 — A "Home" static-page SEO entry existed with no route to attach to
+
+**Severity.** Minor — a dead admin control, not a broken one.
+
+**Where.** `apps/api/src/static-page-seo/static-page-seo.service.ts`,
+`STATIC_PAGES` registry.
+
+**Symptom.** A row labelled "Home" sat in the Static Page SEO table, fully
+editable, with zero effect on any live route. The real homepage (`/`) was
+merged into the Countries Listing and reads the `'countries-listing'` entry
+instead — the same "no route to attach to" defect already fixed once for
+`cities-listing` (see the comment left in the same array), just never applied
+to this key.
+
+**Fix.** Removed the dead `home` key from `STATIC_PAGES`.
+
+**Status.** FIXED, deployed and re-verified live (PR #49, bundled with
+ISS-027): the "Home" row is gone from `/seo`, and the real homepage still
+renders the Countries Listing's own SEO entry correctly (SEO-08).
+
+---
+
+## ISS-027 — Country SEO save rejected a blank canonical URL
+
+**Severity.** Major — blocked saving Country SEO metadata entirely whenever
+the canonical URL field was left empty, which is the common case.
+
+**Where.** `apps/api/src/countries/editorial/editorial.dto.ts`,
+`SeoMetadataDto.canonicalUrl`.
+
+**Symptom.** `PUT /admin/countries/{id}/seo` returned 400 whenever
+`canonicalUrl` was submitted as `''` — which the admin's `SeoEditor.tsx`
+always does for an untouched field, never `undefined`. `@IsOptional()` only
+skips validation when a field is `undefined`, so the stricter `@IsUrl()`
+validator still ran against the empty string and rejected it.
+
+**Fix.** Added a `@Transform(({ value }) => value === '' ? undefined : value)`
+ahead of the existing `@IsOptional() @IsUrl() @MaxLength(2048)` decorators on
+`canonicalUrl`.
+
+**Status.** FIXED, deployed and re-verified live (PR #49, bundled with
+ISS-026): Country SEO now saves successfully with an empty canonical URL.
+
+---
+
+## ISS-028 — Country SEO save crashed with an unhandled 500 whenever no Open Graph/Twitter image was picked
+
+**Severity.** Critical — blocked saving Country SEO metadata entirely unless
+an admin happened to also pick both media images, which most saves don't.
+
+**Where.** `apps/api/src/countries/editorial/country-editorial.service.ts`,
+`CountryEditorialService.saveSeo()`.
+
+**Symptom.** `PUT /admin/countries/{id}/seo` returned an unhandled 500
+(`PrismaClientKnownRequestError`) whenever `ogMediaId`/`twitterMediaId` were
+left unset. Reproduced live via a real Playwright browser session driving the
+actual admin UI (a hand-crafted curl reproduction of the same payload
+produced a different, unrelated 400 — `SeoEditor.tsx` already normalizes
+`schemaJson`/`hreflangJson` client-side before submitting, so a manual curl
+payload didn't match real browser behaviour).
+
+**Root cause.** `saveSeo()`'s own `mediaIds()` helper already treats `''` as
+"nothing selected" for its own validation purposes (`Boolean('')` is false),
+but that normalization was never applied to what actually got written: the
+Prisma `upsert()` call passed `dto.ogMediaId`/`dto.twitterMediaId` straight
+through. An empty string in a `MediaAsset` foreign-key column is a reference
+to a row that doesn't exist, which MySQL rejects — crashing every save
+without an OG/Twitter image, i.e. almost every real save.
+
+**Fix.** Added a `mediaIdOrNull()` helper (`value ? value : null`) and applied
+it to both `ogMediaId` and `twitterMediaId` in both the `create` and `update`
+blocks of the upsert.
+
+**Status.** FIXED, deployed and re-verified live (PR #50): Country SEO now
+saves and persists successfully (SEO-09/10/11) without requiring an OG or
+Twitter image.
+
+---
+
+## ISS-029 — A fast login could be silently wiped by an unrelated pre-login refresh, bouncing straight back to the login screen
+
+**Severity.** Critical — intermittently made the admin console unusable
+immediately after signing in; reproduced deterministically (not
+intermittently) by any fast, scripted login.
+
+**Where.** `apps/admin/src/features/auth/AuthProvider.tsx` and
+`apps/admin/src/features/auth/auth-client.ts`.
+
+**Symptom.** `AuthProvider` fires a speculative `refreshSession()` on every
+mount, including the login screen itself, before any credentials exist. If
+`login()` landed and fully resolved while that speculative refresh call was
+still in flight, the refresh's own later, entirely unrelated "no session"
+verdict called `clearAuthenticatedSession()` — wiping the session `login()`
+had just established and bouncing the admin straight back to
+`/login?returnTo=...`. A first attempt at the fix reused the existing
+`sessionGeneration` counter (bumped by `clearAuthenticatedSession`) to detect
+this race, but that counter is *also* bumped by the refresh's own ordinary
+"there was no session" outcome — so a refresh finding no session looked stale
+to itself, and the login screen hung on "Checking your admin session…"
+forever instead. This broke every e2e test that starts by loading `/login`,
+caught by CI before it reached production.
+
+**Fix.** Introduced a dedicated `loginGeneration` counter, bumped only by
+`setAuthenticatedSession()` (a real login), never by a clear. `AuthProvider`'s
+`initializeSession` and `refresh()`, and `auth-client`'s `performRefresh`
+clear-branches, all snapshot this counter and skip applying a stale result
+once it has moved — which, unlike the session-rotation counter, can only ever
+mean "a login happened," never "the ordinary outcome I am about to apply."
+
+**Status.** FIXED, deployed and re-verified live (PR #51): a real login
+followed immediately by navigation into protected admin routes (Country and
+University SEO editors) completes and stays authenticated, with the full e2e
+suite (91 tests, including the standard login flow) passing in CI.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -750,7 +899,7 @@ passes live, confirming ISS-021 alongside this fix.
 | ISS-014 | Cosmetic | Admin — Universities | **OPEN** — cosmetic |
 | ISS-015 | Major | Admin — proxy | Fixed, deployed (PR #36) |
 | ISS-016 | Major | Content data | **OPEN** — content |
-| ISS-017 | Major | Content data | **OPEN** — content |
+| ISS-017 | Major | Content data | Fixed — real SEO content saved for all static pages + a Country |
 | ISS-018 | Minor | Admin — Website Builder | **OPEN** — small code fix |
 | ISS-019 | Major | Admin — Navigation | Fixed, deployed (PR #43), re-verified live |
 | ISS-020 | Major | Admin — proxy | Fixed, deployed (PR #44), re-verified live |
@@ -758,8 +907,12 @@ passes live, confirming ISS-021 alongside this fix.
 | ISS-023 | Major | Admin/API — Pages | Fixed, deployed (PR #46), re-verified live |
 | ISS-024 | Major | Infra — Nginx upload limit | Fixed, deployed (PR #47), re-verified live |
 | ISS-025 | Critical | Infra — release read-only, uploads crash | Fixed, deployed (PR #47, #48), re-verified live |
+| ISS-026 | Minor | Admin — SEO | Fixed, deployed (PR #49), re-verified live |
+| ISS-027 | Major | Admin/API — Country SEO | Fixed, deployed (PR #49), re-verified live |
+| ISS-028 | Critical | Admin/API — Country SEO | Fixed, deployed (PR #50), re-verified live |
+| ISS-029 | Critical | Admin — auth | Fixed, deployed (PR #51), re-verified live |
 
-Seventeen are fixed and every one deployed and re-verified live against
-production. Of the four still open, three are content decisions (ISS-004,
-ISS-013, ISS-016/ISS-017)
-and one is cosmetic (ISS-014); none require further development work.
+Twenty-three are fixed and every one deployed and re-verified live against
+production. Of the five still open, three are content decisions (ISS-004,
+ISS-013, ISS-016), one is cosmetic (ISS-014), and one is a small remaining
+code fix (ISS-018).
