@@ -448,6 +448,67 @@ CR-32). Only the missing per-field breakdown was a defect — that is ISS-015.
 
 ---
 
+## ISS-017 — Every editorial page record is an empty shell
+
+**Severity.** Major — the Website Builder's SEO screens govern nothing.
+
+**Where.** Admin → Pages (20 records), and the Website Builder's per-page SEO.
+
+**Symptom.** All twenty editorial page records carry a title and a slug and
+nothing else. Measured against production:
+
+| Field | Records with a value |
+| --- | --- |
+| `seoTitle` | 0 of 20 |
+| `metaDescription` | 0 of 20 |
+| `shortDescription` | 0 of 20 |
+
+**What that means.** These records are not standalone pages — they configure
+routes the application already defines ("Events Listing" configures `/events`).
+Because every record is empty, each route falls back to a code default: `/events`
+serves the document title `Events | Universta` from code, not from the record an
+admin would edit.
+
+So the pages render correctly today, but nothing an admin types into the Pages
+or Website Builder SEO screens is currently overriding anything, and the client
+cannot tell the two situations apart from the admin.
+
+**Assessment.** Not a code defect: the plumbing is in place and the create path
+works — a purpose-created page saved and reloaded its own description correctly
+(coverage sheet PG-20, PG-25). It is a **content gap**, the same family as
+ISS-001 and ISS-016.
+
+**Status.** OPEN — client-owned content. Filling `seoTitle` and
+`metaDescription` on the twenty records is admin work, not development.
+
+---
+
+## ISS-018 — The Website Builder's per-page SEO action loses the page
+
+**Severity.** Minor — a usability defect, not a rendering fault.
+
+**Where.** Admin → Website Builder (`/website`) → any row → **SEO**.
+
+**Symptom.** Each of the 33 rows offers five actions: Open in Builder, SEO,
+Preview, History and View live. Four of them act on that row's page. **SEO does
+not.** It navigates to the shared SEO management screen at `/seo` with no
+identifier in the path or query, and that screen opens with no fields — so the
+admin lands on an index and has to find the same page again by hand.
+
+Verified on the Home row: the action's target is `/seo`, the landed URL carries
+no page context, and the SEO title field is not present on arrival.
+
+**Impact.** Editing a page's SEO is still possible, just not from the place the
+builder advertises it. It is most visible on the homepage, which is the page an
+admin is most likely to reach this way.
+
+**Assessment.** The other four row actions carry their page correctly, so the
+pattern is established and this is a single link that does not follow it.
+
+**Status.** OPEN — small admin fix; no public-facing impact.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -455,7 +516,7 @@ CR-32). Only the missing per-field breakdown was a defect — that is ISS-015.
 | ISS-001 | Blocker | Content data | Fixed — seven modules populated |
 | ISS-002 | Critical | Web rendering | Fixed, deployed (PR #30) |
 | ISS-003 | Major | Web rendering | Fixed, deployed (PR #30) |
-| ISS-004 | Major | Content copy | **OPEN** |
+| ISS-004 | Major | Content copy | **OPEN** — content |
 | ISS-005 | Major | SEO | Fixed, deployed (PR #30) |
 | ISS-006 | Minor | Accessibility | Fixed, deployed (PR #30) |
 | ISS-007 | Major | API | Fixed, deployed (PR #31) |
@@ -464,10 +525,14 @@ CR-32). Only the missing per-field breakdown was a defect — that is ISS-015.
 | ISS-010 | Critical | Admin — Subjects | Fixed, deployed (PR #33) |
 | ISS-011 | Major | Admin — media | Fixed, deployed (PR #34) |
 | ISS-012 | Critical | Admin — auth | Fixed, deployed (PR #35) |
-| ISS-013 | Major | Client data | **OPEN** — needs client sign-off to delete |
-| ISS-014 | Cosmetic | Admin — Universities | **OPEN** |
-| ISS-015 | Major | Admin — proxy | Fixed (PR #36), awaiting deploy |
+| ISS-013 | Major | Client data | **OPEN** — content |
+| ISS-014 | Cosmetic | Admin — Universities | **OPEN** — cosmetic |
+| ISS-015 | Major | Admin — proxy | Fixed, deployed (PR #36) |
+| ISS-016 | Major | Content data | **OPEN** — content |
+| ISS-017 | Major | Content data | **OPEN** — content |
+| ISS-018 | Minor | Admin — Website Builder | **OPEN** — code, small |
 
-Twelve are fixed and deployed, one is merged pending deploy. Of the three still
-open, ISS-013 is a client-owned production record and ISS-004 is client-owned
-copy — both are data decisions rather than code — and ISS-014 is cosmetic.
+Twelve are fixed and deployed. Of the six still open, four are content
+decisions (ISS-004, ISS-013, ISS-016, ISS-017) and two are small admin-only
+items with no public impact (ISS-014 cosmetic, ISS-018 a single mis-targeted
+link).
