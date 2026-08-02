@@ -329,6 +329,63 @@ export class ExpandedAdminController {
       await this.service.adminDelete(adminContent(resource), id),
     );
   }
+  // --- Navigation menu items (ISS-019) ---
+  //
+  // The menu itself was already a Phase1 resource with the routes above.
+  // These are the routes for what is inside it -- the links an admin
+  // actually needs to add, edit, reorder and remove, none of which existed
+  // before this fix.
+  @Get('navigation-menus/:id/items') async navigationItems(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(req, await this.service.navigationItems(id));
+  }
+  @Post('navigation-menus/:id/items') async createNavigationItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.navigationItemCreate(id, body),
+    );
+  }
+  @Patch('navigation-menus/:id/items/:itemId') async updateNavigationItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.navigationItemUpdate(id, itemId, body),
+    );
+  }
+  @Delete('navigation-menus/:id/items/:itemId') async deleteNavigationItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.navigationItemDelete(id, itemId),
+    );
+  }
+  @Post('navigation-menus/:id/items/reorder') async reorderNavigationItems(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: { parentItemId?: string | null; orderedIds?: string[] },
+  ) {
+    return successEnvelope(
+      req,
+      await this.service.navigationItemReorder(
+        id,
+        body.parentItemId ?? null,
+        Array.isArray(body.orderedIds) ? body.orderedIds : [],
+      ),
+    );
+  }
   @Post('contact-inquiries/:id/convert') async convert(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,

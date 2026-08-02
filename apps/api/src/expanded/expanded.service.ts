@@ -1086,6 +1086,24 @@ export class ExpandedService {
       }),
       delegate.count({ where }),
     ]);
+    if (resource === 'navigation-menus') {
+      // Every menu looks equally "live" in a bare list -- Publish/Unpublish
+      // says nothing about whether the site actually reads it. Annotating
+      // each row with the chrome slot it resolves to (or null) is what lets
+      // the admin tell "Primary Navigation" (renders the header) apart from
+      // "Primary" (nothing reads it, however published it looks).
+      const usage = await this.navigationMenuUsage();
+      for (const row of data as Array<{
+        menuKey: string;
+        usedAs?: string | null;
+      }>)
+        row.usedAs =
+          row.menuKey === usage.headerKey
+            ? 'header'
+            : row.menuKey === usage.footerKey
+              ? 'footer'
+              : null;
+    }
     return { data, meta: meta(page, limit, Number(total)) };
   }
 
@@ -1697,6 +1715,15 @@ export class ExpandedService {
         orderBy: { createdAt: 'desc' },
       }),
     ]);
+    // Only published, non-deleted pages are offered as an internal-link
+    // target: linking to anything else is exactly the "deleted target" /
+    // "invalid target" failure mode a navigation item can otherwise fall
+    // into silently.
+    const pages = await this.prisma.page.findMany({
+      where: { status: 'PUBLISHED', deletedAt: null },
+      select: { id: true, title: true, slug: true },
+      orderBy: { title: 'asc' },
+    });
     const campuses = await this.prisma.universityCampus.findMany({
       where: { deletedAt: null },
       select: { id: true, name: true, universityId: true },
@@ -1732,6 +1759,7 @@ export class ExpandedService {
       campuses,
       states,
       cities,
+      pages,
     };
   }
 
@@ -2360,6 +2388,405 @@ export class ExpandedService {
   }
   private optionalText(value: unknown) {
     return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  // --- Navigation menu items (ISS-019) -----------------------------------
+  //
+  // NavigationMenu itself was already a Phase1 resource -- list, create,
+  // publish/unpublish, archive all worked. What did not exist anywhere was a
+  // way to reach the links *inside* a menu: no admin screen offered an Edit
+  // action, and no endpoint returned or accepted NavigationItem rows, even
+  // though the model, the public site-chrome query and the live header and
+  // footer all already depended on that table. The only route to a link was
+  // the "Advanced JSON draft" textarea. These methods are the missing half.
+
+  private navigationItemHref(row: {
+    linkType: string;
+    customUrl: string | null;
+    page?: { slug: string; status: string; deletedAt: Date | null } | null;
+  }): { href: string | null; brokenTarget: boolean } {
+    if (row.linkType === 'NONE') return { href: null, brokenTarget: false };
+    if (row.linkType === 'PAGE') {
+      if (!row.page) return { href: null, brokenTarget: true };
+      const usable = row.page.status === 'PUBLISHED' && !row.page.deletedAt;
+      return {
+        href: `/${row.page.slug}`,
+        brokenTarget: !usable,
+      };
+    }
+    const url = row.customUrl?.trim() ?? '';
+    const valid = /^(\/[^\s]*|https:\/\/[^\s]+)$/.test(url);
+    return { href: valid ? url : null, brokenTarget: !valid };
+  }
+
+  /** Which menu key the live site currently reads for each chrome slot.
+   * Mirrors SettingsService.publicChrome's own defaulting so a menu that the
+   * admin can see is never characterised differently from the one the site
+   * actually renders. A menu whose key matches neither is not wired to
+   * anything -- editing it would have no visible effect, which is exactly the
+   * confusion an admin needs to be warned about before they invest time in
+   * it (the demo data shipped exactly one such orphan, named "Primary"). */
+  async navigationMenuUsage(): Promise<{
+    headerKey: string;
+    footerKey: string;
+  }> {
+    const rows = await this.prisma.siteSetting.findMany({
+      where: { settingKey: { in: ['header', 'footer'] } },
+    });
+    const byKey = new Map(rows.map((row) => [row.settingKey, row]));
+    const menuKeyOf = (group: 'header' | 'footer', fallback: string) => {
+      const value = byKey.get(group)?.valueJson as
+        { menuKey?: unknown } | undefined;
+      return typeof value?.menuKey === 'string' && value.menuKey
+        ? value.menuKey
+        : fallback;
+    };
+    return {
+      headerKey: menuKeyOf('header', 'header'),
+      footerKey: menuKeyOf('footer', 'footer'),
+    };
+  }
+
+  private async requireMenu(menuId: string) {
+    const menu = await this.prisma.navigationMenu.findUnique({
+      where: { id: menuId },
+    });
+    if (!menu) this.notFound('navigation-menus');
+    return menu;
+  }
+
+  /** Every item in a menu, ordered, with its resolved public href and whether
+   * that target is actually reachable -- a page that was unpublished or
+   * soft-deleted after the link was created still satisfies the foreign key,
+   * so the only way to catch it is to check the target's current state. */
+  async navigationItems(menuId: string) {
+    await this.requireMenu(menuId);
+    const rows = await this.prisma.navigationItem.findMany({
+      where: { menuId },
+      include: {
+        page: {
+          select: { title: true, slug: true, status: true, deletedAt: true },
+        },
+      },
+      orderBy: [{ parentItemId: 'asc' }, { displayOrder: 'asc' }],
+    });
+    return rows.map((row) => {
+      const { href, brokenTarget } = this.navigationItemHref(row);
+      return {
+        id: row.id,
+        menuId: row.menuId,
+        parentItemId: row.parentItemId,
+        label: row.label,
+        linkType: row.linkType,
+        pageId: row.pageId,
+        pageTitle: row.page?.title ?? null,
+        customUrl: row.customUrl,
+        openInNewTab: row.openInNewTab,
+        displayOrder: row.displayOrder,
+        status: row.status,
+        resolvedHref: href,
+        brokenTarget,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    });
+  }
+
+  /** Shared create/update validation. Every rule here exists because the
+   * public tree builder (`navigationTree`, above) resolves a broken or
+   * ambiguous item by silently dropping it -- which reads as "the link
+   * vanished" with nothing in any log, the same failure mode ISS-019 exists
+   * to close off. Rejecting it here, with a message that names the field,
+   * is what makes that failure visible at save time instead of on the
+   * live site. */
+  private async validateNavigationItem(
+    menuId: string,
+    body: Data,
+    options: { partial: boolean; existingId?: string },
+  ) {
+    const data: Data = {};
+    const has = (key: string) =>
+      Object.prototype.hasOwnProperty.call(body, key);
+
+    if (has('label') || !options.partial) {
+      const label = typeof body.label === 'string' ? body.label.trim() : '';
+      if (!label)
+        throw new UnprocessableEntityException({
+          code: 'LABEL_REQUIRED',
+          message: 'A label is required',
+          details: null,
+        });
+      if (label.length > 150)
+        throw new UnprocessableEntityException({
+          code: 'LABEL_TOO_LONG',
+          message: 'Label must be 150 characters or fewer',
+          details: null,
+        });
+      data.label = label;
+    }
+
+    let linkType =
+      typeof body.linkType === 'string' ? body.linkType : undefined;
+    if (linkType !== undefined) {
+      if (!['PAGE', 'CUSTOM', 'NONE'].includes(linkType))
+        throw new UnprocessableEntityException({
+          code: 'LINK_TYPE_INVALID',
+          message: 'Link type must be PAGE, CUSTOM or NONE',
+          details: null,
+        });
+      data.linkType = linkType;
+    } else if (options.existingId) {
+      const current = await this.prisma.navigationItem.findUnique({
+        where: { id: options.existingId },
+        select: { linkType: true },
+      });
+      linkType = current?.linkType;
+    }
+
+    if (linkType === 'PAGE') {
+      if (has('pageId') || !options.partial) {
+        const pageId = this.optionalText(body.pageId);
+        if (!pageId)
+          throw new UnprocessableEntityException({
+            code: 'PAGE_REQUIRED',
+            message: 'An internal page is required for an internal link',
+            details: null,
+          });
+        const page = await this.prisma.page.findUnique({
+          where: { id: pageId },
+        });
+        if (!page)
+          throw new UnprocessableEntityException({
+            code: 'PAGE_NOT_FOUND',
+            message: 'The selected internal page no longer exists',
+            details: null,
+          });
+        data.pageId = pageId;
+        data.customUrl = null;
+      }
+    } else if (linkType === 'CUSTOM') {
+      if (has('customUrl') || !options.partial) {
+        const url = this.optionalText(body.customUrl);
+        if (!url)
+          throw new UnprocessableEntityException({
+            code: 'URL_REQUIRED',
+            message: 'A URL is required for an external or custom link',
+            details: null,
+          });
+        if (!/^(\/[^\s]*|https:\/\/[^\s]+)$/.test(url))
+          throw new UnprocessableEntityException({
+            code: 'URL_INVALID',
+            message:
+              'The URL must be an internal path starting with "/" or an external "https://" address',
+            details: null,
+          });
+        data.customUrl = url;
+        data.pageId = null;
+      }
+    } else if (linkType === 'NONE') {
+      data.pageId = null;
+      data.customUrl = null;
+    }
+
+    if (has('openInNewTab')) data.openInNewTab = Boolean(body.openInNewTab);
+
+    if (has('parentItemId')) {
+      const parentItemId = this.optionalText(body.parentItemId);
+      if (parentItemId) {
+        if (parentItemId === options.existingId)
+          throw new UnprocessableEntityException({
+            code: 'PARENT_INVALID',
+            message: 'An item cannot be its own parent',
+            details: null,
+          });
+        const parent = await this.prisma.navigationItem.findFirst({
+          where: { id: parentItemId, menuId },
+        });
+        if (!parent)
+          throw new UnprocessableEntityException({
+            code: 'PARENT_NOT_FOUND',
+            message: 'The selected parent item is not in this menu',
+            details: null,
+          });
+        // Only one level of nesting is ever rendered publicly
+        // (navigationTree only walks parent -> children, not grandchildren),
+        // so allowing a deeper parent would silently produce a link that
+        // never appears on the live site.
+        if (parent.parentItemId)
+          throw new UnprocessableEntityException({
+            code: 'PARENT_TOO_DEEP',
+            message:
+              'A sub-item cannot itself have a sub-item; only one level of nesting is supported',
+            details: null,
+          });
+        data.parentItemId = parentItemId;
+      } else {
+        data.parentItemId = null;
+      }
+    }
+
+    if (has('status')) {
+      const status = typeof body.status === 'string' ? body.status : '';
+      if (!['ACTIVE', 'INACTIVE'].includes(status))
+        throw new UnprocessableEntityException({
+          code: 'STATUS_INVALID',
+          message: 'Status must be ACTIVE or INACTIVE',
+          details: null,
+        });
+      data.status = status;
+    }
+
+    // Duplicate prevention: two items with the same label under the same
+    // parent (including two top-level items) reads, once published, as one
+    // link mysteriously duplicated in the header -- there is no legitimate
+    // reason for it, so it is rejected rather than silently allowed.
+    if (data.label !== undefined || has('parentItemId')) {
+      const label =
+        (data.label as string | undefined) ??
+        (options.existingId
+          ? (
+              await this.prisma.navigationItem.findUnique({
+                where: { id: options.existingId },
+                select: { label: true },
+              })
+            )?.label
+          : undefined);
+      const parentItemId =
+        data.parentItemId !== undefined
+          ? (data.parentItemId as string | null)
+          : options.existingId
+            ? ((
+                await this.prisma.navigationItem.findUnique({
+                  where: { id: options.existingId },
+                  select: { parentItemId: true },
+                })
+              )?.parentItemId ?? null)
+            : null;
+      if (label) {
+        const duplicate = await this.prisma.navigationItem.findFirst({
+          where: {
+            menuId,
+            parentItemId,
+            label: { equals: label },
+            ...(options.existingId ? { id: { not: options.existingId } } : {}),
+          },
+        });
+        if (duplicate)
+          throw new UnprocessableEntityException({
+            code: 'LABEL_DUPLICATE',
+            message: 'Another item in this menu already uses that label',
+            details: null,
+          });
+      }
+    }
+
+    return data;
+  }
+
+  async navigationItemCreate(menuId: string, body: Data) {
+    await this.requireMenu(menuId);
+    const data = await this.validateNavigationItem(menuId, body, {
+      partial: false,
+    });
+    const siblings = await this.prisma.navigationItem.count({
+      where: {
+        menuId,
+        parentItemId: (data.parentItemId as string | null) ?? null,
+      },
+    });
+    return this.prisma.navigationItem.create({
+      data: {
+        menuId,
+        label: data.label as string,
+        linkType: data.linkType as string,
+        pageId: (data.pageId as string | null) ?? null,
+        customUrl: (data.customUrl as string | null) ?? null,
+        parentItemId: (data.parentItemId as string | null) ?? null,
+        openInNewTab: Boolean(data.openInNewTab),
+        status: (data.status as string) ?? 'ACTIVE',
+        displayOrder: siblings,
+      },
+    });
+  }
+
+  async navigationItemUpdate(menuId: string, itemId: string, body: Data) {
+    await this.requireMenu(menuId);
+    const existing = await this.prisma.navigationItem.findFirst({
+      where: { id: itemId, menuId },
+    });
+    if (!existing) this.notFound('navigation item');
+    const data = await this.validateNavigationItem(menuId, body, {
+      partial: true,
+      existingId: itemId,
+    });
+    return this.prisma.navigationItem.update({ where: { id: itemId }, data });
+  }
+
+  /** A hard delete: NavigationItem has no `deletedAt` column, so "remove" and
+   * "deactivate" are deliberately two different actions here -- Status =
+   * INACTIVE is the reversible one (PATCH), this is not. Blocked when
+   * children exist so removing a dropdown parent cannot silently orphan its
+   * children; the admin has to move or remove them first. */
+  async navigationItemDelete(menuId: string, itemId: string) {
+    await this.requireMenu(menuId);
+    const existing = await this.prisma.navigationItem.findFirst({
+      where: { id: itemId, menuId },
+    });
+    if (!existing) this.notFound('navigation item');
+    const children = await this.prisma.navigationItem.count({
+      where: { parentItemId: itemId },
+    });
+    if (children)
+      throw new ConflictException({
+        code: 'ITEM_HAS_CHILDREN',
+        message: "Remove or move this item's sub-items before deleting it",
+        details: null,
+      });
+    await this.prisma.navigationItem.delete({ where: { id: itemId } });
+    return { deleted: true };
+  }
+
+  /** Bulk display-order write for one sibling group (a shared parentItemId,
+   * or top-level when null). Every id must already belong to this menu and
+   * this parent -- silently accepting an id from another menu or another
+   * parent would let one reorder request move an item somewhere it was
+   * never shown to be going. */
+  async navigationItemReorder(
+    menuId: string,
+    parentItemId: string | null,
+    orderedIds: string[],
+  ) {
+    await this.requireMenu(menuId);
+    if (!orderedIds.length || new Set(orderedIds).size !== orderedIds.length)
+      throw new UnprocessableEntityException({
+        code: 'ORDER_INVALID',
+        message:
+          'The reorder list must be a non-empty list of distinct item ids',
+        details: null,
+      });
+    const siblings = await this.prisma.navigationItem.findMany({
+      where: { menuId, parentItemId },
+      select: { id: true },
+    });
+    const siblingIds = new Set(siblings.map((row) => row.id));
+    if (
+      siblingIds.size !== orderedIds.length ||
+      !orderedIds.every((id) => siblingIds.has(id))
+    )
+      throw new UnprocessableEntityException({
+        code: 'ORDER_MISMATCH',
+        message: "The reorder list must contain exactly this group's items",
+        details: null,
+      });
+    await this.prisma.$transaction(
+      orderedIds.map((id, index) =>
+        this.prisma.navigationItem.update({
+          where: { id },
+          data: { displayOrder: index },
+        }),
+      ),
+    );
+    return this.navigationItems(menuId);
   }
   private requiredEmail(value: unknown) {
     const email = this.requiredText(value, 'email').toLowerCase();
