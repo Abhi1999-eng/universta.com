@@ -20,15 +20,20 @@ type Row = Record<string, unknown>;
 
 function matches(row: Row, where: Row): boolean {
   return Object.entries(where).every(([key, value]) => {
-    if (key === 'OR') return (value as Row[]).some((clause) => matches(row, clause));
-    if (key === 'AND') return (value as Row[]).every((clause) => matches(row, clause));
+    if (key === 'OR')
+      return (value as Row[]).some((clause) => matches(row, clause));
+    if (key === 'AND')
+      return (value as Row[]).every((clause) => matches(row, clause));
     if (value === null) return row[key] == null;
     return row[key] === value;
   });
 }
 
 function countable(rows: Row[]) {
-  return { count: async ({ where = {} }: { where?: Row } = {}) => rows.filter((row) => matches(row, where)).length };
+  return {
+    count: async ({ where = {} }: { where?: Row } = {}) =>
+      rows.filter((row) => matches(row, where)).length,
+  };
 }
 
 const MEDIA_ID = 'media-under-test';
@@ -60,9 +65,18 @@ function fakePrisma(overrides: Partial<Record<string, Row[]>> = {}) {
     seoMetadata: table('seoMetadata'),
     user: table('user'),
     mediaAsset: {
-      findFirst: async ({ where }: { where: { id: string; deletedAt: null } }) =>
+      findFirst: async ({
+        where,
+      }: {
+        where: { id: string; deletedAt: null };
+      }) =>
         where.id === MEDIA_ID
-          ? { id: MEDIA_ID, storedFileName: 'test-fixture.png', fileSizeBytes: 100n, deletedAt: null }
+          ? {
+              id: MEDIA_ID,
+              storedFileName: 'test-fixture.png',
+              fileSizeBytes: 100n,
+              deletedAt: null,
+            }
           : null,
       update: async ({ data }: { data: Row }) => ({
         id: MEDIA_ID,
@@ -76,35 +90,135 @@ function fakePrisma(overrides: Partial<Record<string, Row[]>> = {}) {
 
 /** [label, model key in fakePrisma, row shape with a media FK set to MEDIA_ID] */
 const RELATIONS: Array<[string, string, Row]> = [
-  ['PageSection.mediaId', 'pageSection', { mediaId: MEDIA_ID, deletedAt: null }],
-  ['PageSection.backgroundMediaId', 'pageSection', { backgroundMediaId: MEDIA_ID, deletedAt: null }],
-  ['University.featuredMediaId', 'university', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['UniversityCourseOffering.featuredMediaId', 'universityCourseOffering', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['Scholarship.featuredMediaId', 'scholarship', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['ConsultantLandingCard.iconMediaId', 'consultantLandingCard', { iconMediaId: MEDIA_ID, deletedAt: null }],
-  ['ConsultantLandingCard.featuredMediaId', 'consultantLandingCard', { featuredMediaId: MEDIA_ID, deletedAt: null }],
+  [
+    'PageSection.mediaId',
+    'pageSection',
+    { mediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'PageSection.backgroundMediaId',
+    'pageSection',
+    { backgroundMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'University.featuredMediaId',
+    'university',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'UniversityCourseOffering.featuredMediaId',
+    'universityCourseOffering',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Scholarship.featuredMediaId',
+    'scholarship',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'ConsultantLandingCard.iconMediaId',
+    'consultantLandingCard',
+    { iconMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'ConsultantLandingCard.featuredMediaId',
+    'consultantLandingCard',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
   // The Phase 1 catalog's own Consultant model, distinct from the landing
   // card above -- its "Media (optional)" picker was entirely unchecked.
-  ['Consultant.featuredMediaId', 'consultant', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['Event.featuredMediaId', 'event', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['SuccessStory.featuredMediaId', 'successStory', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['Testimonial.imageMediaId', 'testimonial', { imageMediaId: MEDIA_ID, deletedAt: null }],
-  ['Subject.iconMediaId', 'subject', { iconMediaId: MEDIA_ID, deletedAt: null }],
-  ['Subject.listingMediaId', 'subject', { listingMediaId: MEDIA_ID, deletedAt: null }],
-  ['Subject.heroMediaId', 'subject', { heroMediaId: MEDIA_ID, deletedAt: null }],
-  ['SubSubject.iconMediaId', 'subSubject', { iconMediaId: MEDIA_ID, deletedAt: null }],
-  ['SubSubject.listingMediaId', 'subSubject', { listingMediaId: MEDIA_ID, deletedAt: null }],
-  ['Continent.iconMediaId', 'continent', { iconMediaId: MEDIA_ID, deletedAt: null }],
-  ['Continent.heroMediaId', 'continent', { heroMediaId: MEDIA_ID, deletedAt: null }],
-  ['Country.flagMediaId', 'country', { flagMediaId: MEDIA_ID, deletedAt: null }],
-  ['Country.listingMediaId', 'country', { listingMediaId: MEDIA_ID, deletedAt: null }],
-  ['Country.heroMediaId', 'country', { heroMediaId: MEDIA_ID, deletedAt: null }],
+  [
+    'Consultant.featuredMediaId',
+    'consultant',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Event.featuredMediaId',
+    'event',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'SuccessStory.featuredMediaId',
+    'successStory',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Testimonial.imageMediaId',
+    'testimonial',
+    { imageMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Subject.iconMediaId',
+    'subject',
+    { iconMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Subject.listingMediaId',
+    'subject',
+    { listingMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Subject.heroMediaId',
+    'subject',
+    { heroMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'SubSubject.iconMediaId',
+    'subSubject',
+    { iconMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'SubSubject.listingMediaId',
+    'subSubject',
+    { listingMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Continent.iconMediaId',
+    'continent',
+    { iconMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Continent.heroMediaId',
+    'continent',
+    { heroMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Country.flagMediaId',
+    'country',
+    { flagMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Country.listingMediaId',
+    'country',
+    { listingMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'Country.heroMediaId',
+    'country',
+    { heroMediaId: MEDIA_ID, deletedAt: null },
+  ],
   ['Country.mapMediaId', 'country', { mapMediaId: MEDIA_ID, deletedAt: null }],
-  ['CountryContentSection.primaryMediaId', 'countryContentSection', { primaryMediaId: MEDIA_ID, deletedAt: null }],
-  ['CountryContentSection.secondaryMediaId', 'countryContentSection', { secondaryMediaId: MEDIA_ID, deletedAt: null }],
+  [
+    'CountryContentSection.primaryMediaId',
+    'countryContentSection',
+    { primaryMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'CountryContentSection.secondaryMediaId',
+    'countryContentSection',
+    { secondaryMediaId: MEDIA_ID, deletedAt: null },
+  ],
   ['City.heroMediaId', 'city', { heroMediaId: MEDIA_ID, deletedAt: null }],
-  ['Course.featuredMediaId', 'course', { featuredMediaId: MEDIA_ID, deletedAt: null }],
-  ['CourseContentSection.mediaId', 'courseContentSection', { mediaId: MEDIA_ID, deletedAt: null }],
+  [
+    'Course.featuredMediaId',
+    'course',
+    { featuredMediaId: MEDIA_ID, deletedAt: null },
+  ],
+  [
+    'CourseContentSection.mediaId',
+    'courseContentSection',
+    { mediaId: MEDIA_ID, deletedAt: null },
+  ],
   ['NavigationItem.iconMediaId', 'navigationItem', { iconMediaId: MEDIA_ID }],
   ['PlatformMetric.iconMediaId', 'platformMetric', { iconMediaId: MEDIA_ID }],
   ['SeoMetadata.ogMediaId', 'seoMetadata', { ogMediaId: MEDIA_ID }],
@@ -113,21 +227,31 @@ const RELATIONS: Array<[string, string, Row]> = [
 ];
 
 describe('MediaService.archive — usage check covers every MediaAsset relation', () => {
-  it.each(RELATIONS)('refuses to archive when %s references the asset', async (_label, modelKey, row) => {
-    const prisma = fakePrisma({ [modelKey]: [row] });
-    const service = new MediaService(prisma);
-    await expect(service.archive(MEDIA_ID)).rejects.toThrow(ConflictException);
-  });
+  it.each(RELATIONS)(
+    'refuses to archive when %s references the asset',
+    async (_label, modelKey, row) => {
+      const prisma = fakePrisma({ [modelKey]: [row] });
+      const service = new MediaService(prisma);
+      await expect(service.archive(MEDIA_ID)).rejects.toThrow(
+        ConflictException,
+      );
+    },
+  );
 
-  it.each(RELATIONS)('is not fooled by a matching row pointed at a different asset (%s)', async (_label, modelKey, row) => {
-    const otherRow = { ...row };
-    for (const key of Object.keys(otherRow)) {
-      if (otherRow[key] === MEDIA_ID) otherRow[key] = 'a-different-media-id';
-    }
-    const prisma = fakePrisma({ [modelKey]: [otherRow] });
-    const service = new MediaService(prisma);
-    await expect(service.archive(MEDIA_ID)).resolves.toMatchObject({ id: MEDIA_ID });
-  });
+  it.each(RELATIONS)(
+    'is not fooled by a matching row pointed at a different asset (%s)',
+    async (_label, modelKey, row) => {
+      const otherRow = { ...row };
+      for (const key of Object.keys(otherRow)) {
+        if (otherRow[key] === MEDIA_ID) otherRow[key] = 'a-different-media-id';
+      }
+      const prisma = fakePrisma({ [modelKey]: [otherRow] });
+      const service = new MediaService(prisma);
+      await expect(service.archive(MEDIA_ID)).resolves.toMatchObject({
+        id: MEDIA_ID,
+      });
+    },
+  );
 
   it('respects deletedAt: soft-deleted referencing rows do not block archiving', async () => {
     const prisma = fakePrisma({
@@ -136,7 +260,9 @@ describe('MediaService.archive — usage check covers every MediaAsset relation'
       consultant: [{ featuredMediaId: MEDIA_ID, deletedAt: new Date() }],
     });
     const service = new MediaService(prisma);
-    await expect(service.archive(MEDIA_ID)).resolves.toMatchObject({ id: MEDIA_ID });
+    await expect(service.archive(MEDIA_ID)).resolves.toMatchObject({
+      id: MEDIA_ID,
+    });
   });
 
   it('archives cleanly when nothing in the schema references the asset', async () => {
@@ -152,7 +278,10 @@ describe('MediaService.archive — usage check covers every MediaAsset relation'
     });
     const service = new MediaService(prisma);
     await expect(service.archive(MEDIA_ID)).rejects.toMatchObject({
-      response: { code: 'MEDIA_IN_USE', message: expect.stringContaining('2 records') },
+      response: {
+        code: 'MEDIA_IN_USE',
+        message: expect.stringContaining('2 records'),
+      },
     });
   });
 });
