@@ -879,6 +879,43 @@ suite (91 tests, including the standard login flow) passing in CI.
 
 ---
 
+## ISS-030 — Saving any static page's SEO title/description silently made comparison pages indexable
+
+**Severity.** Major — quietly violated the "comparison pages must stay
+noindex until an admin opts in" requirement, for all 4 comparison pages, the
+very first time anyone touched their SEO fields.
+
+**Where.** `apps/admin/src/features/shell/SeoManagementHub.tsx`
+(`StaticSeoEditor`) and `apps/api/src/static-page-seo/static-page-seo.service.ts`
+(`adminList()`).
+
+**Symptom.** Found while re-verifying ISS-028/ISS-029 live: after ISS-017's
+one-time real-content save (SEO-03) touched all 19 static pages including the
+4 comparisons, `/compare/countries`, `/universities`, `/courses` and
+`/consultants` all started serving `<meta name="robots" content="index,
+follow">` instead of the required `noindex, follow`.
+
+**Root cause.** `StaticSeoEditor`'s "Allow search indexing" checkbox
+initialized from `row.seo?.robotsIndex ?? true` — a hardcoded `true` for any
+page with no saved record yet, with no knowledge of that page's own
+`defaultRobotsIndex` (`false` for comparisons, by design). The editor always
+sends the checkbox's boolean state on save, so saving the unrelated
+title/description fields on a never-touched comparison page silently sent
+`robotsIndex: true`, overriding the intended default the very first time.
+
+**Fix.** `adminList()` now returns each page's own `defaultRobotsIndex`
+alongside its saved record; the editor falls back to that instead of a
+hardcoded `true`. The 4 already-corrupted live records were then corrected
+through the same admin workflow (uncheck, save) to restore their noindex
+state.
+
+**Status.** FIXED, deployed and re-verified live (PR #52): all 4 comparison
+pages serve `noindex, follow` again, confirmed to hold across a repeat
+ISS-017 content save (i.e. the fix is not order-dependent on when a page's
+title/description happen to be edited).
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -911,8 +948,9 @@ suite (91 tests, including the standard login flow) passing in CI.
 | ISS-027 | Major | Admin/API — Country SEO | Fixed, deployed (PR #49), re-verified live |
 | ISS-028 | Critical | Admin/API — Country SEO | Fixed, deployed (PR #50), re-verified live |
 | ISS-029 | Critical | Admin — auth | Fixed, deployed (PR #51), re-verified live |
+| ISS-030 | Major | Admin/API — Static SEO | Fixed, deployed (PR #52), re-verified live |
 
-Twenty-three are fixed and every one deployed and re-verified live against
+Twenty-four are fixed and every one deployed and re-verified live against
 production. Of the five still open, three are content decisions (ISS-004,
 ISS-013, ISS-016), one is cosmetic (ISS-014), and one is a small remaining
 code fix (ISS-018).
