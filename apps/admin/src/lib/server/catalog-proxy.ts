@@ -272,8 +272,20 @@ function safeBody(value: unknown, allowed: string[]): string | null {
   return JSON.stringify(result);
 }
 
-function safeDetails(code: string, details: unknown): unknown {
-  if (code === 'COUNTRY_NOT_READY' || code === 'VALIDATION_ERROR') return details;
+/* Publish readiness failures answer with a list of {field, message} pairs
+ * naming exactly what is still missing. Only COUNTRY_NOT_READY was
+ * allow-listed, so COURSE_NOT_READY, SUBJECT_NOT_READY and
+ * SUB_SUBJECT_NOT_READY reached the admin as details: null -- leaving an
+ * editor with "Complete course readiness requirements before publishing" and
+ * no way to find out which requirement failed.
+ *
+ * These lists are authored by our own services and carry no record content,
+ * and the API already runs redactSensitiveFields over them, so every readiness
+ * code is passed through rather than named one at a time. */
+const READINESS_CODE = /^[A-Z][A-Z_]*_NOT_READY$/;
+
+export function safeDetails(code: string, details: unknown): unknown {
+  if (code === 'VALIDATION_ERROR' || READINESS_CODE.test(code)) return details;
   return null;
 }
 
