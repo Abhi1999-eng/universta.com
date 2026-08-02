@@ -91,6 +91,13 @@ if [[ ! -f "${release}/.release-ready" ]]; then
   rm -rf "${staging}/apps/web/.next/cache" "${staging}/apps/admin/.next/cache"
   ln -s "${UNIVERSTA_ROOT}/shared/cache/web" "${staging}/apps/web/.next/cache"
   ln -s "${UNIVERSTA_ROOT}/shared/cache/admin" "${staging}/apps/admin/.next/cache"
+  # ISS-025. The API's WorkingDirectory (this release) is made read-only a few
+  # lines down (chmod -R go-w), and MediaService writes uploads to
+  # `${cwd}/uploads/media` -- every upload therefore hit EACCES/EROFS and
+  # crashed with an unhandled 500, 100% of the time, in every deployed
+  # release to date. Symlinking to shared, writable storage before the
+  # lockdown fixes it the same way .next/cache already is above.
+  ln -s "${UNIVERSTA_ROOT}/shared/uploads" "${staging}/uploads"
   touch "${staging}/.release-ready"
   chown -R root:universta "${staging}"
   chmod -R go-w "${staging}"

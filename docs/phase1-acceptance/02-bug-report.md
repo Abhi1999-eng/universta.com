@@ -666,6 +666,58 @@ host reconfiguration is needed. Pending merge and deployed re-verification.
 
 ---
 
+## ISS-025 — Every media upload has crashed since launch: the release directory is read-only
+
+**Severity.** Critical — the Media Library's upload feature has never worked
+in production, at any file size.
+
+**Where.** Deployment layout (`scripts/deployment/deploy.sh`,
+`scripts/deployment/configure-host.sh`) vs. `apps/api/src/media/media.service.ts`.
+
+**Symptom.** Uploading even a trivially small, valid image (`MD-04`, a
+68-byte PNG) returned "Internal server error". The API logs showed an
+unhandled `Error` (not a Prisma or validation error) on `POST
+/api/v1/admin/media`.
+
+**Root cause.** `MediaService.uploadsDir` resolves to
+`join(process.cwd(), 'uploads', 'media')`. The API's systemd unit sets
+`WorkingDirectory=/opt/universta/current` (the release symlink), and
+`deploy.sh` makes every release read-only after install
+(`chown -R root:universta` + `chmod -R go-w`) — group write is exactly what
+the `universta` user (the one the API actually runs as) loses. So
+`ensureUploadsDir()`'s `mkdir(uploadsDir, { recursive: true })`, and every
+`writeFile` after it, hit `EACCES` on every single upload attempt, in every
+release shipped so far. Confirmed directly on the live instance via SSM,
+running as the real service user:
+```
+runuser -u universta -- touch /opt/universta/current/x
+touch: cannot touch '/opt/universta/current/x': Permission denied
+runuser -u universta -- mkdir -p /opt/universta/current/uploads/media
+mkdir: cannot create directory '/opt/universta/current/uploads': Permission denied
+```
+This is not a race or an edge case — it is deterministic, and it has been
+true since the Media Library was first deployed. Nothing in this pass'
+Media testing before `MD-04` could have caught it, since `MD-01`-`MD-03`
+never write a file to disk.
+
+**Fix.** Deployment already solves exactly this problem for Next.js's
+`.next/cache` — a writable, cross-release `shared/` directory symlinked into
+each new release before it's locked down. Extended the same pattern to
+uploads: `configure-host.sh` now creates
+`${UNIVERSTA_ROOT}/shared/uploads` (owned `universta:universta`, alongside
+the existing `shared/cache/*`), and `deploy.sh` symlinks
+`${staging}/uploads -> ${UNIVERSTA_ROOT}/shared/uploads` in the same step
+that symlinks the Next.js caches, before the release is chowned to root and
+locked read-only. No application code changes needed — `ensureUploadsDir()`'s
+own `mkdir(..., { recursive: true })` creates the `media` subdirectory
+inside the now-writable, persistent shared location on first use.
+
+**Status.** FIXED — pending merge and deployed re-verification via the Media
+module's `MD-04` acceptance check (upload a real image, confirm it persists
+and serves).
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -693,8 +745,9 @@ host reconfiguration is needed. Pending merge and deployed re-verification.
 | ISS-021 | Critical | Admin — Media | Fixed, merged (PR #45), deploy in progress |
 | ISS-023 | Major | Admin/API — Pages | Fixed, merged (PR #46), deployed, re-verified live |
 | ISS-024 | Major | Infra — Nginx upload limit | Fixed, pending merge + deploy |
+| ISS-025 | Critical | Infra — release read-only, uploads crash | Fixed, pending merge + deploy |
 
-Sixteen are fixed (thirteen deployed and re-verified live, three merged or
+Seventeen are fixed (thirteen deployed and re-verified live, four merged or
 pending final deployed re-verification — see each entry above). Of the four
 still open, three are content decisions (ISS-004, ISS-013, ISS-016/ISS-017)
 and one is cosmetic (ISS-014); none require further development work.

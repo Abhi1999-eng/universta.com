@@ -21,7 +21,8 @@ api_host="${api_host%%/*}"
 install -d -o universta -g universta -m 0755 \
   "${UNIVERSTA_ROOT}/shared/logs" \
   "${UNIVERSTA_ROOT}/shared/cache/web" \
-  "${UNIVERSTA_ROOT}/shared/cache/admin"
+  "${UNIVERSTA_ROOT}/shared/cache/admin" \
+  "${UNIVERSTA_ROOT}/shared/uploads"
 touch \
   "${UNIVERSTA_ROOT}/shared/logs/api.log" \
   "${UNIVERSTA_ROOT}/shared/logs/web.log" \
