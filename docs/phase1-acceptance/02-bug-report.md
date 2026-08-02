@@ -703,18 +703,27 @@ never write a file to disk.
 **Fix.** Deployment already solves exactly this problem for Next.js's
 `.next/cache` — a writable, cross-release `shared/` directory symlinked into
 each new release before it's locked down. Extended the same pattern to
-uploads: `configure-host.sh` now creates
-`${UNIVERSTA_ROOT}/shared/uploads` (owned `universta:universta`, alongside
-the existing `shared/cache/*`), and `deploy.sh` symlinks
-`${staging}/uploads -> ${UNIVERSTA_ROOT}/shared/uploads` in the same step
-that symlinks the Next.js caches, before the release is chowned to root and
-locked read-only. No application code changes needed — `ensureUploadsDir()`'s
-own `mkdir(..., { recursive: true })` creates the `media` subdirectory
-inside the now-writable, persistent shared location on first use.
+uploads: `configure-host.sh` creates `${UNIVERSTA_ROOT}/shared/uploads`
+(owned `universta:universta`, alongside the existing `shared/cache/*`), and
+`deploy.sh` symlinks it into the release before the read-only lockdown. No
+application code changes needed — `ensureUploadsDir()`'s own
+`mkdir(..., { recursive: true })` creates the `media` subdirectory inside
+the now-writable, persistent shared location on first use.
 
-**Status.** FIXED — pending merge and deployed re-verification via the Media
-module's `MD-04` acceptance check (upload a real image, confirm it persists
-and serves).
+A first attempt at this fix symlinked `${staging}/uploads` at the release
+*root*, matching where `WorkingDirectory` in the systemd unit points — and
+still 500'd after deploying. The actual OS-level `cwd` of the running Node
+process is `.../apps/api`, not the release root: `npm --workspace apps/api
+run start:prod` changes into that workspace directory before exec'ing
+`node`, which `WorkingDirectory=` does not override once npm re-execs.
+Confirmed via `/proc/<pid>/cwd` on the live instance. The symlink now lives
+at `${staging}/apps/api/uploads` instead.
+
+**Status.** FIXED — first attempt merged and deployed, still failed live at
+`MD-04`; root-caused precisely via `/proc/<pid>/cwd` on the running
+instance, corrected, pending merge and deployed re-verification via the
+Media module's `MD-04` acceptance check (upload a real image, confirm it
+persists and serves).
 
 ---
 
