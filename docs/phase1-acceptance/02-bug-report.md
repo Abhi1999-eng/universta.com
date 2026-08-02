@@ -385,6 +385,69 @@ whose plural adds "es". "Add Accreditation" beside it is correct.
 
 ---
 
+## ISS-015 — A blocked publish would not say what was missing
+
+**Severity.** Major — the admin is told to fix something without being told what.
+
+**Where.** Admin → Courses → Publish (and the equivalent for Subjects and
+Sub-Subjects).
+
+**Symptom.** Publishing a course that is not ready shows *"Complete course
+readiness requirements before publishing"* and nothing more. The requirements
+are not listed anywhere on the screen, so an admin has no way to discover what
+to correct.
+
+**Root cause.** The API is not at fault: it answers 422 with a per-field
+breakdown. The admin's BFF proxy filters error details through an allow-list
+that named only `COUNTRY_NOT_READY`, so the other three readiness codes were
+flattened to `details: null`.
+
+**Proven against production** — publishing an unready course:
+
+| Path | `error.details` |
+| --- | --- |
+| API directly | `[{"field":"studyModes",…},{"field":"countries",…}]` |
+| Admin BFF proxy | `null` |
+
+The two requirements actually missing were "At least one active Study Mode is
+required" and "At least one verified available published country mapping is
+required" — both computed correctly, both discarded in transit.
+
+**Affected codes.** `COURSE_NOT_READY`, `SUBJECT_NOT_READY`,
+`SUB_SUBJECT_NOT_READY`. `COUNTRY_NOT_READY` already worked.
+
+**Fix.** `safeDetails` passes details through for any `*_NOT_READY` code rather
+than naming them one at a time. These lists are authored by our own services,
+carry no record content, and the API already runs `redactSensitiveFields` over
+them.
+
+**Files changed.** `apps/admin/src/lib/server/catalog-proxy.ts`
+
+**PR.** #36 · **Status.** Fix written and tested; CI running. Pinned by
+`readiness-details.test.ts`, which also checks the allow-list still withholds
+details for every other code.
+
+---
+
+## Note — the course publish readiness rule is correct
+
+Recorded because it looks like a defect and is not. A course is publishable
+only once **all** of the following hold:
+
+1. it has a name and a slug;
+2. its Subject is published;
+3. its Sub-Subject, if set, is published;
+4. its Course Level is active;
+5. it has at least one active Study Mode;
+6. it has at least one country mapping that is active, available or limited,
+   attached to a published country, and carries both a source reference and a
+   verification date.
+
+The gate holds correctly and the refusal reaches the screen (coverage sheet
+CR-32). Only the missing per-field breakdown was a defect — that is ISS-015.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -403,7 +466,8 @@ whose plural adds "es". "Add Accreditation" beside it is correct.
 | ISS-012 | Critical | Admin — auth | Fixed, deployed (PR #35) |
 | ISS-013 | Major | Client data | **OPEN** — needs client sign-off to delete |
 | ISS-014 | Cosmetic | Admin — Universities | **OPEN** |
+| ISS-015 | Major | Admin — proxy | Fixed (PR #36), awaiting deploy |
 
-Twelve of fourteen are fixed and deployed. Of the two that remain open, ISS-013
-is a client-owned production record and ISS-004 is client-owned copy; both are
-data decisions rather than code, and ISS-014 is cosmetic.
+Twelve are fixed and deployed, one is merged pending deploy. Of the three still
+open, ISS-013 is a client-owned production record and ISS-004 is client-owned
+copy — both are data decisions rather than code — and ISS-014 is cosmetic.
