@@ -140,7 +140,14 @@ server {
     listen [::]:80;
     server_name ${admin_host};
     server_tokens off;
-    client_max_body_size 2m;
+    # ISS-024. The Media Library's own upload form advertises "up to 5MB" and
+    # the admin's BFF proxy (media-proxy.ts) already allows 6MB to cover
+    # multipart overhead, but this was still capped at nginx's 2MB default --
+    # any real image between 2-5MB reached nginx first and got its raw,
+    # unbranded "413 Request Entity Too Large" HTML page instead of the app's
+    # own JSON validation error. 8m matches the proxy's own ceiling with a
+    # small margin.
+    client_max_body_size 8m;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     location / {
@@ -160,7 +167,10 @@ server {
     listen [::]:80;
     server_name ${api_host};
     server_tokens off;
-    client_max_body_size 2m;
+    # ISS-024. Same fix as the admin block above -- the NestJS API's own
+    # MediaService accepts up to MAX_FILE_SIZE_BYTES (5MB), which this cap
+    # must not undercut.
+    client_max_body_size 8m;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     location / {
