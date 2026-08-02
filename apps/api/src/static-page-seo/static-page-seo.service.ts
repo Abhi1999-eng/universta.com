@@ -17,7 +17,12 @@ export const STATIC_PAGES: {
   label: string;
   defaultRobotsIndex: boolean;
 }[] = [
-  { key: 'home', label: 'Home', defaultRobotsIndex: true },
+  // ISS-026. No route reads this key: the homepage ("/") was merged into the
+  // Countries Listing and calls staticPageMetadata('countries-listing', ...)
+  // instead, matching the entry just below. A "Home" row here was still
+  // editable in the admin with zero effect on any live page -- the same
+  // "no route to attach to" defect fixed once already for cities-listing
+  // (see its comment below), just never applied to this key.
   {
     key: 'countries-listing',
     label: 'Countries listing',
