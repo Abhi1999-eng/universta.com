@@ -13,10 +13,20 @@ import { describe, expect, it } from 'vitest';
  * JSON.stringify removes from the request body. That behaviour is subtle
  * enough to be worth pinning here. */
 
-function buildPayload(form: { name: string; slug: string; displayOrder: string }) {
+type Form = {
+  name: string; slug: string; displayOrder: string;
+  iconMediaId?: string; listingMediaId?: string; heroMediaId?: string;
+};
+
+const optional = (value: string) => (value.trim() ? value.trim() : undefined);
+
+function buildPayload(form: Form) {
   return {
     ...form,
-    ...(form.slug.trim() ? { slug: form.slug.trim() } : { slug: undefined }),
+    slug: optional(form.slug),
+    iconMediaId: optional(form.iconMediaId ?? ''),
+    listingMediaId: optional(form.listingMediaId ?? ''),
+    heroMediaId: optional(form.heroMediaId ?? ''),
     displayOrder: Number(form.displayOrder),
   };
 }
@@ -49,5 +59,29 @@ describe('Subject create payload', () => {
 
   it('still coerces displayOrder to a number', () => {
     expect(sent({ name: 'X', slug: '', displayOrder: '77' }).displayOrder).toBe(77);
+  });
+
+  /* The same empty-string problem applies to the three optional media pickers.
+   * Creating a subject without choosing any media sent iconMediaId: "" and the
+   * API replied "iconMediaId must be a UUID", so a default creation could not
+   * succeed at all. */
+  it('omits every unset media id, which the API types as an optional UUID', () => {
+    const body = sent({
+      name: 'Applied Physics', slug: 'applied-physics', displayOrder: '0',
+      iconMediaId: '', listingMediaId: '', heroMediaId: '',
+    });
+    expect('iconMediaId' in body).toBe(false);
+    expect('listingMediaId' in body).toBe(false);
+    expect('heroMediaId' in body).toBe(false);
+  });
+
+  it('keeps a media id that was actually chosen', () => {
+    const id = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
+    const body = sent({
+      name: 'Applied Physics', slug: 'applied-physics', displayOrder: '0',
+      iconMediaId: id, listingMediaId: '', heroMediaId: '',
+    });
+    expect(body.iconMediaId).toBe(id);
+    expect('listingMediaId' in body).toBe(false);
   });
 });
