@@ -22,6 +22,14 @@ import {
 const integer = ({ value }: { value: unknown }) =>
   typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
 
+/** ISS-027. `@IsOptional()` only skips validation for `undefined` -- an
+ * editor that leaves an optional field untouched still submits it as `''`
+ * (every input in SeoEditor.tsx starts from '', never undefined), and `''`
+ * is not a valid URL. Every save of a Country's SEO metadata without a
+ * canonical URL failed with a 400 the admin UI never surfaced clearly. */
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  value === '' ? undefined : value;
+
 export class EditorialVersionDto {
   @IsOptional()
   @IsISO8601()
@@ -74,6 +82,7 @@ export class FaqDto extends EditorialVersionDto {
 export class SeoMetadataDto extends EditorialVersionDto {
   @IsString() @MaxLength(255) seoTitle!: string;
   @IsString() @MaxLength(500) metaDescription!: string;
+  @Transform(emptyToUndefined)
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   @MaxLength(2048)
