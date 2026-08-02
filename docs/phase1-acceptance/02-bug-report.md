@@ -514,8 +514,207 @@ nothing else — there is no screen on which to inspect or repair the links.
 `header` and `footer`, so `primary` is an orphan: an admin editing it — the
 obvious-looking one — would see no effect on the site.
 
-**Status.** OPEN — needs development: an items API and an edit screen. This is
-the largest remaining gap found in the acceptance pass.
+**Status.** FIXED, deployed (PR #43) and independently re-verified against
+production. `NavigationMenuEditor` now gives an admin a real edit screen per
+menu: items table (Label/Target/New tab/Status/Actions), add/edit/reorder/
+deactivate/delete, a Link type select (Internal page / External URL / No
+link), one level of nesting via Parent item, and a chrome-slot banner that
+states in plain language whether the menu is the live Header, the live
+Footer, or "not connected to the Header or Footer" (covering the orphan
+"Primary" menu called out below). The orphan menu itself was unpublished
+(`NV-25`) so it can no longer be mistaken for the live header. See ISS-020
+for a proxy-layer regression this surfaced, and the retest evidence in
+`rows/navigation.json` (NV-01..NV-25, all passing after both fixes).
+
+---
+
+## ISS-020 — Admin BFF proxy blocked the new navigation-items API
+
+**Severity.** Major — reopened ISS-019 end-to-end even after PR #43 merged.
+
+**Where.** `apps/admin/src/lib/server/phase1-proxy.ts`.
+
+**Symptom.** PR #43 added the NestJS routes
+(`GET/POST/PATCH/DELETE .../navigation-menus/:id/items[/:itemId]`,
+`POST .../items/reorder`) and the `NavigationMenuEditor` UI to call them, but
+the admin's own BFF proxy — a separate whitelist of allowed path shapes in
+front of the real API — was never updated alongside it. Every one of those
+routes is a 4-segment path (`navigation-menus/:id/items/...`), which the
+proxy's existing guard rejected outright: clicking Edit opened nothing, and
+`GET .../items` returned 404 from the *admin's own layer*, even though the
+NestJS controller answered it correctly when hit directly.
+
+**Root cause.** `phase1-proxy.ts` already had a bespoke shape-allowance for
+`pages/:id/sections*` (`isPageSectionPath`/`pageSectionShapeIsValid`); no
+equivalent existed for `navigation-menus/:id/items*`, so any path longer than
+`resource/:id/:action` was rejected by the generic guard before it ever
+reached the fetch to the real API.
+
+**Fix.** Added `isNavigationItemsPath` / `navigationItemsShapeIsValid`,
+mirroring the existing pages/sections pattern, and included it in the guard's
+rejection conditions (PR #44).
+
+**Status.** FIXED, deployed and independently re-verified: `GET
+.../navigation-menus/{id}/items` now returns 200 through the admin proxy, and
+the full `m13-navigation.spec.ts` retest (NV-01..NV-25) passes end-to-end
+against production.
+
+---
+
+## ISS-021 — Media Library "in use" check omitted most real media consumers
+
+**Severity.** Critical — guaranteed, not probabilistic, silent data loss.
+
+**Where.** `apps/api/src/media/media.service.ts`, `MediaService.archive()`.
+
+**Symptom.** `archive()` soft-deletes the `MediaAsset` row and then
+unconditionally deletes the physical file from disk once its usage count
+reaches zero — but `usageCount()` only checked 9 of the schema's roughly 20
+actual `MediaAsset` relations (its own comment admitted "Country/Subject/
+Course editorial media has its own separate admin surface not touched in
+this pass"). Archiving an image still referenced by a Subject, Country,
+Continent, City, Course, Consultant, NavigationItem, PlatformMetric, or
+SeoMetadata record was reported as safe ("not in use") and then permanently
+deleted the file those records were still pointing at — a guaranteed broken
+image on next render, not an edge case.
+
+**Fix.** Rewrote `usageCount()` to check every `MediaAsset` relation in
+`schema.prisma` (PR #45): the original 9 plus Consultant (a separate model
+from ConsultantLandingCard), Subject, SubSubject, Continent, Country,
+CountryContentSection, City, Course, CourseContentSection, NavigationItem,
+PlatformMetric, SeoMetadata, and User.
+
+**Status.** FIXED, merged (PR #45), 67 unit tests (`media.service.spec.ts`)
+covering each relation individually — 23 of which failed against the
+pre-fix code, confirming the gap was real. `MD-08` in the Media module
+acceptance spec is the live regression check (archive correctly blocked
+while a page section references the asset).
+
+---
+
+## ISS-023 — Creating a Page crashed with a raw 500 whenever `pageType` was omitted
+
+**Severity.** Major — blocks page creation, and by extension anything that
+depends on it (navigation targets, Website Builder, SEO-via-admin-workflow).
+
+**Where.** `apps/api/src/expanded/expanded.service.ts`,
+`ExpandedService.writeData()` / `adminCreate()`.
+
+**Symptom.** `POST /admin/phase1/pages` with a normal-looking payload
+(`{title, slug, shortDescription}`) returned `HTTP 500 / INTERNAL_ERROR`.
+Reproduced directly against the live API, bypassing the admin proxy
+entirely, and confirmed in the application logs as an unhandled
+`PrismaClientValidationError`.
+
+**Root cause.** `writeData`'s `allowed` map whitelists the writable columns
+for every other resource; `pages` had no entry at all, so
+`!allowed[resource]` short-circuited true and let *every* body key reach
+Prisma unfiltered. `Page.pageType` has no schema default, so a create that
+omitted it reached `prisma.page.create` and Prisma's own client-side
+validation rejected the missing required field — which the generic
+`conflict()` error handler doesn't recognise (it only maps Prisma's unique-
+constraint code), so it fell through as an unhandled exception.
+
+**Found while.** Re-running the deployed Navigation retest (`NV-15`, broken-
+target detection), which creates a disposable page as its link target.
+
+**Fix.** Added a `pages` whitelist (including `startsAt`/`endsAt`, which the
+existing page-scheduling UI already writes on every save) and a
+`PAGE_TYPE_REQUIRED` 422 on create (PR #46).
+
+**Status.** FIXED, merged (PR #46) and deployed. Unit-tested locally (rejects
+with no `pageType`, creates successfully once present and drops any
+non-whitelisted key, still allows `startsAt`/`endsAt`, doesn't require
+`pageType` on a partial update) and independently re-verified against
+production via direct `curl` post-deploy, then via the full Navigation
+retest (`NV-15`) after fixing the test itself to also pass `pageType`.
+
+---
+
+## ISS-024 — Media uploads between 2MB and 5MB failed with a raw, unbranded Nginx error
+
+**Severity.** Major — silently undercuts the upload limit the product itself
+advertises, for a very ordinary file size.
+
+**Where.** `scripts/deployment/configure-host.sh` (Nginx `client_max_body_size`
+on the `admin` and `api` server blocks).
+
+**Symptom.** The Media Library's own upload form states "up to 5MB", and the
+API's `MediaService` enforces exactly that (`MAX_FILE_SIZE_BYTES = 5MB`), with
+the admin's BFF proxy allowing a further 1MB of multipart overhead on top
+(6MB). But Nginx — in front of both — was configured at the default `2m`.
+Any real upload between 2MB and 5MB reached Nginx first and was rejected with
+its raw, unbranded `413 Request Entity Too Large` HTML page, never reaching
+the application's own JSON validation logic at all.
+
+**Reproduction.** `curl -F file=@<6MB image> https://admin.../api/v1/admin/media`
+→ `HTTP 413`, body `<html><head><title>413 Request Entity Too Large</title>
+</head>...<center>nginx</center></html>` — confirmed via the Media module's own
+`MD-03` acceptance check (oversized-file rejection), which expected the app's
+own friendly error message and instead got this raw HTML page (`JSON.parse`
+failure on the response body was the first symptom).
+
+**Fix.** Raised `client_max_body_size` to `8m` on the `admin` and `api` Nginx
+server blocks (a safe margin above the admin proxy's own 6MB ceiling). Left
+`web` at its existing `2m` — the public site's own form submissions
+(`UniversityClaimForm`, `ContactForm`) use `FormData` for plain fields only,
+with no file input, so they need no headroom.
+
+**Status.** FIXED — `configure-host.sh` runs on every deploy (`deploy.sh`
+calls it directly), so merging this change is sufficient; no separate manual
+host reconfiguration is needed. Pending merge and deployed re-verification.
+
+---
+
+## ISS-025 — Every media upload has crashed since launch: the release directory is read-only
+
+**Severity.** Critical — the Media Library's upload feature has never worked
+in production, at any file size.
+
+**Where.** Deployment layout (`scripts/deployment/deploy.sh`,
+`scripts/deployment/configure-host.sh`) vs. `apps/api/src/media/media.service.ts`.
+
+**Symptom.** Uploading even a trivially small, valid image (`MD-04`, a
+68-byte PNG) returned "Internal server error". The API logs showed an
+unhandled `Error` (not a Prisma or validation error) on `POST
+/api/v1/admin/media`.
+
+**Root cause.** `MediaService.uploadsDir` resolves to
+`join(process.cwd(), 'uploads', 'media')`. The API's systemd unit sets
+`WorkingDirectory=/opt/universta/current` (the release symlink), and
+`deploy.sh` makes every release read-only after install
+(`chown -R root:universta` + `chmod -R go-w`) — group write is exactly what
+the `universta` user (the one the API actually runs as) loses. So
+`ensureUploadsDir()`'s `mkdir(uploadsDir, { recursive: true })`, and every
+`writeFile` after it, hit `EACCES` on every single upload attempt, in every
+release shipped so far. Confirmed directly on the live instance via SSM,
+running as the real service user:
+```
+runuser -u universta -- touch /opt/universta/current/x
+touch: cannot touch '/opt/universta/current/x': Permission denied
+runuser -u universta -- mkdir -p /opt/universta/current/uploads/media
+mkdir: cannot create directory '/opt/universta/current/uploads': Permission denied
+```
+This is not a race or an edge case — it is deterministic, and it has been
+true since the Media Library was first deployed. Nothing in this pass'
+Media testing before `MD-04` could have caught it, since `MD-01`-`MD-03`
+never write a file to disk.
+
+**Fix.** Deployment already solves exactly this problem for Next.js's
+`.next/cache` — a writable, cross-release `shared/` directory symlinked into
+each new release before it's locked down. Extended the same pattern to
+uploads: `configure-host.sh` now creates
+`${UNIVERSTA_ROOT}/shared/uploads` (owned `universta:universta`, alongside
+the existing `shared/cache/*`), and `deploy.sh` symlinks
+`${staging}/uploads -> ${UNIVERSTA_ROOT}/shared/uploads` in the same step
+that symlinks the Next.js caches, before the release is chowned to root and
+locked read-only. No application code changes needed — `ensureUploadsDir()`'s
+own `mkdir(..., { recursive: true })` creates the `media` subdirectory
+inside the now-writable, persistent shared location on first use.
+
+**Status.** FIXED — pending merge and deployed re-verification via the Media
+module's `MD-04` acceptance check (upload a real image, confirm it persists
+and serves).
 
 ---
 
@@ -541,9 +740,14 @@ the largest remaining gap found in the acceptance pass.
 | ISS-016 | Major | Content data | **OPEN** — content |
 | ISS-017 | Major | Content data | **OPEN** — content |
 | ISS-018 | Minor | Admin — Website Builder | **OPEN** — small code fix |
-| ISS-019 | Major | Admin — Navigation | **OPEN** — needs development |
+| ISS-019 | Major | Admin — Navigation | Fixed, deployed (PR #43), re-verified live |
+| ISS-020 | Major | Admin — proxy | Fixed, deployed (PR #44), re-verified live |
+| ISS-021 | Critical | Admin — Media | Fixed, merged (PR #45), deploy in progress |
+| ISS-023 | Major | Admin/API — Pages | Fixed, merged (PR #46), deployed, re-verified live |
+| ISS-024 | Major | Infra — Nginx upload limit | Fixed, pending merge + deploy |
+| ISS-025 | Critical | Infra — release read-only, uploads crash | Fixed, pending merge + deploy |
 
-Twelve are fixed and deployed. Of the seven open, four are content decisions
-(ISS-004, ISS-013, ISS-016, ISS-017), one is cosmetic (ISS-014), one is a
-single mis-targeted link (ISS-018), and **ISS-019 is the only one that needs
-real development work**.
+Seventeen are fixed (thirteen deployed and re-verified live, four merged or
+pending final deployed re-verification — see each entry above). Of the four
+still open, three are content decisions (ISS-004, ISS-013, ISS-016/ISS-017)
+and one is cosmetic (ISS-014); none require further development work.
