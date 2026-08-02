@@ -29,7 +29,7 @@ export function CourseForm({ id }: { id?: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([listSubjects({ limit: 100 }), listCourseLevels({ status: 'ACTIVE', limit: 100 }), listStudyModes({ status: 'ACTIVE', limit: 100 }), listEditorialMedia({ limit: 100 }), id ? getAdminCourse(id) : Promise.resolve(null)])
+    void Promise.all([listSubjects({ limit: 100 }), listCourseLevels({ status: 'ACTIVE', limit: 100 }), listStudyModes({ status: 'ACTIVE', limit: 100 }), listEditorialMedia({ limit: 50 }), id ? getAdminCourse(id) : Promise.resolve(null)])
       .then(([subjectResult, levelResult, modeResult, mediaResult, courseResult]) => {
         if (cancelled) return;
         setSubjects(subjectResult.data);
