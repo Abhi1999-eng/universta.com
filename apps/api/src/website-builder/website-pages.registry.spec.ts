@@ -1,4 +1,5 @@
 import { WEBSITE_PAGES } from './website-pages.service';
+import { STATIC_PAGES } from '../static-page-seo/static-page-seo.service';
 
 /** Website Pages is the only screen that promises "every managed public page
  * is here". These guard that promise against future edits. */
@@ -62,5 +63,18 @@ describe('WEBSITE_PAGES registry', () => {
       (entry) => !entry.pageSlug && !entry.templateKey && !entry.seoKey,
     ).map((entry) => entry.key);
     expect(unmanageable).toEqual([]);
+  });
+
+  it('only points seoKey at a static-page-SEO key that actually exists (ISS-018)', () => {
+    // The Home entry once pointed at seoKey: 'home', a key ISS-026 had
+    // already removed from STATIC_PAGES because no route read it -- so its
+    // per-page "SEO" link (once ISS-018 gave it a ?key=... target at all)
+    // landed on a hub with nothing to open. Any entry whose seoKey doesn't
+    // resolve to a real STATIC_PAGES definition has the same defect.
+    const validKeys = new Set(STATIC_PAGES.map((page) => page.key));
+    const dangling = WEBSITE_PAGES.filter(
+      (entry) => entry.seoKey && !validKeys.has(entry.seoKey),
+    ).map((entry) => `${entry.key} -> ${entry.seoKey}`);
+    expect(dangling).toEqual([]);
   });
 });
