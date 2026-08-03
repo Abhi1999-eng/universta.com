@@ -128,18 +128,62 @@ ever a fallback — a stored name always wins, since casing like "PhD" or
 **Description.** Public meta descriptions — the text search engines show —
 describe the content as fictional.
 
-**Evidence.**
+**Evidence (original).**
 ```
 /study-in-canada             → "Explore fictional study options, costs, intakes and courses …"
 /courses/diploma-cybersecurity→ "Fictional Diploma in Cybersecurity record for local course d…"
 ```
 
-**Expected.** Professional descriptions suitable for a client demonstration.
+**Investigation.** Both strings turned out to be one shared template, not a
+Canada-specific or a diploma-specific issue: `GET /admin/countries` showed
+all 12 countries' `shortDescription` was the identical "Explore fictional
+study options, costs, intakes and courses in {country}." placeholder, and
+`GET /admin/courses` showed all 12 generic courses shared the identical
+"Fictional {name} record for local course discovery and filter testing."
+placeholder. Both feed the public page's `<meta name="description">` tag
+directly.
 
-**Impact.** Directly contradicts the demo-data requirement; visible to search
-engines and to anyone the client demonstrates the platform to.
+**Fix (content-via-admin, no code change).** Replaced `shortDescription` for
+all 12 countries and all 12 generic courses through the admin UI, composing
+each new description strictly from that same record's own already-entered,
+verified fields — country tuition range/currency, part-time-work and
+post-study-work-eligibility flags (omitting the post-study-work clause for
+the three countries where it is `false`), and each course's own name/level/
+subject — introducing no new factual claims. Full replacement text for all
+24 records is recorded in the acceptance test scripts
+(`iss004-country-descriptions.spec.ts`, `iss004-course-descriptions.spec.ts`).
 
-**Status.** OPEN — remediation is part of the demo-data work (ISS-001).
+**Live verification.**
+```
+/countries/canada             → meta description now "Study in Canada with tuition typically
+                                 CAD 18,000-42,000 per year, part-time work while studying, and
+                                 up to 24 months of post-study work eligibility."
+/courses/diploma-cybersecurity→ meta description now "A diploma programme in cybersecurity,
+                                 covering core principles of network defence, threat analysis
+                                 and security operations."
+```
+Neither meta description matches `/fictional/i` any more; both were
+re-fetched live from production after the admin saves.
+
+**Broader finding, explicitly out of scope.** A repository-wide search of
+the demo seed (`apps/api/prisma/demo-seed.ts`) for the same
+"fictional …/fixture for local testing" phrasing turned up 122 occurrences
+across country work/language/intake profiles, university campuses,
+consultant locations, scholarships, events, testimonials, and course
+academic-requirement text — well beyond the two specifically-named evidence
+spots above (e.g. the Canada country page's "Why study in Canada" section
+still reads "Fictional immigration-pathway fixture for local testing.").
+Classified **Content-via-admin / Deferred-with-approval**: closing all 122
+would mean authoring specific factual claims (real visa policy, campus
+addresses, institutional facts) that cannot be safely fabricated by an
+automated pass, and is a client content-population task rather than a code
+defect. Only the two named ISS-004 evidence spots (both meta descriptions,
+which are genuinely composable from already-verified structured fields)
+were fixed in this pass.
+
+**Status.** FIXED (both named evidence spots) and re-verified live. Broader
+122-occurrence content gap logged separately, deferred pending client
+content or explicit approval to proceed.
 
 ---
 
@@ -369,6 +413,9 @@ must be removed before any demonstration.
 **Status.** OPEN — flagged for removal. Not deleted unilaterally: it is the
 client's production record, and deletion is theirs to authorise.
 
+**Classification.** Deferred-with-approval — deleting a client's own
+production record is theirs to authorise, not ours to do unilaterally.
+
 ---
 
 ## ISS-014 — "Add Campuse" is not a word
@@ -382,6 +429,9 @@ singularising "Campuses" by trimming a trailing "s", which is wrong for a word
 whose plural adds "es". "Add Accreditation" beside it is correct.
 
 **Status.** OPEN — cosmetic, batched for a later pass.
+
+**Classification.** Deferred-with-approval — cosmetic-only, batched with
+other low-priority copy fixes rather than a one-off unreviewed change.
 
 ---
 
@@ -972,6 +1022,10 @@ Not a data-loss risk: everything saved through the admin persists correctly
 via the API and reflects the client's real intent, it simply isn't rendered
 yet.
 
+**Classification.** Deferred-with-approval — the layout decision
+(where/how sections appear relative to the catalog grid, uniform vs.
+per-page) is the client's product call to make, not ours to guess at.
+
 ---
 
 ## ISS-032 — No pagination anywhere in the shared Phase1 resource list screen; records past the 12th are invisible
@@ -1261,6 +1315,68 @@ via `git stash` the `//host` rejection test genuinely fails without the fix.
 
 ---
 
+## ISS-018 — Website Builder's per-page "SEO" link ignored which page it was clicked from
+
+| | |
+| --- | --- |
+| **Severity** | Minor |
+| **Module** | Admin — Website Builder / SEO management |
+| **Environment** | Production |
+
+**Description.** Every Website Pages row's "SEO" action linked to the bare
+`/seo` URL regardless of which page it was clicked from, landing on the
+generic SEO hub with nothing pre-selected instead of that specific static
+page's own editor already open.
+
+**Root cause.** `WebsitePagesManager.tsx` hardcoded `<Link href="/seo">SEO
+</Link>`, ignoring the row's own already-available `seoKey`.
+
+**Fix.**
+- `WebsitePagesManager.tsx`: the link now carries the row's key —
+  `href={\`/seo?key=${encodeURIComponent(row.seoKey)}\`}`.
+- `SeoManagementHub.tsx`: reads `useSearchParams()?.get("key") ?? null`
+  (the optional-chain guard was added after discovering `useSearchParams()`
+  returns `null` in the admin app's vitest/jsdom test environment — a
+  genuinely more defensive production implementation, not just a test
+  workaround) and passes it down as `deepLinkKey`. `StaticPageSeoTable` uses
+  it to open the matching row automatically and scroll it into view once
+  the rows finish loading (guarded so it only runs once).
+- Added `Element.prototype.scrollIntoView = vi.fn()` to the shared admin
+  test setup (`apps/admin/src/test/setup.ts`) since jsdom doesn't implement it.
+- Three new tests in `SeoManagementHub.test.tsx`: deep link opens the
+  matching row without a click, no `?key=` opens nothing, and a `?key=`
+  matching no static page also opens nothing. Confirmed via git-stash the
+  "opens the right row" test genuinely fails without the fix.
+
+Merged via [PR #60](https://github.com/Abhi1999-eng/universta.com/pull/60),
+deployed, and re-verified live: every per-page SEO link on
+`/website` now carries its own `?key=...` (confirmed for all 22 static/
+listing pages), and opening `/seo?key=faq` auto-opens the FAQ page's row
+with its editor fields already visible — no click needed.
+
+**Follow-on defect found during that live re-verification.** Re-running the
+acceptance spec (`m12-homepage.spec.ts` HP-10) against the deployed fix
+showed the Home row's own link still didn't work: it correctly carried
+`?key=home`, but no static-page-SEO record uses that key. Root cause:
+`WEBSITE_PAGES`'s `home` entry had hardcoded `seoKey: 'home'`, a key
+ISS-026 already removed from `STATIC_PAGES` because no route read it — the
+live `/` route calls `staticPageMetadata('countries-listing', ...)`
+(`apps/web/src/app/page.tsx`; the Countries listing *is* the homepage).
+ISS-018's own fix was correct, but it exposed a second, pre-existing stale
+reference for this one entry. Fixed by pointing Home's `seoKey` at
+`countries-listing` to match the route it actually feeds, plus a new
+registry-wide regression test (`website-pages.registry.spec.ts`) asserting
+every entry's `seoKey` resolves to a real `STATIC_PAGES` definition, so a
+future key removal can't silently strand another entry the same way.
+Confirmed via git-stash the test fails without the fix. Merged via
+[PR #61](https://github.com/Abhi1999-eng/universta.com/pull/61); full
+`apps/api` suite (289/289) and `SeoManagementHub.test.tsx` (6/6) pass.
+
+**Status.** FIXED (both the link-context bug and the Home entry's stale
+key), deployed, re-verified live.
+
+---
+
 ## Module 8 — Authentication / Users / Roles / Permissions
 
 No separate Users or Roles management screen exists anywhere in Phase 1 --
@@ -1300,7 +1416,7 @@ defects found.
 | ISS-001 | Blocker | Content data | Fixed — seven modules populated |
 | ISS-002 | Critical | Web rendering | Fixed, deployed (PR #30) |
 | ISS-003 | Major | Web rendering | Fixed, deployed (PR #30) |
-| ISS-004 | Major | Content copy | **OPEN** — content |
+| ISS-004 | Major | Content copy | Fixed — both named evidence spots (24 records), re-verified live |
 | ISS-005 | Major | SEO | Fixed, deployed (PR #30) |
 | ISS-006 | Minor | Accessibility | Fixed, deployed (PR #30) |
 | ISS-007 | Major | API | Fixed, deployed (PR #31) |
@@ -1314,7 +1430,7 @@ defects found.
 | ISS-015 | Major | Admin — proxy | Fixed, deployed (PR #36) |
 | ISS-016 | Major | Content data | Fixed — 3 published course offerings added via admin, re-verified live |
 | ISS-017 | Major | Content data | Fixed — real SEO content saved for all static pages + a Country |
-| ISS-018 | Minor | Admin — Website Builder | **OPEN** — small code fix |
+| ISS-018 | Minor | Admin — Website Builder | Fixed, deployed (PR #60), re-verified live |
 | ISS-019 | Major | Admin — Navigation | Fixed, deployed (PR #43), re-verified live |
 | ISS-020 | Major | Admin — proxy | Fixed, deployed (PR #44), re-verified live |
 | ISS-021 | Critical | Admin — Media | Fixed, deployed (PR #45), re-verified live |
@@ -1336,8 +1452,21 @@ defects found.
 | ISS-038 | Major | Web — SEO | Fixed, deployed (PR #58), re-verified live |
 | ISS-039 | Critical | API — Security (open redirect) | Fixed, deployed (PR #59), re-verified live |
 
-Thirty-three are fixed and every one deployed and re-verified live against
-production. Of the five still open, two are content decisions (ISS-004,
-ISS-013), one is cosmetic (ISS-014), one is a small remaining code fix
-(ISS-018), and one needs a product decision before it can be built
-(ISS-031).
+Thirty-five are fixed and every one deployed and re-verified live against
+production. Three remain open, each explicitly classified:
+
+| ID | Classification | Reason |
+| --- | --- | --- |
+| ISS-013 | Deferred-with-approval | Deleting a client's own production record ("hvhjhj") is theirs to authorise. |
+| ISS-014 | Deferred-with-approval | Cosmetic-only ("Add Campuse" pluralisation), batched with other low-priority copy fixes. |
+| ISS-031 | Deferred-with-approval | Where/how a listing page's own CMS sections should render is a product/design decision, not ours to make unilaterally. |
+
+Additionally, a broader content gap was found and logged under ISS-004:
+122 occurrences of "fictional …/fixture for local testing" placeholder text
+remain across the demo seed (country work/language/intake profiles,
+university campuses, consultant locations, scholarships, events,
+testimonials, course requirements) beyond the two specifically-named ISS-004
+evidence spots, which were fixed. Classified **Content-via-admin /
+Deferred-with-approval**: closing it would mean fabricating specific real
+facts (visa policy, institutional detail) unilaterally, which is a client
+content-population task, not a code defect.
