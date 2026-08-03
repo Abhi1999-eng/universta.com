@@ -94,7 +94,13 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
   },
 };
 
-const SAFE_URL = /^(\/[^\s]*|https:\/\/[^\s]+)$/;
+// ISS-039. A leading `//` is a protocol-relative URL -- the browser keeps the
+// current page's scheme but sends the visitor to a completely different
+// host. `\/[^\s]*` accepted it as a "site-relative path" (the negative
+// lookahead below is the only thing standing between "/foo" and
+// "//evil.example.com" here), which is exactly the classic open-redirect
+// bypass this check exists to block.
+const SAFE_URL = /^(\/(?!\/)[^\s]*|https:\/\/[^\s]+)$/;
 
 function assertSafeUrl(value: unknown, field: string) {
   if (typeof value !== 'string' || value.trim() === '') return;
