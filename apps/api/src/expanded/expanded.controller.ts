@@ -146,7 +146,7 @@ export class ExpandedPublicController {
     @Query('items') raw = '',
   ) {
     if (!['countries', 'universities', 'courses', 'consultants'].includes(type))
-      throw new Error('Unknown comparison type');
+      throw new BadRequestException('Unknown comparison type');
     return successEnvelope(
       req,
       await this.service.compare(type, raw.split(',')),
