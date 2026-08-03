@@ -1190,6 +1190,77 @@ form.
 
 ---
 
+## ISS-038 — The "Default title suffix" setting had no effect anywhere on the site
+
+**Severity.** Major — a whole settings field silently does nothing, despite
+its own description promising otherwise.
+
+**Where.** `apps/web/src/lib/static-page-seo.ts`.
+
+**Symptom.** Found while acceptance-testing Module 7 (Global Settings): the
+admin's "Default SEO" screen describes its fields as "Fallback values used
+when a page has no SEO of its own," but changing "Default title suffix" and
+reloading Home (or any code-defined route) never changed the page's
+`<title>` -- it always ended in the hardcoded `"| Universta"`.
+
+**Root cause.** `staticPageMetadata()`, the shared helper behind Home,
+listings, comparisons and FAQ, built the title as `` `${title} | Universta` ``
+-- a literal string, never reading the setting at all. The same hardcode
+exists in `phaseOneMetadata()` (catalog detail pages), and
+`defaultDescription`/robots defaults/OG image are similarly never consulted
+anywhere; those are documented here as remaining, separate work rather than
+folded into this fix; see the Root cause paragraph in the commit/PR for the
+reasoning (touching `phaseOneMetadata()` changes a currently-synchronous
+helper's contract, and touching robots defaults risks overriding
+intentional per-route behavior like comparison pages defaulting to
+noindex).
+
+**Fix.** `staticPageMetadata()` now fetches the configured suffix from
+`GET /phase1/settings` and falls back to the historical `"| Universta"` if
+settings are unreachable or the field is blank, so a fetch failure never
+breaks a page's title. New unit tests cover the configured-suffix path, the
+fetch-failure fallback, and the blank-setting fallback; confirmed via
+`git stash` the configured-suffix test genuinely fails without the fix.
+
+**Status.** FIXED, deployed and re-verified live (PR #58): Home's `<title>`
+now reflects the configured suffix.
+
+---
+
+## ISS-039 — A protocol-relative `//host` URL bypassed the settings open-redirect guard
+
+**Severity.** Critical — a genuine, exploitable open-redirect: any of 8 URL
+fields across Settings could be set to `//evil.example.com` and the public
+site would render it as a real link.
+
+**Where.** `apps/api/src/settings/settings.service.ts`, `assertSafeUrl()`.
+
+**Symptom.** Found while acceptance-testing Module 7 (Global Settings):
+`PUT /admin/settings/contact` with `whatsappLink: "//evil.example.com"`
+returned 200 and persisted the value, when it should have been rejected the
+same way a `javascript:` URL already was.
+
+**Root cause.** `SAFE_URL`'s regex (`/^(\/[^\s]*|https:\/\/[^\s]+)$/`)
+treated any string starting with a single `/` as a safe, site-relative
+path -- but a URL starting with `//` is protocol-relative: a browser keeps
+the current page's scheme and navigates to a completely different host.
+This is the classic open-redirect bypass the guard exists to block, and it
+affects every URL field that runs through `assertSafeUrl()`: `ctaUrl`,
+`announcementUrl`, `accountCtaUrl` (header), `privacyUrl`, `termsUrl`,
+`counsellingCtaUrl` (footer), `whatsappLink` (contact), and all 5 social
+links.
+
+**Fix.** Added a negative lookahead so a single leading slash still
+matches but a second one doesn't (`/^(\/(?!\/)[^\s]*|https:\/\/[^\s]+)$/`).
+New unit tests cover the `//host` rejection, a genuine relative path and
+`https://` URL still succeeding, and `javascript:` still rejected; confirmed
+via `git stash` the `//host` rejection test genuinely fails without the fix.
+
+**Status.** FIXED, deployed and re-verified live (PR #59): the same
+`whatsappLink: "//evil.example.com"` request now returns 400 `UNSAFE_URL`.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -1230,8 +1301,10 @@ form.
 | ISS-035 | Major | API — Bulk operations | Fixed, deployed (PR #56), re-verified live |
 | ISS-036 | Major | API — Error handling | Fixed, deployed (PR #56), re-verified live |
 | ISS-037 | Major | API/Admin — Scheduling | Fixed, deployed (PR #57), re-verified live |
+| ISS-038 | Major | Web — SEO | Fixed, deployed (PR #58), re-verified live |
+| ISS-039 | Critical | API — Security (open redirect) | Fixed, deployed (PR #59), re-verified live |
 
-Thirty-one are fixed and every one deployed and re-verified live against
+Thirty-three are fixed and every one deployed and re-verified live against
 production. Of the five still open, two are content decisions (ISS-004,
 ISS-013), one is cosmetic (ISS-014), one is a small remaining code fix
 (ISS-018), and one needs a product decision before it can be built

@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**581 checks across 20 completed modules — 576 pass, 1 fail, 4 not applicable.**
+**590 checks across 21 completed modules — 585 pass, 1 fail, 4 not applicable.**
 
 ## Module roll-up
 
@@ -29,9 +29,10 @@ and checked for its effect on the public site at three viewports.
 | Internal Linking | 17 | 16 | 0 | 1 |
 | Comparisons | 28 | 28 | 0 | 0 |
 | Scheduling | 5 | 5 | 0 | 0 |
+| Settings | 9 | 9 | 0 | 0 |
 | Bulk | 12 | 12 | 0 | 0 |
 
-Modules not yet reached: 3 — bulk actions, settings, auth roles.
+Modules not yet reached: 2 — bulk actions, auth roles.
 
 ## Countries
 
@@ -696,6 +697,20 @@ Modules not yet reached: 3 — bulk actions, settings, auth roles.
 | SCHED-03 | Scheduling | n/a | isFeatured + featuredFrom/featuredUntil on consultants | featured effective-sort respects the window | — | — | — | featured-active ranks before featured-future and featured-expired despite identical isFeatured/priority | activeIdx=2 futureIdx=17 expiredIdx=16 | PASS | — | — | — | — | — | — | — | — | — | PASS |
 | SCHED-04 | Scheduling | /phase1/consultants | Create record with publishEndsAt before publishStartsAt | inverted window rejected (ISS-037) | — | — | — | 422 FEATURED_DATE_RANGE_INVALID / PUBLISH_DATE_RANGE_INVALID from the API; admin form shows "Publish until must be after publish from." | apiOk=true adminErrorVisible=true | PASS | — | — | — | — | — | — | — | — | — | PASS |
 | SCHED-05 | Scheduling | n/a | bulk-archive consultants | cleanup: archive QA fixtures | — | — | — | none of the QA scheduling fixtures remain publicly visible | archived=7/7 stillVisible=0 | PASS | — | — | — | — | — | — | — | — | — | PASS |
+
+## Settings
+
+| ID | Module | Admin page | Control | Field | Original value | Test value | Invalid input tried | Expected (admin) | Actual (admin) | API verified | Frontend URL | Expected (frontend) | Actual (frontend) | Desktop | Tablet | Mobile | Issue | Evidence | Restored | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GLOB-01 | Global Settings | /settings | all groups | field inventory across all 7 settings groups | — | — | — | general: Site name, Default locale, Default timezone, Support email, Support phone \| branding: Logo, Favicon, Primary brand color, Secondary brand color, Default social share image \| contact: Registered / business address, Contact email, Counselling phone, WhatsApp / contact link (optional) \| social: Facebook, Instagram, LinkedIn, YouTube, X / Twitter \| header: Navigation menu key, Primary CTA label, Primary CTA destination, Show the header CTA, Keep the header visible while scrolling, Announcement bar text \| footer: Footer description, Counselling CTA label, Counselling CTA destination, Show the contact column, Show social links, Copyright text \| seo: Default title suffix, Default meta description, Default Open Graph image, Allow search engines to index by default, Allow search engines to follow links by default | general: PASS \| branding: PASS \| contact: PASS \| social: PASS \| header: PASS \| footer: PASS \| seo: PASS | — | — | — | — | — | — | — | — | — | — | PASS |
+| GLOB-02 | Global Settings | /settings?section=general | Site name | general.siteName | — | QA Settings Test Site | — | Saved.; public settings reflect new value; header/footer logo shows it; restored after | apiOk=true frontendOk=true restoredOk=true | PASS | https://54.162.49.131.nip.io | site name "QA Settings Test Site" appears in header/footer logo | PASS | — | — | — | — | — | PASS | PASS |
+| GLOB-03 | Global Settings | /settings?section=social | Facebook | social.facebook | — | https://facebook.com/qa-settings-test | — | Saved.; footer social icon links to the configured URL; restored after | frontendOk=true restoredOk=true | — | https://54.162.49.131.nip.io | footer renders a Facebook link with the configured URL | PASS | — | — | — | — | — | PASS | PASS |
+| GLOB-04 | Global Settings | /settings?section=footer | Copyright text | footer.copyrightText | — | QA Settings Test Copyright Line | — | Saved.; footer text updated; restored after | frontendOk=true restoredOk=true | — | https://54.162.49.131.nip.io | footer bottom shows the configured copyright text | PASS | — | — | — | — | — | PASS | PASS |
+| GLOB-05 | Global Settings | /settings?section=header | Primary CTA label/destination/visibility | header.ctaLabel/ctaUrl/ctaVisible | — | QA Settings Test CTA -> /qa-settings-test-cta | — | Saved.; header CTA updated; restored after | frontendOk=true restoredOk=true | — | https://54.162.49.131.nip.io | header CTA button shows the configured label and links to the configured URL | PASS | — | — | — | — | — | PASS | PASS |
+| GLOB-06 | Global Settings | n/a | PUT /admin/settings/:group | unsafe URL rejected (open-redirect guard) | — | — | — | 400 UNSAFE_URL for javascript:/protocol-relative URLs on ctaUrl, facebook, whatsappLink; value never persisted | header.ctaUrl="javascript:alert(1)": PASS (status=400) \| social.facebook="javascript:alert(1)": PASS (status=400) \| contact.whatsappLink="//evil.example.com": PASS (status=400) | PASS | — | — | — | — | — | — | — | — | — | PASS |
+| GLOB-07 | Global Settings | /settings?section=seo | Default title suffix | seo.defaultTitleSuffix (ISS-038) | — | \| QA Suffix Test | — | Saved.; Home page title reflects the configured suffix; restored after | frontendOk=true restoredOk=true | — | https://54.162.49.131.nip.io | Home <title> ends with "\| QA Suffix Test" | <title>Study Abroad Destinations \| QA Suffix Test</title> | — | — | — | — | — | PASS | PASS |
+| GLOB-08 | Global Settings | /settings | general section | responsive layout | — | — | — | no horizontal scroll at any viewport | {"desktop":true,"tablet":true,"mobile":true} | — | — | — | — | PASS | PASS | PASS | — | — | — | PASS |
+| GLOB-09 | Global Settings | n/a | all touched groups | final restoration check | — | — | — | every touched group (general, social, footer, header, contact, seo) matches its captured baseline exactly | general: PASS \| social: PASS \| footer: PASS \| header: PASS \| contact: PASS \| seo: PASS | — | — | — | — | — | — | — | — | — | PASS | PASS |
 
 ## Bulk
 
