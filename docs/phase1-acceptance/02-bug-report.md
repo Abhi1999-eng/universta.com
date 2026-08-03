@@ -1148,6 +1148,48 @@ could be archived") instead of "Route not found".
 
 ---
 
+## ISS-037 — An inverted featured/publish window saved silently and then could never be true
+
+**Severity.** Major — a permanent, silent content trap: no error at save
+time, but the record can never achieve its intended effect afterward.
+
+**Where.** `apps/api/src/expanded/expanded.service.ts`, `writeData()`;
+`apps/admin/src/features/phase1/Phase1StructuredEditor.tsx`, `validate()`.
+
+**Symptom.** Found while acceptance-testing Module 6 (Scheduling): creating a
+consultant via the admin API with `publishStartsAt` after `publishEndsAt`
+saved successfully (200, no error) but the record was immediately and
+permanently unreachable on the public site (confirmed 404 on
+`/phase1/consultants/{slug}`) -- from the moment of creation onward, `now`
+can never fall inside `[publishStartsAt, publishEndsAt)` when the end
+precedes the start. The identical trap exists for
+`featuredFrom`/`featuredUntil`.
+
+**Root cause.** Events' `startsAt`/`endsAt` already has an ordering check
+(`endsAt <= startsAt` rejected as `EVENT_DATE_RANGE_INVALID`), but that
+check was never extended to the two shared window pairs used by
+University/Offering/Scholarship/Consultant/Job/Event: `featuredFrom`/
+`featuredUntil` (read by `isEffectivelyFeatured()`) and `publishStartsAt`/
+`publishEndsAt` (read by `publishedWhereScheduled()`). Both read functions
+require `now` to fall inside `[start, end)`, so an inverted pair can never
+be true at any point in time, but nothing rejected it at save time.
+
+**Fix.** Added the same ordering check, generalized to both window pairs,
+in the API (`writeData()`, rejecting with `FEATURED_DATE_RANGE_INVALID` /
+`PUBLISH_DATE_RANGE_INVALID`) and the admin form (`validate()`, matching
+the existing events pattern, with the corresponding `error` prop wired to
+the "Featured until" and "Publish until" fields, which previously had no
+error prop at all). New unit tests cover both rejections and a
+correctly-ordered window still succeeding; confirmed via `git stash` that
+the two rejection tests genuinely fail without the fix.
+
+**Status.** FIXED, deployed and re-verified live (PR #57): the same
+inverted-window request that previously saved silently now returns 422
+with the specific reason, both via direct API call and through the admin
+form.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -1187,8 +1229,9 @@ could be archived") instead of "Route not found".
 | ISS-034 | Minor | API — Comparisons | Fixed, deployed (PR #55), re-verified live |
 | ISS-035 | Major | API — Bulk operations | Fixed, deployed (PR #56), re-verified live |
 | ISS-036 | Major | API — Error handling | Fixed, deployed (PR #56), re-verified live |
+| ISS-037 | Major | API/Admin — Scheduling | Fixed, deployed (PR #57), re-verified live |
 
-Thirty are fixed and every one deployed and re-verified live against
+Thirty-one are fixed and every one deployed and re-verified live against
 production. Of the five still open, two are content decisions (ISS-004,
 ISS-013), one is cosmetic (ISS-014), one is a small remaining code fix
 (ISS-018), and one needs a product decision before it can be built

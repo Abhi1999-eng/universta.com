@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**576 checks across 19 completed modules — 571 pass, 1 fail, 4 not applicable.**
+**581 checks across 20 completed modules — 576 pass, 1 fail, 4 not applicable.**
 
 ## Module roll-up
 
@@ -28,9 +28,10 @@ and checked for its effect on the public site at three viewports.
 | Seo | 14 | 14 | 0 | 0 |
 | Internal Linking | 17 | 16 | 0 | 1 |
 | Comparisons | 28 | 28 | 0 | 0 |
+| Scheduling | 5 | 5 | 0 | 0 |
 | Bulk | 12 | 12 | 0 | 0 |
 
-Modules not yet reached: 4 — bulk actions, scheduling, settings, auth roles.
+Modules not yet reached: 3 — bulk actions, settings, auth roles.
 
 ## Countries
 
@@ -685,6 +686,16 @@ Modules not yet reached: 4 — bulk actions, scheduling, settings, auth roles.
 | CMP-08 | Comparisons | n/a | https://54.162.49.131.nip.io/compare/countries?items=canada,australia,brazil | responsive layout, no overflow | — | — | — | no horizontal scroll at any viewport; 3 mobile comparison cards | {"desktop":true,"tablet":true,"mobile":true} mobileCards=3 | — | — | — | — | PASS | PASS | PASS | — | — | — | PASS |
 | CMP-09 | Comparisons | n/a | GET /phase1/compare/:type | API edge cases | — | — | — | unknown :type -> 400 (ISS-034); 0 items -> empty items/invalid; 1 item -> single result; nonexistent slug -> reported invalid, not crashed; >3 items -> capped at 3 | unknown :type -> 400 (ISS-034): PASS (status=400) \| 0 items -> empty items/invalid: PASS (status=200) \| 1 item -> single result: PASS (status=200) \| nonexistent slug -> reported invalid, not crashed: PASS (status=200) \| >3 items -> capped at 3: PASS (status=200) | PASS | — | — | — | — | — | — | — | — | — | PASS |
 | CMP-10 | Comparisons | n/a | https://54.162.49.131.nip.io/compare/courses?items=bachelor-computer-science-ashcroft,master-data-science-harborview,mba-global-management-northlake | courses comparison post-ISS-016 | — | — | — | 4 columns, no "unavailable" notice, all 3 offering names rendered | columns=4 notice=0 namesPresent=true | — | — | — | — | — | — | — | — | — | — | PASS |
+
+## Scheduling
+
+| ID | Module | Admin page | Control | Field | Original value | Test value | Invalid input tried | Expected (admin) | Actual (admin) | API verified | Frontend URL | Expected (frontend) | Actual (frontend) | Desktop | Tablet | Mobile | Issue | Evidence | Restored | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| SCHED-01 | Scheduling | /phase1/consultants | Create record | Featured placement + Scheduled publishing field inventory | — | — | — | Featured checkbox, Priority, Featured from/until, Publish from/until all present | {"featuredLegend":true,"featuredCheckbox":true,"featuredPriority":true,"featuredFrom":true,"featuredUntil":true,"scheduledLegend":true,"publishFrom":true,"publishUntil":true} | — | — | — | — | — | — | — | — | — | — | PASS |
+| SCHED-02 | Scheduling | n/a | publishStartsAt/publishEndsAt on consultants | scheduled-publishing window enforcement | — | — | — | future-start and past-end hidden from list + 404 detail; active-window and no-window visible + 200 detail | qa-sched-pw-1785726703242-future-start: PASS (inList=false detailStatus=404) \| qa-sched-pw-1785726703242-past-end: PASS (inList=false detailStatus=404) \| qa-sched-pw-1785726703242-active-window: PASS (inList=true detailStatus=200) \| qa-sched-pw-1785726703242-no-window: PASS (inList=true detailStatus=200) | PASS | — | — | — | — | — | — | — | — | — | PASS |
+| SCHED-03 | Scheduling | n/a | isFeatured + featuredFrom/featuredUntil on consultants | featured effective-sort respects the window | — | — | — | featured-active ranks before featured-future and featured-expired despite identical isFeatured/priority | activeIdx=2 futureIdx=17 expiredIdx=16 | PASS | — | — | — | — | — | — | — | — | — | PASS |
+| SCHED-04 | Scheduling | /phase1/consultants | Create record with publishEndsAt before publishStartsAt | inverted window rejected (ISS-037) | — | — | — | 422 FEATURED_DATE_RANGE_INVALID / PUBLISH_DATE_RANGE_INVALID from the API; admin form shows "Publish until must be after publish from." | apiOk=true adminErrorVisible=true | PASS | — | — | — | — | — | — | — | — | — | PASS |
+| SCHED-05 | Scheduling | n/a | bulk-archive consultants | cleanup: archive QA fixtures | — | — | — | none of the QA scheduling fixtures remain publicly visible | archived=7/7 stillVisible=0 | PASS | — | — | — | — | — | — | — | — | — | PASS |
 
 ## Bulk
 
