@@ -14,4 +14,6 @@ if (typeof window !== 'undefined') {
       replace: vi.fn(),
     },
   });
+  // jsdom does not implement scrollIntoView at all.
+  Element.prototype.scrollIntoView = vi.fn();
 }

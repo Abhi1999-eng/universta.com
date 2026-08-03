@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 
 type SeoEntry = { label: string; href: string; note: string };
@@ -102,11 +103,12 @@ function StaticSeoEditor({ row, onSaved }: { row: StaticRow; onSaved: (key: stri
   );
 }
 
-function StaticPageSeoTable() {
+function StaticPageSeoTable({ deepLinkKey }: { deepLinkKey: string | null }) {
   const [rows, setRows] = useState<StaticRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(deepLinkKey);
+  const scrolledRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +128,16 @@ function StaticPageSeoTable() {
     void load();
   }, [load]);
 
+  // ISS-018. Website Builder's per-page "SEO" link passes ?key=<seoKey>, but
+  // this table's rows only exist once `load()` resolves -- the row to
+  // scroll to and open isn't in the DOM yet on first render. Runs once,
+  // after rows finish loading, rather than on every render.
+  useEffect(() => {
+    if (scrolledRef.current || !deepLinkKey || !rows.some((row) => row.key === deepLinkKey)) return;
+    scrolledRef.current = true;
+    document.getElementById(`static-seo-${deepLinkKey}`)?.scrollIntoView({ block: "center" });
+  }, [rows, deepLinkKey]);
+
   function onSaved(key: string, seo: StaticSeo) {
     setRows((current) => current.map((row) => (row.key === key ? { ...row, seo } : row)));
   }
@@ -136,7 +148,7 @@ function StaticPageSeoTable() {
   return (
     <div className="mt-4 divide-y divide-[#E8ECF3] rounded-2xl border border-[#E8ECF3] bg-white">
       {rows.map((row) => (
-        <div key={row.key} className="p-4">
+        <div key={row.key} id={`static-seo-${row.key}`} className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{row.label}</p>
@@ -160,6 +172,7 @@ function StaticPageSeoTable() {
 }
 
 export function SeoManagementHub() {
+  const deepLinkKey = useSearchParams()?.get("key") ?? null;
   return (
     <section className="mx-auto max-w-[1180px]">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Platform tools</p>
@@ -187,7 +200,7 @@ export function SeoManagementHub() {
         These routes are code-defined, not database records, so their SEO lives here instead of inside a resource
         editor. Comparison pages default to noindex until an admin explicitly changes that.
       </p>
-      <StaticPageSeoTable />
+      <StaticPageSeoTable deepLinkKey={deepLinkKey} />
 
       <p className="mt-8 text-xs text-[#828B9B]">
         Not covered here: FAQ entries (nested within each Country/Course record — no standalone SEO record exists
