@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**590 checks across 21 completed modules — 585 pass, 1 fail, 4 not applicable.**
+**598 checks across 22 completed modules — 593 pass, 1 fail, 4 not applicable.**
 
 ## Module roll-up
 
@@ -31,6 +31,7 @@ and checked for its effect on the public site at three viewports.
 | Scheduling | 5 | 5 | 0 | 0 |
 | Settings | 9 | 9 | 0 | 0 |
 | Bulk | 12 | 12 | 0 | 0 |
+| Auth | 8 | 8 | 0 | 0 |
 
 Modules not yet reached: 2 — bulk actions, auth roles.
 
@@ -728,4 +729,17 @@ Modules not yet reached: 2 — bulk actions, auth roles.
 | BULK-10 | Bulk Actions and Import/Export | n/a | POST /admin/bulk/states/bulk-archive | bulk-archive dependency guard | — | — | — | 404 NO_RECORDS_ARCHIVABLE with its real message when the only selected state is blocked; archiving the city first, then the state, succeeds cleanly | blockedOk=true (status=404 {"code":"NO_RECORDS_ARCHIVABLE","message":"None of the selected records could be archived","details":null}) finalOk=true ({"archived":1,"blocked":[]}) | PASS | — | — | — | — | — | — | — | — | — | PASS |
 | BULK-11a | Bulk Actions and Import/Export | n/a | POST /admin/bulk/subjects/bulk-archive | cleanup: archive test subject | — | — | — | archived=1; record no longer in the active (deletedAt: null) records list | archived=1 stillActive=false | PASS | — | — | — | — | — | — | — | — | — | PASS |
 | BULK-11b | Bulk Actions and Import/Export | /bulk-data | full screen | responsive layout | — | — | — | no horizontal scroll at any viewport | {"desktop":true,"tablet":true,"mobile":true} | — | — | — | — | PASS | PASS | PASS | — | — | — | PASS |
+
+## Auth
+
+| ID | Module | Admin page | Control | Field | Original value | Test value | Invalid input tried | Expected (admin) | Actual (admin) | API verified | Frontend URL | Expected (frontend) | Actual (frontend) | Desktop | Tablet | Mobile | Issue | Evidence | Restored | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| AUTH-01 | Authentication / Users / Roles / Permissions | /login | full screen | login screen field inventory | — | — | — | Email address input, Password input with Show/Hide toggle, Sign in securely button, restricted-access notice | {"emailInput":true,"passwordInput":true,"showHideToggle":true,"submitButton":true,"restrictedNotice":true} | — | — | — | — | — | — | — | — | — | — | PASS |
+| AUTH-02 | Authentication / Users / Roles / Permissions | /login | Email address / Password | client-side validation | — | — | — | "Enter your email address." / "Enter a valid email address." / "Enter your password." shown as appropriate, no request sent | emptyEmailError=true invalidEmailError=true emptyPasswordError=true | — | — | — | — | — | — | — | — | — | — | PASS |
+| AUTH-03 | Authentication / Users / Roles / Permissions | /login | Password | wrong password | — | definitely-the-wrong-password | — | generic "invalid email or password"-style message, not reset by this probe since a later successful login resets the failed-attempt counter | Unable to sign in. Check your details or try again shortly. | — | — | — | — | — | — | — | — | — | — | PASS |
+| AUTH-04 | Authentication / Users / Roles / Permissions | /login | Email address / Password / Sign in securely | successful login + session persistence | — | — | — | redirects to /dashboard; reload keeps the session (does not bounce back to /login) | redirectedOk=true stillOnDashboard=true | — | — | — | — | — | — | — | — | — | — | PASS |
+| AUTH-05 | Authentication / Users / Roles / Permissions | n/a | GET /admin/settings | AccessTokenGuard rejects invalid/missing tokens | — | — | — | 401 INVALID_ACCESS_TOKEN for a missing header, a malformed token, and a non-Bearer scheme | no Authorization header: PASS (status=401) \| malformed bearer token: PASS (status=401) \| wrong scheme: PASS (status=401) | PASS | — | — | — | — | — | — | — | — | — | PASS |
+| AUTH-06 | Authentication / Users / Roles / Permissions | /dashboard | Sign out | logout clears session | — | — | — | Sign out redirects to /login; navigating directly to /dashboard afterward also redirects to /login | finalUrl=https://admin.54.162.49.131.nip.io/login?returnTo=%2Fdashboard | — | — | — | — | — | — | — | — | — | — | PASS |
+| AUTH-07 | Authentication / Users / Roles / Permissions | /login | full screen | responsive layout | — | — | — | no horizontal scroll at any viewport; email/password fields remain usable | {"desktop":true,"tablet":true,"mobile":true} | — | — | — | — | PASS | PASS | PASS | — | — | — | PASS |
+| AUTH-08 | Authentication / Users / Roles / Permissions | n/a | n/a | Users/Roles management UI | — | — | — | No Users or Roles admin screen exists in Phase 1 scope -- single hardcoded SUPER_ADMIN role, one seeded account, confirmed via source review (no admin route, sidebar link, or API resource for it) | Confirmed absent, as expected for Phase 1 scope | — | — | — | — | — | — | — | — | — | — | PASS |
 

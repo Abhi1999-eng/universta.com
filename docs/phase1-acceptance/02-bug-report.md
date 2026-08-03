@@ -1261,6 +1261,38 @@ via `git stash` the `//host` rejection test genuinely fails without the fix.
 
 ---
 
+## Module 8 — Authentication / Users / Roles / Permissions
+
+No separate Users or Roles management screen exists anywhere in Phase 1 --
+confirmed via source review (no admin route, sidebar link, or API
+resource for it). There is a single hardcoded `SUPER_ADMIN` role and one
+seeded demo account; `RolesGuard` checks that role against every
+`@Roles(...)`-decorated endpoint, and all 28 controllers that use it were
+confirmed to list `AccessTokenGuard` first, so a missing or invalid bearer
+token is always rejected before any role check runs -- there is no
+guard-ordering gap to exploit.
+
+Live-verified: the login screen's field inventory and client-side
+validation, a wrong password producing the generic "invalid email or
+password" message (never revealing whether the email exists), a
+successful login persisting across reload, `AccessTokenGuard` rejecting a
+missing/malformed/wrong-scheme bearer token with 401
+`INVALID_ACCESS_TOKEN`, logout clearing the session, and the login screen
+at 3 viewports.
+
+The failed-login lockout counter (`recordFailedLogin`) had no test
+coverage at all and was **not** exercised live: exhausting attempts against
+the one real deployed demo admin account this whole acceptance program
+depends on would risk locking it out for `AUTH_LOCK_MINUTES`, a
+self-inflicted availability incident rather than a useful test. Instead,
+`auth.lockout.spec.ts` pins the exact boundary against a fake Prisma
+store: one attempt short of the threshold does not lock, the attempt that
+reaches it does (429 `ACCOUNT_LOCKED` on the next attempt, even with the
+correct password), and an expired lock does not block a fresh attempt. No
+defects found.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
