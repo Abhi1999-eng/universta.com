@@ -472,8 +472,27 @@ connects a university to a course, so without any, a visitor cannot get from a
 university to what it actually teaches, and three admin controls can never be
 used.
 
-**Status.** OPEN — client-owned data. The module and its import path already
-work; it needs records.
+**Fix.** Created 3 published university course offerings through the admin
+workflow (Admin → University course offerings → Create offering), each pairing
+an existing university with an existing generic course and course level:
+
+| Offering | University | Generic course | Level |
+| --- | --- | --- | --- |
+| Bachelor of Computer Science (`bachelor-computer-science-ashcroft`) | Ashcroft College London | Bachelor of Computer Science | Undergraduate |
+| Master of Data Science (`master-data-science-harborview`) | Harborview University | Master of Data Science | Postgraduate |
+| MBA in Global Management (`mba-global-management-northlake`) | Northlake Institute of Technology | MBA in Global Management | MBA |
+
+Each carries a short description disclosing it as demonstration content,
+consistent with the university/course records it links to.
+
+**Verified live.** `GET /phase1/compare/courses/options` now lists all three
+slugs; `GET /phase1/compare/courses?items=...` returns full nested
+`university` + `genericCourse` payloads for all three with `status:
+"PUBLISHED"`. The public `/compare/courses` page, loaded with all three slugs
+in `?items=`, renders three real comparison columns (University, Campus,
+Tuition, Study mode) instead of the previous empty state.
+
+**Status.** FIXED — content added via the admin UI, re-verified live.
 
 ---
 
@@ -1027,6 +1046,35 @@ the live site now issues a real 301 at the source path.
 
 ---
 
+## ISS-034 — Unknown comparison `:type` crashed with a 500 instead of a 400
+
+**Severity.** Minor — no data was at risk, but a client typo in the URL
+surfaced as a server error rather than a clean, expected rejection.
+
+**Where.** `apps/api/src/expanded/expanded.controller.ts`, `compare()`.
+
+**Symptom.** Found while manually probing Comparisons edge cases: `GET
+/phase1/compare/bogus-type` returned HTTP 500
+(`{"error":{"code":"INTERNAL_ERROR",...}}`) instead of a 400.
+
+**Root cause.** The handler's invalid-type branch `throw`ed a plain `Error`,
+which Nest's default exception filter turns into an unhandled 500. The
+sibling `GET /phase1/compare/:type/options` route already guarded the same
+check with `BadRequestException`; `compare()` just hadn't been updated to
+match.
+
+**Fix.** Changed the invalid-type branch to `throw new
+BadRequestException('Unknown comparison type')`, matching the sibling route.
+Added `expanded.compare-type.spec.ts` covering both the bad-type-rejects and
+recognized-type-still-works cases; confirmed via `git stash` that the first
+test genuinely fails (plain `Error`, not `BadRequestException`) without the
+fix.
+
+**Status.** FIXED, deployed and re-verified live (PR #55): `GET
+/phase1/compare/bogus-type` now returns HTTP 400.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -1046,7 +1094,7 @@ the live site now issues a real 301 at the source path.
 | ISS-013 | Major | Client data | **OPEN** — content |
 | ISS-014 | Cosmetic | Admin — Universities | **OPEN** — cosmetic |
 | ISS-015 | Major | Admin — proxy | Fixed, deployed (PR #36) |
-| ISS-016 | Major | Content data | **OPEN** — content |
+| ISS-016 | Major | Content data | Fixed — 3 published course offerings added via admin, re-verified live |
 | ISS-017 | Major | Content data | Fixed — real SEO content saved for all static pages + a Country |
 | ISS-018 | Minor | Admin — Website Builder | **OPEN** — small code fix |
 | ISS-019 | Major | Admin — Navigation | Fixed, deployed (PR #43), re-verified live |
@@ -1063,9 +1111,10 @@ the live site now issues a real 301 at the source path.
 | ISS-031 | Major | Web — Listing pages | **OPEN** — design decision needed |
 | ISS-032 | Critical | Admin — Phase1 lists | Fixed, deployed (PR #53), re-verified live |
 | ISS-033 | Critical | Web — Redirects | Fixed, deployed (PR #54, corrected same-day), re-verified live |
+| ISS-034 | Minor | API — Comparisons | Fixed, deployed (PR #55), re-verified live |
 
-Twenty-six are fixed and every one deployed and re-verified live against
-production. Of the six still open, three are content decisions (ISS-004,
-ISS-013, ISS-016), one is cosmetic (ISS-014), one is a small remaining code
-fix (ISS-018), and one needs a product decision before it can be built
+Twenty-eight are fixed and every one deployed and re-verified live against
+production. Of the five still open, two are content decisions (ISS-004,
+ISS-013), one is cosmetic (ISS-014), one is a small remaining code fix
+(ISS-018), and one needs a product decision before it can be built
 (ISS-031).
