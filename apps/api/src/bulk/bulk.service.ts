@@ -16,6 +16,38 @@ import { parseXlsx, toXlsx, toXlsxTemplate } from './xlsx.util';
 
 const MAX_ROWS = 2000;
 
+/** ISS-035. Every bulk-update value arrives as a raw string from the admin's
+ * single generic text input, regardless of the target column's real type.
+ * String columns pass through Prisma untouched, and Decimal/DateTime columns
+ * accept a string representation directly -- but the two Int/Boolean columns
+ * across the whole registry (`displayOrder`, `isFeatured`) do not, and
+ * `updateMany` threw an unhandled 500 rather than applying the value. */
+const BOOLEAN_UPDATE_FIELDS = new Set(['isFeatured']);
+const INTEGER_UPDATE_FIELDS = new Set(['displayOrder']);
+
+function coerceUpdateFields(
+  fields: Record<string, unknown>,
+): Record<string, unknown> {
+  const coerced: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (BOOLEAN_UPDATE_FIELDS.has(key) && typeof value === 'string') {
+      coerced[key] = value.trim().toLowerCase() === 'true';
+    } else if (INTEGER_UPDATE_FIELDS.has(key) && typeof value === 'string') {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed))
+        throw new BadRequestException({
+          code: 'INVALID_FIELD_VALUE',
+          message: `"${key}" must be a number`,
+          details: null,
+        });
+      coerced[key] = parsed;
+    } else {
+      coerced[key] = value;
+    }
+  }
+  return coerced;
+}
+
 export interface RowError {
   line: number;
   errors: string[];
@@ -287,7 +319,7 @@ export class BulkOperationsService {
     const table = delegate(this.prisma, definition);
     const result = await table.updateMany({
       where: { id: { in: ids }, deletedAt: null },
-      data: fields,
+      data: coerceUpdateFields(fields),
     });
     await writeAudit(
       this.prisma,
