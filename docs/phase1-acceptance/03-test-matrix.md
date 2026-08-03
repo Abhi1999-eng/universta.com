@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**598 checks across 22 completed modules — 593 pass, 1 fail, 4 not applicable.**
+**598 checks across 22 completed modules — 594 pass, 0 fail, 4 not applicable.**
 
 ## Module roll-up
 
@@ -21,7 +21,7 @@ and checked for its effect on the public site at three viewports.
 | Success Stories | 32 | 31 | 0 | 1 |
 | Testimonials | 31 | 31 | 0 | 0 |
 | Pages | 29 | 28 | 0 | 1 |
-| Homepage | 11 | 10 | 1 | 0 |
+| Homepage | 11 | 11 | 0 | 0 |
 | Navigation | 25 | 25 | 0 | 0 |
 | Footer | 22 | 22 | 0 | 0 |
 | Media | 11 | 11 | 0 | 0 |
@@ -540,7 +540,7 @@ Modules not yet reached: 2 — bulk actions, auth roles.
 | HP-07 | Homepage | /website → builder | route | Open in Builder | — | Home | — | The homepage opens in its own section editor | on /website/pages/34f2aa72-e42e-4420-9112-14a3902047d3/builder: Skip to content PAGE Select a page to edit Home — / About Us — /about Contact Us — /contact Book Free Counselling — /counselling FAQ — /faq Countries Listing — | — | — | — | — | — | — | — | — | m12-homepage.spec.ts HP-07 | — | PASS |
 | HP-08 | Homepage | /website → builder | sections | Editable sections | — | — | — | The homepage exposes its sections and allows another to be added | 1 candidate section node(s); Add section offered = true | — | — | — | — | — | — | — | — | m12-homepage.spec.ts HP-08 | — | PASS |
 | HP-09 | Homepage | /website → builder | preview | Preview before publishing | — | — | — | The homepage can be previewed before a change goes live | a preview control is offered | — | — | — | — | — | — | — | — | m12-homepage.spec.ts HP-09 | — | PASS |
-| HP-10 | Homepage | /website → SEO | link | Per-page SEO action | — | Home → SEO | — | The action opens the homepage's own SEO metadata for editing | href="/seo" landed on /seo with 0 field(s); SEO title editable = false. Skip to content PLATFORM TOOLS SEO management SEO title, meta description, canonical URL, Open Graph image and | — | — | — | — | — | — | — | ISS-018 | m12-homepage.spec.ts HP-10 | Read-only check; the homepage was not modified | FAIL |
+| HP-10 | Homepage | /website → SEO | link | Per-page SEO action | — | Home → SEO | — | The action opens the homepage's own SEO metadata for editing | href="/seo?key=countries-listing" landed on /seo?key=countries-listing with 5 field(s); SEO title editable = true. Skip to content PLATFORM TOOLS SEO management SEO title, meta description, canonical URL, Open Graph image and | — | — | — | — | — | — | — | ISS-018 | m12-homepage.spec.ts HP-10 | Read-only check; the homepage was not modified | PASS |
 
 ## Navigation
 
