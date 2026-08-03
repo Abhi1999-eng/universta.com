@@ -297,7 +297,7 @@ export function WebsitePagesManager() {
                     )}
                     {row.seoKey ? (
                       <Link
-                        href="/seo"
+                        href={`/seo?key=${encodeURIComponent(row.seoKey)}`}
                         className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
                       >
                         SEO

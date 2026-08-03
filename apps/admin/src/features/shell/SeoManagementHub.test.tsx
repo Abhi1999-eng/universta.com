@@ -1,12 +1,21 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SeoManagementHub } from "./SeoManagementHub";
 
 const authFetch = vi.fn();
 vi.mock("@/features/auth/auth-client", () => ({
   authFetch: (...args: unknown[]) => authFetch(...args),
 }));
+
+const mocks = vi.hoisted(() => ({ search: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => mocks.search,
+}));
+
+beforeEach(() => {
+  mocks.search = new URLSearchParams();
+});
 
 /** ISS-030. The "Allow search indexing" checkbox defaulted to checked for
  * every never-saved static page, including compare-countries -- whose
@@ -94,5 +103,58 @@ describe("SeoManagementHub static page SEO editor", () => {
 
     const indexCheckbox = await screen.findByLabelText("Allow search indexing");
     expect(indexCheckbox).toBeChecked();
+  });
+});
+
+/** ISS-018. Website Builder's per-page "SEO" action linked to the bare
+ * `/seo` URL regardless of which page it was clicked from -- landing on the
+ * generic hub with nothing pre-selected, instead of the specific static
+ * page's own SEO editor already open. The link now carries `?key=<seoKey>`;
+ * this confirms the hub actually reads it and opens the matching row. */
+describe("SeoManagementHub deep link (ISS-018)", () => {
+  it("opens the row matching ?key= automatically, without a click", async () => {
+    mocks.search = new URLSearchParams("key=home");
+    authFetch.mockResolvedValueOnce(
+      jsonResponse([
+        { key: "home", label: "Homepage", defaultRobotsIndex: true, seo: null },
+        { key: "faq", label: "FAQ page", defaultRobotsIndex: true, seo: null },
+      ]),
+    );
+
+    render(<SeoManagementHub />);
+
+    await waitFor(() => expect(screen.getByText("Homepage")).toBeInTheDocument());
+    // The row's own editor renders only when it is the open one -- finding
+    // the field without any click is what proves the deep link opened it.
+    expect(await screen.findByLabelText("SEO title")).toBeInTheDocument();
+    // The other row must not also be forced open.
+    expect(screen.getByRole("button", { name: "Edit SEO" })).toBeInTheDocument();
+  });
+
+  it("does not open any row when there is no ?key=", async () => {
+    authFetch.mockResolvedValueOnce(
+      jsonResponse([
+        { key: "home", label: "Homepage", defaultRobotsIndex: true, seo: null },
+      ]),
+    );
+
+    render(<SeoManagementHub />);
+
+    await waitFor(() => expect(screen.getByText("Homepage")).toBeInTheDocument());
+    expect(screen.queryByLabelText("SEO title")).not.toBeInTheDocument();
+  });
+
+  it("leaves every row closed when ?key= does not match any static page", async () => {
+    mocks.search = new URLSearchParams("key=not-a-real-key");
+    authFetch.mockResolvedValueOnce(
+      jsonResponse([
+        { key: "home", label: "Homepage", defaultRobotsIndex: true, seo: null },
+      ]),
+    );
+
+    render(<SeoManagementHub />);
+
+    await waitFor(() => expect(screen.getByText("Homepage")).toBeInTheDocument());
+    expect(screen.queryByLabelText("SEO title")).not.toBeInTheDocument();
   });
 });
