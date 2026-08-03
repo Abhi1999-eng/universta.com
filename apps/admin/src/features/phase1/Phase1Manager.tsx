@@ -42,11 +42,14 @@ type Phase1Row = {
   usedAs?: "header" | "footer" | null;
 };
 
+type ListMeta = { page: number; limit: number; total: number; totalPages: number };
 type Envelope = {
   data: Phase1Row[] | null;
-  meta: unknown;
+  meta: ListMeta | null;
   error: { message: string } | null;
 };
+
+const PAGE_SIZE = 20;
 
 async function request(path: string, init?: RequestInit): Promise<Envelope> {
   const response = await authFetch(`/api/v1/admin/phase1/${path}`, {
@@ -61,6 +64,8 @@ async function request(path: string, init?: RequestInit): Promise<Envelope> {
 
 export function Phase1Manager({ resource }: { resource: string }) {
   const [rows, setRows] = useState<Phase1Row[]>([]);
+  const [listMeta, setListMeta] = useState<ListMeta | null>(null);
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState("");
   const [draft, setDraft] = useState(examples[resource] ?? "{}");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,13 +79,26 @@ export function Phase1Manager({ resource }: { resource: string }) {
 
   const load = useCallback(async () => {
     try {
-      const body = await request(resource);
+      // Every resource here defaults server-side to a 12-record page with no
+      // way to reach anything past it -- this screen had no pagination UI at
+      // all, so a 13th record (an "About Us" page, a 7th university, ...) was
+      // simply invisible and unmanageable, with "N records" quietly lying
+      // about the true total.
+      const body = await request(`${resource}?page=${page}&limit=${PAGE_SIZE}`);
       setRows(body.data ?? []);
+      setListMeta(body.meta);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Unable to load records",
       );
     }
+  }, [resource, page]);
+
+  useEffect(() => {
+    // A page number from a previous resource's longer list would otherwise
+    // carry over and request an out-of-range page for a shorter one.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
   }, [resource]);
 
   useEffect(() => {
@@ -154,7 +172,9 @@ export function Phase1Manager({ resource }: { resource: string }) {
           </h2>
         </div>
         <div className="flex items-center gap-3">
-          <p className="text-sm text-[#667085]">{rows.length} records</p>
+          <p className="text-sm text-[#667085]">
+            {listMeta ? `${listMeta.total} record${listMeta.total === 1 ? "" : "s"}` : `${rows.length} records`}
+          </p>
           {structured || isPageCms || isNavMenu ? (
             <button
               type="button"
@@ -372,6 +392,32 @@ export function Phase1Manager({ resource }: { resource: string }) {
             <p className="p-6 text-sm text-[#667085]">No records yet.</p>
           )}
         </div>
+
+        {listMeta && listMeta.totalPages > 1 ? (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-[#667085]">
+              Page {listMeta.page} of {listMeta.totalPages}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => current - 1)}
+                className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-xs font-semibold disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={page >= listMeta.totalPages}
+                onClick={() => setPage((current) => current + 1)}
+                className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-xs font-semibold disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {resource === "contact-inquiries" ? (
           <aside className="rounded-2xl border border-[#E8ECF3] bg-white p-5 text-sm text-[#667085]">
