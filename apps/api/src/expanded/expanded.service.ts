@@ -2367,6 +2367,20 @@ export class ExpandedService {
       if ('isFeatured' in data)
         data.isFeatured =
           data.isFeatured === true || data.isFeatured === 'true';
+      // ISS-037. Unlike events' startsAt/endsAt, an inverted featuredFrom/
+      // featuredUntil window was accepted silently: isEffectivelyFeatured()
+      // requires `now` to fall inside [featuredFrom, featuredUntil), so a
+      // window where featuredUntil is before featuredFrom can never be true
+      // at any point in time -- the record would just never get its
+      // featured placement, with no error at save time to explain why.
+      const featuredFrom = data.featuredFrom as Date | null | undefined;
+      const featuredUntil = data.featuredUntil as Date | null | undefined;
+      if (featuredFrom && featuredUntil && featuredUntil <= featuredFrom)
+        throw new UnprocessableEntityException({
+          code: 'FEATURED_DATE_RANGE_INVALID',
+          message: 'Featured until must be after featured from',
+          details: null,
+        });
     }
     const SCHEDULED_RESOURCES = new Set([
       'universities',
@@ -2381,6 +2395,18 @@ export class ExpandedService {
     if (SCHEDULED_RESOURCES.has(resource)) {
       normalizeDate('publishStartsAt');
       normalizeDate('publishEndsAt');
+      // ISS-037. Same trap as above, for the scheduled-publishing window:
+      // publishedWhereScheduled() requires `now` inside [publishStartsAt,
+      // publishEndsAt), so an inverted pair means the record can never be
+      // publicly visible, permanently, with no indication why.
+      const publishStartsAt = data.publishStartsAt as Date | null | undefined;
+      const publishEndsAt = data.publishEndsAt as Date | null | undefined;
+      if (publishStartsAt && publishEndsAt && publishEndsAt <= publishStartsAt)
+        throw new UnprocessableEntityException({
+          code: 'PUBLISH_DATE_RANGE_INVALID',
+          message: 'Publish until must be after publish from',
+          details: null,
+        });
     }
     if (resource === 'jobs') {
       normalizeDate('publishedDate');
