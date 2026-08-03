@@ -1075,6 +1075,79 @@ fix.
 
 ---
 
+## ISS-035 — Bulk-update crashed with a 500 on the two non-string columns (`displayOrder`, `isFeatured`)
+
+**Severity.** Major — the admin's bulk-update control is fully unusable for
+any of these two columns, on any of the several resources that expose them.
+
+**Where.** `apps/api/src/bulk/bulk.service.ts`, `bulkUpdate()`.
+
+**Symptom.** Found while acceptance-testing Module 5: selecting a subject
+record, setting "Field to bulk-update" to `displayOrder`, and applying a new
+value surfaced "Internal server error" instead of "Bulk update applied."
+Reproduced directly: `POST .../bulk/subjects/bulk-update` with
+`{"displayOrder":"42"}` returned a 500; the same for `{"isFeatured":"true"}`.
+
+**Root cause.** The admin's single generic "New value" text input always
+sends a string, regardless of the target column's real Prisma type. String
+columns pass through untouched, and Decimal/DateTime columns (`tuitionMin`,
+`amount`, `endsAt`, ...) already accept a string representation directly --
+but `displayOrder` (Int) and `isFeatured` (Boolean) are the only two
+non-string/non-Decimal/non-DateTime columns across the entire 13-resource
+registry, and Prisma rejects a raw string for either, which `updateMany`
+never handled.
+
+**Fix.** `bulkUpdate()` now coerces both field names to their real type
+before the update -- `"true"/"false"` to boolean for `isFeatured`, and a
+parsed number for `displayOrder`, with an unparsable number rejected as a
+clean 400 (`INVALID_FIELD_VALUE`) rather than reaching Prisma at all. New
+unit tests cover both coercions, the rejection path, and that a plain string
+field is left untouched; confirmed via `git stash` that 3 of 4 genuinely
+fail without the fix.
+
+**Status.** FIXED, deployed and re-verified live (PR #56).
+
+---
+
+## ISS-036 — Every 404 showed "Route not found", even ones a service raised deliberately with its own message
+
+**Severity.** Major — silently discarded the specific, actionable message on
+every intentional `NotFoundException` across the API (~30 call sites),
+replacing it with a generic message that reads like a broken URL.
+
+**Where.** `apps/api/src/common/app-exception.filter.ts`.
+
+**Symptom.** Found while investigating an ISS-035 side effect: a bulk-archive
+attempt where every selected record was blocked by its dependency guard
+returned 404 `{"code":"NO_RECORDS_ARCHIVABLE","message":"Route not
+found"}` -- the `code` was correct, but the message gave no indication of
+what actually happened, and "Route not found" reads like a client-side
+routing bug rather than "these records have dependents."
+
+**Root cause.** `AppExceptionFilter` unconditionally overwrote the message on
+every 404 (`if (status === 404) { message = 'Route not found'; }`), even
+immediately after correctly extracting a deliberate, structured message from
+the exception's own response body one line above. This affects every
+service that throws `new NotFoundException({ code, message, details })` --
+the established pattern used by ~30 call sites across countries, redirects,
+media, locations, versions, page-templates, leads, experiments,
+catalog-lookups, continents, stats-pills, university-claims, and more --
+not just bulk-archive.
+
+**Fix.** The generic fallback now only applies when the exception carries no
+application `code` -- the signal that distinguishes a genuinely unmatched
+Express route (Nest's own default 404, which never has a `code`) from a
+service's deliberate, structured 404. New unit tests cover both cases;
+confirmed via `git stash` both fail without the fix. Full API unit suite
+(277/277) still passes with the fix in place, confirming no other test
+relied on the old blanket-overwrite behavior.
+
+**Status.** FIXED, deployed and re-verified live (PR #56): a blocked
+bulk-archive now returns its real message ("None of the selected records
+could be archived") instead of "Route not found".
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -1112,8 +1185,10 @@ fix.
 | ISS-032 | Critical | Admin — Phase1 lists | Fixed, deployed (PR #53), re-verified live |
 | ISS-033 | Critical | Web — Redirects | Fixed, deployed (PR #54, corrected same-day), re-verified live |
 | ISS-034 | Minor | API — Comparisons | Fixed, deployed (PR #55), re-verified live |
+| ISS-035 | Major | API — Bulk operations | Fixed, deployed (PR #56), re-verified live |
+| ISS-036 | Major | API — Error handling | Fixed, deployed (PR #56), re-verified live |
 
-Twenty-eight are fixed and every one deployed and re-verified live against
+Thirty are fixed and every one deployed and re-verified live against
 production. Of the five still open, two are content decisions (ISS-004,
 ISS-013), one is cosmetic (ISS-014), one is a small remaining code fix
 (ISS-018), and one needs a product decision before it can be built
