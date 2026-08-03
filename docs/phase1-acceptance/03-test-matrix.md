@@ -4,7 +4,7 @@ Every row is one field or control, exercised against the deployed
 production system: verified in the admin, confirmed through the API,
 and checked for its effect on the public site at three viewports.
 
-**519 checks across 16 completed modules — 515 pass, 1 fail, 3 not applicable.**
+**536 checks across 17 completed modules — 531 pass, 1 fail, 4 not applicable.**
 
 ## Module roll-up
 
@@ -26,8 +26,9 @@ and checked for its effect on the public site at three viewports.
 | Footer | 22 | 22 | 0 | 0 |
 | Media | 11 | 11 | 0 | 0 |
 | Seo | 14 | 14 | 0 | 0 |
+| Internal Linking | 17 | 16 | 0 | 1 |
 
-Modules not yet reached: 6 — internal linking, comparisons, bulk actions, scheduling, settings, auth roles.
+Modules not yet reached: 5 — comparisons, bulk actions, scheduling, settings, auth roles.
 
 ## Countries
 
@@ -627,4 +628,26 @@ Modules not yet reached: 6 — internal linking, comparisons, bulk actions, sche
 | SEO-12 | SEO | /phase1/universities | text | Canonical URL off-site warning | — | https://example.com/off-site | — | A warning explains the canonical points off-site | warning shown | — | — | — | — | — | — | — | — | m16-seo.spec.ts SEO-12 | — | PASS |
 | SEO-13 | SEO | /phase1/universities | fieldset | Phase1 structured editor SEO fieldset: field inventory | — | — | — | All 9 text/select controls plus 2 robots checkboxes visible | fields visible=true; index checkbox=true; follow checkbox=true | — | — | — | — | — | — | — | — | m16-seo.spec.ts SEO-13 | — | PASS |
 | SEO-14 | SEO | /phase1/universities | form | SEO title / Meta description (Southern Cross Institute) | — | Southern Cross Institute: Programs, Tuition & Campus Life | — | Values save and persist as part of the university record | persisted | YES | — | — | — | — | — | — | — | m16-seo.spec.ts SEO-14 | — | PASS |
+
+## Internal Linking
+
+| ID | Module | Admin page | Control | Field | Original value | Test value | Invalid input tried | Expected (admin) | Actual (admin) | API verified | Frontend URL | Expected (frontend) | Actual (frontend) | Desktop | Tablet | Mobile | Issue | Evidence | Restored | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| IL-01 | Internal Linking | /phase1/pages | form | CTA URL field inventory (input + Browse button) | — | — | — | Both the free-text input and the Browse button are visible | input visible=true; Browse visible=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-01 | — | PASS |
+| IL-02 | Internal Linking | /phase1/pages | text | CTA URL: plain external URL | — | https://example.com/careers | — | No resolution status shown for a non-internal value | no resolution text present=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-02 | — | PASS |
+| IL-03 | Internal Linking | /phase1/pages | text | CTA URL: valid internal:// reference (published Country) | — | internal://country/ed514990-e9f8-43af-8faa-4a1e1bc03d08 | — | Resolves to a "Links to ... (Canada)" success message | resolved=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-03 | — | PASS |
+| IL-04 | Internal Linking | /phase1/pages | text | CTA URL: internal:// reference to a nonexistent record | — | internal://country/00000000-0000-0000-0000-000000000000 | — | "This linked page no longer exists." error shown | shown=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-04 | — | PASS |
+| IL-05 | Internal Linking | /phase1/pages | text | CTA URL: internal:// reference to an unpublished record | — | — | — | N/A -- no DRAFT university existed to test against | skipped: no DRAFT university in the catalog | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-05 | — | N/A |
+| IL-06 | Internal Linking | /phase1/pages | dialog | Browse modal: search returns a matching result | — | Canada | — | The modal opens and lists the matching country as a candidate | result visible=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-06 | — | PASS |
+| IL-07 | Internal Linking | /phase1/pages | dialog | Browse modal: selecting a result fills the field and closes the modal | — | — | — | Field is set to internal://country/{id} and the modal closes | dialog closed=true; field value=internal://country/ed514990-e9f8-43af-8faa-4a1e1bc03d08 | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-07 | — | PASS |
+| IL-08 | Internal Linking | /phase1/pages | form | CTA URL persists as internal://country/{id} | — | — | — | Saved section carries the internal:// reference exactly | persisted=true | YES | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-08 | — | PASS |
+| IL-09 | Internal Linking | /phase1/pages | route | CTA anchor resolves internal:// to the country's live path | — | — | — | — | — | — | https://54.162.49.131.nip.io/about | An <a href="/countries/canada"> anchor is present | present=true | — | — | — | — | m17-internal-linking.spec.ts IL-09 | — | PASS |
+| IL-10a | Internal Linking | /phase1/pages | form | CARD_GRID row: Link URL picker appears once Block type is set | — | — | — | The row's own "Link URL (optional)" InternalLinkPicker is visible | visible=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-10a | — | PASS |
+| IL-10b | Internal Linking | /phase1/pages | form | CARD_GRID row Link URL resolves and persists | — | — | — | Row resolves to a success message and persists as internal://country/{id} | resolved in UI=true; persisted=true (internal://country/ed514990-e9f8-43af-8faa-4a1e1bc03d08) | YES | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-10b | — | PASS |
+| IL-11 | Internal Linking | /phase1/pages | dialog | Browse modal renders at every viewport | — | — | — | Dialog visible at desktop, tablet and mobile | desktop=true tablet=true mobile=true | — | — | — | — | PASS | PASS | PASS | — | m17-internal-linking.spec.ts IL-11 | — | PASS |
+| IL-12 | Internal Linking | /redirects | form | Create-redirect field inventory | — | — | — | Source path, Target path and HTTP status controls all visible | visible=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-12 | — | PASS |
+| IL-13 | Internal Linking | /redirects | form | Target path validation: external URL rejected | — | — | https://evil.example.com/ | Rejected with an internal-path-required message | rejected=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-13 | — | PASS |
+| IL-14 | Internal Linking | /redirects | form | Valid internal source/target pair creates a redirect | — | /qa-internal-linking-test -> /universities | — | "Redirect created." confirmation shown | created=true | — | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-14 | — | PASS |
+| IL-15 | Internal Linking | /redirects | form | Redirect persists with the expected target/status/active state | — | — | — | targetPath=/universities, httpStatusCode=301, isActive=true | row={"id":"80a64665-5ba6-4d6c-867e-85a3807046e4","sourcePath":"/qa-internal-linking-test","targetPath":"/universities","httpStatusCode":301,"isActive":true,"hitCount":0,"lastHitAt":null,"createdAt":"2026-08-03T01:20:03.688Z","updatedAt":"2026-08-03T01:20:03.688Z"} | YES | — | — | — | — | — | — | — | m17-internal-linking.spec.ts IL-15 | — | PASS |
+| IL-16 | Internal Linking | /redirects | route | Configured redirect actually redirects on the live site | — | — | — | — | — | — | https://54.162.49.131.nip.io/qa-internal-linking-test | Navigating to /qa-internal-linking-test lands on https://54.162.49.131.nip.io/universities | landed on https://54.162.49.131.nip.io/universities; initial response status=200 | — | — | — | — | m17-internal-linking.spec.ts IL-16 | — | PASS |
 

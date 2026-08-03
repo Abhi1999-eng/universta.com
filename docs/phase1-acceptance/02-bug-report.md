@@ -991,6 +991,42 @@ API's true total.
 
 ---
 
+## ISS-033 — Admin-configured redirects had zero effect on the live site
+
+**Severity.** Critical — the entire Redirects feature (create, open-redirect
+guard, loop/chain detection, enable/disable, hit-count tracking) was fully
+built and functional in the admin, but produced no live behavior whatsoever.
+
+**Where.** `apps/web/src/middleware.ts`.
+
+**Symptom.** Found while re-verifying Internal Linking live: a redirect
+created through the admin (source/target/status all confirmed correctly
+persisted via the API) had no effect at all. Visiting the source path
+returned a genuine 404, exactly as if no redirect existed.
+
+**Root cause.** The web app's middleware never checked the Redirect table --
+it only handled A/B-test cookie assignment and framing headers. The API side
+of consuming a redirect already existed (`ExpandedService.resolveRedirect()`,
+exposed at `GET /phase1/redirects?path=`, complete with the exact
+find-by-sourcePath-and-record-the-hit logic needed), but nothing on the
+public site ever called it.
+
+**Fix, and a false start.** The first attempt added a brand new, separate
+`GET /phase1/redirects/lookup` endpoint without noticing the existing one --
+registering a second controller at the same `phase1/redirects` base path
+didn't error at boot, it silently lost to the already-registered generic
+`:resource/:slug` route, so the new endpoint was unreachable and the
+live-redirect check still failed after deploying it. Root-caused by finding
+the pre-existing `@Get('redirects')` route in `ExpandedController`; the
+duplicate controller/module wiring was removed, and `middleware.ts` was
+pointed at the endpoint that had been there all along.
+
+**Status.** FIXED, deployed and re-verified live (PR #54, corrected same-day
+on `main`): `GET /phase1/redirects?path=` returns the configured target, and
+the live site now issues a real 301 at the source path.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -1026,8 +1062,9 @@ API's true total.
 | ISS-030 | Major | Admin/API — Static SEO | Fixed, deployed (PR #52), re-verified live |
 | ISS-031 | Major | Web — Listing pages | **OPEN** — design decision needed |
 | ISS-032 | Critical | Admin — Phase1 lists | Fixed, deployed (PR #53), re-verified live |
+| ISS-033 | Critical | Web — Redirects | Fixed, deployed (PR #54, corrected same-day), re-verified live |
 
-Twenty-five are fixed and every one deployed and re-verified live against
+Twenty-six are fixed and every one deployed and re-verified live against
 production. Of the six still open, three are content decisions (ISS-004,
 ISS-013, ISS-016), one is cosmetic (ISS-014), one is a small remaining code
 fix (ISS-018), and one needs a product decision before it can be built
