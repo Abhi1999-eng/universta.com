@@ -403,6 +403,19 @@ export function Phase1StructuredEditor({
       if (new Date(values.endsAt) <= new Date(values.startsAt))
         next.endsAt = "End date and time must be after the start.";
     }
+    // ISS-037. featuredFrom/featuredUntil and publishStartsAt/publishEndsAt
+    // are shared across several resources (only rendered where relevant, so
+    // this stays a no-op elsewhere) and had no ordering check at all -- an
+    // inverted window saves silently and the record can then never be
+    // effectively featured, or never publicly visible, at any point in time.
+    if (values.featuredFrom && values.featuredUntil) {
+      if (new Date(values.featuredUntil) <= new Date(values.featuredFrom))
+        next.featuredUntil = "Featured until must be after featured from.";
+    }
+    if (values.publishStartsAt && values.publishEndsAt) {
+      if (new Date(values.publishEndsAt) <= new Date(values.publishStartsAt))
+        next.publishEndsAt = "Publish until must be after publish from.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -916,6 +929,7 @@ function FeaturedFields(p: any) {
           type="datetime-local"
           value={p.values.featuredUntil ?? ""}
           onChange={(value) => p.set("featuredUntil", value)}
+          error={p.errors.featuredUntil}
         />
       </div>
       <p className="mt-2 text-xs text-[#667085]">
@@ -940,6 +954,7 @@ function ScheduledPublishingFields(p: any) {
           type="datetime-local"
           value={p.values.publishEndsAt ?? ""}
           onChange={(value) => p.set("publishEndsAt", value)}
+          error={p.errors.publishEndsAt}
         />
       </div>
       <p className="mt-2 text-xs text-[#667085]">
