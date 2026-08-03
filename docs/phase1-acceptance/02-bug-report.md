@@ -916,6 +916,81 @@ title/description happen to be edited).
 
 ---
 
+## ISS-031 — A "Listing" editorial page's own CMS sections are never rendered anywhere
+
+**Severity.** Major — an entire class of admin controls (the full section
+editor: CTA, Card Grid, FAQ Group, Stats, Related Links) produces content
+with zero visible effect.
+
+**Where.** Admin → Editorial pages, for any record whose `pageType` is
+`LISTING_PAGE` (Events Listing, Careers Listing, Testimonials,
+Success Stories, the 4 comparison pages, and 7 more listing-type records --
+about 12 of the 20 total Editorial pages). Contrast with `STATIC_PAGE`-type
+records (About, FAQ, Contact, Counselling), which render correctly.
+
+**Symptom.** Adding and saving a section (heading, CTA label/URL, cards,
+etc.) to "Events Listing" persists correctly via the API, but never appears
+on the live `/events` route, at any device size, however long after
+publishing.
+
+**Root cause.** `/events` (and the other catalog listing routes) are
+separate, hardcoded pages (`apps/web/src/app/events/page.tsx`) built around
+`PhaseListing`, which fetches only the catalog rows (`phaseList("events")`)
+-- and never fetches or renders the "Events Listing" Page record's own
+`sections` at all, even though `PhaseListing` already accepts an optional
+`sections` prop for exactly this. Only the `STATIC_PAGE`-type records go
+through `EditorialPage`/`PageSectionRenderer`, which does honor sections.
+
+**Assessment.** Not a quick bug fix -- wiring this up requires a product
+decision this program can't make unilaterally: where a listing page's own
+CMS sections should appear relative to its catalog rows (above the grid? A
+hero band? Interleaved?), and whether that decision should be uniform across
+all ~12 listing-type pages or configurable per page. That's a design
+question, not a mechanical one.
+
+**Status.** OPEN — deferred pending a decision on that design question.
+Not a data-loss risk: everything saved through the admin persists correctly
+via the API and reflects the client's real intent, it simply isn't rendered
+yet.
+
+---
+
+## ISS-032 — No pagination anywhere in the shared Phase1 resource list screen; records past the 12th are invisible
+
+**Severity.** Critical — makes a growing share of the client's own catalog
+permanently unreachable through the admin, with no error and no indication
+more records exist.
+
+**Where.** `apps/admin/src/features/phase1/Phase1Manager.tsx`, the shared
+list/table screen behind Universities, Offerings, Scholarships, Consultants,
+Jobs, Events, Success stories, Testimonials, Editorial pages, Navigation
+menus and Contact enquiries -- every one of these resource types.
+
+**Symptom.** Found while testing Internal Linking: the Editorial pages
+screen showed "12 records" while 20 real records existed. "About Us" (and 7
+others past the 12th) had no Edit/Publish/Unpublish/Archive button anywhere
+in the DOM -- not paginated-away, simply never fetched, with the "12
+records" label actively misstating the true total rather than reading it.
+
+**Root cause.** The list request (`request(resource)`) never sent `page` or
+`limit` at all, so the API's own default (`PAGE_LIMIT = 12` in
+`apps/api/src/expanded/expanded.service.ts`) applied silently on every
+resource, and the screen had no pagination controls of any kind to reach
+anything past it. The API already returns a complete `{ page, limit, total,
+totalPages }` on every list response specifically to support this -- it was
+simply never read by the frontend.
+
+**Fix.** Requests `page`/`limit=20`, reads the returned `meta` for an
+accurate record count and Previous/Next controls, and resets to page 1 when
+switching resources.
+
+**Status.** FIXED, deployed and re-verified live (PR #53): "About Us" (and
+every other previously-unreachable record, across every resource type this
+screen serves) is now reachable via Next, and the record count matches the
+API's true total.
+
+---
+
 ## Summary
 
 | ID | Severity | Area | Status |
@@ -949,8 +1024,11 @@ title/description happen to be edited).
 | ISS-028 | Critical | Admin/API — Country SEO | Fixed, deployed (PR #50), re-verified live |
 | ISS-029 | Critical | Admin — auth | Fixed, deployed (PR #51), re-verified live |
 | ISS-030 | Major | Admin/API — Static SEO | Fixed, deployed (PR #52), re-verified live |
+| ISS-031 | Major | Web — Listing pages | **OPEN** — design decision needed |
+| ISS-032 | Critical | Admin — Phase1 lists | Fixed, deployed (PR #53), re-verified live |
 
-Twenty-four are fixed and every one deployed and re-verified live against
-production. Of the five still open, three are content decisions (ISS-004,
-ISS-013, ISS-016), one is cosmetic (ISS-014), and one is a small remaining
-code fix (ISS-018).
+Twenty-five are fixed and every one deployed and re-verified live against
+production. Of the six still open, three are content decisions (ISS-004,
+ISS-013, ISS-016), one is cosmetic (ISS-014), one is a small remaining code
+fix (ISS-018), and one needs a product decision before it can be built
+(ISS-031).
