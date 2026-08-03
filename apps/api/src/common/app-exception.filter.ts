@@ -80,9 +80,20 @@ export class AppExceptionFilter implements ExceptionFilter {
       code = statusCodeFor(status);
       const exceptionResponse = exception.getResponse();
 
+      // A real unmatched-route 404 (Nest's own default, e.g. "Cannot GET
+      // /foo") never carries an application `code` -- every deliberate
+      // domain-level NotFoundException thrown by a service does (see
+      // catalog.errors.ts and the ~30 services that follow its shape). That
+      // `code` is the signal this filter needs: without it, the line below
+      // used to overwrite EVERY 404's message with the generic "Route not
+      // found", silently discarding messages like "None of the selected
+      // records could be archived" or "Country not found" on every
+      // intentional 404 in the API, not just genuinely unmatched routes.
+      let hasApplicationErrorCode = false;
       if (isErrorResponse(exceptionResponse)) {
         if (typeof exceptionResponse.code === 'string') {
           code = exceptionResponse.code;
+          hasApplicationErrorCode = true;
         }
         if (typeof exceptionResponse.message === 'string') {
           message = exceptionResponse.message;
@@ -91,7 +102,7 @@ export class AppExceptionFilter implements ExceptionFilter {
           details = redactSensitiveFields(exceptionResponse.details);
         }
       }
-      if (status === 404) {
+      if (status === 404 && !hasApplicationErrorCode) {
         message = 'Route not found';
       }
 
