@@ -319,26 +319,6 @@ export class RedirectsService {
     return { archived: true };
   }
 
-  /** The one place an admin-configured redirect actually takes effect: the
-   * web app's middleware calls this on (almost) every request. Matches by
-   * exact sourcePath among ACTIVE redirects only -- a disabled one should
-   * behave as if it doesn't exist. Records the hit rather than just
-   * answering the lookup, since this is the only call site that ever will:
-   * a live redirect is, by definition, being hit right now. */
-  async lookup(
-    sourcePath: string,
-  ): Promise<{ targetPath: string; httpStatusCode: number } | null> {
-    const row = await this.prisma.redirect.findFirst({
-      where: { sourcePath, isActive: true },
-    });
-    if (!row) return null;
-    await this.prisma.redirect.update({
-      where: { id: row.id },
-      data: { hitCount: { increment: 1 }, lastHitAt: new Date() },
-    });
-    return { targetPath: row.targetPath, httpStatusCode: row.httpStatusCode };
-  }
-
   private toDto(row: {
     id: string;
     sourcePath: string;

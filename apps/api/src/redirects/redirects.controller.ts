@@ -15,7 +15,6 @@ import { AccessTokenGuard } from '../auth/access-token.guard';
 import { Roles } from '../auth/auth.decorators';
 import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
-import type { RequestWithId } from '../common/http.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import { RedirectsService, type RedirectListQuery } from './redirects.service';
 
@@ -76,23 +75,5 @@ export class RedirectsController {
     @Param('id') id: string,
   ) {
     return successEnvelope(req, await this.service.archive(id, req));
-  }
-}
-
-/** Called by the web app's middleware on (almost) every request -- the only
- * place an admin-configured redirect actually takes effect. Unguarded like
- * the other `phase1/*` public endpoints; nothing it returns is sensitive
- * (an admin already chose to expose this exact source path by redirecting
- * it), and it needs to answer before a page has even started rendering. */
-@ApiTags('redirects-public')
-@Controller('phase1/redirects')
-export class RedirectsPublicController {
-  constructor(private readonly service: RedirectsService) {}
-
-  @Get('lookup') async lookup(
-    @Req() req: RequestWithId,
-    @Query('sourcePath') sourcePath: string,
-  ) {
-    return successEnvelope(req, await this.service.lookup(sourcePath ?? ''));
   }
 }

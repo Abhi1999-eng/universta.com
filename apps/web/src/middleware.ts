@@ -7,19 +7,21 @@ const BOT_PATTERN =
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
 /** ISS-033. The admin's Redirects screen (create, validate, enable/disable,
- * hit-count tracking) was fully built, but nothing on the public site ever
- * consulted it -- a configured redirect had zero effect; the source path
- * just 404'd like any other nonexistent route. This is the one call site
- * that makes a saved redirect actually redirect. A short timeout and a
- * swallowed failure both fall through to "no redirect" rather than blocking
- * or breaking a page load if the API is slow or unreachable. */
+ * hit-count tracking) was fully built, and the API side of consuming it
+ * (`ExpandedService.resolveRedirect`, exposed at `GET /phase1/redirects`)
+ * already existed too -- but nothing on the public site ever CALLED that
+ * endpoint. A configured redirect had zero effect; the source path just
+ * 404'd like any other nonexistent route. This is the one call site that
+ * makes a saved redirect actually redirect. A short timeout and a swallowed
+ * failure both fall through to "no redirect" rather than blocking or
+ * breaking a page load if the API is slow or unreachable. */
 async function findRedirect(
   pathname: string,
 ): Promise<{ targetPath: string; httpStatusCode: number } | null> {
   try {
     const response = await fetch(
       new URL(
-        `/api/v1/phase1/redirects/lookup?sourcePath=${encodeURIComponent(pathname)}`,
+        `/api/v1/phase1/redirects?path=${encodeURIComponent(pathname)}`,
         API_BASE_URL,
       ),
       { signal: AbortSignal.timeout(1500) },
