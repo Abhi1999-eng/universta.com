@@ -4,6 +4,33 @@ const COOKIE_NAME = "universta_ab";
 const BOT_ANONYMOUS_ID = "bot";
 const BOT_PATTERN =
   /bot|crawl|spider|slurp|bingpreview|facebookexternalhit|googlebot|ahrefsbot|semrushbot|mj12bot|petalbot/i;
+const API_BASE_URL = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
+
+/** ISS-033. The admin's Redirects screen (create, validate, enable/disable,
+ * hit-count tracking) was fully built, but nothing on the public site ever
+ * consulted it -- a configured redirect had zero effect; the source path
+ * just 404'd like any other nonexistent route. This is the one call site
+ * that makes a saved redirect actually redirect. A short timeout and a
+ * swallowed failure both fall through to "no redirect" rather than blocking
+ * or breaking a page load if the API is slow or unreachable. */
+async function findRedirect(
+  pathname: string,
+): Promise<{ targetPath: string; httpStatusCode: number } | null> {
+  try {
+    const response = await fetch(
+      new URL(
+        `/api/v1/phase1/redirects/lookup?sourcePath=${encodeURIComponent(pathname)}`,
+        API_BASE_URL,
+      ),
+      { signal: AbortSignal.timeout(1500) },
+    );
+    if (!response.ok) return null;
+    const body = (await response.json()) as { data?: { targetPath: string; httpStatusCode: number } | null };
+    return body.data ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Assigns (and persists) a stable anonymous id for A/B test variant
@@ -13,7 +40,15 @@ const BOT_PATTERN =
  * instead of a real id, so search engines always see the canonical control
  * variant and are never counted as an exposure.
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  const redirectMatch = await findRedirect(request.nextUrl.pathname);
+  if (redirectMatch) {
+    return NextResponse.redirect(
+      new URL(redirectMatch.targetPath, request.url),
+      redirectMatch.httpStatusCode,
+    );
+  }
+
   const userAgent = request.headers.get("user-agent") ?? "";
   const isBot = BOT_PATTERN.test(userAgent);
   const existing = request.cookies.get(COOKIE_NAME)?.value;
