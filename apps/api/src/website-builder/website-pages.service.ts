@@ -73,7 +73,12 @@ export const WEBSITE_PAGES: RegistryEntry[] = [
     family: 'Core',
     publicPath: '/',
     pageSlug: 'home',
-    seoKey: 'home',
+    // The live "/" route calls staticPageMetadata('countries-listing', ...)
+    // (apps/web/src/app/page.tsx) -- ISS-026 already removed the standalone
+    // 'home' static-page-SEO key because no route read it. This entry still
+    // pointed at that removed key, which is exactly the ISS-018 bug (a
+    // per-page SEO link landing nowhere useful) for the Home row specifically.
+    seoKey: 'countries-listing',
   },
   {
     key: 'about',
