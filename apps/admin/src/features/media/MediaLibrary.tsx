@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { uploadMediaFile } from "./media-upload";
+import { BulkMediaUploader } from "./BulkMediaUploader";
 
 type Asset = {
   id: string;
@@ -39,6 +41,7 @@ export function MediaLibrary() {
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pendingArchive, setPendingArchive] = useState<Asset | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const altRef = useRef<HTMLInputElement>(null);
@@ -73,12 +76,11 @@ export function MediaLibrary() {
     setUploading(true);
     setMessage("");
     try {
-      const form = new FormData();
-      form.append("file", file);
-      if (titleRef.current?.value) form.append("title", titleRef.current.value);
-      if (altRef.current?.value) form.append("altText", altRef.current.value);
-      if (folderRef.current?.value) form.append("folder", folderRef.current.value);
-      await api<Asset>("", { method: "POST", body: form });
+      await uploadMediaFile(file, {
+        title: titleRef.current?.value || undefined,
+        altText: altRef.current?.value || undefined,
+        folder: folderRef.current?.value || undefined,
+      });
       setMessage("Uploaded.");
       if (fileRef.current) fileRef.current.value = "";
       if (titleRef.current) titleRef.current.value = "";
@@ -190,7 +192,7 @@ export function MediaLibrary() {
         </div>
       </form>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
           value={q}
           onChange={(event) => setQ(event.target.value)}
@@ -205,6 +207,13 @@ export function MediaLibrary() {
           aria-label="Filter by folder"
           className="w-48 rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
         />
+        <button
+          type="button"
+          onClick={() => setBulkOpen(true)}
+          className="rounded-xl border border-[#D9E0EA] bg-white px-4 py-2.5 text-sm font-semibold"
+        >
+          Bulk upload
+        </button>
       </div>
 
       {message ? (
@@ -262,6 +271,31 @@ export function MediaLibrary() {
           <p className="text-sm text-[#667085]">No media uploaded yet.</p>
         ) : null}
       </div>
+
+      {bulkOpen ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-upload-title"
+        >
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+            <h3 id="bulk-upload-title" className="text-lg font-semibold">
+              Bulk upload
+            </h3>
+            <p className="mt-2 text-sm text-[#667085]">
+              Titles and alt text are derived from each filename and can be refined afterwards from the grid below.
+            </p>
+            <div className="mt-4">
+              <BulkMediaUploader
+                folder={folder.trim() || undefined}
+                onDone={() => void load()}
+                onClose={() => setBulkOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {pendingArchive ? (
         <div
