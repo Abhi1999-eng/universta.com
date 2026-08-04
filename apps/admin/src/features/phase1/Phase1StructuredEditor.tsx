@@ -5,6 +5,7 @@
 
 import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { mergeBackendError, scrollToAndFocusField } from "@/lib/field-errors";
 
 type Option = {
   id: string;
@@ -103,10 +104,13 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = (await response.json()) as {
     data: T | null;
-    error: { message?: string } | null;
+    error: { code?: string; message?: string } | null;
   };
-  if (!response.ok || body.error || body.data === null)
-    throw new Error(body.error?.message ?? "Unable to save record");
+  if (!response.ok || body.error || body.data === null) {
+    const err = new Error(body.error?.message ?? "Unable to save record") as Error & { code?: string };
+    err.code = body.error?.code;
+    throw err;
+  }
   return body.data;
 }
 
@@ -399,6 +403,9 @@ export function Phase1StructuredEditor({
       next.countryId = "Select a country.";
     if (resource === "offerings" && !values.courseLevelId)
       next.courseLevelId = "Select a course level.";
+    if (resource === "scholarships" && values.amount && !values.currencyCode) {
+      next.currencyCode = "Select the currency this amount is stated in.";
+    }
     if (resource === "events" && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt))
         next.endsAt = "End date and time must be after the start.";
@@ -417,6 +424,8 @@ export function Phase1StructuredEditor({
         next.publishEndsAt = "Publish until must be after publish from.";
     }
     setErrors(next);
+    const firstInvalid = Object.keys(next)[0];
+    if (firstInvalid) window.setTimeout(() => scrollToAndFocusField(firstInvalid), 50);
     return Object.keys(next).length === 0;
   }
 
@@ -499,9 +508,15 @@ export function Phase1StructuredEditor({
       setMessage(recordId ? "Record updated." : "Draft created.");
       await onSaved();
     } catch (error: unknown) {
+      const typed = error as { code?: string; message?: string };
       setMessage(
         error instanceof Error ? error.message : "Unable to save record",
       );
+      const { next, firstField } = mergeBackendError(errors, typed);
+      if (firstField) {
+        setErrors(next);
+        window.setTimeout(() => scrollToAndFocusField(firstField), 50);
+      }
     } finally {
       setBusy(false);
     }
@@ -584,6 +599,9 @@ export function Phase1StructuredEditor({
           countries={options.countries}
           universities={options.universities}
           offerings={options.offerings}
+          onProviderCreated={(provider: Option) =>
+            setOptions((current) => ({ ...current, providers: [...current.providers, provider] }))
+          }
           selected={selected}
           toggle={toggle}
         />
@@ -685,6 +703,7 @@ function Field({
   error,
   textarea = false,
   type = "text",
+  name,
 }: {
   label: string;
   value: string;
@@ -692,11 +711,12 @@ function Field({
   error?: string;
   textarea?: boolean;
   type?: string;
+  name?: string;
 }) {
   const fieldId = useId();
   const errorId = useId();
   return (
-    <div className="block text-sm font-semibold">
+    <div className="block text-sm font-semibold" data-field={name}>
       <label htmlFor={fieldId}>{label}</label>
       {textarea ? (
         <textarea
@@ -732,17 +752,19 @@ function Select({
   onChange,
   options,
   error,
+  name,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Option[];
   error?: string;
+  name?: string;
 }) {
   const fieldId = useId();
   const errorId = useId();
   return (
-    <div className="block text-sm font-semibold">
+    <div className="block text-sm font-semibold" data-field={name}>
       <label htmlFor={fieldId}>{label}</label>
       <select
         id={fieldId}
@@ -874,12 +896,14 @@ function Core({
         value={values[entity] ?? ""}
         onChange={(value) => set(entity, value)}
         error={errors[entity]}
+        name={entity}
       />
       <Field
         label="Slug"
         value={values.slug ?? ""}
         onChange={(value) => set("slug", value)}
         error={errors.slug}
+        name="slug"
       />
       {summaryKey ? (
         <Field
@@ -974,6 +998,7 @@ function UniversityFields(p: any) {
         onChange={(value) => p.set("countryId", value)}
         options={p.countries}
         error={p.errors.countryId}
+        name="countryId"
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
@@ -1041,6 +1066,7 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("universityId", value)}
           options={p.universities}
           error={p.errors.universityId}
+          name="universityId"
         />
         <Select
           label="Generic course"
@@ -1048,6 +1074,7 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("genericCourseId", value)}
           options={p.courses}
           error={p.errors.genericCourseId}
+          name="genericCourseId"
         />
         <Select
           label="Campus (optional)"
@@ -1061,6 +1088,7 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("courseLevelId", value)}
           options={p.levels}
           error={p.errors.courseLevelId}
+          name="courseLevelId"
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -1127,6 +1155,7 @@ function OfferingFields(p: any) {
           label="Source URL"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          name="sourceReference"
         />
         <Select
           label="Media (optional)"
@@ -1149,6 +1178,7 @@ function OfferingFields(p: any) {
         selected={p.selected.intakeIds ?? []}
         toggle={(id) => p.toggle("intakeIds", id)}
       />
+      <OfferingSummary {...p} />
       {(p.selected.intakeIds ?? []).map((intakeId: string) => {
         const intake = p.intakes.find((item: Option) => item.id === intakeId);
         return (
@@ -1180,16 +1210,169 @@ function OfferingFields(p: any) {
     </>
   );
 }
+/** Live summary of the offering being built, so a non-technical user can see
+ * what will be linked before saving -- updates as selections change. */
+function OfferingSummary(p: any) {
+  const find = (options: Option[], id: string) =>
+    (options ?? []).find((option: Option) => option.id === id);
+  const university = find(p.universities, p.values.universityId);
+  const course = find(p.courses, p.values.genericCourseId);
+  const level = find(p.levels, p.values.courseLevelId);
+  const intakeLabels = (p.selected.intakeIds ?? [])
+    .map((id: string) => find(p.intakes, id))
+    .filter(Boolean)
+    .map((option: Option) => label(option));
+  return (
+    <div className="rounded-xl border border-[#D9E0EA] bg-[#F7F9FC] p-4">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        Offering summary
+      </p>
+      <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+        <div className="flex justify-between gap-3 sm:justify-start">
+          <dt className="text-[#667085]">University</dt>
+          <dd className="font-semibold">{university ? label(university) : "Not selected"}</dd>
+        </div>
+        <div className="flex justify-between gap-3 sm:justify-start">
+          <dt className="text-[#667085]">Course</dt>
+          <dd className="font-semibold">{course ? label(course) : "Not selected"}</dd>
+        </div>
+        <div className="flex justify-between gap-3 sm:justify-start">
+          <dt className="text-[#667085]">Level</dt>
+          <dd className="font-semibold">{level ? label(level) : "Not selected"}</dd>
+        </div>
+        <div className="flex justify-between gap-3 sm:justify-start">
+          <dt className="text-[#667085]">Mode</dt>
+          <dd className="font-semibold">{p.values.studyMode || "Not selected"}</dd>
+        </div>
+        <div className="flex justify-between gap-3 sm:justify-start">
+          <dt className="text-[#667085]">Intakes</dt>
+          <dd className="font-semibold">{intakeLabels.length ? intakeLabels.join(", ") : "None selected"}</dd>
+        </div>
+        <div className="flex justify-between gap-3 sm:justify-start">
+          <dt className="text-[#667085]">Source verification</dt>
+          <dd className="font-semibold">{p.values.sourceReference ? "Provided" : "Incomplete"}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+/** Provider select for the Scholarship form: searchable, shows the selected
+ * provider's status, warns when it is not active, and can quick-create a new
+ * provider without leaving the scholarship form or losing its other values. */
+function ProviderPicker({
+  providers,
+  value,
+  onChange,
+  onCreated,
+  error,
+}: {
+  providers: Option[];
+  value: string;
+  onChange: (value: string) => void;
+  onCreated?: (provider: Option) => void;
+  error?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newWebsite, setNewWebsite] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const fieldId = useId();
+  const filtered = providers.filter((provider) =>
+    (provider.name ?? "").toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  const selected = providers.find((provider) => provider.id === value) as
+    | (Option & { status?: string })
+    | undefined;
+
+  async function createProvider(event: React.FormEvent) {
+    event.preventDefault();
+    if (!newName.trim() || busy) return;
+    setBusy(true);
+    setCreateError("");
+    try {
+      const response = await authFetch("/api/v1/admin/scholarship-providers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), websiteUrl: newWebsite || undefined }),
+      });
+      const body = (await response.json()) as { data: Option | null; error: { message?: string } | null };
+      if (!response.ok || body.error || !body.data) throw new Error(body.error?.message ?? "Unable to create provider");
+      onCreated?.(body.data);
+      onChange(body.data.id);
+      setNewName("");
+      setNewWebsite("");
+      setCreating(false);
+    } catch (cause) {
+      setCreateError(cause instanceof Error ? cause.message : "Unable to create provider");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="text-sm font-semibold" data-field="providerId">
+      <label htmlFor={fieldId}>Provider</label>
+      <input
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search providers"
+        aria-label="Search providers"
+        className={`${inputClass} mb-2`}
+      />
+      <select id={fieldId} value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>
+        <option value="">Select provider</option>
+        {filtered.map((provider) => (
+          <option key={provider.id} value={provider.id}>
+            {label(provider)}
+          </option>
+        ))}
+      </select>
+      {error ? <span className="mt-1 block text-xs font-normal text-[#B42318]">{error}</span> : null}
+      {selected && selected.status && selected.status !== "ACTIVE" ? (
+        <p className="mt-1 text-xs font-normal text-[#9A5B00]">
+          This provider is {selected.status.toLowerCase()}. Selecting it is fine, but confirm it should still be used.
+        </p>
+      ) : null}
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-normal">
+        <button type="button" onClick={() => setCreating((v) => !v)} className="font-semibold text-[#1657CF]">
+          {creating ? "Cancel new provider" : "+ New provider"}
+        </button>
+        <a href="/catalog-masters?section=scholarship-providers" target="_blank" rel="noreferrer" className="font-semibold text-[#1657CF]">
+          Manage providers
+        </a>
+      </div>
+      {creating ? (
+        <form onSubmit={(event) => void createProvider(event)} className="mt-3 space-y-2 rounded-lg border border-[#E8ECF3] p-3">
+          <label className="block text-xs font-semibold">
+            Provider name
+            <input required autoFocus value={newName} onChange={(event) => setNewName(event.target.value)} className={`${inputClass} mt-1 text-sm font-normal`} />
+          </label>
+          <label className="block text-xs font-semibold">
+            Website URL (optional)
+            <input value={newWebsite} onChange={(event) => setNewWebsite(event.target.value)} className={`${inputClass} mt-1 text-sm font-normal`} />
+          </label>
+          {createError ? <p className="text-xs font-normal text-[#B42318]">{createError}</p> : null}
+          <button type="submit" disabled={busy} className="rounded-lg bg-[#1657CF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+            {busy ? "Creating…" : "Create provider"}
+          </button>
+        </form>
+      ) : null}
+    </div>
+  );
+}
 function ScholarshipFields(p: any) {
   return (
     <>
       <Core {...p} summaryKey="summary" />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Select
-          label="Provider"
+        <ProviderPicker
+          providers={p.providers}
           value={p.values.providerId ?? ""}
-          onChange={(value) => p.set("providerId", value)}
-          options={p.providers}
+          onChange={(value: string) => p.set("providerId", value)}
+          onCreated={p.onProviderCreated}
+          error={p.errors.providerId}
         />
         <Field
           label="Benefit type"
@@ -1201,11 +1384,14 @@ function ScholarshipFields(p: any) {
           type="number"
           value={p.values.amount ?? ""}
           onChange={(value) => p.set("amount", value)}
+          name="amount"
         />
         <Field
           label="Currency"
           value={p.values.currencyCode ?? ""}
           onChange={(value) => p.set("currencyCode", value)}
+          error={p.errors.currencyCode}
+          name="currencyCode"
         />
         <Field
           label="Deadline"
@@ -1217,11 +1403,13 @@ function ScholarshipFields(p: any) {
           label="Application URL"
           value={p.values.applicationUrl ?? ""}
           onChange={(value) => p.set("applicationUrl", value)}
+          name="applicationUrl"
         />
         <Field
           label="Source URL"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          name="sourceReference"
         />
         <Select
           label="Media (optional)"
