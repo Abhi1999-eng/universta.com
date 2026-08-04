@@ -30,6 +30,7 @@ export default async function StoriesPage() {
       rows={rows}
       meta={meta}
       search={false}
+      intro="Discover how students achieved their study-abroad goals with guidance, preparation and the right university opportunities."
     />
   );
 }

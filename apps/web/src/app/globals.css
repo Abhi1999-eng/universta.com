@@ -150,7 +150,7 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .site-footer p { max-width: 620px; margin: 18px 0 0; font-size: 13px; }
 .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: end; }
 .footer-note { justify-self: end; max-width: 520px !important; margin-top: 0 !important; }
-.hero-placeholder { display: grid; flex: 1; min-height: 200px; place-items: center; font-family: var(--font-jakarta), sans-serif; font-size: 80px; font-weight: 800; background: linear-gradient(135deg, #3975df, #0f3fa0); }
+.hero-placeholder { display: grid; flex: 1; min-height: 200px; place-items: center; color: white; background: linear-gradient(135deg, #3975df, #0f3fa0); }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 72px; padding-top: 75px; padding-bottom: 100px; }
 .listing-cta { margin-top: 0; }
 .split-band { align-items: center; }
@@ -177,7 +177,8 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .catalog-card { display: flex; min-height: 340px; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: 0 8px 24px rgba(13,21,36,.06); }
 .catalog-card.compact { min-height: 0; }
 .catalog-card > img { width: 100%; height: 170px; object-fit: cover; }
-.catalog-card-placeholder { display: grid; height: 170px; place-items: center; background: linear-gradient(135deg, #eaf1ff, #bfd3ff); color: var(--blue); font-family: var(--font-jakarta), sans-serif; font-size: 72px; font-weight: 800; }
+.catalog-card-placeholder { display: grid; height: 170px; place-items: center; background: linear-gradient(135deg, #eaf1ff, #bfd3ff); color: var(--blue); }
+.catalog-card-attribution { margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--ink, #0D1524); }
 .catalog-card-body { display: flex; flex: 1; flex-direction: column; padding: 22px; }
 .catalog-card h2, .catalog-card h3 { margin: 12px 0 8px; font-family: var(--font-jakarta), sans-serif; letter-spacing: -.04em; }
 .catalog-card h2 { font-size: 24px; }

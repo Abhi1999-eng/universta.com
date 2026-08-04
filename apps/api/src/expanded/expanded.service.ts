@@ -695,6 +695,46 @@ export class ExpandedService {
       const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };
     }
+    if (resource === 'success-stories') {
+      const where: any = {
+        ...publishedWhereScheduled(now),
+        ...(q ? { title: q } : {}),
+      };
+      const [rows, total] = await Promise.all([
+        this.prisma.successStory.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+          include: {
+            country: { select: { name: true, slug: true } },
+            university: { select: { name: true, slug: true } },
+            offering: { include: { genericCourse: true } },
+          },
+        }),
+        this.prisma.successStory.count({ where }),
+      ]);
+      // SuccessStory.featuredMediaId has no declared Prisma relation field
+      // (only Country/University/Offering do), so the matching MediaAsset
+      // rows are fetched separately and merged in rather than via `include`.
+      const mediaIds = [
+        ...new Set(rows.map((row) => row.featuredMediaId).filter(Boolean)),
+      ] as string[];
+      const mediaRows = mediaIds.length
+        ? await this.prisma.mediaAsset.findMany({
+            where: { id: { in: mediaIds } },
+            select: { id: true, publicUrl: true, altText: true, title: true },
+          })
+        : [];
+      const mediaById = new Map(mediaRows.map((asset) => [asset.id, asset]));
+      const data = rows.map((row) => ({
+        ...row,
+        featuredMedia: row.featuredMediaId
+          ? (mediaById.get(row.featuredMediaId) ?? null)
+          : null,
+      }));
+      return { data, meta: meta(page, limit, Number(total)) };
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[

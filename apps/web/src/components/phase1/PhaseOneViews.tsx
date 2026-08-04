@@ -64,6 +64,10 @@ export type AnyRecord = {
   } | null;
   sectionType?: string;
   media?: { publicUrl?: string; url?: string; altText?: string; title?: string } | null;
+  featuredMedia?: { publicUrl?: string; url?: string; altText?: string; title?: string } | null;
+  attribution?: string;
+  attributionNote?: string;
+  offering?: { genericCourse?: { name?: string } | null } | null;
   ctaPrimaryUrl?: string;
   ctaPrimaryLabel?: string;
   experimentKey?: string;
@@ -135,6 +139,7 @@ export function PhaseListing({
   search = true,
   basePath,
   title: customTitle,
+  intro,
   details = !["success-stories", "testimonials"].includes(resource),
 }: {
   resource: string;
@@ -143,6 +148,9 @@ export function PhaseListing({
   search?: boolean;
   basePath?: string;
   title?: string;
+  /** Client-facing intro copy shown under the heading. Defaults to a
+   * generic, non-technical sentence — never mentions internal APIs. */
+  intro?: string;
   /** Listing-only resources must not expose routes that the product does not implement. */
   details?: boolean;
 }) {
@@ -156,8 +164,8 @@ export function PhaseListing({
           <p className="eyebrow">Published directory</p>
           <h1>{label}</h1>
           <p>
-            Explore currently published Phase 1 information. Filters and details
-            are backed by the local catalog API.
+            {intro ??
+              "Explore what Universta has published so far, with more added regularly."}
           </p>
         </div>
       </section>
@@ -195,48 +203,73 @@ export function PhaseListing({
         </div>
         {rows.length ? (
           <div className="catalog-card-grid">
-            {rows.map((row) => (
-              <article className="catalog-card" key={row.id}>
-                <div className="catalog-card-placeholder" aria-hidden="true">
-                  {title(row).slice(0, 1)}
-                </div>
-                <div className="catalog-card-body">
-                  <div className="card-badges">
-                    {row.country?.name ? <span>{row.country.name}</span> : null}
-                    {row.provider?.name ? (
-                      <span>{row.provider.name}</span>
+            {rows.map((row) => {
+              const image = row.featuredMedia ?? row.media;
+              const imageUrl = image?.publicUrl ?? image?.url;
+              return (
+                <article className="catalog-card" key={row.id}>
+                  {imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl.replace("/media/", "/api/v1/media/")}
+                      alt={image?.altText || title(row)}
+                    />
+                  ) : (
+                    <div className="catalog-card-placeholder" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" strokeLinecap="round" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="catalog-card-body">
+                    <div className="card-badges">
+                      {row.country?.name ? <span>{row.country.name}</span> : null}
+                      {row.provider?.name ? (
+                        <span>{row.provider.name}</span>
+                      ) : null}
+                      {row.verificationStatus ? (
+                        <span>
+                          {String(row.verificationStatus).replaceAll("_", " ")}
+                        </span>
+                      ) : null}
+                      {date(row.deadline ?? row.startsAt ?? row.expiryDate) ? (
+                        <span>
+                          {date(row.deadline ?? row.startsAt ?? row.expiryDate)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h2>{title(row)}</h2>
+                    <p>
+                      {description(row) ||
+                        "Published information will appear here when available."}
+                    </p>
+                    <div className="catalog-card-facts">
+                      {row.institutionType ? (
+                        <span>{row.institutionType}</span>
+                      ) : null}
+                      {row.location ? <span>{row.location}</span> : null}
+                      {row.benefitType ? <span>{row.benefitType}</span> : null}
+                      {row.university?.name ? <span>{row.university.name}</span> : null}
+                      {row.offering?.genericCourse?.name ? (
+                        <span>{row.offering.genericCourse.name}</span>
+                      ) : null}
+                    </div>
+                    {row.attribution ? (
+                      <p className="catalog-card-attribution">
+                        {row.attribution}
+                        {row.attributionNote ? ` · ${row.attributionNote}` : ""}
+                      </p>
                     ) : null}
-                    {row.verificationStatus ? (
-                      <span>
-                        {String(row.verificationStatus).replaceAll("_", " ")}
-                      </span>
-                    ) : null}
-                    {date(row.deadline ?? row.startsAt ?? row.expiryDate) ? (
-                      <span>
-                        {date(row.deadline ?? row.startsAt ?? row.expiryDate)}
-                      </span>
+                    {details ? (
+                      <Link className="card-link" href={`${path}/${slugFor(row)}`}>
+                        View details <span aria-hidden="true">→</span>
+                      </Link>
                     ) : null}
                   </div>
-                  <h2>{title(row)}</h2>
-                  <p>
-                    {description(row) ||
-                      "Published information will appear here when available."}
-                  </p>
-                  <div className="catalog-card-facts">
-                    {row.institutionType ? (
-                      <span>{row.institutionType}</span>
-                    ) : null}
-                    {row.location ? <span>{row.location}</span> : null}
-                    {row.benefitType ? <span>{row.benefitType}</span> : null}
-                  </div>
-                  {details ? (
-                    <Link className="card-link" href={`${path}/${slugFor(row)}`}>
-                      View details <span aria-hidden="true">→</span>
-                    </Link>
-                  ) : null}
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         ) : (
           <div className="empty-state">
@@ -305,7 +338,7 @@ export function PhaseDetail({
             <p className="eyebrow">Published information</p>
             <h1>{title(row)}</h1>
             <p className="hero-copy">
-              {description(row) || "Structured local Phase 1 information."}
+              {description(row) || "More details will appear here once published."}
             </p>
             {row.sourceReference ? (
               <p className="source-note">
@@ -337,9 +370,22 @@ export function PhaseDetail({
             </div>
           </div>
           <div className="hero-card">
-            <div className="hero-placeholder">{title(row).slice(0, 1)}</div>
+            {(() => {
+              const image = row.featuredMedia ?? row.media;
+              const imageUrl = image?.publicUrl ?? image?.url;
+              return imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl.replace("/media/", "/api/v1/media/")} alt={image?.altText || title(row)} />
+              ) : (
+                <div className="hero-placeholder" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" strokeLinecap="round" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+              );
+            })()}
             <span>{label}</span>
-            <small>Published local record</small>
           </div>
         </div>
       </section>
