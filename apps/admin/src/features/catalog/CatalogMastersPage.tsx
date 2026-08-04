@@ -16,6 +16,7 @@ type LookupRow = {
   monthNumber?: number | null;
   seasonName?: string | null;
   websiteUrl?: string | null;
+  _count?: { scholarships?: number };
 };
 async function lookupApi<T>(kind: LookupKind, path: string, init?: RequestInit): Promise<T> {
   const base = kind === 'intake' ? '/api/v1/admin/intakes' : '/api/v1/admin/scholarship-providers';
@@ -36,6 +37,10 @@ function LookupPanel({ title, kind }: { title: string; kind: LookupKind }) {
   const [name, setName] = useState('');
   const [monthNumber, setMonthNumber] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [editing, setEditing] = useState<LookupRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editWebsiteUrl, setEditWebsiteUrl] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -81,12 +86,45 @@ function LookupPanel({ title, kind }: { title: string; kind: LookupKind }) {
   }
 
   async function remove(row: LookupRow) {
-    if (!window.confirm(`Archive "${row.name}"?`)) return;
+    const inUse = row._count?.scholarships ?? 0;
+    const confirmMessage =
+      inUse > 0
+        ? `"${row.name}" is used by ${inUse} scholarship${inUse === 1 ? '' : 's'}. Archiving is blocked while scholarships still reference it — reassign or archive those scholarships first. Try anyway?`
+        : `Archive "${row.name}"? Archiving removes it from normal active management views while preserving history — it is not the same as a permanent delete.`;
+    if (!window.confirm(confirmMessage)) return;
     try {
       await lookupApi(kind, `/${row.id}`, { method: 'DELETE' });
       load();
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : 'Unable to archive record');
+    }
+  }
+
+  function startEdit(row: LookupRow) {
+    setEditing(row);
+    setEditName(row.name);
+    setEditWebsiteUrl(row.websiteUrl ?? '');
+    setCreating(false);
+  }
+
+  async function saveEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editing) return;
+    setEditSaving(true);
+    setError('');
+    try {
+      await lookupApi(kind, `/${editing.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(
+          kind === 'intake' ? { name: editName } : { name: editName, websiteUrl: editWebsiteUrl || null },
+        ),
+      });
+      setEditing(null);
+      load();
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : 'Unable to save changes');
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -97,11 +135,41 @@ function LookupPanel({ title, kind }: { title: string; kind: LookupKind }) {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Master data</p>
           <h3 className="mt-2 text-xl font-semibold">{title}</h3>
         </div>
-        <button type="button" onClick={() => setCreating((v) => !v)} className="rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white">
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(null);
+            setCreating((v) => !v);
+          }}
+          className="rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white"
+        >
           {creating ? 'Close' : 'Add'}
         </button>
       </div>
+      {kind === 'provider' ? (
+        <p className="mt-3 text-xs leading-5 text-[#828B9B]">
+          Deactivate keeps the provider and its scholarships, just prevents new selection. Archive removes it from
+          normal management views while preserving history — it is blocked while any scholarship still references it.
+        </p>
+      ) : null}
       {error ? <p className="mt-3 text-xs font-semibold text-[#B42318]">{error}</p> : null}
+      {editing ? (
+        <form onSubmit={(event) => void saveEdit(event)} className="mt-4 space-y-3 rounded-xl border border-[#E8ECF3] p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Editing: {editing.name}</p>
+          <label className="block text-sm font-semibold">Name
+            <input required className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal" value={editName} onChange={(event) => setEditName(event.target.value)} />
+          </label>
+          {kind === 'provider' ? (
+            <label className="block text-sm font-semibold">Website URL (optional)
+              <input className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal" value={editWebsiteUrl} onChange={(event) => setEditWebsiteUrl(event.target.value)} />
+            </label>
+          ) : null}
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setEditing(null)} className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold">Cancel</button>
+            <button disabled={editSaving} className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{editSaving ? 'Saving…' : 'Save changes'}</button>
+          </div>
+        </form>
+      ) : null}
       {creating ? (
         <form onSubmit={(event) => void create(event)} className="mt-4 space-y-3 rounded-xl border border-[#E8ECF3] p-4">
           <label className="block text-sm font-semibold">Name
@@ -127,9 +195,15 @@ function LookupPanel({ title, kind }: { title: string; kind: LookupKind }) {
             <div key={row.id} className="flex items-center justify-between gap-3 py-4">
               <div>
                 <p className="font-semibold">{row.name}</p>
-                <p className="mt-1 text-xs text-[#828B9B]">{row.status}</p>
+                <p className="mt-1 text-xs text-[#828B9B]">
+                  {row.status}
+                  {kind === 'provider' ? ` · Used by ${row._count?.scholarships ?? 0} scholarship${(row._count?.scholarships ?? 0) === 1 ? '' : 's'}` : ''}
+                </p>
               </div>
               <div className="flex gap-2">
+                <button type="button" onClick={() => startEdit(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">
+                  Edit
+                </button>
                 <button type="button" onClick={() => void toggle(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">
                   {row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                 </button>
