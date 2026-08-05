@@ -15,7 +15,7 @@ describe('FieldLabel', () => {
     render(
       <FieldLabel
         label="Source URL"
-        help={{ purpose: 'p', dataType: 'URL', required: 'Optional.' }}
+        help={{ purpose: 'p', input: 'i', dataType: 'URL', required: 'Optional.', frontendEffect: 'f' }}
       />,
     );
     expect(screen.getByRole('button', { name: 'Information about Source URL' })).toBeVisible();

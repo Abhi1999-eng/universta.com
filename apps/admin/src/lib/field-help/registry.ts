@@ -9,6 +9,20 @@ import type { FieldHelpContent } from './types';
  * validation — see docs/phase1-admin-guide/ for the verification pass this
  * was built from. */
 export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
+  // ---- Continents ----
+  'continents.name': commonFieldHelp.name,
+  'continents.slug': commonFieldHelp.slug,
+  'continents.code': {
+    purpose: 'A short, stable identifier for this continent.',
+    input: 'A short code, if your team uses one.',
+    dataType: 'Text',
+    required: 'Optional.',
+    example: 'EU',
+    frontendEffect: 'This value is stored, but no public visual effect is currently verified.',
+  },
+  'continents.displayOrder': commonFieldHelp.displayOrder,
+  'continents.description': commonFieldHelp.description,
+
   // ---- Countries ----
   'countries.continentId': {
     purpose: 'Which continent this country belongs to.',
@@ -49,6 +63,155 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
   'countries.shortDescription': commonFieldHelp.shortDescription,
   'countries.displayOrder': commonFieldHelp.displayOrder,
   'countries.isFeatured': commonFieldHelp.featured,
+
+  // ---- Course levels / Study modes (Catalog masters) ----
+  'course-levels.code': {
+    purpose: 'A stable, machine-readable identifier for this course level.',
+    input: 'A short, unique code.',
+    dataType: 'Text',
+    required: 'Required.',
+    format: 'Uppercase letters, numbers, underscores and hyphens only.',
+    example: 'POSTGRADUATE',
+    frontendEffect: 'Referenced internally by course offerings and integrations.',
+    caution: 'Courses and offerings reference this code — changing it after go-live can break existing links between records.',
+  },
+  'course-levels.name': commonFieldHelp.name,
+  'course-levels.description': commonFieldHelp.description,
+  'course-levels.educationOrder': {
+    purpose: 'Where this level sits in the academic progression (used for level-aware sorting/filtering).',
+    input: 'A whole number — lower numbers are earlier in the academic progression.',
+    dataType: 'Number',
+    required: 'Optional — leave at 0 if it does not matter.',
+    example: '3',
+    frontendEffect: 'Used to order levels academically, separate from the generic Display order.',
+  },
+  'study-modes.code': {
+    purpose: 'A stable, machine-readable identifier for this study mode.',
+    input: 'A short, unique code.',
+    dataType: 'Text',
+    required: 'Required.',
+    format: 'Uppercase letters, numbers, underscores and hyphens only.',
+    example: 'ON_CAMPUS',
+    frontendEffect: 'Referenced internally by course offerings and integrations.',
+    caution: 'Course offerings reference this code — changing it after go-live can break existing links between records.',
+  },
+  'study-modes.name': commonFieldHelp.name,
+  'study-modes.description': commonFieldHelp.description,
+  'intakes.name': commonFieldHelp.name,
+  'intakes.monthNumber': {
+    purpose: 'Which calendar month this intake falls in, for month-aware sorting and filters.',
+    input: 'A number from 1 (January) to 12 (December), if this intake maps to a specific month.',
+    dataType: 'Number',
+    required: 'Optional.',
+    format: '1–12.',
+    example: '9',
+    frontendEffect: 'Used for chronological ordering of intake options where shown.',
+  },
+  'scholarship-providers.name': commonFieldHelp.name,
+  'scholarship-providers.websiteUrl': commonFieldHelp.websiteUrl,
+
+  // ---- Generic Courses ----
+  'courses.name': commonFieldHelp.name,
+  'courses.slug': commonFieldHelp.slug,
+  'courses.courseLevelId': {
+    purpose: 'The qualification level this generic course represents.',
+    input: 'Select an existing, active Course Level.',
+    dataType: 'Relationship',
+    required: 'Required.',
+    frontendEffect: 'Shown as the level tag and used for level-based filtering.',
+  },
+  'courses.subSubjectId': {
+    purpose: 'An optional link to a more specific specialisation within the chosen Subject.',
+    input: 'Paste the ID of an existing Sub-subject, or leave blank.',
+    dataType: 'Text (UUID)',
+    required: 'Optional.',
+    dependency: 'The Sub-subject must already exist under the chosen Subject.',
+    frontendEffect: 'Used for finer-grained subject grouping where implemented.',
+    caution: 'This is a raw ID field, not a searchable picker — an incorrect or unrelated ID will silently fail to match.',
+  },
+  'courses.shortName': {
+    purpose: 'A short label used where space is limited, such as compact listing cards.',
+    input: 'A brief version of the course name.',
+    dataType: 'Text',
+    required: 'Optional.',
+    frontendEffect: 'Shown in place of the full name where the template needs a shorter label.',
+  },
+  'courses.qualificationName': {
+    purpose: 'The formal qualification name this course leads to.',
+    input: 'The real qualification title, e.g. "Master of Science".',
+    dataType: 'Text',
+    required: 'Optional.',
+    example: 'Master of Science',
+    frontendEffect: 'Shown alongside the course name where the template includes it.',
+  },
+  'courses.courseCode': {
+    purpose: 'An internal or external reference code for this course.',
+    input: 'A short code, if one is used for this course.',
+    dataType: 'Text',
+    required: 'Optional.',
+    frontendEffect: 'This value is stored, but no public visual effect is currently verified.',
+  },
+  'courses.studyModes': {
+    purpose: 'Which delivery modes this generic course is available in.',
+    input: 'Tick every relevant, active Study Mode.',
+    dataType: 'Relationship (multi-select)',
+    required: 'Optional.',
+    frontendEffect: 'Used for study-mode filtering on the public courses directory.',
+  },
+  'courses.durationMin': {
+    purpose: 'The shortest typical duration for this course.',
+    input: 'A number, paired with the Duration unit.',
+    dataType: 'Number',
+    required: 'Optional.',
+    dependency: 'Interpreted together with Duration unit.',
+    frontendEffect: 'Shown as the course’s duration range.',
+  },
+  'courses.durationMax': {
+    purpose: 'The longest typical duration for this course.',
+    input: 'A number, paired with the Duration unit.',
+    dataType: 'Number',
+    required: 'Optional.',
+    dependency: 'Interpreted together with Duration unit; should not be less than Duration min.',
+    frontendEffect: 'Shown as the course’s duration range.',
+  },
+  'courses.durationUnit': {
+    purpose: 'The unit the Duration min/max figures are measured in.',
+    input: 'Select Years, Months or Semesters.',
+    dataType: 'Choice',
+    required: 'Optional, defaults to Years.',
+    frontendEffect: 'Shown next to the duration figures.',
+  },
+  'courses.credits': {
+    purpose: 'The academic credit value of this course, where applicable.',
+    input: 'The real credit value.',
+    dataType: 'Number',
+    required: 'Optional.',
+    frontendEffect: 'Shown where the template includes credit information.',
+  },
+  'courses.careerSummary': {
+    purpose: 'A summary of typical career outcomes for graduates of this course.',
+    input: 'Real, accurate career-outcome information.',
+    dataType: 'Long text',
+    required: 'Optional.',
+    frontendEffect: 'Shown in the career outcomes section of the course page.',
+  },
+  'courses.popularityScore': {
+    purpose: 'An internal score used to bias sorting toward more popular courses.',
+    input: 'A number — higher generally means more popular. Leave blank if unknown.',
+    dataType: 'Number',
+    required: 'Optional.',
+    frontendEffect: 'Can be used as a sort signal on course listings, alongside Display order and Featured.',
+    caution: 'Do not fabricate a popularity figure — leave blank rather than guessing.',
+  },
+
+  // ---- Consultant Locations ----
+  'consultant-locations.city': {
+    purpose: 'The city this consultant office/branch is physically located in.',
+    input: 'The real city name.',
+    dataType: 'Text',
+    required: 'Required.',
+    frontendEffect: 'Shown as the location’s city, and used in the location’s own public page.',
+  },
 
   // ---- Universities ----
   'universities.name': commonFieldHelp.name,
@@ -351,6 +514,7 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
     required: 'Optional — relevant when Event type is Online or Hybrid.',
     frontendEffect: 'Used as the "Join" link.',
   },
+  'events.featuredMediaId': commonFieldHelp.media,
   'events.registrationUrl': {
     purpose: 'Where a visitor registers to attend.',
     input: 'The real registration page or form link.',

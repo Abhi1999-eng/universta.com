@@ -2,6 +2,8 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { FieldLabel } from "@/features/shared/FieldLabel";
+import { commonFieldHelp } from "@/lib/field-help/common";
 
 type CountryOption = { id: string; name: string; slug: string };
 type LocationRow = {
@@ -105,30 +107,30 @@ function LocationSeoEditor({ locationId, onSaved, onClose }: { locationId: strin
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-xs font-semibold">SEO title
+        <label className="block text-xs font-semibold"><FieldLabel label="SEO title" help={commonFieldHelp.seoTitle} />
           <input value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
         </label>
-        <label className="block text-xs font-semibold">Meta description
+        <label className="block text-xs font-semibold"><FieldLabel label="Meta description" help={commonFieldHelp.metaDescription} />
           <input value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} className={inputClass} />
         </label>
-        <label className="block text-xs font-semibold">Canonical URL (optional)
+        <label className="block text-xs font-semibold"><FieldLabel label="Canonical URL (optional)" help={commonFieldHelp.canonicalUrl} />
           <input value={canonicalUrl} onChange={(event) => setCanonicalUrl(event.target.value)} className={inputClass} />
         </label>
-        <label className="block text-xs font-semibold">OG title (optional)
+        <label className="block text-xs font-semibold"><FieldLabel label="OG title (optional)" help={commonFieldHelp.ogTitle} />
           <input value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
         </label>
         <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold">OG description (optional)
+          <label className="block text-xs font-semibold"><FieldLabel label="OG description (optional)" help={commonFieldHelp.ogDescription} />
             <input value={ogDescription} onChange={(event) => setOgDescription(event.target.value)} className={inputClass} />
           </label>
         </div>
         <label className="flex items-center gap-2 text-xs font-semibold">
           <input type="checkbox" checked={robotsIndex} onChange={(event) => setRobotsIndex(event.target.checked)} />
-          Allow search indexing
+          <FieldLabel label="Allow search indexing" help={commonFieldHelp.robotsIndex} />
         </label>
         <label className="flex items-center gap-2 text-xs font-semibold">
           <input type="checkbox" checked={robotsFollow} onChange={(event) => setRobotsFollow(event.target.checked)} />
-          Allow link following
+          <FieldLabel label="Allow link following" help={commonFieldHelp.robotsFollow} />
         </label>
       </div>
       <div className="mt-3 flex items-center gap-3">
@@ -230,22 +232,22 @@ export function ConsultantLocationsManager() {
 
       {creating ? (
         <form onSubmit={(event) => void create(event)} className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Name
+          <label className="text-sm font-semibold"><FieldLabel label="Name" required help={commonFieldHelp.name} />
             <input required className={inputClass} value={name} onChange={(event) => setName(event.target.value)} />
           </label>
-          <label className="text-sm font-semibold">City
+          <label className="text-sm font-semibold"><FieldLabel label="City" required helpKey="consultant-locations.city" />
             <input required className={inputClass} value={city} onChange={(event) => setCity(event.target.value)} />
           </label>
-          <label className="text-sm font-semibold">State / province (optional)
+          <label className="text-sm font-semibold"><FieldLabel label="State / province (optional)" help={commonFieldHelp.state} />
             <input className={inputClass} value={state} onChange={(event) => setState(event.target.value)} />
           </label>
-          <label className="text-sm font-semibold">Country
+          <label className="text-sm font-semibold"><FieldLabel label="Country" help={commonFieldHelp.country} />
             <select className={inputClass} value={countryId} onChange={(event) => setCountryId(event.target.value)}>
               <option value="">Not set</option>
               {countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}
             </select>
           </label>
-          <label className="text-sm font-semibold sm:col-span-2">Overview (optional)
+          <label className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Overview (optional)" help={commonFieldHelp.overview} />
             <textarea className={`${inputClass} min-h-24`} value={overview} onChange={(event) => setOverview(event.target.value)} />
           </label>
           <div className="sm:col-span-2">
