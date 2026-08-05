@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { useSectionFocus } from "@/features/shell/use-section-focus";
+import { FieldLabel } from "@/features/shared/FieldLabel";
 
 type FieldType = "text" | "textarea" | "color" | "checkbox" | "media" | "url" | "email";
 type FieldDef = { key: string; label: string; type: FieldType; placeholder?: string };
@@ -161,6 +162,7 @@ function GroupForm({
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {config.fields.map((field) => {
           const value = values[field.key];
+          const helpKey = `settings.${group}.${field.key}`;
           if (field.type === "checkbox")
             return (
               <label key={field.key} className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
@@ -169,13 +171,13 @@ function GroupForm({
                   checked={value !== false}
                   onChange={(event) => set(field.key, event.target.checked)}
                 />
-                {field.label}
+                <FieldLabel label={field.label} helpKey={helpKey} />
               </label>
             );
           if (field.type === "media")
             return (
               <label key={field.key} className="block text-sm font-semibold">
-                {field.label}
+                <FieldLabel label={field.label} helpKey={helpKey} />
                 <select className={inputClass} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value || null)}>
                   <option value="">None</option>
                   {media.map((item) => (
@@ -189,7 +191,7 @@ function GroupForm({
           if (field.type === "color")
             return (
               <label key={field.key} className="block text-sm font-semibold">
-                {field.label}
+                <FieldLabel label={field.label} helpKey={helpKey} />
                 <div className="mt-1 flex items-center gap-2">
                   <input type="color" value={(value as string) || "#1657CF"} onChange={(event) => set(field.key, event.target.value)} className="h-10 w-14 rounded-lg border border-[#D9E0EA]" />
                   <input className={inputClass} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value)} />
@@ -199,13 +201,13 @@ function GroupForm({
           if (field.type === "textarea")
             return (
               <label key={field.key} className="block text-sm font-semibold sm:col-span-2">
-                {field.label}
+                <FieldLabel label={field.label} helpKey={helpKey} />
                 <textarea className={`${inputClass} min-h-20`} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value)} />
               </label>
             );
           return (
             <label key={field.key} className="block text-sm font-semibold">
-              {field.label}
+              <FieldLabel label={field.label} helpKey={helpKey} />
               <input
                 type={field.type === "email" ? "email" : "text"}
                 className={inputClass}

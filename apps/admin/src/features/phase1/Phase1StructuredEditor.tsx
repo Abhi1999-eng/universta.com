@@ -5,6 +5,9 @@
 
 import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { FieldLabel } from "@/features/shared/FieldLabel";
+import { commonFieldHelp } from "@/lib/field-help/common";
+import type { FieldHelpContent } from "@/lib/field-help/types";
 
 type Option = {
   id: string;
@@ -685,6 +688,9 @@ function Field({
   error,
   textarea = false,
   type = "text",
+  helpKey,
+  help,
+  required = false,
 }: {
   label: string;
   value: string;
@@ -692,12 +698,15 @@ function Field({
   error?: string;
   textarea?: boolean;
   type?: string;
+  helpKey?: string;
+  help?: FieldHelpContent;
+  required?: boolean;
 }) {
   const fieldId = useId();
   const errorId = useId();
   return (
     <div className="block text-sm font-semibold">
-      <label htmlFor={fieldId}>{label}</label>
+      <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
       {textarea ? (
         <textarea
           id={fieldId}
@@ -732,18 +741,24 @@ function Select({
   onChange,
   options,
   error,
+  helpKey,
+  help,
+  required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Option[];
   error?: string;
+  helpKey?: string;
+  help?: FieldHelpContent;
+  required?: boolean;
 }) {
   const fieldId = useId();
   const errorId = useId();
   return (
     <div className="block text-sm font-semibold">
-      <label htmlFor={fieldId}>{label}</label>
+      <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
       <select
         id={fieldId}
         value={value}
@@ -773,15 +788,21 @@ function Multi({
   options,
   selected,
   toggle,
+  help,
+  helpKey,
 }: {
   legend: string;
   options: Option[];
   selected: string[];
   toggle: (id: string) => void;
+  help?: FieldHelpContent;
+  helpKey?: string;
 }) {
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-      <legend className="px-1 text-sm font-semibold">{legend}</legend>
+      <legend className="px-1 text-sm font-semibold">
+        <FieldLabel label={legend} help={help} helpKey={helpKey} />
+      </legend>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
@@ -807,6 +828,7 @@ function Tags({
   setDraft,
   add,
   remove,
+  help,
 }: {
   label: string;
   values: string[];
@@ -814,10 +836,13 @@ function Tags({
   setDraft: (value: string) => void;
   add: () => void;
   remove: (value: string) => void;
+  help?: FieldHelpContent;
 }) {
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-      <legend className="px-1 text-sm font-semibold">{label}</legend>
+      <legend className="px-1 text-sm font-semibold">
+        <FieldLabel label={label} help={help} />
+      </legend>
       <div className="flex gap-2">
         <input
           aria-label={`Add ${label}`}
@@ -860,13 +885,16 @@ function Core({
   errors,
   entity = "title",
   summaryKey,
+  resource,
 }: {
   values: Record<string, string>;
   set: (key: string, value: string) => void;
   errors: Record<string, string>;
   entity?: "name" | "title";
   summaryKey?: string;
+  resource?: string;
 }) {
+  const helpKey = (field: string) => (resource ? `${resource}.${field}` : undefined);
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field
@@ -874,18 +902,22 @@ function Core({
         value={values[entity] ?? ""}
         onChange={(value) => set(entity, value)}
         error={errors[entity]}
+        helpKey={helpKey(entity)}
+        required
       />
       <Field
         label="Slug"
         value={values.slug ?? ""}
         onChange={(value) => set("slug", value)}
         error={errors.slug}
+        helpKey={helpKey("slug")}
       />
       {summaryKey ? (
         <Field
           label="Short summary"
           value={values[summaryKey] ?? ""}
           onChange={(value) => set(summaryKey, value)}
+          helpKey={helpKey(summaryKey)}
         />
       ) : null}
       <Field
@@ -893,6 +925,7 @@ function Core({
         type="number"
         value={values.displayOrder ?? "0"}
         onChange={(value) => set("displayOrder", value)}
+        help={commonFieldHelp.displayOrder}
       />
     </div>
   );
@@ -909,7 +942,7 @@ function FeaturedFields(p: any) {
             p.set("isFeatured", event.target.checked ? "true" : "false")
           }
         />
-        Featured
+        <FieldLabel label="Featured" help={commonFieldHelp.featured} />
       </label>
       <div className="mt-3 grid gap-4 sm:grid-cols-3">
         <Field
@@ -917,12 +950,22 @@ function FeaturedFields(p: any) {
           type="number"
           value={p.values.featuredPriority ?? "0"}
           onChange={(value) => p.set("featuredPriority", value)}
+          help={{
+            purpose: 'Controls the order featured records appear in within a Featured section.',
+            input: 'A whole number. Lower numbers appear first.',
+            dataType: 'Number',
+            required: 'Optional — leave at 0 if the order does not matter.',
+            example: '0',
+            dependency: 'Only takes effect together with the Featured checkbox.',
+            frontendEffect: 'Sorts records within Featured sections on the public site.',
+          }}
         />
         <Field
           label="Featured from (optional)"
           type="datetime-local"
           value={p.values.featuredFrom ?? ""}
           onChange={(value) => p.set("featuredFrom", value)}
+          help={commonFieldHelp.featuredFrom}
         />
         <Field
           label="Featured until (optional)"
@@ -930,6 +973,7 @@ function FeaturedFields(p: any) {
           value={p.values.featuredUntil ?? ""}
           onChange={(value) => p.set("featuredUntil", value)}
           error={p.errors.featuredUntil}
+          help={commonFieldHelp.featuredUntil}
         />
       </div>
       <p className="mt-2 text-xs text-[#667085]">
@@ -948,6 +992,7 @@ function ScheduledPublishingFields(p: any) {
           type="datetime-local"
           value={p.values.publishStartsAt ?? ""}
           onChange={(value) => p.set("publishStartsAt", value)}
+          help={commonFieldHelp.publishStartsAt}
         />
         <Field
           label="Publish until (optional)"
@@ -955,6 +1000,7 @@ function ScheduledPublishingFields(p: any) {
           value={p.values.publishEndsAt ?? ""}
           onChange={(value) => p.set("publishEndsAt", value)}
           error={p.errors.publishEndsAt}
+          help={commonFieldHelp.publishEndsAt}
         />
       </div>
       <p className="mt-2 text-xs text-[#667085]">
@@ -967,30 +1013,35 @@ function ScheduledPublishingFields(p: any) {
 function UniversityFields(p: any) {
   return (
     <>
-      <Core {...p} entity="name" summaryKey="shortDescription" />
+      <Core {...p} entity="name" summaryKey="shortDescription" resource="universities" />
       <Select
         label="Country"
         value={p.values.countryId ?? ""}
         onChange={(value) => p.set("countryId", value)}
         options={p.countries}
         error={p.errors.countryId}
+        helpKey="universities.countryId"
+        required
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Institution type"
           value={p.values.institutionType ?? ""}
           onChange={(value) => p.set("institutionType", value)}
+          helpKey="universities.institutionType"
         />
         <Field
           label="Source URL"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          helpKey="universities.sourceReference"
         />
         <Select
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
           options={p.media ?? []}
+          helpKey="universities.featuredMediaId"
         />
       </div>
       <Field
@@ -998,6 +1049,7 @@ function UniversityFields(p: any) {
         textarea
         value={p.values.overview ?? ""}
         onChange={(value) => p.set("overview", value)}
+        helpKey="universities.overview"
       />
       <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
@@ -1005,6 +1057,7 @@ function UniversityFields(p: any) {
         title="Campuses"
         rows={p.rows.campuses}
         fields={["name", "city", "state", "address"]}
+        helpPrefix="campuses"
         add={() =>
           p.addRow("campuses", { name: "", city: "", state: "", address: "" })
         }
@@ -1016,6 +1069,7 @@ function UniversityFields(p: any) {
         title="Accreditations"
         rows={p.rows.accreditations}
         fields={["name", "accreditor", "referenceUrl"]}
+        helpPrefix="accreditations"
         add={() =>
           p.addRow("accreditations", {
             name: "",
@@ -1033,7 +1087,7 @@ function UniversityFields(p: any) {
 function OfferingFields(p: any) {
   return (
     <>
-      <Core {...p} entity="name" summaryKey="shortDescription" />
+      <Core {...p} entity="name" summaryKey="shortDescription" resource="offerings" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
           label="University"
@@ -1041,6 +1095,8 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("universityId", value)}
           options={p.universities}
           error={p.errors.universityId}
+          helpKey="offerings.universityId"
+          required
         />
         <Select
           label="Generic course"
@@ -1048,12 +1104,15 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("genericCourseId", value)}
           options={p.courses}
           error={p.errors.genericCourseId}
+          helpKey="offerings.genericCourseId"
+          required
         />
         <Select
           label="Campus (optional)"
           value={p.values.campusId ?? ""}
           onChange={(value) => p.set("campusId", value)}
           options={p.campuses}
+          helpKey="offerings.campusId"
         />
         <Select
           label="Course level"
@@ -1061,11 +1120,13 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("courseLevelId", value)}
           options={p.levels}
           error={p.errors.courseLevelId}
+          helpKey="offerings.courseLevelId"
+          required
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="text-sm font-semibold">
-          Study mode
+          <FieldLabel label="Study mode" helpKey="offerings.studyMode" />
           <select
             value={p.values.studyMode ?? ""}
             onChange={(event) => p.set("studyMode", event.target.value)}
@@ -1095,6 +1156,7 @@ function OfferingFields(p: any) {
           label="Duration unit"
           value={p.values.durationUnit ?? "YEARS"}
           onChange={(value) => p.set("durationUnit", value)}
+          helpKey="offerings.durationUnit"
         />
         <Field
           label="Tuition minimum"
@@ -1112,6 +1174,7 @@ function OfferingFields(p: any) {
           label="Currency"
           value={p.values.currencyCode ?? ""}
           onChange={(value) => p.set("currencyCode", value)}
+          helpKey="offerings.currencyCode"
         />
         <Field
           label="Tuition period"
@@ -1122,17 +1185,20 @@ function OfferingFields(p: any) {
           label="Application URL"
           value={p.values.applicationUrl ?? ""}
           onChange={(value) => p.set("applicationUrl", value)}
+          helpKey="offerings.applicationUrl"
         />
         <Field
           label="Source URL"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          helpKey="offerings.sourceReference"
         />
         <Select
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
           options={p.media ?? []}
+          helpKey="offerings.featuredMediaId"
         />
       </div>
       <Field
@@ -1140,6 +1206,7 @@ function OfferingFields(p: any) {
         textarea
         value={p.values.overview ?? ""}
         onChange={(value) => p.set("overview", value)}
+        helpKey="offerings.overview"
       />
       <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
@@ -1165,6 +1232,7 @@ function OfferingFields(p: any) {
         title="Academic and English-test requirements"
         rows={p.rows.requirements}
         fields={["category", "title", "description", "minimumScore"]}
+        helpPrefix="requirements"
         add={() =>
           p.addRow("requirements", {
             category: "ACADEMIC",
@@ -1183,51 +1251,59 @@ function OfferingFields(p: any) {
 function ScholarshipFields(p: any) {
   return (
     <>
-      <Core {...p} summaryKey="summary" />
+      <Core {...p} summaryKey="summary" resource="scholarships" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
           label="Provider"
           value={p.values.providerId ?? ""}
           onChange={(value) => p.set("providerId", value)}
           options={p.providers}
+          helpKey="scholarships.providerId"
         />
         <Field
           label="Benefit type"
           value={p.values.benefitType ?? ""}
           onChange={(value) => p.set("benefitType", value)}
+          helpKey="scholarships.benefitType"
         />
         <Field
           label="Amount"
           type="number"
           value={p.values.amount ?? ""}
           onChange={(value) => p.set("amount", value)}
+          helpKey="scholarships.amount"
         />
         <Field
           label="Currency"
           value={p.values.currencyCode ?? ""}
           onChange={(value) => p.set("currencyCode", value)}
+          helpKey="scholarships.currencyCode"
         />
         <Field
           label="Deadline"
           type="date"
           value={p.values.deadline ?? ""}
           onChange={(value) => p.set("deadline", value)}
+          helpKey="scholarships.deadline"
         />
         <Field
           label="Application URL"
           value={p.values.applicationUrl ?? ""}
           onChange={(value) => p.set("applicationUrl", value)}
+          helpKey="scholarships.applicationUrl"
         />
         <Field
           label="Source URL"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          helpKey="scholarships.sourceReference"
         />
         <Select
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
           options={p.media ?? []}
+          helpKey="scholarships.featuredMediaId"
         />
       </div>
       <Field
@@ -1235,12 +1311,14 @@ function ScholarshipFields(p: any) {
         textarea
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
+        helpKey="scholarships.description"
       />
       <Field
         label="Eligibility"
         textarea
         value={p.values.eligibility ?? ""}
         onChange={(value) => p.set("eligibility", value)}
+        helpKey="scholarships.eligibility"
       />
       <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
@@ -1268,25 +1346,28 @@ function ScholarshipFields(p: any) {
 function ConsultantFields(p: any) {
   return (
     <>
-      <Core {...p} entity="name" summaryKey="shortDescription" />
+      <Core {...p} entity="name" summaryKey="shortDescription" resource="consultants" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Email"
           value={p.values.email ?? ""}
           onChange={(value) => p.set("email", value)}
+          helpKey="consultants.email"
         />
         <Field
           label="Phone"
           value={p.values.phone ?? ""}
           onChange={(value) => p.set("phone", value)}
+          helpKey="consultants.phone"
         />
         <Field
           label="Website URL"
           value={p.values.websiteUrl ?? ""}
           onChange={(value) => p.set("websiteUrl", value)}
+          helpKey="consultants.websiteUrl"
         />
         <label className="text-sm font-semibold">
-          Verification state
+          <FieldLabel label="Verification state" helpKey="consultants.verificationStatus" />
           <select
             value={p.values.verificationStatus ?? "UNVERIFIED"}
             onChange={(event) =>
@@ -1302,12 +1383,14 @@ function ConsultantFields(p: any) {
           label="Source URL"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          helpKey="consultants.sourceReference"
         />
         <Select
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
           options={p.media ?? []}
+          helpKey="consultants.featuredMediaId"
         />
       </div>
       <Field
@@ -1315,6 +1398,7 @@ function ConsultantFields(p: any) {
         textarea
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
+        helpKey="consultants.description"
       />
       <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
@@ -1323,12 +1407,26 @@ function ConsultantFields(p: any) {
         options={p.locations}
         selected={p.selected.locationIds ?? []}
         toggle={(id) => p.toggle("locationIds", id)}
+        help={{
+          purpose: 'The physical office locations this consultant operates from.',
+          input: 'Tick every existing Consultant Location that applies.',
+          dataType: 'Relationship (multi-select)',
+          required: 'Optional.',
+          frontendEffect: 'Shown as the consultant’s offices and used for location-based filtering.',
+        }}
       />
       <Multi
         legend="Destination countries"
         options={p.countries}
         selected={p.selected.countryIds ?? []}
         toggle={(id) => p.toggle("countryIds", id)}
+        help={{
+          purpose: 'The study-destination countries this consultant specialises in.',
+          input: 'Tick every relevant, published Country.',
+          dataType: 'Relationship (multi-select)',
+          required: 'Optional.',
+          frontendEffect: 'Used for country-based filtering on the consultants directory.',
+        }}
       />
       <Tags
         label="Services"
@@ -1344,6 +1442,14 @@ function ConsultantFields(p: any) {
             services: x.services.filter((item: string) => item !== value),
           }))
         }
+        help={{
+          purpose: 'The services this consultant offers.',
+          input: 'Type a service and press Add; repeat for each one.',
+          dataType: 'List of short text tags',
+          required: 'Optional.',
+          example: 'Visa guidance',
+          frontendEffect: 'Shown as tags on the consultant profile and used for service-based filtering.',
+        }}
       />
       <Tags
         label="Languages"
@@ -1359,6 +1465,14 @@ function ConsultantFields(p: any) {
             languages: x.languages.filter((item: string) => item !== value),
           }))
         }
+        help={{
+          purpose: 'The languages this consultant can support clients in.',
+          input: 'Type a language and press Add; repeat for each one.',
+          dataType: 'List of short text tags',
+          required: 'Optional.',
+          example: 'English',
+          frontendEffect: 'Shown as tags on the consultant profile and used for language-based filtering.',
+        }}
       />
     </>
   );
@@ -1366,45 +1480,52 @@ function ConsultantFields(p: any) {
 function JobFields(p: any) {
   return (
     <>
-      <Core {...p} summaryKey="summary" />
+      <Core {...p} summaryKey="summary" resource="jobs" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Department"
           value={p.values.department ?? ""}
           onChange={(value) => p.set("department", value)}
+          helpKey="jobs.department"
         />
         <Field
           label="Employment type"
           value={p.values.employmentType ?? ""}
           onChange={(value) => p.set("employmentType", value)}
+          helpKey="jobs.employmentType"
         />
         <Field
           label="Location (free text)"
           value={p.values.location ?? ""}
           onChange={(value) => p.set("location", value)}
+          helpKey="jobs.location"
         />
         <Select
           label="City (optional, structured)"
           value={p.values.cityId ?? ""}
           onChange={(value) => p.set("cityId", value)}
           options={p.cities}
+          help={commonFieldHelp.city}
         />
         <Select
           label="State (optional, structured)"
           value={p.values.stateId ?? ""}
           onChange={(value) => p.set("stateId", value)}
           options={p.states}
+          help={commonFieldHelp.state}
         />
         <Select
           label="Country (optional, structured)"
           value={p.values.countryId ?? ""}
           onChange={(value) => p.set("countryId", value)}
           options={p.countries}
+          help={commonFieldHelp.country}
         />
         <Field
           label="Remote state"
           value={p.values.remoteStatus ?? ""}
           onChange={(value) => p.set("remoteStatus", value)}
+          helpKey="jobs.remoteStatus"
         />
         <Field
           label="Published date"
@@ -1422,11 +1543,13 @@ function JobFields(p: any) {
           label="Application URL"
           value={p.values.applicationUrl ?? ""}
           onChange={(value) => p.set("applicationUrl", value)}
+          helpKey="jobs.applicationUrl"
         />
         <Field
           label="Application email"
           value={p.values.applicationEmail ?? ""}
           onChange={(value) => p.set("applicationEmail", value)}
+          helpKey="jobs.applicationEmail"
         />
       </div>
       <Field
@@ -1434,6 +1557,7 @@ function JobFields(p: any) {
         textarea
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
+        helpKey="jobs.description"
       />
       <Field
         label="Responsibilities"
@@ -1455,7 +1579,7 @@ function JobFields(p: any) {
 function EventFields(p: any) {
   return (
     <>
-      <Core {...p} summaryKey="summary" />
+      <Core {...p} summaryKey="summary" resource="events" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Start date and time"
@@ -1463,6 +1587,8 @@ function EventFields(p: any) {
           value={p.values.startsAt ?? ""}
           onChange={(value) => p.set("startsAt", value)}
           error={p.errors.startsAt}
+          helpKey="events.startsAt"
+          required
         />
         <Field
           label="End date and time"
@@ -1470,14 +1596,16 @@ function EventFields(p: any) {
           value={p.values.endsAt ?? ""}
           onChange={(value) => p.set("endsAt", value)}
           error={p.errors.endsAt}
+          helpKey="events.endsAt"
         />
         <Field
           label="Timezone"
           value={p.values.timezone ?? "Asia/Kolkata"}
           onChange={(value) => p.set("timezone", value)}
+          helpKey="events.timezone"
         />
         <label className="text-sm font-semibold">
-          Event type
+          <FieldLabel label="Event type" helpKey="events.eventType" />
           <select
             value={p.values.eventType ?? "OFFLINE"}
             onChange={(event) => p.set("eventType", event.target.value)}
@@ -1492,40 +1620,47 @@ function EventFields(p: any) {
           label="Venue (free text)"
           value={p.values.venue ?? ""}
           onChange={(value) => p.set("venue", value)}
+          helpKey="events.venue"
         />
         <Select
           label="City (optional, structured)"
           value={p.values.cityId ?? ""}
           onChange={(value) => p.set("cityId", value)}
           options={p.cities}
+          help={commonFieldHelp.city}
         />
         <Select
           label="State (optional, structured)"
           value={p.values.stateId ?? ""}
           onChange={(value) => p.set("stateId", value)}
           options={p.states}
+          help={commonFieldHelp.state}
         />
         <Select
           label="Country (optional, structured)"
           value={p.values.countryId ?? ""}
           onChange={(value) => p.set("countryId", value)}
           options={p.countries}
+          help={commonFieldHelp.country}
         />
         <Field
           label="Online URL"
           value={p.values.onlineUrl ?? ""}
           onChange={(value) => p.set("onlineUrl", value)}
+          helpKey="events.onlineUrl"
         />
         <Field
           label="Registration URL"
           value={p.values.registrationUrl ?? ""}
           onChange={(value) => p.set("registrationUrl", value)}
+          helpKey="events.registrationUrl"
         />
         <Select
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
           options={p.media ?? []}
+          helpKey="events.featuredMediaId"
         />
       </div>
       <Field
@@ -1533,6 +1668,7 @@ function EventFields(p: any) {
         textarea
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
+        helpKey="events.description"
       />
       <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
@@ -1550,6 +1686,13 @@ function EventFields(p: any) {
             speakers: x.speakers.filter((item: string) => item !== value),
           }))
         }
+        help={{
+          purpose: 'The named speakers or hosts for this event.',
+          input: 'Type a speaker name and press Add; repeat for each one.',
+          dataType: 'List of short text tags',
+          required: 'Optional.',
+          frontendEffect: 'Shown as the speaker list on the event page.',
+        }}
       />
     </>
   );
@@ -1557,36 +1700,41 @@ function EventFields(p: any) {
 function StoryFields(p: any) {
   return (
     <>
-      <Core {...p} />
+      <Core {...p} resource="success-stories" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Display attribution"
           value={p.values.attribution ?? ""}
           onChange={(value) => p.set("attribution", value)}
+          helpKey="success-stories.attribution"
         />
         <Select
           label="Country (optional)"
           value={p.values.countryId ?? ""}
           onChange={(value) => p.set("countryId", value)}
           options={p.countries}
+          helpKey="success-stories.countryId"
         />
         <Select
           label="University (optional)"
           value={p.values.universityId ?? ""}
           onChange={(value) => p.set("universityId", value)}
           options={p.universities}
+          helpKey="success-stories.universityId"
         />
         <Select
           label="University course offering (optional)"
           value={p.values.offeringId ?? ""}
           onChange={(value) => p.set("offeringId", value)}
           options={p.offerings}
+          help={commonFieldHelp.course}
         />
         <Select
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
           options={p.media}
+          helpKey="success-stories.featuredMediaId"
         />
       </div>
       <Field
@@ -1594,6 +1742,7 @@ function StoryFields(p: any) {
         textarea
         value={p.values.journey ?? ""}
         onChange={(value) => p.set("journey", value)}
+        helpKey="success-stories.journey"
       />
       <ScheduledPublishingFields {...p} />
     </>
@@ -1608,30 +1757,36 @@ function TestimonialFields(p: any) {
         value={p.values.quote ?? ""}
         onChange={(value) => p.set("quote", value)}
         error={p.errors.quote}
+        helpKey="testimonials.quote"
+        required
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Display attribution"
           value={p.values.attribution ?? ""}
           onChange={(value) => p.set("attribution", value)}
+          helpKey="testimonials.attribution"
         />
         <Select
           label="University (optional)"
           value={p.values.universityId ?? ""}
           onChange={(value) => p.set("universityId", value)}
           options={p.universities}
+          helpKey="testimonials.universityId"
         />
         <Select
           label="University course offering (optional)"
           value={p.values.offeringId ?? ""}
           onChange={(value) => p.set("offeringId", value)}
           options={p.offerings}
+          help={commonFieldHelp.course}
         />
         <Select
           label="Media (optional)"
           value={p.values.imageMediaId ?? ""}
           onChange={(value) => p.set("imageMediaId", value)}
           options={p.media}
+          helpKey="testimonials.imageMediaId"
         />
       </div>
       <Field
@@ -1639,6 +1794,7 @@ function TestimonialFields(p: any) {
         type="number"
         value={p.values.displayOrder ?? "0"}
         onChange={(value) => p.set("displayOrder", value)}
+        help={commonFieldHelp.displayOrder}
       />
       <ScheduledPublishingFields {...p} />
     </>
@@ -1650,12 +1806,14 @@ function Repeater({
   fields,
   add,
   update,
+  helpPrefix,
 }: {
   title: string;
   rows: Array<Record<string, string>>;
   fields: string[];
   add: () => void;
   update: (index: number, key: string, value: string) => void;
+  helpPrefix?: string;
 }) {
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
@@ -1671,6 +1829,7 @@ function Repeater({
               label={field.replace(/([A-Z])/g, " $1")}
               value={row[field] ?? ""}
               onChange={(value) => update(index, field, value)}
+              helpKey={helpPrefix ? `${helpPrefix}.${field}` : undefined}
             />
           ))}
         </div>
@@ -1707,17 +1866,20 @@ function SeoFields({
           label="SEO title"
           value={values.seoTitle ?? ""}
           onChange={(value) => set("seoTitle", value)}
+          help={commonFieldHelp.seoTitle}
         />
         <Field
           label="Meta description"
           value={values.metaDescription ?? ""}
           onChange={(value) => set("metaDescription", value)}
+          help={commonFieldHelp.metaDescription}
         />
         <div>
           <Field
             label="Canonical URL"
             value={canonical}
             onChange={(value) => set("canonicalUrl", value)}
+            help={commonFieldHelp.canonicalUrl}
           />
           {canonicalUnsafe ? (
             <p className="mt-1 text-xs font-semibold text-[#B42318]">
@@ -1730,6 +1892,7 @@ function SeoFields({
           label="Focus keyword"
           value={values.focusKeyword ?? ""}
           onChange={(value) => set("focusKeyword", value)}
+          help={commonFieldHelp.focusKeyword}
         />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -1737,17 +1900,20 @@ function SeoFields({
           label="Open Graph title"
           value={values.ogTitle ?? ""}
           onChange={(value) => set("ogTitle", value)}
+          help={commonFieldHelp.ogTitle}
         />
         <Field
           label="Open Graph description"
           value={values.ogDescription ?? ""}
           onChange={(value) => set("ogDescription", value)}
+          help={commonFieldHelp.ogDescription}
         />
         <Select
           label="Open Graph image (Media Library)"
           value={values.ogMediaId ?? ""}
           onChange={(value) => set("ogMediaId", value)}
           options={media}
+          help={commonFieldHelp.ogMedia}
         />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -1755,11 +1921,13 @@ function SeoFields({
           label="Twitter title"
           value={values.twitterTitle ?? ""}
           onChange={(value) => set("twitterTitle", value)}
+          help={commonFieldHelp.twitterTitle}
         />
         <Field
           label="Twitter description"
           value={values.twitterDescription ?? ""}
           onChange={(value) => set("twitterDescription", value)}
+          help={commonFieldHelp.twitterDescription}
         />
       </div>
       <div className="mt-4 flex flex-wrap gap-6">
@@ -1771,7 +1939,7 @@ function SeoFields({
               set("robotsIndex", event.target.checked ? "true" : "false")
             }
           />
-          Allow search engines to index this page
+          <FieldLabel label="Allow search engines to index this page" help={commonFieldHelp.robotsIndex} />
         </label>
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input
@@ -1781,7 +1949,7 @@ function SeoFields({
               set("robotsFollow", event.target.checked ? "true" : "false")
             }
           />
-          Allow search engines to follow its links
+          <FieldLabel label="Allow search engines to follow its links" help={commonFieldHelp.robotsFollow} />
         </label>
       </div>
       <p className="mt-2 text-xs text-[#828B9B]">
