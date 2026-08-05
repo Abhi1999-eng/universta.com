@@ -9,7 +9,12 @@ type FieldType = "text" | "textarea" | "color" | "checkbox" | "media" | "url" | 
 type FieldDef = { key: string; label: string; type: FieldType; placeholder?: string };
 type MediaOption = { id: string; altText?: string | null; originalFileName?: string | null };
 
-const GROUP_FIELDS: Record<string, { title: string; description: string; fields: FieldDef[] }> = {
+/** Exported so the dynamic field-help coverage test can compute every
+ * `settings.<group>.<key>` helpKey this screen builds at runtime (see
+ * `GroupForm`'s `helpKey = \`settings.${group}.${field.key}\`` below) and
+ * assert each one resolves in the registry — the static helpKey scan alone
+ * cannot see this since the key is built from data, not written literally. */
+export const GROUP_FIELDS: Record<string, { title: string; description: string; fields: FieldDef[] }> = {
   general: {
     title: "General",
     description: "Core site identity used across Admin and the public site.",
@@ -163,22 +168,27 @@ function GroupForm({
         {config.fields.map((field) => {
           const value = values[field.key];
           const helpKey = `settings.${group}.${field.key}`;
+          // Explicit id/htmlFor, not a wrapping <label> — FieldLabel's
+          // help-icon <button> breaks an implicitly-wrapping label's
+          // accessible-name link in real browsers.
+          const fieldId = `settings-${group}-${field.key}`;
           if (field.type === "checkbox")
             return (
-              <label key={field.key} className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+              <div key={field.key} className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
                 <input
+                  id={fieldId}
                   type="checkbox"
                   checked={value !== false}
                   onChange={(event) => set(field.key, event.target.checked)}
                 />
-                <FieldLabel label={field.label} helpKey={helpKey} />
-              </label>
+                <FieldLabel label={field.label} htmlFor={fieldId} helpKey={helpKey} />
+              </div>
             );
           if (field.type === "media")
             return (
-              <label key={field.key} className="block text-sm font-semibold">
-                <FieldLabel label={field.label} helpKey={helpKey} />
-                <select className={inputClass} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value || null)}>
+              <div key={field.key} className="block text-sm font-semibold">
+                <FieldLabel label={field.label} htmlFor={fieldId} helpKey={helpKey} />
+                <select id={fieldId} className={inputClass} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value || null)}>
                   <option value="">None</option>
                   {media.map((item) => (
                     <option key={item.id} value={item.id}>
@@ -186,36 +196,37 @@ function GroupForm({
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             );
           if (field.type === "color")
             return (
-              <label key={field.key} className="block text-sm font-semibold">
-                <FieldLabel label={field.label} helpKey={helpKey} />
+              <div key={field.key} className="block text-sm font-semibold">
+                <FieldLabel label={field.label} htmlFor={fieldId} helpKey={helpKey} />
                 <div className="mt-1 flex items-center gap-2">
-                  <input type="color" value={(value as string) || "#1657CF"} onChange={(event) => set(field.key, event.target.value)} className="h-10 w-14 rounded-lg border border-[#D9E0EA]" />
-                  <input className={inputClass} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value)} />
+                  <input aria-label={`${field.label} swatch`} type="color" value={(value as string) || "#1657CF"} onChange={(event) => set(field.key, event.target.value)} className="h-10 w-14 rounded-lg border border-[#D9E0EA]" />
+                  <input id={fieldId} className={inputClass} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value)} />
                 </div>
-              </label>
+              </div>
             );
           if (field.type === "textarea")
             return (
-              <label key={field.key} className="block text-sm font-semibold sm:col-span-2">
-                <FieldLabel label={field.label} helpKey={helpKey} />
-                <textarea className={`${inputClass} min-h-20`} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value)} />
-              </label>
+              <div key={field.key} className="block text-sm font-semibold sm:col-span-2">
+                <FieldLabel label={field.label} htmlFor={fieldId} helpKey={helpKey} />
+                <textarea id={fieldId} className={`${inputClass} min-h-20`} value={(value as string) ?? ""} onChange={(event) => set(field.key, event.target.value)} />
+              </div>
             );
           return (
-            <label key={field.key} className="block text-sm font-semibold">
-              <FieldLabel label={field.label} helpKey={helpKey} />
+            <div key={field.key} className="block text-sm font-semibold">
+              <FieldLabel label={field.label} htmlFor={fieldId} helpKey={helpKey} />
               <input
+                id={fieldId}
                 type={field.type === "email" ? "email" : "text"}
                 className={inputClass}
                 placeholder={field.placeholder}
                 value={(value as string) ?? ""}
                 onChange={(event) => set(field.key, event.target.value)}
               />
-            </label>
+            </div>
           );
         })}
       </div>

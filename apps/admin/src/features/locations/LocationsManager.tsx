@@ -124,56 +124,61 @@ function CitySeoEditor({
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-xs font-semibold">
-          <FieldLabel label="SEO title" help={commonFieldHelp.seoTitle} />
-          <input value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
-        </label>
-        <label className="block text-xs font-semibold">
-          <FieldLabel label="Meta description" help={commonFieldHelp.metaDescription} />
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="SEO title" htmlFor="city-seo-title" help={commonFieldHelp.seoTitle} />
+          <input id="city-seo-title" value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
+        </div>
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="Meta description" htmlFor="city-seo-meta" help={commonFieldHelp.metaDescription} />
           <input
+            id="city-seo-meta"
             value={metaDescription}
             onChange={(event) => setMetaDescription(event.target.value)}
             className={inputClass}
           />
-        </label>
-        <label className="block text-xs font-semibold">
-          <FieldLabel label="Canonical URL (optional)" help={commonFieldHelp.canonicalUrl} />
+        </div>
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="Canonical URL (optional)" htmlFor="city-seo-canonical" help={commonFieldHelp.canonicalUrl} />
           <input
+            id="city-seo-canonical"
             value={canonicalUrl}
             onChange={(event) => setCanonicalUrl(event.target.value)}
             className={inputClass}
           />
-        </label>
-        <label className="block text-xs font-semibold">
-          <FieldLabel label="OG title (optional)" help={commonFieldHelp.ogTitle} />
-          <input value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
-        </label>
+        </div>
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="OG title (optional)" htmlFor="city-seo-og-title" help={commonFieldHelp.ogTitle} />
+          <input id="city-seo-og-title" value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
+        </div>
         <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold">
-            <FieldLabel label="OG description (optional)" help={commonFieldHelp.ogDescription} />
+          <div className="block text-xs font-semibold">
+            <FieldLabel label="OG description (optional)" htmlFor="city-seo-og-description" help={commonFieldHelp.ogDescription} />
             <input
+              id="city-seo-og-description"
               value={ogDescription}
               onChange={(event) => setOgDescription(event.target.value)}
               className={inputClass}
             />
-          </label>
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-xs font-semibold">
+        <div className="flex items-center gap-2 text-xs font-semibold">
           <input
+            id="city-seo-robots-index"
             type="checkbox"
             checked={robotsIndex}
             onChange={(event) => setRobotsIndex(event.target.checked)}
           />
-          <FieldLabel label="Allow search indexing" help={commonFieldHelp.robotsIndex} />
-        </label>
-        <label className="flex items-center gap-2 text-xs font-semibold">
+          <FieldLabel label="Allow search indexing" htmlFor="city-seo-robots-index" help={commonFieldHelp.robotsIndex} />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold">
           <input
+            id="city-seo-robots-follow"
             type="checkbox"
             checked={robotsFollow}
             onChange={(event) => setRobotsFollow(event.target.checked)}
           />
-          <FieldLabel label="Allow link following" help={commonFieldHelp.robotsFollow} />
-        </label>
+          <FieldLabel label="Allow link following" htmlFor="city-seo-robots-follow" help={commonFieldHelp.robotsFollow} />
+        </div>
       </div>
       <div className="mt-3 flex items-center gap-3">
         <button

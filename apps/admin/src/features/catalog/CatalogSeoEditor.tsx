@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import type { EditorialMedia, EditorialSeo } from './catalog.types';
 import { FieldLabel } from '@/features/shared/FieldLabel';
@@ -63,12 +63,12 @@ export function CatalogSeoEditor({ seo, media, busy, onSave, onDelete, onError }
         <Field label="Hreflang JSON object" textarea value={draft.hreflangJson} onChange={(value) => setDraft({ ...draft, hreflangJson: value })} help={hreflangJsonHelp} />
       </div>
       <div className="mt-4 flex flex-wrap gap-5 text-sm font-semibold">
-        <label>
-          <input type="checkbox" checked={draft.robotsIndex} onChange={(event) => setDraft({ ...draft, robotsIndex: event.target.checked })} /> <FieldLabel label="Allow indexing" help={commonFieldHelp.robotsIndex} />
-        </label>
-        <label>
-          <input type="checkbox" checked={draft.robotsFollow} onChange={(event) => setDraft({ ...draft, robotsFollow: event.target.checked })} /> <FieldLabel label="Allow following" help={commonFieldHelp.robotsFollow} />
-        </label>
+        <div>
+          <input id="seo-robots-index" type="checkbox" checked={draft.robotsIndex} onChange={(event) => setDraft({ ...draft, robotsIndex: event.target.checked })} /> <FieldLabel label="Allow indexing" htmlFor="seo-robots-index" help={commonFieldHelp.robotsIndex} />
+        </div>
+        <div>
+          <input id="seo-robots-follow" type="checkbox" checked={draft.robotsFollow} onChange={(event) => setDraft({ ...draft, robotsFollow: event.target.checked })} /> <FieldLabel label="Allow following" htmlFor="seo-robots-follow" help={commonFieldHelp.robotsFollow} />
+        </div>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         <Preview title="SERP preview" titleText={draft.seoTitle} description={draft.metaDescription} />
@@ -84,15 +84,18 @@ export function CatalogSeoEditor({ seo, media, busy, onSave, onDelete, onError }
 }
 
 function Field({ label, value, onChange, textarea = false, required = false, help }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; required?: boolean; help?: FieldHelpContent }) {
+  // Explicit id/htmlFor, not a wrapping <label> — FieldLabel's help-icon
+  // <button> breaks an implicitly-wrapping label's accessible-name link.
+  const fieldId = useId();
   return (
-    <label className="block text-sm font-semibold">
-      <FieldLabel label={label} required={required} help={help} />
+    <div className="block text-sm font-semibold">
+      <FieldLabel label={label} htmlFor={fieldId} required={required} help={help} />
       {textarea ? (
-        <textarea required={required} value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 font-normal" />
+        <textarea id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 font-normal" />
       ) : (
-        <input required={required} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 font-normal" />
+        <input id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 font-normal" />
       )}
-    </label>
+    </div>
   );
 }
 function Preview({ title, titleText, description }: { title: string; titleText: string; description: string }) { return <div className="rounded-xl border border-[#E8ECF3] p-3"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#828B9B]">{title}</p><strong className="mt-3 block truncate text-[#1657CF]">{titleText || 'Untitled page'}</strong><p className="mt-2 line-clamp-3 text-xs leading-5 text-[#667085]">{description || 'No description yet.'}</p></div>; }

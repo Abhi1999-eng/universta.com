@@ -934,16 +934,17 @@ function FeaturedFields(p: any) {
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
       <legend className="px-1 text-sm font-semibold">Featured placement</legend>
-      <label className="flex items-center gap-2 text-sm font-semibold">
+      <div className="flex items-center gap-2 text-sm font-semibold">
         <input
+          id="phase1-is-featured"
           type="checkbox"
           checked={p.values.isFeatured === "true"}
           onChange={(event) =>
             p.set("isFeatured", event.target.checked ? "true" : "false")
           }
         />
-        <FieldLabel label="Featured" help={commonFieldHelp.featured} />
-      </label>
+        <FieldLabel label="Featured" htmlFor="phase1-is-featured" help={commonFieldHelp.featured} />
+      </div>
       <div className="mt-3 grid gap-4 sm:grid-cols-3">
         <Field
           label="Priority (lower shows first)"
@@ -1125,9 +1126,10 @@ function OfferingFields(p: any) {
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <label className="text-sm font-semibold">
-          <FieldLabel label="Study mode" helpKey="offerings.studyMode" />
+        <div className="text-sm font-semibold">
+          <FieldLabel label="Study mode" htmlFor="offering-study-mode" helpKey="offerings.studyMode" />
           <select
+            id="offering-study-mode"
             value={p.values.studyMode ?? ""}
             onChange={(event) => p.set("studyMode", event.target.value)}
             className={inputClass}
@@ -1139,7 +1141,7 @@ function OfferingFields(p: any) {
               </option>
             ))}
           </select>
-        </label>
+        </div>
         <Field
           label="Duration minimum"
           type="number"
@@ -1366,9 +1368,10 @@ function ConsultantFields(p: any) {
           onChange={(value) => p.set("websiteUrl", value)}
           helpKey="consultants.websiteUrl"
         />
-        <label className="text-sm font-semibold">
-          <FieldLabel label="Verification state" helpKey="consultants.verificationStatus" />
+        <div className="text-sm font-semibold">
+          <FieldLabel label="Verification state" htmlFor="consultant-verification-status" helpKey="consultants.verificationStatus" />
           <select
+            id="consultant-verification-status"
             value={p.values.verificationStatus ?? "UNVERIFIED"}
             onChange={(event) =>
               p.set("verificationStatus", event.target.value)
@@ -1378,7 +1381,7 @@ function ConsultantFields(p: any) {
             <option>UNVERIFIED</option>
             <option>VERIFIED</option>
           </select>
-        </label>
+        </div>
         <Field
           label="Source URL"
           value={p.values.sourceReference ?? ""}
@@ -1604,9 +1607,10 @@ function EventFields(p: any) {
           onChange={(value) => p.set("timezone", value)}
           helpKey="events.timezone"
         />
-        <label className="text-sm font-semibold">
-          <FieldLabel label="Event type" helpKey="events.eventType" />
+        <div className="text-sm font-semibold">
+          <FieldLabel label="Event type" htmlFor="event-type" helpKey="events.eventType" />
           <select
+            id="event-type"
             value={p.values.eventType ?? "OFFLINE"}
             onChange={(event) => p.set("eventType", event.target.value)}
             className={inputClass}
@@ -1615,7 +1619,7 @@ function EventFields(p: any) {
             <option>ONLINE</option>
             <option>HYBRID</option>
           </select>
-        </label>
+        </div>
         <Field
           label="Venue (free text)"
           value={p.values.venue ?? ""}
@@ -1931,26 +1935,28 @@ function SeoFields({
         />
       </div>
       <div className="mt-4 flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 text-sm font-semibold">
+        <div className="flex items-center gap-2 text-sm font-semibold">
           <input
+            id="seo-robots-index-phase1"
             type="checkbox"
             checked={values.robotsIndex !== "false"}
             onChange={(event) =>
               set("robotsIndex", event.target.checked ? "true" : "false")
             }
           />
-          <FieldLabel label="Allow search engines to index this page" help={commonFieldHelp.robotsIndex} />
-        </label>
-        <label className="flex items-center gap-2 text-sm font-semibold">
+          <FieldLabel label="Allow search engines to index this page" htmlFor="seo-robots-index-phase1" help={commonFieldHelp.robotsIndex} />
+        </div>
+        <div className="flex items-center gap-2 text-sm font-semibold">
           <input
+            id="seo-robots-follow-phase1"
             type="checkbox"
             checked={values.robotsFollow !== "false"}
             onChange={(event) =>
               set("robotsFollow", event.target.checked ? "true" : "false")
             }
           />
-          <FieldLabel label="Allow search engines to follow its links" help={commonFieldHelp.robotsFollow} />
-        </label>
+          <FieldLabel label="Allow search engines to follow its links" htmlFor="seo-robots-follow-phase1" help={commonFieldHelp.robotsFollow} />
+        </div>
       </div>
       <p className="mt-2 text-xs text-[#828B9B]">
         Unpublished drafts are never indexable regardless of this setting —

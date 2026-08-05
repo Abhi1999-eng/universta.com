@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { createSubSubject, deleteSubSubject, listSubSubjects } from './catalog-client';
 import type { CatalogMutationError, SubSubjectRecord } from './catalog.types';
+import { FieldLabel } from '@/features/shared/FieldLabel';
+import { commonFieldHelp } from '@/lib/field-help/common';
 
 export function SubSubjectsEditor({ subjectId }: { subjectId: string }) {
   const [rows, setRows] = useState<SubSubjectRecord[]>([]);
@@ -60,8 +62,8 @@ export function SubSubjectsEditor({ subjectId }: { subjectId: string }) {
     </div>
     {error ? <div className="mt-4"><CatalogError message={error} onRetry={load} /></div> : null}
     <form onSubmit={add} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-      <label className="text-sm font-semibold">Name<input required className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal" value={name} onChange={(event) => setName(event.target.value)} /></label>
-      <label className="text-sm font-semibold">Slug<input className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="Generated from name" /></label>
+      <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor="subsubject-name" required help={commonFieldHelp.name} /><input id="subsubject-name" required className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal" value={name} onChange={(event) => setName(event.target.value)} /></div>
+      <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor="subsubject-slug" help={commonFieldHelp.slug} /><input id="subsubject-slug" className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="Generated from name" /></div>
       <button disabled={saving} className="self-end rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Adding…' : 'Add draft'}</button>
     </form>
     {loading ? <div className="mt-5"><CatalogLoading label="Loading Sub-Subjects…" /></div> : rows.length ? <div className="mt-5 divide-y divide-[#E8ECF3] rounded-xl border border-[#E8ECF3]">{rows.map((row) => <div key={row.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{row.name}</p><p className="mt-1 text-xs text-[#828B9B]">/{row.slug} · {row.status}</p></div><button type="button" onClick={() => setPending(row)} className="self-start rounded-lg border border-[#F2C5C5] px-3 py-2 text-sm font-semibold text-[#B42318] sm:self-auto">Delete</button></div>)}</div> : <p className="mt-5 rounded-xl border border-dashed border-[#CBD5E4] p-6 text-center text-sm text-[#667085]">No Sub-Subjects yet.</p>}
