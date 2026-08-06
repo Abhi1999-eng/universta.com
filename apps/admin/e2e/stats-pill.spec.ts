@@ -10,11 +10,23 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
   page,
   request,
 }) => {
+  // This lifecycle runs four full save+publish round trips plus a preview
+  // dialog/iframe check — comfortably inside the default 30s budget on its
+  // own, but not when it lands late in a long, single-worker batch (the
+  // Next.js dev server and CI runner both slow down over a long run).
+  test.setTimeout(60_000);
   await loginAsAdmin(page);
   await page.goto(`${adminBaseUrl}/website`);
   const home = page.getByRole("row").filter({ hasText: /^Home/ }).first();
   await home.getByRole("link", { name: "Open in Builder" }).click();
   const editor = page.getByTestId("stats-pill-editor");
+  await expect(editor).toBeVisible();
+  // This dynamic builder route may be the first visit of the whole suite
+  // run, so Next.js dev mode is still compiling it on demand behind the
+  // scenes even after the first paint — reloading once forces a second,
+  // now-server-cached request before any timed interaction starts, instead
+  // of racing that compile mid-action.
+  await page.reload();
   await expect(editor).toBeVisible();
 
   const publicPill = async (): Promise<ResolvedPill> => {
@@ -27,7 +39,7 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
 
   const baseline = await publicPill();
   expect(baseline?.items).toHaveLength(2);
-  const originalLabel = await editor.getByLabel("Label").first().inputValue();
+  const originalLabel = await editor.getByLabel("Label", { exact: true }).first().inputValue();
   const testLabel = `preview destinations ${Date.now()}`;
 
   const saveAndPublish = async () => {
@@ -38,9 +50,9 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
   };
 
   try {
-    await editor.getByLabel("Source mode").first().selectOption("MANUAL");
-    await editor.getByLabel("Manual value").first().fill("37");
-    await editor.getByLabel("Label").first().fill(testLabel);
+    await editor.getByLabel("Source mode", { exact: true }).first().selectOption("MANUAL");
+    await editor.getByLabel("Manual value", { exact: true }).first().fill("37");
+    await editor.getByLabel("Label", { exact: true }).first().fill(testLabel);
     await editor.getByRole("button", { name: "Save Draft" }).click();
     await expect(editor).toContainText("Public pages are unchanged");
     expect(await publicPill()).toEqual(baseline);
@@ -60,18 +72,18 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
       value: 37,
     });
 
-    await editor.getByLabel("Show statistic").nth(1).uncheck();
+    await editor.getByLabel("Show statistic", { exact: true }).nth(1).uncheck();
     await saveAndPublish();
     expect((await publicPill())?.items).toHaveLength(1);
 
-    await editor.getByLabel("Show complete pill").uncheck();
+    await editor.getByLabel("Show complete pill", { exact: true }).uncheck();
     await saveAndPublish();
     expect(await publicPill()).toBeNull();
   } finally {
-    await editor.getByLabel("Show complete pill").check();
-    await editor.getByLabel("Show statistic").nth(1).check();
-    await editor.getByLabel("Label").first().fill(originalLabel);
-    await editor.getByLabel("Source mode").first().selectOption("AUTOMATIC");
+    await editor.getByLabel("Show complete pill", { exact: true }).check();
+    await editor.getByLabel("Show statistic", { exact: true }).nth(1).check();
+    await editor.getByLabel("Label", { exact: true }).first().fill(originalLabel);
+    await editor.getByLabel("Source mode", { exact: true }).first().selectOption("AUTOMATIC");
     await saveAndPublish();
     expect(await publicPill()).toEqual(baseline);
   }

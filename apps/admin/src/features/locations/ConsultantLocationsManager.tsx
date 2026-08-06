@@ -2,6 +2,8 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { FieldLabel } from "@/features/shared/FieldLabel";
+import { commonFieldHelp } from "@/lib/field-help/common";
 
 type CountryOption = { id: string; name: string; slug: string };
 type LocationRow = {
@@ -105,31 +107,31 @@ function LocationSeoEditor({ locationId, onSaved, onClose }: { locationId: strin
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-xs font-semibold">SEO title
-          <input value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
-        </label>
-        <label className="block text-xs font-semibold">Meta description
-          <input value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} className={inputClass} />
-        </label>
-        <label className="block text-xs font-semibold">Canonical URL (optional)
-          <input value={canonicalUrl} onChange={(event) => setCanonicalUrl(event.target.value)} className={inputClass} />
-        </label>
-        <label className="block text-xs font-semibold">OG title (optional)
-          <input value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
-        </label>
-        <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold">OG description (optional)
-            <input value={ogDescription} onChange={(event) => setOgDescription(event.target.value)} className={inputClass} />
-          </label>
+        <div className="block text-xs font-semibold"><FieldLabel label="SEO title" htmlFor="cl-seo-title" help={commonFieldHelp.seoTitle} />
+          <input id="cl-seo-title" value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
         </div>
-        <label className="flex items-center gap-2 text-xs font-semibold">
-          <input type="checkbox" checked={robotsIndex} onChange={(event) => setRobotsIndex(event.target.checked)} />
-          Allow search indexing
-        </label>
-        <label className="flex items-center gap-2 text-xs font-semibold">
-          <input type="checkbox" checked={robotsFollow} onChange={(event) => setRobotsFollow(event.target.checked)} />
-          Allow link following
-        </label>
+        <div className="block text-xs font-semibold"><FieldLabel label="Meta description" htmlFor="cl-seo-meta" help={commonFieldHelp.metaDescription} />
+          <input id="cl-seo-meta" value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} className={inputClass} />
+        </div>
+        <div className="block text-xs font-semibold"><FieldLabel label="Canonical URL (optional)" htmlFor="cl-seo-canonical" help={commonFieldHelp.canonicalUrl} />
+          <input id="cl-seo-canonical" value={canonicalUrl} onChange={(event) => setCanonicalUrl(event.target.value)} className={inputClass} />
+        </div>
+        <div className="block text-xs font-semibold"><FieldLabel label="OG title (optional)" htmlFor="cl-seo-og-title" help={commonFieldHelp.ogTitle} />
+          <input id="cl-seo-og-title" value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
+        </div>
+        <div className="sm:col-span-2">
+          <div className="block text-xs font-semibold"><FieldLabel label="OG description (optional)" htmlFor="cl-seo-og-description" help={commonFieldHelp.ogDescription} />
+            <input id="cl-seo-og-description" value={ogDescription} onChange={(event) => setOgDescription(event.target.value)} className={inputClass} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold">
+          <input id="cl-seo-robots-index" type="checkbox" checked={robotsIndex} onChange={(event) => setRobotsIndex(event.target.checked)} />
+          <FieldLabel label="Allow search indexing" htmlFor="cl-seo-robots-index" help={commonFieldHelp.robotsIndex} />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold">
+          <input id="cl-seo-robots-follow" type="checkbox" checked={robotsFollow} onChange={(event) => setRobotsFollow(event.target.checked)} />
+          <FieldLabel label="Allow link following" htmlFor="cl-seo-robots-follow" help={commonFieldHelp.robotsFollow} />
+        </div>
       </div>
       <div className="mt-3 flex items-center gap-3">
         <button type="button" disabled={busy || !seoTitle || !metaDescription} onClick={() => void save()} className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
@@ -230,24 +232,24 @@ export function ConsultantLocationsManager() {
 
       {creating ? (
         <form onSubmit={(event) => void create(event)} className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Name
-            <input required className={inputClass} value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label className="text-sm font-semibold">City
-            <input required className={inputClass} value={city} onChange={(event) => setCity(event.target.value)} />
-          </label>
-          <label className="text-sm font-semibold">State / province (optional)
-            <input className={inputClass} value={state} onChange={(event) => setState(event.target.value)} />
-          </label>
-          <label className="text-sm font-semibold">Country
-            <select className={inputClass} value={countryId} onChange={(event) => setCountryId(event.target.value)}>
+          <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor="cl-name" required help={commonFieldHelp.name} />
+            <input id="cl-name" required className={inputClass} value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="text-sm font-semibold"><FieldLabel label="City" htmlFor="cl-city" required helpKey="consultant-locations.city" />
+            <input id="cl-city" required className={inputClass} value={city} onChange={(event) => setCity(event.target.value)} />
+          </div>
+          <div className="text-sm font-semibold"><FieldLabel label="State / province (optional)" htmlFor="cl-state" help={commonFieldHelp.state} />
+            <input id="cl-state" className={inputClass} value={state} onChange={(event) => setState(event.target.value)} />
+          </div>
+          <div className="text-sm font-semibold"><FieldLabel label="Country" htmlFor="cl-country" help={commonFieldHelp.country} />
+            <select id="cl-country" className={inputClass} value={countryId} onChange={(event) => setCountryId(event.target.value)}>
               <option value="">Not set</option>
               {countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}
             </select>
-          </label>
-          <label className="text-sm font-semibold sm:col-span-2">Overview (optional)
-            <textarea className={`${inputClass} min-h-24`} value={overview} onChange={(event) => setOverview(event.target.value)} />
-          </label>
+          </div>
+          <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Overview (optional)" htmlFor="cl-overview" help={commonFieldHelp.overview} />
+            <textarea id="cl-overview" className={`${inputClass} min-h-24`} value={overview} onChange={(event) => setOverview(event.target.value)} />
+          </div>
           <div className="sm:col-span-2">
             <button className={buttonClass}>Create</button>
           </div>

@@ -3,6 +3,8 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { authFetch } from "@/features/auth/auth-client";
+import { FieldLabel } from "@/features/shared/FieldLabel";
+import { commonFieldHelp } from "@/lib/field-help/common";
 
 type CountryOption = { id: string; name: string; slug: string };
 type StateRow = {
@@ -122,56 +124,61 @@ function CitySeoEditor({
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-xs font-semibold">
-          SEO title
-          <input value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
-        </label>
-        <label className="block text-xs font-semibold">
-          Meta description
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="SEO title" htmlFor="city-seo-title" help={commonFieldHelp.seoTitle} />
+          <input id="city-seo-title" value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} className={inputClass} />
+        </div>
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="Meta description" htmlFor="city-seo-meta" help={commonFieldHelp.metaDescription} />
           <input
+            id="city-seo-meta"
             value={metaDescription}
             onChange={(event) => setMetaDescription(event.target.value)}
             className={inputClass}
           />
-        </label>
-        <label className="block text-xs font-semibold">
-          Canonical URL (optional)
+        </div>
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="Canonical URL (optional)" htmlFor="city-seo-canonical" help={commonFieldHelp.canonicalUrl} />
           <input
+            id="city-seo-canonical"
             value={canonicalUrl}
             onChange={(event) => setCanonicalUrl(event.target.value)}
             className={inputClass}
           />
-        </label>
-        <label className="block text-xs font-semibold">
-          OG title (optional)
-          <input value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
-        </label>
+        </div>
+        <div className="block text-xs font-semibold">
+          <FieldLabel label="OG title (optional)" htmlFor="city-seo-og-title" help={commonFieldHelp.ogTitle} />
+          <input id="city-seo-og-title" value={ogTitle} onChange={(event) => setOgTitle(event.target.value)} className={inputClass} />
+        </div>
         <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold">
-            OG description (optional)
+          <div className="block text-xs font-semibold">
+            <FieldLabel label="OG description (optional)" htmlFor="city-seo-og-description" help={commonFieldHelp.ogDescription} />
             <input
+              id="city-seo-og-description"
               value={ogDescription}
               onChange={(event) => setOgDescription(event.target.value)}
               className={inputClass}
             />
-          </label>
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-xs font-semibold">
+        <div className="flex items-center gap-2 text-xs font-semibold">
           <input
+            id="city-seo-robots-index"
             type="checkbox"
             checked={robotsIndex}
             onChange={(event) => setRobotsIndex(event.target.checked)}
           />
-          Allow search indexing
-        </label>
-        <label className="flex items-center gap-2 text-xs font-semibold">
+          <FieldLabel label="Allow search indexing" htmlFor="city-seo-robots-index" help={commonFieldHelp.robotsIndex} />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold">
           <input
+            id="city-seo-robots-follow"
             type="checkbox"
             checked={robotsFollow}
             onChange={(event) => setRobotsFollow(event.target.checked)}
           />
-          Allow link following
-        </label>
+          <FieldLabel label="Allow link following" htmlFor="city-seo-robots-follow" help={commonFieldHelp.robotsFollow} />
+        </div>
       </div>
       <div className="mt-3 flex items-center gap-3">
         <button
@@ -404,9 +411,7 @@ export function LocationsManager() {
             className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:grid-cols-3"
           >
             <div>
-              <label className="text-sm font-semibold" htmlFor="state-country">
-                Country
-              </label>
+              <FieldLabel label="Country" htmlFor="state-country" required help={commonFieldHelp.country} />
               <select
                 id="state-country"
                 className={inputClass}
@@ -422,9 +427,7 @@ export function LocationsManager() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-semibold" htmlFor="state-name">
-                State / province name
-              </label>
+              <FieldLabel label="State / province name" htmlFor="state-name" required help={commonFieldHelp.name} />
               <input
                 id="state-name"
                 className={inputClass}
@@ -495,9 +498,7 @@ export function LocationsManager() {
             className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:grid-cols-2"
           >
             <div>
-              <label className="text-sm font-semibold" htmlFor="city-country">
-                Country
-              </label>
+              <FieldLabel label="Country" htmlFor="city-country" required help={commonFieldHelp.country} />
               <select
                 id="city-country"
                 className={inputClass}
@@ -516,9 +517,7 @@ export function LocationsManager() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-semibold" htmlFor="city-state">
-                State / province (optional)
-              </label>
+              <FieldLabel label="State / province (optional)" htmlFor="city-state" help={commonFieldHelp.state} />
               <select
                 id="city-state"
                 className={inputClass}
@@ -535,9 +534,7 @@ export function LocationsManager() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-semibold" htmlFor="city-name">
-                City name
-              </label>
+              <FieldLabel label="City name" htmlFor="city-name" required help={commonFieldHelp.name} />
               <input
                 id="city-name"
                 className={inputClass}
@@ -547,9 +544,7 @@ export function LocationsManager() {
               />
             </div>
             <div>
-              <label className="text-sm font-semibold" htmlFor="city-description">
-                Short description (optional)
-              </label>
+              <FieldLabel label="Short description (optional)" htmlFor="city-description" help={commonFieldHelp.shortDescription} />
               <input
                 id="city-description"
                 className={inputClass}

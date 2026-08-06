@@ -68,7 +68,7 @@ async function openCreate(page: Page, resource: string) {
   await create.click();
   const form = page.getByRole('form', { name: `Create ${resource}` });
   await expect(form).toBeVisible();
-  await expect(form.getByLabel('Advanced JSON draft')).toHaveCount(0);
+  await expect(form.getByLabel('Advanced JSON draft', { exact: true })).toHaveCount(0);
   return form;
 }
 
@@ -138,24 +138,24 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel('Name', { exact: true }).fill(universityName);
     await form.getByLabel('Slug', { exact: true }).fill(universitySlug);
     await chooseFirst(form, 'Country');
-    await form.getByLabel('Institution type').fill('Fictional demo institution');
-    await form.getByLabel('Short summary').fill('Fictional local university for Admin acceptance.');
+    await form.getByLabel('Institution type', { exact: true }).fill('Fictional demo institution');
+    await form.getByLabel('Short summary', { exact: true }).fill('Fictional local university for Admin acceptance.');
     await form.getByLabel('Description', { exact: true }).fill('Acceptance Demo University is fictional local test content.');
-    await form.getByLabel('SEO title').fill(`${universityName} SEO`);
-    await form.getByLabel('Meta description').fill('Fictional local University SEO description.');
+    await form.getByLabel('SEO title', { exact: true }).fill(`${universityName} SEO`);
+    await form.getByLabel('Meta description', { exact: true }).fill('Fictional local University SEO description.');
     const campuses = form.getByRole('group', { name: 'Campuses' });
     await campuses.getByRole('button', { name: 'Add Campuse' }).click();
-    await campuses.getByLabel('name').fill(`${prefix} Campus`);
-    await campuses.getByLabel('city').fill('Local City');
+    await campuses.getByLabel('name', { exact: true }).fill(`${prefix} Campus`);
+    await campuses.getByLabel('city', { exact: true }).fill('Local City');
     const accreditations = form.getByRole('group', { name: 'Accreditations' });
     await accreditations.getByRole('button', { name: 'Add Accreditation' }).click();
-    await accreditations.getByLabel('name').fill('Fictional accreditation');
+    await accreditations.getByLabel('name', { exact: true }).fill('Fictional accreditation');
     const edit = await saveAndOpenEdit(page, 'universities', universityName);
-    await expect(edit.getByLabel('Country')).not.toHaveValue('');
-    await expect(edit.getByRole('group', { name: 'Campuses' }).getByLabel('city')).toHaveValue('Local City');
-    await edit.getByLabel('Short summary').fill('Updated fictional local university summary.');
+    await expect(edit.getByLabel('Country', { exact: true })).not.toHaveValue('');
+    await expect(edit.getByRole('group', { name: 'Campuses' }).getByLabel('city', { exact: true })).toHaveValue('Local City');
+    await edit.getByLabel('Short summary', { exact: true }).fill('Updated fictional local university summary.');
     const reloaded = await saveEdit(page, 'universities', universityName);
-    await expect(reloaded.getByLabel('Short summary')).toHaveValue('Updated fictional local university summary.');
+    await expect(reloaded.getByLabel('Short summary', { exact: true })).toHaveValue('Updated fictional local university summary.');
     await publishAndVerify(page, 'universities', universityName, '/universities');
   });
 
@@ -167,29 +167,29 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await chooseFirst(form, 'Generic course');
     await chooseFirst(form, 'Course level');
     await chooseFirst(form, 'Campus (optional)');
-    await form.getByLabel('Study mode').selectOption({ index: 1 });
-    await form.getByLabel('Duration minimum').fill('1');
-    await form.getByLabel('Tuition minimum').fill('15000');
-    await form.getByLabel('Currency').fill('CAD');
-    await form.getByLabel('Short summary').fill('Fictional offering for acceptance.');
+    await form.getByLabel('Study mode', { exact: true }).selectOption({ index: 1 });
+    await form.getByLabel('Duration minimum', { exact: true }).fill('1');
+    await form.getByLabel('Tuition minimum', { exact: true }).fill('15000');
+    await form.getByLabel('Currency', { exact: true }).fill('CAD');
+    await form.getByLabel('Short summary', { exact: true }).fill('Fictional offering for acceptance.');
     await form.getByLabel('Description', { exact: true }).fill('Fictional offering description.');
     await chooseOne(form, 'Intakes');
     await form.getByLabel(/Deadline for/).fill('2030-09-01');
     const requirements = form.getByRole('group', { name: 'Academic and English-test requirements' });
     await requirements.getByRole('button', { name: 'Add Academic and English-test requirement' }).click();
-    await requirements.getByLabel('title').fill('Academic requirement');
-    await requirements.getByLabel('description').fill('Fictional academic requirement.');
-    await requirements.getByLabel('minimum Score').fill('70');
+    await requirements.getByLabel('title', { exact: true }).fill('Academic requirement');
+    await requirements.getByLabel('description', { exact: true }).fill('Fictional academic requirement.');
+    await requirements.getByLabel('minimum Score', { exact: true }).fill('70');
     const edit = await saveAndOpenEdit(page, 'offerings', offeringName);
-    await expect(edit.getByLabel('Tuition minimum')).toHaveValue('15000');
+    await expect(edit.getByLabel('Tuition minimum', { exact: true })).toHaveValue('15000');
     await expect(
       edit
         .getByRole('group', { name: 'Intakes' })
         .locator('input[type="checkbox"]:checked'),
     ).toHaveCount(1);
-    await edit.getByLabel('Tuition minimum').fill('16000');
+    await edit.getByLabel('Tuition minimum', { exact: true }).fill('16000');
     const reloaded = await saveEdit(page, 'offerings', offeringName);
-    await expect(reloaded.getByLabel('Tuition minimum')).toHaveValue('16000');
+    await expect(reloaded.getByLabel('Tuition minimum', { exact: true })).toHaveValue('16000');
     await publishAndVerify(page, 'offerings', offeringName, `/universities/${universitySlug}/courses`);
   });
 
@@ -198,12 +198,12 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel('Title', { exact: true }).fill(scholarshipTitle);
     await form.getByLabel('Slug', { exact: true }).fill(scholarshipSlug);
     await chooseFirst(form, 'Provider');
-    await form.getByLabel('Benefit type').fill('Tuition support');
-    await form.getByLabel('Amount').fill('2500');
-    await form.getByLabel('Currency').fill('CAD');
-    await form.getByLabel('Deadline').fill('2030-10-01');
+    await form.getByLabel('Benefit type', { exact: true }).fill('Tuition support');
+    await form.getByLabel('Amount', { exact: true }).fill('2500');
+    await form.getByLabel('Currency', { exact: true }).fill('CAD');
+    await form.getByLabel('Deadline', { exact: true }).fill('2030-10-01');
     await form.getByLabel('Description', { exact: true }).fill('Fictional local scholarship.');
-    await form.getByLabel('Eligibility').fill('Fictional acceptance eligibility.');
+    await form.getByLabel('Eligibility', { exact: true }).fill('Fictional acceptance eligibility.');
     await chooseOne(form, 'Eligible countries');
     await chooseOne(form, 'Eligible universities');
     await chooseOne(form, 'Eligible university course offerings');
@@ -218,9 +218,9 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await expect(
       edit.getByRole('group', { name: 'Eligible countries' }).getByRole('checkbox', { checked: true }),
     ).not.toHaveCount(0);
-    await edit.getByLabel('Amount').fill('3000');
+    await edit.getByLabel('Amount', { exact: true }).fill('3000');
     const reloaded = await saveEdit(page, 'scholarships', scholarshipTitle);
-    await expect(reloaded.getByLabel('Amount')).toHaveValue('3000');
+    await expect(reloaded.getByLabel('Amount', { exact: true })).toHaveValue('3000');
     await publishAndVerify(page, 'scholarships', scholarshipTitle, '/scholarships');
   });
 
@@ -228,16 +228,16 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const form = await openCreate(page, 'consultants');
     await form.getByLabel('Name', { exact: true }).fill(consultantName);
     await form.getByLabel('Slug', { exact: true }).fill(consultantSlug);
-    await form.getByLabel('Email').fill(acceptanceEmail('acceptance-demo'));
-    await form.getByLabel('Verification state').selectOption('VERIFIED');
+    await form.getByLabel('Email', { exact: true }).fill(acceptanceEmail('acceptance-demo'));
+    await form.getByLabel('Verification state', { exact: true }).selectOption('VERIFIED');
     await form.getByLabel('Description', { exact: true }).fill('Fictional local consultant.');
     await chooseOne(form, 'Locations');
     await chooseOne(form, 'Destination countries');
     const services = form.getByRole('group', { name: 'Services' });
-    await services.getByLabel('Add Services').fill('Fictional counselling');
+    await services.getByLabel('Add Services', { exact: true }).fill('Fictional counselling');
     await services.getByRole('button', { name: 'Add' }).click();
     const languages = form.getByRole('group', { name: 'Languages' });
-    await languages.getByLabel('Add Languages').fill('English');
+    await languages.getByLabel('Add Languages', { exact: true }).fill('English');
     await languages.getByRole('button', { name: 'Add' }).click();
     const edit = await saveAndOpenEdit(page, 'consultants', consultantName);
     await expect(
@@ -253,16 +253,16 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const form = await openCreate(page, 'jobs');
     await form.getByLabel('Title', { exact: true }).fill(jobTitle);
     await form.getByLabel('Slug', { exact: true }).fill(jobSlug);
-    await form.getByLabel('Department').fill('Fictional Careers');
-    await form.getByLabel('Employment type').fill('FULL_TIME');
-    await form.getByLabel('Location').fill('Local');
-    await form.getByLabel('Remote state').fill('HYBRID');
-    await form.getByLabel('Expiry').fill('2030-12-31');
+    await form.getByLabel('Department', { exact: true }).fill('Fictional Careers');
+    await form.getByLabel('Employment type', { exact: true }).fill('FULL_TIME');
+    await form.getByLabel('Location (free text)', { exact: true }).fill('Local');
+    await form.getByLabel('Remote state', { exact: true }).fill('HYBRID');
+    await form.getByLabel('Expiry', { exact: true }).fill('2030-12-31');
     await form.getByLabel('Description', { exact: true }).fill('Fictional job description.');
     const edit = await saveAndOpenEdit(page, 'jobs', jobTitle);
-    await edit.getByLabel('Department').fill('Updated Fictional Careers');
+    await edit.getByLabel('Department', { exact: true }).fill('Updated Fictional Careers');
     const reloaded = await saveEdit(page, 'jobs', jobTitle);
-    await expect(reloaded.getByLabel('Department')).toHaveValue('Updated Fictional Careers');
+    await expect(reloaded.getByLabel('Department', { exact: true })).toHaveValue('Updated Fictional Careers');
     await publishAndVerify(page, 'jobs', jobTitle, '/careers');
   });
 
@@ -270,23 +270,23 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const form = await openCreate(page, 'events');
     await form.getByLabel('Title', { exact: true }).fill(eventTitle);
     await form.getByLabel('Slug', { exact: true }).fill(eventSlug);
-    await form.getByLabel('Start date and time').fill('2030-09-02T12:00');
-    await form.getByLabel('End date and time').fill('2030-09-01T12:00');
+    await form.getByLabel('Start date and time', { exact: true }).fill('2030-09-02T12:00');
+    await form.getByLabel('End date and time', { exact: true }).fill('2030-09-01T12:00');
     await form.getByRole('button', { name: 'Create draft' }).click();
     await expect(form.getByText('End date and time must be after the start.')).toBeVisible();
-    await form.getByLabel('End date and time').fill('2030-09-02T15:00');
-    await form.getByLabel('Event type').selectOption('HYBRID');
-    await form.getByLabel('Venue').fill('Fictional local venue');
-    await form.getByLabel('Online URL').fill('https://example.invalid/event');
+    await form.getByLabel('End date and time', { exact: true }).fill('2030-09-02T15:00');
+    await form.getByLabel('Event type', { exact: true }).selectOption('HYBRID');
+    await form.getByLabel('Venue (free text)', { exact: true }).fill('Fictional local venue');
+    await form.getByLabel('Online URL', { exact: true }).fill('https://example.invalid/event');
     await form.getByLabel('Description', { exact: true }).fill('Fictional local event.');
     const speakers = form.getByRole('group', { name: 'Speakers' });
-    await speakers.getByLabel('Add Speakers').fill('Fictional speaker');
+    await speakers.getByLabel('Add Speakers', { exact: true }).fill('Fictional speaker');
     await speakers.getByRole('button', { name: 'Add' }).click();
     const edit = await saveAndOpenEdit(page, 'events', eventTitle);
-    await expect(edit.getByLabel('Event type')).toHaveValue('HYBRID');
-    await edit.getByLabel('Venue').fill('Updated fictional venue');
+    await expect(edit.getByLabel('Event type', { exact: true })).toHaveValue('HYBRID');
+    await edit.getByLabel('Venue (free text)', { exact: true }).fill('Updated fictional venue');
     const reloaded = await saveEdit(page, 'events', eventTitle);
-    await expect(reloaded.getByLabel('Venue')).toHaveValue('Updated fictional venue');
+    await expect(reloaded.getByLabel('Venue (free text)', { exact: true })).toHaveValue('Updated fictional venue');
     await publishAndVerify(page, 'events', eventTitle, '/events');
   });
 
@@ -294,26 +294,26 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const story = await openCreate(page, 'success-stories');
     await story.getByLabel('Title', { exact: true }).fill(storyTitle);
     await story.getByLabel('Slug', { exact: true }).fill(storySlug);
-    await story.getByLabel('Display attribution').fill('Fictional demo student');
-    await story.getByLabel('Journey content').fill('Fictional local journey content.');
+    await story.getByLabel('Display attribution', { exact: true }).fill('Fictional demo student');
+    await story.getByLabel('Journey content', { exact: true }).fill('Fictional local journey content.');
     await chooseFirst(story, 'Country (optional)');
     await chooseFirst(story, 'University (optional)');
     const storyEdit = await saveAndOpenEdit(page, 'success-stories', storyTitle);
-    await storyEdit.getByLabel('Journey content').fill('Updated fictional local journey content.');
+    await storyEdit.getByLabel('Journey content', { exact: true }).fill('Updated fictional local journey content.');
     const storyReloaded = await saveEdit(page, 'success-stories', storyTitle);
-    await expect(storyReloaded.getByLabel('Journey content')).toHaveValue('Updated fictional local journey content.');
+    await expect(storyReloaded.getByLabel('Journey content', { exact: true })).toHaveValue('Updated fictional local journey content.');
     await publishAndVerify(page, 'success-stories', storyTitle, '/success-stories');
 
     const testimonial = await openCreate(page, 'testimonials');
     await testimonial.getByRole('button', { name: 'Create draft' }).click();
-    await expect(testimonial.getByLabel('Quote')).toHaveAttribute('aria-invalid', 'true');
-    await testimonial.getByLabel('Quote').fill(testimonialQuote);
-    await testimonial.getByLabel('Display attribution').fill('Fictional demo attribution');
+    await expect(testimonial.getByLabel('Quote', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+    await testimonial.getByLabel('Quote', { exact: true }).fill(testimonialQuote);
+    await testimonial.getByLabel('Display attribution', { exact: true }).fill('Fictional demo attribution');
     await chooseFirst(testimonial, 'University (optional)');
     const testimonialEdit = await saveAndOpenEdit(page, 'testimonials', testimonialQuote.slice(0, 48));
-    await testimonialEdit.getByLabel('Quote').fill(`${testimonialQuote} Updated.`);
+    await testimonialEdit.getByLabel('Quote', { exact: true }).fill(`${testimonialQuote} Updated.`);
     const testimonialReloaded = await saveEdit(page, 'testimonials', `${testimonialQuote} Updated.`.slice(0, 48));
-    await expect(testimonialReloaded.getByLabel('Quote')).toHaveValue(`${testimonialQuote} Updated.`);
+    await expect(testimonialReloaded.getByLabel('Quote', { exact: true })).toHaveValue(`${testimonialQuote} Updated.`);
     await publishAndVerify(
       page,
       'testimonials',
