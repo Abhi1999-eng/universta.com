@@ -10,11 +10,23 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
   page,
   request,
 }) => {
+  // This lifecycle runs four full save+publish round trips plus a preview
+  // dialog/iframe check — comfortably inside the default 30s budget on its
+  // own, but not when it lands late in a long, single-worker batch (the
+  // Next.js dev server and CI runner both slow down over a long run).
+  test.setTimeout(60_000);
   await loginAsAdmin(page);
   await page.goto(`${adminBaseUrl}/website`);
   const home = page.getByRole("row").filter({ hasText: /^Home/ }).first();
   await home.getByRole("link", { name: "Open in Builder" }).click();
   const editor = page.getByTestId("stats-pill-editor");
+  await expect(editor).toBeVisible();
+  // This dynamic builder route may be the first visit of the whole suite
+  // run, so Next.js dev mode is still compiling it on demand behind the
+  // scenes even after the first paint — reloading once forces a second,
+  // now-server-cached request before any timed interaction starts, instead
+  // of racing that compile mid-action.
+  await page.reload();
   await expect(editor).toBeVisible();
 
   const publicPill = async (): Promise<ResolvedPill> => {

@@ -801,20 +801,18 @@ function Multi({
   helpKey?: string;
 }) {
   // The fieldset's own accessible name (what `getByRole('group', { name })`
-  // matches) comes from its <legend> child's text content alone — a help
-  // icon <button> placed inside <legend> gets folded into that computed
-  // name too (e.g. "Locations Information about Locations"), the same class
-  // of bug FieldLabel's own doc comment describes for <label>. The icon is
-  // rendered as a sibling right after </legend> instead, still inside the
-  // <fieldset> and still visually beside the legend text, but outside what
-  // contributes to the group's name.
+  // matches) comes from its <legend> child's text content — but only when
+  // that <legend> is a *direct* child of the <fieldset>. Both wrapping the
+  // icon inside <legend> AND wrapping <legend> itself inside another
+  // element (e.g. a flex row div) break that: the fieldset stops being
+  // recognised as having a legend at all, and its computed group name goes
+  // empty for every Multi/Tags instance, not just ones with an icon. The
+  // icon must be a plain sibling of <legend>, both direct fieldset children.
   const resolved = help ?? (helpKey ? getFieldHelp(helpKey) : undefined);
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-      <div className="flex items-center">
-        <legend className="px-1 text-sm font-semibold">{legend}</legend>
-        {resolved ? <FieldHelpIcon fieldLabel={legend} help={resolved} /> : null}
-      </div>
+      <legend className="flex items-center px-1 text-sm font-semibold">{legend}</legend>
+      {resolved ? <FieldHelpIcon fieldLabel={legend} help={resolved} /> : null}
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
@@ -850,16 +848,15 @@ function Tags({
   remove: (value: string) => void;
   help?: FieldHelpContent;
 }) {
-  // Same group-name-pollution concern as Multi above: the icon lives beside
-  // <legend>, not inside it, so the fieldset's own accessible name stays
-  // exactly `label`.
+  // Same group-name-pollution concern as Multi above: <legend> must stay a
+  // *direct* fieldset child with the icon as its sibling (not wrapped
+  // together in another element), or the fieldset's own accessible name
+  // goes empty for every Tags instance, not just ones with an icon.
   const resolved = help ?? undefined;
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-      <div className="flex items-center">
-        <legend className="px-1 text-sm font-semibold">{label}</legend>
-        {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}
-      </div>
+      <legend className="flex items-center px-1 text-sm font-semibold">{label}</legend>
+      {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}
       <div className="flex gap-2">
         <input
           aria-label={`Add ${label}`}

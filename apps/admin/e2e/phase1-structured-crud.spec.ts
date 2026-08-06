@@ -255,7 +255,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel('Slug', { exact: true }).fill(jobSlug);
     await form.getByLabel('Department', { exact: true }).fill('Fictional Careers');
     await form.getByLabel('Employment type', { exact: true }).fill('FULL_TIME');
-    await form.getByLabel('Location', { exact: true }).fill('Local');
+    await form.getByLabel('Location (free text)', { exact: true }).fill('Local');
     await form.getByLabel('Remote state', { exact: true }).fill('HYBRID');
     await form.getByLabel('Expiry', { exact: true }).fill('2030-12-31');
     await form.getByLabel('Description', { exact: true }).fill('Fictional job description.');
@@ -276,7 +276,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await expect(form.getByText('End date and time must be after the start.')).toBeVisible();
     await form.getByLabel('End date and time', { exact: true }).fill('2030-09-02T15:00');
     await form.getByLabel('Event type', { exact: true }).selectOption('HYBRID');
-    await form.getByLabel('Venue', { exact: true }).fill('Fictional local venue');
+    await form.getByLabel('Venue (free text)', { exact: true }).fill('Fictional local venue');
     await form.getByLabel('Online URL', { exact: true }).fill('https://example.invalid/event');
     await form.getByLabel('Description', { exact: true }).fill('Fictional local event.');
     const speakers = form.getByRole('group', { name: 'Speakers' });
@@ -284,9 +284,9 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await speakers.getByRole('button', { name: 'Add' }).click();
     const edit = await saveAndOpenEdit(page, 'events', eventTitle);
     await expect(edit.getByLabel('Event type', { exact: true })).toHaveValue('HYBRID');
-    await edit.getByLabel('Venue', { exact: true }).fill('Updated fictional venue');
+    await edit.getByLabel('Venue (free text)', { exact: true }).fill('Updated fictional venue');
     const reloaded = await saveEdit(page, 'events', eventTitle);
-    await expect(reloaded.getByLabel('Venue', { exact: true })).toHaveValue('Updated fictional venue');
+    await expect(reloaded.getByLabel('Venue (free text)', { exact: true })).toHaveValue('Updated fictional venue');
     await publishAndVerify(page, 'events', eventTitle, '/events');
   });
 
