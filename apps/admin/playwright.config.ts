@@ -59,20 +59,25 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: `npm run dev -- --port ${adminPort}`,
+      // Production build + start rather than `next dev`: dev mode compiles
+      // routes on demand (plus Fast Refresh), and a route hit for the first
+      // time late in a long single-worker batch can race that on-demand
+      // compile — see the quarantine note on stats-pill.spec.ts. Building
+      // once up front removes that variable entirely.
+      command: `npm run build && npm run start -- --port ${adminPort}`,
       url: `${adminBaseUrl}/login`,
       reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      timeout: 180_000,
       env: {
         API_BASE_URL: apiBaseUrl,
         ADMIN_APP_ORIGIN: adminBaseUrl,
       },
     },
     {
-      command: `cd ../web && npm run dev -- --port ${webPort}`,
+      command: `cd ../web && npm run build && npm run start -- --port ${webPort}`,
       url: `${webBaseUrl}/countries`,
       reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      timeout: 180_000,
       env: {
         API_BASE_URL: apiBaseUrl,
         NEXT_PUBLIC_WEB_ORIGIN: webBaseUrl,
