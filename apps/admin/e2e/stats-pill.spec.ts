@@ -6,18 +6,37 @@ type ResolvedPill = {
   items: Array<{ label: string; value: number }>;
 } | null;
 
-// Quarantined: this test hangs (~60s, zero console/network/paint activity)
-// on its first interaction with the builder page when it lands late in the
-// single-worker CI batch (position ~82/95) — reproduced identically on 3
-// separate CI runs (100% failure rate in that position), never in
-// isolation. Consistent with e2e running the admin/web apps via `next dev`
-// rather than a production build (see apps/admin/playwright.config.ts's
-// webServer config): on-demand route compilation / Fast Refresh can race
-// an in-flight action late in a long run. Neither a raised per-test
-// timeout nor a forced reload before the first interaction (both still
-// present below) resolved it. Tracked for a real fix (most likely
-// switching e2e to production builds) rather than blocking every deploy
-// on a pre-existing, unrelated flake. Un-skip once that fix lands.
+// Quarantined: this test hangs (~60-90s, zero further trace activity) on
+// its first interaction with the builder page when it lands late in the
+// single-worker batch (position ~82/95) — reproduced identically on 3
+// separate CI runs and 4 separate local runs (100% failure rate in that
+// position, never in isolation).
+//
+// The console reporter's failure points at the `finally` block's cleanup
+// action, which reads like the test got all the way to the end — it does
+// not. That action only runs, and only fails, because the *original*
+// hang (the very first `selectOption` right after the editor becomes
+// visible) never returns, so the outer test timeout force-closes the
+// browser and the try block rejects into `finally`, whose own action then
+// fails fast with "Target page, context or browser has been closed". A
+// direct read of the saved trace confirms this: the browser-context trace
+// has a dangling `before selectOption` with no matching `after`, and
+// nothing logged afterwards for the rest of the 90s budget.
+//
+// Switching apps/admin/playwright.config.ts's webServer to build+start in
+// production mode (rather than `next dev`) was tried as the first
+// candidate fix, on the theory that on-demand route compilation was
+// racing this route's first hit late in a long run. It did not change
+// this failure's signature or position at all, so that is very unlikely
+// to be the actual cause; the production-build switch is kept anyway
+// since it's a reasonable improvement in its own right (closer to real
+// deploy fidelity, and it fixed one *other* pre-existing failure class
+// once combined with a clean local DB), but it is not a fix for this
+// test. The remaining, untested hypothesis is resource accumulation in
+// the single long-lived browser process shared across the whole
+// single-worker batch (leaked contexts/listeners/timers from ~80 prior
+// tests) rather than anything about this route or this test's own code.
+// Tracked for further investigation. Un-skip once a real fix lands.
 test.skip("statistics pill draft, preview, publish, hide and restore lifecycle", async ({
   page,
   request,
@@ -25,20 +44,13 @@ test.skip("statistics pill draft, preview, publish, hide and restore lifecycle",
   // This lifecycle runs four full save+publish round trips plus a preview
   // dialog/iframe check — comfortably inside the default 30s budget on its
   // own, but not when it lands late in a long, single-worker batch (the
-  // Next.js dev server and CI runner both slow down over a long run).
-  test.setTimeout(60_000);
+  // admin/web servers and CI runner both slow down over a long run).
+  test.setTimeout(90_000);
   await loginAsAdmin(page);
   await page.goto(`${adminBaseUrl}/website`);
   const home = page.getByRole("row").filter({ hasText: /^Home/ }).first();
   await home.getByRole("link", { name: "Open in Builder" }).click();
   const editor = page.getByTestId("stats-pill-editor");
-  await expect(editor).toBeVisible();
-  // This dynamic builder route may be the first visit of the whole suite
-  // run, so Next.js dev mode is still compiling it on demand behind the
-  // scenes even after the first paint — reloading once forces a second,
-  // now-server-cached request before any timed interaction starts, instead
-  // of racing that compile mid-action.
-  await page.reload();
   await expect(editor).toBeVisible();
 
   const publicPill = async (): Promise<ResolvedPill> => {
