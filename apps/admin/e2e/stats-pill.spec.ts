@@ -27,7 +27,7 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
 
   const baseline = await publicPill();
   expect(baseline?.items).toHaveLength(2);
-  const originalLabel = await editor.getByLabel("Label").first().inputValue();
+  const originalLabel = await editor.getByLabel("Label", { exact: true }).first().inputValue();
   const testLabel = `preview destinations ${Date.now()}`;
 
   const saveAndPublish = async () => {
@@ -38,9 +38,9 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
   };
 
   try {
-    await editor.getByLabel("Source mode").first().selectOption("MANUAL");
-    await editor.getByLabel("Manual value").first().fill("37");
-    await editor.getByLabel("Label").first().fill(testLabel);
+    await editor.getByLabel("Source mode", { exact: true }).first().selectOption("MANUAL");
+    await editor.getByLabel("Manual value", { exact: true }).first().fill("37");
+    await editor.getByLabel("Label", { exact: true }).first().fill(testLabel);
     await editor.getByRole("button", { name: "Save Draft" }).click();
     await expect(editor).toContainText("Public pages are unchanged");
     expect(await publicPill()).toEqual(baseline);
@@ -60,18 +60,18 @@ test("statistics pill draft, preview, publish, hide and restore lifecycle", asyn
       value: 37,
     });
 
-    await editor.getByLabel("Show statistic").nth(1).uncheck();
+    await editor.getByLabel("Show statistic", { exact: true }).nth(1).uncheck();
     await saveAndPublish();
     expect((await publicPill())?.items).toHaveLength(1);
 
-    await editor.getByLabel("Show complete pill").uncheck();
+    await editor.getByLabel("Show complete pill", { exact: true }).uncheck();
     await saveAndPublish();
     expect(await publicPill()).toBeNull();
   } finally {
-    await editor.getByLabel("Show complete pill").check();
-    await editor.getByLabel("Show statistic").nth(1).check();
-    await editor.getByLabel("Label").first().fill(originalLabel);
-    await editor.getByLabel("Source mode").first().selectOption("AUTOMATIC");
+    await editor.getByLabel("Show complete pill", { exact: true }).check();
+    await editor.getByLabel("Show statistic", { exact: true }).nth(1).check();
+    await editor.getByLabel("Label", { exact: true }).first().fill(originalLabel);
+    await editor.getByLabel("Source mode", { exact: true }).first().selectOption("AUTOMATIC");
     await saveAndPublish();
     expect(await publicPill()).toEqual(baseline);
   }

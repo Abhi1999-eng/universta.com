@@ -6,7 +6,9 @@
 import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { FieldLabel } from "@/features/shared/FieldLabel";
+import { FieldHelpIcon } from "@/features/shared/FieldHelpIcon";
 import { commonFieldHelp } from "@/lib/field-help/common";
+import { getFieldHelp } from "@/lib/field-help/registry";
 import type { FieldHelpContent } from "@/lib/field-help/types";
 
 type Option = {
@@ -798,11 +800,21 @@ function Multi({
   help?: FieldHelpContent;
   helpKey?: string;
 }) {
+  // The fieldset's own accessible name (what `getByRole('group', { name })`
+  // matches) comes from its <legend> child's text content alone — a help
+  // icon <button> placed inside <legend> gets folded into that computed
+  // name too (e.g. "Locations Information about Locations"), the same class
+  // of bug FieldLabel's own doc comment describes for <label>. The icon is
+  // rendered as a sibling right after </legend> instead, still inside the
+  // <fieldset> and still visually beside the legend text, but outside what
+  // contributes to the group's name.
+  const resolved = help ?? (helpKey ? getFieldHelp(helpKey) : undefined);
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-      <legend className="px-1 text-sm font-semibold">
-        <FieldLabel label={legend} help={help} helpKey={helpKey} />
-      </legend>
+      <div className="flex items-center">
+        <legend className="px-1 text-sm font-semibold">{legend}</legend>
+        {resolved ? <FieldHelpIcon fieldLabel={legend} help={resolved} /> : null}
+      </div>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
@@ -838,11 +850,16 @@ function Tags({
   remove: (value: string) => void;
   help?: FieldHelpContent;
 }) {
+  // Same group-name-pollution concern as Multi above: the icon lives beside
+  // <legend>, not inside it, so the fieldset's own accessible name stays
+  // exactly `label`.
+  const resolved = help ?? undefined;
   return (
     <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-      <legend className="px-1 text-sm font-semibold">
-        <FieldLabel label={label} help={help} />
-      </legend>
+      <div className="flex items-center">
+        <legend className="px-1 text-sm font-semibold">{label}</legend>
+        {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}
+      </div>
       <div className="flex gap-2">
         <input
           aria-label={`Add ${label}`}
@@ -903,7 +920,6 @@ function Core({
         onChange={(value) => set(entity, value)}
         error={errors[entity]}
         helpKey={helpKey(entity)}
-        required
       />
       <Field
         label="Slug"
@@ -1022,7 +1038,6 @@ function UniversityFields(p: any) {
         options={p.countries}
         error={p.errors.countryId}
         helpKey="universities.countryId"
-        required
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
@@ -1097,7 +1112,6 @@ function OfferingFields(p: any) {
           options={p.universities}
           error={p.errors.universityId}
           helpKey="offerings.universityId"
-          required
         />
         <Select
           label="Generic course"
@@ -1106,7 +1120,6 @@ function OfferingFields(p: any) {
           options={p.courses}
           error={p.errors.genericCourseId}
           helpKey="offerings.genericCourseId"
-          required
         />
         <Select
           label="Campus (optional)"
@@ -1122,7 +1135,6 @@ function OfferingFields(p: any) {
           options={p.levels}
           error={p.errors.courseLevelId}
           helpKey="offerings.courseLevelId"
-          required
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -1591,7 +1603,6 @@ function EventFields(p: any) {
           onChange={(value) => p.set("startsAt", value)}
           error={p.errors.startsAt}
           helpKey="events.startsAt"
-          required
         />
         <Field
           label="End date and time"
@@ -1762,7 +1773,6 @@ function TestimonialFields(p: any) {
         onChange={(value) => p.set("quote", value)}
         error={p.errors.quote}
         helpKey="testimonials.quote"
-        required
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field

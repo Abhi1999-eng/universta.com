@@ -82,6 +82,7 @@ test.describe('Field help icons', () => {
 
   test('Scholarship form (Phase1StructuredEditor): shared Field/Select/media-picker icons render and never submit the form', async ({ page }) => {
     await page.goto('/phase1/scholarships');
+    const url = page.url();
     await page.getByRole('button', { name: 'Create record' }).click();
 
     const titleIcon = page.getByRole('button', { name: 'Information about Title' });
@@ -96,11 +97,11 @@ test.describe('Field help icons', () => {
     await expect(page.getByRole('button', { name: 'Information about Provider' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Information about Media (optional)' })).toBeVisible();
 
-    // Clicking the icon must never submit the form: this is an inline
-    // editor (no navigation either way), so submission would show up as the
-    // listing's record count changing or the editor closing — neither
-    // happens.
-    await expect(page.getByText('0 records')).toBeVisible();
+    // Clicking the icon must never submit the form: no navigation occurred
+    // and the create editor is still open. (The listing's own record-count
+    // text is not a reliable signal here — it isn't guaranteed to stay
+    // rendered once the create editor opens.)
+    await expect(page).toHaveURL(url);
     await expect(page.getByRole('heading', { name: 'Create scholarships' })).toBeVisible();
   });
 

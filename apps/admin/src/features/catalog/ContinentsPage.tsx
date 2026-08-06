@@ -81,10 +81,13 @@ export function ContinentsPage() {
 function Field({ label, value, onChange, help, helpKey, required, type = 'text', textarea = false }: { label: string; value: string; onChange: (value: string) => void; help?: string; helpKey?: string; required?: boolean; type?: string; textarea?: boolean }) {
   // Explicit id/htmlFor, not a wrapping <label> — FieldLabel's help-icon
   // <button> breaks an implicitly-wrapping label's accessible-name link.
+  // This form's required marker was already a real, non-hidden " *" before
+  // this component existed — keep it visible (requiredMarkerVisible) rather
+  // than switching to the decorative default.
   const fieldId = useId();
   return (
     <div className="block text-sm font-semibold">
-      <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} required={required} />
+      <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} required={required} requiredMarkerVisible />
       {textarea ? <textarea id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]" /> : <input id={fieldId} required={required} type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]" />}
       {help ? <span className="mt-1 block text-xs font-normal text-[#828B9B]">{help}</span> : null}
     </div>

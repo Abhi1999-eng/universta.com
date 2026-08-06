@@ -9,7 +9,9 @@ import { CourseEditorialWorkspace } from './CourseEditorialWorkspace';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import type { CatalogMutationError, CourseRecord, EditorialMedia, MasterRecord, SubjectRecord } from './catalog.types';
 import { FieldLabel } from '@/features/shared/FieldLabel';
+import { FieldHelpIcon } from '@/features/shared/FieldHelpIcon';
 import { commonFieldHelp } from '@/lib/field-help/common';
+import { getFieldHelp } from '@/lib/field-help/registry';
 
 type FormState = { subjectId: string; subSubjectId: string; courseLevelId: string; name: string; shortName: string; qualificationName: string; slug: string; courseCode: string; shortDescription: string; overview: string; durationMin: string; durationMax: string; durationUnit: string; credits: string; careerSummary: string; popularityScore: string; isFeatured: boolean; displayOrder: string; featuredMediaId: string };
 const empty: FormState = { subjectId: '', subSubjectId: '', courseLevelId: '', name: '', shortName: '', qualificationName: '', slug: '', courseCode: '', shortDescription: '', overview: '', durationMin: '', durationMax: '', durationUnit: 'YEARS', credits: '', careerSummary: '', popularityScore: '', isFeatured: false, displayOrder: '0', featuredMediaId: '' };
@@ -28,6 +30,7 @@ export function CourseForm({ id }: { id?: string }) {
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const studyModesHelp = getFieldHelp('courses.studyModes');
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +83,10 @@ export function CourseForm({ id }: { id?: string }) {
         <div className="block text-sm font-semibold"><FieldLabel label="Short description" htmlFor="course-short-description" help={commonFieldHelp.shortDescription} /><textarea id="course-short-description" maxLength={1000} className="mt-2 min-h-24 w-full rounded-xl border border-[#D9E0EA] px-3 py-3 font-normal" value={form.shortDescription} onChange={(event) => set('shortDescription', event.target.value)} /></div>
         <div className="block text-sm font-semibold"><FieldLabel label="Overview" htmlFor="course-overview" help={commonFieldHelp.overview} /><textarea id="course-overview" maxLength={20000} className="mt-2 min-h-36 w-full rounded-xl border border-[#D9E0EA] px-3 py-3 font-normal" value={form.overview} onChange={(event) => set('overview', event.target.value)} /></div>
         <fieldset>
-          <legend className="text-sm font-semibold"><FieldLabel label="Study modes" helpKey="courses.studyModes" /></legend>
+          {/* The icon sits beside <legend>, not inside it, so the fieldset's
+              own accessible name stays exactly "Study modes" — a help icon
+              inside <legend> gets folded into the group's computed name. */}
+          <div className="flex items-center"><legend className="text-sm font-semibold">Study modes</legend>{studyModesHelp ? <FieldHelpIcon fieldLabel="Study modes" help={studyModesHelp} /> : null}</div>
           <div className="mt-3 flex flex-wrap gap-3">{modes.map((mode) => <label key={mode.id} className="flex items-center gap-2 rounded-lg border border-[#E8ECF3] px-3 py-2 text-sm"><input type="checkbox" checked={selectedModes.includes(mode.id)} onChange={() => toggleMode(mode.id)} />{mode.name}</label>)}</div>
         </fieldset>
         <div className="grid gap-5 sm:grid-cols-4">

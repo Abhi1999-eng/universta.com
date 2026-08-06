@@ -29,7 +29,9 @@ test.describe.serial('catalog management', () => {
     await page.getByRole('button', { name: 'Create continent' }).click();
     await page.getByRole('dialog').getByLabel('Name *').fill(continentName);
     await page.getByRole('dialog').getByLabel('Slug *').fill(continentName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-    await page.getByRole('dialog').getByLabel('Code').fill(continentCode);
+    // exact: true — a non-exact match would also resolve the field-help
+    // icon's "Information about Code" button, which contains "Code" too.
+    await page.getByRole('dialog').getByLabel('Code', { exact: true }).fill(continentCode);
     await page.getByRole('dialog').getByRole('button', { name: 'Save continent' }).click();
     await expect(page.getByText('Continent created.', { exact: true })).toBeVisible();
 
