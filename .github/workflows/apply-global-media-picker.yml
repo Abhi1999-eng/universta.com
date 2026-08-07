@@ -65,7 +65,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/admin/src/features/phase1/Phase1StructuredEditor.tsx .github/workflows/apply-global-media-picker.yml
+          git add -A
           git diff --cached --check
           git commit -m "fix(admin): use shared picker across Phase 1 media fields"
           git push origin HEAD:fix/global-media-picker-upload
