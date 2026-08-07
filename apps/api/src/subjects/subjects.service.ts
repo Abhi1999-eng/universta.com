@@ -439,6 +439,7 @@ export class SubjectsService {
     );
     return this.toAdmin(updated);
   }
+
   async unpublish(
     id: string,
     dto: SubjectActionDto,
@@ -470,6 +471,7 @@ export class SubjectsService {
     );
     return this.toAdmin(updated);
   }
+
   async remove(
     id: string,
     dto: SubjectActionDto,
@@ -546,11 +548,13 @@ export class SubjectsService {
       meta: paginationMeta(query.page, query.limit, total),
     };
   }
+
   async getSubSubject(subjectId: string, id: string) {
     await this.ensureSubject(subjectId);
     const row = await this.subSubjectRecord(subjectId, id);
     return this.toSubSubjectAdmin(row);
   }
+
   async createSubSubject(
     subjectId: string,
     dto: CreateSubSubjectDto,
@@ -601,6 +605,7 @@ export class SubjectsService {
       throw error;
     }
   }
+
   async updateSubSubject(
     subjectId: string,
     id: string,
@@ -665,6 +670,7 @@ export class SubjectsService {
       throw error;
     }
   }
+
   async publishSubSubject(
     subjectId: string,
     id: string,
@@ -721,6 +727,7 @@ export class SubjectsService {
     );
     return this.toSubSubjectAdmin(updated);
   }
+
   async unpublishSubSubject(
     subjectId: string,
     id: string,
@@ -753,6 +760,7 @@ export class SubjectsService {
     );
     return this.toSubSubjectAdmin(updated);
   }
+
   async removeSubSubject(
     subjectId: string,
     id: string,
@@ -803,6 +811,7 @@ export class SubjectsService {
     await this.subjectRecord(id);
     return this.getSeoFor('SUBJECT', id);
   }
+
   async putSeo(id: string, dto: SeoMetadataDto, request: AuthenticatedRequest) {
     const userId = actorId(request);
     await this.subjectRecord(id);
@@ -833,6 +842,7 @@ export class SubjectsService {
     );
     return this.toSeo(row);
   }
+
   async deleteSeo(
     id: string,
     dto: SubjectActionDto,
@@ -873,6 +883,7 @@ export class SubjectsService {
     if (!row) throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
     return row;
   }
+
   private async subSubjectRecord(subjectId: string, id: string) {
     const row = await this.prisma.subSubject.findFirst({
       where: { id, subjectId, deletedAt: null },
@@ -882,6 +893,7 @@ export class SubjectsService {
       throw catalogNotFound('SUB_SUBJECT_NOT_FOUND', 'Sub-Subject not found');
     return row;
   }
+
   private async ensureSubject(id: string) {
     const row = await this.prisma.subject.findFirst({
       where: { id, deletedAt: null },
@@ -889,8 +901,11 @@ export class SubjectsService {
     if (!row) throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
     return row;
   }
+
   private async validateMedia(ids: Array<string | undefined>) {
-    const requested = ids.filter((id): id is string => Boolean(id));
+    const requested = [
+      ...new Set(ids.filter((id): id is string => Boolean(id))),
+    ];
     if (!requested.length) return;
     const count = await this.prisma.mediaAsset.count({
       where: {
@@ -906,6 +921,7 @@ export class SubjectsService {
         'Selected media is not an active image',
       );
   }
+
   private orderBy(sort?: string): Array<{
     displayOrder?: 'asc' | 'desc';
     name?: 'asc' | 'desc';
@@ -917,8 +933,6 @@ export class SubjectsService {
     if (sort === 'name') return [{ name: 'asc' }, { id: 'asc' }];
     if (sort === 'createdAt') return [{ createdAt: 'desc' }, { id: 'asc' }];
     if (sort === 'updatedAt') return [{ updatedAt: 'desc' }, { id: 'asc' }];
-    // Featured first, then the normal curated order within each group -- the
-    // same shape Countries already uses, so the two screens sort alike.
     if (sort === 'featured')
       return [
         { isFeatured: 'desc' },
@@ -928,6 +942,7 @@ export class SubjectsService {
       ];
     return [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
   }
+
   private coursePublicInclude() {
     return {
       subject: { select: { id: true, name: true, slug: true } },
@@ -941,6 +956,7 @@ export class SubjectsService {
       },
     } satisfies Prisma.CourseInclude;
   }
+
   private async toPublic(row: SubjectRecord) {
     const [courseCount, subSubjectCount, countries] = await Promise.all([
       this.prisma.course.count({
@@ -978,6 +994,7 @@ export class SubjectsService {
       availableCountryCount: countries.length,
     };
   }
+
   private toAdmin(row: SubjectRecord) {
     return {
       ...this.toAdminBase(row),
@@ -986,6 +1003,7 @@ export class SubjectsService {
       heroMedia: media(row.heroMedia),
     };
   }
+
   private toAdminBase(row: SubjectRecord) {
     return {
       id: row.id,
@@ -1001,6 +1019,7 @@ export class SubjectsService {
       updatedAt: row.updatedAt.toISOString(),
     };
   }
+
   private toSubSubjectPublic(row: SubSubjectRecord) {
     return {
       id: row.id,
@@ -1014,6 +1033,7 @@ export class SubjectsService {
       displayOrder: row.displayOrder,
     };
   }
+
   private toSubSubjectAdmin(row: SubSubjectRecord) {
     return {
       ...this.toSubSubjectPublic(row),
@@ -1028,6 +1048,7 @@ export class SubjectsService {
       updatedAt: row.updatedAt.toISOString(),
     };
   }
+
   private toCourseCard(row: any) {
     return {
       id: row.id,
@@ -1049,6 +1070,7 @@ export class SubjectsService {
       featuredMedia: media(row.featuredMedia),
     };
   }
+
   private toSeo(row: any) {
     return row
       ? {
@@ -1074,6 +1096,7 @@ export class SubjectsService {
         }
       : null;
   }
+
   private async getSeoFor(ownerType: string, ownerId: string) {
     return this.toSeo(
       await this.prisma.seoMetadata.findUnique({
@@ -1085,6 +1108,7 @@ export class SubjectsService {
       }),
     );
   }
+
   private seoData(
     ownerId: string,
     ownerType: string,
