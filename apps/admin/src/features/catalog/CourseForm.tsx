@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CatalogError, CatalogLoading } from './CatalogDialog';
-import { createCourse, getAdminCourse, listCourseLevels, listEditorialMedia, listStudyModes, listSubjects, replaceCourseModes, updateCourse } from './catalog-client';
+import { createCourse, getAdminCourse, listCourseLevels, listEditorialMedia, listStudyModes, listSubjects, publishCourse, replaceCourseModes, updateCourse } from './catalog-client';
 import { CourseEditorialWorkspace } from './CourseEditorialWorkspace';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import type { CatalogMutationError, CourseRecord, EditorialMedia, MasterRecord, SubjectRecord } from './catalog.types';
@@ -29,6 +29,7 @@ export function CourseForm({ id }: { id?: string }) {
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
+  const [savingIntent, setSavingIntent] = useState<'draft' | 'publish' | null>(null);
   const [error, setError] = useState('');
   const studyModesHelp = getFieldHelp('courses.studyModes');
 
@@ -55,7 +56,29 @@ export function CourseForm({ id }: { id?: string }) {
 
   function set(key: keyof FormState, value: string | boolean) { setForm((current) => ({ ...current, [key]: value })); }
   function toggleMode(modeId: string) { setSelectedModes((current) => current.includes(modeId) ? current.filter((idValue) => idValue !== modeId) : [...current, modeId]); }
-  async function submit(event: React.FormEvent) { event.preventDefault(); if (saving) return; setSaving(true); setError(''); try { const result = record ? await updateCourse(record.id, { ...clean(form), expectedUpdatedAt: record.updatedAt }) : await createCourse(clean(form)); await replaceCourseModes(result.data.id, selectedModes, result.data.updatedAt); router.push(`/courses/${result.data.id}`); } catch (cause: unknown) { const typed = cause as Partial<CatalogMutationError>; setError(typed.message ?? 'Unable to save course'); } finally { setSaving(false); } }
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const intent: 'draft' | 'publish' = submitter?.value === 'publish' ? 'publish' : 'draft';
+    setSaving(true);
+    setSavingIntent(intent);
+    setError('');
+    try {
+      const result = record ? await updateCourse(record.id, { ...clean(form), expectedUpdatedAt: record.updatedAt }) : await createCourse(clean(form));
+      const modesResult = await replaceCourseModes(result.data.id, selectedModes, result.data.updatedAt);
+      if (intent === 'publish' && modesResult.data.status !== 'PUBLISHED') {
+        await publishCourse(modesResult.data.id, modesResult.data.updatedAt);
+      }
+      router.push(`/courses/${result.data.id}`);
+    } catch (cause: unknown) {
+      const typed = cause as Partial<CatalogMutationError>;
+      setError(typed.message ?? (intent === 'publish' ? 'Unable to publish course' : 'Unable to save course'));
+    } finally {
+      setSaving(false);
+      setSavingIntent(null);
+    }
+  }
 
   if (loading) return <CatalogLoading label="Loading course editor…" />;
   return (
@@ -102,7 +125,11 @@ export function CourseForm({ id }: { id?: string }) {
           <div className="text-sm font-semibold"><FieldLabel label="Popularity score" htmlFor="course-popularity-score" helpKey="courses.popularityScore" /><input id="course-popularity-score" inputMode="decimal" className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-3 font-normal" value={form.popularityScore} onChange={(event) => set('popularityScore', event.target.value)} /></div>
           <div className="flex items-center gap-3 self-center text-sm font-semibold"><input id="course-featured" type="checkbox" checked={form.isFeatured} onChange={(event) => set('isFeatured', event.target.checked)} /><FieldLabel label="Featured course" htmlFor="course-featured" help={commonFieldHelp.featured} /></div>
         </div>
-        <div className="flex justify-end gap-3"><Link href="/courses" className="rounded-xl border border-[#D9E0EA] px-5 py-3 text-sm font-semibold">Cancel</Link><button disabled={saving} className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save draft'}</button></div>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Link href="/courses" className="rounded-xl border border-[#D9E0EA] px-5 py-3 text-sm font-semibold">Cancel</Link>
+          <button type="submit" name="intent" value="draft" disabled={saving} className="rounded-xl border border-[#1657CF] px-5 py-3 text-sm font-semibold text-[#1657CF] disabled:opacity-50">{savingIntent === 'draft' ? 'Saving…' : record?.status === 'PUBLISHED' ? 'Save changes' : 'Save draft'}</button>
+          {record?.status !== 'PUBLISHED' ? <button type="submit" name="intent" value="publish" disabled={saving} className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{savingIntent === 'publish' ? 'Publishing…' : 'Publish'}</button> : null}
+        </div>
       </form>
       {record ? <CourseEditorialWorkspace courseId={record.id} course={record} media={media} /> : <p className="mt-5 text-sm text-[#667085]">Save the course core to open its editorial workspace for availability, content, FAQs, SEO, and related courses.</p>}
     </section>
