@@ -100,7 +100,7 @@ export class CityRecoveryAdminController {
         : undefined;
     const stateId =
       body.stateId === null || typeof body.stateId === 'string'
-        ? (body.stateId as string | null)
+        ? body.stateId
         : undefined;
 
     if (name !== undefined && !name) {
@@ -165,10 +165,7 @@ export class CityRecoveryAdminController {
   }
 
   @Post(':id/restore')
-  async restore(
-    @Req() req: AuthenticatedRequest,
-    @Param('id') id: string,
-  ) {
+  async restore(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     const current = await this.archivedCity(id);
     const restored = await this.prisma.city.update({
       where: { id },
