@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { CityRecoveryAdminController } from './city-recovery.controller';
 import {
   CitiesAdminController,
   ConsultantLocationsAdminController,
@@ -14,6 +15,7 @@ import { LocationsService } from './locations.service';
     LocationsPublicController,
     StatesAdminController,
     CitiesAdminController,
+    CityRecoveryAdminController,
     ConsultantLocationsAdminController,
   ],
   providers: [LocationsService],
