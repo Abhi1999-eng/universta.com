@@ -4,11 +4,16 @@ import {
   MediaAdminController,
   MediaPublicController,
 } from './media.controller';
+import { MediaRecoveryAdminController } from './media-recovery.controller';
 import { MediaService } from './media.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [MediaAdminController, MediaPublicController],
+  controllers: [
+    MediaAdminController,
+    MediaRecoveryAdminController,
+    MediaPublicController,
+  ],
   providers: [MediaService],
   exports: [MediaService],
 })
