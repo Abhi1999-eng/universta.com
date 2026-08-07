@@ -86,24 +86,31 @@ export function toEditorialMedia(asset: UploadedMediaAsset): EditorialMedia {
 }
 
 /**
- * Media pickers intentionally read from the exact same endpoint as Media Library.
- * This prevents the two admin surfaces from drifting: an active image visible in
- * Media Library is therefore also selectable everywhere else in Admin.
+ * Single source of truth for every admin media picker: this reads the same
+ * active-media endpoint as Media Library itself, so the two surfaces cannot
+ * disagree about which uploaded images are available.
  */
 export async function listActiveMediaLibrary(
   query = '',
   limit = 50,
 ): Promise<EditorialMedia[]> {
-  const params = new URLSearchParams({ limit: String(Math.min(50, Math.max(1, limit))) });
+  const params = new URLSearchParams({
+    limit: String(Math.min(50, Math.max(1, limit))),
+  });
   if (query.trim()) params.set('q', query.trim());
 
-  const response = await authFetch(`/api/v1/admin/media?${params.toString()}`);
+  const response = await authFetch(
+    `/api/v1/admin/media?${params.toString()}`,
+  );
   const body = (await response.json()) as Envelope<MediaLibraryAsset[]>;
   if (!response.ok || body.error || !body.data) {
     throw new Error(body.error?.message ?? 'Unable to load media library');
   }
 
   return body.data
-    .filter((asset) => !asset.deletedAt && (!asset.status || asset.status === 'ACTIVE'))
+    .filter(
+      (asset) =>
+        !asset.deletedAt && (!asset.status || asset.status === 'ACTIVE'),
+    )
     .map(toEditorialMedia);
 }
