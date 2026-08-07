@@ -31,7 +31,7 @@ export function ArchivedCitiesRecovery() {
   const searchParams = useSearchParams();
   const isCities = searchParams.get("tab") !== "states";
   const [cities, setCities] = useState<City[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -41,9 +41,9 @@ export function ArchivedCitiesRecovery() {
 
   const load = useCallback(async () => {
     if (!isCities) return;
-    setLoading(true);
     try {
-      setCities(await api<City[]>("/cities-recovery"));
+      const archivedCities = await api<City[]>("/cities-recovery");
+      setCities(archivedCities);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load archived cities");
     } finally {
@@ -51,12 +51,17 @@ export function ArchivedCitiesRecovery() {
     }
   }, [isCities]);
 
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await load();
+  }, [load]);
+
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     if (!isCities) return;
-    const refresh = () => void load();
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
+    const refreshOnFocus = () => void load();
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
   }, [isCities, load]);
 
   if (!isCities) return null;
@@ -119,7 +124,7 @@ export function ArchivedCitiesRecovery() {
           <h3 className="mt-1 text-xl font-semibold">Archived cities</h3>
           <p className="mt-1 max-w-3xl text-sm text-[#667085]">Archived cities stay hidden publicly but still reserve their slug. Restore one as Draft, edit it here, or permanently delete it before reusing that slug.</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-900 disabled:opacity-60">
+        <button type="button" onClick={() => void refresh()} disabled={loading} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-900 disabled:opacity-60">
           {loading ? "Refreshing…" : "Refresh archived cities"}
         </button>
       </div>
