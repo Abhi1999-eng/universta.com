@@ -5,6 +5,7 @@
 
 import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
 import { FieldLabel } from "@/features/shared/FieldLabel";
 import { FieldHelpIcon } from "@/features/shared/FieldHelpIcon";
 import { commonFieldHelp } from "@/lib/field-help/common";
@@ -1049,13 +1050,12 @@ function UniversityFields(p: any) {
           onChange={(value) => p.set("sourceReference", value)}
           helpKey="universities.sourceReference"
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
-          options={p.media ?? []}
           helpKey="universities.featuredMediaId"
-        />
+          />
       </div>
       <Field
         label="Description"
@@ -1204,13 +1204,12 @@ function OfferingFields(p: any) {
           onChange={(value) => p.set("sourceReference", value)}
           helpKey="offerings.sourceReference"
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
-          options={p.media ?? []}
           helpKey="offerings.featuredMediaId"
-        />
+          />
       </div>
       <Field
         label="Description"
@@ -1309,13 +1308,12 @@ function ScholarshipFields(p: any) {
           onChange={(value) => p.set("sourceReference", value)}
           helpKey="scholarships.sourceReference"
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
-          options={p.media ?? []}
           helpKey="scholarships.featuredMediaId"
-        />
+          />
       </div>
       <Field
         label="Description"
@@ -1397,13 +1395,12 @@ function ConsultantFields(p: any) {
           onChange={(value) => p.set("sourceReference", value)}
           helpKey="consultants.sourceReference"
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
-          options={p.media ?? []}
           helpKey="consultants.featuredMediaId"
-        />
+          />
       </div>
       <Field
         label="Description"
@@ -1667,13 +1664,12 @@ function EventFields(p: any) {
           onChange={(value) => p.set("registrationUrl", value)}
           helpKey="events.registrationUrl"
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
-          options={p.media ?? []}
           helpKey="events.featuredMediaId"
-        />
+          />
       </div>
       <Field
         label="Description"
@@ -1741,13 +1737,12 @@ function StoryFields(p: any) {
           options={p.offerings}
           help={commonFieldHelp.course}
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.featuredMediaId ?? ""}
           onChange={(value) => p.set("featuredMediaId", value)}
-          options={p.media}
           helpKey="success-stories.featuredMediaId"
-        />
+          />
       </div>
       <Field
         label="Journey content"
@@ -1792,13 +1787,12 @@ function TestimonialFields(p: any) {
           options={p.offerings}
           help={commonFieldHelp.course}
         />
-        <Select
+        <MediaPickerDialog
           label="Media (optional)"
           value={p.values.imageMediaId ?? ""}
           onChange={(value) => p.set("imageMediaId", value)}
-          options={p.media}
           helpKey="testimonials.imageMediaId"
-        />
+          />
       </div>
       <Field
         label="Display order"
@@ -1919,13 +1913,12 @@ function SeoFields({
           onChange={(value) => set("ogDescription", value)}
           help={commonFieldHelp.ogDescription}
         />
-        <Select
+        <MediaPickerDialog
           label="Open Graph image (Media Library)"
           value={values.ogMediaId ?? ""}
           onChange={(value) => set("ogMediaId", value)}
-          options={media}
           help={commonFieldHelp.ogMedia}
-        />
+          />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field
