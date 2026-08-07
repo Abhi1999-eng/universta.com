@@ -1,0 +1,52 @@
+name: One-time PR70 media validator fix
+
+on:
+  push:
+    branches:
+      - fix/course-direct-publish
+
+permissions:
+  contents: write
+
+jobs:
+  patch-media-validator:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/course-direct-publish
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deduplicate selected media IDs before validation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/api/src/subjects/subjects.service.ts')
+          text = path.read_text()
+          old = """  private async validateMedia(ids: Array<string | undefined>) {
+    const requested = ids.filter((id): id is string => Boolean(id));
+    if (!requested.length) return;
+"""
+          new = """  private async validateMedia(ids: Array<string | undefined>) {
+    const requested = [
+      ...new Set(ids.filter((id): id is string => Boolean(id))),
+    ];
+    if (!requested.length) return;
+"""
+          if old not in text:
+              raise SystemExit('Expected validateMedia block not found; refusing blind patch')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Remove one-time workflow and commit fix
+        run: |
+          rm .github/workflows/one-time-pr70-media-validator.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/api/src/subjects/subjects.service.ts
+          git add -u .github/workflows/one-time-pr70-media-validator.yml
+          git commit -m "fix(api): allow reusing one media asset across subject fields"
+          git push origin HEAD:fix/course-direct-publish
