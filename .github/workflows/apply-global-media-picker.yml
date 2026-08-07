@@ -6,6 +6,11 @@ on:
       - fix/global-media-picker-upload
     paths:
       - .github/workflows/apply-global-media-picker.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-global-media-picker.yml
 
 permissions:
   contents: write
