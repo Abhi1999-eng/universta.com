@@ -1,0 +1,66 @@
+name: Apply shared media picker
+
+on:
+  push:
+    branches:
+      - fix/global-media-picker-upload
+    paths:
+      - .github/workflows/apply-global-media-picker.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-media-picker-upload
+          fetch-depth: 0
+      - name: Replace Phase 1 media selects with shared picker
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'apps/admin/src/features/phase1/Phase1StructuredEditor.tsx';
+          let source = fs.readFileSync(path, 'utf8');
+
+          const importNeedle = 'import { authFetch } from "@/features/auth/auth-client";\n';
+          const importLine = 'import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";\n';
+          if (!source.includes(importLine)) {
+            if (!source.includes(importNeedle)) throw new Error('authFetch import anchor not found');
+            source = source.replace(importNeedle, importNeedle + importLine);
+          }
+
+          const mediaSelect = /<Select\n(\s+)label="Media \(optional\)"\n\s+value=\{p\.values\.(featuredMediaId|imageMediaId) \?\? ""\}\n\s+onChange=\{\(value\) => p\.set\("(featuredMediaId|imageMediaId)", value\)\}\n\s+options=\{p\.media(?: \?\? \[\])?\}\n\s+helpKey="([^"]+)"\n\s+\/>/g;
+          let mediaCount = 0;
+          source = source.replace(mediaSelect, (_match, indent, valueKey, setKey, helpKey) => {
+            if (valueKey !== setKey) throw new Error(`Mismatched media keys: ${valueKey}/${setKey}`);
+            mediaCount += 1;
+            return `<MediaPickerDialog\n${indent}label="Media (optional)"\n${indent}value={p.values.${valueKey} ?? ""}\n${indent}onChange={(value) => p.set("${setKey}", value)}\n${indent}helpKey="${helpKey}"\n${indent}/>`;
+          });
+
+          const ogSelect = /<Select\n(\s+)label="Open Graph image \(Media Library\)"\n\s+value=\{values\.ogMediaId \?\? ""\}\n\s+onChange=\{\(value\) => set\("ogMediaId", value\)\}\n\s+options=\{media\}\n\s+help=\{commonFieldHelp\.ogMedia\}\n\s+\/>/g;
+          let ogCount = 0;
+          source = source.replace(ogSelect, (_match, indent) => {
+            ogCount += 1;
+            return `<MediaPickerDialog\n${indent}label="Open Graph image (Media Library)"\n${indent}value={values.ogMediaId ?? ""}\n${indent}onChange={(value) => set("ogMediaId", value)}\n${indent}help={commonFieldHelp.ogMedia}\n${indent}/>`;
+          });
+
+          if (mediaCount < 7) throw new Error(`Expected at least 7 Phase 1 media selects, replaced ${mediaCount}`);
+          if (ogCount !== 1) throw new Error(`Expected 1 Open Graph media select, replaced ${ogCount}`);
+
+          fs.writeFileSync(path, source);
+          console.log(`Replaced ${mediaCount} Phase 1 media selects + ${ogCount} SEO picker.`);
+          NODE
+      - name: Remove one-time workflow from final diff
+        run: git rm .github/workflows/apply-global-media-picker.yml
+      - name: Commit generated source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/features/phase1/Phase1StructuredEditor.tsx .github/workflows/apply-global-media-picker.yml
+          git diff --cached --check
+          git commit -m "fix(admin): use shared picker across Phase 1 media fields"
+          git push origin HEAD:fix/global-media-picker-upload
