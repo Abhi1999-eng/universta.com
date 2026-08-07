@@ -56,7 +56,28 @@ export function ArchivedCitiesRecovery() {
     await load();
   }, [load]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!isCities) return;
+
+    let cancelled = false;
+
+    void api<City[]>("/cities-recovery")
+      .then((archivedCities) => {
+        if (!cancelled) setCities(archivedCities);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setMessage(error instanceof Error ? error.message : "Unable to load archived cities");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCities]);
   useEffect(() => {
     if (!isCities) return;
     const refreshOnFocus = () => void load();
