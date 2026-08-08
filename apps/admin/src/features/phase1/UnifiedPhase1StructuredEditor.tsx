@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Phase1StructuredEditor } from './Phase1StructuredEditor';
 
 type Props = {
@@ -25,9 +26,16 @@ type Props = {
  */
 export function UnifiedPhase1StructuredEditor(props: Props) {
   const root = useRef<HTMLDivElement>(null);
+  const [form, setForm] = useState<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setForm(root.current?.querySelector<HTMLFormElement>('form') ?? null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [props.recordId, props.resource]);
 
   function submit(intent: 'draft' | 'publish') {
-    const form = root.current?.querySelector<HTMLFormElement>('form');
     if (!form) return;
 
     const publishLabel = Array.from(form.querySelectorAll('label')).find((node) =>
@@ -51,36 +59,42 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
     window.setTimeout(() => form.requestSubmit(), 0);
   }
 
+  const actions = form ? createPortal(
+    <div className="sticky bottom-4 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E0EA] bg-white/95 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.12)] backdrop-blur">
+      <div>
+        <p className="text-sm font-semibold text-[#1D2939]">
+          One record, one save flow
+        </p>
+        <p className="mt-1 text-xs text-[#667085]">
+          Every field above is saved together. Draft keeps the record private;
+          Publish saves the same complete form and makes it live.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          aria-label={props.recordId ? 'Save changes' : 'Create draft'}
+          onClick={() => submit('draft')}
+          className="rounded-xl border border-[#1657CF] bg-white px-5 py-3 text-sm font-semibold text-[#1657CF]"
+        >
+          Save draft
+        </button>
+        <button
+          type="button"
+          onClick={() => submit('publish')}
+          className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white"
+        >
+          Publish
+        </button>
+      </div>
+    </div>,
+    form,
+  ) : null;
+
   return (
     <div ref={root} className="unified-phase1-editor">
       <Phase1StructuredEditor {...props} />
-      <div className="sticky bottom-4 z-30 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E0EA] bg-white/95 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.12)] backdrop-blur">
-        <div>
-          <p className="text-sm font-semibold text-[#1D2939]">
-            One record, one save flow
-          </p>
-          <p className="mt-1 text-xs text-[#667085]">
-            Every field above is saved together. Draft keeps the record private;
-            Publish saves the same complete form and makes it live.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => submit('draft')}
-            className="rounded-xl border border-[#1657CF] bg-white px-5 py-3 text-sm font-semibold text-[#1657CF]"
-          >
-            Save draft
-          </button>
-          <button
-            type="button"
-            onClick={() => submit('publish')}
-            className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white"
-          >
-            Publish
-          </button>
-        </div>
-      </div>
+      {actions}
       <style jsx global>{`
         .unified-phase1-editor form > fieldset > div:last-child {
           display: none !important;
