@@ -11,6 +11,12 @@ import {
 import { listEditorialMedia } from "@/features/catalog/catalog-client";
 import type { EditorialMedia } from "@/features/catalog/catalog.types";
 import { StatsPillEditor } from './StatsPillEditor';
+import {
+  ADDABLE_SECTION_TYPES,
+  sectionDefinition,
+  sectionLabel,
+} from "@/features/website/section-registry";
+import { AddSectionLibrary } from "@/features/website/AddSectionLibrary";
 
 type SectionRow = {
   label: string;
@@ -85,26 +91,15 @@ type PageRecord = {
   chromeConfigJson?: ChromeOverrideValue;
 };
 
-const SECTION_TYPES = [
-  "HERO",
-  "RICH_TEXT",
-  "CTA",
-  "IMAGE",
-  "IMAGE_TEXT",
-  "CARD_GRID",
-  "STATS",
-  "FAQ_GROUP",
-  "RELATED_LINKS",
-  "COUNTRY_DIRECTORY",
-  "UNIVERSITY_DIRECTORY",
-  "COURSE_DIRECTORY",
-  "SCHOLARSHIP_DIRECTORY",
-  "CONSULTANT_DIRECTORY",
-  "TESTIMONIALS",
-  "SUCCESS_STORIES",
-  "LEAD_GENERATION",
-  "CUSTOM",
-];
+/** Offered block types come from the section registry, which lists only the
+ * types the public site actually renders. A section already saved as a type
+ * that is no longer offered (HERO, CUSTOM) keeps its own value in the list so
+ * opening it does not silently retype it. */
+function sectionTypeOptions(currentType: string): string[] {
+  return ADDABLE_SECTION_TYPES.includes(currentType)
+    ? ADDABLE_SECTION_TYPES
+    : [currentType, ...ADDABLE_SECTION_TYPES];
+}
 const PAGE_STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
 const SECTION_STATUSES = ["DRAFT", "SCHEDULED", "ACTIVE", "ARCHIVED"];
 const LAYOUT_KEYS = ["default", "editorial", "landing"];
@@ -207,11 +202,15 @@ function Select({
   value,
   options,
   onChange,
+  optionLabel,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (value: string) => void;
+  /** Renders a human name for a stored value, so the admin never reads a raw
+   * enum like FAQ_GROUP in a dropdown. */
+  optionLabel?: (option: string) => string;
 }) {
   const fieldId = useId();
   return (
@@ -225,7 +224,7 @@ function Select({
       >
         {options.map((option) => (
           <option value={option} key={option}>
-            {option}
+            {optionLabel ? optionLabel(option) : option}
           </option>
         ))}
       </select>
@@ -530,9 +529,10 @@ function SectionCard({
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Select
-          label="Block type"
+          label="Section type"
           value={section.sectionType}
-          options={SECTION_TYPES}
+          options={sectionTypeOptions(section.sectionType)}
+          optionLabel={sectionLabel}
           onChange={(value) => onChange({ sectionType: value })}
         />
         <Select
@@ -702,6 +702,7 @@ export function PageCmsEditor({
   const [templateOptions, setTemplateOptions] = useState<PageTemplateOption[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const selectedTemplate = templateOptions.find((option) => option.id === selectedTemplateId) ?? null;
   const selectedTemplateSections = selectedTemplate?.defaultSectionsJson ?? [];
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -857,19 +858,27 @@ export function PageCmsEditor({
     return null;
   }
 
-  function addSection() {
+  /** Adds the chosen section type, pre-filled from the registry's defaults so
+   * it renders as something recognisable straight away. New sections used to
+   * default to CUSTOM, which the public site renders as a bare line of text. */
+  function addSectionOfType(type: string) {
+    const definition = sectionDefinition(type);
     setNewSections((current) => [
       ...current,
       {
         id: `new-${current.length}-${Date.now()}`,
         sectionKey: "",
-        sectionType: "CUSTOM",
-        heading: "",
-        subheading: "",
+        sectionType: type,
+        heading: definition.defaults?.heading ?? "",
+        subheading: definition.defaults?.subheading ?? "",
         status: "DRAFT",
         displayOrder: sections.length + current.length,
+        bodyJson: definition.defaults?.limit
+          ? { limit: definition.defaults.limit }
+          : undefined,
       },
     ]);
+    setLibraryOpen(false);
   }
 
   function updateExisting(id: string, patch: Partial<Section>) {
@@ -1192,7 +1201,7 @@ export function PageCmsEditor({
             <h3 className="text-lg font-semibold">Sections</h3>
             <button
               type="button"
-              onClick={addSection}
+              onClick={() => setLibraryOpen(true)}
               className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
             >
               Add section
@@ -1253,6 +1262,13 @@ export function PageCmsEditor({
             Section changes are saved with the page — use Save page above.
           </p>
         </div>
+      ) : null}
+
+      {libraryOpen ? (
+        <AddSectionLibrary
+          onPick={(definition) => addSectionOfType(definition.type)}
+          onClose={() => setLibraryOpen(false)}
+        />
       ) : null}
 
       {message ? (
