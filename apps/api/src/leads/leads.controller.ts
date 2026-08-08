@@ -20,12 +20,14 @@ import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import type { RequestWithId } from '../common/http.types';
+import { UpdateLeadConsultantAssignmentDto } from './dto/lead-consultant-assignment.dto';
 import {
   CreateCounsellingLeadDto,
   CreateLeadNoteDto,
   LeadListQueryDto,
   UpdateLeadStatusDto,
 } from './dto/lead.dto';
+import { LeadConsultantAssignmentsService } from './lead-consultant-assignments.service';
 import { LeadProtectionService } from './lead-protection.service';
 import { LeadsService } from './leads.service';
 
@@ -65,12 +67,19 @@ export class PublicLeadsController {
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class AdminLeadsController {
-  constructor(private readonly leads: LeadsService) {}
+  constructor(
+    private readonly leads: LeadsService,
+    private readonly consultantAssignments: LeadConsultantAssignmentsService,
+  ) {}
 
   @Get('options')
   @Header('Cache-Control', 'no-store')
   async options(@Req() request: AuthenticatedRequest) {
-    return successEnvelope(request, await this.leads.adminOptions());
+    const [options, consultants] = await Promise.all([
+      this.leads.adminOptions(),
+      this.consultantAssignments.options(),
+    ]);
+    return successEnvelope(request, { ...options, consultants });
   }
 
   @Get()
@@ -89,7 +98,9 @@ export class AdminLeadsController {
     @Req() request: AuthenticatedRequest,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ) {
-    return successEnvelope(request, await this.leads.adminDetail(id));
+    const lead = await this.leads.adminDetail(id);
+    const assignedConsultant = await this.consultantAssignments.current(id);
+    return successEnvelope(request, { ...lead, assignedConsultant });
   }
 
   @Patch(':id/status')
@@ -102,6 +113,19 @@ export class AdminLeadsController {
     return successEnvelope(
       request,
       await this.leads.updateStatus(id, dto, request),
+    );
+  }
+
+  @Patch(':id/consultant')
+  @Header('Cache-Control', 'no-store')
+  async updateConsultant(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: UpdateLeadConsultantAssignmentDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.consultantAssignments.update(id, dto, request),
     );
   }
 
