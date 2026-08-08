@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
-import {
-  isStructuredPhase1Resource,
-  Phase1StructuredEditor,
-} from "./Phase1StructuredEditor";
+import { isStructuredPhase1Resource } from "./Phase1StructuredEditor";
+import { UnifiedPhase1StructuredEditor } from "./UnifiedPhase1StructuredEditor";
 import { PageCmsEditor } from "./PageCmsEditor";
 import { NavigationMenuEditor } from "./NavigationMenuEditor";
 
@@ -79,11 +77,6 @@ export function Phase1Manager({ resource }: { resource: string }) {
 
   const load = useCallback(async () => {
     try {
-      // Every resource here defaults server-side to a 12-record page with no
-      // way to reach anything past it -- this screen had no pagination UI at
-      // all, so a 13th record (an "About Us" page, a 7th university, ...) was
-      // simply invisible and unmanageable, with "N records" quietly lying
-      // about the true total.
       const body = await request(`${resource}?page=${page}&limit=${PAGE_SIZE}`);
       setRows(body.data ?? []);
       setListMeta(body.meta);
@@ -95,14 +88,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
   }, [resource, page]);
 
   useEffect(() => {
-    // A page number from a previous resource's longer list would otherwise
-    // carry over and request an out-of-range page for a shorter one.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [resource]);
 
   useEffect(() => {
-    // The state update happens only after the asynchronous API request resolves.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
@@ -136,10 +126,6 @@ export function Phase1Manager({ resource }: { resource: string }) {
     setEditingId(null);
   }
 
-  /** ISS-019: a menu is created with its own field-based form (name, menu
-   * key, location), not the raw JSON draft the resource used to fall back
-   * to -- item management then happens inside NavigationMenuEditor once the
-   * menu exists. */
   async function createMenu(event: React.FormEvent) {
     event.preventDefault();
     try {
@@ -254,11 +240,6 @@ export function Phase1Manager({ resource }: { resource: string }) {
 
       {editor && isPageCms ? (
         <PageCmsEditor
-          // Remounted per target: without a distinct key React reuses the
-          // mounted editor when the row changes, so opening B after A kept A's
-          // field values, and switching from a row to Create left the new-record
-          // form pre-filled with the last edited row. A fresh instance cannot
-          // leak either way, and it restores the loading state for each load.
           key={editingId ?? 'create'}
           recordId={editingId ?? undefined}
           onSaved={afterSave}
@@ -269,9 +250,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
         />
       ) : null}
       {editor && structured ? (
-        <Phase1StructuredEditor
-          // See the note on PageCmsEditor above: one editor instance per record
-          // (and one for Create) is what keeps their state apart.
+        <UnifiedPhase1StructuredEditor
           key={`${resource}:${editingId ?? 'create'}`}
           resource={resource}
           recordId={editingId ?? undefined}
