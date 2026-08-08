@@ -87,7 +87,10 @@ export function FieldLabel({
       <label htmlFor={htmlFor}>
         {label}
         {effectiveRequired && effectiveRequiredMarkerVisible ? (
-          <span className="ml-1 font-bold text-[#D92D20]">*</span>
+          <>
+            {' '}
+            <span className="font-bold text-[#D92D20]">*</span>
+          </>
         ) : null}
       </label>
       {effectiveRequired && !effectiveRequiredMarkerVisible ? (
