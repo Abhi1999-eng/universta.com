@@ -158,7 +158,7 @@ export function SubjectForm({ id }: { id?: string }) {
 
   async function applyPublication(subject: SubjectRecord, children: SubSubjectRecord[], intent: Intent) {
     if (intent === 'publish') {
-      let current = subject.status === 'PUBLISHED' ? subject : (await publishSubject(subject.id, subject.updatedAt)).data;
+      const current = subject.status === 'PUBLISHED' ? subject : (await publishSubject(subject.id, subject.updatedAt)).data;
       for (const child of children) if (child.status !== 'PUBLISHED') await publishSubSubject(current.id, child.id, child.updatedAt);
       return current;
     }
