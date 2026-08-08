@@ -35,6 +35,15 @@ const countryRequiredLabels = new Set([
   'Short description',
 ]);
 
+// These Course fields are publishing requirements. They are deliberately a
+// visual requirement only here: admins may still leave them blank while saving
+// a draft, but they should know before clicking Publish that the fields matter.
+const coursePublishRequiredLabels = new Set([
+  'Country',
+  'Official source URL',
+  'Verified date',
+]);
+
 /** Shared label for every editable admin field: label text, an optional
  * required marker, and — when help content is available — a compact "(!)"
  * info icon that opens a purpose/format/example popover. Pass either an
@@ -64,11 +73,14 @@ export function FieldLabel({
   helpKey?: string;
 }) {
   const isCountryField = Boolean(htmlFor?.startsWith('country-'));
+  const isCourseField = Boolean(htmlFor?.startsWith('course-'));
   const lookupKey = helpKey ?? (isCountryField ? countryHelpKeys[label] : undefined) ?? inferredHelpKeys[label];
   const resolved = help ?? (lookupKey ? getFieldHelp(lookupKey) : undefined);
-  const inferredRequired = isCountryField && countryRequiredLabels.has(label);
+  const inferredCountryRequired = isCountryField && countryRequiredLabels.has(label);
+  const inferredCoursePublishRequired = isCourseField && coursePublishRequiredLabels.has(label);
+  const inferredRequired = inferredCountryRequired || inferredCoursePublishRequired;
   const effectiveRequired = required || inferredRequired;
-  const effectiveRequiredMarkerVisible = requiredMarkerVisible || inferredRequired;
+  const effectiveRequiredMarkerVisible = requiredMarkerVisible || inferredCountryRequired;
 
   return (
     <span className="inline-flex items-center gap-1">
