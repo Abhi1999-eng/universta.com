@@ -22,8 +22,10 @@ test.describe('unified record editors', () => {
     await expect(page.getByRole('heading', { name: 'Country availability 1', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Content section 1', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'FAQ 1', exact: true })).toBeVisible();
-    await expect(page.getByLabel('SEO title')).toBeVisible();
-    await expect(page.getByLabel('Meta description')).toBeVisible();
+    // Field-help buttons intentionally include the field name in their aria
+    // labels, so target the actual form controls by role instead of getByLabel.
+    await expect(page.getByRole('textbox', { name: 'SEO title', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Meta description', exact: true })).toBeVisible();
 
     // Core mandatory fields use real required semantics in addition to the red
     // visual marker, so required inputs are clear before validation fails.
