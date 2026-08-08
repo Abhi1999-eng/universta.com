@@ -61,6 +61,12 @@ test.describe('consultant location management', () => {
     await page.getByLabel('Robots Index', { exact: true }).uncheck();
     await expect(page.getByLabel('Robots Follow', { exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Save SEO' }).click();
+    // The panel closes itself once the save lands, and the row's SEO control
+    // is a toggle. Reopening before the save resolves therefore toggles the
+    // still-open panel shut instead of reopening it, and the fields never come
+    // back. Wait for the save's own confirmation before asking for it again.
+    await expect(page.getByRole('status')).toContainText(`Saved SEO for ${name}.`);
+    await expect(page.getByLabel('SEO title', { exact: true })).toHaveCount(0);
 
     await row.getByRole('button', { name: 'SEO' }).click();
     await expect(page.getByLabel('SEO title', { exact: true })).toHaveValue(`${name} SEO`);
