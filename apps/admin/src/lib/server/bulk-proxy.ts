@@ -110,7 +110,11 @@ export async function proxyBulkFile(request: NextRequest, path: string) {
   });
 }
 
-/** Multipart passthrough for /dry-run and /import (real file uploads). */
+/** Multipart passthrough for /dry-run and /import (real file uploads).
+ * Buffering the already-size-capped body before forwarding avoids relying on
+ * a live ReadableStream surviving the Next route-handler -> API fetch hop.
+ * This is especially important in production where proxies/runtime adapters
+ * may consume or close the incoming request stream before undici forwards it. */
 export async function proxyBulkUpload(request: NextRequest, path: string) {
   const requestId = request.headers.get("x-request-id")?.slice(0, 100) || randomUUID();
   const auth = requireAuth(request, requestId);
@@ -121,17 +125,25 @@ export async function proxyBulkUpload(request: NextRequest, path: string) {
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (contentLength > MAX_UPLOAD_BYTES)
     return fail(413, requestId, "REQUEST_TOO_LARGE", "Upload is too large");
+
+  const upload = await request.arrayBuffer();
+  if (upload.byteLength > MAX_UPLOAD_BYTES)
+    return fail(413, requestId, "REQUEST_TOO_LARGE", "Upload is too large");
+  if (upload.byteLength === 0)
+    return fail(400, requestId, "VALIDATION_ERROR", "Choose a CSV or XLSX file to upload");
+
   const upstream = await fetch(apiUrl(path), {
     method: "POST",
     headers: {
       accept: "application/json",
       authorization: auth.authorization!,
       "content-type": contentType,
+      "content-length": String(upload.byteLength),
       "x-request-id": requestId,
     },
-    body: request.body,
-    duplex: "half",
-  } as RequestInit & { duplex: "half" });
+    body: upload,
+    cache: "no-store",
+  });
   const parsed = await upstream.json();
   return NextResponse.json(parsed, {
     status: upstream.status,
