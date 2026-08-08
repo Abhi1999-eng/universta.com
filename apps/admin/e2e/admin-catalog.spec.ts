@@ -9,17 +9,21 @@ import { apiBaseUrl } from './helpers/e2e-urls';
 
 
 test.describe.serial('catalog management', () => {
-  const continentName = acceptanceContinentName();
-  const countryName = acceptanceCountryName();
-  const continentCode = `E${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
-  let countrySlug = '';
-
   test('requires authentication for Countries', async ({ page }) => {
     await page.goto('/countries');
     await expect(page).toHaveURL(/\/login\?returnTo=%2Fcountries/);
   });
 
-  test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }) => {
+  test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }, testInfo) => {
+    // A retry gets fresh names so a partially-created first attempt can never
+    // make the retry fail on a duplicate continent/country before it reaches
+    // the assertion that originally failed.
+    const retrySuffix = testInfo.retry ? ` Retry ${testInfo.retry}` : '';
+    const continentName = `${acceptanceContinentName()}${retrySuffix}`;
+    const countryName = `${acceptanceCountryName()}${retrySuffix}`;
+    const continentCode = `E${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+    let countrySlug = '';
+
     await loginAsAdmin(page);
     await page.goto('/continents');
     await expect(page).not.toHaveURL(/\/login/);
@@ -30,9 +34,7 @@ test.describe.serial('catalog management', () => {
 
     // FieldLabel deliberately renders the red required marker as visible label
     // content. Browser accessible-name whitespace around that nested marker can
-    // differ, so do not make this CRUD acceptance flow depend on whether the
-    // computed label is "Name *", "Name*", or "Name". The native required
-    // attribute is the stable contract for these two mandatory inputs.
+    // differ, so use the native required contract for these two mandatory inputs.
     const continentDialog = page.getByRole('dialog');
     const requiredInputs = continentDialog.locator('input[required]');
     await expect(requiredInputs).toHaveCount(2);
@@ -50,12 +52,8 @@ test.describe.serial('catalog management', () => {
     await page.getByLabel('Page heading *').fill(`Study in ${countryName}`);
     await page.getByLabel('Short description *').fill('An isolated browser E2E catalog record.');
 
-    // ISO alpha-2/alpha-3 are DB-unique and ignore soft deletes, so a code a
-    // previous run used stays taken forever even after that fixture is removed
-    // through the UI. Restricting the first letter to "Q" keeps the fixture in
-    // an ISO 3166 private-use range (no real country is impersonated) but only
-    // leaves 26 alpha-2 values, so walk them until one is actually free rather
-    // than guessing once and flaking when the guess is already burned.
+    // ISO alpha-2/alpha-3 are DB-unique and ignore soft deletes, so walk the
+    // private-use QA-QZ range until the test finds a value that is still free.
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     let saved = false;
     for (const letter of letters) {
@@ -80,8 +78,6 @@ test.describe.serial('catalog management', () => {
     const publicDraft = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicDraft.status()).toBe(404);
 
-    // The unified editor owns publishing too: there are no separate profile,
-    // editorial, SEO, publish-dialog, or unpublish-dialog save flows anymore.
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.getByText('PUBLISHED', { exact: true })).toBeVisible();
     const publicPublished = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
@@ -91,22 +87,36 @@ test.describe.serial('catalog management', () => {
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
     expect((await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`)).status()).toBe(404);
 
+    // The real Countries list uses Delete (soft delete), not Archive. Filter to
+    // the record first so cleanup is independent of first-page ordering.
     await page.goto('/countries');
-    await page.getByRole('button', { name: `Archive ${countryName}` }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Archive country' }).click();
-    await expect(page.getByText('Country archived.', { exact: true })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Search countries' }).fill(countryName);
+    const countryRow = page.getByRole('row').filter({ hasText: countryName });
+    await expect(countryRow).toBeVisible();
+    await countryRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    const deleteCountryDialog = page.getByRole('dialog');
+    await deleteCountryDialog.getByPlaceholder(countryName).fill(countryName);
+    await deleteCountryDialog.getByRole('button', { name: 'Delete country', exact: true }).click();
+    await expect(page.getByText('Country soft-deleted.', { exact: true })).toBeVisible();
 
+    // Continents also use Delete. Search before acting so list pagination/order
+    // cannot hide the acceptance record.
     await page.goto('/continents');
-    await page.getByRole('button', { name: `Archive ${continentName}` }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Archive continent' }).click();
-    await expect(page.getByText('Continent archived.', { exact: true })).toBeVisible();
+    await page.getByPlaceholder('Search by name, slug or code').fill(continentName);
+    const continentRow = page.getByRole('row').filter({ hasText: continentName });
+    await expect(continentRow).toBeVisible();
+    await continentRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    const deleteContinentDialog = page.getByRole('dialog');
+    await deleteContinentDialog.getByLabel('Confirmation').fill(continentName);
+    await deleteContinentDialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByText('Continent deleted.', { exact: true })).toBeVisible();
   });
 
   test('keeps mobile country actions accessible', async ({ page }) => {
     await loginAsAdmin(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/countries');
-    await expect(page.getByRole('button', { name: 'Create country' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Create country' })).toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
   });
 
