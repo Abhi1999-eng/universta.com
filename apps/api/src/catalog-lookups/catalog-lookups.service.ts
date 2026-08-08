@@ -185,6 +185,7 @@ export class CatalogLookupsService {
     name: string;
     slug?: string;
     websiteUrl?: string | null;
+    sourceReference?: string | null;
     status?: string;
   }) {
     const slug = body.slug?.trim() || slugify(body.name);
@@ -194,6 +195,7 @@ export class CatalogLookupsService {
           name: body.name.trim(),
           slug,
           websiteUrl: body.websiteUrl || null,
+          sourceReference: body.sourceReference || null,
           status: body.status ?? 'ACTIVE',
         },
       });
@@ -214,6 +216,7 @@ export class CatalogLookupsService {
       name?: string;
       slug?: string;
       websiteUrl?: string | null;
+      sourceReference?: string | null;
       status?: string;
     },
   ) {
@@ -226,6 +229,9 @@ export class CatalogLookupsService {
           ...(body.slug !== undefined ? { slug: body.slug.trim() } : {}),
           ...(body.websiteUrl !== undefined
             ? { websiteUrl: body.websiteUrl || null }
+            : {}),
+          ...(body.sourceReference !== undefined
+            ? { sourceReference: body.sourceReference || null }
             : {}),
           ...(body.status !== undefined ? { status: body.status } : {}),
         },
@@ -256,5 +262,19 @@ export class CatalogLookupsService {
       where: { id },
       data: { deletedAt: new Date(), status: 'ARCHIVED' },
     });
+  }
+
+  async deleteProvider(id: string) {
+    await this.adminDetailProvider(id);
+    const inUse = await this.prisma.scholarship.count({
+      where: { providerId: id },
+    });
+    if (inUse > 0)
+      throw new ConflictException({
+        code: 'SCHOLARSHIP_PROVIDER_IN_USE',
+        message: `${inUse} scholarship${inUse === 1 ? '' : 's'} still reference this provider. Reassign or delete those scholarships before permanently deleting the provider.`,
+        details: null,
+      });
+    return this.prisma.scholarshipProvider.delete({ where: { id } });
   }
 }

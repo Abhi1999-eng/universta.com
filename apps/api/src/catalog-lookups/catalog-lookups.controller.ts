@@ -62,6 +62,7 @@ export class ScholarshipProvidersAdminController {
         name: body.name as string,
         slug: body.slug as string | undefined,
         websiteUrl: body.websiteUrl as string | null | undefined,
+        sourceReference: body.sourceReference as string | null | undefined,
         status: body.status as string | undefined,
       }),
     );
@@ -78,9 +79,17 @@ export class ScholarshipProvidersAdminController {
         name: body.name as string | undefined,
         slug: body.slug as string | undefined,
         websiteUrl: body.websiteUrl as string | null | undefined,
+        sourceReference: body.sourceReference as string | null | undefined,
         status: body.status as string | undefined,
       }),
     );
+  }
+
+  @Delete(':id/permanent') async remove(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(req, await this.lookups.deleteProvider(id));
   }
 
   @Delete(':id') async archive(
