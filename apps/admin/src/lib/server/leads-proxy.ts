@@ -8,6 +8,7 @@ export type LeadProxyOperation =
   | 'options'
   | `detail:${string}`
   | `status:${string}`
+  | `consultant:${string}`
   | `notes:${string}`;
 
 const MAX_BODY_BYTES = 16 * 1024;
@@ -30,6 +31,7 @@ const SAFE_MESSAGES: Record<string, string> = {
   INVALID_ACCESS_TOKEN: 'Your admin session is invalid',
   FORBIDDEN: 'Super Admin access is required',
   LEAD_NOT_FOUND: 'Lead not found',
+  CONSULTANT_NOT_AVAILABLE: 'The selected consultant is not available',
   LEAD_STALE_VERSION:
     'This lead changed in another session. Reload before saving',
   CONFLICT: 'This lead changed in another session',
@@ -115,6 +117,13 @@ function operationDetails(operation: LeadProxyOperation): {
       method: 'PATCH',
       path: `/api/v1/admin/leads/${safeId}/status`,
       bodyFields: ['status', 'expectedUpdatedAt', 'reason'],
+    };
+  }
+  if (action === 'consultant') {
+    return {
+      method: 'PATCH',
+      path: `/api/v1/admin/leads/${safeId}/consultant`,
+      bodyFields: ['consultantId', 'expectedUpdatedAt'],
     };
   }
   return {
