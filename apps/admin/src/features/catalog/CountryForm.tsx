@@ -34,10 +34,7 @@ import type {
   CountryEditorialBundle,
   CountryProfileBundle,
   CountryRecord,
-  EditorialCard,
-  EditorialFaq,
   EditorialMedia,
-  EditorialSection,
   EditorialSeo,
   IntakeOption,
 } from './catalog.types';
@@ -122,7 +119,34 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         if (!countryId) return;
         const [countryResult, profileResult, editorialResult] = await Promise.all([getCountry(countryId), getCountryProfiles(countryId), getCountryEditorial(countryId)]);
         if (!active) return;
-        hydrateCore(countryResult.data); hydrateProfiles(profileResult.data); hydrateEditorial(editorialResult.data);
+
+        const country = countryResult.data;
+        setRecord(country);
+        setCore({ continentId: country.continent.id, name: country.name, slug: country.slug, iso2Code: country.iso2Code ?? '', iso3Code: country.iso3Code ?? '', pageHeading: country.pageHeading, shortDescription: country.shortDescription, isFeatured: country.featured, displayOrder: String(country.displayOrder) });
+
+        const profileBundle: CountryProfileBundle = profileResult.data;
+        const nextProfiles = { ...profileDefaults } as Record<ProfileKind, ProfileValues>;
+        (['cost','work','language','statistics'] as ProfileKind[]).forEach((kind) => {
+          const raw = profileBundle[kind];
+          nextProfiles[kind] = { ...profileDefaults[kind] };
+          if (raw) Object.entries(raw).forEach(([key, value]) => {
+            if (typeof value === 'boolean') nextProfiles[kind][key] = value;
+            else if (value !== null && value !== undefined && !['id','countryId','createdAt','updatedAt'].includes(key)) nextProfiles[kind][key] = String(value).replace(/T.*$/, key === 'verifiedAt' ? '' : '$&');
+          });
+        });
+        setProfiles(nextProfiles);
+        setProfileVersions({ cost: profileBundle.cost?.updatedAt as string | undefined, work: profileBundle.work?.updatedAt as string | undefined, language: profileBundle.language?.updatedAt as string | undefined, statistics: profileBundle.statistics?.updatedAt as string | undefined });
+        const checked: Record<string, boolean> = {};
+        profileBundle.intakes.forEach((raw) => { const intakeId = typeof raw.intakeId === 'string' ? raw.intakeId : ''; if (intakeId) checked[intakeId] = true; });
+        setSelectedIntakes(checked);
+        setIntakeVersion(profileBundle.intakes.map((raw) => typeof raw.updatedAt === 'string' ? raw.updatedAt : '').filter(Boolean).sort().at(-1));
+
+        const editorialBundle: CountryEditorialBundle = editorialResult.data;
+        setSections(editorialBundle.sections.map((row) => ({ ...draftFromSection(row), id: row.id, updatedAt: row.updatedAt })));
+        setFaqs(editorialBundle.faqs.map((row) => ({ id: row.id, updatedAt: row.updatedAt, question: row.question, answer: row.answer, category: row.category ?? '', isFeatured: row.isFeatured, status: row.status, displayOrder: String(row.displayOrder) })));
+        setCards(editorialBundle.consultantCards.map((row) => ({ id: row.id, updatedAt: row.updatedAt, title: row.title, slug: row.slug, shortDescription: row.shortDescription, overview: row.overview ?? '', iconMediaId: row.iconMediaId ?? '', featuredMediaId: row.featuredMediaId ?? '', isFreeConsultation: row.isFreeConsultation, ctaLabel: row.ctaLabel, ctaUrl: row.ctaUrl ?? '', status: row.status, isFeatured: row.isFeatured, displayOrder: String(row.displayOrder) })));
+        setExistingSeo(editorialBundle.seo);
+        setSeo(seoFromRecord(editorialBundle.seo));
       } catch (cause: unknown) { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load country editor'); }
       finally { if (active) setLoading(false); }
     };
@@ -130,20 +154,6 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   }, [countryId]);
 
   useEffect(() => { const handler = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }; window.addEventListener('beforeunload', handler); return () => window.removeEventListener('beforeunload', handler); }, [dirty]);
-
-  function hydrateCore(row: CountryRecord) { setRecord(row); setCore({ continentId: row.continent.id, name: row.name, slug: row.slug, iso2Code: row.iso2Code ?? '', iso3Code: row.iso3Code ?? '', pageHeading: row.pageHeading, shortDescription: row.shortDescription, isFeatured: row.featured, displayOrder: String(row.displayOrder) }); }
-  function hydrateProfiles(bundle: CountryProfileBundle) {
-    const next = { ...profileDefaults } as Record<ProfileKind, ProfileValues>;
-    (['cost','work','language','statistics'] as ProfileKind[]).forEach((kind) => { const raw = bundle[kind]; next[kind] = { ...profileDefaults[kind] }; if (raw) Object.entries(raw).forEach(([key, value]) => { if (typeof value === 'boolean') next[kind][key] = value; else if (value !== null && value !== undefined && !['id','countryId','createdAt','updatedAt'].includes(key)) next[kind][key] = String(value).replace(/T.*$/, key === 'verifiedAt' ? '' : '$&'); }); });
-    setProfiles(next); setProfileVersions({ cost: bundle.cost?.updatedAt as string | undefined, work: bundle.work?.updatedAt as string | undefined, language: bundle.language?.updatedAt as string | undefined, statistics: bundle.statistics?.updatedAt as string | undefined });
-    const checked: Record<string, boolean> = {}; bundle.intakes.forEach((raw) => { const intakeId = typeof raw.intakeId === 'string' ? raw.intakeId : ''; if (intakeId) checked[intakeId] = true; }); setSelectedIntakes(checked); setIntakeVersion(bundle.intakes.map((raw) => typeof raw.updatedAt === 'string' ? raw.updatedAt : '').filter(Boolean).sort().at(-1));
-  }
-  function hydrateEditorial(bundle: CountryEditorialBundle) {
-    setSections(bundle.sections.map((row) => ({ ...draftFromSection(row), id: row.id, updatedAt: row.updatedAt })));
-    setFaqs(bundle.faqs.map((row) => ({ id: row.id, updatedAt: row.updatedAt, question: row.question, answer: row.answer, category: row.category ?? '', isFeatured: row.isFeatured, status: row.status, displayOrder: String(row.displayOrder) })));
-    setCards(bundle.consultantCards.map((row) => ({ id: row.id, updatedAt: row.updatedAt, title: row.title, slug: row.slug, shortDescription: row.shortDescription, overview: row.overview ?? '', iconMediaId: row.iconMediaId ?? '', featuredMediaId: row.featuredMediaId ?? '', isFreeConsultation: row.isFreeConsultation, ctaLabel: row.ctaLabel, ctaUrl: row.ctaUrl ?? '', status: row.status, isFeatured: row.isFeatured, displayOrder: String(row.displayOrder) })));
-    setExistingSeo(bundle.seo); setSeo(seoFromRecord(bundle.seo));
-  }
 
   const setCoreField = <K extends keyof Core>(key: K, value: Core[K]) => { setCore((current) => ({ ...current, [key]: value })); setDirty(true); setIssues([]); };
   const setProfile = (kind: ProfileKind, key: string, value: string | boolean) => { setProfiles((current) => ({ ...current, [kind]: { ...current[kind], [key]: value } })); setDirty(true); };
