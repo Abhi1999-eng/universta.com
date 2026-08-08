@@ -9,13 +9,31 @@ test.describe('unified record editors', () => {
   test('Course exposes the complete unsaved record before the first draft save', async ({ page }) => {
     await page.goto('/courses/new');
 
-    await expect(page.getByRole('heading', { name: 'Create course' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Country availability' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Content sections' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'FAQs' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Related courses' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create course', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Country availability', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Content sections', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'FAQs', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Related courses', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'SEO', exact: true })).toBeVisible();
+
+    // Empty child collections must still render their first editable row. The
+    // admin should never have to save a parent draft or click an Add button just
+    // to discover the rest of the form.
+    await expect(page.getByRole('heading', { name: 'Country availability 1', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Content section 1', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'FAQ 1', exact: true })).toBeVisible();
+    // Field-help buttons intentionally include the field name in their aria
+    // labels, so target the actual form controls by role instead of getByLabel.
+    await expect(page.getByRole('textbox', { name: 'SEO title', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Meta description', exact: true })).toBeVisible();
+
+    // Core mandatory fields use real required semantics in addition to the red
+    // visual marker, so required inputs are clear before validation fails.
+    await expect(page.getByRole('combobox', { name: 'Subject', exact: true })).toHaveAttribute('required', '');
+    await expect(page.getByRole('combobox', { name: 'Course level', exact: true })).toHaveAttribute('required', '');
+    await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toHaveAttribute('required', '');
+
+    await expect(page.getByRole('button', { name: 'Save draft', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /save (availability|content|faq|seo)/i })).toHaveCount(0);
   });

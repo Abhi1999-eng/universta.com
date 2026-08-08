@@ -111,10 +111,10 @@ export async function countAcceptanceRecords(
       prisma.testimonial.count({ where: { quote: text } }),
     ]);
     const browserContinents = await prisma.continent.count({
-      where: { name: own.continentName },
+      where: { name: { startsWith: own.continentName } },
     });
     const browserCountries = await prisma.country.count({
-      where: { name: own.countryName },
+      where: { name: { startsWith: own.countryName } },
     });
     const testInquiries = await prisma.contactInquiry.count({
       where: { email },
@@ -232,11 +232,20 @@ export async function purgeAcceptanceRecords(
 
     // The catalog spec's location fixtures. Countries go first because they
     // reference a continent.
+    // `startsWith`, not an exact match: a test may append a per-invocation
+    // suffix (repeat/retry index) to keep its fixtures unique across repeated
+    // runs of the same test. The run id is still inside the prefix, so this
+    // stays strictly run-owned -- it just no longer leaks the suffixed rows,
+    // which an exact match silently left behind.
     removed.browserCountries = (
-      await prisma.country.deleteMany({ where: { name: own.countryName } })
+      await prisma.country.deleteMany({
+        where: { name: { startsWith: own.countryName } },
+      })
     ).count;
     removed.browserContinents = (
-      await prisma.continent.deleteMany({ where: { name: own.continentName } })
+      await prisma.continent.deleteMany({
+        where: { name: { startsWith: own.continentName } },
+      })
     ).count;
 
     // Free the private-use ISO codes this run consumed. Restricted to
