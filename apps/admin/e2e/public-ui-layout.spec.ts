@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { webBaseUrl } from './helpers/e2e-urls';
 
 const routes = [
@@ -13,7 +13,7 @@ const routes = [
   '/study-abroad-consultants',
 ];
 
-async function assertLayout(page: Parameters<typeof test>[0]['page'], route: string) {
+async function assertLayout(page: Page, route: string) {
   await page.goto(`${webBaseUrl}${route}`);
   await expect(page.locator('body')).toBeVisible();
 
@@ -22,7 +22,11 @@ async function assertLayout(page: Parameters<typeof test>[0]['page'], route: str
     const offenders = [...document.querySelectorAll<HTMLElement>('main *')]
       .filter((element) => {
         const rect = element.getBoundingClientRect();
-        return rect.width > window.innerWidth + 2 || rect.right > window.innerWidth + 2 || rect.left < -2;
+        return (
+          rect.width > window.innerWidth + 2 ||
+          rect.right > window.innerWidth + 2 ||
+          rect.left < -2
+        );
       })
       .slice(0, 8)
       .map((element) => ({
@@ -38,10 +42,13 @@ async function assertLayout(page: Parameters<typeof test>[0]['page'], route: str
     };
   });
 
-  expect(metrics.scrollWidth, `${route} must not scroll horizontally`).toBeLessThanOrEqual(
-    metrics.viewport + 2,
+  expect(
+    metrics.scrollWidth,
+    `${route} must not scroll horizontally`,
+  ).toBeLessThanOrEqual(metrics.viewport + 2);
+  expect(metrics.offenders, `${route} has viewport-overflowing elements`).toEqual(
+    [],
   );
-  expect(metrics.offenders, `${route} has viewport-overflowing elements`).toEqual([]);
 }
 
 test.describe('public UI layout', () => {
