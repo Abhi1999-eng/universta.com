@@ -4,6 +4,16 @@ import { FieldHelpIcon } from './FieldHelpIcon';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 
+/**
+ * A tiny compatibility map for labels that are shared so consistently across
+ * record editors that their meaning is unambiguous. It lets a unified editor
+ * keep the existing help affordance even when the field is rendered through a
+ * generic Select helper rather than bespoke markup.
+ */
+const inferredHelpKeys: Record<string, string> = {
+  'Course level': 'courses.courseLevelId',
+};
+
 /** Shared label for every editable admin field: label text, an optional
  * required marker, and — when help content is available — a compact "(!)"
  * info icon that opens a purpose/format/example popover. Pass either an
@@ -48,7 +58,8 @@ export function FieldLabel({
   help?: FieldHelpContent;
   helpKey?: string;
 }) {
-  const resolved = help ?? (helpKey ? getFieldHelp(helpKey) : undefined);
+  const lookupKey = helpKey ?? inferredHelpKeys[label];
+  const resolved = help ?? (lookupKey ? getFieldHelp(lookupKey) : undefined);
   return (
     <span className="inline-flex items-center">
       <label htmlFor={htmlFor}>
