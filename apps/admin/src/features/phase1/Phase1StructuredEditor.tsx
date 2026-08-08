@@ -59,6 +59,8 @@ const structured = new Set([
 ]);
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
+const invalidInputClass =
+  "mt-1 w-full rounded-xl border border-[#F04438] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#F04438] focus:ring-2 focus:ring-[#FEE4E2]";
 const emptyOptions: Options = {
   countries: [],
   universities: [],
@@ -146,6 +148,9 @@ export function Phase1StructuredEditor({
   const [tagDraft, setTagDraft] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   // New records also depend on asynchronous relationship options; do not let a
   // save race ahead of those options or an existing-record hydration.
   const [loading, setLoading] = useState(true);
@@ -162,6 +167,7 @@ export function Phase1StructuredEditor({
       "overview",
       "featuredMediaId",
       "sourceReference",
+      "verifiedAt",
       "status",
       "universityId",
       "genericCourseId",
@@ -243,6 +249,7 @@ export function Phase1StructuredEditor({
       next.robotsFollow = "true";
     }
     next.deadline = next.deadline ? next.deadline.slice(0, 10) : "";
+    next.verifiedAt = next.verifiedAt ? next.verifiedAt.slice(0, 10) : "";
     next.publishedDate = next.publishedDate
       ? next.publishedDate.slice(0, 10)
       : "";
@@ -326,10 +333,14 @@ export function Phase1StructuredEditor({
         if (!active) return;
         setOptions(nextOptions);
         if (record) hydrate(record);
+        setLoadError(false);
+        setMessage("");
         setLoading(false);
       })
       .catch((error: unknown) => {
         if (!active) return;
+        setMessageTone("error");
+        setLoadError(true);
         setMessage(
           error instanceof Error ? error.message : "Unable to load editor",
         );
@@ -338,7 +349,7 @@ export function Phase1StructuredEditor({
     return () => {
       active = false;
     };
-  }, [recordId, resource]);
+  }, [recordId, resource, reloadKey]);
 
   const campuses = useMemo(
     () =>
@@ -403,6 +414,23 @@ export function Phase1StructuredEditor({
       if (!values[field]?.trim()) next[field] = "This field is required.";
     if (resource === "universities" && !values.countryId)
       next.countryId = "Select a country.";
+    if (values.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(values.slug))
+      next.slug = "Use lowercase letters, numbers and single hyphens only.";
+    if (
+      !/^\d+$/.test(values.displayOrder ?? "") ||
+      Number(values.displayOrder) < 0 ||
+      Number(values.displayOrder) > 999999
+    )
+      next.displayOrder = "Display order must be a whole number from 0 to 999999.";
+    if (resource === "universities") {
+      if (
+        values.sourceReference?.trim() &&
+        !/^https:\/\//i.test(values.sourceReference.trim())
+      )
+        next.sourceReference = "Source URL must start with https://.";
+      if (values.verifiedAt && new Date(values.verifiedAt) > new Date())
+        next.verifiedAt = "Verified date cannot be in the future.";
+    }
     if (resource === "offerings" && !values.courseLevelId)
       next.courseLevelId = "Select a course level.";
     if (resource === "events" && values.startsAt && values.endsAt) {
@@ -428,7 +456,7 @@ export function Phase1StructuredEditor({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validate() || busy || loading) return;
+    if (!validate() || busy || loading || loadError) return;
     setBusy(true);
     setMessage("");
     const payload: Record<string, unknown> = {
@@ -502,9 +530,11 @@ export function Phase1StructuredEditor({
         method: recordId ? "PATCH" : "POST",
         body: JSON.stringify(payload),
       });
+      setMessageTone("success");
       setMessage(recordId ? "Record updated." : "Draft created.");
       await onSaved();
     } catch (error: unknown) {
+      setMessageTone("error");
       setMessage(
         error instanceof Error ? error.message : "Unable to save record",
       );
@@ -540,15 +570,37 @@ export function Phase1StructuredEditor({
         </button>
       </div>
       {message ? (
-        <p
-          role="status"
-          className="rounded-xl bg-[#E9F8F0] px-4 py-3 text-sm text-[#18794E]"
+        <div
+          role={messageTone === "error" ? "alert" : "status"}
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
+            messageTone === "error"
+              ? "border-[#FECDCA] bg-[#FEF3F2] text-[#B42318]"
+              : "border-[#ABEFC6] bg-[#ECFDF3] text-[#067647]"
+          }`}
         >
-          {message}
-        </p>
+          <span>{message}</span>
+          {loadError ? (
+            <button
+              type="button"
+              className="rounded-lg border border-[#F04438] px-3 py-1.5 font-semibold"
+              onClick={() => {
+                setMessage("");
+                setLoadError(false);
+                setLoading(true);
+                setReloadKey((value) => value + 1);
+              }}
+            >
+              Retry loading
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {loading ? <p role="status" className="text-sm text-[#667085]">Loading record…</p> : null}
-      <fieldset disabled={loading} className="contents" aria-busy={loading}>
+      <fieldset
+        disabled={loading || loadError}
+        className="contents"
+        aria-busy={loading}
+      >
       {resource === "universities" ? (
         <UniversityFields
           values={values}
@@ -715,8 +767,9 @@ function Field({
           id={fieldId}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={`${inputClass} min-h-28`}
+          className={`${error ? invalidInputClass : inputClass} min-h-28`}
           aria-invalid={Boolean(error)}
+          required={required}
           aria-describedby={error ? errorId : undefined}
         />
       ) : (
@@ -725,8 +778,9 @@ function Field({
           type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={inputClass}
+          className={error ? invalidInputClass : inputClass}
           aria-invalid={Boolean(error)}
+          required={required}
           aria-describedby={error ? errorId : undefined}
         />
       )}
@@ -766,8 +820,9 @@ function Select({
         id={fieldId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={inputClass}
+        className={error ? invalidInputClass : inputClass}
         aria-invalid={Boolean(error)}
+        required={required}
         aria-describedby={error ? errorId : undefined}
       >
         <option value="">Select {label.toLowerCase()}</option>
@@ -918,6 +973,7 @@ function Core({
         onChange={(value) => set(entity, value)}
         error={errors[entity]}
         helpKey={helpKey(entity)}
+        required
       />
       <Field
         label="Slug"
@@ -925,6 +981,7 @@ function Core({
         onChange={(value) => set("slug", value)}
         error={errors.slug}
         helpKey={helpKey("slug")}
+        required
       />
       {summaryKey ? (
         <Field
@@ -939,6 +996,7 @@ function Core({
         type="number"
         value={values.displayOrder ?? "0"}
         onChange={(value) => set("displayOrder", value)}
+        error={errors.displayOrder}
         help={commonFieldHelp.displayOrder}
       />
     </div>
@@ -1036,6 +1094,7 @@ function UniversityFields(p: any) {
         options={p.countries}
         error={p.errors.countryId}
         helpKey="universities.countryId"
+        required
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
@@ -1046,9 +1105,27 @@ function UniversityFields(p: any) {
         />
         <Field
           label="Source URL"
+          type="url"
           value={p.values.sourceReference ?? ""}
           onChange={(value) => p.set("sourceReference", value)}
+          error={p.errors.sourceReference}
           helpKey="universities.sourceReference"
+        />
+        <Field
+          label="Verified date"
+          type="date"
+          value={p.values.verifiedAt ?? ""}
+          onChange={(value) => p.set("verifiedAt", value)}
+          error={p.errors.verifiedAt}
+          help={{
+            purpose: "Records when the University information was last checked against the official source.",
+            input: "Choose the date the source was verified.",
+            dataType: "Date",
+            required: "Optional, but recommended whenever a Source URL is recorded.",
+            example: "2026-08-08",
+            dependency: "Use together with Source URL for auditable University facts.",
+            frontendEffect: "Supports freshness and trust signals where verification is shown.",
+          }}
         />
         <MediaPickerDialog
           label="Media (optional)"
