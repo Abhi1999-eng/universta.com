@@ -58,19 +58,6 @@ function validateSlug(value: string) {
   }
 }
 
-function displayOrder(value: unknown, fallback = 0) {
-  if (value === undefined || value === null || value === '') return fallback;
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 999999) {
-    throw new BadRequestException({
-      code: 'INVALID_CONSULTANT_LOCATION_DISPLAY_ORDER',
-      message: 'Display order must be a whole number from 0 to 999999',
-      details: null,
-    });
-  }
-  return parsed;
-}
-
 function status(value: unknown, fallback = 'ACTIVE') {
   if (value === undefined || value === null || value === '') return fallback;
   if (value !== 'ACTIVE' && value !== 'INACTIVE') {
@@ -128,7 +115,6 @@ export class ConsultantLocationsAdminController {
                 { slug: { contains: q } },
                 { city: { contains: q } },
                 { state: { contains: q } },
-                { address: { contains: q } },
               ],
             }
           : {}),
@@ -139,7 +125,7 @@ export class ConsultantLocationsAdminController {
         cityRef: { select: { id: true, name: true, slug: true } },
         _count: { select: { consultants: true } },
       },
-      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      orderBy: [{ name: 'asc' }],
     });
     return successEnvelope(req, rows);
   }
@@ -196,10 +182,8 @@ export class ConsultantLocationsAdminController {
           slug,
           city,
           state: nullableText(body.state),
-          address: nullableText(body.address),
           overview: nullableText(body.overview),
           status: status(body.status),
-          displayOrder: displayOrder(body.displayOrder),
         },
       });
       return successEnvelope(req, created);
@@ -249,12 +233,8 @@ export class ConsultantLocationsAdminController {
           ...(nextSlug !== undefined ? { slug: nextSlug } : {}),
           ...(body.city !== undefined ? { city: text(body.city) ?? current.city } : {}),
           ...(body.state !== undefined ? { state: nullableText(body.state) } : {}),
-          ...(body.address !== undefined ? { address: nullableText(body.address) } : {}),
           ...(body.overview !== undefined ? { overview: nullableText(body.overview) } : {}),
           ...(body.status !== undefined ? { status: status(body.status, current.status) } : {}),
-          ...(body.displayOrder !== undefined
-            ? { displayOrder: displayOrder(body.displayOrder, current.displayOrder) }
-            : {}),
         },
       });
       return successEnvelope(req, updated);
