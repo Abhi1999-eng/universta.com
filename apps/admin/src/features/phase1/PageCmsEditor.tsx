@@ -58,7 +58,15 @@ type Seo = {
   canonicalUrl?: string | null;
   focusKeyword?: string | null;
 };
-type PageTemplateOption = { id: string; name: string; pageFamily: string; isActive: boolean };
+type TemplateSectionPreview = { sectionKey: string; heading?: string | null };
+type PageTemplateOption = {
+  id: string;
+  name: string;
+  pageFamily: string;
+  isActive: boolean;
+  /** Present on the list payload; drives the "what will be added" preview. */
+  defaultSectionsJson?: TemplateSectionPreview[] | null;
+};
 type PageRecord = {
   id: string;
   pageType: string;
@@ -694,6 +702,8 @@ export function PageCmsEditor({
   const [templateOptions, setTemplateOptions] = useState<PageTemplateOption[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
+  const selectedTemplate = templateOptions.find((option) => option.id === selectedTemplateId) ?? null;
+  const selectedTemplateSections = selectedTemplate?.defaultSectionsJson ?? [];
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -825,7 +835,11 @@ export function PageCmsEditor({
       };
       if (recordId) {
         await api(`pages/${recordId}`, { method: "PATCH", body: JSON.stringify(payload) });
+        // Page details, sections and SEO are one document to the admin, so one
+        // save persists all of them rather than asking which button to press.
+        await persistSections();
         setMessage("Page saved.");
+        await load();
       } else {
         const created = await api<PageRecord>("pages", {
           method: "POST",
@@ -904,14 +918,12 @@ export function PageCmsEditor({
     }
   }
 
-  async function saveSections() {
-    if (!recordId) {
-      setMessage("Save the page once before adding sections.");
-      return;
-    }
-    setBusy(true);
-    setMessage("");
-    try {
+  /** Flushes pending section adds, edits, deletes and reordering. Called by
+   * savePage so the admin has a single save, not one button per concern.
+   * Errors propagate to that caller, which owns the busy state and message. */
+  async function persistSections() {
+    if (!recordId) return;
+    {
       for (const id of removedIds) {
         await api(`pages/${recordId}/sections/${id}`, { method: "DELETE" });
       }
@@ -960,50 +972,40 @@ export function PageCmsEditor({
           body: JSON.stringify({ order: sections.map((section) => section.id) }),
         });
       }
-      setMessage("Sections saved.");
       setNewSections([]);
       setRemovedIds([]);
       setDirtySections(new Set());
-      await load();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to save sections");
-    } finally {
-      setBusy(false);
     }
   }
 
-  async function assignTemplate() {
-    if (!recordId) return;
+  /** One action for the admin: it records which template the page uses and
+   * adds that template's missing sections. The API keeps existing sections
+   * untouched, so this is safe to repeat. */
+  async function applyTemplate() {
+    if (!recordId || !selectedTemplateId) return;
     setTemplateBusy(true);
     setMessage("");
     try {
-      await authFetch(`/api/v1/admin/page-templates/assign/${recordId}`, {
+      const response = await authFetch(`/api/v1/admin/page-templates/apply-defaults/${recordId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ templateId: selectedTemplateId || null }),
+        body: JSON.stringify({ templateId: selectedTemplateId }),
       });
-      setMessage("Template assignment saved. Existing sections were not changed.");
+      const body = (await response.json()) as {
+        data?: { created: number; restored: number; skipped: number };
+        error?: { message?: string } | null;
+      };
+      if (!response.ok || body.error) throw new Error(body.error?.message ?? "Unable to apply template");
+      const added = (body.data?.created ?? 0) + (body.data?.restored ?? 0);
+      const skipped = body.data?.skipped ?? 0;
+      setMessage(
+        skipped
+          ? `${added} section${added === 1 ? "" : "s"} added, ${skipped} already existed.`
+          : `${added} section${added === 1 ? "" : "s"} added.`,
+      );
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to assign template");
-    } finally {
-      setTemplateBusy(false);
-    }
-  }
-
-  async function applyTemplateDefaults() {
-    if (!recordId) return;
-    if (!window.confirm("Add this template's default sections to the page? Existing sections are kept as-is.")) return;
-    setTemplateBusy(true);
-    setMessage("");
-    try {
-      const response = await authFetch(`/api/v1/admin/page-templates/apply-defaults/${recordId}`, { method: "POST" });
-      const body = (await response.json()) as { data?: { created: number }; error?: { message?: string } | null };
-      if (!response.ok || body.error) throw new Error(body.error?.message ?? "Unable to apply template defaults");
-      setMessage(`Added ${body.data?.created ?? 0} section(s) from the template.`);
-      await load();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to apply template defaults");
+      setMessage(error instanceof Error ? error.message : "Unable to apply template");
     } finally {
       setTemplateBusy(false);
     }
@@ -1098,10 +1100,10 @@ export function PageCmsEditor({
         </div>
         {recordId ? (
           <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
-            <legend className="px-1 text-sm font-semibold">Page template</legend>
+            <legend className="px-1 text-sm font-semibold">Template</legend>
             <p className="text-xs text-[#828B9B]">
-              Assigning a template only remembers which one this page uses — it never changes existing sections.
-              Applying its default sections is a separate action below, and skips any section this page already has.
+              A template is a starting layout. Applying one adds any sections this page is missing and
+              leaves everything you have already written untouched, so it is safe to apply again.
             </p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="text-sm font-semibold">
@@ -1110,6 +1112,7 @@ export function PageCmsEditor({
                   value={selectedTemplateId}
                   onChange={(event) => setSelectedTemplateId(event.target.value)}
                   className={inputClass}
+                  data-testid="page-template-select"
                 >
                   <option value="">No template</option>
                   {templateOptions.map((template) => (
@@ -1121,22 +1124,38 @@ export function PageCmsEditor({
               </label>
               <button
                 type="button"
-                disabled={templateBusy}
-                onClick={() => void assignTemplate()}
+                disabled={templateBusy || !selectedTemplateId}
+                onClick={() => void applyTemplate()}
                 className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+                title={selectedTemplateId ? undefined : "Choose a template first"}
+                data-testid="apply-template"
               >
-                Save assignment
-              </button>
-              <button
-                type="button"
-                disabled={templateBusy || !page.template}
-                onClick={() => void applyTemplateDefaults()}
-                className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
-                title={page.template ? undefined : "Assign a template first"}
-              >
-                Apply template&apos;s default sections
+                Apply template
               </button>
             </div>
+            {selectedTemplate ? (
+              <div
+                className="mt-3 rounded-xl bg-[#F7F9FC] p-3 text-xs text-[#48505F]"
+                data-testid="template-preview"
+              >
+                <p className="font-semibold text-[#1D2433]">{selectedTemplate.name}</p>
+                {selectedTemplateSections.length ? (
+                  <>
+                    <p className="mt-1">
+                      Includes {selectedTemplateSections.length} section
+                      {selectedTemplateSections.length === 1 ? "" : "s"}:
+                    </p>
+                    <ul className="mt-1 list-disc pl-5">
+                      {selectedTemplateSections.map((section) => (
+                        <li key={section.sectionKey}>{section.heading ?? section.sectionKey}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="mt-1">This template has no sections yet.</p>
+                )}
+              </div>
+            ) : null}
           </fieldset>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-3">
@@ -1230,14 +1249,9 @@ export function PageCmsEditor({
               <p className="text-sm text-[#667085]">No sections yet. Add one above.</p>
             ) : null}
           </div>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void saveSections()}
-            className="mt-4 rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            Save sections
-          </button>
+          <p className="mt-4 text-xs text-[#828B9B]">
+            Section changes are saved with the page — use Save page above.
+          </p>
         </div>
       ) : null}
 

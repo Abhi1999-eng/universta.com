@@ -273,7 +273,7 @@ export function PageTemplatesManager() {
             </div>
 
             <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-              <legend className="px-1 text-sm font-semibold">Default sections</legend>
+              <legend className="px-1 text-sm font-semibold">Sections included in this template</legend>
               <div className="space-y-3">
                 {sections.map((section, index) => (
                   <div key={index} className="grid gap-2 rounded-lg border border-[#E8ECF3] p-3 sm:grid-cols-[1fr_1fr_auto]">

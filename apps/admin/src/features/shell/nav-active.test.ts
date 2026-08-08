@@ -68,7 +68,7 @@ describe('exactly one sidebar entry is active', () => {
   });
 
   it('selects Pages, not the page-sections signpost', () => {
-    expect(activeLabel('/phase1/pages')).toBe('Pages');
+    expect(activeLabel('/phase1/pages')).toBe('Page records (raw list)');
   });
 
   it('picks one of the seven entries that share /settings', () => {

@@ -25,7 +25,15 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Content records",
     items: [
-      { label: "Pages", href: "/phase1/pages", hints: ["Page sections / content blocks"] },
+      // Website Pages (/website) is the canonical place to build a page. This
+      // is the same data as a plain record list, kept for bulk/raw edits and
+      // so breadcrumbs still resolve on the route -- named so nobody has to
+      // wonder which of the two screens they are supposed to use.
+      {
+        label: "Page records (raw list)",
+        href: "/phase1/pages",
+        hints: ["Build pages in Website Pages"],
+      },
       { label: "Success stories", href: "/phase1/success-stories" },
       { label: "Testimonials", href: "/phase1/testimonials" },
     ],
