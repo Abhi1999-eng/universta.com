@@ -42,9 +42,9 @@ function nullableText(value: unknown) {
 function isUniqueConflict(error: unknown) {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error as { code?: string }).code === 'P2002',
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: string }).code === 'P2002',
   );
 }
 
@@ -52,7 +52,8 @@ function validateSlug(value: string) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) {
     throw new BadRequestException({
       code: 'INVALID_CONSULTANT_LOCATION_SLUG',
-      message: 'Slug must use lowercase letters, numbers and single hyphens only',
+      message:
+        'Slug must use lowercase letters, numbers and single hyphens only',
       details: null,
     });
   }
@@ -206,7 +207,8 @@ export class ConsultantLocationsAdminController {
     @Body() body: Record<string, unknown>,
   ) {
     const current = await this.detailRecord(id);
-    const nextSlug = body.slug !== undefined ? nullableText(body.slug) : undefined;
+    const nextSlug =
+      body.slug !== undefined ? nullableText(body.slug) : undefined;
     if (nextSlug !== undefined) {
       if (!nextSlug) {
         throw new BadRequestException({
@@ -228,13 +230,25 @@ export class ConsultantLocationsAdminController {
           ...(body.stateId !== undefined
             ? { stateId: nullableText(body.stateId) }
             : {}),
-          ...(body.cityId !== undefined ? { cityId: nullableText(body.cityId) } : {}),
-          ...(body.name !== undefined ? { name: text(body.name) ?? current.name } : {}),
+          ...(body.cityId !== undefined
+            ? { cityId: nullableText(body.cityId) }
+            : {}),
+          ...(body.name !== undefined
+            ? { name: text(body.name) ?? current.name }
+            : {}),
           ...(nextSlug !== undefined ? { slug: nextSlug } : {}),
-          ...(body.city !== undefined ? { city: text(body.city) ?? current.city } : {}),
-          ...(body.state !== undefined ? { state: nullableText(body.state) } : {}),
-          ...(body.overview !== undefined ? { overview: nullableText(body.overview) } : {}),
-          ...(body.status !== undefined ? { status: status(body.status, current.status) } : {}),
+          ...(body.city !== undefined
+            ? { city: text(body.city) ?? current.city }
+            : {}),
+          ...(body.state !== undefined
+            ? { state: nullableText(body.state) }
+            : {}),
+          ...(body.overview !== undefined
+            ? { overview: nullableText(body.overview) }
+            : {}),
+          ...(body.status !== undefined
+            ? { status: status(body.status, current.status) }
+            : {}),
         },
       });
       return successEnvelope(req, updated);
