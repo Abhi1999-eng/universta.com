@@ -21,12 +21,27 @@ test.describe('scholarship provider management', () => {
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add provider' })).toBeVisible();
 
+    const nameInput = page.getByRole('textbox', { name: 'Name', exact: true });
+    const slugInput = page.getByRole('textbox', {
+      name: 'Slug (optional)',
+      exact: true,
+    });
+    const websiteInput = page.getByRole('textbox', {
+      name: 'Website URL (optional)',
+      exact: true,
+    });
+    const sourceInput = page.getByRole('textbox', {
+      name: 'Source / reference URL (optional)',
+      exact: true,
+    });
+    const statusInput = page.getByRole('combobox', { name: 'Status', exact: true });
+
     await page.getByRole('button', { name: 'Add provider' }).click();
-    await page.getByLabel('Name').fill(providerName);
-    await page.getByLabel('Slug (optional)').fill(slug);
-    await page.getByLabel('Website URL (optional)').fill(website);
-    await page.getByLabel('Source / reference URL (optional)').fill(source);
-    await page.getByLabel('Status').selectOption('ACTIVE');
+    await nameInput.fill(providerName);
+    await slugInput.fill(slug);
+    await websiteInput.fill(website);
+    await sourceInput.fill(source);
+    await statusInput.selectOption('ACTIVE');
     await page.getByRole('button', { name: 'Create provider' }).click();
 
     await expect(page.getByText(providerName, { exact: true })).toBeVisible();
@@ -39,14 +54,12 @@ test.describe('scholarship provider management', () => {
     await expect(createdRow.getByText('0 scholarships', { exact: true })).toBeVisible();
 
     await createdRow.getByRole('button', { name: 'Edit' }).click();
-    await expect(page.getByLabel('Name')).toHaveValue(providerName);
-    await expect(page.getByLabel('Slug (optional)')).toHaveValue(slug);
-    await expect(page.getByLabel('Website URL (optional)')).toHaveValue(website);
-    await expect(page.getByLabel('Source / reference URL (optional)')).toHaveValue(
-      source,
-    );
+    await expect(nameInput).toHaveValue(providerName);
+    await expect(slugInput).toHaveValue(slug);
+    await expect(websiteInput).toHaveValue(website);
+    await expect(sourceInput).toHaveValue(source);
 
-    await page.getByLabel('Name').fill(updatedName);
+    await nameInput.fill(updatedName);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText(updatedName, { exact: true })).toBeVisible();
 
