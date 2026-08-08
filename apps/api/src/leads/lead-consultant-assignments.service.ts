@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
-import type { UpdateLeadConsultantAssignmentDto } from './dto/lead.dto';
+import type { UpdateLeadConsultantAssignmentDto } from './dto/lead-consultant-assignment.dto';
 
 type AssignmentRow = {
   id: string;
