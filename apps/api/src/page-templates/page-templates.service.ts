@@ -334,18 +334,34 @@ export class PageTemplatesService {
     });
   }
 
-  /** Explicit, separate action from assignment: appends the template's
-   * default sections onto the page (after the current highest
-   * displayOrder), skipping any sectionKey the page already has so a
-   * second click is a safe no-op rather than a duplicate. */
-  async applyDefaultsToPage(pageId: string) {
+  /** Assigns the template (when one is supplied) and applies its default
+   * sections in a single action, so the admin has one intentional
+   * "Apply template" step rather than a save-then-apply sequence.
+   *
+   * Never destructive: a key the page already uses keeps its existing
+   * content untouched and is reported as skipped.
+   *
+   * The `[pageId, sectionKey]` unique index does not exclude soft-deleted
+   * rows, so a key belonging to a previously deleted section still
+   * occupies the index. Filtering only on live sections therefore used to
+   * send that key to `createMany`, which collided with the surviving row
+   * and surfaced as a bare Internal server error -- permanently wedging
+   * any page whose template sections had been deleted. Those rows are
+   * revived in place instead, which is also what an admin means by
+   * re-applying a template after clearing it out. */
+  async applyTemplateToPage(pageId: string, templateId?: string | null) {
+    if (templateId !== undefined) await this.assignToPage(pageId, templateId);
     const page = await this.prisma.page.findFirst({
       where: { id: pageId, deletedAt: null },
       include: {
         template: true,
         sections: {
-          where: { deletedAt: null },
-          select: { sectionKey: true, displayOrder: true },
+          select: {
+            id: true,
+            sectionKey: true,
+            displayOrder: true,
+            deletedAt: true,
+          },
         },
       },
     });
@@ -358,29 +374,67 @@ export class PageTemplatesService {
     if (!page.template)
       throw new BadRequestException({
         code: 'PAGE_TEMPLATE_NOT_ASSIGNED',
-        message: 'Assign a template to this page before applying its defaults',
+        message: 'Select a template before applying it to this page',
         details: null,
       });
-    const existingKeys = new Set(page.sections.map((s) => s.sectionKey));
-    const startOrder =
-      page.sections.reduce((max, s) => Math.max(max, s.displayOrder), -1) + 1;
-    const sections = (
-      (page.template.defaultSectionsJson as unknown as TemplateSection[]) ?? []
-    ).filter((section) => !existingKeys.has(section.sectionKey));
-    if (!sections.length) return { created: 0 };
-    await this.prisma.pageSection.createMany({
-      data: sections.map((section, index) => ({
-        id: randomUUID(),
-        pageId,
-        sectionKey: section.sectionKey,
-        sectionType: section.sectionType,
-        eyebrow: section.eyebrow ?? null,
-        heading: section.heading ?? null,
-        subheading: section.subheading ?? null,
-        displayOrder: startOrder + index,
-        status: 'ACTIVE',
-      })),
-    });
-    return { created: sections.length };
+
+    const live = page.sections.filter((s) => !s.deletedAt);
+    const removedByKey = new Map(
+      page.sections.filter((s) => s.deletedAt).map((s) => [s.sectionKey, s]),
+    );
+    const liveKeys = new Set(live.map((s) => s.sectionKey));
+    let nextOrder =
+      live.reduce((max, s) => Math.max(max, s.displayOrder), -1) + 1;
+
+    const defaults =
+      (page.template.defaultSectionsJson as unknown as TemplateSection[]) ?? [];
+    const toCreate: TemplateSection[] = [];
+    const toRevive: { id: string; section: TemplateSection }[] = [];
+    let skipped = 0;
+    for (const section of defaults) {
+      if (liveKeys.has(section.sectionKey)) {
+        skipped += 1;
+        continue;
+      }
+      const removed = removedByKey.get(section.sectionKey);
+      if (removed) toRevive.push({ id: removed.id, section });
+      else toCreate.push(section);
+    }
+
+    if (toCreate.length)
+      await this.prisma.pageSection.createMany({
+        data: toCreate.map((section) => ({
+          id: randomUUID(),
+          pageId,
+          sectionKey: section.sectionKey,
+          sectionType: section.sectionType,
+          eyebrow: section.eyebrow ?? null,
+          heading: section.heading ?? null,
+          subheading: section.subheading ?? null,
+          displayOrder: nextOrder++,
+          status: 'ACTIVE',
+        })),
+      });
+    for (const { id, section } of toRevive)
+      await this.prisma.pageSection.update({
+        where: { id },
+        data: {
+          deletedAt: null,
+          sectionType: section.sectionType,
+          eyebrow: section.eyebrow ?? null,
+          heading: section.heading ?? null,
+          subheading: section.subheading ?? null,
+          displayOrder: nextOrder++,
+          status: 'ACTIVE',
+        },
+      });
+
+    return {
+      created: toCreate.length,
+      restored: toRevive.length,
+      skipped,
+      templateId: page.template.id,
+      templateName: page.template.name,
+    };
   }
 }

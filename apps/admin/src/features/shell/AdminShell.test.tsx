@@ -50,7 +50,7 @@ describe('AdminShell', () => {
       ['University course offerings', '/phase1/offerings'],
       ['Consultants', '/phase1/consultants'],
       ['Consultant locations', '/consultant-locations'],
-      ['Pages', '/phase1/pages'],
+      ['Page records (raw list)', '/phase1/pages'],
       ['Page templates', '/page-templates'],
       ['Media library', '/media'],
       ['SEO management', '/seo'],

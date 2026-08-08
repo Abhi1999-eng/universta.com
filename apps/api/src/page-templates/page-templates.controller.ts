@@ -138,13 +138,18 @@ export class PageTemplatesAdminController {
     );
   }
 
+  /** One action for the admin's single "Apply template" button: assigns the
+   * template when `templateId` is supplied, then applies its sections.
+   * Kept on the historical path so existing clients keep working. */
   @Post('apply-defaults/:pageId') async applyDefaults(
     @Req() req: AuthenticatedRequest,
     @Param('pageId') pageId: string,
+    @Body() body?: Record<string, unknown>,
   ) {
+    const templateId = body?.templateId as string | null | undefined;
     return successEnvelope(
       req,
-      await this.templates.applyDefaultsToPage(pageId),
+      await this.templates.applyTemplateToPage(pageId, templateId),
     );
   }
 }
