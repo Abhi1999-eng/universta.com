@@ -9,6 +9,7 @@ import { siteOrigin } from "@/lib/site-origin";
 import "./globals.css";
 import "./visual-reference.css";
 import "./global-chrome.css";
+import "./public-ui-polish.css";
 
 const siteUrl = siteOrigin;
 const organizationJsonLd = {
