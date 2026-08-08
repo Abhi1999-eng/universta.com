@@ -27,10 +27,7 @@ describe('ExpandedService admin detail media serialization', () => {
         }),
       },
     } as unknown as PrismaService;
-    const service = new ExpandedService(
-      prisma,
-      {} as ExperimentsService,
-    );
+    const service = new ExpandedService(prisma, {} as ExperimentsService);
 
     const result = (await service.adminDetail(
       'universities',
