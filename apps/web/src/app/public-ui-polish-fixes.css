@@ -29,6 +29,25 @@
   }
 }
 
+/* The approved Courses template turns the filter column into a fixed drawer on
+ * mobile and deliberately stacks it one layer above the scrim (66 vs 65).
+ * public-ui-polish.css briefly reset `.filters` to position:static at 820px,
+ * which removed that stacking context and let the scrim intercept checkbox
+ * clicks. Restore the approved drawer positioning at the same breakpoint. */
+@media (max-width:820px){
+  .visual-courses-page .filters{
+    position:fixed;
+    top:0;
+    left:0;
+    bottom:0;
+    width:320px;
+    max-width:86vw;
+    z-index:66;
+    margin:0;
+    border-radius:0;
+  }
+}
+
 @media (max-width:640px){
   :where(.visual-countries-page,.visual-country-detail-page) .wrap{
     padding-inline:18px;
