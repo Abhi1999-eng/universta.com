@@ -13,6 +13,18 @@ export interface LeadRelation {
   shortLabel?: string | null;
 }
 
+export interface LeadConsultantOption {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+}
+
+export interface LeadAssignedConsultant extends LeadConsultantOption {
+  assignedAt: string;
+  assignmentUpdatedAt: string;
+}
+
 export interface LeadRecord {
   id: string;
   leadNumber: string;
@@ -82,6 +94,7 @@ export interface LeadDetail extends LeadRecord {
   notes: LeadNote[];
   statusHistory: LeadStatusHistory[];
   audit: LeadAudit[];
+  assignedConsultant: LeadAssignedConsultant | null;
 }
 
 export interface LeadOptions {
@@ -90,6 +103,7 @@ export interface LeadOptions {
   countries: LeadRelation[];
   courseLevels: LeadRelation[];
   intakes: LeadRelation[];
+  consultants: LeadConsultantOption[];
 }
 
 export interface LeadListParams {
