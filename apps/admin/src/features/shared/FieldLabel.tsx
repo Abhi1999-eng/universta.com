@@ -4,6 +4,37 @@ import { FieldHelpIcon } from './FieldHelpIcon';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 
+/**
+ * A tiny compatibility map for labels that are shared so consistently across
+ * record editors that their meaning is unambiguous. It lets a unified editor
+ * keep the existing help affordance even when the field is rendered through a
+ * generic Select helper rather than bespoke markup.
+ */
+const inferredHelpKeys: Record<string, string> = {
+  'Course level': 'courses.courseLevelId',
+};
+
+const countryHelpKeys: Record<string, string> = {
+  Continent: 'countries.continentId',
+  'Country name': 'countries.name',
+  Slug: 'countries.slug',
+  'ISO alpha-2': 'countries.iso2Code',
+  'ISO alpha-3': 'countries.iso3Code',
+  'Display order': 'countries.displayOrder',
+  'Page heading': 'countries.pageHeading',
+  'Short description': 'countries.shortDescription',
+};
+
+const countryRequiredLabels = new Set([
+  'Continent',
+  'Country name',
+  'Slug',
+  'ISO alpha-2',
+  'ISO alpha-3',
+  'Page heading',
+  'Short description',
+]);
+
 /** Shared label for every editable admin field: label text, an optional
  * required marker, and — when help content is available — a compact "(!)"
  * info icon that opens a purpose/format/example popover. Pass either an
@@ -48,14 +79,20 @@ export function FieldLabel({
   help?: FieldHelpContent;
   helpKey?: string;
 }) {
-  const resolved = help ?? (helpKey ? getFieldHelp(helpKey) : undefined);
+  const isCountryField = Boolean(htmlFor?.startsWith('country-'));
+  const lookupKey = helpKey ?? (isCountryField ? countryHelpKeys[label] : undefined) ?? inferredHelpKeys[label];
+  const resolved = help ?? (lookupKey ? getFieldHelp(lookupKey) : undefined);
+  const inferredRequired = isCountryField && countryRequiredLabels.has(label);
+  const effectiveRequired = required || inferredRequired;
+  const effectiveRequiredMarkerVisible = requiredMarkerVisible || inferredRequired;
+
   return (
     <span className="inline-flex items-center">
       <label htmlFor={htmlFor}>
         {label}
-        {required && requiredMarkerVisible ? ' *' : null}
+        {effectiveRequired && effectiveRequiredMarkerVisible ? ' *' : null}
       </label>
-      {required && !requiredMarkerVisible ? (
+      {effectiveRequired && !effectiveRequiredMarkerVisible ? (
         <span aria-hidden="true" className="text-[#B42318]"> *</span>
       ) : null}
       {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}

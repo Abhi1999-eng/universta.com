@@ -54,7 +54,7 @@ test.describe.serial('catalog management', () => {
     for (const letter of letters) {
       await page.getByLabel('ISO alpha-2 *').fill(`Q${letter}`);
       await page.getByLabel('ISO alpha-3 *').fill(`Q${letter}X`);
-      await page.getByRole('button', { name: 'Save draft' }).click();
+      await page.getByRole('button', { name: 'Save draft', exact: true }).click();
       try {
         await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/, { timeout: 3_000 });
         saved = true;
@@ -67,29 +67,21 @@ test.describe.serial('catalog management', () => {
       }
     }
     expect(saved, 'every QA-QZ ISO code is already taken locally').toBe(true);
-    const publishingStatus = page.getByRole('status', { name: 'Country publishing status' });
-    await expect(publishingStatus).toHaveText('DRAFT');
-    await expect(page.getByRole('heading', { name: 'Profile editors' })).toBeVisible();
-    await page.getByLabel('Currency code').fill('CAD');
-    const costProfile = page.getByRole('group', { name: 'cost' });
-    await costProfile.getByLabel('Source URL').fill('https://example.com/browser-profile');
-    await costProfile.getByLabel('Verified at').fill('2026-01-01T00:00:00.000Z');
-    await costProfile.getByRole('button', { name: 'Save cost' }).click();
-    await expect(page.getByText('cost profile saved.', { exact: true })).toBeVisible();
+
+    await expect(page.getByRole('heading', { name: 'Edit country' })).toBeVisible();
+    await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
     const publicDraft = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicDraft.status()).toBe(404);
 
-    await page.getByRole('button', { name: 'Publish' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Publish country' }).click();
-    await expect(page.getByText('Country published.', { exact: true })).toBeVisible();
-    await expect(publishingStatus).toHaveText('PUBLISHED');
+    // The unified editor owns publishing too: there are no separate profile,
+    // editorial, SEO, publish-dialog, or unpublish-dialog save flows anymore.
+    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await expect(page.getByText('PUBLISHED', { exact: true })).toBeVisible();
     const publicPublished = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicPublished.status()).toBe(200);
 
-    await page.getByRole('button', { name: 'Unpublish' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Unpublish country' }).click();
-    await expect(page.getByText('Country unpublished.', { exact: true })).toBeVisible();
-    await expect(publishingStatus).toHaveText('DRAFT');
+    await page.getByRole('button', { name: 'Move to draft', exact: true }).click();
+    await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
     expect((await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`)).status()).toBe(404);
 
     await page.goto('/countries');
