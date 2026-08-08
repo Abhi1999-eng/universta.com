@@ -44,26 +44,10 @@ const countryRequiredLabels = new Set([
  * rather than showing an empty popover.
  *
  * Always pass `htmlFor` matching the field's own `id`, and render this as a
- * *sibling* of the input — never nest it inside an outer `<label>` that also
- * wraps the input. A real browser's accessible-name computation for an
- * implicitly-wrapping `<label>` (`<label>text<input/></label>`) breaks once
- * that label contains another interactive element — like this component's
- * own help-icon `<button>` — leaving the input with no accessible name at
- * all. Explicit `htmlFor`/`id` association sidesteps that entirely and is
- * required, not optional, for every caller.
- *
- * The required marker defaults to a sibling of `<label>`, `aria-hidden`
- * (decorative-only), so it never affects the *computed accessible name* —
- * this is safe precisely because only the help icon `<button>`, never the
- * marker, ever needed to move outside the label to avoid the wrapping bug
- * above. Some pre-existing forms instead rely on a literal, non-hidden " *"
- * that was already part of their accessible name before this component
- * existed: for those, `requiredMarkerVisible` renders the marker *inside*
- * `<label>` instead, so `for`-based association exposes it as part of the
- * label's own text — matching that exact pre-existing behavior. (This stays
- * safe because the input itself is still never nested inside the label —
- * only the marker text is.) Either way, the help icon's own accessible name
- * always uses the clean `label` text, never the marker. */
+ * sibling of the input. Some legacy acceptance tests intentionally include
+ * the required marker in the accessible label text; `requiredMarkerVisible`
+ * preserves that behaviour while still rendering the marker in red.
+ */
 export function FieldLabel({
   label,
   htmlFor,
@@ -87,13 +71,15 @@ export function FieldLabel({
   const effectiveRequiredMarkerVisible = requiredMarkerVisible || inferredRequired;
 
   return (
-    <span className="inline-flex items-center">
+    <span className="inline-flex items-center gap-1">
       <label htmlFor={htmlFor}>
         {label}
-        {effectiveRequired && effectiveRequiredMarkerVisible ? ' *' : null}
+        {effectiveRequired && effectiveRequiredMarkerVisible ? (
+          <span className="ml-1 font-bold text-[#D92D20]">*</span>
+        ) : null}
       </label>
       {effectiveRequired && !effectiveRequiredMarkerVisible ? (
-        <span aria-hidden="true" className="text-[#B42318]"> *</span>
+        <span aria-hidden="true" className="font-bold text-[#D92D20]">*</span>
       ) : null}
       {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}
     </span>
