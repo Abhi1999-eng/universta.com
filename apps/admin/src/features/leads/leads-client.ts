@@ -1,6 +1,7 @@
 import { authFetch } from '@/features/auth/auth-client';
 import {
   LeadClientError,
+  type LeadAssignedConsultant,
   type LeadDetail,
   type LeadListParams,
   type LeadNote,
@@ -14,6 +15,12 @@ type Envelope<T> = {
   meta: PageMeta | null;
   error: { code: string; message: string; details: unknown } | null;
   requestId: string;
+};
+
+export type LeadConsultantAssignmentResult = {
+  assignment: LeadAssignedConsultant | null;
+  updatedAt: string;
+  changed: boolean;
 };
 
 function queryString(params: LeadListParams): string {
@@ -112,6 +119,22 @@ export async function updateLeadStatus(
           expectedUpdatedAt,
           reason: reason?.trim() || undefined,
         }),
+      }),
+    )
+  ).data!;
+}
+
+export async function updateLeadConsultantAssignment(
+  id: string,
+  consultantId: string | null,
+  expectedUpdatedAt: string,
+): Promise<LeadConsultantAssignmentResult> {
+  return (
+    await read<LeadConsultantAssignmentResult>(
+      await authFetch(`/api/v1/admin/leads/${encodeURIComponent(id)}/consultant`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ consultantId, expectedUpdatedAt }),
       }),
     )
   ).data!;
