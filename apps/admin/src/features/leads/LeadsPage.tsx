@@ -306,13 +306,23 @@ export function LeadsPage() {
         </div>
       </form>
 
+      {/* Single settle point for the four mutually exclusive result states.
+          `data-state` lets tests await a settled outcome deterministically
+          instead of sampling a negative ("no error yet") that is trivially
+          true while still loading. */}
+      <div
+        data-testid="leads-results"
+        data-state={
+          loading ? 'loading' : error ? 'error' : rows.length ? 'ready' : 'empty'
+        }
+      >
       {loading ? (
         <div className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-10 text-center text-sm text-[#667085]" role="status">
           Loading leads…
         </div>
       ) : null}
       {!loading && error ? (
-        <div className="mt-6 rounded-2xl border border-[#F3C7C7] bg-[#FFF7F7] p-6" role="alert">
+        <div data-testid="leads-error" className="mt-6 rounded-2xl border border-[#F3C7C7] bg-[#FFF7F7] p-6" role="alert">
           <h3 className="font-semibold text-[#9F1D1D]">Leads could not be loaded</h3>
           <p className="mt-2 text-sm text-[#7A3232]">{error}</p>
           <button
@@ -326,7 +336,7 @@ export function LeadsPage() {
       ) : null}
       {!loading && !error && rows.length === 0 ? (
         <>
-          <div className="mt-6 rounded-2xl border border-dashed border-[#CBD5E4] bg-white p-10 text-center">
+          <div data-testid="leads-empty-state" className="mt-6 rounded-2xl border border-dashed border-[#CBD5E4] bg-white p-10 text-center">
             <h3 className="text-lg font-semibold">No leads found</h3>
             <p className="mt-2 text-sm text-[#667085]">
               New counselling requests or leads matching these filters will
@@ -432,6 +442,7 @@ export function LeadsPage() {
           ) : null}
         </>
       ) : null}
+      </div>
     </section>
   );
 }

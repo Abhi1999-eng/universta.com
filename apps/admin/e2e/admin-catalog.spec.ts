@@ -15,12 +15,16 @@ test.describe.serial('catalog management', () => {
   });
 
   test('creates, publishes, unpublishes, and soft-deletes isolated catalog records', async ({ page, request }, testInfo) => {
-    // A retry gets fresh names so a partially-created first attempt can never
-    // make the retry fail on a duplicate continent/country before it reaches
-    // the assertion that originally failed.
-    const retrySuffix = testInfo.retry ? ` Retry ${testInfo.retry}` : '';
-    const continentName = `${acceptanceContinentName()}${retrySuffix}`;
-    const countryName = `${acceptanceCountryName()}${retrySuffix}`;
+    // Every invocation of this test gets its own continent/country names, so a
+    // partially-created earlier attempt can never make a later one fail on a
+    // duplicate before it reaches the assertion that originally failed. This
+    // must cover `repeatEachIndex` as well as `retry`: `--repeat-each` leaves
+    // `retry` at 0, so keying on retry alone made repeated runs collide on the
+    // run-scoped name. Cleanup matches these by prefix, so the suffix stays
+    // owned by this run.
+    const invocationSuffix = ` ${testInfo.repeatEachIndex}-${testInfo.retry}`;
+    const continentName = `${acceptanceContinentName()}${invocationSuffix}`;
+    const countryName = `${acceptanceCountryName()}${invocationSuffix}`;
     const continentCode = `E${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
     let countrySlug = '';
 
@@ -124,7 +128,22 @@ test.describe.serial('catalog management', () => {
     await loginAsAdmin(page);
     await page.goto('/leads?page=9999');
     await expect(page).not.toHaveURL(/\/login/);
-    await expect(page.getByRole('heading', { name: 'Leads', exact: true })).toBeVisible();
-    await expect(page.getByRole('alert')).toHaveCount(0);
+
+    // The product contract for an out-of-range page is "render a valid empty
+    // state", not an error and not a redirect: the API caps `page` at a
+    // minimum of 1 with no upper bound, so a high page is a legitimate query
+    // that simply matches no rows.
+    //
+    // Assert the settled state via `data-state` rather than sampling
+    // `getByRole('alert')).toHaveCount(0)`. That negative is trivially true
+    // while the page is still loading, so it verified nothing and failed only
+    // when the poll happened to land after a late error — the definition of a
+    // flaky assertion. `toHaveAttribute` auto-waits for the container to
+    // reach a terminal state, so this fails only if the real outcome is wrong.
+    await expect(page.getByTestId('leads-results')).toHaveAttribute(
+      'data-state',
+      'empty',
+    );
+    await expect(page.getByTestId('leads-empty-state')).toBeVisible();
   });
 });
