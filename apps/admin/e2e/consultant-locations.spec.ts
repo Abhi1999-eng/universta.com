@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
 
 test.describe('consultant location management', () => {
-  test('creates, edits, saves SEO, and archives a complete office record', async ({
+  test('creates, edits, saves SEO, and archives a consultant location', async ({
     page,
   }) => {
     const suffix = randomUUID().replace(/-/g, '').slice(0, 8);
@@ -24,35 +24,33 @@ test.describe('consultant location management', () => {
     await expect(country.locator('option')).not.toHaveCount(1);
     await country.selectOption({ index: 1 });
 
-    await page.getByLabel('State / province (optional)', { exact: true }).fill('Greater London');
+    await page
+      .getByLabel('State / province (optional)', { exact: true })
+      .fill('Greater London');
     await page.getByLabel('City', { exact: true }).fill('London');
-    await page.getByLabel('Address', { exact: true }).fill('1 Westbridge Square, London');
-    await page.getByLabel('Display order', { exact: true }).fill('1');
     await expect(page.getByLabel('Active', { exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Create location' }).click();
 
     let row = page.getByRole('row').filter({ hasText: name });
     await expect(row).toBeVisible();
     await expect(row).toContainText(`/${slug}`);
-    await expect(row).toContainText('1 Westbridge Square, London');
+    await expect(row).toContainText('London');
     await expect(row).toContainText('ACTIVE');
 
     await row.getByRole('button', { name: 'Edit' }).click();
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue(name);
     await expect(page.getByLabel('Slug', { exact: true })).toHaveValue(slug);
     await expect(page.getByLabel('City', { exact: true })).toHaveValue('London');
-    await expect(page.getByLabel('Address', { exact: true })).toHaveValue(
-      '1 Westbridge Square, London',
-    );
-    await expect(page.getByLabel('Display order', { exact: true })).toHaveValue('1');
+    await expect(
+      page.getByLabel('State / province (optional)', { exact: true }),
+    ).toHaveValue('Greater London');
 
-    await page.getByLabel('Address', { exact: true }).fill('2 Westbridge Square, London');
-    await page.getByLabel('Display order', { exact: true }).fill('2');
+    await page.getByLabel('City', { exact: true }).fill('Central London');
     await page.getByLabel('Active', { exact: true }).uncheck();
     await page.getByRole('button', { name: 'Save changes' }).click();
 
     row = page.getByRole('row').filter({ hasText: name });
-    await expect(row).toContainText('2 Westbridge Square, London');
+    await expect(row).toContainText('Central London');
     await expect(row).toContainText('INACTIVE');
 
     await row.getByRole('button', { name: 'SEO' }).click();
