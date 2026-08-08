@@ -53,14 +53,10 @@ export default defineConfig({
   },
   webServer: [
     {
-      // Use the compiled API for browser acceptance runs. Running Nest in
-      // watch mode made CI readiness nondeterministic and could leave
-      // Playwright waiting on /health until its timeout without surfacing a
-      // useful startup failure.
-      command: `cd ../api && npm run build && PORT=${apiPort} npm run start:prod`,
+      command: `cd ../api && PORT=${apiPort} npm run start:dev`,
       url: `${apiBaseUrl}/health`,
       reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
+      timeout: 120_000,
     },
     {
       // Production build + start rather than `next dev`: dev mode compiles
