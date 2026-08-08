@@ -50,7 +50,6 @@ const emptyForm: LocationForm = {
   status: "ACTIVE",
   displayOrder: "0",
 };
-
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
 const buttonClass =
@@ -145,14 +144,12 @@ function LocationSeoEditor({
     }
   }
 
-  if (loading) {
-    return <p className="text-sm text-[#667085]">Loading SEO…</p>;
-  }
+  if (loading) return <p className="text-sm text-[#667085]">Loading SEO…</p>;
 
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="block text-xs font-semibold">
+        <div className="text-xs font-semibold">
           <FieldLabel
             label="SEO title"
             htmlFor={`cl-seo-title-${suffix}`}
@@ -165,7 +162,7 @@ function LocationSeoEditor({
             className={inputClass}
           />
         </div>
-        <div className="block text-xs font-semibold">
+        <div className="text-xs font-semibold">
           <FieldLabel
             label="Meta description"
             htmlFor={`cl-seo-meta-${suffix}`}
@@ -178,7 +175,7 @@ function LocationSeoEditor({
             className={inputClass}
           />
         </div>
-        <div className="block text-xs font-semibold sm:col-span-2">
+        <div className="text-xs font-semibold sm:col-span-2">
           <FieldLabel
             label="Canonical (optional)"
             htmlFor={`cl-seo-canonical-${suffix}`}
@@ -408,12 +405,7 @@ export function ConsultantLocationsManager() {
           </div>
 
           <div className="text-sm font-semibold">
-            <FieldLabel
-              label="Name"
-              htmlFor="cl-name"
-              required
-              help={commonFieldHelp.name}
-            />
+            <FieldLabel label="Name" htmlFor="cl-name" required help={commonFieldHelp.name} />
             <input
               id="cl-name"
               required
@@ -424,14 +416,8 @@ export function ConsultantLocationsManager() {
               }
             />
           </div>
-
           <div className="text-sm font-semibold">
-            <FieldLabel
-              label="Slug"
-              htmlFor="cl-slug"
-              required
-              help={commonFieldHelp.slug}
-            />
+            <FieldLabel label="Slug" htmlFor="cl-slug" required help={commonFieldHelp.slug} />
             <input
               id="cl-slug"
               required
@@ -444,14 +430,8 @@ export function ConsultantLocationsManager() {
               }
             />
           </div>
-
           <div className="text-sm font-semibold">
-            <FieldLabel
-              label="Country"
-              htmlFor="cl-country"
-              required
-              help={commonFieldHelp.country}
-            />
+            <FieldLabel label="Country" htmlFor="cl-country" required help={commonFieldHelp.country} />
             <select
               id="cl-country"
               required
@@ -469,7 +449,6 @@ export function ConsultantLocationsManager() {
               ))}
             </select>
           </div>
-
           <div className="text-sm font-semibold">
             <FieldLabel
               label="State / province (optional)"
@@ -485,14 +464,8 @@ export function ConsultantLocationsManager() {
               }
             />
           </div>
-
           <div className="text-sm font-semibold">
-            <FieldLabel
-              label="City"
-              htmlFor="cl-city"
-              required
-              helpKey="consultant-locations.city"
-            />
+            <FieldLabel label="City" htmlFor="cl-city" required helpKey="consultant-locations.city" />
             <input
               id="cl-city"
               required
@@ -503,7 +476,6 @@ export function ConsultantLocationsManager() {
               }
             />
           </div>
-
           <div className="text-sm font-semibold">
             <FieldLabel
               label="Display order"
@@ -520,21 +492,12 @@ export function ConsultantLocationsManager() {
               className={inputClass}
               value={form.displayOrder}
               onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  displayOrder: event.target.value,
-                }))
+                setForm((current) => ({ ...current, displayOrder: event.target.value }))
               }
             />
           </div>
-
           <div className="text-sm font-semibold sm:col-span-2">
-            <FieldLabel
-              label="Address"
-              htmlFor="cl-address"
-              required
-              help={commonFieldHelp.address}
-            />
+            <FieldLabel label="Address" htmlFor="cl-address" required />
             <textarea
               id="cl-address"
               required
@@ -545,7 +508,6 @@ export function ConsultantLocationsManager() {
               }
             />
           </div>
-
           <div className="text-sm font-semibold sm:col-span-2">
             <FieldLabel
               label="Overview (optional)"
@@ -561,7 +523,6 @@ export function ConsultantLocationsManager() {
               }
             />
           </div>
-
           <label className="flex items-center gap-2 text-sm font-semibold">
             <input
               type="checkbox"
@@ -575,7 +536,6 @@ export function ConsultantLocationsManager() {
             />
             Active
           </label>
-
           <div className="flex flex-wrap justify-end gap-3 sm:col-span-2">
             <button
               type="button"
@@ -660,34 +620,20 @@ export function ConsultantLocationsManager() {
                     <td className="px-4 py-3">{row.status}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(row)}
-                          className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
-                        >
+                        <button type="button" onClick={() => openEdit(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold">
                           Edit
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => void toggleStatus(row)}
-                          className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
-                        >
+                        <button type="button" onClick={() => void toggleStatus(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold">
                           {row.status === "ACTIVE" ? "Deactivate" : "Activate"}
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setSeoEditingId(seoEditingId === row.id ? null : row.id)
-                          }
+                          onClick={() => setSeoEditingId(seoEditingId === row.id ? null : row.id)}
                           className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
                         >
                           SEO
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => void archive(row)}
-                          className="rounded-lg border border-[#F2C5C5] px-3 py-1.5 text-xs font-semibold text-[#B42318]"
-                        >
+                        <button type="button" onClick={() => void archive(row)} className="rounded-lg border border-[#F2C5C5] px-3 py-1.5 text-xs font-semibold text-[#B42318]">
                           Archive
                         </button>
                       </div>
@@ -709,8 +655,7 @@ export function ConsultantLocationsManager() {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#667085]">
-                    No consultant locations found. Create the office first, then link it from
-                    the Consultant editor.
+                    No consultant locations found. Create the office first, then link it from the Consultant editor.
                   </td>
                 </tr>
               ) : null}
