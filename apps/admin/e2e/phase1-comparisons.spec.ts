@@ -80,11 +80,15 @@ test.describe('published Phase 1 comparisons', () => {
       await input.fill(comparison.items[0]);
       await page.getByRole('button', { name: /^Add / }).first().click();
 
-      await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      // Next.js can transiently stream a duplicate metadata node into the body
+      // before reconciling it into <head>. The canonical document metadata is
+      // the head entry, so assert that stable target rather than every streamed
+      // copy in the live DOM.
+      await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
         'content',
         /noindex,\s*follow/,
       );
-      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
         'href',
         new RegExp(`/compare/${comparison.type}$`),
       );
