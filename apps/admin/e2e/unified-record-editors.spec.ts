@@ -15,6 +15,22 @@ test.describe('unified record editors', () => {
     await expect(page.getByRole('heading', { name: 'FAQs' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Related courses' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
+
+    // Empty child collections must still render their first editable row. The
+    // admin should never have to save a parent draft or click an Add button just
+    // to discover the rest of the form.
+    await expect(page.getByRole('heading', { name: 'Country availability 1' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Content section 1' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'FAQ 1' })).toBeVisible();
+    await expect(page.getByLabel('SEO title')).toBeVisible();
+    await expect(page.getByLabel('Meta description')).toBeVisible();
+
+    // Core mandatory fields use real required semantics in addition to the red
+    // visual marker, so required inputs are clear before validation fails.
+    await expect(page.getByLabel('Subject')).toHaveAttribute('required', '');
+    await expect(page.getByLabel('Course level')).toHaveAttribute('required', '');
+    await expect(page.getByLabel('Course name')).toHaveAttribute('required', '');
+
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /save (availability|content|faq|seo)/i })).toHaveCount(0);
