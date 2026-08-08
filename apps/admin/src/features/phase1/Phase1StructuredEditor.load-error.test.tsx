@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Phase1StructuredEditor } from './Phase1StructuredEditor';
 
@@ -60,9 +60,10 @@ describe('Phase1StructuredEditor failed detail load', () => {
     expect(alert.textContent).toContain('Internal server error');
     expect(alert.className).toContain('bg-[#FEF3F2]');
 
-    const form = screen.getByRole('form', { name: /Edit universities/i });
-    const name = within(form).getByLabelText(/^Name/i) as HTMLInputElement;
-    await waitFor(() => expect(name.disabled).toBe(true));
+    const name = screen.getByLabelText(/^Name/i) as HTMLInputElement;
+    const fieldset = name.closest('fieldset') as HTMLFieldSetElement | null;
+    expect(fieldset).not.toBeNull();
+    await waitFor(() => expect(fieldset?.disabled).toBe(true));
     expect(screen.getByRole('button', { name: 'Retry loading' })).toBeTruthy();
   });
 });
