@@ -1,0 +1,519 @@
+/* Public UI stabilization layer.
+ *
+ * The approved reference templates intentionally own their visual language.
+ * These rules only normalize layout rhythm, media containment and responsive
+ * behaviour across the live Phase 1 routes so malformed/unavailable media can
+ * never collapse cards or overlap text.
+ */
+
+:where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page,.visual-countries-page,.visual-country-detail-page){
+  width:100%;
+  min-width:0;
+  overflow-x:clip;
+}
+
+:where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) .wrap{
+  width:min(100%,1248px);
+  max-width:1248px;
+  margin-inline:auto;
+  padding-inline:28px;
+}
+
+:where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) .section{
+  padding-block:72px;
+}
+
+/* ---------- resilient catalogue media ---------- */
+:where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) img{
+  max-width:100%;
+}
+
+/* When a CMS image URL is temporarily unavailable Chromium renders the alt
+ * string inside the replaced element. In compact cards that text used to spill
+ * over headings and facts. Keep the media box contained and visually neutral. */
+:where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) :is(.uni-logo,.subj-img,.spec-ic) img,
+.detail-hero .hero-card img{
+  display:block;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  object-fit:cover;
+  object-position:center;
+  overflow:hidden;
+  color:transparent;
+  font-size:0;
+  text-indent:-9999px;
+  background:linear-gradient(135deg,#e8efff,#d6e3ff);
+}
+
+.visual-courses-page .uni-logo,
+.visual-specializations-page .spec-ic{
+  overflow:hidden;
+}
+
+.visual-subjects-page .subj-img{
+  overflow:hidden;
+  isolation:isolate;
+}
+.visual-subjects-page .subj-img>img{
+  z-index:0;
+}
+.visual-subjects-page .subj-img::after{
+  z-index:1;
+  pointer-events:none;
+}
+
+/* ---------- courses listing ---------- */
+.visual-courses-page .section.discovery-section{
+  padding-top:54px;
+}
+.visual-courses-page .discovery{
+  grid-template-columns:292px minmax(0,1fr);
+  gap:30px;
+  align-items:start;
+}
+.visual-courses-page .filters{
+  top:96px;
+  border-radius:18px;
+  box-shadow:0 8px 28px rgba(15,23,42,.04);
+}
+.visual-courses-page .results,
+.visual-courses-page .course-list{
+  min-width:0;
+}
+.visual-courses-page .results-bar{
+  margin-bottom:18px;
+  gap:18px;
+}
+.visual-courses-page .course-list{
+  gap:20px;
+}
+.visual-courses-page .course{
+  min-width:0;
+  padding:24px;
+  border-radius:20px;
+  box-shadow:0 6px 24px rgba(15,23,42,.045);
+}
+.visual-courses-page .course-top{
+  display:grid;
+  grid-template-columns:58px minmax(0,1fr);
+  gap:18px;
+  align-items:start;
+}
+.visual-courses-page .uni-logo{
+  width:58px;
+  height:58px;
+  border-radius:14px;
+}
+.visual-courses-page .course-head h3{
+  margin-top:6px;
+  font-size:21px;
+  line-height:1.22;
+  overflow-wrap:anywhere;
+}
+.visual-courses-page .course-head .uni{
+  margin-top:5px;
+  line-height:1.5;
+}
+.visual-courses-page .course-badges{
+  gap:7px;
+}
+.visual-courses-page .course-facts{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;
+  margin-top:22px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+.visual-courses-page .course-facts .fact{
+  min-width:0;
+  padding:0 18px;
+  border-right:1px solid var(--line-2);
+}
+.visual-courses-page .course-facts .fact:first-child{padding-left:0}
+.visual-courses-page .course-facts .fact:last-child{padding-right:0;border-right:0}
+.visual-courses-page .course-facts .k{
+  min-height:20px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  white-space:normal;
+}
+.visual-courses-page .course-facts .v{
+  margin-top:8px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.visual-courses-page .course-foot{
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid var(--line-2);
+}
+
+/* ---------- subjects + specialisations ---------- */
+.visual-subjects-page .grid.g3,
+.visual-specializations-page .grid.g3{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:22px;
+}
+.visual-subjects-page .subj-card{
+  min-width:0;
+  min-height:315px;
+  border-radius:20px;
+  overflow:hidden;
+}
+.visual-subjects-page .subj-img{
+  height:112px;
+  flex:0 0 112px;
+}
+.visual-subjects-page .subj-body{
+  display:flex;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  padding:20px;
+}
+.visual-subjects-page .subj-body h3,
+.visual-specializations-page .spec-body h3{
+  overflow-wrap:anywhere;
+}
+.visual-subjects-page .subj-body p{
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  min-height:4.5em;
+  margin-top:8px;
+  line-height:1.5;
+}
+.visual-subjects-page .subj-foot{
+  margin-top:auto;
+}
+
+.visual-specializations-page .spec-card{
+  min-width:0;
+  overflow:hidden;
+  padding:0;
+  border-radius:20px;
+}
+.visual-specializations-page .spec-band{
+  height:7px;
+}
+.visual-specializations-page .spec-body{
+  padding:22px;
+}
+.visual-specializations-page .spec-top{
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+}
+.visual-specializations-page .spec-ic{
+  width:46px;
+  height:46px;
+  border-radius:12px;
+}
+
+/* ---------- generic Phase 1 listings ---------- */
+main>.listing-hero{
+  padding:72px 0 58px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#f5f8ff 0%,#fafbfd 100%);
+}
+main>.listing-hero .shell,
+main>.catalog-explorer.shell,
+main>.detail-hero .shell,
+main>.detail-content.shell,
+.phase1-editorial.shell{
+  width:min(1200px,calc(100% - 56px));
+  max-width:1200px;
+  margin-inline:auto;
+}
+main>.listing-hero h1{
+  max-width:820px;
+  margin:12px 0 16px;
+  font-size:clamp(42px,5vw,60px);
+  line-height:1.06;
+}
+main>.listing-hero p:not(.eyebrow){
+  max-width:720px;
+  font-size:17px;
+  line-height:1.7;
+}
+main>.catalog-explorer.shell{
+  padding-top:68px;
+  padding-bottom:96px;
+}
+main>.catalog-explorer .results-heading{
+  margin-bottom:28px;
+}
+main>.catalog-explorer .catalog-card-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:22px;
+}
+main>.catalog-explorer .catalog-card{
+  min-width:0;
+  min-height:330px;
+  border-radius:20px;
+  box-shadow:0 8px 26px rgba(15,23,42,.05);
+}
+main>.catalog-explorer .catalog-card-placeholder{
+  height:132px;
+  flex:0 0 132px;
+  font-size:52px;
+}
+main>.catalog-explorer .catalog-card-body{
+  min-width:0;
+  padding:22px;
+}
+main>.catalog-explorer .catalog-card-body h2,
+main>.catalog-explorer .catalog-card-body h3{
+  margin:12px 0 9px;
+  line-height:1.24;
+  overflow-wrap:anywhere;
+}
+main>.catalog-explorer .catalog-card-body p{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:4;
+  overflow:hidden;
+  line-height:1.65;
+}
+main>.catalog-explorer .card-link{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  margin-top:auto;
+  padding-top:18px;
+}
+
+/* ---------- detail pages (course, career, event, consultant etc.) ---------- */
+main>.detail-hero{
+  padding:64px 0 72px;
+}
+main>.detail-hero .detail-hero-grid{
+  grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);
+  gap:64px;
+  align-items:center;
+}
+main>.detail-hero .back-link{
+  margin-bottom:30px;
+}
+main>.detail-hero h1{
+  max-width:820px;
+  font-size:clamp(44px,5.7vw,68px);
+  line-height:1.03;
+  overflow-wrap:anywhere;
+}
+main>.detail-hero .hero-copy{
+  max-width:720px;
+  margin-top:16px;
+}
+main>.detail-hero .hero-card{
+  position:relative;
+  min-width:0;
+  min-height:300px;
+  border-radius:26px;
+  overflow:hidden;
+}
+main>.detail-hero .hero-card img{
+  position:absolute;
+  inset:0 0 82px;
+  width:100%;
+  height:calc(100% - 82px);
+}
+main>.detail-hero .hero-card>span,
+main>.detail-hero .hero-card>small{
+  position:relative;
+  z-index:2;
+}
+main>.detail-content.shell{
+  grid-template-columns:minmax(0,1fr) 340px;
+  gap:64px;
+  padding-top:76px;
+  padding-bottom:96px;
+}
+main>.detail-content .detail-main,
+main>.detail-content .facts-panel{
+  min-width:0;
+}
+main>.detail-content .editorial-section{
+  padding:34px 0;
+}
+main>.detail-content .editorial-section:first-child{
+  padding-top:0;
+  border-top:0;
+}
+main>.detail-content .editorial-section>p{
+  max-width:760px;
+}
+main>.detail-content .facts-panel{
+  position:sticky;
+  top:104px;
+  align-self:start;
+  padding:26px;
+  border-radius:20px;
+  overflow:hidden;
+}
+main>.detail-content .facts-panel h2{
+  overflow-wrap:anywhere;
+}
+main>.detail-content .facts-panel .fact{
+  min-width:0;
+}
+main>.detail-content .facts-panel strong{
+  overflow-wrap:anywhere;
+}
+
+.faq-list{
+  display:grid;
+  gap:12px;
+  margin-top:20px;
+}
+.faq-list details{
+  padding:18px 20px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+}
+.faq-list summary{
+  cursor:pointer;
+  font-weight:750;
+}
+.faq-list details p{
+  margin:12px 0 0;
+  line-height:1.65;
+}
+
+/* About/FAQ and CMS-built editorial pages */
+.phase1-editorial.shell{
+  max-width:1080px;
+  padding-top:68px;
+  padding-bottom:96px;
+}
+.phase1-editorial .editorial-section{
+  padding:34px 0;
+}
+.phase1-editorial :is(h1,h2,h3){
+  overflow-wrap:anywhere;
+}
+
+@media (max-width:1024px){
+  :where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) .wrap{
+    padding-inline:24px;
+  }
+  .visual-courses-page .discovery{
+    grid-template-columns:250px minmax(0,1fr);
+    gap:22px;
+  }
+  .visual-courses-page .course-facts{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px 0;
+  }
+  .visual-courses-page .course-facts .fact:nth-child(2){border-right:0}
+  .visual-courses-page .course-facts .fact:nth-child(3){padding-left:0}
+  .visual-subjects-page .grid.g3,
+  .visual-specializations-page .grid.g3,
+  main>.catalog-explorer .catalog-card-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  main>.detail-hero .detail-hero-grid,
+  main>.detail-content.shell{
+    gap:40px;
+  }
+  main>.detail-content.shell{
+    grid-template-columns:minmax(0,1fr) 300px;
+  }
+}
+
+@media (max-width:820px){
+  .visual-courses-page .discovery{
+    display:block;
+  }
+  .visual-courses-page .filters{
+    position:static;
+    margin-bottom:22px;
+  }
+  main>.detail-hero .detail-hero-grid,
+  main>.detail-content.shell{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+  main>.detail-hero .hero-card{
+    width:min(100%,560px);
+  }
+  main>.detail-content .facts-panel{
+    position:static;
+    order:-1;
+  }
+}
+
+@media (max-width:640px){
+  :where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) .wrap{
+    padding-inline:18px;
+  }
+  :where(.visual-courses-page,.visual-subjects-page,.visual-subject-page,.visual-specializations-page) .section{
+    padding-block:52px;
+  }
+  .visual-courses-page .course{
+    padding:18px;
+  }
+  .visual-courses-page .course-top{
+    grid-template-columns:48px minmax(0,1fr);
+    gap:13px;
+  }
+  .visual-courses-page .uni-logo{
+    width:48px;height:48px;border-radius:12px;
+  }
+  .visual-courses-page .course-head h3{
+    font-size:18px;
+  }
+  .visual-courses-page .course-facts{
+    grid-template-columns:1fr 1fr;
+  }
+  .visual-courses-page .course-facts .fact{
+    padding-inline:12px;
+  }
+  .visual-courses-page .course-facts .fact:nth-child(odd){padding-left:0}
+  .visual-courses-page .course-facts .fact:nth-child(even){padding-right:0;border-right:0}
+  .visual-subjects-page .grid.g3,
+  .visual-specializations-page .grid.g3,
+  main>.catalog-explorer .catalog-card-grid{
+    grid-template-columns:1fr;
+  }
+  main>.listing-hero .shell,
+  main>.catalog-explorer.shell,
+  main>.detail-hero .shell,
+  main>.detail-content.shell,
+  .phase1-editorial.shell{
+    width:min(100% - 32px,1200px);
+  }
+  main>.listing-hero{
+    padding:54px 0 44px;
+  }
+  main>.listing-hero h1{
+    font-size:40px;
+  }
+  main>.catalog-explorer.shell{
+    padding-top:52px;
+    padding-bottom:72px;
+  }
+  main>.detail-hero{
+    padding:46px 0 54px;
+  }
+  main>.detail-hero h1{
+    font-size:clamp(38px,12vw,52px);
+  }
+  main>.detail-hero .hero-card{
+    min-height:250px;
+  }
+  main>.detail-content.shell{
+    padding-top:54px;
+    padding-bottom:72px;
+  }
+  main>.detail-content .facts-panel{
+    padding:22px;
+  }
+}
