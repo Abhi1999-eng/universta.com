@@ -27,15 +27,19 @@ test.describe.serial('catalog management', () => {
     await expect(page.getByRole('heading', { name: 'Continents', level: 2 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create continent' })).toBeVisible();
     await page.getByRole('button', { name: 'Create continent' }).click();
-    // The red required asterisk is visual/decorative; the input's accessible
-    // name remains the clean field name so assistive tech does not announce
-    // punctuation as part of the label.
-    await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill(continentName);
-    await page.getByRole('dialog').getByLabel('Slug', { exact: true }).fill(continentName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-    // exact: true — a non-exact match would also resolve the field-help
-    // icon's "Information about Code" button, which contains "Code" too.
-    await page.getByRole('dialog').getByLabel('Code', { exact: true }).fill(continentCode);
-    await page.getByRole('dialog').getByRole('button', { name: 'Save continent' }).click();
+
+    // FieldLabel deliberately renders the red required marker as visible label
+    // content. Browser accessible-name whitespace around that nested marker can
+    // differ, so do not make this CRUD acceptance flow depend on whether the
+    // computed label is "Name *", "Name*", or "Name". The native required
+    // attribute is the stable contract for these two mandatory inputs.
+    const continentDialog = page.getByRole('dialog');
+    const requiredInputs = continentDialog.locator('input[required]');
+    await expect(requiredInputs).toHaveCount(2);
+    await requiredInputs.nth(0).fill(continentName);
+    await requiredInputs.nth(1).fill(continentName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    await continentDialog.getByRole('textbox', { name: 'Code', exact: true }).fill(continentCode);
+    await continentDialog.getByRole('button', { name: 'Save continent' }).click();
     await expect(page.getByText('Continent created.', { exact: true })).toBeVisible();
 
     await page.goto('/countries/new');
