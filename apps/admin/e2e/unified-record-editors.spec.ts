@@ -16,7 +16,7 @@ test.describe('unified record editors', () => {
     await expect(page.getByRole('heading', { name: 'Related courses' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /save (availability|content|faq|seo)/i })).toHaveCount(0);
   });
 
@@ -27,7 +27,7 @@ test.describe('unified record editors', () => {
     await expect(page.getByRole('heading', { name: 'Specializations' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /save seo/i })).toHaveCount(0);
   });
 
@@ -42,7 +42,7 @@ test.describe('unified record editors', () => {
     await expect(page.getByRole('heading', { name: 'Consultant cards' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Save (cost|work|language|statistics|intakes|SEO)/i })).toHaveCount(0);
   });
 
@@ -55,6 +55,6 @@ test.describe('unified record editors', () => {
     await expect(form.getByText('Publish state', { exact: true })).toBeHidden();
     await expect(form.getByText('Save draft', { exact: true })).toBeVisible();
     await expect(form.getByRole('button', { name: 'Create draft' })).toBeVisible();
-    await expect(form.getByRole('button', { name: 'Publish' })).toBeVisible();
+    await expect(form.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
   });
 });
