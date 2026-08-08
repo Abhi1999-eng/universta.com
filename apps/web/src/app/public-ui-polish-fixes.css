@@ -1,0 +1,47 @@
+/* Follow-up guardrails loaded after public-ui-polish.css. */
+
+:where(.visual-countries-page,.visual-country-detail-page) .wrap{
+  width:min(100%,1248px);
+  max-width:1248px;
+  margin-inline:auto;
+  padding-inline:28px;
+}
+
+:where(.visual-countries-page,.visual-country-detail-page) .section{
+  padding-block:72px;
+}
+
+:where(.visual-countries-page,.visual-country-detail-page) :is(.card,.facts-panel,.hero-card){
+  min-width:0;
+}
+
+:where(.visual-countries-page,.visual-country-detail-page) img{
+  max-width:100%;
+  object-fit:cover;
+  overflow:hidden;
+  color:transparent;
+  font-size:0;
+}
+
+@media (max-width:1024px){
+  :where(.visual-countries-page,.visual-country-detail-page) .wrap{
+    padding-inline:24px;
+  }
+}
+
+@media (max-width:640px){
+  :where(.visual-countries-page,.visual-country-detail-page) .wrap{
+    padding-inline:18px;
+  }
+  :where(.visual-countries-page,.visual-country-detail-page) .section{
+    padding-block:52px;
+  }
+
+  main>.listing-hero .shell,
+  main>.catalog-explorer.shell,
+  main>.detail-hero .shell,
+  main>.detail-content.shell,
+  .phase1-editorial.shell{
+    width:min(calc(100% - 32px),1200px);
+  }
+}
