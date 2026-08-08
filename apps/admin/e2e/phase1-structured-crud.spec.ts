@@ -132,9 +132,12 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
 
   test('creates, validates, edits, reloads, and publishes a University without JSON', async ({ page }) => {
     const form = await openCreate(page, 'universities');
+    const nameField = form.getByLabel('Name', { exact: true });
+    const slugField = form.getByLabel('Slug', { exact: true });
+    await expect(nameField).toHaveAttribute('required', '');
+    await expect(slugField).toHaveAttribute('required', '');
     await form.getByRole('button', { name: 'Create draft' }).click();
-    await expect(form.getByLabel('Name', { exact: true })).toHaveAttribute('aria-invalid', 'true');
-    await expect(form.getByLabel('Slug', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+    await expect(nameField).toBeFocused();
     await form.getByLabel('Name', { exact: true }).fill(universityName);
     await form.getByLabel('Slug', { exact: true }).fill(universitySlug);
     await chooseFirst(form, 'Country');
