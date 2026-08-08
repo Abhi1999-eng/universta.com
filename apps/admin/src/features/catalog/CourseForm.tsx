@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createCourse,
@@ -54,7 +54,6 @@ import type {
 } from './catalog.types';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
-import { commonFieldHelp } from '@/lib/field-help/common';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 
@@ -158,7 +157,10 @@ export function CourseForm({ id }: { id?: string }) {
   }, [id]);
 
   useEffect(() => {
-    if (!core.subjectId) { setSpecializations([]); return; }
+    if (!core.subjectId) {
+      const timer = window.setTimeout(() => setSpecializations([]), 0);
+      return () => window.clearTimeout(timer);
+    }
     let active = true;
     void listSubSubjects(core.subjectId, { limit: 100 }).then((result) => { if (!active) return; setSpecializations(result.data); setCore((current) => current.subSubjectId && !result.data.some((row) => row.id === current.subSubjectId) ? { ...current, subSubjectId: '' } : current); }).catch(() => undefined);
     return () => { active = false; };
@@ -330,7 +332,7 @@ export function CourseForm({ id }: { id?: string }) {
 
 function EditorCard({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) { return <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8"><legend className="sr-only">{title}</legend><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">{eyebrow}</p><h3 className="mt-2 text-xl font-semibold text-[#101828]">{title}</h3><p className="mt-2 text-sm leading-6 text-[#667085]">{description}</p><div className="mt-6">{children}</div></fieldset>; }
 function Empty({ text }: { text: string }) { return <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">{text}</div>; }
-function Input({ label, value, onChange, type = 'text', textarea = false, span = false, rows = 3, required = false, placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; textarea?: boolean; span?: boolean; rows?: number; required?: boolean; placeholder?: string }) { const id = `course-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 7)}`; return <div className={`text-sm font-semibold ${span ? 'sm:col-span-full' : ''}`}><FieldLabel label={label} htmlFor={id} required={required} />{textarea ? <textarea id={id} rows={rows} className={input} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /> : <input id={id} type={type} className={input} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}</div>; }
+function Input({ label, value, onChange, type = 'text', textarea = false, span = false, rows = 3, required = false, placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; textarea?: boolean; span?: boolean; rows?: number; required?: boolean; placeholder?: string }) { const reactId = useId(); const id = `course-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`; return <div className={`text-sm font-semibold ${span ? 'sm:col-span-full' : ''}`}><FieldLabel label={label} htmlFor={id} required={required} />{textarea ? <textarea id={id} rows={rows} className={input} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /> : <input id={id} type={type} className={input} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}</div>; }
 function Select({ label, value, onChange, options, required = false, emptyLabel = 'Select' }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ id: string; label: string }>; required?: boolean; emptyLabel?: string }) { const id = `course-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`; return <div className="text-sm font-semibold"><FieldLabel label={label} htmlFor={id} required={required} /><select id={id} className={input} value={value} onChange={(event) => onChange(event.target.value)}><option value="">{emptyLabel}</option>{options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></div>; }
 function AvailabilityRow({ index, row, countries, intakes, onChange, onRemove }: { index: number; row: MappingDraft; countries: CountryRecord[]; intakes: IntakeOption[]; onChange: (patch: Partial<MappingDraft>) => void; onRemove: () => void }) {
   const selectedIntake = (id: string) => row.intakes.find((item) => item.intakeId === id);
