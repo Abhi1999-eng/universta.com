@@ -46,6 +46,18 @@ const input = 'mt-2 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3
 export function UnifiedSeoFields({ value, onChange, media }: Props) {
   const set = <K extends keyof UnifiedSeoDraft>(key: K, next: UnifiedSeoDraft[K]) =>
     onChange({ ...value, [key]: next });
+  const configured = Boolean(
+    value.seoTitle.trim() ||
+    value.metaDescription.trim() ||
+    value.canonicalUrl.trim() ||
+    value.focusKeyword.trim() ||
+    value.ogTitle.trim() ||
+    value.ogDescription.trim() ||
+    value.ogMediaId ||
+    value.twitterTitle.trim() ||
+    value.twitterDescription.trim() ||
+    value.twitterMediaId,
+  );
 
   return (
     <fieldset id="editor-seo" className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8">
@@ -53,19 +65,20 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">Search & sharing</p>
       <h3 className="mt-2 text-xl font-semibold text-[#101828]">SEO</h3>
       <p className="mt-2 text-sm leading-6 text-[#667085]">SEO is part of this record. There is no separate SEO save button.</p>
+      <p className="mt-2 text-xs font-medium text-[#667085]">Leave this whole section blank to use defaults. Once any SEO value is entered, <span className="font-bold text-[#D92D20]">*</span> SEO title and Meta description become required.</p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <div className="text-sm font-semibold">
-          <FieldLabel label="SEO title" htmlFor="seo-title" help={commonFieldHelp.seoTitle} />
-          <input id="seo-title" className={input} value={value.seoTitle} onChange={(e) => set('seoTitle', e.target.value)} />
+          <FieldLabel label="SEO title" htmlFor="seo-title" help={commonFieldHelp.seoTitle} required={configured} />
+          <input id="seo-title" required={configured} aria-required={configured} className={input} value={value.seoTitle} onChange={(e) => set('seoTitle', e.target.value)} />
         </div>
         <div className="text-sm font-semibold">
           <FieldLabel label="Focus keyword" htmlFor="seo-focus" />
           <input id="seo-focus" className={input} value={value.focusKeyword} onChange={(e) => set('focusKeyword', e.target.value)} />
         </div>
         <div className="text-sm font-semibold sm:col-span-2">
-          <FieldLabel label="Meta description" htmlFor="seo-description" help={commonFieldHelp.metaDescription} />
-          <textarea id="seo-description" rows={3} className={input} value={value.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} />
+          <FieldLabel label="Meta description" htmlFor="seo-description" help={commonFieldHelp.metaDescription} required={configured} />
+          <textarea id="seo-description" required={configured} aria-required={configured} rows={3} className={input} value={value.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} />
         </div>
         <div className="text-sm font-semibold sm:col-span-2">
           <FieldLabel label="Canonical URL" htmlFor="seo-canonical" help={commonFieldHelp.canonicalUrl} />
