@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LeadConsultantAssignmentCard } from '@/features/leads/LeadConsultantAssignmentCard';
 import { LeadDetailPage } from '@/features/leads/LeadDetailPage';
 
 export const metadata: Metadata = {
@@ -11,5 +12,11 @@ export default async function LeadDetailRoute({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  return <LeadDetailPage leadId={(await params).id} />;
+  const leadId = (await params).id;
+  return (
+    <>
+      <LeadConsultantAssignmentCard leadId={leadId} />
+      <LeadDetailPage leadId={leadId} />
+    </>
+  );
 }
