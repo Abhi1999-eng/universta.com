@@ -123,7 +123,7 @@ test.describe.serial('catalog management', () => {
   test('recovers safely from an out-of-range lead page', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/leads?page=9999');
-    await expect(page.getByRole('heading', { name: 'Leads' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Leads', exact: true })).toBeVisible();
     await expect(page.getByText('No leads found.')).toBeVisible();
   });
 });
