@@ -27,9 +27,9 @@ test.describe('unified record editors', () => {
 
     // Core mandatory fields use real required semantics in addition to the red
     // visual marker, so required inputs are clear before validation fails.
-    await expect(page.getByLabel('Subject')).toHaveAttribute('required', '');
-    await expect(page.getByLabel('Course level')).toHaveAttribute('required', '');
-    await expect(page.getByLabel('Course name')).toHaveAttribute('required', '');
+    await expect(page.getByRole('combobox', { name: 'Subject', exact: true })).toHaveAttribute('required', '');
+    await expect(page.getByRole('combobox', { name: 'Course level', exact: true })).toHaveAttribute('required', '');
+    await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toHaveAttribute('required', '');
 
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
