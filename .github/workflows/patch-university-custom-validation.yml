@@ -1,0 +1,38 @@
+name: Patch University custom validation
+
+on:
+  push:
+    branches:
+      - fix/university-editor-recovery
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/university-editor-recovery
+      - name: Keep required semantics without native submit interception
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('apps/admin/src/features/phase1/Phase1StructuredEditor.tsx')
+          text = path.read_text()
+          old = '          required={required}\n'
+          count = text.count(old)
+          if count != 3:
+              raise SystemExit(f'expected 3 native required bindings, found {count}')
+          text = text.replace(old, '          aria-required={required || undefined}\n')
+          path.write_text(text)
+          PY
+          rm -f .university-custom-validation-trigger .github/workflows/patch-university-custom-validation.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(admin): keep structured editor validation field-aware"
+          git push origin HEAD:fix/university-editor-recovery
