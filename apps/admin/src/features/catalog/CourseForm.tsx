@@ -110,18 +110,20 @@ export function CourseForm({ id }: { id?: string }) {
   const [form, setForm] = useState<FormState>(empty);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [specializations, setSpecializations] = useState<SubSubjectRecord[]>([]);
+  const [specializationsSubjectId, setSpecializationsSubjectId] = useState('');
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [modes, setModes] = useState<MasterRecord[]>([]);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [loading, setLoading] = useState(Boolean(id));
-  const [loadingSpecializations, setLoadingSpecializations] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingIntent, setSavingIntent] = useState<'draft' | 'publish' | null>(
     null,
   );
   const [error, setError] = useState('');
   const studyModesHelp = getFieldHelp('courses.studyModes');
+  const loadingSpecializations =
+    Boolean(form.subjectId) && specializationsSubjectId !== form.subjectId;
 
   useEffect(() => {
     let cancelled = false;
@@ -179,20 +181,15 @@ export function CourseForm({ id }: { id?: string }) {
   }, [id]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!form.subjectId) {
-      setSpecializations([]);
-      setLoadingSpecializations(false);
-      return () => {
-        cancelled = true;
-      };
-    }
+    const subjectId = form.subjectId;
+    if (!subjectId) return;
 
-    setLoadingSpecializations(true);
-    void listSubSubjects(form.subjectId, { limit: 100 })
+    let cancelled = false;
+    void listSubSubjects(subjectId, { limit: 100 })
       .then((result) => {
         if (cancelled) return;
         setSpecializations(result.data);
+        setSpecializationsSubjectId(subjectId);
         setForm((current) => {
           if (
             current.subSubjectId &&
@@ -206,14 +203,12 @@ export function CourseForm({ id }: { id?: string }) {
       .catch((cause: unknown) => {
         if (cancelled) return;
         setSpecializations([]);
+        setSpecializationsSubjectId(subjectId);
         setError(
           cause instanceof Error
             ? cause.message
             : 'Unable to load specializations for this subject',
         );
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSpecializations(false);
       });
 
     return () => {
@@ -226,6 +221,8 @@ export function CourseForm({ id }: { id?: string }) {
   }
 
   function setSubject(subjectId: string) {
+    setSpecializations([]);
+    setSpecializationsSubjectId('');
     setForm((current) => ({ ...current, subjectId, subSubjectId: '' }));
   }
 
