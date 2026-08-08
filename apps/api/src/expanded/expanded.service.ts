@@ -1991,7 +1991,24 @@ export class ExpandedService {
       },
       include: { ogMedia: true, twitterMedia: true },
     });
-    return { ...record, seo };
+    // MediaAsset.fileSizeBytes is a Prisma BigInt. JSON.stringify cannot
+    // serialize BigInt, so an expanded record with SEO OG/Twitter media used
+    // to turn an otherwise-valid admin detail request into a raw HTTP 500.
+    // The upload cap keeps this value safely inside Number's integer range.
+    const jsonSafeMedia = (media: any) =>
+      media && typeof media.fileSizeBytes === 'bigint'
+        ? { ...media, fileSizeBytes: Number(media.fileSizeBytes) }
+        : media;
+    return {
+      ...record,
+      seo: seo
+        ? {
+            ...seo,
+            ogMedia: jsonSafeMedia(seo.ogMedia),
+            twitterMedia: jsonSafeMedia(seo.twitterMedia),
+          }
+        : null,
+    };
   }
 
   private decimalValue(value: unknown) {
@@ -2048,6 +2065,7 @@ export class ExpandedService {
         'overview',
         'featuredMediaId',
         'sourceReference',
+        'verifiedAt',
         'status',
         'isFeatured',
         'featuredPriority',
@@ -2353,6 +2371,7 @@ export class ExpandedService {
       normalizeDecimal('amount');
       normalizeDate('deadline');
     }
+    if (resource === 'universities') normalizeDate('verifiedAt');
     const FEATURED_RESOURCES = new Set([
       'universities',
       'offerings',
