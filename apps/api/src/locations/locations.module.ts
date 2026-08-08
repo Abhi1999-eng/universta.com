@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CityRecoveryAdminController } from './city-recovery.controller';
+import { ConsultantLocationsAdminController } from './consultant-locations-admin.controller';
 import {
   CitiesAdminController,
-  ConsultantLocationsAdminController,
   LocationsPublicController,
   StatesAdminController,
 } from './locations.controller';
