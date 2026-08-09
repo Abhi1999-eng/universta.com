@@ -22,7 +22,6 @@ const ROUTES = [
   '/website/footer',
   '/phase1/universities',
   '/phase1/consultants',
-  '/phase1/pages',
   '/phase1/navigation-menus',
 ];
 
@@ -67,8 +66,8 @@ describe('exactly one sidebar entry is active', () => {
     expect(activeLabel('/page-templates')).toBe('Page templates');
   });
 
-  it('selects Pages, not the page-sections signpost', () => {
-    expect(activeLabel('/phase1/pages')).toBe('Page records (raw list)');
+  it('keeps the legacy raw Pages route out of normal sidebar navigation', () => {
+    expect(resolveActiveNavItem('/phase1/pages')).toBeNull();
   });
 
   it('picks one of the seven entries that share /settings', () => {

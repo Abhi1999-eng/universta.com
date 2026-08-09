@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { NavNode, SiteChrome } from '@/lib/site-chrome';
+import {
+  ComposedFooter,
+  type FooterLayoutDocument,
+} from './ComposedFooter';
 
 /** The one public Header/Footer for the whole site.
  *
@@ -132,7 +136,7 @@ function NavDropdown({ node, pathname }: { node: NavNode; pathname: string }) {
 export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
   const pathname = usePathname() ?? '/';
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { header, general } = chrome.settings;
+  const { header } = chrome.settings;
   const drawerId = useId();
 
   // Navigating closes the drawer, otherwise it stays open over the new page.
@@ -185,8 +189,7 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
       >
         <div className="usta-header-inner">
           <Link href="/" className="usta-logo">
-            {general.siteName ?? 'Universta'}
-            <span aria-hidden="true">.</span>
+            <SiteWordmark chrome={chrome} />
           </Link>
 
           <nav className="usta-nav" aria-label="Primary navigation">
@@ -299,6 +302,30 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
   );
 }
 
+
+/* The logo is an uploaded image when branding has one, and the site name as a
+   wordmark otherwise -- so a site with no logo still shows something, and
+   setting one in the admin is immediately visible. */
+function SiteWordmark({ chrome }: { chrome: SiteChrome }) {
+  const { branding, general } = chrome.settings;
+  const name = general.siteName ?? 'Universta';
+  if (branding?.logoUrl)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={branding.logoUrl}
+        alt={branding.logoAlt || name}
+        className="usta-logo-image"
+      />
+    );
+  return (
+    <>
+      {name}
+      <span aria-hidden="true">.</span>
+    </>
+  );
+}
+
 export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
   const { footer, contact, social, general } = chrome.settings;
   const override = chrome.chrome?.footer;
@@ -315,6 +342,19 @@ export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
     footer.privacyUrl?.trim() ? { label: 'Privacy', href: footer.privacyUrl.trim() } : null,
     footer.termsUrl?.trim() ? { label: 'Terms', href: footer.termsUrl.trim() } : null,
   ].filter(Boolean) as Array<{ label: string; href: string }>;
+
+  // A footer the admin composed out of rows takes over entirely. With no rows
+  // -- which is every site nobody has opened the footer builder on -- the
+  // original fixed layout below renders unchanged.
+  const composed = footer.layoutJson as FooterLayoutDocument | null | undefined;
+  if (composed?.rows?.length)
+    return (
+      <ComposedFooter
+        layout={composed}
+        chrome={chrome}
+        className={`usta-footer${variantClass}`}
+      />
+    );
 
   return (
     <footer className={`usta-footer${variantClass}`}>

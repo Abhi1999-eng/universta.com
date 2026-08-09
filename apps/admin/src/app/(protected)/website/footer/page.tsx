@@ -1,14 +1,8 @@
-import { SettingsManager } from "@/features/settings/SettingsManager";
+import { GlobalFooterWorkspace } from "@/features/website/GlobalFooterWorkspace";
 
-/** Focused Global Footer editor. Reads and writes the same `footer` and
- * `contact`/`social` settings rows the public footer consumes. */
+/** Global Footer editor. The footer is composed from rows and blocks here and
+ * saved as one document; the flat footer settings ride along with the same
+ * save rather than needing a separate screen. */
 export default function GlobalFooterRoute() {
-  return (
-    <SettingsManager
-      only={["footer", "contact", "social"]}
-      eyebrow="Website Builder"
-      title="Global Footer"
-      intro="Controls the footer on every public page. Footer link columns are managed in Website Builder → Navigation menus."
-    />
-  );
+  return <GlobalFooterWorkspace />;
 }

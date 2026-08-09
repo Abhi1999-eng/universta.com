@@ -184,8 +184,8 @@ export function PageTemplatesManager() {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Content management</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Page templates</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-            Reusable default section blueprints for a page family. Assigning a template to a page never touches its
-            existing content — applying its default sections is a separate, explicit action from the Pages editor.
+            Reusable starting structures for a page family. In Website Pages, Apply template saves the assignment and
+            adds only missing sections, without changing existing content.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -322,7 +322,7 @@ export function PageTemplatesManager() {
                 </li>
               ))}
               {(previewRow.defaultSectionsJson ?? []).length === 0 ? (
-                <p className="text-sm text-[#667085]">This template has no default sections yet.</p>
+                <p className="text-sm text-[#667085]">This template has no sections included yet.</p>
               ) : null}
             </ol>
           </div>

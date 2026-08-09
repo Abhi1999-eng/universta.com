@@ -11,6 +11,14 @@ import {
 import { listEditorialMedia } from "@/features/catalog/catalog-client";
 import type { EditorialMedia } from "@/features/catalog/catalog.types";
 import { StatsPillEditor } from './StatsPillEditor';
+import {
+  ADDABLE_SECTION_TYPES,
+  sectionDefinition,
+  sectionLabel,
+} from "@/features/website/section-registry";
+import { AddSectionLibrary } from "@/features/website/AddSectionLibrary";
+import { PageStructurePanel } from "@/features/website/PageStructurePanel";
+import { SectionDataSource } from "@/features/website/SectionDataSource";
 
 type SectionRow = {
   label: string;
@@ -25,6 +33,10 @@ type SectionBody = {
   imagePosition?: "left" | "right";
   items?: SectionRow[];
   limit?: number;
+  dataMode?: "automatic" | "manual";
+  filters?: { q?: string; country?: string };
+  sort?: string;
+  picks?: string[];
 };
 type Section = {
   id: string;
@@ -85,29 +97,26 @@ type PageRecord = {
   chromeConfigJson?: ChromeOverrideValue;
 };
 
-const SECTION_TYPES = [
-  "HERO",
-  "RICH_TEXT",
-  "CTA",
-  "IMAGE",
-  "IMAGE_TEXT",
-  "CARD_GRID",
-  "STATS",
-  "FAQ_GROUP",
-  "RELATED_LINKS",
-  "COUNTRY_DIRECTORY",
-  "UNIVERSITY_DIRECTORY",
-  "COURSE_DIRECTORY",
-  "SCHOLARSHIP_DIRECTORY",
-  "CONSULTANT_DIRECTORY",
-  "TESTIMONIALS",
-  "SUCCESS_STORIES",
-  "LEAD_GENERATION",
-  "CUSTOM",
-];
+/** Offered block types come from the section registry, which lists only the
+ * types the public site actually renders. A section already saved as a type
+ * that is no longer offered (HERO, CUSTOM) keeps its own value in the list so
+ * opening it does not silently retype it. */
+function sectionTypeOptions(currentType: string): string[] {
+  return ADDABLE_SECTION_TYPES.includes(currentType)
+    ? ADDABLE_SECTION_TYPES
+    : [currentType, ...ADDABLE_SECTION_TYPES];
+}
 const PAGE_STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
 const SECTION_STATUSES = ["DRAFT", "SCHEDULED", "ACTIVE", "ARCHIVED"];
 const LAYOUT_KEYS = ["default", "editorial", "landing"];
+
+function pageSaveLabel(status: string, existing: boolean) {
+  if (!existing) return status === "PUBLISHED" ? "Create and publish" : "Create draft";
+  if (status === "PUBLISHED") return "Publish changes";
+  if (status === "SCHEDULED") return "Save schedule";
+  if (status === "DRAFT") return "Save draft";
+  return "Save page";
+}
 
 const DIRECTORY_TYPES = new Set([
   "COUNTRY_DIRECTORY",
@@ -118,15 +127,6 @@ const DIRECTORY_TYPES = new Set([
   "TESTIMONIALS",
   "SUCCESS_STORIES",
 ]);
-const DIRECTORY_LABELS: Record<string, string> = {
-  COUNTRY_DIRECTORY: "published countries",
-  UNIVERSITY_DIRECTORY: "published universities",
-  COURSE_DIRECTORY: "published generic courses",
-  SCHOLARSHIP_DIRECTORY: "published scholarships",
-  CONSULTANT_DIRECTORY: "published consultants",
-  TESTIMONIALS: "published testimonials",
-  SUCCESS_STORIES: "published success stories",
-};
 const ROW_TYPES: Record<
   string,
   { legend: string; primary: string; secondary?: string; hasUrl?: boolean }
@@ -136,6 +136,22 @@ const ROW_TYPES: Record<
   STATS: { legend: "Stats", primary: "Label (e.g. Partner universities)", secondary: "Value (e.g. 120+)" },
   RELATED_LINKS: { legend: "Links", primary: "Link label", hasUrl: true },
 };
+
+
+/** A section switched off on every device still occupies a row in the
+ * structure list, so the list says so rather than looking identical to a
+ * visible one. */
+function isHiddenEverywhere(section: {
+  configurationJson?: { visibility?: SectionVisibility } | null;
+}): boolean {
+  const visibility = section.configurationJson?.visibility;
+  if (!visibility) return false;
+  return (
+    visibility.desktop === false &&
+    visibility.tablet === false &&
+    visibility.mobile === false
+  );
+}
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
@@ -207,11 +223,15 @@ function Select({
   value,
   options,
   onChange,
+  optionLabel,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (value: string) => void;
+  /** Renders a human name for a stored value, so the admin never reads a raw
+   * enum like FAQ_GROUP in a dropdown. */
+  optionLabel?: (option: string) => string;
 }) {
   const fieldId = useId();
   return (
@@ -225,7 +245,7 @@ function Select({
       >
         {options.map((option) => (
           <option value={option} key={option}>
-            {option}
+            {optionLabel ? optionLabel(option) : option}
           </option>
         ))}
       </select>
@@ -415,19 +435,11 @@ function SectionBodyFields({
   }
   if (DIRECTORY_TYPES.has(sectionType)) {
     return (
-      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-        <legend className="px-1 text-sm font-semibold">Live directory</legend>
-        <Field
-          label="How many to show"
-          type="number"
-          value={String(body.limit ?? 6)}
-          onChange={(value) => onBodyChange({ ...body, limit: Number(value) || 6 })}
-        />
-        <p className="mt-2 text-xs text-[#828B9B]">
-          This block loads real {DIRECTORY_LABELS[sectionType]} from the database at
-          render time — there is no manual content to enter here.
-        </p>
-      </fieldset>
+      <SectionDataSource
+        sectionType={sectionType}
+        value={body}
+        onChange={(patch) => onBodyChange({ ...body, ...patch })}
+      />
     );
   }
   if (sectionType === "LEAD_GENERATION") {
@@ -530,9 +542,10 @@ function SectionCard({
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Select
-          label="Block type"
+          label="Section type"
           value={section.sectionType}
-          options={SECTION_TYPES}
+          options={sectionTypeOptions(section.sectionType)}
+          optionLabel={sectionLabel}
           onChange={(value) => onChange({ sectionType: value })}
         />
         <Select
@@ -702,6 +715,10 @@ export function PageCmsEditor({
   const [templateOptions, setTemplateOptions] = useState<PageTemplateOption[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Which section the structure panel has focused. null shows the whole list,
+   * which is also where an admin lands after removing the selected one. */
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const selectedTemplate = templateOptions.find((option) => option.id === selectedTemplateId) ?? null;
   const selectedTemplateSections = selectedTemplate?.defaultSectionsJson ?? [];
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -838,7 +855,13 @@ export function PageCmsEditor({
         // Page details, sections and SEO are one document to the admin, so one
         // save persists all of them rather than asking which button to press.
         await persistSections();
-        setMessage("Page saved.");
+        setMessage(
+          page.status === "PUBLISHED"
+            ? "Published changes saved."
+            : page.status === "DRAFT"
+              ? "Draft saved."
+              : "Page saved.",
+        );
         await load();
       } else {
         const created = await api<PageRecord>("pages", {
@@ -857,19 +880,27 @@ export function PageCmsEditor({
     return null;
   }
 
-  function addSection() {
+  /** Adds the chosen section type, pre-filled from the registry's defaults so
+   * it renders as something recognisable straight away. New sections used to
+   * default to CUSTOM, which the public site renders as a bare line of text. */
+  function addSectionOfType(type: string) {
+    const definition = sectionDefinition(type);
     setNewSections((current) => [
       ...current,
       {
         id: `new-${current.length}-${Date.now()}`,
         sectionKey: "",
-        sectionType: "CUSTOM",
-        heading: "",
-        subheading: "",
+        sectionType: type,
+        heading: definition.defaults?.heading ?? "",
+        subheading: definition.defaults?.subheading ?? "",
         status: "DRAFT",
         displayOrder: sections.length + current.length,
+        bodyJson: definition.defaults?.limit
+          ? { limit: definition.defaults.limit }
+          : undefined,
       },
     ]);
+    setLibraryOpen(false);
   }
 
   function updateExisting(id: string, patch: Partial<Section>) {
@@ -1021,6 +1052,33 @@ export function PageCmsEditor({
     }
   }
 
+  /** The structure panel and the settings pane are two views of the same
+   * arrays, so both are derived here rather than tracked separately. */
+  const allEditable = [...sections, ...newSections];
+  const selectedSection =
+    allEditable.find((row) => row.id === selectedSectionId) ?? null;
+  const visibleSections = selectedSection
+    ? sections.filter((row) => row.id === selectedSection.id)
+    : sections;
+  const visibleNewSections = selectedSection
+    ? newSections.filter((row) => row.id === selectedSection.id)
+    : newSections;
+  const structureEntries = [
+    ...sections.map((row) => ({
+      id: row.id,
+      sectionType: row.sectionType,
+      heading: row.heading,
+      hiddenEverywhere: isHiddenEverywhere(row),
+    })),
+    ...newSections.map((row) => ({
+      id: row.id,
+      sectionType: row.sectionType,
+      heading: row.heading,
+      hiddenEverywhere: isHiddenEverywhere(row),
+      isNew: true,
+    })),
+  ];
+
   if (loading) return <p className="mt-6 text-sm text-[#667085]">Loading page…</p>;
 
   return (
@@ -1165,7 +1223,7 @@ export function PageCmsEditor({
             onClick={() => void savePage()}
             className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {recordId ? "Save page" : "Create page"}
+            {pageSaveLabel(page.status, Boolean(recordId))}
           </button>
           {recordId ? (
             <button
@@ -1187,22 +1245,46 @@ export function PageCmsEditor({
       </div>
 
       {recordId ? (
-        <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Sections</h3>
-            <button
-              type="button"
-              onClick={addSection}
-              className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
-            >
-              Add section
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-[#828B9B]">
-            Drag the ⠿ handle to reorder, or use the ↑ / ↓ buttons.
-          </p>
+        <div
+          className="grid gap-4 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)]"
+          data-testid="page-builder"
+        >
+          <PageStructurePanel
+            entries={structureEntries}
+            selectedId={selectedSectionId}
+            onSelect={setSelectedSectionId}
+            onMove={(id, direction) => move(id, direction)}
+            onDuplicate={(id) => void duplicateExisting(id)}
+            onRemove={(id) => {
+              if (newSections.some((row) => row.id === id)) removeNew(id);
+              else removeExisting(id);
+              if (selectedSectionId === id) setSelectedSectionId(null);
+            }}
+            onAdd={() => setLibraryOpen(true)}
+          />
+
+          <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                {selectedSection ? "Section settings" : "Sections"}
+              </h3>
+              {selectedSection ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSectionId(null)}
+                  className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+                >
+                  Show all sections
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-2 text-xs text-[#828B9B]">
+              {selectedSection
+                ? "Editing one section. Changes are saved with the page."
+                : "Pick a section on the left to edit it on its own, or use the full list here."}
+            </p>
           <div className="mt-4 space-y-4">
-            {sections.map((section, index) => section.sectionKey === 'stats-pill' ? (
+            {visibleSections.map((section, index) => section.sectionKey === 'stats-pill' ? (
               <StatsPillEditor
                 key={section.id}
                 pageId={recordId}
@@ -1232,7 +1314,7 @@ export function PageCmsEditor({
                 onDelete={() => removeExisting(section.id)}
               />
             ))}
-            {newSections.map((section, index) => (
+            {visibleNewSections.map((section, index) => (
               <SectionCard
                 key={section.id}
                 section={section}
@@ -1249,10 +1331,18 @@ export function PageCmsEditor({
               <p className="text-sm text-[#667085]">No sections yet. Add one above.</p>
             ) : null}
           </div>
-          <p className="mt-4 text-xs text-[#828B9B]">
-            Section changes are saved with the page — use Save page above.
-          </p>
+            <p className="mt-4 text-xs text-[#828B9B]">
+              Section changes are saved with this page action.
+            </p>
+          </div>
         </div>
+      ) : null}
+
+      {libraryOpen ? (
+        <AddSectionLibrary
+          onPick={(definition) => addSectionOfType(definition.type)}
+          onClose={() => setLibraryOpen(false)}
+        />
       ) : null}
 
       {message ? (

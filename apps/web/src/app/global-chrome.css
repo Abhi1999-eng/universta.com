@@ -713,3 +713,77 @@ a.usta-drawer-head.is-active {
 .usta-footer-minimal .usta-footer-cols {
   display: none;
 }
+
+/* Composed footer -- rows an admin built in Website Builder → Global Footer.
+   The admin picks a named row layout; these rules own the columns and the
+   stacking, so a footer composed in the admin cannot produce a broken grid or
+   overflow a phone. Mobile collapses every layout to a single column. */
+.usta-footer-row {
+  display: grid;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+.usta-footer-row-one-column,
+.usta-footer-row-centered {
+  grid-template-columns: 1fr;
+}
+.usta-footer-row-centered {
+  text-align: center;
+  justify-items: center;
+}
+.usta-footer-row-two-equal {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.usta-footer-row-one-third-two-thirds {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+.usta-footer-row-three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.usta-footer-row-four-columns {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/* Brand column reads wider than the three link columns beside it. */
+.usta-footer-row-brand-plus-three {
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+}
+.usta-footer-area > * + * {
+  margin-top: 12px;
+}
+.usta-footer-area h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.usta-footer-area ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.usta-footer-small {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.usta-footer-divider {
+  border: 0;
+  border-top: 1px solid currentColor;
+  opacity: 0.15;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .usta-footer-row-four-columns,
+  .usta-footer-row-brand-plus-three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .usta-footer-row {
+    grid-template-columns: 1fr !important;
+    gap: 24px;
+    padding: 24px 16px;
+  }
+}

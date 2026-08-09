@@ -9,6 +9,7 @@ import {
 import type { Prisma } from '../generated/prisma/client';
 import { ExpandedService } from '../expanded/expanded.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { sanitizeFooterLayout } from './footer-layout';
 import { StructuredLogger } from '../common/structured-logger.service';
 
 /** Every "General platform configuration" screen the client asked for maps
@@ -83,6 +84,9 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
     counsellingCtaLabel: 'Book free counselling',
     counsellingCtaUrl: '/counselling',
     counsellingCtaVisible: true,
+    /** No composed rows yet: the public footer keeps its original fixed
+     * layout until an admin builds one, so existing sites are untouched. */
+    layoutJson: null,
   },
   seo: {
     defaultTitleSuffix: '| Universta',
@@ -123,6 +127,11 @@ function sanitizeGroup(group: SettingsGroup, body: Record<string, unknown>) {
     assertSafeUrl(merged.privacyUrl, 'privacyUrl');
     assertSafeUrl(merged.termsUrl, 'termsUrl');
     assertSafeUrl(merged.counsellingCtaUrl, 'counsellingCtaUrl');
+    // The composed row/block footer. Validated in full -- every link inside it
+    // reaches every page of the public site, so it gets the same URL guard as
+    // the flat fields above rather than being trusted as opaque JSON.
+    if ('layoutJson' in merged)
+      merged.layoutJson = sanitizeFooterLayout(merged.layoutJson);
   }
   if (group === 'contact') assertSafeUrl(merged.whatsappLink, 'whatsappLink');
   for (const key of [
@@ -184,6 +193,21 @@ export class SettingsService {
   async publicChrome(path?: string) {
     const settings = await this.publicGetAll();
     const chrome = await this.resolveChromeForPath(path);
+    // Branding stores which media asset is the logo; the public site needs a
+    // URL. Resolved here so the header can render an image instead of always
+    // falling back to the site name as a wordmark. A missing, soft-deleted or
+    // unpublished asset resolves to null and the wordmark still renders.
+    const logoMediaId = settings.branding?.logoMediaId;
+    let logoUrl: string | null = null;
+    let logoAlt: string | null = null;
+    if (typeof logoMediaId === 'string' && logoMediaId) {
+      const asset = await this.prisma.mediaAsset.findFirst({
+        where: { id: logoMediaId, deletedAt: null },
+        select: { publicUrl: true, altText: true, title: true },
+      });
+      logoUrl = asset?.publicUrl ?? null;
+      logoAlt = asset?.altText ?? asset?.title ?? null;
+    }
     const globalHeaderKey =
       typeof settings.header?.menuKey === 'string' && settings.header.menuKey
         ? settings.header.menuKey
@@ -229,7 +253,12 @@ export class SettingsService {
       return menu ? ExpandedService.navigationTree(menu.items) : [];
     };
     return {
-      settings,
+      settings: {
+        ...settings,
+        // Resolved alongside the raw id so the public site never has to look
+        // media up itself.
+        branding: { ...(settings.branding ?? {}), logoUrl, logoAlt },
+      },
       headerMenu: treeFor(headerKey),
       footerMenu: treeFor(footerKey),
       chrome,

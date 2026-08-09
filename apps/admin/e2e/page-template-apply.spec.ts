@@ -117,8 +117,9 @@ test.describe('page template apply', () => {
     ).toHaveCount(0);
   });
 
-  /** Website Pages is the canonical way in; the record list stays reachable
-   * but is clearly labelled as the raw list so nobody has to choose. */
+  /** Website Pages is the canonical way in. The legacy raw record route is
+   * still available to the application, but is intentionally absent from the
+   * normal Admin sidebar so non-developers have one clear entry point. */
   test('names Website Pages as the canonical page-building entry point', async ({
     page,
   }) => {
@@ -127,7 +128,7 @@ test.describe('page template apply', () => {
     await expect(nav.getByRole('link', { name: 'Website Pages' })).toBeVisible();
     await expect(
       nav.getByRole('link', { name: 'Page records (raw list)' }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(nav.getByRole('link', { name: 'Pages', exact: true })).toHaveCount(0);
   });
 });
