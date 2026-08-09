@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
+import { consultantContactActions } from "@/lib/consultant-contact";
 
 type NamedRecord = { name?: string; shortLabel?: string };
 type CourseOfferingRecord = { subject?: NamedRecord };
@@ -38,6 +39,8 @@ export type AnyRecord = {
   applicationUrl?: string;
   registrationUrl?: string;
   websiteUrl?: string;
+  email?: string | null;
+  phone?: string | null;
   applicationEmail?: string;
   overview?: string;
   requirements?: AnyRecord[];
@@ -285,6 +288,8 @@ export function PhaseDetail({
     ["Event date", date(row.startsAt) ?? null],
     ["Verification", row.verificationStatus ?? null],
   ].filter((item): item is [string, string] => Boolean(item[1]));
+  const consultantActions =
+    resource === "consultants" ? consultantContactActions(row) : null;
   return (
     <main>
       <PhaseOneHeader />
@@ -316,13 +321,26 @@ export function PhaseDetail({
               </p>
             ) : null}
             <div className="hero-actions">
-              <Link
-                className="button"
-                href={`/counselling?source=general&from=${encodeURIComponent(path)}`}
-              >
-                Talk to a counsellor
-              </Link>
-              {row.applicationUrl || row.registrationUrl || row.websiteUrl ? (
+              {consultantActions ? (
+                consultantActions.map((action) => (
+                  <a
+                    className={action.primary ? "button" : "button secondary"}
+                    href={action.href}
+                    key={action.label}
+                  >
+                    {action.label}
+                  </a>
+                ))
+              ) : (
+                <Link
+                  className="button"
+                  href={`/counselling?source=general&from=${encodeURIComponent(path)}`}
+                >
+                  Talk to a counsellor
+                </Link>
+              )}
+              {resource !== "consultants" &&
+              (row.applicationUrl || row.registrationUrl || row.websiteUrl) ? (
                 <a
                   className="button secondary"
                   href={
