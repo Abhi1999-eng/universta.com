@@ -1,8 +1,7 @@
 import {
-  PhaseListing,
-  type AnyRecord,
-  type PageMeta,
-} from "@/components/phase1/PhaseOneViews";
+  SuccessStoriesListing,
+  type SuccessStoryRow,
+} from "@/components/phase1/SuccessStoryViews";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
 
@@ -17,19 +16,12 @@ export async function generateMetadata() {
 }
 
 export default async function StoriesPage() {
-  let rows: AnyRecord[] = [];
-  let meta: PageMeta | null = null;
+  let rows: SuccessStoryRow[] = [];
+  let total = 0;
   try {
-    const result = await phaseList<AnyRecord>("success-stories");
+    const result = await phaseList<SuccessStoryRow>("success-stories");
     rows = result.data;
-    meta = result.meta as PageMeta;
+    total = (result.meta as { total?: number } | null)?.total ?? rows.length;
   } catch {}
-  return (
-    <PhaseListing
-      resource="success-stories"
-      rows={rows}
-      meta={meta}
-      search={false}
-    />
-  );
+  return <SuccessStoriesListing stories={rows} total={total} />;
 }

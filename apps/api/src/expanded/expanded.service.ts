@@ -695,6 +695,30 @@ export class ExpandedService {
       const data = sorted.slice(skip, skip + limit);
       return { data, meta: meta(page, limit, total) };
     }
+    if (resource === 'success-stories') {
+      const where = {
+        ...publishedWhereScheduled(now),
+        ...(q
+          ? {
+              OR: [{ title: q }, { journey: q }, { attribution: q }],
+            }
+          : {}),
+      };
+      const [rows, total] = await Promise.all([
+        this.prisma.successStory.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+          include: this.successStoryRelations(),
+        }),
+        this.prisma.successStory.count({ where }),
+      ]);
+      return {
+        data: await this.withSuccessStoryMedia(rows),
+        meta: meta(page, limit, Number(total)),
+      };
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[
@@ -762,6 +786,17 @@ export class ExpandedService {
       });
       return this.withSeo(resource, row ?? this.notFound(resource));
     }
+    if (resource === 'success-stories') {
+      const row = await this.prisma.successStory.findFirst({
+        where: { slug, ...publishedWhereScheduled(now) },
+        include: this.successStoryRelations(),
+      });
+      if (!row) return this.notFound(resource);
+      return this.withSeo(
+        resource,
+        await this.withSuccessStoryMedia([row]).then(([story]) => story),
+      );
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[
@@ -771,6 +806,48 @@ export class ExpandedService {
       where: { slug, ...publishedWhereScheduled(now) },
     });
     return this.withSeo(resource, row ?? this.notFound(resource));
+  }
+
+  private successStoryRelations() {
+    return {
+      country: { select: { id: true, name: true, slug: true } },
+      university: { select: { id: true, name: true, slug: true } },
+      offering: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          university: { select: { id: true, name: true, slug: true } },
+          genericCourse: { select: { id: true, name: true, slug: true } },
+        },
+      },
+    };
+  }
+
+  /**
+   * SuccessStory stores the media ID but deliberately has no Prisma relation
+   * to MediaAsset. Resolve the small public media shape here so the public
+   * story views can render a valid image without exposing media internals.
+   */
+  private async withSuccessStoryMedia<
+    T extends { featuredMediaId: string | null },
+  >(rows: T[]) {
+    const mediaIds = rows
+      .map((row) => row.featuredMediaId)
+      .filter((id): id is string => Boolean(id));
+    const media = mediaIds.length
+      ? await this.prisma.mediaAsset.findMany({
+          where: { id: { in: mediaIds }, status: 'ACTIVE', deletedAt: null },
+          select: { id: true, publicUrl: true, altText: true, title: true },
+        })
+      : [];
+    const byId = new Map(media.map((asset) => [asset.id, asset]));
+    return rows.map((row) => ({
+      ...row,
+      featuredMedia: row.featuredMediaId
+        ? (byId.get(row.featuredMediaId) ?? null)
+        : null,
+    }));
   }
 
   private async universityDetail(slug: string) {
