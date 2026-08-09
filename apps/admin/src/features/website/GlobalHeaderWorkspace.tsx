@@ -129,9 +129,12 @@ export function GlobalHeaderWorkspace() {
   return (
     <section className="mt-6 space-y-4" aria-label="Global Header settings">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="max-w-2xl text-sm leading-6 text-[#667085]">
-          The bar at the top of every page on your website.
-        </p>
+        <div className="max-w-2xl">
+          <h1 className="text-3xl font-semibold tracking-[-0.04em]">Global Header</h1>
+          <p className="mt-1 text-sm leading-6 text-[#667085]">
+            The bar at the top of every page on your website.
+          </p>
+        </div>
         <button
           type="button"
           disabled={busy}

@@ -57,8 +57,8 @@ test.describe('section content source', () => {
       await page.getByTestId('data-mode-manual').click();
       await expect(source).toContainText('Nothing chosen yet');
 
-      await page.getByRole('button', { name: 'Save page', exact: true }).click();
-      await expect(page.getByRole('status')).toContainText('Page saved.');
+      await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+      await expect(page.getByRole('status')).toContainText('Draft saved.');
 
       // The choice survives a reload rather than snapping back to Automatic.
       await page.reload();
