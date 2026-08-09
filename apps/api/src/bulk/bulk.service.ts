@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   bulkResource,
   bulkFields,
+  bulkFieldValueErrors,
   type BulkResourceDefinition,
   type BulkRow,
 } from './bulk-resources';
@@ -209,6 +210,16 @@ export class BulkOperationsService {
     return {
       buffer: await toXlsxTemplate(columns, example, {
         resourceLabel: definition.label,
+        validations: fields.flatMap((field) =>
+          field.allowedValues?.length
+            ? [
+                {
+                  column: `${field.label}${field.required ? ' *' : ''}`,
+                  allowedValues: field.allowedValues,
+                },
+              ]
+            : [],
+        ),
       }),
       extension: 'xlsx',
     };
@@ -315,7 +326,14 @@ export class BulkOperationsService {
     for (const row of rows) {
       const line = Number(row.__line) || 0;
       const parsed = await definition.parseRow(row, this.prisma);
-      results.push({ line, row, parsed });
+      const fieldErrors = bulkFieldValueErrors(definition, row);
+      results.push({
+        line,
+        row,
+        parsed: fieldErrors.length
+          ? { errors: [...fieldErrors, ...(parsed.errors ?? [])] }
+          : parsed,
+      });
     }
     return results;
   }
