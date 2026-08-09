@@ -17,6 +17,7 @@ import {
   sectionLabel,
 } from "@/features/website/section-registry";
 import { AddSectionLibrary } from "@/features/website/AddSectionLibrary";
+import { PageStructurePanel } from "@/features/website/PageStructurePanel";
 
 type SectionRow = {
   label: string;
@@ -131,6 +132,22 @@ const ROW_TYPES: Record<
   STATS: { legend: "Stats", primary: "Label (e.g. Partner universities)", secondary: "Value (e.g. 120+)" },
   RELATED_LINKS: { legend: "Links", primary: "Link label", hasUrl: true },
 };
+
+
+/** A section switched off on every device still occupies a row in the
+ * structure list, so the list says so rather than looking identical to a
+ * visible one. */
+function isHiddenEverywhere(section: {
+  configurationJson?: { visibility?: SectionVisibility } | null;
+}): boolean {
+  const visibility = section.configurationJson?.visibility;
+  if (!visibility) return false;
+  return (
+    visibility.desktop === false &&
+    visibility.tablet === false &&
+    visibility.mobile === false
+  );
+}
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
@@ -703,6 +720,9 @@ export function PageCmsEditor({
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Which section the structure panel has focused. null shows the whole list,
+   * which is also where an admin lands after removing the selected one. */
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const selectedTemplate = templateOptions.find((option) => option.id === selectedTemplateId) ?? null;
   const selectedTemplateSections = selectedTemplate?.defaultSectionsJson ?? [];
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -1030,6 +1050,33 @@ export function PageCmsEditor({
     }
   }
 
+  /** The structure panel and the settings pane are two views of the same
+   * arrays, so both are derived here rather than tracked separately. */
+  const allEditable = [...sections, ...newSections];
+  const selectedSection =
+    allEditable.find((row) => row.id === selectedSectionId) ?? null;
+  const visibleSections = selectedSection
+    ? sections.filter((row) => row.id === selectedSection.id)
+    : sections;
+  const visibleNewSections = selectedSection
+    ? newSections.filter((row) => row.id === selectedSection.id)
+    : newSections;
+  const structureEntries = [
+    ...sections.map((row) => ({
+      id: row.id,
+      sectionType: row.sectionType,
+      heading: row.heading,
+      hiddenEverywhere: isHiddenEverywhere(row),
+    })),
+    ...newSections.map((row) => ({
+      id: row.id,
+      sectionType: row.sectionType,
+      heading: row.heading,
+      hiddenEverywhere: isHiddenEverywhere(row),
+      isNew: true,
+    })),
+  ];
+
   if (loading) return <p className="mt-6 text-sm text-[#667085]">Loading page…</p>;
 
   return (
@@ -1196,22 +1243,46 @@ export function PageCmsEditor({
       </div>
 
       {recordId ? (
-        <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Sections</h3>
-            <button
-              type="button"
-              onClick={() => setLibraryOpen(true)}
-              className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
-            >
-              Add section
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-[#828B9B]">
-            Drag the ⠿ handle to reorder, or use the ↑ / ↓ buttons.
-          </p>
+        <div
+          className="grid gap-4 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)]"
+          data-testid="page-builder"
+        >
+          <PageStructurePanel
+            entries={structureEntries}
+            selectedId={selectedSectionId}
+            onSelect={setSelectedSectionId}
+            onMove={(id, direction) => move(id, direction)}
+            onDuplicate={(id) => void duplicateExisting(id)}
+            onRemove={(id) => {
+              if (newSections.some((row) => row.id === id)) removeNew(id);
+              else removeExisting(id);
+              if (selectedSectionId === id) setSelectedSectionId(null);
+            }}
+            onAdd={() => setLibraryOpen(true)}
+          />
+
+          <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                {selectedSection ? "Section settings" : "Sections"}
+              </h3>
+              {selectedSection ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSectionId(null)}
+                  className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+                >
+                  Show all sections
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-2 text-xs text-[#828B9B]">
+              {selectedSection
+                ? "Editing one section. Changes are saved with the page."
+                : "Pick a section on the left to edit it on its own, or use the full list here."}
+            </p>
           <div className="mt-4 space-y-4">
-            {sections.map((section, index) => section.sectionKey === 'stats-pill' ? (
+            {visibleSections.map((section, index) => section.sectionKey === 'stats-pill' ? (
               <StatsPillEditor
                 key={section.id}
                 pageId={recordId}
@@ -1241,7 +1312,7 @@ export function PageCmsEditor({
                 onDelete={() => removeExisting(section.id)}
               />
             ))}
-            {newSections.map((section, index) => (
+            {visibleNewSections.map((section, index) => (
               <SectionCard
                 key={section.id}
                 section={section}
@@ -1258,9 +1329,10 @@ export function PageCmsEditor({
               <p className="text-sm text-[#667085]">No sections yet. Add one above.</p>
             ) : null}
           </div>
-          <p className="mt-4 text-xs text-[#828B9B]">
-            Section changes are saved with the page — use Save page above.
-          </p>
+            <p className="mt-4 text-xs text-[#828B9B]">
+              Section changes are saved with the page — use Save page above.
+            </p>
+          </div>
         </div>
       ) : null}
 

@@ -28,10 +28,12 @@ export function DevicePreview({
   onClose,
   publicPath,
   framesLiveRoute = false,
+  inline = false,
 }: {
   slug: string;
   title: string;
-  onClose: () => void;
+  /** Omitted when embedded: an inline preview has nothing to close. */
+  onClose?: () => void;
   /** The real public route this page frames, for listing/comparison/functional
    * pages whose rows come from live records. */
   publicPath?: string | null;
@@ -40,6 +42,10 @@ export function DevicePreview({
    * previewing just that record would show an almost-empty page and tell the
    * admin nothing about what visitors see. */
   framesLiveRoute?: boolean;
+  /** Renders inside the builder's centre pane instead of as a modal, so the
+   * builder shows the real preview rather than a second, home-grown renderer
+   * that would drift from the public site. */
+  inline?: boolean;
 }) {
   const [device, setDevice] = useState<PreviewDeviceKey>("desktop");
   const [issuedPreviewUrl, setIssuedPreviewUrl] = useState<string | null>(null);
@@ -109,7 +115,12 @@ export function DevicePreview({
   const previewUrl = liveRoute ?? issuedPreviewUrl;
 
   return (
-    <div className="wb-preview" role="dialog" aria-modal="true" aria-label={`Preview of ${title}`}>
+    <div
+      className={inline ? "wb-preview is-inline" : "wb-preview"}
+      role={inline ? "region" : "dialog"}
+      aria-modal={inline ? undefined : true}
+      aria-label={inline ? `Preview of ${title}` : `Preview of ${title}`}
+    >
       <div className="wb-preview-bar">
         <div>
           <strong>Preview</strong> <span className="wb-preview-slug">/{slug}</span>
@@ -140,9 +151,11 @@ export function DevicePreview({
               Open in new tab
             </a>
           ) : null}
-          <button type="button" className="wb-preview-close" onClick={onClose}>
-            Close
-          </button>
+          {onClose ? (
+            <button type="button" className="wb-preview-close" onClick={onClose}>
+              Close
+            </button>
+          ) : null}
         </div>
       </div>
 
