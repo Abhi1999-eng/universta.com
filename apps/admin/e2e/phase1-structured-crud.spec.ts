@@ -248,7 +248,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     ).toBeVisible();
     await edit.getByLabel('Description', { exact: true }).fill('Updated fictional local consultant.');
     const reloaded = await saveEdit(page, 'consultants', consultantName);
-    await expect(reloaded.getByLabel('Description', { exact: true })).toHaveValue('Updated fictional local consultant.');
+    await expect(reloaded.getByLabel('Description', { exact: true })).toHaveText('Updated fictional local consultant.');
     await publishAndVerify(page, 'consultants', consultantName, '/study-abroad-consultants');
   });
 
