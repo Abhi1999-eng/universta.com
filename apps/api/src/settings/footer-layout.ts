@@ -116,8 +116,9 @@ function assertUrl(value: unknown, field: string) {
 function text(value: unknown, field: string, max: number): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string') reject(`${field} must be text`);
-  const trimmed = (value as string).trim();
-  if (trimmed.length > max) reject(`${field} must be ${max} characters or fewer`);
+  const trimmed = value.trim();
+  if (trimmed.length > max)
+    reject(`${field} must be ${max} characters or fewer`);
   return trimmed;
 }
 
@@ -134,7 +135,8 @@ export function sanitizeFooterLayout(value: unknown): FooterLayout | null {
 
   const input = value as Record<string, unknown>;
   const rawRows = input.rows;
-  if (rawRows === undefined) return { version: FOOTER_LAYOUT_VERSION, rows: [] };
+  if (rawRows === undefined)
+    return { version: FOOTER_LAYOUT_VERSION, rows: [] };
   if (!Array.isArray(rawRows)) reject('Footer rows must be a list');
   if (rawRows.length > 12) reject('A footer can have at most 12 rows');
 
@@ -147,7 +149,8 @@ export function sanitizeFooterLayout(value: unknown): FooterLayout | null {
       reject(`Row ${rowIndex + 1} has an unknown layout`);
 
     const rawBlocks = row.blocks ?? [];
-    if (!Array.isArray(rawBlocks)) reject(`Row ${rowIndex + 1} blocks must be a list`);
+    if (!Array.isArray(rawBlocks))
+      reject(`Row ${rowIndex + 1} blocks must be a list`);
     if (rawBlocks.length > 12)
       reject(`Row ${rowIndex + 1} can have at most 12 blocks`);
 
@@ -162,7 +165,9 @@ export function sanitizeFooterLayout(value: unknown): FooterLayout | null {
       const block = rawBlock as Record<string, unknown>;
       const type = block.type as FooterBlockType;
       if (!FOOTER_BLOCK_TYPES.includes(type))
-        reject(`Row ${rowIndex + 1} block ${blockIndex + 1} has an unknown type`);
+        reject(
+          `Row ${rowIndex + 1} block ${blockIndex + 1} has an unknown type`,
+        );
 
       const where = `Row ${rowIndex + 1} block ${blockIndex + 1}`;
       assertUrl(block.ctaUrl, `${where} button link`);
@@ -180,7 +185,8 @@ export function sanitizeFooterLayout(value: unknown): FooterLayout | null {
         const link = rawLink as Record<string, unknown>;
         assertUrl(link.url, `${where} link ${linkIndex + 1}`);
         return {
-          label: text(link.label, `${where} link ${linkIndex + 1} label`, 120) ?? '',
+          label:
+            text(link.label, `${where} link ${linkIndex + 1} label`, 120) ?? '',
           url: typeof link.url === 'string' ? link.url.trim() : '',
           newTab: link.newTab === true,
         };
@@ -193,7 +199,9 @@ export function sanitizeFooterLayout(value: unknown): FooterLayout | null {
         : 0;
 
       return {
-        id: text(block.id, `${where} id`, 64) || `block-${rowIndex}-${blockIndex}`,
+        id:
+          text(block.id, `${where} id`, 64) ||
+          `block-${rowIndex}-${blockIndex}`,
         type,
         area,
         heading: text(block.heading, `${where} heading`, 200),

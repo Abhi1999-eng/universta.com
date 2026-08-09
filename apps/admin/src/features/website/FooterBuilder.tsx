@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import {
   FOOTER_BLOCKS,
@@ -44,13 +44,13 @@ export function FooterBuilder({
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
-  const selectedBlock = useMemo(() => {
+  const selectedBlock = (() => {
     for (const row of rows) {
       const block = row.blocks.find((entry) => entry.id === selected);
       if (block) return { row, block };
     }
     return null;
-  }, [rows, selected]);
+  })();
 
   function commit(nextRows: FooterRow[]) {
     onChange({ version: FOOTER_LAYOUT_VERSION, rows: nextRows });
