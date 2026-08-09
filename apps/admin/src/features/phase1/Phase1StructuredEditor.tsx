@@ -3,12 +3,14 @@
 /* The dynamic repeaters and relation option sets intentionally share one editor shape. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
+import { createContext, type FormEvent, useContext, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
 import { FieldLabel } from "@/features/shared/FieldLabel";
 import { FieldHelpIcon } from "@/features/shared/FieldHelpIcon";
+import { RichTextEditor } from "@/features/shared/RichTextEditor";
 import { commonFieldHelp } from "@/lib/field-help/common";
+import { nextAutoSlug } from "@/lib/slug";
 import { getFieldHelp } from "@/lib/field-help/registry";
 import type { FieldHelpContent } from "@/lib/field-help/types";
 
@@ -46,6 +48,7 @@ type Props = {
   onSaved: () => Promise<void>;
   onCancel: () => void;
 };
+const StructuredEditorDisabledContext = createContext(false);
 
 const structured = new Set([
   "universities",
@@ -155,6 +158,7 @@ export function Phase1StructuredEditor({
   // save race ahead of those options or an existing-record hydration.
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [slugManuallyOverridden, setSlugManuallyOverridden] = useState(Boolean(recordId));
 
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
@@ -360,7 +364,18 @@ export function Phase1StructuredEditor({
     [options.campuses, values.universityId],
   );
   function set(key: string, value: string) {
-    setValues((current) => ({ ...current, [key]: value }));
+    if (key === "slug") setSlugManuallyOverridden(true);
+    setValues((current) => {
+      const next = { ...current, [key]: value };
+      if (key === "name" || key === "title")
+        next.slug = nextAutoSlug({
+          sourceValue: value,
+          currentSlug: string(next.slug),
+          existingRecord: Boolean(recordId),
+          manuallyOverridden: slugManuallyOverridden,
+        });
+      return next;
+    });
     setErrors((current) => ({ ...current, [key]: "" }));
   }
   function toggle(key: string, id: string) {
@@ -544,6 +559,7 @@ export function Phase1StructuredEditor({
   }
 
   return (
+    <StructuredEditorDisabledContext.Provider value={loading || loadError}>
     <form
       onSubmit={(event) => void submit(event)}
       className="mt-7 space-y-6 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-7"
@@ -733,6 +749,7 @@ export function Phase1StructuredEditor({
       </div>
       </fieldset>
     </form>
+    </StructuredEditorDisabledContext.Provider>
   );
 }
 
@@ -742,6 +759,7 @@ function Field({
   onChange,
   error,
   textarea = false,
+  richText = false,
   type = "text",
   helpKey,
   help,
@@ -752,6 +770,7 @@ function Field({
   onChange: (value: string) => void;
   error?: string;
   textarea?: boolean;
+  richText?: boolean;
   type?: string;
   helpKey?: string;
   help?: FieldHelpContent;
@@ -759,10 +778,11 @@ function Field({
 }) {
   const fieldId = useId();
   const errorId = useId();
+  const disabled = useContext(StructuredEditorDisabledContext);
   return (
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
-      {textarea ? (
+      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} /> : textarea ? (
         <textarea
           id={fieldId}
           value={value}
@@ -1137,6 +1157,7 @@ function UniversityFields(p: any) {
       <Field
         label="Description"
         textarea
+        richText
         value={p.values.overview ?? ""}
         onChange={(value) => p.set("overview", value)}
         helpKey="universities.overview"
@@ -1291,6 +1312,7 @@ function OfferingFields(p: any) {
       <Field
         label="Description"
         textarea
+        richText
         value={p.values.overview ?? ""}
         onChange={(value) => p.set("overview", value)}
         helpKey="offerings.overview"
@@ -1395,6 +1417,7 @@ function ScholarshipFields(p: any) {
       <Field
         label="Description"
         textarea
+        richText
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
         helpKey="scholarships.description"
@@ -1402,6 +1425,7 @@ function ScholarshipFields(p: any) {
       <Field
         label="Eligibility"
         textarea
+        richText
         value={p.values.eligibility ?? ""}
         onChange={(value) => p.set("eligibility", value)}
         helpKey="scholarships.eligibility"
@@ -1482,6 +1506,7 @@ function ConsultantFields(p: any) {
       <Field
         label="Description"
         textarea
+        richText
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
         helpKey="consultants.description"
@@ -1641,6 +1666,7 @@ function JobFields(p: any) {
       <Field
         label="Description"
         textarea
+        richText
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
         helpKey="jobs.description"
@@ -1648,12 +1674,14 @@ function JobFields(p: any) {
       <Field
         label="Responsibilities"
         textarea
+        richText
         value={p.values.responsibilities ?? ""}
         onChange={(value) => p.set("responsibilities", value)}
       />
       <Field
         label="Qualifications"
         textarea
+        richText
         value={p.values.qualifications ?? ""}
         onChange={(value) => p.set("qualifications", value)}
       />
@@ -1751,6 +1779,7 @@ function EventFields(p: any) {
       <Field
         label="Description"
         textarea
+        richText
         value={p.values.description ?? ""}
         onChange={(value) => p.set("description", value)}
         helpKey="events.description"
@@ -1824,6 +1853,7 @@ function StoryFields(p: any) {
       <Field
         label="Journey content"
         textarea
+        richText
         value={p.values.journey ?? ""}
         onChange={(value) => p.set("journey", value)}
         helpKey="success-stories.journey"

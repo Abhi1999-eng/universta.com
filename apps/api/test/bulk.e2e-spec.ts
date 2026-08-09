@@ -106,7 +106,7 @@ describe('Bulk data import/export (e2e)', () => {
       '/api/v1/admin/bulk/jobs/template?format=csv',
     ).expect(200);
     expect(response.text.split('\r\n')[0]).toBe(
-      'slug,title,department,employmentType,location,remoteStatus,summary,status',
+      'Title *,Department,Employment Type,Location,Remote Status,Summary,Status',
     );
   });
 
@@ -124,14 +124,13 @@ describe('Bulk data import/export (e2e)', () => {
     expect(Buffer.isBuffer(response.body)).toBe(true);
     const rows = await parseXlsx(response.body as Buffer);
     expect(rows[0]).toEqual([
-      'slug',
-      'title',
-      'department',
-      'employmentType',
-      'location',
-      'remoteStatus',
-      'summary',
-      'status',
+      'Title *',
+      'Department',
+      'Employment Type',
+      'Location',
+      'Remote Status',
+      'Summary',
+      'Status',
     ]);
   });
 
@@ -251,8 +250,9 @@ describe('Bulk data import/export (e2e)', () => {
       'get',
       '/api/v1/admin/bulk/jobs/export?format=csv',
     ).expect(200);
-    expect(response.text).toContain(jobSlugA);
-    expect(response.text).toContain(jobSlugB);
+    expect(response.text).toContain('Bulk E2E Job A Updated');
+    expect(response.text).toContain('Bulk E2E Job B');
+    expect(response.text).not.toContain('slug');
   });
 
   it('exports a valid XLSX workbook including both rows', async () => {
@@ -265,9 +265,11 @@ describe('Bulk data import/export (e2e)', () => {
       .expect(200);
     expect(Buffer.isBuffer(response.body)).toBe(true);
     const rows = await parseXlsx(response.body as Buffer);
-    const slugIndex = rows[0].indexOf('slug');
-    const slugs = rows.slice(1).map((row) => row[slugIndex]);
-    expect(slugs).toEqual(expect.arrayContaining([jobSlugA, jobSlugB]));
+    const titleIndex = rows[0].indexOf('Title');
+    const titles = rows.slice(1).map((row) => row[titleIndex]);
+    expect(titles).toEqual(
+      expect.arrayContaining(['Bulk E2E Job A Updated', 'Bulk E2E Job B']),
+    );
   });
 
   it('bulk-archives the selected records, which then disappear from the public listing', async () => {

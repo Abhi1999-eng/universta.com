@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Crumbs, PhaseOneFooter, PhaseOneHeader } from "./PhaseOneChrome";
+import { RichText } from "./RichText";
 import {
   countryPath,
   journeyExcerpt,
@@ -123,7 +124,7 @@ export function SuccessStoryDetail({ story }: { story: SuccessStoryRow }) {
           <section className="editorial-section">
             <p className="eyebrow">The journey</p>
             <h2>The Journey</h2>
-            <p style={{ whiteSpace: "pre-line" }}>{story.journey}</p>
+            <RichText value={story.journey} />
           </section>
           <RelatedStoryFact
             label="Study destination"

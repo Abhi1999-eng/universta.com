@@ -8,6 +8,7 @@ import { writeAudit } from '../catalog/catalog.audit';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   bulkResource,
+  bulkFields,
   type BulkResourceDefinition,
   type BulkRow,
 } from './bulk-resources';
@@ -78,6 +79,7 @@ export class BulkOperationsService {
   private async parseUploaded(
     buffer: Buffer,
     filename: string,
+    definition: BulkResourceDefinition,
   ): Promise<BulkRow[]> {
     let cells: string[][];
     if (isFile(filename, '.csv')) {
@@ -98,48 +100,144 @@ export class BulkOperationsService {
         message: `A single import is limited to ${MAX_ROWS} rows`,
         details: null,
       });
-    return rows.map((row) => ({ __line: String(row.line), ...row.values }));
+    const fields = bulkFields(definition);
+    const headers = new Map(
+      fields.map((field) => [field.label.toLowerCase(), field.key]),
+    );
+    const normalized = rows.map((row) => {
+      const values: BulkRow = { __line: String(row.line) };
+      for (const [header, value] of Object.entries(row.values)) {
+        const normalizedHeader = header
+          .trim()
+          .replace(/\s*\*$/, '')
+          .toLowerCase();
+        values[headers.get(normalizedHeader) ?? header] = value;
+      }
+      return values;
+    });
+    await this.resolveHumanRelations(definition.key, normalized);
+    return normalized;
+  }
+
+  /** Resolve each distinct human-readable relation once per uploaded file.
+   * Legacy CSVs using slugs/codes continue to work as a fallback. */
+  private async resolveHumanRelations(resource: string, rows: BulkRow[]) {
+    const values = (key: string) => [
+      ...new Set(rows.map((row) => row[key]?.trim()).filter(Boolean)),
+    ];
+    const match = (
+      rowsToMap: { name?: string; slug?: string; code?: string; id: string }[],
+      inputs: string[],
+    ) => {
+      const lookup = new Map<
+        string,
+        { id: string; slug?: string; code?: string }
+      >();
+      for (const row of rowsToMap)
+        for (const value of [row.name, row.slug, row.code])
+          if (value) lookup.set(value.trim().toLowerCase(), row);
+      return inputs.map(
+        (input) =>
+          [input.toLowerCase(), lookup.get(input.toLowerCase())] as const,
+      );
+    };
+    if (resource === 'courses') {
+      const [subjects, levels] = await Promise.all([
+        this.prisma.subject.findMany({
+          where: { deletedAt: null },
+          select: { id: true, name: true, slug: true },
+        }),
+        this.prisma.courseLevel.findMany({
+          select: { id: true, name: true, code: true },
+        }),
+      ]);
+      const subjectsByName = new Map(match(subjects, values('subjectSlug')));
+      const levelsByName = new Map(match(levels, values('courseLevelCode')));
+      for (const row of rows) {
+        const subject = subjectsByName.get(
+          row.subjectSlug?.trim().toLowerCase(),
+        );
+        const level = levelsByName.get(
+          row.courseLevelCode?.trim().toLowerCase(),
+        );
+        if (subject) {
+          row.__subjectId = subject.id;
+          row.subjectSlug = subject.slug ?? row.subjectSlug;
+        }
+        if (level) {
+          row.__courseLevelId = level.id;
+          row.courseLevelCode = level.code ?? row.courseLevelCode;
+        }
+      }
+    }
+    if (resource === 'universities') {
+      const countries = await this.prisma.country.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true, slug: true },
+      });
+      const countriesByName = new Map(match(countries, values('countrySlug')));
+      for (const row of rows) {
+        const country = countriesByName.get(
+          row.countrySlug?.trim().toLowerCase(),
+        );
+        if (country) {
+          row.__countryId = country.id;
+          row.countrySlug = country.slug ?? row.countrySlug;
+        }
+      }
+    }
   }
 
   async template(resourceKey: string, format: 'csv' | 'xlsx') {
     const definition = bulkResource(resourceKey);
+    const fields = bulkFields(definition);
+    const columns = fields.map(
+      (field) => `${field.label}${field.required ? ' *' : ''}`,
+    );
+    const example = Object.fromEntries(
+      fields.map((field) => [
+        `${field.label}${field.required ? ' *' : ''}`,
+        definition.exampleRow[field.key] ?? '',
+      ]),
+    );
     if (format === 'csv') {
       return {
-        buffer: Buffer.from(
-          toCsv(definition.columns, [definition.exampleRow]),
-          'utf8',
-        ),
+        buffer: Buffer.from(toCsv(columns, [example]), 'utf8'),
         extension: 'csv',
       };
     }
     return {
-      buffer: await toXlsxTemplate(definition.columns, definition.exampleRow),
+      buffer: await toXlsxTemplate(columns, example, {
+        resourceLabel: definition.label,
+      }),
       extension: 'xlsx',
     };
   }
 
   private static readonly INCLUDE_MAP: Record<string, Record<string, unknown>> =
     {
-      countries: { continent: { select: { slug: true } } },
-      states: { country: { select: { slug: true } } },
+      countries: { continent: { select: { slug: true, name: true } } },
+      states: { country: { select: { slug: true, name: true } } },
       cities: {
-        country: { select: { slug: true } },
-        state: { select: { slug: true } },
+        country: { select: { slug: true, name: true } },
+        state: { select: { slug: true, name: true } },
       },
       courses: {
-        subject: { select: { slug: true } },
-        courseLevel: { select: { code: true } },
+        subject: { select: { slug: true, name: true } },
+        courseLevel: { select: { code: true, name: true } },
       },
-      universities: { country: { select: { slug: true } } },
-      campuses: { university: { select: { slug: true } } },
+      universities: { country: { select: { slug: true, name: true } } },
+      campuses: { university: { select: { slug: true, name: true } } },
       offerings: {
-        university: { select: { slug: true } },
-        genericCourse: { select: { slug: true } },
-        campus: { select: { slug: true } },
-        courseLevel: { select: { code: true } },
+        university: { select: { slug: true, name: true } },
+        genericCourse: { select: { slug: true, name: true } },
+        campus: { select: { slug: true, name: true } },
+        courseLevel: { select: { code: true, name: true } },
       },
-      scholarships: { provider: { select: { slug: true } } },
-      'consultant-locations': { country: { select: { slug: true } } },
+      scholarships: { provider: { select: { slug: true, name: true } } },
+      'consultant-locations': {
+        country: { select: { slug: true, name: true } },
+      },
     };
 
   private async fetchRecords(
@@ -168,19 +266,37 @@ export class BulkOperationsService {
   async export(resourceKey: string, format: 'csv' | 'xlsx') {
     const definition = bulkResource(resourceKey);
     const rows = await this.fetchRecords(resourceKey, definition);
-    const exportRows = rows.map((row: Record<string, unknown>) =>
-      definition.toExportRow(row),
-    );
+    const fields = bulkFields(definition);
+    const columns = fields.map((field) => field.label);
+    const exportRows = rows.map((row: Record<string, unknown>) => {
+      const legacy = definition.toExportRow(row);
+      return Object.fromEntries(
+        fields.map((field) => [
+          field.label,
+          this.humanExportValue(field.key, legacy, row),
+        ]),
+      );
+    });
     if (format === 'csv') {
       return {
-        buffer: Buffer.from(toCsv(definition.columns, exportRows), 'utf8'),
+        buffer: Buffer.from(toCsv(columns, exportRows), 'utf8'),
         extension: 'csv',
       };
     }
     return {
-      buffer: await toXlsx(definition.columns, exportRows),
+      buffer: await toXlsx(columns, exportRows),
       extension: 'xlsx',
     };
+  }
+
+  private humanExportValue(
+    key: string,
+    legacy: Record<string, unknown>,
+    row: Record<string, unknown>,
+  ) {
+    const relation = row[key.replace(/(?:Slug|Code)$/, '')] as
+      { name?: string } | undefined;
+    return relation?.name ?? legacy[key] ?? '';
   }
 
   /** Each resource's own `parseRow` is the single source of truth for
@@ -210,7 +326,7 @@ export class BulkOperationsService {
     filename: string,
   ): Promise<{ totalRows: number; errors: RowError[] }> {
     const definition = bulkResource(resourceKey);
-    const rows = await this.parseUploaded(buffer, filename);
+    const rows = await this.parseUploaded(buffer, filename, definition);
     const validated = await this.validateRows(definition, rows);
     const errors = validated
       .filter((result) => result.parsed.errors)
@@ -227,7 +343,7 @@ export class BulkOperationsService {
     actorUserId: string,
   ): Promise<ImportSummary> {
     const definition = bulkResource(resourceKey);
-    const rows = await this.parseUploaded(buffer, filename);
+    const rows = await this.parseUploaded(buffer, filename, definition);
     const validated = await this.validateRows(definition, rows);
     const summary: ImportSummary = {
       totalRows: rows.length,

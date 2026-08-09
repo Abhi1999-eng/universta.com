@@ -5,7 +5,7 @@ import ExcelJS from 'exceljs';
 export async function parseXlsx(buffer: Buffer): Promise<string[][]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
-  const sheet = workbook.worksheets[0];
+  const sheet = workbook.getWorksheet('Data') ?? workbook.worksheets[0];
   if (!sheet) return [];
   const rows: string[][] = [];
   sheet.eachRow((row) => {
@@ -51,6 +51,13 @@ export async function toXlsx(
     width: 24,
   }));
   for (const row of rows) sheet.addRow(row);
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF1657CF' },
+  };
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }
@@ -61,6 +68,46 @@ export async function toXlsx(
 export async function toXlsxTemplate(
   columns: string[],
   exampleRow?: Record<string, unknown>,
+  options?: { resourceLabel?: string; descriptions?: string[] },
 ): Promise<Buffer> {
-  return toXlsx(columns, exampleRow ? [exampleRow] : []);
+  const workbook = new ExcelJS.Workbook();
+  const readme = workbook.addWorksheet('README');
+  readme.columns = [{ width: 28 }, { width: 96 }];
+  readme.addRows([
+    ['Bulk import template', options?.resourceLabel ?? 'Catalog records'],
+    ['Required fields', '* = Required. Do not rename headings.'],
+    [
+      'Create / update',
+      'Create mode rejects matching records. Create + update matches the generated slug and never clears optional fields left blank.',
+    ],
+    [
+      'Relationships',
+      'Use the visible name from Admin (for example, Country or Subject), never IDs.',
+    ],
+    ['Dates', 'Use ISO dates: YYYY-MM-DD or ISO date-time.'],
+    ['Booleans', 'Use true or false.'],
+    ['Slugs', 'Slugs are generated automatically from Name or Title.'],
+    [
+      'Common error',
+      'A relation name must match an existing Admin record exactly.',
+    ],
+  ]);
+  readme.getColumn(1).font = { bold: true };
+  const sheet = workbook.addWorksheet('Data');
+  sheet.columns = columns.map((column) => ({
+    header: column,
+    key: column,
+    width: Math.max(18, Math.min(44, column.length + 10)),
+    style: { alignment: { wrapText: true, vertical: 'top' } },
+  }));
+  if (exampleRow) sheet.addRow(exampleRow);
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF1657CF' },
+  };
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
 }

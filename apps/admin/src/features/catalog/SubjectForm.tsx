@@ -25,6 +25,7 @@ import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 
 type Intent = 'draft' | 'publish';
@@ -69,6 +70,7 @@ export function SubjectForm({ id }: { id?: string }) {
   const [error, setError] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
+  const [slugEdited, setSlugEdited] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -107,7 +109,7 @@ export function SubjectForm({ id }: { id?: string }) {
   }, [dirty]);
 
   const status = record?.status ?? 'DRAFT';
-  const set = (key: keyof typeof form, value: string | boolean) => { setForm((current) => ({ ...current, [key]: value })); setDirty(true); setIssues([]); };
+  const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
   const updateSpecialization = (index: number, patch: Partial<SpecializationDraft>) => { setSpecializations((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row)); setDirty(true); };
   const removeSpecialization = (index: number) => { const row = specializations[index]; if (row?.id) setRemovedSpecializations((current) => [...current, row]); setSpecializations((rows) => rows.filter((_, i) => i !== index)); setDirty(true); };
 

@@ -55,6 +55,7 @@ import type {
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 
 type Intent = 'draft' | 'publish';
@@ -318,6 +319,7 @@ export function CourseForm({ id }: { id?: string }) {
   const [error, setError] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
+  const [slugEdited, setSlugEdited] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -421,7 +423,8 @@ export function CourseForm({ id }: { id?: string }) {
   }, [dirty]);
 
   const setCoreField = <K extends keyof CoreState>(key: K, value: CoreState[K]) => {
-    setCore((current) => ({ ...current, [key]: value }));
+    if (key === 'slug') setSlugEdited(true);
+    setCore((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) }));
     setDirty(true);
     setIssues([]);
   };

@@ -85,7 +85,14 @@ async function saveAndOpenEdit(page: Page, resource: string, rowText: string) {
 
 async function saveEdit(page: Page, resource: string, rowText: string) {
   const form = page.getByRole('form', { name: `Edit ${resource}` });
-  await form.getByRole('button', { name: 'Save changes' }).click();
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.request().method() === 'PATCH' &&
+      response.ok() &&
+      response.url().includes(`/api/v1/admin/phase1/${resource}/`),
+    ),
+    form.getByRole('button', { name: 'Save changes' }).click(),
+  ]);
   await expect(page.getByRole('row').filter({ hasText: rowText })).toBeVisible();
   await page.reload();
   const row = page.getByRole('row').filter({ hasText: rowText });
@@ -248,7 +255,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     ).toBeVisible();
     await edit.getByLabel('Description', { exact: true }).fill('Updated fictional local consultant.');
     const reloaded = await saveEdit(page, 'consultants', consultantName);
-    await expect(reloaded.getByLabel('Description', { exact: true })).toHaveValue('Updated fictional local consultant.');
+    await expect(reloaded.getByLabel('Description', { exact: true })).toHaveText('Updated fictional local consultant.');
     await publishAndVerify(page, 'consultants', consultantName, '/study-abroad-consultants');
   });
 
@@ -304,7 +311,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const storyEdit = await saveAndOpenEdit(page, 'success-stories', storyTitle);
     await storyEdit.getByLabel('Journey content', { exact: true }).fill('Updated fictional local journey content.');
     const storyReloaded = await saveEdit(page, 'success-stories', storyTitle);
-    await expect(storyReloaded.getByLabel('Journey content', { exact: true })).toHaveValue('Updated fictional local journey content.');
+    await expect(storyReloaded.getByLabel('Journey content', { exact: true })).toHaveText('Updated fictional local journey content.');
     await publishAndVerify(page, 'success-stories', storyTitle, '/success-stories');
 
     const testimonial = await openCreate(page, 'testimonials');

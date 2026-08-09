@@ -9,6 +9,7 @@ type ResourceMeta = {
   columns: string[];
   requiredColumns: string[];
   updatableColumns: string[];
+  fields?: { key: string; label: string; required: boolean; description?: string }[];
 };
 type RowError = { line: number; errors: string[] };
 type DryRunResult = { totalRows: number; errors: RowError[] };
@@ -398,7 +399,7 @@ export function BulkDataManager() {
           <div className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-5">
             <h3 className="text-sm font-semibold">Template &amp; export</h3>
             <p className="mt-1 text-xs text-[#828B9B]">
-              Required columns: {selected.requiredColumns.join(", ")}
+              Required: {selected.requiredColumns.join(", ")}. Templates use readable names, generate slugs automatically, and never require database IDs.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
