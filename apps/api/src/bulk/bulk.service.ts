@@ -235,7 +235,9 @@ export class BulkOperationsService {
         courseLevel: { select: { code: true, name: true } },
       },
       scholarships: { provider: { select: { slug: true, name: true } } },
-      'consultant-locations': { country: { select: { slug: true, name: true } } },
+      'consultant-locations': {
+        country: { select: { slug: true, name: true } },
+      },
     };
 
   private async fetchRecords(
@@ -268,10 +270,12 @@ export class BulkOperationsService {
     const columns = fields.map((field) => field.label);
     const exportRows = rows.map((row: Record<string, unknown>) => {
       const legacy = definition.toExportRow(row);
-      return Object.fromEntries(fields.map((field) => [
-        field.label,
-        this.humanExportValue(field.key, legacy, row),
-      ]));
+      return Object.fromEntries(
+        fields.map((field) => [
+          field.label,
+          this.humanExportValue(field.key, legacy, row),
+        ]),
+      );
     });
     if (format === 'csv') {
       return {
@@ -291,8 +295,7 @@ export class BulkOperationsService {
     row: Record<string, unknown>,
   ) {
     const relation = row[key.replace(/(?:Slug|Code)$/, '')] as
-      | { name?: string }
-      | undefined;
+      { name?: string } | undefined;
     return relation?.name ?? legacy[key] ?? '';
   }
 
