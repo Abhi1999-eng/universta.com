@@ -2,6 +2,13 @@ import { slugify } from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 
 export type BulkRow = Record<string, string>;
+export type BulkField = {
+  key: string;
+  label: string;
+  required: boolean;
+  type: 'text' | 'boolean' | 'number' | 'date' | 'status' | 'relation';
+  description?: string;
+};
 export type BulkParseResult =
   | { data: Record<string, unknown>; errors?: undefined }
   | { data?: undefined; errors: string[] };
@@ -27,6 +34,9 @@ export interface BulkResourceDefinition {
   /** Column used to match an existing row for upsert/export identity. */
   uniqueColumn: 'slug';
   columns: string[];
+  /** The presentation contract powers templates, header validation and export.
+   * `columns` remains the legacy/parser representation for backwards-compatible CSV imports. */
+  fields?: BulkField[];
   requiredColumns: string[];
   exampleRow: BulkRow;
   /** Update-mode-only editable columns (excludes identity/relation columns
@@ -38,6 +48,47 @@ export interface BulkResourceDefinition {
   /** Returns a human-readable reason the row can't be archived (e.g. "3
    * cities still reference this state"), or null if it's safe to archive. */
   dependencyCheck?(id: string, prisma: PrismaService): Promise<string | null>;
+}
+
+const relationLabels: Record<string, string> = {
+  continentSlug: 'Continent',
+  countrySlug: 'Country',
+  stateSlug: 'State / province',
+  subjectSlug: 'Subject',
+  courseLevelCode: 'Course level',
+  universitySlug: 'University',
+  genericCourseSlug: 'Generic course',
+  campusSlug: 'Campus',
+  providerSlug: 'Scholarship provider',
+};
+
+export function bulkFields(definition: BulkResourceDefinition): BulkField[] {
+  return (
+    definition.fields ??
+    definition.columns
+      .filter((key) => key !== 'slug' && !key.endsWith('Id'))
+      .map((key) => ({
+        key,
+        label:
+          relationLabels[key] ??
+          key
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, (value) => value.toUpperCase()),
+        required: definition.requiredColumns.includes(key),
+        type:
+          key.endsWith('Slug') || key.endsWith('Code')
+            ? 'relation'
+            : key.startsWith('is')
+              ? 'boolean'
+              : key.includes('Order')
+                ? 'number'
+                : key.includes('Date') || key.includes('At')
+                  ? 'date'
+                  : key === 'status'
+                    ? 'status'
+                    : 'text',
+      }))
+  );
 }
 
 function slugOrFallback(row: BulkRow, fallbackSource: string) {
@@ -333,6 +384,24 @@ const courses: BulkResourceDefinition = {
     'isFeatured',
     'status',
   ],
+  fields: [
+    { key: 'name', label: 'Course Name', required: true, type: 'text' },
+    { key: 'subjectSlug', label: 'Subject', required: true, type: 'relation' },
+    {
+      key: 'courseLevelCode',
+      label: 'Course Level',
+      required: true,
+      type: 'relation',
+    },
+    {
+      key: 'shortDescription',
+      label: 'Short Description',
+      required: false,
+      type: 'text',
+    },
+    { key: 'isFeatured', label: 'Featured', required: false, type: 'boolean' },
+    { key: 'status', label: 'Status', required: false, type: 'status' },
+  ],
   requiredColumns: ['name', 'subjectSlug', 'courseLevelCode'],
   exampleRow: {
     slug: '',
@@ -348,17 +417,21 @@ const courses: BulkResourceDefinition = {
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
-    const subject = row.subjectSlug?.trim()
-      ? await prisma.subject.findFirst({
-          where: { slug: row.subjectSlug.trim(), deletedAt: null },
-        })
-      : null;
+    const subject = row.__subjectId
+      ? { id: row.__subjectId }
+      : row.subjectSlug?.trim()
+        ? await prisma.subject.findFirst({
+            where: { slug: row.subjectSlug.trim(), deletedAt: null },
+          })
+        : null;
     if (!subject) errors.push(`subjectSlug "${row.subjectSlug}" was not found`);
-    const courseLevel = row.courseLevelCode?.trim()
-      ? await prisma.courseLevel.findFirst({
-          where: { code: row.courseLevelCode.trim() },
-        })
-      : null;
+    const courseLevel = row.__courseLevelId
+      ? { id: row.__courseLevelId }
+      : row.courseLevelCode?.trim()
+        ? await prisma.courseLevel.findFirst({
+            where: { code: row.courseLevelCode.trim() },
+          })
+        : null;
     if (!courseLevel)
       errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);
     if (errors.length) return { errors };
@@ -546,6 +619,23 @@ const universities: BulkResourceDefinition = {
     'shortDescription',
     'status',
   ],
+  fields: [
+    { key: 'name', label: 'University Name', required: true, type: 'text' },
+    { key: 'countrySlug', label: 'Country', required: true, type: 'relation' },
+    {
+      key: 'institutionType',
+      label: 'Institution Type',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'shortDescription',
+      label: 'Short Description',
+      required: true,
+      type: 'text',
+    },
+    { key: 'status', label: 'Status', required: false, type: 'status' },
+  ],
   requiredColumns: ['name', 'countrySlug', 'shortDescription'],
   exampleRow: {
     slug: '',
@@ -562,11 +652,13 @@ const universities: BulkResourceDefinition = {
     if (!row.name?.trim()) errors.push('name is required');
     if (!row.shortDescription?.trim())
       errors.push('shortDescription is required');
-    const country = row.countrySlug?.trim()
-      ? await prisma.country.findFirst({
-          where: { slug: row.countrySlug.trim(), deletedAt: null },
-        })
-      : null;
+    const country = row.__countryId
+      ? { id: row.__countryId }
+      : row.countrySlug?.trim()
+        ? await prisma.country.findFirst({
+            where: { slug: row.countrySlug.trim(), deletedAt: null },
+          })
+        : null;
     if (!country) errors.push(`countrySlug "${row.countrySlug}" was not found`);
     if (errors.length) return { errors };
     return {

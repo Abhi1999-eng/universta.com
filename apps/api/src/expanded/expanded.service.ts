@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../generated/prisma/client';
 import { ExperimentsService } from '../experiments/experiments.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { sanitizeRichText } from '../common/rich-text';
 import { DbNull } from '../generated/prisma/internal/prismaNamespaceBrowser';
 import { parseChromeConfig } from '../settings/chrome-overrides';
 import { isCanonicalPublicSlug } from '../common/public-slug';
@@ -2335,6 +2336,16 @@ export class ExpandedService {
         (!allowed[resource] || allowed[resource]?.has(key))
       )
         data[key] = typeof value === 'string' ? value.trim() : value;
+    for (const key of [
+      'overview',
+      'description',
+      'eligibility',
+      'responsibilities',
+      'qualifications',
+      'journey',
+    ])
+      if (typeof data[key] === 'string')
+        data[key] = sanitizeRichText(data[key]);
     const title =
       typeof data.title === 'string'
         ? data.title

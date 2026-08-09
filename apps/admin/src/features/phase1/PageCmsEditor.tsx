@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { nextAutoSlug } from "@/lib/slug";
 import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
 import { InternalLinkPicker } from "./InternalLinkPicker";
 import {
@@ -708,6 +709,7 @@ export function PageCmsEditor({
   const [newSections, setNewSections] = useState<Section[]>([]);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(Boolean(recordId));
+  const [slugEdited, setSlugEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<PageRecord | null>(null);
@@ -825,7 +827,8 @@ export function PageCmsEditor({
   }, [load]);
 
   function setPageField<K extends keyof PageRecord>(key: K, value: PageRecord[K]) {
-    setPage((current) => ({ ...current, [key]: value }));
+    if (key === "slug") setSlugEdited(true);
+    setPage((current) => ({ ...current, [key]: value, ...(key === "title" ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(recordId), manuallyOverridden: slugEdited }) } : {}) }));
   }
 
   async function savePage() {

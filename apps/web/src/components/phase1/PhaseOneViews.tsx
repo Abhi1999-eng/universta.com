@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
 import { consultantContactActions } from "@/lib/consultant-contact";
+import { RichText } from "./RichText";
 
 type NamedRecord = { name?: string; shortLabel?: string };
 type CourseOfferingRecord = { subject?: NamedRecord };
@@ -366,14 +367,7 @@ export function PhaseDetail({
           <section className="editorial-section">
             <p className="eyebrow">Overview</p>
             <h2>What to know</h2>
-            <p>
-              {row.overview ??
-                row.description ??
-                row.journey ??
-                row.quote ??
-                row.summary ??
-                "No further overview is published."}
-            </p>
+            <RichText value={row.overview ?? row.description ?? row.journey ?? row.quote ?? row.summary ?? "No further overview is published."} />
           </section>
           {row.requirements?.length ? (
             <section className="editorial-section">
@@ -505,7 +499,7 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
           <section className="editorial-section">
             <p className="eyebrow">Overview</p>
             <h2>About this university</h2>
-            <p>{row.overview ?? "No overview is published."}</p>
+            <RichText value={row.overview ?? "No overview is published."} />
           </section>
           <section className="editorial-section">
             <p className="eyebrow">Campuses</p>

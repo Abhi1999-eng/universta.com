@@ -51,6 +51,7 @@ import {
 } from './editorial/editor-types';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 
 type Intent = 'draft' | 'publish';
@@ -108,6 +109,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const [error, setError] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
+  const [slugEdited, setSlugEdited] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -155,7 +157,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
 
   useEffect(() => { const handler = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }; window.addEventListener('beforeunload', handler); return () => window.removeEventListener('beforeunload', handler); }, [dirty]);
 
-  const setCoreField = <K extends keyof Core>(key: K, value: Core[K]) => { setCore((current) => ({ ...current, [key]: value })); setDirty(true); setIssues([]); };
+  const setCoreField = <K extends keyof Core>(key: K, value: Core[K]) => { if (key === 'slug') setSlugEdited(true); setCore((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(countryId), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
   const setProfile = (kind: ProfileKind, key: string, value: string | boolean) => { setProfiles((current) => ({ ...current, [kind]: { ...current[kind], [key]: value } })); setDirty(true); };
   const updateSection = (index: number, patch: Partial<SectionRow>) => { setSections((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row)); setDirty(true); };
   const updateFaq = (index: number, patch: Partial<FaqRow>) => { setFaqs((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row)); setDirty(true); };

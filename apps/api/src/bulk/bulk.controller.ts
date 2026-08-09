@@ -20,7 +20,7 @@ import { Roles } from '../auth/auth.decorators';
 import { RolesGuard } from '../auth/roles.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { successEnvelope } from '../catalog/catalog.responses';
-import { BULK_RESOURCES, bulkResource } from './bulk-resources';
+import { BULK_RESOURCES, bulkFields, bulkResource } from './bulk-resources';
 import { BulkOperationsService } from './bulk.service';
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
@@ -53,8 +53,11 @@ export class BulkOperationsController {
       Object.values(BULK_RESOURCES).map((definition) => ({
         key: definition.key,
         label: definition.label,
-        columns: definition.columns,
-        requiredColumns: definition.requiredColumns,
+        columns: bulkFields(definition).map((field) => field.label),
+        requiredColumns: bulkFields(definition)
+          .filter((field) => field.required)
+          .map((field) => field.label),
+        fields: bulkFields(definition),
         updatableColumns: definition.updatableColumns,
       })),
     );
