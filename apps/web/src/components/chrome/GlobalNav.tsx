@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { NavNode, SiteChrome } from '@/lib/site-chrome';
+import {
+  ComposedFooter,
+  type FooterLayoutDocument,
+} from './ComposedFooter';
 
 /** The one public Header/Footer for the whole site.
  *
@@ -315,6 +319,19 @@ export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
     footer.privacyUrl?.trim() ? { label: 'Privacy', href: footer.privacyUrl.trim() } : null,
     footer.termsUrl?.trim() ? { label: 'Terms', href: footer.termsUrl.trim() } : null,
   ].filter(Boolean) as Array<{ label: string; href: string }>;
+
+  // A footer the admin composed out of rows takes over entirely. With no rows
+  // -- which is every site nobody has opened the footer builder on -- the
+  // original fixed layout below renders unchanged.
+  const composed = footer.layoutJson as FooterLayoutDocument | null | undefined;
+  if (composed?.rows?.length)
+    return (
+      <ComposedFooter
+        layout={composed}
+        chrome={chrome}
+        className={`usta-footer${variantClass}`}
+      />
+    );
 
   return (
     <footer className={`usta-footer${variantClass}`}>

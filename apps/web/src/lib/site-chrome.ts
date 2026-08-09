@@ -72,6 +72,9 @@ export type SiteChrome = {
       counsellingCtaLabel?: string;
       counsellingCtaUrl?: string;
       counsellingCtaVisible?: boolean;
+      /** Rows/blocks the admin composed. Absent means the original fixed
+       * footer layout, which is what every unedited site still renders. */
+      layoutJson?: unknown;
     };
   };
 };

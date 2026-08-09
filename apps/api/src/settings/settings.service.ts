@@ -9,6 +9,7 @@ import {
 import type { Prisma } from '../generated/prisma/client';
 import { ExpandedService } from '../expanded/expanded.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { sanitizeFooterLayout } from './footer-layout';
 import { StructuredLogger } from '../common/structured-logger.service';
 
 /** Every "General platform configuration" screen the client asked for maps
@@ -83,6 +84,9 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
     counsellingCtaLabel: 'Book free counselling',
     counsellingCtaUrl: '/counselling',
     counsellingCtaVisible: true,
+    /** No composed rows yet: the public footer keeps its original fixed
+     * layout until an admin builds one, so existing sites are untouched. */
+    layoutJson: null,
   },
   seo: {
     defaultTitleSuffix: '| Universta',
@@ -123,6 +127,11 @@ function sanitizeGroup(group: SettingsGroup, body: Record<string, unknown>) {
     assertSafeUrl(merged.privacyUrl, 'privacyUrl');
     assertSafeUrl(merged.termsUrl, 'termsUrl');
     assertSafeUrl(merged.counsellingCtaUrl, 'counsellingCtaUrl');
+    // The composed row/block footer. Validated in full -- every link inside it
+    // reaches every page of the public site, so it gets the same URL guard as
+    // the flat fields above rather than being trusted as opaque JSON.
+    if ('layoutJson' in merged)
+      merged.layoutJson = sanitizeFooterLayout(merged.layoutJson);
   }
   if (group === 'contact') assertSafeUrl(merged.whatsappLink, 'whatsappLink');
   for (const key of [
