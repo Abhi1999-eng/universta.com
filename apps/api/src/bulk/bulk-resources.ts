@@ -70,7 +70,7 @@ const PUBLISH_STATUSES = ['DRAFT', 'PUBLISHED'] as const;
 const ACTIVE_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
 
 export function bulkFields(definition: BulkResourceDefinition): BulkField[] {
-  const fields =
+  const fields: BulkField[] =
     definition.fields ??
     definition.columns
       .filter((key) => key !== 'slug' && !key.endsWith('Id'))
