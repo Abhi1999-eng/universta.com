@@ -1,14 +1,7 @@
-import { SettingsManager } from "@/features/settings/SettingsManager";
+import { GlobalHeaderWorkspace } from "@/features/website/GlobalHeaderWorkspace";
 
-/** Focused Global Header editor. Reads and writes the same `header` settings
- * row as the full Settings screen, so there is one source of truth. */
+/** Global Header editor. Branding, menu, buttons and the announcement bar in
+ * one screen with a single save, rather than the raw settings form. */
 export default function GlobalHeaderRoute() {
-  return (
-    <SettingsManager
-      only={["header"]}
-      eyebrow="Website Builder"
-      title="Global Header"
-      intro="Controls the header on every public page. Menu items and their order are managed in Website Builder → Navigation menus."
-    />
-  );
+  return <GlobalHeaderWorkspace />;
 }

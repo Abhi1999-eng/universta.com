@@ -136,7 +136,7 @@ function NavDropdown({ node, pathname }: { node: NavNode; pathname: string }) {
 export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
   const pathname = usePathname() ?? '/';
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { header, general } = chrome.settings;
+  const { header } = chrome.settings;
   const drawerId = useId();
 
   // Navigating closes the drawer, otherwise it stays open over the new page.
@@ -189,8 +189,7 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
       >
         <div className="usta-header-inner">
           <Link href="/" className="usta-logo">
-            {general.siteName ?? 'Universta'}
-            <span aria-hidden="true">.</span>
+            <SiteWordmark chrome={chrome} />
           </Link>
 
           <nav className="usta-nav" aria-label="Primary navigation">
@@ -299,6 +298,30 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
           </nav>
         </div>
       </header>
+    </>
+  );
+}
+
+
+/* The logo is an uploaded image when branding has one, and the site name as a
+   wordmark otherwise -- so a site with no logo still shows something, and
+   setting one in the admin is immediately visible. */
+function SiteWordmark({ chrome }: { chrome: SiteChrome }) {
+  const { branding, general } = chrome.settings;
+  const name = general.siteName ?? 'Universta';
+  if (branding?.logoUrl)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={branding.logoUrl}
+        alt={branding.logoAlt || name}
+        className="usta-logo-image"
+      />
+    );
+  return (
+    <>
+      {name}
+      <span aria-hidden="true">.</span>
     </>
   );
 }

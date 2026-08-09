@@ -43,7 +43,12 @@ export type SiteChrome = {
   chrome?: ChromeOverride;
   settings: {
     general: { siteName?: string };
-    branding: { logoMediaId?: string | null };
+    branding: {
+      logoMediaId?: string | null;
+      /** Resolved by the API so the site never looks media up itself. */
+      logoUrl?: string | null;
+      logoAlt?: string | null;
+    };
     contact: {
       address?: string;
       email?: string;
