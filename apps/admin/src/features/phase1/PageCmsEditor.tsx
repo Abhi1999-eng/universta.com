@@ -110,6 +110,14 @@ const PAGE_STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
 const SECTION_STATUSES = ["DRAFT", "SCHEDULED", "ACTIVE", "ARCHIVED"];
 const LAYOUT_KEYS = ["default", "editorial", "landing"];
 
+function pageSaveLabel(status: string, existing: boolean) {
+  if (!existing) return status === "PUBLISHED" ? "Create and publish" : "Create draft";
+  if (status === "PUBLISHED") return "Publish changes";
+  if (status === "SCHEDULED") return "Save schedule";
+  if (status === "DRAFT") return "Save draft";
+  return "Save page";
+}
+
 const DIRECTORY_TYPES = new Set([
   "COUNTRY_DIRECTORY",
   "UNIVERSITY_DIRECTORY",
@@ -847,7 +855,13 @@ export function PageCmsEditor({
         // Page details, sections and SEO are one document to the admin, so one
         // save persists all of them rather than asking which button to press.
         await persistSections();
-        setMessage("Page saved.");
+        setMessage(
+          page.status === "PUBLISHED"
+            ? "Published changes saved."
+            : page.status === "DRAFT"
+              ? "Draft saved."
+              : "Page saved.",
+        );
         await load();
       } else {
         const created = await api<PageRecord>("pages", {
@@ -1209,7 +1223,7 @@ export function PageCmsEditor({
             onClick={() => void savePage()}
             className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {recordId ? "Save page" : "Create page"}
+            {pageSaveLabel(page.status, Boolean(recordId))}
           </button>
           {recordId ? (
             <button
@@ -1318,7 +1332,7 @@ export function PageCmsEditor({
             ) : null}
           </div>
             <p className="mt-4 text-xs text-[#828B9B]">
-              Section changes are saved with the page — use Save page above.
+              Section changes are saved with this page action.
             </p>
           </div>
         </div>
