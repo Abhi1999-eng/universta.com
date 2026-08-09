@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 
 /** ISS-019 fix. Before this, a navigation menu could be listed, published,
@@ -87,7 +87,7 @@ export function NavigationMenuEditor({
   const [menu, setMenu] = useState<Menu | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [pages, setPages] = useState<PageOption[]>([]);
-  const [menuDraft, setMenuDraft] = useState({ name: "", menuKey: "", location: "HEADER" });
+  const [menuDraft, setMenuDraft] = useState({ name: "", location: "HEADER" });
   const [itemDraft, setItemDraft] = useState(emptyDraft);
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
   const [message, setMessage] = useState("");
@@ -108,7 +108,6 @@ export function NavigationMenuEditor({
       if (found)
         setMenuDraft({
           name: found.name,
-          menuKey: found.menuKey,
           location: found.location,
         });
       setItems(itemList);
@@ -290,6 +289,8 @@ export function NavigationMenuEditor({
           ? `Page: ${item.pageTitle}`
           : "Page: (missing)"
         : item.customUrl ?? "";
+  const visibility = (status: "ACTIVE" | "INACTIVE" | string) =>
+    status === "ACTIVE" ? "Visible" : "Hidden";
 
   return (
     <section className="mt-8 rounded-2xl border border-[#E8ECF3] bg-white p-6">
@@ -323,7 +324,7 @@ export function NavigationMenuEditor({
         {menu.usedAs === "header" && "This menu is the live site's Header, on every public page."}
         {menu.usedAs === "footer" && "This menu is the live site's Footer, on every public page."}
         {!menu.usedAs &&
-          `This menu is not connected to the Header or Footer. Editing it has no visible effect on ${WEB_ORIGIN} until Global Settings → Header/Footer is changed to point at menu key "${menu.menuKey}".`}
+          "This menu is not connected to the Header or Footer yet. Choose it in Global Settings → Header or Footer before its links appear on the live site."}
       </div>
 
       {error ? (
@@ -338,7 +339,7 @@ export function NavigationMenuEditor({
       ) : null}
 
       {/* Menu fields */}
-      <form onSubmit={(event) => void saveMenuFields(event)} className="mt-6 grid gap-4 sm:grid-cols-3">
+      <form onSubmit={(event) => void saveMenuFields(event)} className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className={label}>
           Menu name
           <input
@@ -349,16 +350,7 @@ export function NavigationMenuEditor({
           />
         </label>
         <label className={label}>
-          Menu key
-          <input
-            className={input}
-            value={menuDraft.menuKey}
-            onChange={(event) => setMenuDraft((v) => ({ ...v, menuKey: event.target.value }))}
-            required
-          />
-        </label>
-        <label className={label}>
-          Menu location
+          Designed for
           <select
             className={input}
             value={menuDraft.location}
@@ -368,12 +360,12 @@ export function NavigationMenuEditor({
             <option value="FOOTER">Footer</option>
           </select>
         </label>
-        <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
+        <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
           <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
-            Save menu details
+            Save menu
           </button>
           <span className="text-sm text-[#667085]">
-            Status: <strong>{menu.status}</strong>
+            Visibility: <strong>{visibility(menu.status)}</strong>
           </span>
           {menu.status === "ACTIVE" ? (
             <button
@@ -381,7 +373,7 @@ export function NavigationMenuEditor({
               onClick={() => void setMenuStatus("INACTIVE")}
               className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-xs font-semibold"
             >
-              Unpublish menu
+              Hide menu
             </button>
           ) : (
             <button
@@ -389,7 +381,7 @@ export function NavigationMenuEditor({
               onClick={() => void setMenuStatus("ACTIVE")}
               className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
             >
-              Publish menu
+              Show menu
             </button>
           )}
           <a
@@ -411,7 +403,7 @@ export function NavigationMenuEditor({
               <th className="p-3">Label</th>
               <th className="p-3">Target</th>
               <th className="p-3">New tab</th>
-              <th className="p-3">Status</th>
+              <th className="p-3">Visibility</th>
               <th className="p-3">Actions</th>
             </tr>
           </thead>
@@ -424,7 +416,7 @@ export function NavigationMenuEditor({
               </tr>
             ) : null}
             {topLevel.map((item) => (
-              <>
+              <Fragment key={item.id}>
                 <tr key={item.id} className="border-b border-[#F0F2F5]">
                   <td className="p-3 font-semibold">{item.label}</td>
                   <td className="p-3 text-[#667085]">
@@ -436,7 +428,7 @@ export function NavigationMenuEditor({
                     ) : null}
                   </td>
                   <td className="p-3">{item.openInNewTab ? "Yes" : "No"}</td>
-                  <td className="p-3">{item.status}</td>
+                  <td className="p-3">{visibility(item.status)}</td>
                   <td className="flex flex-wrap gap-2 p-3">
                     <button
                       type="button"
@@ -466,7 +458,7 @@ export function NavigationMenuEditor({
                       onClick={() => void toggleItemStatus(item)}
                       className="rounded-lg border border-[#D9E0EA] px-3 py-1 text-xs font-semibold"
                     >
-                      {item.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                      {item.status === "ACTIVE" ? "Hide" : "Show"}
                     </button>
                     <button
                       type="button"
@@ -489,7 +481,7 @@ export function NavigationMenuEditor({
                       ) : null}
                     </td>
                     <td className="p-3">{child.openInNewTab ? "Yes" : "No"}</td>
-                    <td className="p-3">{child.status}</td>
+                    <td className="p-3">{visibility(child.status)}</td>
                     <td className="flex flex-wrap gap-2 p-3">
                       <button
                         type="button"
@@ -519,7 +511,7 @@ export function NavigationMenuEditor({
                         onClick={() => void toggleItemStatus(child)}
                         className="rounded-lg border border-[#D9E0EA] px-3 py-1 text-xs font-semibold"
                       >
-                        {child.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                        {child.status === "ACTIVE" ? "Hide" : "Show"}
                       </button>
                       <button
                         type="button"
@@ -531,7 +523,7 @@ export function NavigationMenuEditor({
                     </td>
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -555,7 +547,7 @@ export function NavigationMenuEditor({
           />
         </label>
         <label className={label}>
-          Link type
+          Link destination
           <select
             className={input}
             value={itemDraft.linkType}
@@ -570,7 +562,7 @@ export function NavigationMenuEditor({
         </label>
         {itemDraft.linkType === "PAGE" ? (
           <label className={label}>
-            Internal target
+            Choose a page
             <select
               className={input}
               value={itemDraft.pageId}
@@ -599,7 +591,7 @@ export function NavigationMenuEditor({
           </label>
         ) : null}
         <label className={label}>
-          Parent item
+          Place under
           <select
             className={input}
             value={itemDraft.parentItemId}
@@ -614,6 +606,9 @@ export function NavigationMenuEditor({
                 </option>
               ))}
           </select>
+          <span className="mt-1 block text-xs font-normal text-[#667085]">
+            You can add one dropdown level below a top-level item.
+          </span>
         </label>
         <label className="flex items-center gap-2 self-end text-sm font-semibold">
           <input
@@ -624,7 +619,7 @@ export function NavigationMenuEditor({
           Open in a new tab
         </label>
         <label className={label}>
-          Item status
+          Visibility
           <select
             className={input}
             value={itemDraft.status}
@@ -632,8 +627,8 @@ export function NavigationMenuEditor({
               setItemDraft((v) => ({ ...v, status: event.target.value as Item["status"] }))
             }
           >
-            <option value="ACTIVE">Active (visible on the site)</option>
-            <option value="INACTIVE">Inactive (hidden)</option>
+            <option value="ACTIVE">Visible on the site</option>
+            <option value="INACTIVE">Hidden from the site</option>
           </select>
         </label>
         <div className="sm:col-span-2 flex gap-3">

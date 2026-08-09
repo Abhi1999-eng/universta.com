@@ -49,6 +49,15 @@ type Envelope = {
 
 const PAGE_SIZE = 20;
 
+function menuKeyFromName(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+}
+
 async function request(path: string, init?: RequestInit): Promise<Envelope> {
   const response = await authFetch(`/api/v1/admin/phase1/${path}`, {
     ...init,
@@ -73,7 +82,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const structured = isStructuredPhase1Resource(resource);
   const isPageCms = resource === "pages";
   const isNavMenu = resource === "navigation-menus";
-  const [newMenu, setNewMenu] = useState({ name: "", menuKey: "", location: "HEADER" });
+  const [newMenu, setNewMenu] = useState({ name: "", location: "HEADER" });
 
   const load = useCallback(async () => {
     try {
@@ -129,13 +138,21 @@ export function Phase1Manager({ resource }: { resource: string }) {
   async function createMenu(event: React.FormEvent) {
     event.preventDefault();
     try {
+      const menuKey = menuKeyFromName(newMenu.name);
+      if (!menuKey)
+        throw new Error("Use a menu name with at least one letter or number");
       const created = await request(resource, {
         method: "POST",
-        body: JSON.stringify(newMenu),
+        body: JSON.stringify({
+          ...newMenu,
+          // The database identifier is derived only once; editors work with
+          // the menu name and its intended site area, never an internal key.
+          menuKey,
+        }),
       });
       const createdRow = created.data as unknown as Phase1Row | null;
       setMessage("Menu created.");
-      setNewMenu({ name: "", menuKey: "", location: "HEADER" });
+      setNewMenu({ name: "", location: "HEADER" });
       setCreating(false);
       await load();
       if (createdRow?.id) setEditingId(createdRow.id);
@@ -179,9 +196,9 @@ export function Phase1Manager({ resource }: { resource: string }) {
       {creating && isNavMenu ? (
         <form
           onSubmit={(event) => void createMenu(event)}
-          className="mt-8 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-3"
+          className="mt-8 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-2"
         >
-          <h3 className="sm:col-span-3 text-lg font-semibold">Create navigation menu</h3>
+          <h3 className="sm:col-span-2 text-lg font-semibold">Create navigation menu</h3>
           <label className="text-sm font-semibold">
             Menu name
             <input
@@ -192,16 +209,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
             />
           </label>
           <label className="text-sm font-semibold">
-            Menu key
-            <input
-              className="mt-1 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
-              value={newMenu.menuKey}
-              onChange={(event) => setNewMenu((v) => ({ ...v, menuKey: event.target.value }))}
-              required
-            />
-          </label>
-          <label className="text-sm font-semibold">
-            Menu location
+            Designed for
             <select
               className="mt-1 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
               value={newMenu.location}
@@ -211,11 +219,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
               <option value="FOOTER">Footer</option>
             </select>
           </label>
-          <p className="sm:col-span-3 text-xs text-[#828B9B]">
-            The menu key must match Global Settings → Header/Footer for this menu to
-            actually appear on the live site. Items are added after the menu is created.
+          <p className="sm:col-span-2 text-xs text-[#828B9B]">
+            Choose this menu in Global Settings → Header or Footer when you are ready
+            to show it on the live site. You can add links after creating it.
           </p>
-          <div className="sm:col-span-3 flex gap-3">
+          <div className="sm:col-span-2 flex gap-3">
             <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
               Create menu
             </button>
