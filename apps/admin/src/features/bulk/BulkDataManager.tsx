@@ -21,6 +21,7 @@ type ImportSummary = {
   errors: RowError[];
 };
 type RecordRow = { id: string } & Record<string, unknown>;
+type RecordTableField = { key: string; label: string };
 
 type ApiEnvelope<T> = {
   data?: T;
@@ -70,6 +71,30 @@ function localFileError(file: File): string | null {
   if (file.size === 0) return "The selected file is empty.";
   if (file.size > MAX_UPLOAD_BYTES) return "The selected file exceeds the 3 MB limit.";
   return null;
+}
+
+function recordTableFields(selected: ResourceMeta): RecordTableField[] {
+  if (selected.fields) return selected.fields.slice(0, 4);
+  return selected.columns
+    .slice(0, 4)
+    .map((column) => ({ key: column, label: column }));
+}
+
+function recordTableValue(field: RecordTableField, row: RecordRow): string {
+  const value = row[field.key];
+  if (value === null || value === undefined) return "";
+
+  // Record listings retain the import contract's relation slugs. Present
+  // those values as readable names without changing the API payload.
+  if (
+    field.key.endsWith("Slug") &&
+    typeof value === "string" &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
+  ) {
+    return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase()).replaceAll("-", " ");
+  }
+
+  return String(value);
 }
 
 function RowErrors({
@@ -139,6 +164,7 @@ export function BulkDataManager() {
 
   const selected =
     resources.find((resource) => resource.key === selectedKey) ?? null;
+  const visibleRecordFields = selected ? recordTableFields(selected) : [];
 
   const loadRecords = useCallback(async (key: string) => {
     if (!key) return;
@@ -650,9 +676,9 @@ export function BulkDataManager() {
                 <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
                   <tr>
                     <th className="px-3 py-2" />
-                    {selected.columns.slice(0, 4).map((column) => (
-                      <th className="px-3 py-2" key={column}>
-                        {column}
+                    {visibleRecordFields.map((field) => (
+                      <th className="px-3 py-2" key={field.key}>
+                        {field.label}
                       </th>
                     ))}
                   </tr>
@@ -668,9 +694,9 @@ export function BulkDataManager() {
                           aria-label={`Select ${String(row.slug ?? row.id)}`}
                         />
                       </td>
-                      {selected.columns.slice(0, 4).map((column) => (
-                        <td className="px-3 py-2" key={column}>
-                          {String(row[column] ?? "")}
+                      {visibleRecordFields.map((field) => (
+                        <td className="px-3 py-2" key={field.key}>
+                          {recordTableValue(field, row)}
                         </td>
                       ))}
                     </tr>
