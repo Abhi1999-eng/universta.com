@@ -7,16 +7,15 @@ import { getCourses, getSubjects } from "@/lib/catalog";
 import { siteOrigin } from "@/lib/site-origin";
 
 const base = siteOrigin;
-// success-stories and testimonials are listing-only — there is no
-// success-stories/[slug] or testimonials/[slug] detail route, so neither
-// belongs in the dynamic-routes list below (a prior version generated dead
-// success-stories detail URLs that all 404).
+// Testimonials remain listing-only. Published success stories have a public
+// long-form detail route and are included below.
 const resources = [
   "universities",
   "scholarships",
   "consultants",
   "jobs",
   "events",
+  "success-stories",
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -45,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
   try {
     const [
-      [universities, scholarships, consultants, jobs, events],
+      [universities, scholarships, consultants, jobs, events, successStories],
       countries,
       subjects,
       courses,
@@ -70,6 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...consultants.data.map((row) => `/study-abroad-consultants/${row.slug}`),
       ...jobs.data.map((row) => `/careers/${row.slug}`),
       ...events.data.map((row) => `/events/${row.slug}`),
+      ...successStories.data.map((row) => `/success-stories/${row.slug}`),
       ...countries.data.map((row) => `/study-in-${row.slug}`),
       ...countries.data.flatMap((country, index) =>
         citiesByCountry[index].data.map(
