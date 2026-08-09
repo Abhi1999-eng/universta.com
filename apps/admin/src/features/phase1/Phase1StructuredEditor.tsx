@@ -3,7 +3,7 @@
 /* The dynamic repeaters and relation option sets intentionally share one editor shape. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
+import { createContext, type FormEvent, useContext, useEffect, useId, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { MediaPickerDialog } from "@/features/catalog/editorial/MediaPickerDialog";
 import { FieldLabel } from "@/features/shared/FieldLabel";
@@ -48,6 +48,7 @@ type Props = {
   onSaved: () => Promise<void>;
   onCancel: () => void;
 };
+const StructuredEditorDisabledContext = createContext(false);
 
 const structured = new Set([
   "universities",
@@ -558,6 +559,7 @@ export function Phase1StructuredEditor({
   }
 
   return (
+    <StructuredEditorDisabledContext.Provider value={loading || loadError}>
     <form
       onSubmit={(event) => void submit(event)}
       className="mt-7 space-y-6 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-7"
@@ -747,6 +749,7 @@ export function Phase1StructuredEditor({
       </div>
       </fieldset>
     </form>
+    </StructuredEditorDisabledContext.Provider>
   );
 }
 
@@ -775,10 +778,11 @@ function Field({
 }) {
   const fieldId = useId();
   const errorId = useId();
+  const disabled = useContext(StructuredEditorDisabledContext);
   return (
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
-      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} /> : textarea ? (
+      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} /> : textarea ? (
         <textarea
           id={fieldId}
           value={value}
