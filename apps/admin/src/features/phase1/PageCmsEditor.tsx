@@ -18,6 +18,7 @@ import {
 } from "@/features/website/section-registry";
 import { AddSectionLibrary } from "@/features/website/AddSectionLibrary";
 import { PageStructurePanel } from "@/features/website/PageStructurePanel";
+import { SectionDataSource } from "@/features/website/SectionDataSource";
 
 type SectionRow = {
   label: string;
@@ -32,6 +33,10 @@ type SectionBody = {
   imagePosition?: "left" | "right";
   items?: SectionRow[];
   limit?: number;
+  dataMode?: "automatic" | "manual";
+  filters?: { q?: string; country?: string };
+  sort?: string;
+  picks?: string[];
 };
 type Section = {
   id: string;
@@ -114,15 +119,6 @@ const DIRECTORY_TYPES = new Set([
   "TESTIMONIALS",
   "SUCCESS_STORIES",
 ]);
-const DIRECTORY_LABELS: Record<string, string> = {
-  COUNTRY_DIRECTORY: "published countries",
-  UNIVERSITY_DIRECTORY: "published universities",
-  COURSE_DIRECTORY: "published generic courses",
-  SCHOLARSHIP_DIRECTORY: "published scholarships",
-  CONSULTANT_DIRECTORY: "published consultants",
-  TESTIMONIALS: "published testimonials",
-  SUCCESS_STORIES: "published success stories",
-};
 const ROW_TYPES: Record<
   string,
   { legend: string; primary: string; secondary?: string; hasUrl?: boolean }
@@ -431,19 +427,11 @@ function SectionBodyFields({
   }
   if (DIRECTORY_TYPES.has(sectionType)) {
     return (
-      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
-        <legend className="px-1 text-sm font-semibold">Live directory</legend>
-        <Field
-          label="How many to show"
-          type="number"
-          value={String(body.limit ?? 6)}
-          onChange={(value) => onBodyChange({ ...body, limit: Number(value) || 6 })}
-        />
-        <p className="mt-2 text-xs text-[#828B9B]">
-          This block loads real {DIRECTORY_LABELS[sectionType]} from the database at
-          render time — there is no manual content to enter here.
-        </p>
-      </fieldset>
+      <SectionDataSource
+        sectionType={sectionType}
+        value={body}
+        onChange={(patch) => onBodyChange({ ...body, ...patch })}
+      />
     );
   }
   if (sectionType === "LEAD_GENERATION") {

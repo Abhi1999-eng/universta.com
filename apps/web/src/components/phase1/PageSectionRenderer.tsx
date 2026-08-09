@@ -6,6 +6,12 @@ import { phaseList } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCourses } from "@/lib/catalog";
 import { resolveHref } from "@/lib/internal-links";
+import {
+  applyPicks,
+  directoryQuery,
+  type DirectoryItem,
+  type DirectorySettings,
+} from "./page-section-data";
 /* Section media can come from approved external asset hosts, same as elsewhere in this app. */
 /* eslint-disable @next/next/no-img-element */
 
@@ -22,8 +28,11 @@ type SectionBody = {
   imagePosition?: "left" | "right";
   items?: SectionRow[];
   limit?: number;
+  dataMode?: "automatic" | "manual";
+  filters?: { q?: string; country?: string };
+  sort?: string;
+  picks?: string[];
 };
-type DirectoryItem = { title: string; description: string; href: string | null };
 
 function body(section: AnyRecord): SectionBody {
   const data = section.bodyJson;
@@ -55,31 +64,35 @@ const DIRECTORY_HREF_PREFIX: Record<string, string> = {
 
 async function fetchDirectoryItems(
   sectionType: string,
-  limit: number,
+  settings: DirectorySettings,
 ): Promise<DirectoryItem[]> {
-  const take = String(Math.min(Math.max(limit || 6, 1), 12));
+  const take = String(Math.min(Math.max(settings.limit || 6, 1), 12));
+  const query = directoryQuery(settings, take);
   try {
+    let items: DirectoryItem[] = [];
     if (sectionType === "COUNTRY_DIRECTORY") {
-      const result = await getCountries({ limit: take });
-      return result.data.map((item) => ({
+      const result = await getCountries(query);
+      items = result.data.map((item) => ({
+        slug: item.slug,
         title: item.name,
         description: item.shortDescription ?? "",
         href: `/countries/${item.slug}`,
       }));
-    }
-    if (sectionType === "COURSE_DIRECTORY") {
-      const result = await getCourses({ limit: take });
-      return result.data.map((item) => ({
+    } else if (sectionType === "COURSE_DIRECTORY") {
+      const result = await getCourses(query);
+      items = result.data.map((item) => ({
+        slug: item.slug,
         title: item.name,
         description: item.shortDescription ?? "",
         href: `/courses/${item.slug}`,
       }));
-    }
-    const resource = DIRECTORY_RESOURCE[sectionType];
-    if (resource) {
-      const result = await phaseList<AnyRecord>(resource, { limit: take });
+    } else {
+      const resource = DIRECTORY_RESOURCE[sectionType];
+      if (!resource) return [];
+      const result = await phaseList<AnyRecord>(resource, query);
       const prefix = DIRECTORY_HREF_PREFIX[sectionType];
-      return result.data.map((item) => ({
+      items = result.data.map((item) => ({
+        slug: string(item.slug),
         title: string(item.name) || string(item.title),
         description:
           string(item.shortDescription) ||
@@ -89,10 +102,10 @@ async function fetchDirectoryItems(
         href: prefix && item.slug ? `${prefix}/${item.slug}` : null,
       }));
     }
+    return applyPicks(items, settings).slice(0, Number(take));
   } catch {
     return [];
   }
-  return [];
 }
 
 function Paragraphs({ body: b }: { body: SectionBody }) {
@@ -284,7 +297,7 @@ export async function PageSectionRenderer({ section }: { section: AnyRecord }) {
     type === "TESTIMONIALS" ||
     type === "SUCCESS_STORIES"
   ) {
-    const items = await fetchDirectoryItems(type, b.limit ?? 6);
+    const items = await fetchDirectoryItems(type, b);
     content = <Directory items={items} />;
   } else {
     content = section.subheading ? <p>{section.subheading}</p> : null;
