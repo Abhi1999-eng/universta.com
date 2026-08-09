@@ -68,7 +68,11 @@ export async function toXlsx(
 export async function toXlsxTemplate(
   columns: string[],
   exampleRow?: Record<string, unknown>,
-  options?: { resourceLabel?: string; descriptions?: string[] },
+  options?: {
+    resourceLabel?: string;
+    descriptions?: string[];
+    validations?: { column: string; allowedValues: readonly string[] }[];
+  },
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const readme = workbook.addWorksheet('README');
@@ -86,6 +90,7 @@ export async function toXlsxTemplate(
     ],
     ['Dates', 'Use ISO dates: YYYY-MM-DD or ISO date-time.'],
     ['Booleans', 'Use true or false.'],
+    ['Status', 'Select a value from the dropdown.'],
     ['Slugs', 'Slugs are generated automatically from Name or Title.'],
     [
       'Common error',
@@ -108,6 +113,21 @@ export async function toXlsxTemplate(
     pattern: 'solid',
     fgColor: { argb: 'FF1657CF' },
   };
+  for (const validation of options?.validations ?? []) {
+    const column = columns.indexOf(validation.column) + 1;
+    if (!column) continue;
+    for (let row = 2; row <= 2001; row += 1) {
+      sheet.getCell(row, column).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`"${validation.allowedValues.join(',')}"`],
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: 'Invalid value',
+        error: 'Please select a valid status from the dropdown.',
+      };
+    }
+  }
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }

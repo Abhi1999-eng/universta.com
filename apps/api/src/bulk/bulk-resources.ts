@@ -1,4 +1,4 @@
-import { slugify } from '../catalog/catalog.constants';
+import { COUNTRY_STATUSES, slugify } from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 
 export type BulkRow = Record<string, string>;
@@ -8,6 +8,8 @@ export type BulkField = {
   required: boolean;
   type: 'text' | 'boolean' | 'number' | 'date' | 'status' | 'relation';
   description?: string;
+  /** A closed set enforced by imports and offered by XLSX templates. */
+  allowedValues?: readonly string[];
 };
 export type BulkParseResult =
   | { data: Record<string, unknown>; errors?: undefined }
@@ -37,6 +39,8 @@ export interface BulkResourceDefinition {
   /** The presentation contract powers templates, header validation and export.
    * `columns` remains the legacy/parser representation for backwards-compatible CSV imports. */
   fields?: BulkField[];
+  /** Resource-specific values for the shared Status field. */
+  statusAllowedValues?: readonly string[];
   requiredColumns: string[];
   exampleRow: BulkRow;
   /** Update-mode-only editable columns (excludes identity/relation columns
@@ -62,8 +66,11 @@ const relationLabels: Record<string, string> = {
   providerSlug: 'Scholarship provider',
 };
 
+const PUBLISH_STATUSES = ['DRAFT', 'PUBLISHED'] as const;
+const ACTIVE_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
+
 export function bulkFields(definition: BulkResourceDefinition): BulkField[] {
-  return (
+  const fields =
     definition.fields ??
     definition.columns
       .filter((key) => key !== 'slug' && !key.endsWith('Id'))
@@ -87,8 +94,27 @@ export function bulkFields(definition: BulkResourceDefinition): BulkField[] {
                   : key === 'status'
                     ? 'status'
                     : 'text',
-      }))
+      }));
+  return fields.map((field) =>
+    field.key === 'status' && !field.allowedValues
+      ? { ...field, allowedValues: definition.statusAllowedValues }
+      : field,
   );
+}
+
+/** Validates any field-level constrained value for CSV and XLSX alike. */
+export function bulkFieldValueErrors(
+  definition: BulkResourceDefinition,
+  row: BulkRow,
+): string[] {
+  return bulkFields(definition).flatMap((field) => {
+    const value = row[field.key]?.trim();
+    if (!value || !field.allowedValues?.length) return [];
+    if (field.allowedValues.includes(value)) return [];
+    return [
+      `${field.label} "${value}" is invalid. Allowed values: ${field.allowedValues.join(', ')}.`,
+    ];
+  });
 }
 
 function slugOrFallback(row: BulkRow, fallbackSource: string) {
@@ -110,6 +136,7 @@ const countries: BulkResourceDefinition = {
     'iso3Code',
     'status',
   ],
+  statusAllowedValues: COUNTRY_STATUSES,
   requiredColumns: ['name', 'continentSlug', 'pageHeading', 'shortDescription'],
   exampleRow: {
     slug: '',
@@ -178,6 +205,7 @@ const states: BulkResourceDefinition = {
   model: 'state',
   uniqueColumn: 'slug',
   columns: ['slug', 'name', 'countrySlug', 'status', 'displayOrder'],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name', 'countrySlug'],
   exampleRow: {
     slug: '',
@@ -242,6 +270,7 @@ const cities: BulkResourceDefinition = {
     'status',
     'displayOrder',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name', 'countrySlug'],
   exampleRow: {
     slug: '',
@@ -328,6 +357,7 @@ const subjects: BulkResourceDefinition = {
     'status',
     'displayOrder',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name'],
   exampleRow: {
     slug: '',
@@ -402,6 +432,7 @@ const courses: BulkResourceDefinition = {
     { key: 'isFeatured', label: 'Featured', required: false, type: 'boolean' },
     { key: 'status', label: 'Status', required: false, type: 'status' },
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name', 'subjectSlug', 'courseLevelCode'],
   exampleRow: {
     slug: '',
@@ -477,6 +508,7 @@ const jobs: BulkResourceDefinition = {
     'summary',
     'status',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['title'],
   exampleRow: {
     slug: '',
@@ -543,6 +575,7 @@ const events: BulkResourceDefinition = {
     'summary',
     'status',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['title', 'startsAt'],
   exampleRow: {
     slug: '',
@@ -636,6 +669,7 @@ const universities: BulkResourceDefinition = {
     },
     { key: 'status', label: 'Status', required: false, type: 'status' },
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name', 'countrySlug', 'shortDescription'],
   exampleRow: {
     slug: '',
@@ -719,6 +753,7 @@ const campuses: BulkResourceDefinition = {
     'address',
     'status',
   ],
+  statusAllowedValues: ACTIVE_STATUSES,
   requiredColumns: ['name', 'universitySlug', 'city'],
   exampleRow: {
     slug: '',
@@ -795,6 +830,7 @@ const offerings: BulkResourceDefinition = {
     'tuitionMax',
     'status',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name', 'universitySlug', 'genericCourseSlug'],
   exampleRow: {
     slug: '',
@@ -918,6 +954,7 @@ const scholarships: BulkResourceDefinition = {
     'deadline',
     'status',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['title'],
   exampleRow: {
     slug: '',
@@ -1006,6 +1043,7 @@ const consultants: BulkResourceDefinition = {
     'shortDescription',
     'status',
   ],
+  statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name'],
   exampleRow: {
     slug: '',
@@ -1070,6 +1108,7 @@ const consultantLocations: BulkResourceDefinition = {
     'overview',
     'status',
   ],
+  statusAllowedValues: ACTIVE_STATUSES,
   requiredColumns: ['name', 'city'],
   exampleRow: {
     slug: '',
