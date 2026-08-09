@@ -7,7 +7,6 @@ import {
   ChromeOverridePanel,
   type ChromeOverrideValue,
 } from "./ChromeOverridePanel";
-import { DevicePreview } from "./DevicePreview";
 import { VersionHistory } from "./VersionHistory";
 import { PREVIEW_DEVICES, type PreviewDeviceKey } from "./DevicePreview";
 
@@ -179,7 +178,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
             Version history
           </button>
           <button type="button" onClick={() => router.push("/page-templates")}>
-            Default sections
+            Sections included
           </button>
           <button type="button" onClick={() => router.push("/website")}>
             All pages
