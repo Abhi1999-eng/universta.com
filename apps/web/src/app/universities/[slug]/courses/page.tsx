@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import {
-  PhaseListing,
-  type AnyRecord,
-  type PageMeta,
-} from "@/components/phase1/PhaseOneViews";
+import { type AnyRecord, type PageMeta } from "@/components/phase1/PhaseOneViews";
+import { ReferenceUniversityCourses } from "@/components/templates/ReferenceResourceViews";
 import { phaseUniversityCourses } from "@/lib/phase1";
 import { phaseOneMetadata } from "@/lib/phase1-metadata";
 
@@ -39,14 +36,5 @@ export default async function UniversityCoursesPage({ params }: Props) {
   const value = await params;
   const result = await universityCourses(value.slug);
   if (!result) notFound();
-  return (
-    <PhaseListing
-      resource="courses"
-      title={`${result.university?.name ?? "University"} courses`}
-      basePath={`/universities/${value.slug}/courses`}
-      rows={result.data ?? []}
-      meta={result.meta ?? null}
-      search={false}
-    />
-  );
+  return <ReferenceUniversityCourses university={result.university} rows={result.data ?? []} meta={result.meta} universitySlug={value.slug} />;
 }

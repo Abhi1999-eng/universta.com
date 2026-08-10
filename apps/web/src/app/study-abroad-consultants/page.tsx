@@ -13,6 +13,10 @@ import { getCountries } from "@/lib/countries";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
 import { getStatsPill } from '@/lib/stats-pill';
+import {
+  ConsultantListingIntro,
+  ConsultantListingOutro,
+} from '@/components/templates/ReferenceListingSections';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -92,13 +96,19 @@ export default async function ConsultantsPage({
   // Editorial framing from the managed "consultants-listing" Page. Rows above are
   // untouched -- they always come from the real records.
   const [managed, pill] = await Promise.all([getListingPageContent("consultants-listing"), getStatsPill('consultants-listing')]);
+  const activeCountry = filters.country
+    ? countries.find((country) => country.slug === filters.country)
+    : undefined;
+  const defaultHeading = activeCountry
+    ? `Study in ${activeCountry.name} consultants`
+    : "Find the right study abroad";
 
   return (
     <PolishedListing
       eyebrow="Published directory"
-      heading={managed.heading ?? "Find a study abroad"}
-      headingAccent={managed.heading ? "" : "consultant"}
-      lede={managed.lede ?? "Browse published consultants by location, service and language, then contact them directly."}
+      heading={activeCountry ? defaultHeading : (managed.heading ?? defaultHeading)}
+      headingAccent={activeCountry || managed.heading ? "" : "consultant"}
+      lede={managed.lede ?? "Browse real published consultant profiles by location, service, language and destination-country relationship."}
       crumbLabel="Consultants"
       basePath="/study-abroad-consultants"
       noun={{ one: "consultant", many: "consultants" }}
@@ -117,6 +127,10 @@ export default async function ConsultantsPage({
       railBody="Listings are published records only. Verification reflects the status stored on each profile, not an endorsement."
       counsellingSource="general"
       pill={pill}
+      variantClass="reference-consultant-listing"
+      introSections={<ConsultantListingIntro countries={countries} />}
+      afterResults={<ConsultantListingOutro countries={countries} services={services} />}
+      showDefaultCta={false}
     >
       {rows.map((row) => (
         <ConsultantCard row={row} key={row.id} />

@@ -52,6 +52,10 @@ export function PolishedListing({
   railBody,
   counsellingSource,
   pill,
+  introSections,
+  afterResults,
+  variantClass,
+  showDefaultCta = true,
 }: {
   eyebrow: string;
   heading: string;
@@ -80,6 +84,14 @@ export function PolishedListing({
   railBody: string;
   counsellingSource: 'general';
   pill?: ResolvedStatsPill | null;
+  /** Client-approved sections positioned before the live result controls. */
+  introSections?: ReactNode;
+  /** Client-approved sections positioned after the live result controls. */
+  afterResults?: ReactNode;
+  /** Route-specific visual treatment without changing filtering behaviour. */
+  variantClass?: string;
+  /** A reference template may supply its own final CTA section. */
+  showDefaultCta?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -129,7 +141,7 @@ export function PolishedListing({
   const filterFormKey = filterGroups.map((group) => `${group.key}=${filters[group.key] ?? ''}`).join('&');
 
   return (
-    <main className="visual-courses-page usta-listing">
+    <main className={`visual-courses-page usta-listing ${variantClass ?? ''}`}>
       <div className="wrap crumbs">
         <nav aria-label="Breadcrumb">
           <ol>
@@ -143,6 +155,7 @@ export function PolishedListing({
       <section className="hero">
         <div className="wrap hero-inner">
           <StatsPill pill={pill} />
+          {!pill ? <p className="eyebrow">{eyebrow}</p> : null}
           <h1>
             {/* A managed listing Page supplies one complete heading; the
                 built-in copy keeps the accent split. */}
@@ -179,6 +192,8 @@ export function PolishedListing({
           </form>
         </div>
       </section>
+
+      {introSections}
 
       <div className="wrap">
         <div className="section-head row-between">
@@ -393,21 +408,24 @@ export function PolishedListing({
         </div>
       </div>
 
-      <section className="section wrap">
-        <div className="final-cta">
-          <h2>{ctaHeading}</h2>
-          <p>{ctaBody}</p>
-          <div className="cta-row">
-            <Link href="/countries" className="btn btn-secondary">Explore destinations</Link>
-            <Link
-              href={counsellingHref({ source: counsellingSource, from: basePath })}
-              className="btn btn-outline"
-            >
-              Get study guidance
-            </Link>
+      {afterResults}
+      {showDefaultCta ? (
+        <section className="section wrap">
+          <div className="final-cta">
+            <h2>{ctaHeading}</h2>
+            <p>{ctaBody}</p>
+            <div className="cta-row">
+              <Link href="/countries" className="btn btn-secondary">Explore destinations</Link>
+              <Link
+                href={counsellingHref({ source: counsellingSource, from: basePath })}
+                className="btn btn-outline"
+              >
+                Get study guidance
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </main>
   );
 }

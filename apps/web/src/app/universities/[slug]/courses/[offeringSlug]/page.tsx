@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PhaseDetail, type AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { type AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { ReferenceUniversityCourseDetail } from "@/components/templates/ReferenceResourceViews";
 import { phaseUniversityCourses } from "@/lib/phase1";
 import { phaseOneMetadata } from "@/lib/phase1-metadata";
 
@@ -31,11 +32,5 @@ export default async function UniversityCoursePage({ params }: Props) {
   const value = await params;
   const row = await universityCourse(value.slug, value.offeringSlug);
   if (!row) notFound();
-  return (
-    <PhaseDetail
-      resource="courses"
-      row={row}
-      parent={["University courses", `/universities/${value.slug}/courses`]}
-    />
-  );
+  return <ReferenceUniversityCourseDetail row={row} universitySlug={value.slug} />;
 }
