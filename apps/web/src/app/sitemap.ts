@@ -70,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...jobs.data.map((row) => `/careers/${row.slug}`),
       ...events.data.map((row) => `/events/${row.slug}`),
       ...successStories.data.map((row) => `/success-stories/${row.slug}`),
-      ...countries.data.map((row) => `/study-in-${row.slug}`),
+      ...countries.data.map((row) => `/countries/${row.slug}`),
       ...countries.data.flatMap((country, index) =>
         citiesByCountry[index].data.map(
           (city) => `/study-in-${country.slug}/${city.slug}`,

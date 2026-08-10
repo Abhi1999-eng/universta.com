@@ -36,7 +36,7 @@ export class CatalogLookupsService {
         ...(query.status ? { status: query.status } : {}),
         ...(query.q?.trim() ? { name: { contains: query.q.trim() } } : {}),
       },
-      orderBy: [{ monthNumber: 'asc' }, { name: 'asc' }],
+      orderBy: [{ startMonth: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -54,7 +54,8 @@ export class CatalogLookupsService {
   async createIntake(body: {
     name: string;
     slug?: string;
-    monthNumber?: number | null;
+    startMonth: number;
+    endMonth: number;
     seasonName?: string | null;
     shortLabel?: string | null;
     description?: string | null;
@@ -67,7 +68,8 @@ export class CatalogLookupsService {
         data: {
           name: body.name.trim(),
           slug,
-          monthNumber: body.monthNumber ?? null,
+          startMonth: body.startMonth,
+          endMonth: body.endMonth,
           seasonName: body.seasonName || null,
           shortLabel: body.shortLabel || null,
           description: body.description || null,
@@ -91,7 +93,8 @@ export class CatalogLookupsService {
     body: {
       name?: string;
       slug?: string;
-      monthNumber?: number | null;
+      startMonth?: number;
+      endMonth?: number;
       seasonName?: string | null;
       shortLabel?: string | null;
       description?: string | null;
@@ -106,9 +109,10 @@ export class CatalogLookupsService {
         data: {
           ...(body.name !== undefined ? { name: body.name.trim() } : {}),
           ...(body.slug !== undefined ? { slug: body.slug.trim() } : {}),
-          ...(body.monthNumber !== undefined
-            ? { monthNumber: body.monthNumber }
+          ...(body.startMonth !== undefined
+            ? { startMonth: body.startMonth }
             : {}),
+          ...(body.endMonth !== undefined ? { endMonth: body.endMonth } : {}),
           ...(body.seasonName !== undefined
             ? { seasonName: body.seasonName || null }
             : {}),

@@ -20,7 +20,7 @@ describe("success story public presentation", () => {
   });
 
   it("links only relationships that have an existing public route", () => {
-    expect(countryPath({ slug: "united-kingdom" })).toBe("/study-in-united-kingdom");
+    expect(countryPath({ slug: "united-kingdom" })).toBe("/countries/united-kingdom");
     expect(
       programmePath({
         id: "story-1",

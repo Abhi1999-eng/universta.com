@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { intakeRange } from "@/lib/intake-range";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
 import { consultantContactActions } from "@/lib/consultant-contact";
 import { RichText } from "./RichText";
@@ -390,7 +391,7 @@ export function PhaseDetail({
               <div className="editorial-items">
                 {row.intakes.map((item: AnyRecord) => (
                   <div key={item.id}>
-                    <strong>{item.intake?.name ?? "Intake"}</strong>
+                    <strong>{intakeRange(item.intake ?? {})}</strong>
                     <span>
                       {date(item.deadline) ??
                         item.notes ??

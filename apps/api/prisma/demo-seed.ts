@@ -135,11 +135,12 @@ async function main() {
   for (const [name, slug, monthNumber, seasonName, shortLabel] of intakes) {
     await prisma.intake.upsert({
       where: { slug },
-      update: { name, monthNumber, seasonName, shortLabel, status: 'ACTIVE' },
+      update: { name, startMonth: monthNumber, endMonth: monthNumber, seasonName, shortLabel, status: 'ACTIVE' },
       create: {
         name,
         slug,
-        monthNumber,
+        startMonth: monthNumber,
+        endMonth: monthNumber,
         seasonName,
         shortLabel,
         status: 'ACTIVE',

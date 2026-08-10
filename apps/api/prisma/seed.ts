@@ -134,7 +134,8 @@ async function main() {
       create: {
         name,
         slug,
-        monthNumber,
+        startMonth: monthNumber,
+        endMonth: monthNumber,
         seasonName,
         shortLabel,
         status: 'ACTIVE',

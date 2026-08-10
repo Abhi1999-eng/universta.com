@@ -48,6 +48,62 @@ export class ProfileVersionDto {
   expectedUpdatedAt?: string;
 }
 
+export class CreateIntakeDto {
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  name!: string;
+
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  slug?: string;
+
+  @Transform(integer)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  startMonth!: number;
+
+  @Transform(integer)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  endMonth!: number;
+
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(50) seasonName?: string;
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(50) shortLabel?: string;
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(30) status?: string;
+  @Transform(integer) @IsOptional() @IsInt() @Min(0) displayOrder?: number;
+}
+
+export class UpdateIntakeDto {
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(100) name?: string;
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(100) slug?: string;
+  @Transform(integer)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  startMonth?: number;
+  @Transform(integer) @IsOptional() @IsInt() @Min(1) @Max(12) endMonth?: number;
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(50) seasonName?: string;
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(50) shortLabel?: string;
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+  @Transform(trim) @IsOptional() @IsString() @MaxLength(30) status?: string;
+  @Transform(integer) @IsOptional() @IsInt() @Min(0) displayOrder?: number;
+}
+
 export class CostProfileDto extends ProfileVersionDto {
   @IsOptional() @IsString() @MaxLength(3) currencyCode?: string;
   @IsOptional() @IsString() @MaxLength(10) currencySymbol?: string;

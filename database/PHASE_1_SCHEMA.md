@@ -190,7 +190,7 @@ Index: `(status, display_order)`.
 
 ### 19. intakes
 `id CHAR(36) PK`, `name VARCHAR(100) UNIQUE`, `slug VARCHAR(100) UNIQUE`,
-`month_number TINYINT NULL`, `season_name VARCHAR(50) NULL`,
+`start_month TINYINT NULL`, `end_month TINYINT NULL`, `season_name VARCHAR(50) NULL`,
 `short_label VARCHAR(50) NULL`, `description VARCHAR(500) NULL`,
 `status VARCHAR(30) DEFAULT 'ACTIVE'`, `display_order INT DEFAULT 0`,
 `created_at DATETIME(3)`, `updated_at DATETIME(3)`.

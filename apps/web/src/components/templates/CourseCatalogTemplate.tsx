@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react';
 import { counsellingHref } from '@/lib/counselling-link';
+import { intakeRange } from '@/lib/intake-range';
 import type {
   Course,
   CourseFilterOption,
@@ -173,10 +174,7 @@ function CourseTemplateCard({
           : ''
       } ${course.duration.unit ?? ''}`
     : 'Varies';
-  const intake =
-    course.selectedIntakes[0]?.intake?.shortLabel ??
-    course.selectedIntakes[0]?.intake?.name ??
-    'Not published';
+  const intake = intakeRange(course.selectedIntakes[0]?.intake ?? {});
   const courseHref = `/courses/${course.slug}${
     countryFilter ? `?country=${encodeURIComponent(countryFilter)}` : ''
   }`;
@@ -356,7 +354,7 @@ export function ApprovedCoursesListing({
   const selectedCountryForDetail =
     selectedCountries.length === 1 ? selectedCountries[0] : undefined;
   const januaryIntake = filterOptions.intakes.find(
-    (option) => option.monthNumber === 1 || option.value === 'january',
+    (option) => option.startMonth === 1 || option.value === 'january',
   );
   const scholarshipExtra = filterOptions.extras.find(
     (option) => option.value === 'scholarshipAvailable',
