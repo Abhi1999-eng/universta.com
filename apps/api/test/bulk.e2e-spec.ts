@@ -166,6 +166,16 @@ describe('Bulk data import/export (e2e)', () => {
     expect(await prisma.job.count({ where: { slug: jobSlugA } })).toBe(before);
   });
 
+  it('returns a controlled 400 for an unreadable XLSX dry-run upload', async () => {
+    const response = await admin('post', '/api/v1/admin/bulk/subjects/dry-run')
+      .attach('file', Buffer.from('not an xlsx'), 'subjects.xlsx')
+      .expect(400);
+    expect(errorCode(response)).toBe('INVALID_SPREADSHEET');
+    expect(record(body(response).error).message).toBe(
+      'The XLSX file could not be read. Please use a valid Excel workbook.',
+    );
+  });
+
   it('imports a valid CSV row in create mode', async () => {
     const csv =
       'slug,title,department,status\n' +

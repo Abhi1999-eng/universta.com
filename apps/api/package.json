@@ -34,6 +34,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
+    "jszip": "^3.10.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
