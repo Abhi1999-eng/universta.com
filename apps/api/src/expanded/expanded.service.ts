@@ -1213,7 +1213,7 @@ export class ExpandedService {
           courseLevel: true,
           intakes: {
             include: { intake: true },
-            orderBy: { intake: { monthNumber: 'asc' } },
+            orderBy: { intake: { startMonth: 'asc' } },
           },
           requirements: {
             where: { deletedAt: null },
@@ -1773,8 +1773,14 @@ export class ExpandedService {
       }),
       this.prisma.intake.findMany({
         where: { status: 'ACTIVE' },
-        select: { id: true, name: true, slug: true, monthNumber: true },
-        orderBy: { monthNumber: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          startMonth: true,
+          endMonth: true,
+        },
+        orderBy: { startMonth: 'asc' },
       }),
       this.prisma.consultantLocation.findMany({
         where: active,

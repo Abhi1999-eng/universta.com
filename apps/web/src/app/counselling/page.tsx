@@ -91,11 +91,11 @@ export default async function CounsellingPage({
         <div className="wrap counselling-hero-grid">
           <div>
             <span className="hero-pill"><span className="dot" />Free study planning support</span>
-            <h1>Turn your study abroad ideas into a <span>clear plan.</span></h1>
+            <h1>Book Your Free Study Abroad <span>Counselling Session</span></h1>
             <p className="lede">
-              Tell us what you are considering. We’ll use the published
-              Universta catalog as a starting point for your counselling
-              conversation.
+              Get personalised guidance from the Universta team. Tell us what
+              you are considering and we’ll use the published catalogue as a
+              clear starting point for your counselling conversation.
             </p>
             <ul className="counselling-benefits">
               <li>Country and course direction grounded in published data</li>
@@ -112,10 +112,11 @@ export default async function CounsellingPage({
       <section className="counselling-trust">
         <div className="wrap">
           <span className="eyebrow">A focused first step</span>
-          <h2>Share only what we need to understand your study goals.</h2>
+          <h2>What you&apos;ll get from your free counselling session</h2>
           <p>
-            Your request is stored for Universta’s Super Admin team to review.
-            It does not create a student account or book an appointment.
+            A practical conversation about destination, course level, intake
+            and next steps. Your request is stored for Universta’s team to
+            review and does not create a student account.
           </p>
         </div>
       </section>

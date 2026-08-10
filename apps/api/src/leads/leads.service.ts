@@ -135,7 +135,7 @@ export class LeadsService {
         select: { slug: true, name: true, shortLabel: true },
         orderBy: [
           { displayOrder: 'asc' },
-          { monthNumber: 'asc' },
+          { startMonth: 'asc' },
           { id: 'asc' },
         ],
       }),
@@ -304,7 +304,7 @@ export class LeadsService {
         select: { id: true, name: true, shortLabel: true },
         orderBy: [
           { displayOrder: 'asc' },
-          { monthNumber: 'asc' },
+          { startMonth: 'asc' },
           { id: 'asc' },
         ],
       }),

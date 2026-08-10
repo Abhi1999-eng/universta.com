@@ -35,7 +35,7 @@ export function journeyExcerpt(journey: string, length = 180) {
 }
 
 export function countryPath(country: StoryRelation) {
-  return country.slug ? `/study-in-${encodeURIComponent(country.slug)}` : null;
+  return country.slug ? `/countries/${encodeURIComponent(country.slug)}` : null;
 }
 
 export function universityPath(university: StoryRelation) {

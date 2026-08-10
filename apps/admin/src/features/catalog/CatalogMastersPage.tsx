@@ -24,7 +24,8 @@ type IntakeRow = {
   name: string;
   slug: string;
   status: string;
-  monthNumber?: number | null;
+  startMonth?: number | null;
+  endMonth?: number | null;
   seasonName?: string | null;
 };
 
@@ -48,8 +49,22 @@ function IntakesPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<IntakeRow | null>(null);
   const [name, setName] = useState('');
-  const [monthNumber, setMonthNumber] = useState('');
+  const [startMonth, setStartMonth] = useState('');
+  const [endMonth, setEndMonth] = useState('');
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  function resetForm() {
+    setName('');
+    setStartMonth('');
+    setEndMonth('');
+    setEditing(null);
+    setCreating(false);
+  }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -72,20 +87,27 @@ function IntakesPanel() {
     event.preventDefault();
     setError('');
     try {
-      await intakeApi('', {
-        method: 'POST',
+      await intakeApi(editing ? `/${editing.id}` : '', {
+        method: editing ? 'PATCH' : 'POST',
         body: JSON.stringify({
           name,
-          monthNumber: monthNumber ? Number(monthNumber) : undefined,
+          startMonth: Number(startMonth),
+          endMonth: Number(endMonth),
         }),
       });
-      setName('');
-      setMonthNumber('');
-      setCreating(false);
+      resetForm();
       load();
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : 'Unable to create intake');
     }
+  }
+
+  function edit(row: IntakeRow) {
+    setName(row.name);
+    setStartMonth(row.startMonth ? String(row.startMonth) : '');
+    setEndMonth(row.endMonth ? String(row.endMonth) : '');
+    setEditing(row);
+    setCreating(true);
   }
 
   async function toggle(row: IntakeRow) {
@@ -123,7 +145,7 @@ function IntakesPanel() {
         </div>
         <button
           type="button"
-          onClick={() => setCreating((value) => !value)}
+          onClick={() => (creating ? resetForm() : setCreating(true))}
           className="rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white"
         >
           {creating ? 'Close' : 'Add'}
@@ -156,22 +178,42 @@ function IntakesPanel() {
           </div>
           <div className="block text-sm font-semibold">
             <FieldLabel
-              label="Month number (1-12, optional)"
-              htmlFor="intake-month"
-              helpKey="intakes.monthNumber"
+              label="Start month"
+              htmlFor="intake-start-month"
+              required
+              helpKey="intakes.startMonth"
             />
-            <input
-              id="intake-month"
-              type="number"
-              min="1"
-              max="12"
+            <select
+              id="intake-start-month"
+              required
               className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
-              value={monthNumber}
-              onChange={(event) => setMonthNumber(event.target.value)}
+              value={startMonth}
+              onChange={(event) => setStartMonth(event.target.value)}
+            >
+              <option value="">Select a month</option>
+              {months.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+            </select>
+          </div>
+          <div className="block text-sm font-semibold">
+            <FieldLabel
+              label="End month"
+              htmlFor="intake-end-month"
+              required
+              helpKey="intakes.endMonth"
             />
+            <select
+              id="intake-end-month"
+              required
+              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+              value={endMonth}
+              onChange={(event) => setEndMonth(event.target.value)}
+            >
+              <option value="">Select a month</option>
+              {months.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+            </select>
           </div>
           <button className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
-            Save
+            {editing ? 'Save intake' : 'Create intake'}
           </button>
         </form>
       ) : null}
@@ -184,7 +226,7 @@ function IntakesPanel() {
             <div key={row.id} className="flex items-center justify-between gap-3 py-4">
               <div>
                 <p className="font-semibold">{row.name}</p>
-                <p className="mt-1 text-xs text-[#828B9B]">{row.status}</p>
+                <p className="mt-1 text-xs text-[#828B9B]">{row.startMonth ? `${months[row.startMonth - 1]}${row.endMonth && row.endMonth !== row.startMonth ? ` – ${months[row.endMonth - 1]}` : ''} · ` : ''}{row.status}</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -193,6 +235,13 @@ function IntakesPanel() {
                   className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
                 >
                   {row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => edit(row)}
+                  className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+                >
+                  Edit
                 </button>
                 <button
                   type="button"

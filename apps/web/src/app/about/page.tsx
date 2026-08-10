@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { EditorialPage } from "@/components/phase1/EditorialPage";
+import { ReferenceAboutPage } from '@/components/templates/ReferenceStaticPages';
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { phasePage } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
@@ -20,11 +20,5 @@ export default async function AboutPage() {
     const anonymousId = (await headers()).get("x-anon-id") ?? undefined;
     page = await phasePage<AnyRecord>("about", anonymousId);
   } catch {}
-  return (
-    <EditorialPage
-      page={page}
-      fallbackTitle="About Universta"
-      fallbackDescription="A source-aware local study abroad information platform."
-    />
-  );
+  return <ReferenceAboutPage page={page} />;
 }

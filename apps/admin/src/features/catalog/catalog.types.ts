@@ -72,7 +72,8 @@ export interface IntakeOption {
   id: string;
   name: string;
   slug: string;
-  monthNumber: number | null;
+  startMonth: number | null;
+  endMonth: number | null;
   seasonName: string | null;
   shortLabel: string | null;
   description: string | null;

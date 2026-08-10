@@ -11,6 +11,7 @@ import { StatsPill } from '@/components/StatsPill';
 import type { ResolvedStatsPill } from '@/lib/stats-pill';
 import { consultationTarget } from '@/lib/country-experience';
 import { counsellingHref } from '@/lib/counselling-link';
+import { intakeRange } from '@/lib/intake-range';
 import type {
   Country,
   CountryPage,
@@ -161,7 +162,7 @@ function CountryTemplateCard({ country }: { country: Country }) {
   const statistics = country.profiles?.statistics;
   const tuition = moneyRange(country.profiles?.cost);
   const work = postStudyWork(country);
-  const intakes = country.profiles?.intakes.map((item) => item.shortLabel ?? item.name).join(', ');
+  const intakes = country.profiles?.intakes.map((item) => intakeRange(item.intake ?? item)).join(', ');
   return (
     <article className="card">
       {/* Always rendered, even with no badge, so every card's heading starts on
@@ -190,7 +191,7 @@ function CountryTemplateCard({ country }: { country: Country }) {
         <div className="fact"><span><Icon name="briefcase" size={14} />Post-study work</span><b>{work ?? 'Not published'}</b></div>
         <div className="fact"><span><Icon name="calendar" size={14} />Popular intake</span><b>{intakes || 'Not published'}</b></div>
       </div>
-      <Link href={`/study-in-${country.slug}`} className="card-cta">
+      <Link href={`/countries/${country.slug}`} className="card-cta">
         Explore {country.name}<Icon name="arrow" size={15} />
       </Link>
     </article>
@@ -741,7 +742,7 @@ export function ApprovedCountriesListing({
                       <div className="progs">
                         {Object.entries(country.programCounts).filter(([, count]) => count != null).map(([label, count]) => <span key={label}>{count} {label.toUpperCase()}</span>)}
                       </div>
-                      {country.isAvailable ? <Link className="go" href={`/study-in-${country.slug}`}>Explore <Icon name="arrow" size={13} /></Link> : <span>Coming soon</span>}
+                      {country.isAvailable ? <Link className="go" href={`/countries/${country.slug}`}>Explore <Icon name="arrow" size={13} /></Link> : <span>Coming soon</span>}
                     </article>
                   ))}
                 </div>
@@ -871,7 +872,7 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
   const { country, profiles, sections, faqs, consultantCards } = page;
   const work = profiles.work;
   const statistics = profiles.statistics;
-  const intakes = profiles.intakes.map((item) => item.intake?.shortLabel ?? item.name ?? item.shortLabel).filter(Boolean);
+  const intakes = profiles.intakes.map((item) => intakeRange(item.intake ?? item)).filter(Boolean);
   const editorial = new Map(sections.map((section) => [section.sectionKey, section]));
   const sourceProfiles = [profiles.cost, profiles.work, profiles.language, profiles.statistics]
     .filter((profile) => Boolean(profile?.sourceReference));
@@ -935,7 +936,7 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
             <div className="updated"><Icon name="clock" size={15} />Published source-aware country profile</div>
             <div className="hero-btns">
               <Link href={`/courses?country=${country.slug}`} className="btn btn-p btn-lg">Explore courses</Link>
-              <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/study-in-${country.slug}` })} className="btn btn-s btn-lg">Talk to a counsellor</Link>
+              <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s btn-lg">Talk to a counsellor</Link>
             </div>
           </div>
           <aside className="quickfacts">
@@ -972,8 +973,8 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
           <div className="intakes">
             {profiles.intakes.map((item) => (
             <article className="intake" key={item.id}>
-              <div className="month">{item.intake?.shortLabel ?? item.name ?? item.shortLabel}</div>
-              <h3>{item.intake?.name ?? item.name}</h3>
+              <div className="month">{intakeRange(item.intake ?? item)}</div>
+              <h3>{intakeRange(item.intake ?? item)}</h3>
               <p>{item.notes ?? item.applicationDeadlineNote ?? 'Published as available.'}</p>
               <span>{item.availabilityStatus}</span>
             </article>
@@ -1102,7 +1103,7 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
           <h2>Ready to study in {country.name}?</h2>
           <p>Use the published destination information and get guidance for your shortlist.</p>
           <Link href={`/courses?country=${country.slug}`} className="btn btn-p">Explore courses</Link>
-          <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/study-in-${country.slug}` })} className="btn btn-s">Request counselling</Link>
+          <Link href={counsellingHref({ source: 'country', country: country.slug, from: `/countries/${country.slug}` })} className="btn btn-s">Request counselling</Link>
           {guidanceTarget ? <a href={guidanceTarget} className="profile-source">Review source guidance</a> : null}
         </div>
       </section>

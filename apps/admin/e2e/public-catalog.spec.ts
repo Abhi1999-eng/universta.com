@@ -34,8 +34,8 @@ function observePageHealth(page: Page) {
 
 test.describe('approved public subject and course discovery', () => {
   test('renders the Countries listing as the home route', async ({ page }) => {
-    // The Countries listing is the site's homepage: "/" renders it directly,
-    // and "/countries" is kept only as a redirect to the same content.
+    // The Countries listing remains the site's homepage, and is also available
+    // at its canonical public route.
     await page.goto(webBaseUrl);
 
     await expect(page).toHaveURL(webBaseUrl);
@@ -47,7 +47,7 @@ test.describe('approved public subject and course discovery', () => {
     await expect(hero.getByRole('link', { name: /counsel/i }).first()).toHaveAttribute('href', /counselling/);
 
     await page.goto(`${webBaseUrl}/countries`);
-    await expect(page).toHaveURL(webBaseUrl);
+    await expect(page).toHaveURL(`${webBaseUrl}/countries`);
     await expect(page.getByLabel('Search a country')).toBeVisible();
   });
 

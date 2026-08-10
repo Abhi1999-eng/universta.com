@@ -21,10 +21,12 @@ import { CatalogLookupsService } from '../../catalog-lookups/catalog-lookups.ser
 import { CountryProfilesService } from './country-profiles.service';
 import {
   CostProfileDto,
+  CreateIntakeDto,
   LanguageProfileDto,
   ProfileVersionDto,
   ReplaceIntakesDto,
   StatisticsProfileDto,
+  UpdateIntakeDto,
   WorkProfileDto,
 } from './profile.dto';
 
@@ -245,19 +247,12 @@ export class AdminIntakesController {
   @Post()
   async create(
     @Req() request: AuthenticatedRequest,
-    @Body() body: Record<string, unknown>,
+    @Body() body: CreateIntakeDto,
   ) {
     return successEnvelope(
       request,
       await this.lookups.createIntake({
-        name: body.name as string,
-        slug: body.slug as string | undefined,
-        monthNumber: body.monthNumber as number | null | undefined,
-        seasonName: body.seasonName as string | null | undefined,
-        shortLabel: body.shortLabel as string | null | undefined,
-        description: body.description as string | null | undefined,
-        status: body.status as string | undefined,
-        displayOrder: body.displayOrder as number | undefined,
+        ...body,
       }),
     );
   }
@@ -266,19 +261,12 @@ export class AdminIntakesController {
   async update(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
-    @Body() body: Record<string, unknown>,
+    @Body() body: UpdateIntakeDto,
   ) {
     return successEnvelope(
       request,
       await this.lookups.updateIntake(id, {
-        name: body.name as string | undefined,
-        slug: body.slug as string | undefined,
-        monthNumber: body.monthNumber as number | null | undefined,
-        seasonName: body.seasonName as string | null | undefined,
-        shortLabel: body.shortLabel as string | null | undefined,
-        description: body.description as string | null | undefined,
-        status: body.status as string | undefined,
-        displayOrder: body.displayOrder as number | undefined,
+        ...body,
       }),
     );
   }

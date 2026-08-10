@@ -79,12 +79,12 @@ test.describe('approved public country experience', () => {
   });
 
   test('clears result filters without removing the independent A–Z directory', async ({ page }) => {
-    // "/countries" redirects to "/", the listing's canonical address, so the
-    // cleared URL lands there rather than back on "/countries".
+    // "/countries" is the listing's canonical public address, so clearing the
+    // filters keeps the visitor on that route.
     await page.goto(`${listing}?q=not-a-real-country&budgetBand=PREMIUM&page=2`);
     await page.getByRole('button', { name: 'Clear all filters' }).click();
 
-    await expect(page).toHaveURL(webBaseUrl);
+    await expect(page).toHaveURL(listing);
     await expect(page.getByRole('heading', { name: 'Browse every destination A–Z', level: 2 })).toBeVisible();
     await expect(page.getByRole('link', { name: /Explore Canada/ })).toBeVisible();
   });

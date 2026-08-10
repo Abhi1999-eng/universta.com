@@ -44,7 +44,9 @@ function options(response: { body: unknown }) {
     subjects: Option[];
     subSubjects: Array<Option & { subject: { slug: string } }>;
     studyModes: Option[];
-    intakes: Array<Option & { monthNumber: number | null }>;
+    intakes: Array<
+      Option & { startMonth: number | null; endMonth: number | null }
+    >;
     englishTests: Option[];
     extras: Option[];
     sorts: Array<{ value: string; label: string }>;

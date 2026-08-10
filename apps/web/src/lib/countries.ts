@@ -40,6 +40,8 @@ export interface ProfileSummary {
     name: string;
     slug: string;
     shortLabel: string | null;
+    startMonth?: number | null;
+    endMonth?: number | null;
     availabilityStatus: string;
     applicationOpeningNote?: string | null;
     applicationDeadlineNote?: string | null;
@@ -49,6 +51,8 @@ export interface ProfileSummary {
       name: string;
       slug: string;
       shortLabel: string | null;
+      startMonth?: number | null;
+      endMonth?: number | null;
     };
   }>;
   statistics: { universitiesCount: number; publicUniversitiesCount?: number; privateUniversitiesCount?: number; coursesCount: number; ugCoursesCount?: number; pgCoursesCount?: number; pgdmCoursesCount?: number; mbaCoursesCount?: number; phdCoursesCount?: number; topRankedUniversitiesCount: number; citiesCount?: number; scholarshipsCount?: number; internationalStudentsCount?: number | null; studentSatisfactionPercentage?: string | null; sourceReference?: string | null; verifiedAt?: string | null } | null;

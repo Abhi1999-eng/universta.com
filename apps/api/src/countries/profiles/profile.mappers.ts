@@ -102,7 +102,8 @@ export interface ProfileIntakeRecord {
     id: string;
     name: string;
     slug: string;
-    monthNumber: number | null;
+    startMonth: number | null;
+    endMonth: number | null;
     seasonName: string | null;
     shortLabel: string | null;
     status: string;
@@ -295,7 +296,8 @@ export function publicProfileSummary(bundle: ProfileBundle) {
       id: item.intakeId,
       name: item.intake.name,
       slug: item.intake.slug,
-      monthNumber: item.intake.monthNumber,
+      startMonth: item.intake.startMonth,
+      endMonth: item.intake.endMonth,
       shortLabel: item.intake.shortLabel,
       availabilityStatus: item.availabilityStatus,
     }));

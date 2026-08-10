@@ -49,6 +49,20 @@ function value(row: AnyRecord, type: string, field: string) {
             .join(", ") || "Not published"
         : (row.verificationStatus ?? "Not published");
 }
+
+function ComparisonReference({ rows }: { rows: AnyRecord[] }) {
+  if (!rows.length) return null;
+  const sections = [
+    ["General information", ["Country", "Type", "Campuses", "Offerings"]],
+    ["Academic comparison", ["Country", "Type", "Offerings"]],
+    ["Campus & programme availability", ["Campuses", "Offerings"]],
+  ] as const;
+  return <div className="reference-comparison-sections">
+    <header><span>University comparison</span><h2>Compare universities side by side</h2><p>Review the published country, institution, campus and course-offering information in one shareable view.</p></header>
+    {sections.map(([heading, fields]) => <section key={heading}><h3>{heading}</h3><div className="reference-comparison-table"><table><thead><tr><th>Details</th>{rows.map((row) => <th key={row.slug}>{title(row)}</th>)}</tr></thead><tbody>{fields.map((field) => <tr key={field}><th>{field}</th>{rows.map((row) => <td key={row.slug}>{value(row, "universities", field)}</td>)}</tr>)}</tbody></table></div></section>)}
+    <section className="reference-comparison-next"><h3>Ready to take the next step?</h3><p>Use the published comparison as a starting point, then open an institution or course record to review available details.</p><Link href="/universities">Explore universities</Link></section>
+  </div>;
+}
 export function CompareView({
   type,
   result,
@@ -69,13 +83,13 @@ export function CompareView({
           ? ["University", "Campus", "Tuition", "Study mode"]
           : ["Locations", "Services", "Countries", "Verification"];
   return (
-    <main>
+    <main className={type === "universities" ? "reference-comparison-page" : undefined}>
       <PhaseOneHeader />
       <Crumbs items={[["Home", "/"], ["Compare"]]} />
       <section className="listing-hero">
         <div className="shell">
           <p className="eyebrow">Shareable comparison</p>
-          <h1>Compare {type}</h1>
+          <h1>{type === "universities" ? "Compare universities side by side" : `Compare ${type}`}</h1>
           <p>
             Select up to three published items using a comma-separated `items`
             URL parameter. Comparison URLs are intentionally noindex.
@@ -91,6 +105,7 @@ export function CompareView({
         ) : null}
         {result.items.length ? (
           <>
+            {type === "universities" ? <ComparisonReference rows={result.items} /> : null}
             <div className="phase1-compare-desktop">
               <table>
                 <thead>

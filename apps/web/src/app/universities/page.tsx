@@ -14,6 +14,10 @@ import { getSubjects } from "@/lib/catalog";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
 import { getStatsPill } from '@/lib/stats-pill';
+import {
+  UniversityListingIntro,
+  UniversityListingOutro,
+} from '@/components/templates/ReferenceListingSections';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -99,9 +103,9 @@ export default async function UniversitiesPage({
   return (
     <PolishedListing
       eyebrow="Published directory"
-      heading={managed.heading ?? "Find your"}
-      headingAccent={managed.heading ? "" : "university"}
-      lede={managed.lede ?? "Search published universities, then filter by destination, subject and location to shortlist the ones worth a closer look."}
+      heading={managed.heading ?? "Find the best universities around the"}
+      headingAccent={managed.heading ? "" : "world"}
+      lede={managed.lede ?? "Explore published universities, then narrow the catalogue by destination, subject and location."}
       crumbLabel="Universities"
       basePath="/universities"
       noun={{ one: "university", many: "universities" }}
@@ -120,6 +124,10 @@ export default async function UniversitiesPage({
       railBody="Verify tuition, entry requirements and intakes with the university before deciding."
       counsellingSource="general"
       pill={pill}
+      variantClass="reference-university-listing"
+      introSections={<UniversityListingIntro countries={countries} rows={rows} />}
+      afterResults={<UniversityListingOutro countries={countries} subjects={subjects} />}
+      showDefaultCta={false}
     >
       {rows.map((row) => (
         <UniversityCard row={row} key={row.id} />

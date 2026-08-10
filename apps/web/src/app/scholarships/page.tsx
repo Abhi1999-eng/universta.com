@@ -14,6 +14,7 @@ import { getCourseLevels, getSubjects } from "@/lib/catalog";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
 import { getStatsPill } from '@/lib/stats-pill';
+import { ScholarshipListingOutro } from '@/components/templates/ReferenceListingSections';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -95,10 +96,10 @@ export default async function ScholarshipsPage({
 
   return (
     <PolishedListing
-      eyebrow="Published directory"
-      heading={managed.heading ?? "Find a"}
-      headingAccent={managed.heading ? "" : "scholarship"}
-      lede={managed.lede ?? "Search published scholarships, then narrow by destination, level and award to the ones you may be eligible for."}
+      eyebrow="Updated published catalogue"
+      heading={managed.heading ?? "Find scholarships to fund your"}
+      headingAccent={managed.heading ? "" : "study abroad journey"}
+      lede={managed.lede ?? "Filter published scholarships by destination, university, degree, subject and funding type to find a relevant opportunity."}
       crumbLabel="Scholarships"
       basePath="/scholarships"
       noun={{ one: "scholarship", many: "scholarships" }}
@@ -117,6 +118,9 @@ export default async function ScholarshipsPage({
       railBody="Eligibility, amounts and deadlines are set by the provider. Always confirm directly with them."
       counsellingSource="general"
       pill={pill}
+      variantClass="reference-scholarship-listing"
+      afterResults={<ScholarshipListingOutro countries={countries} subjects={subjects} />}
+      showDefaultCta={false}
     >
       {rows.map((row) => (
         <ScholarshipCard row={row} key={row.id} />

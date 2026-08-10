@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { PhaseDetail, type AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { type AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { ReferenceConsultantDetail } from "@/components/templates/ReferenceResourceViews";
 import { phaseDetail, phaseResolveRedirect } from "@/lib/phase1";
 import { phaseOneMetadata } from "@/lib/phase1-metadata";
 
@@ -32,5 +33,5 @@ export default async function ConsultantPage({ params }: Props) {
     if (redirect) permanentRedirect(redirect.targetPath);
     notFound();
   }
-  return <PhaseDetail resource="consultants" row={row} />;
+  return <ReferenceConsultantDetail row={row} />;
 }
