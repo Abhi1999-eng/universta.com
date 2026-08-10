@@ -81,7 +81,11 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
         document.documentElement.clientWidth,
     ),
   ).toBe(true);
-  await expect(page.getByRole('heading', { name: /clear plan/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: /free study abroad counselling session/i,
+    }),
+  ).toBeVisible();
 
   await page.goto(`${adminBaseUrl}/leads`);
   await expect(page).not.toHaveURL(/\/login/);
