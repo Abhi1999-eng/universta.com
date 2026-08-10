@@ -1,10 +1,58 @@
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
+import { BadRequestException } from '@nestjs/common';
+
+function invalidSpreadsheet(): BadRequestException {
+  return new BadRequestException({
+    code: 'INVALID_SPREADSHEET',
+    message:
+      'The XLSX file could not be read. Please use a valid Excel workbook.',
+    details: null,
+  });
+}
+
+/** Some standard XLSX writers namespace their SpreadsheetML element names
+ * (`x:workbook`, `x:worksheet`, and so on). ExcelJS 4.x does not recognise
+ * those names even though they are valid OOXML. Normalize only element names
+ * inside the archive, then let the existing ExcelJS loader do all real XLSX
+ * parsing and validation. */
+async function normalizePrefixedSpreadsheetMl(buffer: Buffer): Promise<Buffer> {
+  const archive = await JSZip.loadAsync(buffer);
+  let changed = false;
+  for (const entry of Object.values(archive.files)) {
+    if (entry.dir || !/^xl\/.+\.xml$/i.test(entry.name)) continue;
+    const xml = await entry.async('string');
+    if (!xml.includes('<x:')) continue;
+    archive.file(
+      entry.name,
+      xml.replaceAll('<x:', '<').replaceAll('</x:', '</'),
+    );
+    changed = true;
+  }
+  if (!changed) throw invalidSpreadsheet();
+  return Buffer.from(await archive.generateAsync({ type: 'nodebuffer' }));
+}
+
+async function loadWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+    return workbook;
+  } catch {
+    try {
+      const normalized = await normalizePrefixedSpreadsheetMl(buffer);
+      await workbook.xlsx.load(normalized as unknown as ExcelJS.Buffer);
+      return workbook;
+    } catch {
+      throw invalidSpreadsheet();
+    }
+  }
+}
 
 /** Parses the first worksheet of an XLSX buffer into the same shape
  * `rowsWithHeader` expects from CSV: header row + string-keyed data rows. */
 export async function parseXlsx(buffer: Buffer): Promise<string[][]> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+  const workbook = await loadWorkbook(buffer);
   const sheet = workbook.getWorksheet('Data') ?? workbook.worksheets[0];
   if (!sheet) return [];
   const rows: string[][] = [];
