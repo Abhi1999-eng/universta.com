@@ -939,3 +939,791 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ==========================================================================
+   Courses template primitives
+   The approved /courses reference introduces a hero pill, a prose/takeaways
+   block, generic card grids and a richer result card than the scholarship
+   listing needed. They live here rather than in the route so the Countries,
+   Subjects and Universities templates -- which reuse the same card shapes --
+   do not each ship a private copy.
+   ========================================================================== */
+.cref .hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font-size: 13.5px;
+  color: var(--muted);
+  box-shadow: var(--shadow-sm);
+}
+.cref .hero-pill b {
+  color: var(--ink);
+}
+.cref .hero-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.14);
+}
+.cref .hero h1 .b {
+  color: var(--blue);
+}
+.cref .hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 28px;
+}
+.cref .btn-outline {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.cref .btn-outline:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.cref .btn-secondary {
+  background: var(--ink);
+  color: #fff;
+  border: 1px solid var(--ink);
+}
+.cref .btn-secondary:hover {
+  background: #1e293b;
+}
+
+/* prose + key takeaways */
+.cref .prose {
+  max-width: 860px;
+  color: var(--ink-2);
+  font-size: 15.5px;
+}
+.cref .prose p {
+  margin-bottom: 14px;
+}
+.cref .prose h3 {
+  font-size: 20px;
+  margin: 26px 0 10px;
+  font-weight: 700;
+}
+.cref .prose a {
+  color: var(--blue);
+}
+.cref .takeaways {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  border-radius: var(--r);
+  padding: 20px 22px;
+  margin: 24px 0;
+}
+.cref .takeaways h4 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--blue);
+  margin-bottom: 12px;
+}
+.cref .takeaways ul {
+  list-style: none;
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+}
+.cref .takeaways li {
+  display: flex;
+  gap: 10px;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.cref .takeaways li::before {
+  content: "✓";
+  color: var(--green);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cref details.readmore {
+  margin-top: 8px;
+}
+.cref details.readmore > summary {
+  cursor: pointer;
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 15px;
+  list-style: none;
+}
+.cref details.readmore > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* generic card grids */
+.cref .grid {
+  display: grid;
+  gap: 18px;
+}
+.cref .g2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.cref .g3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.cref .g4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.cref .card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px;
+  transition: 0.2s;
+  display: block;
+}
+.cref a.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+  border-color: var(--blue-100);
+}
+.cref .panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 34px;
+}
+.cref .row-between {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.cref .link-more {
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* subject cards */
+.cref .subj-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cref .subj-ic {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 17px;
+}
+.cref .subj-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.cref .subj-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: auto;
+}
+.cref .subj-meta b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.cref .subj-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cref .subj-foot .go {
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* course result card */
+.cref .course {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  transition: 0.18s;
+  position: relative;
+}
+.cref .course:hover {
+  box-shadow: var(--shadow);
+  border-color: var(--blue-100);
+}
+.cref .course-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.cref .uni-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 17px;
+  flex-shrink: 0;
+  border: 1px solid var(--blue-100);
+}
+.cref .course-head {
+  flex: 1;
+  min-width: 0;
+}
+.cref .course-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 9px;
+}
+.cref .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+}
+.cref .badge-lvl {
+  background: var(--blue-50);
+  color: var(--blue);
+}
+.cref .badge-sch {
+  background: #ecfdf5;
+  color: var(--green);
+}
+.cref .badge-mode {
+  background: #f1f5f9;
+  color: var(--ink-2);
+}
+.cref .badge-psw {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+.cref .course h3 {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.cref .course h3 a:hover {
+  color: var(--blue);
+}
+.cref .course .uni {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cref .course .uni .cc {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.cref .course-facts {
+  display: grid;
+  /* auto-fill, not auto-fit: a card with two facts keeps them at column width
+     instead of stretching each across half the card. */
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.cref .fact .k {
+  font-size: 11.5px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.cref .fact .v {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 5px;
+  font-family: var(--dsp);
+}
+.cref .course-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cref .course-foot .spacer {
+  margin-left: auto;
+}
+.cref .cmp-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+.cref .cmp-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+/* mini / destination / benefit / tool / resource cards */
+.cref .mini-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+}
+.cref .mini-ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 15px;
+}
+.cref .mini-card h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+}
+.cref .mini-card .mc-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.cref .mini-card .go {
+  margin-left: auto;
+  color: var(--muted-2);
+}
+.cref a.mini-card:hover .go {
+  color: var(--blue);
+}
+.cref .dest-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cref .dest-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cref .cc-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+.cref .dest-card h3 {
+  font-size: 16.5px;
+  font-weight: 700;
+}
+.cref .dest-card .unis {
+  font-size: 13px;
+  color: var(--muted);
+}
+.cref .dest-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cref .pill-mini {
+  background: #f1f5f9;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.cref .dest-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+}
+.cref .dest-foot .cnt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cref .dest-foot .go {
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.cref .benefit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+.cref .benefit-ic {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.28);
+  font-size: 20px;
+}
+.cref .benefit h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.cref .benefit p {
+  font-size: 14px;
+  color: var(--muted);
+}
+.cref .tool {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+.cref .tool-ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.cref .tool h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+}
+.cref .tool p {
+  font-size: 13px;
+  color: var(--muted);
+}
+.cref .event {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+}
+.cref .event-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-50);
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  align-self: flex-start;
+}
+.cref .event h3 {
+  font-size: 16.5px;
+  font-weight: 700;
+}
+.cref .event .when {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* internal link clusters */
+.cref .link-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 26px;
+}
+.cref .link-col h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.cref .link-col ul {
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+}
+.cref .link-col li a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: var(--ink-2);
+  padding: 6px 0;
+}
+.cref .link-col li a:hover {
+  color: var(--blue);
+}
+
+/* final CTA */
+.cref .final-cta {
+  background: linear-gradient(135deg, #132345 0%, #1e3a8a 55%, #2563eb 100%);
+  border-radius: var(--r-lg);
+  padding: 56px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cref .final-cta h2 {
+  color: #fff;
+  font-size: clamp(28px, 3.6vw, 42px);
+  font-weight: 800;
+  position: relative;
+}
+.cref .final-cta p {
+  color: rgba(255, 255, 255, 0.82);
+  max-width: 620px;
+  margin: 16px auto 0;
+  font-size: 17px;
+  position: relative;
+}
+.cref .final-cta .hero-ctas {
+  margin-top: 30px;
+  position: relative;
+}
+.cref .final-cta .btn-outline {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.cref .final-cta .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
+  color: #fff;
+}
+.cref .final-cta .btn-secondary {
+  background: #fff;
+  color: var(--ink);
+  border-color: #fff;
+}
+
+/* compare tray */
+.cref .tray {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 0 20px;
+}
+.cref .tray-inner {
+  max-width: 1220px;
+  margin: 0 auto;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.22);
+}
+.cref .tray-inner .tt {
+  font-family: var(--dsp);
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.cref .tray-inner .tt .badge-n {
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.cref .tray-slots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.cref .tray-slot {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 230px;
+}
+.cref .tray-slot .nm {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cref .tray-slot .x {
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.65);
+  background: none;
+  border: none;
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1;
+}
+.cref .tray-slot .x:hover {
+  color: #fff;
+}
+.cref .tray-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  align-items: center;
+}
+.cref .tray-actions .btn-clear {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.cref .tray-actions .btn-clear:hover {
+  color: #fff;
+}
+
+/* tuition range control */
+.cref .frange {
+  padding: 4px 4px 10px;
+}
+.cref .frange input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue);
+}
+.cref .frange .val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  display: block;
+  margin-top: 6px;
+}
+
+@media (max-width: 1080px) {
+  .cref .g4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cref .g3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .cref .link-cols {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .cref .g2,
+  .cref .g3,
+  .cref .g4 {
+    grid-template-columns: 1fr;
+  }
+  .cref .final-cta {
+    padding: 40px 22px;
+  }
+  .cref .hero-ctas .btn {
+    flex: 1;
+    min-width: 150px;
+  }
+  .cref .tray {
+    padding: 0;
+  }
+  .cref .tray-inner {
+    border-radius: 14px 14px 0 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Three items on one row clip the result count at phone widths, so the
+     count gets its own line above the controls. */
+  .cref .main-head {
+    align-items: stretch;
+  }
+  .cref .main-head .count {
+    order: -1;
+    width: 100%;
+  }
+  .cref .main-head .sortsel {
+    margin-left: auto;
+  }
+}
+.cref .filters .ffoot {
+  display: none;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+}
+@media (max-width: 960px) {
+  .cref .filters {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .cref .filters .fscroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .cref .filters .ffoot {
+    display: block;
+    margin: 0 -20px;
+  }
+}

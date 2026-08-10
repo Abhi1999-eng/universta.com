@@ -6,9 +6,11 @@ import {
   getSubjects,
 } from '@/lib/catalog';
 import { legacyCourseDiscoveryUrl } from '@/lib/course-discovery-url';
-import { ApprovedCoursesListing } from '@/components/templates/CourseCatalogTemplate';
+import { CoursesReference } from '@/components/reference/CoursesReference';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { getListingPageContent } from '@/lib/listing-page-content';
+import { phaseList } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
-import { getStatsPill } from '@/lib/stats-pill';
 
 export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
@@ -82,20 +84,61 @@ export default async function CoursesPage({
       getCourses(filters),
       getSubjects({ limit: '100' }).then((result) => result.data),
       getCourseFilterOptions(filters),
-      getStatsPill('courses-listing'),
     ]);
   } catch {
     return unavailable();
   }
-  const [courses, subjects, filterOptions, pill] = catalog;
+  const [courses, subjects, filterOptions] = catalog;
+
+  // Link clusters and the events strip are decoration around the listing, so a
+  // failure there must not take the route down with it.
+  const [universities, consultants, events, managed] = await Promise.all([
+    phaseList<AnyRecord>('universities', { limit: '8' })
+      .then((result) => result.data)
+      .catch(() => []),
+    phaseList<AnyRecord>('consultants', { limit: '8' })
+      .then((result) => result.data)
+      .catch(() => []),
+    // `when=upcoming` matters: the strip is headed "Upcoming events", so a
+    // past record must not appear in it.
+    phaseList<AnyRecord>('events', { limit: '4', when: 'upcoming' })
+      .then((result) => result.data)
+      .catch(() => []),
+    getListingPageContent('courses-listing'),
+  ]);
+
   return (
-    <ApprovedCoursesListing
+    <CoursesReference
       courses={courses.data}
       meta={courses.meta}
       subjects={subjects}
       filterOptions={filterOptions}
       filters={filters}
-      pill={pill}
+      universities={universities.map((row) => ({
+        name: String(row.name),
+        slug: String(row.slug),
+      }))}
+      consultants={consultants.map((row) => ({
+        name: String(row.name),
+        slug: String(row.slug),
+      }))}
+      events={events.map((row) => ({
+        name: String(row.title ?? row.name),
+        slug: String(row.slug),
+        mode: typeof row.eventType === 'string' ? row.eventType : null,
+        startAt: typeof row.startsAt === 'string' ? row.startsAt : null,
+      }))}
+      heading={managed.heading ?? 'Find the perfect course to'}
+      headingAccent={managed.heading ? '' : 'study abroad'}
+      lede={
+        managed.lede ??
+        'Explore published undergraduate, postgraduate, diploma and doctoral programmes. Compare tuition, intakes, study modes and entry requirements in one place.'
+      }
+      ctaHeading={managed.ctaHeading ?? 'Discover the right course for your future'}
+      ctaBody={
+        managed.ctaBody ??
+        'Filter the published catalogue, shortlist the programmes that fit, and compare them side by side before you apply.'
+      }
     />
   );
 }
