@@ -3275,20 +3275,20 @@
 }
 
 /* destination chips block */
-.cref-subj .dest-block {
+.cref .dest-block {
   padding: 22px;
 }
-.cref-subj .dest-block h3 {
+.cref .dest-block h3 {
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 14px;
 }
-.cref-subj .dest-flags {
+.cref .dest-flags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.cref-subj .dest-flag {
+.cref .dest-flag {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -3300,7 +3300,7 @@
   font-weight: 500;
   color: var(--ink-2);
 }
-.cref-subj .dest-flag .cc {
+.cref .dest-flag .cc {
   font-family: var(--dsp);
   font-weight: 800;
   font-size: 11px;
@@ -3650,5 +3650,359 @@
 @media (max-width: 720px) {
   .cref-subj .hero-banner {
     padding: 28px 22px;
+  }
+}
+
+/* ==========================================================================
+   Universities family (/universities, /universities/[slug]/courses, …)
+   Shares the destinations palette, so it opts into `.cref-dest` and adds only
+   the marketplace layout and the university card.
+   ========================================================================== */
+.cref-dest .hsearch {
+  max-width: 680px;
+  margin: 32px auto 0;
+  position: relative;
+}
+.cref-dest .hstats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 11px;
+  margin-top: 42px;
+}
+.cref-dest .hstat {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 18px 12px;
+  transition: 0.25s;
+  text-align: center;
+}
+.cref-dest .hstat:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+  border-color: var(--blue-100);
+}
+.cref-dest .hstat b {
+  font-family: var(--dsp);
+  font-size: 23px;
+  font-weight: 800;
+  color: var(--ink);
+  display: block;
+  letter-spacing: -0.03em;
+}
+.cref-dest .hstat span {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.cref-dest .hero-btns.center {
+  justify-content: center;
+}
+
+.cref-dest .market {
+  display: grid;
+  grid-template-columns: 274px 1fr;
+  gap: 26px;
+  align-items: start;
+}
+.cref-dest .market > .filters {
+  position: sticky;
+  top: 120px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 19px;
+  box-shadow: var(--shadow-sm);
+}
+.cref-dest .f-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.cref-dest .f-head h3 {
+  font-size: 15.5px;
+}
+.cref-dest .f-clear {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+}
+.cref-dest .fg {
+  border-top: 1px solid var(--line);
+  padding: 13px 0;
+}
+.cref-dest .fg:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.cref-dest .fg > summary {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+  font-family: var(--dsp);
+}
+.cref-dest .fg > summary::-webkit-details-marker {
+  display: none;
+}
+.cref-dest .fb {
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cref-dest .fopt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+  padding: 2px 0;
+}
+.cref-dest .fopt input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--blue);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.cref-dest .fopt .n {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.cref-dest .resbar {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.cref-dest .rescount {
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.cref-dest .rescount b {
+  color: var(--ink);
+  font-family: var(--dsp);
+  font-weight: 700;
+}
+.cref-dest .resbar .sortsel {
+  margin-left: auto;
+}
+.cref-dest .achips {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.cref-dest .achip {
+  background: var(--blue-50);
+  color: var(--blue);
+  border: 1px solid var(--blue-100);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* university card */
+.cref-dest .unis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.cref-dest .uni {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: 0.28s;
+  position: relative;
+}
+.cref-dest .uni:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+.cref-dest .u-cover {
+  height: 118px;
+  position: relative;
+  background: linear-gradient(120deg, #1e3a8a, #2563eb);
+}
+.cref-dest .u-cover.c1 {
+  background: linear-gradient(120deg, #0f766e, #14b8a6);
+}
+.cref-dest .u-cover.c2 {
+  background: linear-gradient(120deg, #7c3aed, #a855f7);
+}
+.cref-dest .u-cover.c3 {
+  background: linear-gradient(120deg, #b45309, #f59e0b);
+}
+.cref-dest .u-badge {
+  position: absolute;
+  top: 11px;
+  left: 11px;
+  background: rgba(13, 21, 36, 0.82);
+  color: #fff;
+  font-family: var(--dsp);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+}
+.cref-dest .u-logo {
+  position: absolute;
+  bottom: -22px;
+  left: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--blue);
+  box-shadow: var(--shadow-sm);
+}
+.cref-dest .u-b {
+  padding: 32px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.cref-dest .u-b h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.cref-dest .u-loc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 13px;
+}
+.cref-dest .u-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin-bottom: 13px;
+}
+.cref-dest .u-meta div {
+  background: #fff;
+  padding: 10px 11px;
+}
+.cref-dest .u-meta span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+  display: block;
+}
+.cref-dest .u-meta b {
+  font-family: var(--dsp);
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 700;
+}
+.cref-dest .u-desc {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  flex: 1;
+  margin-bottom: 13px;
+}
+.cref-dest .u-b .btn {
+  align-self: flex-start;
+}
+
+/* A–Z rows and grouped columns */
+.cref-dest .azrows {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.cref-dest .azrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--ink-2);
+  transition: 0.15s;
+}
+.cref-dest .azrow:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.cref-dest .azrow .cnt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 1040px) {
+  .cref-dest .unis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cref-dest .market {
+    grid-template-columns: 1fr;
+  }
+  .cref-dest .market > .filters {
+    position: static;
+    max-height: none;
+  }
+  .cref-dest .azrows {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .cref-dest .unis,
+  .cref-dest .azrows {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1040px) {
+  /* The marketplace rail becomes the same off-canvas drawer the other
+     listings use, so the "Filters" button is never a dead control. */
+  .cref-dest .market > .filters {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    border-radius: 0;
+    max-height: none;
+    overflow: hidden;
+    transform: translateX(-100%);
+    transition: 0.25s;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+  .cref-dest .market > .filters.open {
+    transform: none;
+  }
+  .cref-dest .market .filter-toggle {
+    display: inline-flex;
   }
 }
