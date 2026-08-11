@@ -3487,3 +3487,168 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Subject detail: gradient hero banner, KPI strip, content blocks */
+.cref-subj .hero-banner {
+  border-radius: var(--r-xl);
+  padding: 40px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(120deg, #132345 0%, #1e3a8a 58%, #2563eb 100%);
+}
+.cref-subj .hero-banner > * {
+  position: relative;
+  z-index: 1;
+}
+.cref-subj .hero-parent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 6px 13px;
+  border-radius: var(--r-pill);
+  margin-bottom: 16px;
+}
+.cref-subj .hero-banner h1 {
+  color: #fff;
+  font-size: clamp(30px, 4.6vw, 50px);
+  font-weight: 800;
+  max-width: 720px;
+}
+.cref-subj .hero-banner .lede {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 17px;
+  max-width: 660px;
+  margin-top: 16px;
+}
+.cref-subj .hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 26px;
+}
+.cref-subj .hm {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r);
+  padding: 14px;
+}
+.cref-subj .hm .v {
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 18px;
+}
+.cref-subj .hm .k {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+}
+.cref-subj .hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+.cref-subj .hero-banner .btn-white {
+  background: #fff;
+  color: var(--ink);
+}
+.cref-subj .hero-banner .btn-white:hover {
+  background: #eef3ff;
+}
+.cref-subj .hero-banner .btn-glass {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.cref-subj .hero-banner .btn-glass:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.cref-subj .block {
+  padding: 40px 0;
+  scroll-margin-top: 150px;
+}
+.cref-subj .block-head {
+  margin-bottom: 24px;
+}
+.cref-subj .block h2 {
+  font-size: clamp(23px, 3vw, 32px);
+  font-weight: 800;
+}
+.cref-subj .block .sub {
+  color: var(--muted);
+  font-size: 15.5px;
+  max-width: 640px;
+  margin-top: 8px;
+}
+
+.cref-subj .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.cref-subj .kpi {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px;
+}
+.cref-subj .kpi .kk {
+  font-size: 12px;
+  color: var(--muted);
+}
+.cref-subj .kpi .kv {
+  font-family: var(--dsp);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-top: 6px;
+}
+
+.cref-subj .spec-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+}
+.cref-subj .spec-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 14px;
+}
+.cref-subj .spec-card .sn {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.cref-subj .spec-card .sd {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cref-subj .spec-card .go {
+  margin-left: auto;
+  color: var(--muted-2);
+}
+.cref-subj a.spec-card:hover .go {
+  color: var(--blue);
+}
+
+@media (max-width: 720px) {
+  .cref-subj .hero-banner {
+    padding: 28px 22px;
+  }
+}
