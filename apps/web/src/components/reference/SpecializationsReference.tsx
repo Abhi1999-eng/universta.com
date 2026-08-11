@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Course, SubjectDetail } from '@/lib/catalog';
+import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
 
 /** The client-approved specialisations page.
@@ -57,6 +58,13 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
     (a, b) => (counts[b.slug] ?? 0) - (counts[a.slug] ?? 0),
   );
   const popular = ranked.slice(0, 6);
+
+  /** Counselling booked from a specialisation list keeps its subject. */
+  const counselling = counsellingHref({
+    source: 'subject',
+    subject: subject.slug,
+    from: `/subjects/${subject.slug}/specializations`,
+  });
 
   return (
     <div className="cref cref-subj">
@@ -376,7 +384,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
           <div className="side-card">
             <h3>Not sure which strand fits?</h3>
             <p>A counsellor can help you pick a specialisation that matches your background.</p>
-            <Link className="btn btn-primary btn-block" href="/counselling">
+            <Link className="btn btn-primary btn-block" href={counselling}>
               Book free counselling
             </Link>
           </div>

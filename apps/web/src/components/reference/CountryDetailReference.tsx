@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { CountryPage } from '@/lib/countries';
 import type { CitySummary } from '@/lib/locations';
+import { counsellingHref } from '@/lib/counselling-link';
 import { intakeRange } from '@/lib/intake-range';
 import { formatDate, formatNumber } from '@/lib/format';
 
@@ -233,6 +234,14 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
 
   const overview = page.sections.find((section) => section.sectionKey === 'overview');
 
+  /** Counselling booked from a destination keeps that provenance, so the form
+   * pre-selects the country and the lead records where it came from. */
+  const counselling = counsellingHref({
+    source: 'country',
+    country: country.slug,
+    from: `/countries/${country.slug}`,
+  });
+
   /** Built after the fact from what actually rendered. */
   const jump = [
     whyCards.length && ['why', `Why ${country.name}`],
@@ -287,7 +296,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             <div className="updated">Figures verified {formatDate(verifiedAt)}</div>
           ) : null}
           <div className="hero-btns">
-            <Link href="/counselling" className="btn btn-primary btn-lg">
+            <Link href={counselling} className="btn btn-primary btn-lg">
               Get free counselling
             </Link>
             <Link href={`/courses?country=${country.slug}`} className="btn btn-ghost btn-lg">
@@ -667,7 +676,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             <h3>Not sure which {country.name} university fits your profile?</h3>
             <p>Tell a counsellor your marks, budget and target intake and get a shortlist back.</p>
           </div>
-          <Link href="/counselling" className="btn btn-w btn-lg">
+          <Link href={counselling} className="btn btn-w btn-lg">
             Get free counselling
           </Link>
         </section>
@@ -801,7 +810,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             <Link href={`/courses?country=${country.slug}`} className="btn btn-primary btn-lg">
               Browse courses
             </Link>
-            <Link href="/counselling" className="btn btn-ghost btn-lg">
+            <Link href={counselling} className="btn btn-ghost btn-lg">
               Book free counselling
             </Link>
           </div>

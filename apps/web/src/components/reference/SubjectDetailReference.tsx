@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Course, SubjectDetail } from '@/lib/catalog';
+import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
 
 /** The client-approved subject detail page.
@@ -47,6 +48,13 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
   const specialisations = subject.subSubjects ?? [];
   const levels = (subject.courseCountsByLevel ?? []).filter((entry) => entry.count > 0);
   const courses = subject.featuredCourses ?? [];
+
+  /** Counselling booked from a subject keeps that provenance on the lead. */
+  const counselling = counsellingHref({
+    source: 'subject',
+    subject: subject.slug,
+    from: `/subjects/${subject.slug}`,
+  });
 
   const nav = [
     ['glance', 'At a glance'],
@@ -383,7 +391,7 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
                 >
                   Browse courses
                 </Link>
-                <Link href="/counselling" className="btn btn-outline btn-lg">
+                <Link href={counselling} className="btn btn-outline btn-lg">
                   Book free counselling
                 </Link>
               </div>
@@ -395,7 +403,7 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
           <div className="side-card">
             <h3>Talk it through</h3>
             <p>A counsellor can help you narrow {subject.name} down to a realistic shortlist.</p>
-            <Link className="btn btn-primary btn-block" href="/counselling">
+            <Link className="btn btn-primary btn-block" href={counselling}>
               Book free counselling
             </Link>
           </div>

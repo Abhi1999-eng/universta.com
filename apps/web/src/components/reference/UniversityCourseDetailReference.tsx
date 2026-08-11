@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { counsellingHref } from '@/lib/counselling-link';
 import { formatDate } from '@/lib/format';
 
 /** The client-approved university course detail page.
@@ -20,6 +21,8 @@ export type CourseDetailProps = {
     overview: string | null;
     level: string | null;
     subject: { name: string; slug: string } | null;
+    /** Generic course slug, so counselling booked here keeps its provenance. */
+    courseSlug: string | null;
     subSubject: string | null;
     studyMode: string | null;
     campus: { name: string; city: string | null } | null;
@@ -61,6 +64,12 @@ function humanise(value: string) {
 
 export function UniversityCourseDetailReference(props: CourseDetailProps) {
   const { university, offering, intakes, requirements, related } = props;
+
+  const counselling = counsellingHref({
+    source: offering.courseSlug ? 'course' : 'general',
+    course: offering.courseSlug ?? undefined,
+    from: `/universities/${university.slug}/courses/${offering.slug}`,
+  });
 
   const facts = [
     offering.level && ['Level', offering.level],
@@ -119,7 +128,7 @@ export function UniversityCourseDetailReference(props: CourseDetailProps) {
                 Apply on the university site
               </a>
             ) : null}
-            <Link href="/counselling" className="btn btn-glass btn-lg">
+            <Link href={counselling} className="btn btn-glass btn-lg">
               Book free counselling
             </Link>
           </div>
@@ -312,7 +321,7 @@ export function UniversityCourseDetailReference(props: CourseDetailProps) {
                     Apply on the university site
                   </a>
                 ) : null}
-                <Link href="/counselling" className="btn btn-outline btn-lg">
+                <Link href={counselling} className="btn btn-outline btn-lg">
                   Book free counselling
                 </Link>
               </div>
@@ -324,7 +333,7 @@ export function UniversityCourseDetailReference(props: CourseDetailProps) {
           <div className="side-card">
             <h3>Talk it through</h3>
             <p>A counsellor can check your profile against this programme’s requirements.</p>
-            <Link className="btn btn-primary btn-block" href="/counselling">
+            <Link className="btn btn-primary btn-block" href={counselling}>
               Book free counselling
             </Link>
           </div>

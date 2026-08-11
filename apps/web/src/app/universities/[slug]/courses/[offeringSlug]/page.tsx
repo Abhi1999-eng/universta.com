@@ -98,6 +98,7 @@ export default async function UniversityCourseDetailPage({ params }: Props) {
         subject: subject?.slug
           ? { name: String(subject.name), slug: String(subject.slug) }
           : null,
+        courseSlug: generic?.slug ? String(generic.slug) : null,
         subSubject: subSubject?.name ? String(subSubject.name) : null,
         studyMode: typeof row.studyMode === 'string' ? humanise(row.studyMode) : null,
         campus: campus?.name
