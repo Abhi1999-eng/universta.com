@@ -219,6 +219,15 @@
   font-size: 13px;
   color: var(--muted);
   padding: 16px 0;
+  /* A deep trail (destination › university › courses › programme) is wider
+     than a phone, so it wraps instead of pushing the page sideways. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  align-items: center;
+}
+.cref .crumb > * {
+  min-width: 0;
 }
 .cref .crumb a:hover {
   color: var(--blue);
