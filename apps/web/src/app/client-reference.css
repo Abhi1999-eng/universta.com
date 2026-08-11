@@ -4225,3 +4225,177 @@
     min-width: 0;
   }
 }
+
+/* ==========================================================================
+   About page
+   ========================================================================== */
+.cref .about-hero {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 40px;
+  align-items: center;
+  padding: 56px 0 46px;
+}
+.cref .about-hero h1 {
+  font-size: clamp(32px, 4.6vw, 50px);
+  font-weight: 800;
+}
+.cref .about-hero .lede {
+  font-size: 17.5px;
+  color: var(--muted);
+  margin-top: 18px;
+  max-width: 560px;
+}
+.cref .about-hero .hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.cref .about-illo {
+  display: grid;
+  place-items: center;
+}
+.cref .about-illo svg {
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+}
+.cref .mv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.cref .mv-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 30px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.cref .mv-card.vision {
+  background: linear-gradient(135deg, #132345, #1e3a8a);
+  border-color: transparent;
+  color: #fff;
+}
+.cref .mv-card h3 {
+  font-size: 22px;
+  font-weight: 800;
+}
+.cref .mv-card.vision h3 {
+  color: #fff;
+}
+.cref .mv-card p {
+  font-size: 15.5px;
+  margin-top: 12px;
+  color: var(--ink-2);
+}
+.cref .mv-card.vision p {
+  color: rgba(255, 255, 255, 0.85);
+}
+.cref .timeline {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  position: relative;
+  margin-top: 14px;
+}
+.cref .timeline::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--blue-100) 0 8px,
+    transparent 8px 16px
+  );
+}
+.cref .tstep {
+  text-align: center;
+  position: relative;
+}
+.cref .tstep .n {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  font-family: var(--dsp);
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
+  border: 4px solid var(--soft);
+}
+.cref .tstep h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+.cref .tstep p {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.cref .comm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+.cref .trust-strip {
+  background: linear-gradient(120deg, #132345, #1e3a8a 60%, #2563eb);
+  border-radius: var(--r-xl);
+  padding: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+  box-shadow: var(--shadow-lg);
+}
+.cref .trust-strip .ts {
+  text-align: center;
+  color: #fff;
+}
+.cref .trust-strip .ts .v {
+  font-family: var(--dsp);
+  font-size: 26px;
+  font-weight: 800;
+}
+.cref .trust-strip .ts .k {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 4px;
+}
+@media (max-width: 900px) {
+  .cref .about-hero {
+    grid-template-columns: 1fr;
+    padding: 32px 0;
+  }
+  .cref .about-illo {
+    display: none;
+  }
+  .cref .mv-grid,
+  .cref .comm-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cref .timeline {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  .cref .timeline::before {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .cref .mv-grid,
+  .cref .comm-grid,
+  .cref .timeline {
+    grid-template-columns: 1fr;
+  }
+}

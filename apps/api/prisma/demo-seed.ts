@@ -2556,22 +2556,22 @@ async function main() {
       'home',
       'HOME',
       'Home',
-      'Explore local published study-abroad information without invented claims.',
+      'Explore published study-abroad destinations, universities, courses and scholarships.',
       'Start with countries, subjects, generic courses, university offerings and scholarships.',
     ],
     [
       'about',
       'EDITORIAL',
       'About Universta',
-      'A local Phase 1 study-abroad information experience.',
-      'This local page is managed through the Page and PageSection foundation.',
+      'How Universta publishes study-abroad information, and what it will not claim.',
+      'Every figure on the site traces back to a published record.',
     ],
     [
       'faq',
       'FAQ',
       'Frequently asked questions',
-      'Answers about using the local Universta catalog.',
-      'Information is source-aware and should be verified with official providers.',
+      'Answers about using the Universta catalogue.',
+      'Always verify figures with the official university or government source.',
     ],
   ] as const;
   for (const [
