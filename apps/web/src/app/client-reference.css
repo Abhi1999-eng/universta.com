@@ -4399,3 +4399,295 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Contact + counselling forms */
+.cref .cc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.cref .cc-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+}
+.cref .cc-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.cref .cc-card .cc-main {
+  font-family: var(--dsp);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 8px;
+  word-break: break-word;
+}
+.cref .cc-card .cc-main a {
+  color: var(--blue);
+}
+.cref .cc-card .cc-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.cref .form-wrap {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: 26px;
+  align-items: start;
+}
+.cref .form-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 30px;
+  box-shadow: var(--shadow-sm);
+}
+.cref .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.cref .form-grid .field.full {
+  grid-column: 1 / -1;
+}
+.cref .form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  align-items: center;
+}
+.cref .aside-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.cref .aside-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.cref .aside-card p {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.cref .aside-card.dark {
+  background: linear-gradient(135deg, #132345, #1e3a8a);
+  border-color: transparent;
+  color: #fff;
+}
+.cref .aside-card.dark h3 {
+  color: #fff;
+}
+.cref .aside-card.dark p {
+  color: rgba(255, 255, 255, 0.82);
+  margin-bottom: 14px;
+}
+.cref .form-note {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.cref .form-status {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  font-size: 14.5px;
+}
+.cref .form-status.ok {
+  background: #ecfdf5;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.cref .form-status.err {
+  background: #fef2f2;
+  color: var(--red);
+  border: 1px solid #fecaca;
+}
+.cref .honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .cref .form-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .cref .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .cref .form-card {
+    padding: 22px 18px;
+  }
+}
+
+.cref .benefit-list {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  margin: 26px 0 0;
+  padding: 0;
+}
+.cref .benefit-list li {
+  display: flex;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.cref .benefit-list li::before {
+  content: "✓";
+  color: var(--green);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Counselling form. The form component is the real lead-capture flow and is
+   shared with the country and course pages, so its own class names are styled
+   here rather than rewritten.
+   ========================================================================== */
+.cref .counselling-form-card {
+  display: block;
+}
+.cref .counselling-form-heading {
+  margin-bottom: 16px;
+}
+.cref .counselling-form-heading .eyebrow {
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.cref .counselling-form-heading p {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.cref .source-context {
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.cref .counselling-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.cref .counselling-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.cref .counselling-form input,
+.cref .counselling-form select,
+.cref .counselling-form textarea {
+  font-family: var(--body);
+  font-size: 15px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  width: 100%;
+  font-weight: 400;
+}
+.cref .counselling-form input:focus,
+.cref .counselling-form select:focus,
+.cref .counselling-form textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-50);
+}
+.cref .counselling-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+.cref .counselling-form > label,
+.cref .counselling-form > div:not(.counselling-grid):not(.counselling-honeypot) {
+  margin-top: 16px;
+}
+.cref .counselling-form .field-help {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.cref .counselling-form .field-error {
+  font-size: 12.5px;
+  color: var(--red);
+  font-weight: 500;
+}
+.cref .counselling-form .consent-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+  margin-top: 18px;
+}
+.cref .counselling-form .consent-field input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+  padding: 0;
+  margin-top: 2px;
+}
+.cref .counselling-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.cref .counselling-submit {
+  margin-top: 20px;
+}
+.cref .form-notice {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  font-size: 14.5px;
+  background: #ecfdf5;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.cref .form-notice.error,
+.cref .form-error-summary {
+  background: #fef2f2;
+  color: var(--red);
+  border: 1px solid #fecaca;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  font-size: 14.5px;
+}
+.cref .counselling-confirmation h2 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+.cref .counselling-confirmation p {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) {
+  .cref .counselling-grid {
+    grid-template-columns: 1fr;
+  }
+}
