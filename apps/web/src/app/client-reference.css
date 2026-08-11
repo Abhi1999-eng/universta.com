@@ -4006,3 +4006,85 @@
     display: inline-flex;
   }
 }
+
+/* Comparison table (/compare/universities) */
+.cref-dest .cmp-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+.cref-dest .cmp {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+.cref-dest .cmp th,
+.cref-dest .cmp td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-size: 14.5px;
+  vertical-align: top;
+}
+.cref-dest .cmp tr:last-child th,
+.cref-dest .cmp tr:last-child td {
+  border-bottom: none;
+}
+.cref-dest .cmp thead th {
+  background: var(--soft);
+  font-family: var(--dsp);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  position: sticky;
+  top: 0;
+}
+.cref-dest .cmp tbody th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+  width: 200px;
+  background: #fff;
+}
+.cref-dest .cmp td b {
+  font-family: var(--dsp);
+  color: var(--ink);
+  font-weight: 700;
+}
+.cref-dest .cmp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cref-dest .cmp-head .lg {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.cref-dest .cmp-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 22px;
+}
+.cref-dest .cmp-picker select {
+  font-family: var(--body);
+  font-size: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: #fff;
+  max-width: 100%;
+}
