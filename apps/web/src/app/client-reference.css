@@ -2973,3 +2973,517 @@
     margin-bottom: 8px;
   }
 }
+
+/* ==========================================================================
+   Subjects family (/subjects, /subjects/[slug], /subjects/[slug]/specializations)
+   Same palette as Courses, so only the layout and card shapes are new. Scoped
+   to `.cref-subj` because several class names (subject tile, scholarship card,
+   university row) collide with the Courses and Destinations families.
+   ========================================================================== */
+.cref-subj .layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 32px;
+  align-items: start;
+}
+.cref-subj .layout > .main {
+  min-width: 0;
+}
+.cref-subj .side {
+  position: sticky;
+  top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cref-subj .side-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.cref-subj .side-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.cref-subj .side-card p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.cref-subj .side-links {
+  margin-top: 4px;
+  display: grid;
+  gap: 2px;
+}
+.cref-subj .side-links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+  padding: 9px 10px;
+  border-radius: 10px;
+  transition: 0.15s;
+}
+.cref-subj .side-links a:hover {
+  background: var(--blue-50);
+  color: var(--blue);
+}
+
+.cref-subj .section {
+  padding: 56px 0;
+}
+.cref-subj .section-head {
+  margin-bottom: 30px;
+}
+.cref-subj .section-head h2 {
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 800;
+}
+.cref-subj .section-head .sub {
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 640px;
+  margin-top: 10px;
+}
+.cref-subj .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--blue-50);
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  margin-bottom: 14px;
+  letter-spacing: 0.1em;
+}
+
+/* subject tile with gradient header */
+.cref-subj .subjtile {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cref-subj .subj-img {
+  height: 104px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+  background: linear-gradient(120deg, #1e3a8a, #2563eb);
+}
+.cref-subj .subj-img.c1 {
+  background: linear-gradient(120deg, #0f766e, #14b8a6);
+}
+.cref-subj .subj-img.c2 {
+  background: linear-gradient(120deg, #7c3aed, #a855f7);
+}
+.cref-subj .subj-img.c3 {
+  background: linear-gradient(120deg, #b45309, #f59e0b);
+}
+.cref-subj .subj-img.c4 {
+  background: linear-gradient(120deg, #be123c, #f43f5e);
+}
+.cref-subj .subj-img.c5 {
+  background: linear-gradient(120deg, #0e7490, #06b6d4);
+}
+.cref-subj .subj-img .si {
+  position: relative;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 15px;
+}
+.cref-subj .subj-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.cref-subj .subj-body h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.cref-subj .subj-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cref-subj .subj-meta b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.cref-subj .subj-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+}
+.cref-subj .subj-foot .tuit {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cref-subj .subj-foot .go {
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* A–Z index */
+.cref-subj .az-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+.cref-subj .az-nav a,
+.cref-subj .az-nav span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1px solid var(--line);
+  transition: 0.15s;
+}
+.cref-subj .az-nav a:hover {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+.cref-subj .az-nav span {
+  color: var(--muted-2);
+  opacity: 0.5;
+}
+.cref-subj .az-group {
+  margin-bottom: 26px;
+  scroll-margin-top: 140px;
+}
+.cref-subj .az-letter {
+  font-family: var(--dsp);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--blue);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cref-subj .az-letter::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.cref-subj .az-items {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cref-subj .az-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+  transition: 0.15s;
+}
+.cref-subj .az-item:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.cref-subj .az-item .cnt {
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+
+/* featured subject card */
+.cref-subj .feat-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cref-subj .feat-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cref-subj .feat-ic {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--dsp);
+  font-weight: 800;
+}
+.cref-subj .feat-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.cref-subj .feat-rows {
+  display: grid;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.cref-subj .feat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.cref-subj .feat-row:last-child {
+  border-bottom: none;
+}
+.cref-subj .feat-row span:first-child {
+  color: var(--muted);
+}
+.cref-subj .feat-row span:last-child {
+  color: var(--ink);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* destination chips block */
+.cref-subj .dest-block {
+  padding: 22px;
+}
+.cref-subj .dest-block h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.cref-subj .dest-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cref-subj .dest-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.cref-subj .dest-flag .cc {
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--blue);
+}
+
+/* university row */
+.cref-subj .uni-row {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.cref-subj .ulogo {
+  width: 48px;
+  height: 48px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.cref-subj .uni-row h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.cref-subj .uni-row .um {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* course chip */
+.cref-subj .course-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.cref-subj .course-chip .cc-ic {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--blue-50);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 13px;
+}
+.cref-subj .course-chip .cn {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cref-subj .course-chip .cs {
+  font-size: 12px;
+  color: var(--muted);
+}
+.cref-subj .course-chip .go {
+  margin-left: auto;
+  color: var(--muted-2);
+}
+.cref-subj a.course-chip:hover .go {
+  color: var(--blue);
+}
+
+/* scholarship card */
+.cref-subj .sch {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cref-subj .sch .s-cat {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.cref-subj .sch h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+.cref-subj .sch .s-amt {
+  font-family: var(--dsp);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--green);
+}
+.cref-subj .sch .s-meta {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* why grid + explore */
+.cref-subj .why5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+.cref-subj .why-card {
+  padding: 20px;
+  text-align: center;
+}
+.cref-subj .why-card h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+.cref-subj .why-card p {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.cref-subj .explore-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.cref-subj .explore-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.cref-subj .explore-item .en {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cref-subj .explore-item .go {
+  margin-left: auto;
+  color: var(--muted-2);
+}
+
+@media (max-width: 1080px) {
+  .cref-subj .layout {
+    grid-template-columns: 1fr;
+  }
+  .cref-subj .side {
+    position: static;
+  }
+  .cref-subj .az-items {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .cref-subj .why5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .cref-subj .az-items {
+    grid-template-columns: 1fr;
+  }
+  .cref-subj .why5,
+  .cref-subj .explore-grid {
+    grid-template-columns: 1fr;
+  }
+  .cref-subj .section {
+    padding: 40px 0;
+  }
+}
+
+/* Four-up stat strip. A class rather than an inline grid-template so the
+   responsive rules below can still narrow it on a phone. */
+.cref .statgrid.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 900px) {
+  .cref .statgrid.four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .cref .statgrid.four {
+    grid-template-columns: 1fr;
+  }
+}
