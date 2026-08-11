@@ -6,6 +6,7 @@ export interface ProfileSummary {
   cost: {
     currencyCode: string; currencySymbol: string | null; tuitionMin: string | null;
     tuitionMax: string | null; tuitionPeriod: string; budgetBand: string | null;
+    tuitionNotes?: string | null;
     livingCostMin?: string | null; livingCostMax?: string | null;
     livingCostPeriod?: string; livingCostNotes?: string | null;
     accommodationMin?: string | null; accommodationMax?: string | null;

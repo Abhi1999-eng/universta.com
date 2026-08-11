@@ -1,9 +1,17 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ApprovedCountryDetail } from '@/components/templates/ApprovedTemplatePages';
+import {
+  CountryDetailReference,
+  type ScholarshipSummary,
+  type UniversitySummary,
+} from '@/components/reference/CountryDetailReference';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { getCountryPage } from '@/lib/countries';
+import { getCourseFilterOptions } from '@/lib/catalog';
 import { getCountryCities } from '@/lib/locations';
+import { phaseList } from '@/lib/phase1';
 import { jsonLdString } from '@/lib/json-ld';
+import { formatNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +56,23 @@ export default async function CountryDetailPage({ params }: Props) {
   const slug = (await params).slug;
   const page = await load(slug);
   if (!page) notFound();
-  const cities = await loadCities(slug);
+  // Everything below decorates the country profile. A failure in any one of
+  // them drops its section rather than taking the destination page down.
+  const [cities, universities, scholarships, filterOptions] = await Promise.all([
+    loadCities(slug),
+    phaseList<AnyRecord>('universities', { country: slug, limit: '4' }).catch(() => ({
+      data: [] as AnyRecord[],
+      meta: { total: 0 },
+    })),
+    phaseList<AnyRecord>('scholarships', { country: slug, limit: '6' }).catch(() => ({
+      data: [] as AnyRecord[],
+      meta: { total: 0 },
+    })),
+    getCourseFilterOptions({ country: slug }).catch(() => null),
+  ]);
+  const universityMeta = universities.meta as { total?: number } | undefined;
+  const scholarshipMeta = scholarships.meta as { total?: number } | undefined;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Place',
@@ -69,7 +93,44 @@ export default async function CountryDetailPage({ params }: Props) {
     : null;
   return (
     <>
-      <ApprovedCountryDetail page={page} cities={cities} />
+      <CountryDetailReference
+        page={page}
+        cities={cities}
+        universities={universities.data.map(
+          (row): UniversitySummary => ({
+            name: String(row.name),
+            slug: String(row.slug),
+            city: typeof row.location === 'string' ? row.location : null,
+            institutionType:
+              typeof row.institutionType === 'string' ? row.institutionType : null,
+            verified: row.verificationStatus === 'VERIFIED',
+          }),
+        )}
+        universityTotal={universityMeta?.total ?? universities.data.length}
+        scholarships={scholarships.data.map((row): ScholarshipSummary => {
+          // `amount` and `degreeLevel` are scholarship-only fields that the
+          // shared AnyRecord shape does not declare.
+          const extra = row as Record<string, unknown>;
+          const amount = extra.amount;
+          const level = extra.degreeLevel;
+          return {
+            title: String(row.title ?? row.name),
+            slug: String(row.slug),
+            summary: typeof row.summary === 'string' ? row.summary : null,
+            amount:
+              typeof amount === 'string' && amount
+                ? `${typeof row.currencyCode === 'string' ? `${row.currencyCode} ` : ''}${formatNumber(amount)}`
+                : null,
+            level: typeof level === 'string' ? level : null,
+            deadline: typeof row.deadline === 'string' ? row.deadline : null,
+          };
+        })}
+        scholarshipTotal={scholarshipMeta?.total ?? scholarships.data.length}
+        subjects={filterOptions?.subjects.slice(0, 8) ?? []}
+        courseTotal={
+          filterOptions?.subjects.reduce((sum, subject) => sum + subject.count, 0) ?? 0
+        }
+      />
       <script type="application/ld+json">{jsonLdString(jsonLd)}</script>
       {faqJsonLd ? <script type="application/ld+json">{jsonLdString(faqJsonLd)}</script> : null}
     </>
