@@ -1,45 +1,77 @@
-import { getListingPageContent } from "@/lib/listing-page-content";
-import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { getListingPageContent } from '@/lib/listing-page-content';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import {
-  PolishedListing,
-  type FilterGroup,
-  type ListingMeta,
-} from "@/components/templates/PolishedListing";
-import {
-  ConsultantCard,
+  ConsultantsReference,
   type ConsultantRow,
-} from "@/components/templates/ListingCards";
-import { getCountries } from "@/lib/countries";
-import { phaseList } from "@/lib/phase1";
-import { staticPageMetadata } from "@/lib/static-page-seo";
-import { getStatsPill } from '@/lib/stats-pill';
-import {
-  ConsultantListingIntro,
-  ConsultantListingOutro,
-} from '@/components/templates/ReferenceListingSections';
+} from '@/components/reference/ConsultantsReference';
+import { phaseList } from '@/lib/phase1';
+import { staticPageMetadata } from '@/lib/static-page-seo';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
   return staticPageMetadata(
-    "consultants-listing",
-    "Study abroad consultants",
-    "Explore currently published study abroad consultants, their locations and services.",
-    "/study-abroad-consultants",
+    'consultants-listing',
+    'Study abroad consultants',
+    'Explore currently published study abroad consultants, their locations and services.',
+    '/study-abroad-consultants',
   );
 }
 
 /** Only the keys the consultants list endpoint actually honours. */
 const SUPPORTED = [
-  "q", "country", "region", "state", "city",
-  "location", "service", "language", "verified", "sort", "page",
+  'q',
+  'country',
+  'region',
+  'state',
+  'city',
+  'location',
+  'service',
+  'language',
+  'verified',
+  'sort',
+  'page',
 ] as const;
 
-const SORTS = [
-  { value: "featured", label: "Featured first" },
-  { value: "name-asc", label: "Name (A–Z)" },
-  { value: "name-desc", label: "Name (Z–A)" },
-  { value: "newest", label: "Recently published" },
-];
+type Row = Record<string, unknown>;
+
+function names(value: unknown, key: 'country' | 'location' | null): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const record = entry as Row;
+      const nested = key ? (record[key] as Row | undefined) : record;
+      return nested?.name ? String(nested.name) : '';
+    })
+    .filter(Boolean);
+}
+
+function slugs(value: unknown, key: 'country' | 'location' | null): Array<[string, string]> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const record = entry as Row;
+      const nested = key ? (record[key] as Row | undefined) : record;
+      return nested?.slug && nested?.name
+        ? ([String(nested.slug), String(nested.name)] as [string, string])
+        : null;
+    })
+    .filter(Boolean) as Array<[string, string]>;
+}
+
+function toRow(record: AnyRecord): ConsultantRow {
+  const row = record as unknown as Row;
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    slug: String(row.slug),
+    shortDescription: typeof row.shortDescription === 'string' ? row.shortDescription : null,
+    verified: row.verificationStatus === 'VERIFIED',
+    countries: names(row.countries, 'country'),
+    services: names(row.services, null),
+    languages: names(row.languages, null),
+    locations: names(row.locations, 'location'),
+  };
+}
 
 export default async function ConsultantsPage({
   searchParams,
@@ -50,91 +82,68 @@ export default async function ConsultantsPage({
   const filters = Object.fromEntries(
     SUPPORTED.flatMap((key) => {
       const value = raw[key];
-      return typeof value === "string" && value ? [[key, value]] : [];
+      return typeof value === 'string' && value ? [[key, value]] : [];
     }),
   ) as Record<string, string>;
 
   let rows: ConsultantRow[] = [];
-  let meta: ListingMeta = { page: 1, limit: 12, total: 0, totalPages: 0 };
-  let countries: Array<{ name: string; slug: string }> = [];
+  let meta = { page: 1, limit: 12, total: 0, totalPages: 0 };
+  let everything: AnyRecord[] = [];
   try {
-    const [result, countryList] = await Promise.all([
-      phaseList<AnyRecord>("consultants", { limit: "12", ...filters }),
-      getCountries({ limit: "100" }).then((r) => r.data).catch(() => []),
+    const [result, all] = await Promise.all([
+      phaseList<AnyRecord>('consultants', { limit: '12', ...filters }),
+      // Unfiltered, so the facets are derived from the whole directory and can
+      // never offer a value that returns nothing.
+      phaseList<AnyRecord>('consultants', { limit: '100' })
+        .then((r) => r.data)
+        .catch(() => []),
     ]);
-    rows = result.data as unknown as ConsultantRow[];
-    meta = result.meta as ListingMeta;
-    countries = countryList.map((c) => ({ name: c.name, slug: c.slug }));
+    rows = result.data.map(toRow);
+    meta = result.meta as typeof meta;
+    everything = all;
   } catch {
     // Honest empty state rather than a failed route.
   }
 
-  // Service, language and location options come from the published records
-  // themselves, so the sidebar can never offer a value that returns nothing.
-  const services = [...new Set(rows.flatMap((r) => (r.services ?? []).map((s) => s.serviceName ?? s.name)).filter(Boolean))] as string[];
-  const languages = [...new Set(rows.flatMap((r) => (r.languages ?? []).map((l) => l.languageName ?? l.language)).filter(Boolean))] as string[];
-  const locations = [
-    ...new Map(
-      rows
-        .flatMap((r) => (r.locations ?? []).map((entry) => entry.location))
-        .filter((location): location is { name?: string | null; slug?: string | null } => Boolean(location?.slug))
-        .map((location) => [location.slug as string, location]),
-    ).values(),
-  ];
+  function facet(pick: (row: Row) => Array<[string, string]>) {
+    const map = new Map<string, string>();
+    for (const record of everything) {
+      for (const [value, label] of pick(record as unknown as Row)) map.set(value, label);
+    }
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }
 
-  const filterGroups: FilterGroup[] = [
-    { key: "country", label: "Destination country", kind: "select", options: countries.map((c) => ({ value: c.slug, label: c.name })) },
-    { key: "location", label: "Consultant location", kind: "select", options: locations.map((l) => ({ value: String(l.slug), label: l.name ?? String(l.slug) })) },
-    { key: "service", label: "Service", kind: "select", options: services.map((s) => ({ value: s, label: s })) },
-    { key: "language", label: "Language", kind: "select", options: languages.map((l) => ({ value: l, label: l })) },
-    { key: "region", label: "Region", kind: "text", placeholder: "e.g. Ontario" },
-    { key: "state", label: "State / province", kind: "text", placeholder: "e.g. Ontario" },
-    { key: "city", label: "City", kind: "text", placeholder: "e.g. Toronto" },
-    { key: "verified", label: "Verified consultants only", kind: "toggle", onValue: "true" },
-  ];
-
-  // Editorial framing from the managed "consultants-listing" Page. Rows above are
-  // untouched -- they always come from the real records.
-  const [managed, pill] = await Promise.all([getListingPageContent("consultants-listing"), getStatsPill('consultants-listing')]);
-  const activeCountry = filters.country
-    ? countries.find((country) => country.slug === filters.country)
-    : undefined;
-  const defaultHeading = activeCountry
-    ? `Study in ${activeCountry.name} consultants`
-    : "Find the right study abroad";
+  const managed = await getListingPageContent('consultants-listing');
 
   return (
-    <PolishedListing
-      eyebrow="Published directory"
-      heading={activeCountry ? defaultHeading : (managed.heading ?? defaultHeading)}
-      headingAccent={activeCountry || managed.heading ? "" : "consultant"}
-      lede={managed.lede ?? "Browse real published consultant profiles by location, service, language and destination-country relationship."}
-      crumbLabel="Consultants"
-      basePath="/study-abroad-consultants"
-      noun={{ one: "consultant", many: "consultants" }}
-      searchLabel="Search consultants"
-      searchPlaceholder="Search consultants by name…"
-      filterGroups={filterGroups}
-      sortOptions={SORTS}
-      filters={filters}
+    <ConsultantsReference
+      rows={rows}
       meta={meta}
-      resultsOnPage={rows.length}
-      emptyTitle="No consultants match these filters"
-      emptyBody="Clear one or more filters to return to the published directory."
-      ctaHeading={managed.ctaHeading ?? "Prefer to start with a counsellor?"}
-      ctaBody={managed.ctaBody ?? "Book a free session and we will point you to the right next step."}
-      railHeading="How listings work"
-      railBody="Listings are published records only. Verification reflects the status stored on each profile, not an endorsement."
-      counsellingSource="general"
-      pill={pill}
-      variantClass="reference-consultant-listing"
-      introSections={<ConsultantListingIntro countries={countries} />}
-      afterResults={<ConsultantListingOutro countries={countries} services={services} />}
-      showDefaultCta={false}
-    >
-      {rows.map((row) => (
-        <ConsultantCard row={row} key={row.id} />
-      ))}
-    </PolishedListing>
+      filters={filters}
+      facets={{
+        countries: facet((row) => slugs(row.countries, 'country')),
+        services: facet((row) => slugs(row.services, null)),
+        languages: facet((row) =>
+          Array.isArray(row.languages)
+            ? (row.languages as Row[])
+                .map((entry) =>
+                  entry.code && entry.name
+                    ? ([String(entry.code), String(entry.name)] as [string, string])
+                    : null,
+                )
+                .filter(Boolean) as Array<[string, string]>
+            : [],
+        ),
+        locations: facet((row) => slugs(row.locations, 'location')),
+      }}
+      heading={managed.heading ?? 'Guidance from people who know your'}
+      headingAccent={managed.heading ? '' : 'destination'}
+      lede={
+        managed.lede ??
+        'Published consultants with their destinations, services, languages and contact details — no ratings, no paid placement.'
+      }
+    />
   );
 }

@@ -4088,3 +4088,140 @@
   background: #fff;
   max-width: 100%;
 }
+
+/* ==========================================================================
+   Consultants family. Shares the destinations palette, so it opts into
+   `.cref-dest` and adds only the marketplace card.
+   ========================================================================== */
+.cref-dest .clist {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cref-dest .ccard {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  transition: 0.25s;
+}
+.cref-dest .ccard:hover {
+  box-shadow: var(--shadow);
+  border-color: var(--blue-100);
+}
+.cref-dest .cc-cover {
+  height: 64px;
+  background: linear-gradient(120deg, #1e3a8a, #2563eb);
+}
+.cref-dest .cc-in {
+  padding: 18px 22px 20px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+}
+.cref-dest .cc-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-family: var(--dsp);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--blue);
+  margin-top: -40px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 2;
+}
+.cref-dest .cc-main {
+  min-width: 0;
+}
+.cref-dest .cc-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cref-dest .ccard h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.cref-dest .cc-loc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.cref-dest .cc-desc {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 10px 0;
+}
+.cref-dest .cc-stats {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin: 12px 0;
+}
+.cref-dest .cc-stats div span {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.cref-dest .cc-stats div b {
+  font-family: var(--dsp);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14.5px;
+}
+.cref-dest .cc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cref-dest .cc-side {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 190px;
+  align-items: stretch;
+}
+.cref-dest .cc-verified {
+  background: #eaf6f1;
+  border-radius: 12px;
+  padding: 11px 14px;
+  text-align: center;
+}
+.cref-dest .cc-verified span {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0f7b52;
+  font-weight: 600;
+}
+.cref-dest .cc-verified b {
+  font-family: var(--dsp);
+  font-size: 14px;
+  color: #0f7b52;
+  font-weight: 700;
+}
+@media (max-width: 860px) {
+  .cref-dest .cc-in {
+    grid-template-columns: 1fr;
+  }
+  .cref-dest .cc-logo {
+    margin-top: -46px;
+  }
+  .cref-dest .cc-side {
+    min-width: 0;
+  }
+}
