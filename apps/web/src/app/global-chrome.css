@@ -6,6 +6,26 @@
  * keeps the shared chrome visually identical on every template instead of
  * inheriting whichever scope happens to wrap it. */
 
+/* One stacking order for the whole site, so a page never has to guess.
+ *
+ * A page-level sticky bar and the global header used to share z-index 60; two
+ * siblings at the same level are ordered by document position, so the page bar
+ * — being later in the document — painted over the header, taking the header's
+ * open dropdown with it. The dropdown cannot escape on its own: the header sets
+ * a z-index and a backdrop-filter, each of which makes it a stacking context,
+ * so the menu's own 70 only ranks it inside the header.
+ *
+ *   page content        auto
+ *   page sticky nav     40   country jump bar, region tab bar
+ *   global header       60   the one Admin-managed header
+ *   global popover      70   its dropdown, inside the header's context
+ *   off-canvas drawer  110+  mobile filter panels, deliberately above all */
+:root {
+  --z-page-sticky: 40;
+  --z-global-header: 60;
+  --z-global-popover: 70;
+}
+
 .usta-announce {
   background: #0d1524;
   color: #fff;
@@ -22,7 +42,7 @@
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid #e7ecf3;
-  z-index: 60;
+  z-index: var(--z-global-header);
 }
 .usta-header.is-sticky {
   position: sticky;
@@ -116,7 +136,7 @@
   list-style: none;
   margin: 0;
   display: none;
-  z-index: 70;
+  z-index: var(--z-global-popover);
 }
 .usta-dropdown.is-open {
   display: block;
