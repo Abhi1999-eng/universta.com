@@ -46,8 +46,18 @@ describe('ExpandedService consultant locations', () => {
     // The scheduling window is what stops a published-but-not-yet-live or an
     // expired profile from appearing.
     expect(where?.AND).toEqual([
-      { OR: [{ publishStartsAt: null }, { publishStartsAt: { lte: expect.any(Date) } }] },
-      { OR: [{ publishEndsAt: null }, { publishEndsAt: { gt: expect.any(Date) } }] },
+      {
+        OR: [
+          { publishStartsAt: null },
+          { publishStartsAt: { lte: expect.any(Date) } },
+        ],
+      },
+      {
+        OR: [
+          { publishEndsAt: null },
+          { publishEndsAt: { gt: expect.any(Date) } },
+        ],
+      },
     ]);
   });
 
