@@ -17,6 +17,18 @@ export const ALLOWED_MIME_TYPES: Record<string, string> = {
 };
 // SVG is intentionally excluded: it can embed executable script content and
 // this local storage adapter does not sanitize it.
+/** What a student may attach to their profile. Documents are evidence, not
+ * page imagery, so the set is different: PDFs and office documents alongside a
+ * phone photo of a passport page. SVG stays excluded here too. */
+export const STUDENT_DOCUMENT_MIME_TYPES: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    '.docx',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 const FILENAME_PATTERN = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/;
@@ -167,12 +179,15 @@ export class MediaService {
       folder?: string;
     },
     uploadedByUserId?: string,
+    /** Callers with a different remit pass their own set; the admin media
+     * library keeps the image-only default. */
+    allowedMimeTypes: Record<string, string> = ALLOWED_MIME_TYPES,
   ) {
-    const extension = ALLOWED_MIME_TYPES[file.mimetype];
+    const extension = allowedMimeTypes[file.mimetype];
     if (!extension)
       throw new BadRequestException({
         code: 'UNSUPPORTED_FILE_TYPE',
-        message: `File type must be one of ${Object.keys(ALLOWED_MIME_TYPES).join(', ')}`,
+        message: `File type must be one of ${Object.keys(allowedMimeTypes).join(', ')}`,
         details: null,
       });
     if (file.size > MAX_FILE_SIZE_BYTES)

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { PasswordService } from '../auth/password.service';
 import { StructuredLogger } from '../common/structured-logger.service';
+import { EmailDeliveryService } from './email-delivery.service';
 import {
   STUDENT_ROLE,
   type AuthRequestMetadata,
@@ -45,6 +46,7 @@ export class StudentAuthService {
     private readonly auth: AuthService,
     private readonly password: PasswordService,
     private readonly logger: StructuredLogger,
+    private readonly email: EmailDeliveryService,
   ) {}
 
   /**
@@ -180,13 +182,7 @@ export class StudentAuthService {
         requestedIp: ipAddress,
       },
     });
-    // No mail transport is configured in this repository yet, so the delivery
-    // point is recorded rather than silently dropped. The token itself is
-    // never logged.
-    this.logger.logEvent('student email verification token issued', {
-      module: 'STUDENT_AUTH',
-      userId,
-    });
+    this.email.sendVerificationEmail({ userId, email, token: raw });
     return raw;
   }
 
@@ -278,7 +274,8 @@ export class StudentAuthService {
     });
     const isStudent = user?.userRoles.some(
       (userRole) =>
-        userRole.role.code === STUDENT_ROLE && userRole.role.status === 'ACTIVE',
+        userRole.role.code === STUDENT_ROLE &&
+        userRole.role.status === 'ACTIVE',
     );
     if (!user || user.deletedAt || user.status !== 'ACTIVE' || !isStudent) {
       return;
@@ -293,9 +290,10 @@ export class StudentAuthService {
         requestedIp: metadata.ipAddress,
       },
     });
-    this.logger.logEvent('student password reset token issued', {
-      module: 'STUDENT_AUTH',
+    this.email.sendPasswordResetEmail({
       userId: user.id,
+      email: user.email,
+      token: raw,
     });
   }
 

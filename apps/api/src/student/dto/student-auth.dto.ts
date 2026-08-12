@@ -16,8 +16,7 @@ const trim = ({ value }: TransformFnParams) => {
 
 /** Mirrors the policy the admin seed enforces: length plus a mix, so a short
  * dictionary word cannot protect an account holding passport details. */
-const PASSWORD_POLICY =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\s\S]{12,}$/;
+const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\s\S]{12,}$/;
 const PASSWORD_MESSAGE =
   'Password must be at least 12 characters and include an uppercase letter, a lowercase letter and a number';
 
