@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Course, SubjectDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
+import { SpecializationSearch } from './SpecializationSearch';
 
 /** The client-approved specialisations page.
  *
@@ -16,6 +17,8 @@ export type SpecializationsReferenceProps = {
   /** Real per-specialisation course counts from the course filter options. */
   counts: Record<string, number>;
   countries: Array<{ value: string; label: string; count: number }>;
+  /** Search term from the URL, so a filtered list is shareable and reloadable. */
+  query: string;
   universities: Array<{ name: string; slug: string; country: string | null }>;
   courses: Course[];
   scholarships: Array<{ title: string; slug: string; amount: string | null; type: string | null }>;
@@ -52,12 +55,18 @@ const FAQS = [
 ];
 
 export function SpecializationsReference(props: SpecializationsReferenceProps) {
-  const { subject, counts, countries, universities, courses, scholarships } = props;
-  const specialisations = subject.subSubjects ?? [];
+  const { subject, counts, countries, universities, courses, scholarships, query } = props;
+  const term = query.trim().toLowerCase();
+  const all = subject.subSubjects ?? [];
+  const specialisations = term
+    ? all.filter((item) => item.name.toLowerCase().includes(term))
+    : all;
   const ranked = [...specialisations].sort(
     (a, b) => (counts[b.slug] ?? 0) - (counts[a.slug] ?? 0),
   );
-  const popular = ranked.slice(0, 6);
+  // While a search is running the whole page is the result set, so the
+  // "popular" shortcut into it would only repeat what is already below.
+  const popular = term ? [] : ranked.slice(0, 6);
 
   /** Counselling booked from a specialisation list keeps its subject. */
   const counselling = counsellingHref({
@@ -86,6 +95,8 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
             Narrow your path within {subject.name}. Each specialisation below opens the published
             courses mapped to it, with the universities and destinations that teach them.
           </p>
+
+          <SpecializationSearch query={query} subject={subject.name} />
 
           <div className="hero-ctas">
             <a href="#all" className="btn btn-primary btn-lg">
@@ -140,7 +151,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                   <Link
                     key={item.id}
                     href={`/courses?subject=${subject.slug}&subSubject=${item.slug}#discovery`}
-                    className="card subjtile"
+                    className="card subj-card"
                   >
                     <div className={`subj-img c${index % 6}`}>
                       <span className="si" aria-hidden="true">
@@ -170,19 +181,22 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
           ) : null}
 
           {/* ALL */}
-          <section className="section" id="all">
+          {/* The results region takes focus on submit, so it is a real target. */}
+          <section className="section" id="all" tabIndex={-1}>
             <div className="section-head">
               <span className="eyebrow">Every focus area</span>
               <h2>All {subject.name} specialisations</h2>
               <p className="sub">
-                {specialisations.length
-                  ? `${specialisations.length} published specialisation${specialisations.length === 1 ? '' : 's'}, each with its own course list.`
-                  : 'No specialisations are published for this subject yet.'}
+                {term
+                  ? `${specialisations.length} specialisation${specialisations.length === 1 ? '' : 's'} matching “${query}”.`
+                  : specialisations.length
+                    ? `${specialisations.length} published specialisation${specialisations.length === 1 ? '' : 's'}, each with its own course list.`
+                    : 'No specialisations are published for this subject yet.'}
               </p>
             </div>
             {specialisations.length === 0 ? (
               <div className="cref-empty" data-testid="specialization-empty">
-                <h3>No specialisations published yet</h3>
+                <h3>{term ? 'No specialisations match that search' : 'No specialisations published yet'}</h3>
                 <p>Browse every {subject.name} course instead.</p>
                 <Link className="btn btn-primary" href={`/courses?subject=${subject.slug}#discovery`}>
                   Browse courses
@@ -191,26 +205,25 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
             ) : (
               <div className="grid g2">
                 {ranked.map((item) => (
-                  <Link
-                    key={item.id}
-                    className="card spec-card"
-                    href={`/courses?subject=${subject.slug}&subSubject=${item.slug}#discovery`}
-                  >
+                  <article className="card spec-card" id={item.slug} key={item.id}>
                     <span className="spec-ic" aria-hidden="true">
                       {initials(item.name)}
                     </span>
                     <div>
-                      <div className="sn">{item.name}</div>
+                      <h3 className="sn">{item.name}</h3>
                       <div className="sd">
                         {counts[item.slug]
                           ? `${formatNumber(counts[item.slug])} course${counts[item.slug] === 1 ? '' : 's'}`
                           : (item.shortDescription ?? 'Published specialisation')}
                       </div>
+                      <Link
+                        className="link-more"
+                        href={`/courses?subject=${subject.slug}&subSubject=${item.slug}`}
+                      >
+                        Explore courses →
+                      </Link>
                     </div>
-                    <span className="go" aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
+                  </article>
                 ))}
               </div>
             )}

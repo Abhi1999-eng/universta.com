@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { SearchCombobox } from './SearchCombobox';
 import type { Subject } from '@/lib/catalog';
 import { formatNumber } from '@/lib/format';
 
@@ -143,29 +144,16 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
             jump straight to the programmes, universities and scholarships that teach it.
           </p>
 
-          <form
-            className="searchwrap"
-            onSubmit={(event) => {
-              event.preventDefault();
-              commit({ q: query.trim() || null });
-            }}
-          >
-            <div className="searchbar">
-              <span className="ic" aria-hidden="true">
-                🔍
-              </span>
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search subjects…"
-                aria-label="Search subjects"
-              />
-              <button type="submit" className="btn btn-primary">
-                Explore subjects
-              </button>
-            </div>
-          </form>
+          <SearchCombobox
+            label="Search subjects"
+            placeholder="Search subjects…"
+            submitLabel="Explore subjects"
+            endpoint="/api/subjects/suggestions"
+            emptyMessage="No subjects found."
+            value={query}
+            onValueChange={setQuery}
+            onSubmit={(term) => commit({ q: term.trim() || null })}
+          />
 
           <div className="hero-ctas">
             <a href="#all" className="btn btn-primary btn-lg">
@@ -224,7 +212,7 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
               </div>
               <div className="grid g3">
                 {popular.map((subject, index) => (
-                  <Link key={subject.id} href={`/subjects/${subject.slug}`} className="card subjtile">
+                  <Link key={subject.id} href={`/subjects/${subject.slug}`} className="card subj-card">
                     <div className={`subj-img c${index % 6}`}>
                       <span className="si" aria-hidden="true">
                         {initials(subject.name)}
@@ -260,11 +248,41 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
             </section>
           ) : null}
 
+          {/* BROWSE BY CATEGORY */}
+          {sorted.length ? (
+            <section className="section" id="categories">
+              <div className="section-head">
+                <span className="eyebrow">Straight to the courses</span>
+                <h2>Browse by category</h2>
+                <p className="sub">
+                  Every published discipline, opening the course catalogue already filtered to it.
+                </p>
+              </div>
+              <div className="cat-grid">
+                {sorted.map((subject) => (
+                  <Link
+                    key={subject.id}
+                    className="cat-tile"
+                    href={`/courses?subject=${subject.slug}`}
+                  >
+                    <span className="cat-ic" aria-hidden="true">
+                      {initials(subject.name)}
+                    </span>
+                    <span className="cat-nm">{subject.name}</span>
+                    <span className="cat-cnt">
+                      {formatNumber(subject.publishedCourseCount)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {/* A–Z */}
           <section className="section" id="all">
             <div className="section-head">
               <span className="eyebrow">Every subject</span>
-              <h2>Browse subjects A–Z</h2>
+              <h2>A–Z subject directory</h2>
               <p className="sub">
                 {props.query
                   ? `${meta.total} subject${meta.total === 1 ? '' : 's'} matching “${props.query}”.`

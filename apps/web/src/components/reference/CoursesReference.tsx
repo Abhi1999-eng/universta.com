@@ -109,7 +109,15 @@ const TOOLS = [
 ];
 
 /** Dimensions the courses endpoint ORs within, carried comma-joined in the URL. */
-const MULTI_KEYS = ['level', 'country', 'subject', 'studyMode', 'intake', 'englishTest'] as const;
+const MULTI_KEYS = [
+  'level',
+  'country',
+  'subject',
+  'subSubject',
+  'studyMode',
+  'intake',
+  'englishTest',
+] as const;
 
 function csvValues(value: string | undefined) {
   return value
@@ -270,6 +278,12 @@ export function CoursesReference(props: CoursesReferenceProps) {
         { key: 'level', label: 'Degree level', options: filterOptions.levels, open: true },
         { key: 'country', label: 'Destination', options: filterOptions.countries, open: true },
         { key: 'subject', label: 'Subject', options: filterOptions.subjects, open: true },
+        {
+          key: 'subSubject',
+          label: 'Specialisation',
+          options: filterOptions.subSubjects,
+          open: true,
+        },
         { key: 'studyMode', label: 'Study mode', options: filterOptions.studyModes, open: true },
         { key: 'intake', label: 'Intake', options: filterOptions.intakes, open: true },
         { key: 'englishTest', label: 'English test', options: filterOptions.englishTests, open: true },

@@ -8,7 +8,10 @@ import { formatNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 async function load(slug: string) {
   try {
@@ -18,7 +21,7 @@ async function load(slug: string) {
   }
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const slug = (await params).slug;
   const subject = await load(slug);
   // Every other public route declares a canonical; this one declared none,
@@ -32,10 +35,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function SubjectSpecializationsPage({ params }: Props) {
+export default async function SubjectSpecializationsPage({ params, searchParams }: Props) {
   const slug = (await params).slug;
   const subject = await load(slug);
   if (!subject) notFound();
+  const rawQuery = (await searchParams).q;
+  const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery) ?? '';
 
   const [filterOptions, courses, universities, scholarships] = await Promise.all([
     getCourseFilterOptions({ subject: slug }).catch(() => null),
@@ -59,6 +64,7 @@ export default async function SubjectSpecializationsPage({ params }: Props) {
     <SpecializationsReference
       subject={subject}
       counts={counts}
+      query={query}
       countries={filterOptions?.countries.slice(0, 12) ?? []}
       universities={universities.map((row) => ({
         name: String(row.name),
