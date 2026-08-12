@@ -74,7 +74,7 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
   },
   footer: {
     description:
-      'Published study-abroad information, maintained as source-aware local Phase 1 content.',
+      'Compare published study-abroad courses, universities, destinations and scholarships in one place.',
     copyrightText: `© ${new Date().getFullYear()} Universta. All rights reserved.`,
     privacyUrl: '',
     termsUrl: '',
@@ -91,7 +91,7 @@ const DEFAULTS: Record<SettingsGroup, Record<string, unknown>> = {
   seo: {
     defaultTitleSuffix: '| Universta',
     defaultDescription:
-      'Explore local published study-abroad information without invented claims.',
+      'Explore published study-abroad courses, universities, destinations and scholarships on Universta.',
     defaultOgImageMediaId: null,
     defaultRobotsIndex: true,
     defaultRobotsFollow: true,

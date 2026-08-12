@@ -1,20 +1,12 @@
 import { getListingPageContent } from "@/lib/listing-page-content";
+import type { ListingMeta } from "@/components/templates/PolishedListing";
+import type { ScholarshipRow } from "@/components/templates/ListingCards";
+import { ScholarshipsReference } from "@/components/reference/ScholarshipsReference";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
-import {
-  PolishedListing,
-  type FilterGroup,
-  type ListingMeta,
-} from "@/components/templates/PolishedListing";
-import {
-  ScholarshipCard,
-  type ScholarshipRow,
-} from "@/components/templates/ListingCards";
 import { getCountries } from "@/lib/countries";
 import { getCourseLevels, getSubjects } from "@/lib/catalog";
 import { phaseList } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
-import { getStatsPill } from '@/lib/stats-pill';
-import { ScholarshipListingOutro } from '@/components/templates/ReferenceListingSections';
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata() {
@@ -31,14 +23,6 @@ const SUPPORTED = [
   "q", "country", "university", "offering", "subject",
   "degreeLevel", "type", "amountMin", "amountMax", "deadline", "sort", "page",
 ] as const;
-
-const SORTS = [
-  { value: "featured", label: "Featured first" },
-  { value: "deadline", label: "Deadline (soonest)" },
-  { value: "amount-desc", label: "Award (highest)" },
-  { value: "amount-asc", label: "Award (lowest)" },
-  { value: "name-asc", label: "Title (A–Z)" },
-];
 
 export default async function ScholarshipsPage({
   searchParams,
@@ -79,52 +63,34 @@ export default async function ScholarshipsPage({
 
   const benefitTypes = [...new Set(rows.map((row) => row.benefitType).filter(Boolean))] as string[];
 
-  const filterGroups: FilterGroup[] = [
-    { key: "country", label: "Country", kind: "select", options: countries.map((c) => ({ value: c.slug, label: c.name })) },
-    { key: "university", label: "University", kind: "select", options: universities.map((u) => ({ value: u.slug, label: u.name })) },
-    { key: "subject", label: "Subject", kind: "select", options: subjects.map((s) => ({ value: s.slug, label: s.name })) },
-    { key: "degreeLevel", label: "Degree level", kind: "select", options: levels.map((l) => ({ value: l.code, label: l.name })) },
-    { key: "type", label: "Scholarship type", kind: "select", options: benefitTypes.map((t) => ({ value: t, label: t })) },
-    { key: "amountMin", label: "Minimum award", kind: "number", placeholder: "e.g. 1000" },
-    { key: "amountMax", label: "Maximum award", kind: "number", placeholder: "e.g. 20000" },
-    { key: "deadline", label: "Only open deadlines", kind: "toggle", onValue: "open" },
-  ];
-
-  // Editorial framing from the managed "scholarships-listing" Page. Rows above are
+  // Editorial framing from the managed "scholarships-listing" Page. Rows are
   // untouched -- they always come from the real records.
-  const [managed, pill] = await Promise.all([getListingPageContent("scholarships-listing"), getStatsPill('scholarships-listing')]);
+  const managed = await getListingPageContent("scholarships-listing");
 
   return (
-    <PolishedListing
-      eyebrow="Updated published catalogue"
+    <ScholarshipsReference
+      rows={rows}
+      meta={meta}
+      filters={filters}
+      countries={countries.map((c) => ({ value: c.slug, label: c.name }))}
+      subjects={subjects.map((sub) => ({ value: sub.slug, label: sub.name }))}
+      levels={levels.map((l) => ({ value: l.code, label: l.name }))}
+      universities={universities.map((u) => ({ value: u.slug, label: u.name }))}
+      benefitTypes={benefitTypes.map((t) => ({
+        value: t,
+        label: t.toLowerCase().replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+      }))}
+      totals={{
+        scholarships: meta.total,
+        countries: countries.length,
+        universities: universities.length,
+      }}
       heading={managed.heading ?? "Find scholarships to fund your"}
       headingAccent={managed.heading ? "" : "study abroad journey"}
-      lede={managed.lede ?? "Filter published scholarships by destination, university, degree, subject and funding type to find a relevant opportunity."}
-      crumbLabel="Scholarships"
-      basePath="/scholarships"
-      noun={{ one: "scholarship", many: "scholarships" }}
-      searchLabel="Search scholarships"
-      searchPlaceholder="Search scholarships by title…"
-      filterGroups={filterGroups}
-      sortOptions={SORTS}
-      filters={filters}
-      meta={meta}
-      resultsOnPage={rows.length}
-      emptyTitle="No scholarships match these filters"
-      emptyBody="Clear one or more filters to return to the published directory."
-      ctaHeading={managed.ctaHeading ?? "Need help finding funding?"}
-      ctaBody={managed.ctaBody ?? "A counsellor can help you match your profile to published scholarships."}
-      railHeading="Check before you apply"
-      railBody="Eligibility, amounts and deadlines are set by the provider. Always confirm directly with them."
-      counsellingSource="general"
-      pill={pill}
-      variantClass="reference-scholarship-listing"
-      afterResults={<ScholarshipListingOutro countries={countries} subjects={subjects} />}
-      showDefaultCta={false}
-    >
-      {rows.map((row) => (
-        <ScholarshipCard row={row} key={row.id} />
-      ))}
-    </PolishedListing>
+      lede={
+        managed.lede ??
+        "Filter published scholarships by destination, university, degree, subject and funding type to find a relevant opportunity."
+      }
+    />
   );
 }

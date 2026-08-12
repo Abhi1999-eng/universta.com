@@ -15,7 +15,7 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
   await page.goto(`${webBaseUrl}/countries/canada`);
   await page
     .locator('.hero-btns')
-    .getByRole('link', { name: 'Talk to a counsellor' })
+    .getByRole('link', { name: 'Get free counselling' })
     .click();
   await expect(page).toHaveURL(
     /\/counselling\?source=country&country=canada/,
@@ -155,14 +155,14 @@ test('keeps a contact enquiry traceable and converts it to exactly one counselli
   await page.goto(`${webBaseUrl}/contact`);
   await page.getByLabel('Full name').fill(fullName);
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Phone (optional)').fill('+15550123456');
+  await page.getByLabel('Phone number').fill('+15550123456');
   await page.getByLabel('Message').fill('Fictional local contact enquiry.');
   await page
     .getByLabel('I agree that Universta may use this enquiry to respond.')
     .check();
-  await page.getByRole('button', { name: 'Send enquiry' }).click();
+  await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('status')).toHaveText(
-    'Thanks — your enquiry has been received.',
+    'Message sent — thank you. The right team will get back to you.',
   );
 
   await page.goto(`${adminBaseUrl}/login`);

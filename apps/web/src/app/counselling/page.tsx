@@ -3,10 +3,6 @@ import {
   CounsellingForm,
   type CounsellingContext,
 } from '@/components/counselling/CounsellingForm';
-import {
-  CatalogFooter,
-  CatalogHeader,
-} from '@/components/templates/ApprovedTemplatePages';
 import { getCounsellingOptions } from '@/lib/counselling';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
@@ -76,51 +72,72 @@ export default async function CounsellingPage({
     searchParams,
   ]);
   return (
-    <main className="visual-courses-page visual-counselling-page">
-      <CatalogHeader />
-      <div className="wrap crumbs">
-        <nav aria-label="Breadcrumb">
-          <ol>
-            <li><Link href="/">Home</Link></li>
-            <li className="sep">/</li>
-            <li>Counselling</li>
-          </ol>
+    <div className="cref">
+      <div className="wrap">
+        <nav className="crumb" aria-label="Breadcrumb">
+          <Link href="/">Home</Link> ›{' '}
+          <Link href="/counselling" aria-current="page">
+            Book free counselling
+          </Link>
         </nav>
       </div>
-      <section className="counselling-hero">
-        <div className="wrap counselling-hero-grid">
-          <div>
-            <span className="hero-pill"><span className="dot" />Free study planning support</span>
-            <h1>Book Your Free Study Abroad <span>Counselling Session</span></h1>
-            <p className="lede">
-              Get personalised guidance from the Universta team. Tell us what
-              you are considering and we’ll use the published catalogue as a
-              clear starting point for your counselling conversation.
-            </p>
-            <ul className="counselling-benefits">
-              <li>Country and course direction grounded in published data</li>
-              <li>A clear conversation about level, intake and next steps</li>
-              <li>No account, payment or booking calendar required</li>
-            </ul>
-          </div>
-          <CounsellingForm
-            initialOptions={options}
-            context={contextFrom(search)}
-          />
-        </div>
-      </section>
-      <section className="counselling-trust">
-        <div className="wrap">
-          <span className="eyebrow">A focused first step</span>
-          <h2>What you&apos;ll get from your free counselling session</h2>
-          <p>
-            A practical conversation about destination, course level, intake
-            and next steps. Your request is stored for Universta’s team to
-            review and does not create a student account.
+
+      <section className="wrap about-hero">
+        <div>
+          <span className="hero-pill">
+            <span className="dot" aria-hidden="true" /> Free study planning support
+          </span>
+          <h1 style={{ marginTop: 16 }}>
+            Book your free study abroad <span className="b">counselling session</span>
+          </h1>
+          <p className="lede">
+            Get personalised guidance from the Universta team. Tell us what you are considering and
+            we will use the published catalogue as a clear starting point for the conversation.
           </p>
+          <ul className="benefit-list">
+            <li>Destination and course direction grounded in published data</li>
+            <li>A clear conversation about level, intake and next steps</li>
+            <li>No account, payment or booking calendar required</li>
+            <li>Your request goes to the Universta team, not to a third party</li>
+          </ul>
+        </div>
+
+        <div className="form-card">
+          <div className="sec-head left" style={{ marginBottom: 18 }}>
+            <h2 style={{ fontSize: 24 }}>Book your free session</h2>
+            <p>Takes under two minutes. A counsellor reviews every request.</p>
+          </div>
+          <CounsellingForm initialOptions={options} context={contextFrom(search)} />
         </div>
       </section>
-      <CatalogFooter />
-    </main>
+
+      <section className="sec wrap">
+        <div className="panel">
+          <div className="sec-head left">
+            <span className="eyebrow">A focused first step</span>
+            <h2>What you will get from your session</h2>
+            <p>
+              A practical conversation about destination, course level, intake and next steps. Your
+              request is stored for the Universta team to review and does not create a student
+              account.
+            </p>
+          </div>
+          {options?.countries.length ? (
+            <>
+              <h3 style={{ fontSize: 17, marginBottom: 12 }}>
+                Explore popular study destinations
+              </h3>
+              <div className="dest-flags">
+                {options.countries!.slice(0, 12).map((country) => (
+                  <Link key={country.slug} className="dest-flag" href={`/countries/${country.slug}`}>
+                    {country.name}
+                  </Link>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }
