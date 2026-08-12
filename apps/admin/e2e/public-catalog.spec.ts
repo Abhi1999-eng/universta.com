@@ -70,6 +70,40 @@ test.describe('approved public subject and course discovery', () => {
     expect(new Set(popularHrefs).size).toBe(popularHrefs.length);
   });
 
+  test('keeps the degree-level cards inside the main column, clear of the sidebar', async ({ page }) => {
+    // A `1fr` track is floored at its item's min-content width, so a long level
+    // name once made this grid wider than the column it sits in and the
+    // overflow painted over the sticky rail.
+    for (const width of [1440, 1280]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto(subjects);
+
+      const geometry = await page.evaluate(() => {
+        const main = document.querySelector('.main')?.getBoundingClientRect();
+        const side = document.querySelector('.side')?.getBoundingClientRect();
+        const cards = [...document.querySelectorAll('#degrees .card')].map((card) => {
+          const box = card.getBoundingClientRect();
+          return { text: card.textContent?.trim().slice(0, 30) ?? '', right: box.right, width: box.width };
+        });
+        return { mainRight: main?.right ?? 0, sideLeft: side?.left ?? 0, cards };
+      });
+
+      expect(geometry.cards.length).toBeGreaterThan(0);
+      for (const card of geometry.cards) {
+        expect(card.right, `${card.text} must stay inside the main column at ${width}px`)
+          .toBeLessThanOrEqual(geometry.mainRight + 1);
+        expect(card.right, `${card.text} must not reach the sidebar at ${width}px`)
+          .toBeLessThanOrEqual(geometry.sideLeft);
+      }
+      // Every card in a row shares one track width.
+      expect(new Set(geometry.cards.map((card) => Math.round(card.width))).size).toBe(1);
+      expect(
+        await page.evaluate(() =>
+          document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+      ).toBe(true);
+    }
+  });
+
   test('preserves subject search state in the shareable URL and search field', async ({ page }) => {
     await page.goto(`${subjects}?q=Computer`);
 

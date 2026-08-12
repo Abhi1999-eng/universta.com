@@ -122,6 +122,18 @@ function description(row: AnyRecord) {
     ""
   );
 }
+/** Turns a stored enum such as PUBLIC_UNIVERSITY into "Public university". */
+function humanise(value: unknown) {
+  return String(value)
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+/** Lowercases a label only when it is a plain noun; a label carrying a proper
+ * name ("Cities in Canada") keeps its capitals. */
+function lowerLabel(label: string) {
+  return /\s(?:in|for|at)\s/i.test(label) ? label : label.toLowerCase();
+}
 function slugFor(row: AnyRecord) {
   return row.slug ?? row.id;
 }
@@ -161,8 +173,8 @@ export function PhaseListing({
           <p className="eyebrow">Published directory</p>
           <h1>{label}</h1>
           <p>
-            Explore currently published Phase 1 information. Filters and details
-            are backed by the local catalog API.
+            Browse what Universta has published. Every record below is a real
+            catalogue entry — nothing here is placeholder content.
           </p>
         </div>
       </section>
@@ -194,7 +206,9 @@ export function PhaseListing({
           <div>
             <p className="eyebrow">Results</p>
             <h2 id={`${resource}-heading`}>
-              {meta?.total ?? rows.length} published {label.toLowerCase()}
+              {/* The label carries real names ("Cities in Canada"), so it is
+                  not safe to lowercase wholesale. */}
+              {meta?.total ?? rows.length} published {lowerLabel(label)}
             </h2>
           </div>
         </div>
@@ -212,9 +226,7 @@ export function PhaseListing({
                       <span>{row.provider.name}</span>
                     ) : null}
                     {row.verificationStatus ? (
-                      <span>
-                        {String(row.verificationStatus).replaceAll("_", " ")}
-                      </span>
+                      <span>{humanise(row.verificationStatus)}</span>
                     ) : null}
                     {date(row.deadline ?? row.startsAt ?? row.expiryDate) ? (
                       <span>
@@ -229,10 +241,10 @@ export function PhaseListing({
                   </p>
                   <div className="catalog-card-facts">
                     {row.institutionType ? (
-                      <span>{row.institutionType}</span>
+                      <span>{humanise(row.institutionType)}</span>
                     ) : null}
                     {row.location ? <span>{row.location}</span> : null}
-                    {row.benefitType ? <span>{row.benefitType}</span> : null}
+                    {row.benefitType ? <span>{humanise(row.benefitType)}</span> : null}
                   </div>
                   {details ? (
                     <Link className="card-link" href={`${path}/${slugFor(row)}`}>
@@ -245,10 +257,10 @@ export function PhaseListing({
           </div>
         ) : (
           <div className="empty-state">
-            <h2>No published records yet</h2>
+            <h2>Nothing published here yet</h2>
             <p>
-              This directory is connected to the local Admin catalogue. Publish
-              a record to display it here.
+              This directory only lists published records. Check back soon, or
+              browse the rest of the catalogue in the meantime.
             </p>
           </div>
         )}
@@ -312,7 +324,7 @@ export function PhaseDetail({
             <p className="eyebrow">Published information</p>
             <h1>{title(row)}</h1>
             <p className="hero-copy">
-              {description(row) || "Structured local Phase 1 information."}
+              {description(row) || "Published record."}
             </p>
             {row.sourceReference ? (
               <p className="source-note">

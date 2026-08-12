@@ -169,7 +169,9 @@ export function UniversityCourseDetailReference(props: CourseDetailProps) {
               </div>
               {offering.subject ? (
                 <p style={{ marginTop: 18 }}>
-                  <Link className="link-more" href={`/subjects/${offering.subject.slug}`}>
+                  {/* Entity names of any length land here, so this one wraps
+                      instead of pushing the page sideways on a phone. */}
+                  <Link className="link-more wrap" href={`/subjects/${offering.subject.slug}`}>
                     Explore {offering.subject.name}
                     {offering.subSubject ? ` · ${offering.subSubject}` : ''} →
                   </Link>

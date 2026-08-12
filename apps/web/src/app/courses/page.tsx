@@ -13,6 +13,11 @@ import { phaseList } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
+
+/** Stored enums such as IN_PERSON are internal; a reader sees "In person". */
+function humanise(value: string) {
+  return value.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+}
 export async function generateMetadata() {
   return staticPageMetadata(
     'courses-listing',
@@ -125,7 +130,7 @@ export default async function CoursesPage({
       events={events.map((row) => ({
         name: String(row.title ?? row.name),
         slug: String(row.slug),
-        mode: typeof row.eventType === 'string' ? row.eventType : null,
+        mode: typeof row.eventType === 'string' ? humanise(row.eventType) : null,
         startAt: typeof row.startsAt === 'string' ? row.startsAt : null,
       }))}
       heading={managed.heading ?? 'Find the perfect course to'}

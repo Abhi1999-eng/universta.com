@@ -968,6 +968,10 @@ export class ExpandedService {
       include: {
         country: true,
         consultants: {
+          // A location's consultant list is public. Without this filter it
+          // carried draft, scheduled-out and soft-deleted consultants, so an
+          // unpublished profile's name reached visitors behind a dead link.
+          where: { consultant: publishedWhereScheduled(new Date()) },
           include: {
             consultant: {
               include: {

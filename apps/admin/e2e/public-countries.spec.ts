@@ -175,6 +175,34 @@ test.describe('approved public country experience', () => {
     await expect(page.locator('#consultation a[href="#structured-trust"]')).toHaveCount(1);
   });
 
+  test('links every city guide at an address the site actually serves', async ({ page }) => {
+    await page.goto(`${listing}/canada`);
+
+    const cityLinks = await page.locator('#cities a[href]').evaluateAll((links) =>
+      links.map((link) => link.getAttribute('href')).filter(Boolean),
+    );
+    expect(cityLinks.length).toBeGreaterThan(0);
+    for (const href of cityLinks) {
+      // A city guide lives under its destination; /cities/<slug> is not a route.
+      expect(href).toMatch(/^\/study-in\/canada\/[a-z0-9-]+$/);
+      const response = await page.request.get(`${webBaseUrl}${href}`);
+      expect(response.status(), `${href} should not 404`).toBe(200);
+    }
+  });
+
+  test('keeps unpublished consultants off a public location page', async ({ page }) => {
+    await page.goto(`${webBaseUrl}/study-abroad-consultants/locations/demo-harbour`);
+
+    const links = await page.locator('a[href^="/study-abroad-consultants/"]').evaluateAll((all) =>
+      all.map((link) => link.getAttribute('href')).filter(Boolean),
+    );
+    const profiles = [...new Set(links.filter((href) => /^\/study-abroad-consultants\/[^/]+$/.test(href)))];
+    for (const href of profiles) {
+      const response = await page.request.get(`${webBaseUrl}${href}`);
+      expect(response.status(), `${href} is linked publicly so it must resolve`).toBe(200);
+    }
+  });
+
   test('publishes JSON-LD and source-aware footer copy on country detail pages', async ({ page }) => {
     await page.goto(`${listing}/canada`);
 
