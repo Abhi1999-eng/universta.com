@@ -130,7 +130,11 @@ export function GlobalHeaderWorkspace() {
     <section className="mt-6 space-y-4" aria-label="Global Header settings">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="max-w-2xl">
-          <h1 className="text-3xl font-semibold tracking-[-0.04em]">Global Header</h1>
+          {/* The shell owns the page h1; every other workspace titles itself with
+              an h2, and this one drifted. */}
+          <h2 id="global-header-heading" className="text-3xl font-semibold tracking-[-0.04em]">
+            Global Header
+          </h2>
           <p className="mt-1 text-sm leading-6 text-[#667085]">
             The bar at the top of every page on your website.
           </p>

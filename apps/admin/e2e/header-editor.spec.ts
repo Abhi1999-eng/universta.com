@@ -8,8 +8,10 @@ test.describe('global header editor', () => {
   test('edits the header in plain language and shows it publicly', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/website/header');
+    // The shell titles the page and the workspace titles itself, so name alone
+    // matches two headings here; the level says which one this is.
     await expect(
-      page.getByRole('heading', { name: 'Global Header' }),
+      page.getByRole('heading', { level: 2, name: 'Global Header' }),
     ).toBeVisible();
 
     // Grouped, described controls -- never raw settings keys.

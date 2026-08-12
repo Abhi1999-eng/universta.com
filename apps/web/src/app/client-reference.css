@@ -1886,7 +1886,7 @@
   flex-wrap: wrap;
   position: sticky;
   top: 72px;
-  z-index: 50;
+  z-index: var(--z-page-sticky, 40);
   background: rgba(250, 251, 253, 0.92);
   backdrop-filter: blur(12px);
   padding: 16px 0;
@@ -2431,7 +2431,9 @@
 .cref-dest .jump {
   position: sticky;
   top: 72px;
-  z-index: 60;
+  /* Below the global header: this bar shares the top of the viewport with it,
+     and at an equal z-index the later element won and hid its dropdown. */
+  z-index: var(--z-page-sticky, 40);
   background: rgba(250, 251, 253, 0.94);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
