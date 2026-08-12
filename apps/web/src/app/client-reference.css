@@ -1125,8 +1125,15 @@
 .cref .g3 {
   grid-template-columns: repeat(3, 1fr);
 }
+/* `1fr` is `minmax(auto, 1fr)`, so every track is floored at its item's
+   min-content width. A long level name ("Post Graduate Diploma in Management")
+   pushed that floor past the quarter-share available beside the 300px sidebar,
+   the row grew wider than the column it sits in, and the overflowing card
+   painted over the sticky rail. Fitting as many 230px columns as the real
+   container allows drops to three there and keeps four at full width, and the
+   zero floor means a track can always shrink rather than overflow. */
 .cref .g4 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
 .cref .card {
   background: #fff;
