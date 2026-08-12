@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 /** Specialisation search for the approved specialisations hero.
@@ -22,14 +22,14 @@ export function SpecializationSearch({ query, subject }: { query: string; subjec
     setValue(query);
   }
 
-  /** Holds the term whose results we still owe focus to; cleared once the page
-   * has actually re-rendered with them. */
-  const [focusFor, setFocusFor] = useState<string | null>(null);
+  /** Set when a search is submitted, so the results region is focused again
+   * once the server has re-rendered it under the new term. */
+  const owedFocus = useRef(false);
   useEffect(() => {
-    if (focusFor === null) return;
+    if (!owedFocus.current) return;
+    owedFocus.current = false;
     document.getElementById('all')?.focus();
-    if (focusFor === query) setFocusFor(null);
-  }, [focusFor, query]);
+  }, [query]);
 
   function commit(term: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -38,7 +38,8 @@ export function SpecializationSearch({ query, subject }: { query: string; subjec
     // A new search starts at the first page of results, not wherever the
     // previous one had been paged to.
     params.delete('page');
-    setFocusFor(term);
+    owedFocus.current = true;
+    document.getElementById('all')?.focus();
     router.push(`${pathname}${params.size ? `?${params}` : ''}`);
   }
 

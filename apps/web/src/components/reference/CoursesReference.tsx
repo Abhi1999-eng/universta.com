@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
+import { SearchCombobox } from './SearchCombobox';
 import { intakeRange } from '@/lib/intake-range';
 import { formatNumber } from '@/lib/format';
 
@@ -352,31 +353,16 @@ export function CoursesReference(props: CoursesReferenceProps) {
           </h1>
           <p className="lead">{props.lede}</p>
 
-          <form
-            className="searchwrap"
-            onSubmit={(event) => {
-              event.preventDefault();
-              commit({ q: query.trim() || null });
-            }}
-          >
-            <div className="searchbar">
-              <span className="ic" aria-hidden="true">
-                🔍
-              </span>
-              <input
-                type="text"
-                role="combobox"
-                aria-expanded={false}
-                aria-label="Search courses"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search courses, subjects or qualifications…"
-              />
-              <button type="submit" className="btn btn-primary">
-                Find courses
-              </button>
-            </div>
-          </form>
+          <SearchCombobox
+            label="Search courses"
+            placeholder="Search courses, subjects or qualifications…"
+            submitLabel="Find courses"
+            endpoint="/api/courses/suggestions"
+            emptyMessage="No courses found."
+            value={query}
+            onValueChange={setQuery}
+            onSubmit={(term) => commit({ q: term.trim() || null })}
+          />
 
           {(filterOptions.extras.length || filterOptions.intakes.length) > 0 ? (
             <div className="pop" style={{ marginTop: 18 }}>

@@ -31,21 +31,21 @@ export function SearchCombobox(props: SearchComboboxProps) {
   const { label, placeholder, submitLabel, value, onValueChange, onSubmit } = props;
   const listId = useId();
   const formRef = useRef<HTMLFormElement | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
+  /** What the endpoint last answered, and for which term. Holding the term
+   * alongside the results is what lets the list open only once the answer
+   * belongs to what is actually in the field -- no flicker between keystrokes,
+   * and no stale list under a term that has moved on. */
+  const [result, setResult] = useState<{ term: string; items: string[] } | null>(null);
+  const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(-1);
-  /** Set once a request for the current term has answered, so the empty state
-   * appears instead of flashing between every keystroke. */
-  const [answered, setAnswered] = useState(false);
+
+  const term = value.trim();
+  const answered = result !== null && result.term === term && term.length >= 2;
+  const suggestions = answered ? result.items : [];
+  const open = answered && !dismissed;
 
   useEffect(() => {
-    const term = value.trim();
-    if (term.length < 2) {
-      setSuggestions([]);
-      setAnswered(false);
-      setOpen(false);
-      return;
-    }
+    if (term.length < 2) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       void (async () => {
@@ -56,17 +56,16 @@ export function SearchCombobox(props: SearchComboboxProps) {
           if (!response.ok || cancelled) return;
           const body = (await response.json()) as { data?: Array<{ name?: string }> };
           if (cancelled) return;
-          setSuggestions(
-            (body.data ?? [])
+          setResult({
+            term,
+            items: (body.data ?? [])
               .map((item) => String(item.name ?? ''))
               .filter(Boolean)
               .slice(0, 6),
-          );
-          setAnswered(true);
+          });
           setActive(-1);
-          setOpen(true);
         } catch {
-          if (!cancelled) setSuggestions([]);
+          if (!cancelled) setResult({ term, items: [] });
         }
       })();
     }, 180);
@@ -74,26 +73,26 @@ export function SearchCombobox(props: SearchComboboxProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [value, props.endpoint]);
+  }, [term, props.endpoint]);
 
   useEffect(() => {
     function onDocumentClick(event: MouseEvent) {
-      if (!formRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!formRef.current?.contains(event.target as Node)) setDismissed(true);
     }
     document.addEventListener('click', onDocumentClick);
     return () => document.removeEventListener('click', onDocumentClick);
   }, []);
 
-  function choose(term: string) {
-    onValueChange(term);
-    setOpen(false);
+  function choose(picked: string) {
+    onValueChange(picked);
+    setDismissed(true);
     setActive(-1);
-    onSubmit(term);
+    onSubmit(picked);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (!open || suggestions.length === 0) {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') setDismissed(true);
       return;
     }
     if (event.key === 'ArrowDown') {
@@ -108,7 +107,7 @@ export function SearchCombobox(props: SearchComboboxProps) {
       event.preventDefault();
       choose(suggestions[active]);
     } else if (event.key === 'Escape') {
-      setOpen(false);
+      setDismissed(true);
       setActive(-1);
     }
   }
@@ -120,7 +119,7 @@ export function SearchCombobox(props: SearchComboboxProps) {
       style={props.style}
       onSubmit={(event) => {
         event.preventDefault();
-        setOpen(false);
+        setDismissed(true);
         onSubmit(value);
       }}
     >
@@ -139,7 +138,10 @@ export function SearchCombobox(props: SearchComboboxProps) {
           autoComplete="off"
           value={value}
           placeholder={placeholder}
-          onChange={(event) => onValueChange(event.target.value)}
+          onChange={(event) => {
+            setDismissed(false);
+            onValueChange(event.target.value);
+          }}
           onKeyDown={onKeyDown}
         />
         <button type="submit" className="btn btn-primary">
