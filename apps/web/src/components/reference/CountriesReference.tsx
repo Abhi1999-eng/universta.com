@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { SearchCombobox } from './SearchCombobox';
 import type { Country, DirectoryRecord, PaginationMeta } from '@/lib/countries';
 import { intakeRange } from '@/lib/intake-range';
 import { formatNumber } from '@/lib/format';
@@ -124,9 +125,24 @@ export function CountriesReference(props: CountriesReferenceProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(filters.q ?? '');
-  const [suggestions, setSuggestions] = useState<Array<{ name: string; slug: string }>>([]);
-  const [letter, setLetter] = useState('all');
-  const searchRef = useRef<HTMLFormElement | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  /** The structured filters are staged and applied together, so narrowing on
+   * budget and English requirement costs one page load rather than two. Keyed
+   * on the server-resolved filters so back/forward re-seeds the controls. */
+  const filterKey = JSON.stringify(filters);
+  const [panelDraft, setPanelDraft] = useState({
+    budgetBand: filters.budgetBand ?? '',
+    ieltsOptional: filters.ieltsOptional ?? '',
+  });
+  const [panelFor, setPanelFor] = useState(filterKey);
+  if (panelFor !== filterKey) {
+    setPanelDraft({
+      budgetBand: filters.budgetBand ?? '',
+      ieltsOptional: filters.ieltsOptional ?? '',
+    });
+    setPanelFor(filterKey);
+  }
 
   function commit(next: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -135,8 +151,16 @@ export function CountriesReference(props: CountriesReferenceProps) {
       else params.set(key, value);
     }
     params.delete('page');
-    setSuggestions([]);
+    setPanelOpen(false);
     router.push(`${pathname}${params.size ? `?${params}` : ''}#regions`);
+  }
+
+  /** Drops every filter and returns to the listing's own address, so the
+   * cleared state is the one a visitor can bookmark or share. */
+  function clearAll() {
+    setQuery('');
+    setPanelOpen(false);
+    router.push(pathname);
   }
 
   function filterHref(key: string, value: string) {
@@ -147,47 +171,21 @@ export function CountriesReference(props: CountriesReferenceProps) {
     return `${pathname}${params.size ? `?${params}` : ''}#regions`;
   }
 
+  /** Prev/Next name the page they land on explicitly -- arriving from an
+   * out-of-range `?page=`, a URL that simply dropped the parameter would look
+   * like nothing happened. */
+  function pageUrl(page: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(Math.max(page, 1)));
+    return `${pathname}?${params}#regions`;
+  }
+
   function pageHref(page: number) {
     const params = new URLSearchParams(searchParams.toString());
     if (page <= 1) params.delete('page');
     else params.set('page', String(page));
     return `${pathname}${params.size ? `?${params}` : ''}#regions`;
   }
-
-  /** Live suggestions come from the real countries endpoint; the prototype
-   * searched its own in-page array. */
-  useEffect(() => {
-    const term = query.trim();
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      if (term.length < 2) {
-        setSuggestions([]);
-        return;
-      }
-      void (async () => {
-        try {
-          const response = await fetch(`/api/countries/suggestions?q=${encodeURIComponent(term)}`);
-          if (!response.ok) return;
-          const body = (await response.json()) as { data?: Array<{ name: string; slug: string }> };
-          if (!cancelled) setSuggestions((body.data ?? []).slice(0, 5));
-        } catch {
-          if (!cancelled) setSuggestions([]);
-        }
-      })();
-    }, 180);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query]);
-
-  useEffect(() => {
-    function onDocumentClick(event: MouseEvent) {
-      if (!searchRef.current?.contains(event.target as Node)) setSuggestions([]);
-    }
-    document.addEventListener('click', onDocumentClick);
-    return () => document.removeEventListener('click', onDocumentClick);
-  }, []);
 
   const totals = useMemo(() => {
     let universities = 0;
@@ -204,16 +202,21 @@ export function CountriesReference(props: CountriesReferenceProps) {
     return { universities, courses, scholarships, topRanked };
   }, [directory]);
 
+  /** The directory is its own index of every published destination, so it is
+   * grouped and anchored by letter rather than sharing the result filters. */
+  const azGroups = useMemo(() => {
+    const map = new Map<string, DirectoryRecord[]>();
+    for (const record of [...directory].sort((a, b) => a.name.localeCompare(b.name))) {
+      const initial = (record.letter ?? record.name[0] ?? '#').toUpperCase();
+      const bucket = map.get(initial);
+      if (bucket) bucket.push(record);
+      else map.set(initial, [record]);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [directory]);
   const activeLetters = useMemo(
-    () => new Set(directory.map((record) => record.letter?.toUpperCase()).filter(Boolean)),
-    [directory],
-  );
-  const azList = useMemo(
-    () =>
-      [...directory]
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .filter((record) => letter === 'all' || record.letter?.toUpperCase() === letter),
-    [directory, letter],
+    () => new Set(azGroups.map(([initial]) => initial)),
+    [azGroups],
   );
 
   const activeRegion = filters.region ?? 'all';
@@ -226,6 +229,9 @@ export function CountriesReference(props: CountriesReferenceProps) {
   const final = content.final ?? {};
 
   const hasFilters = Object.keys(filters).some((key) => key !== 'page');
+  const structuredCount = ['budgetBand', 'ieltsOptional', 'visaSuccessBand', 'pathwayStrength', 'hasTopRankedUniversities'].filter(
+    (key) => filters[key],
+  ).length;
 
   return (
     <div className="cref cref-dest">
@@ -269,40 +275,17 @@ export function CountriesReference(props: CountriesReferenceProps) {
             ))}
           </div>
 
-          <form
-            className="searchwrap"
-            ref={searchRef}
+          <SearchCombobox
+            label="Search a country"
+            placeholder="Search a destination…"
+            submitLabel="Search"
+            endpoint="/api/countries/suggestions"
+            emptyMessage="No destinations found."
             style={{ marginTop: 28 }}
-            onSubmit={(event) => {
-              event.preventDefault();
-              commit({ q: query.trim() || null });
-            }}
-          >
-            <div className="searchbar">
-              <span className="ic" aria-hidden="true">
-                🔍
-              </span>
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search a destination…"
-                aria-label="Search a destination"
-              />
-              <button type="submit" className="btn btn-primary">
-                Search
-              </button>
-            </div>
-            {suggestions.length ? (
-              <div className="suggest">
-                {suggestions.map((item) => (
-                  <Link key={item.slug} href={`/countries/${item.slug}`}>
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-          </form>
+            value={query}
+            onValueChange={setQuery}
+            onSubmit={(term) => commit({ q: term.trim() || null })}
+          />
 
           <div className="qf">
             {QUICK_FILTERS.map((filter) => (
@@ -357,30 +340,98 @@ export function CountriesReference(props: CountriesReferenceProps) {
         </div>
 
         <div className="tabbar">
-          <div className="tabs" role="tablist" aria-label="Filter destinations by region">
-            <Link
-              href={
-                (() => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.delete('region');
-                  params.delete('page');
-                  return `${pathname}${params.size ? `?${params}` : ''}#regions`;
-                })() as string
-              }
+          <div className="tabs" aria-label="Filter destinations by region">
+            <button
+              type="button"
               className={`tab${activeRegion === 'all' ? ' on' : ''}`}
+              onClick={() => commit({ region: null })}
             >
               All destinations <span className="n">{props.directoryMeta.total}</span>
-            </Link>
+            </button>
             {props.continents.map((continent) => (
-              <Link
+              <button
+                type="button"
                 key={continent.id}
-                href={filterHref('region', continent.slug)}
                 className={`tab${activeRegion === continent.slug ? ' on' : ''}`}
+                onClick={() => commit({ region: continent.slug })}
               >
                 {continent.name} <span className="n">{continent.count}</span>
-              </Link>
+              </button>
             ))}
           </div>
+          <div className="tabbar-actions">
+            <button
+              type="button"
+              className={`btn btn-ghost btn-sm${panelOpen ? ' on' : ''}`}
+              aria-expanded={panelOpen}
+              aria-controls="country-filter-panel"
+              onClick={() => setPanelOpen((current) => !current)}
+            >
+              Filters{structuredCount ? ` (${structuredCount})` : ''}
+            </button>
+            {hasFilters ? (
+              <button type="button" className="linkbtn" onClick={clearAll}>
+                Clear all filters
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Structured filters, staged and applied together. */}
+        <div
+          id="country-filter-panel"
+          className={`filtpanel${panelOpen ? ' is-open' : ''}`}
+          aria-label="Destination filters"
+        >
+          <form
+            className="filtpanel-in"
+            onSubmit={(event) => {
+              event.preventDefault();
+              commit({
+                budgetBand: panelDraft.budgetBand || null,
+                ieltsOptional: panelDraft.ieltsOptional || null,
+              });
+            }}
+          >
+            <label className="fld">
+              <span>Budget</span>
+              <select
+                value={panelDraft.budgetBand}
+                onChange={(event) =>
+                  setPanelDraft((current) => ({ ...current, budgetBand: event.target.value }))
+                }
+              >
+                <option value="">Any budget</option>
+                <option value="BUDGET_FRIENDLY">Budget friendly</option>
+                <option value="MID_RANGE">Mid range</option>
+                <option value="PREMIUM">Premium</option>
+              </select>
+            </label>
+            <label className="fld">
+              <span>IELTS</span>
+              <select
+                value={panelDraft.ieltsOptional}
+                onChange={(event) =>
+                  setPanelDraft((current) => ({ ...current, ieltsOptional: event.target.value }))
+                }
+              >
+                <option value="">Any requirement</option>
+                <option value="true">Optional or waived</option>
+              </select>
+            </label>
+            <div className="filtpanel-actions">
+              <button type="submit" className="btn btn-primary btn-sm">
+                Apply filters
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setPanelOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </form>
         </div>
 
         <p className="res-count" data-testid="country-count">
@@ -391,8 +442,8 @@ export function CountriesReference(props: CountriesReferenceProps) {
           <div className="cref-empty" data-testid="country-empty">
             <h3>No destinations match these filters</h3>
             <p>Try a different region, or clear the filters to see every published destination.</p>
-            <Link className="btn btn-primary" href="/countries#regions">
-              Clear all
+            <Link className="btn btn-primary" href="/countries">
+              Show every destination
             </Link>
           </div>
         ) : (
@@ -455,23 +506,38 @@ export function CountriesReference(props: CountriesReferenceProps) {
           </div>
         )}
 
-        {meta.totalPages > 1 ? (
-          <nav className="pager" aria-label="Pagination">
-            {meta.page > 1 ? <Link href={pageHref(meta.page - 1)}>‹</Link> : <span>‹</span>}
-            {Array.from({ length: meta.totalPages }, (_, index) => index + 1).map((page) => (
-              <Link
-                key={page}
-                href={pageHref(page)}
-                aria-current={page === meta.page ? 'page' : undefined}
-              >
-                {page}
-              </Link>
-            ))}
-            {meta.page < meta.totalPages ? (
-              <Link href={pageHref(meta.page + 1)}>›</Link>
-            ) : (
-              <span>›</span>
+        {/* Rendered whenever the URL asks for a page, so an out-of-range one
+            still offers a way back rather than a dead end. */}
+        {meta.totalPages > 1 || meta.page > 1 ? (
+          <nav className="pager" aria-label="Country results pages">
+            <button
+              type="button"
+              disabled={meta.page <= 1}
+              onClick={() => router.push(pageUrl(meta.page - 1))}
+            >
+              Previous
+            </button>
+            {Array.from({ length: meta.totalPages }, (_, index) => index + 1).map((page) =>
+              page === meta.page ? (
+                <span className="cur" key={page}>
+                  {page}
+                </span>
+              ) : (
+                <Link key={page} href={pageHref(page)}>
+                  {page}
+                </Link>
+              ),
             )}
+            <button
+              type="button"
+              disabled={meta.page >= meta.totalPages}
+              onClick={() => router.push(pageUrl(meta.page + 1))}
+            >
+              Next
+            </button>
+            <span className="pager-status" aria-current="page">
+              Page {meta.page} of {Math.max(meta.totalPages, 1)}
+            </span>
           </nav>
         ) : null}
       </section>
@@ -538,71 +604,72 @@ export function CountriesReference(props: CountriesReferenceProps) {
           </div>
 
           <div className="alpha">
-            <button
-              type="button"
-              className={`wide${letter === 'all' ? ' on' : ''}`}
-              aria-pressed={letter === 'all'}
-              onClick={() => setLetter('all')}
-            >
-              All
-            </button>
             {LETTERS.map((value) =>
               activeLetters.has(value) ? (
+                <a className="directory-letter" key={value} href={`#directory-letter-${value}`}>
+                  {value}
+                </a>
+              ) : (
                 <button
                   type="button"
+                  className="directory-letter"
                   key={value}
-                  className={letter === value ? 'on' : undefined}
-                  aria-pressed={letter === value}
-                  onClick={() => setLetter(value)}
+                  disabled
+                  aria-label={`No destinations starting with ${value}`}
                 >
                   {value}
                 </button>
-              ) : (
-                <span key={value} aria-hidden="true">
-                  {value}
-                </span>
               ),
             )}
           </div>
 
-          <div className="az-grid">
-            {azList.map((record) => {
-              const counts = [
-                ['UG', record.programCounts.ug],
-                ['PG', record.programCounts.pg],
-                ['PGDM', record.programCounts.pgdm],
-                ['MBA', record.programCounts.mba],
-              ].filter(([, value]) => value) as Array<[string, number]>;
-              return (
-                <article className="az-tile" key={record.slug}>
-                  <div className="t">
-                    <span className="flag" style={{ width: 34, height: 34, fontSize: 13 }} aria-hidden="true">
-                      {record.flag?.url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={record.flag.url} alt="" />
-                      ) : (
-                        initials(record.name)
-                      )}
-                    </span>
-                    <h3>Study in {record.name}</h3>
-                  </div>
-                  <p>{record.shortDescription}</p>
-                  {counts.length ? (
-                    <div className="progs">
-                      {counts.map(([label, value]) => (
-                        <span key={label}>
-                          <b>{formatNumber(value)}</b> {label}
+          {azGroups.map(([initial, records]) => (
+            <div className="az-letter" id={`directory-letter-${initial}`} key={initial}>
+              <h3 className="az-letter-head">{initial}</h3>
+              <div className="az-grid">
+                {records.map((record) => {
+                  const counts = [
+                    ['UG', record.programCounts.ug],
+                    ['PG', record.programCounts.pg],
+                    ['PGDM', record.programCounts.pgdm],
+                    ['MBA', record.programCounts.mba],
+                  ].filter(([, value]) => value) as Array<[string, number]>;
+                  return (
+                    <article className="az-tile" key={record.slug}>
+                      <div className="t">
+                        <span
+                          className="flag"
+                          style={{ width: 34, height: 34, fontSize: 13 }}
+                          aria-hidden="true"
+                        >
+                          {record.flag?.url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={record.flag.url} alt="" />
+                          ) : (
+                            initials(record.name)
+                          )}
                         </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  <Link className="go" href={`/countries/${record.slug}`}>
-                    Explore →
-                  </Link>
-                </article>
-              );
-            })}
-          </div>
+                        <h4>Study in {record.name}</h4>
+                      </div>
+                      <p>{record.shortDescription}</p>
+                      {counts.length ? (
+                        <div className="progs">
+                          {counts.map(([label, value]) => (
+                            <span key={label}>
+                              <b>{formatNumber(value)}</b> {label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      <Link className="go" href={`/countries/${record.slug}`}>
+                        Explore →
+                      </Link>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </section>
       ) : null}
 

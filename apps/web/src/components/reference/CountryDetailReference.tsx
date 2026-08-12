@@ -251,11 +251,12 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
     costRows.length && ['cost', 'Cost'],
     scholarships.length && ['scholarships', 'Scholarships'],
     languageRows.length && ['language', 'English'],
-    (work?.visaInformation || visaFacts.length) && ['visa', 'Visa'],
+    (work?.visaInformation || visaFacts.length) && ['visa', 'Work and visa'],
     cities.length && ['cities', 'Cities'],
     statRows.length && ['statistics', 'At a glance'],
     faqs.length && ['faq', 'FAQ'],
-    consultantCards.length && ['consultants', 'Consultants'],
+    ['consultation', 'Get guidance'],
+    ['structured-trust', 'About these figures'],
   ].filter(Boolean) as Array<[string, string]>;
 
   return (
@@ -486,7 +487,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
           <div className="wrap">
             <div className="head">
               <span className="eyebrow">Timing</span>
-              <h2>Intakes to study in {country.name}</h2>
+              <h2>Major intakes in {country.name}</h2>
               <p>Published entry points, with the application window each one records.</p>
             </div>
             <div className="intakes">
@@ -615,7 +616,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
           <div className="wrap narrow">
             <div className="head">
               <span className="eyebrow">Admissions</span>
-              <h2>English requirements for {country.name}</h2>
+              <h2>Language requirements for {country.name}</h2>
               {language?.generalNotes ? <p>{language.generalNotes}</p> : null}
             </div>
             <div className="cost-table">
@@ -648,7 +649,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
           <div className="wrap narrow">
             <div className="head">
               <span className="eyebrow">Student visa</span>
-              <h2>Visa guidance for {country.name}</h2>
+              <h2>Work and visa pathways in {country.name}</h2>
               {work?.visaInformation ? <p>{work.visaInformation}</p> : null}
             </div>
             {visaFacts.length ? (
@@ -767,14 +768,25 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
         </section>
       ) : null}
 
-      {/* CONSULTANTS */}
-      {consultantCards.length ? (
-        <section className="sec sec-alt" id="consultants">
-          <div className="wrap">
-            <div className="head">
-              <span className="eyebrow">Study abroad consultants</span>
-              <h2>Guidance for {country.name}</h2>
-            </div>
+      {/* GUIDANCE
+          Always present: a visitor who has read this far should never have to
+          hunt for the way to ask a question, whether or not a consultant has
+          published a profile for this destination. */}
+      <section className="sec sec-alt" id="consultation">
+        <div className="wrap">
+          <div className="head">
+            <span className="eyebrow">
+              {consultantCards.length ? 'Study abroad consultants' : 'Talk it through'}
+            </span>
+            <h2>Guidance for {country.name}</h2>
+            <p>
+              {consultantCards.length
+                ? 'Consultants publish their own destinations and services.'
+                : 'A counsellor can check your profile against this destination before you commit to it.'}{' '}
+              <a href="#structured-trust">Read how the figures on this page are sourced</a>.
+            </p>
+          </div>
+          {consultantCards.length ? (
             <div className="cons-grid">
               {consultantCards.map((card) => (
                 <article className="cons" key={card.id}>
@@ -794,9 +806,46 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
                 </article>
               ))}
             </div>
+          ) : (
+            <div className="cta2-btns" style={{ justifyContent: 'flex-start' }}>
+              <Link href={counselling} className="btn btn-primary btn-lg">
+                Book free counselling
+              </Link>
+              <Link href="/study-abroad-consultants" className="btn btn-ghost btn-lg">
+                Browse consultants
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* WHAT THESE FIGURES MEAN
+          The template closes on a bare "trusted by students" band. Universta
+          can say something truer and more useful: where each number on this
+          page comes from, and what it is not. */}
+      <section className="sec" id="structured-trust">
+        <div className="wrap">
+          <div className="head">
+            <span className="eyebrow">Reading this page</span>
+            <h2>What these figures mean</h2>
           </div>
-        </section>
-      ) : null}
+          <div className="prose" style={{ maxWidth: 760 }}>
+            <p>
+              Every cost, intake, language and work figure above is taken from{' '}
+              {country.name}’s published profile in the Universta catalogue
+              {verifiedAt ? `, last verified ${formatDate(verifiedAt)}` : ''}. Nothing on this page
+              is estimated or averaged: where a figure is not published, the row is simply absent.
+            </p>
+            <p>
+              They describe the destination, not your application. Tuition varies by university and
+              programme, intake windows and deadlines are set per course, and visa rules change.
+              Information is editorial and may vary — confirm the detail that decides your choice
+              against the published sources shown above and the university’s own listing before you
+              apply.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* CLOSING CTA */}
       <div className="wrap" style={{ padding: '48px 24px 72px' }}>

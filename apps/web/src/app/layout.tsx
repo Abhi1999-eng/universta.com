@@ -54,7 +54,12 @@ export default function RootLayout({
             Admin change in Website Builder applies site-wide regardless of
             which page template the route uses. */}
         <SiteChromeHeader />
-        {children}
+        {/* The page's own content, as a landmark: the header and footer are
+            site chrome, and a visitor skipping to the content needs somewhere
+            for that to land. */}
+        <main id="content" className="flex-1">
+          {children}
+        </main>
         <SiteChromeFooter />
         <script type="application/ld+json">
           {jsonLdString(organizationJsonLd)}

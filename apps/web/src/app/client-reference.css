@@ -1869,6 +1869,10 @@
 
 /* region tab bar */
 .cref-dest .tabbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
   position: sticky;
   top: 72px;
   z-index: 50;
@@ -1881,6 +1885,8 @@
 .cref-dest .tabs {
   display: flex;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 2px;
@@ -1888,8 +1894,16 @@
 .cref-dest .tabs::-webkit-scrollbar {
   display: none;
 }
+.cref-dest .tabbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
 .cref-dest .tab {
   background: #fff;
+  cursor: pointer;
+  font-family: inherit;
   border: 1px solid var(--line-2);
   border-radius: var(--r-pill);
   padding: 11px 20px;
@@ -2124,6 +2138,7 @@
   gap: 6px;
   margin: 32px 0;
 }
+.cref-dest .alpha a,
 .cref-dest .alpha button,
 .cref-dest .alpha span {
   width: 36px;
@@ -2143,14 +2158,17 @@
   width: auto;
   padding: 0 14px;
 }
-.cref-dest .alpha button:hover {
+.cref-dest .alpha a:hover {
   background: #fff;
   border-color: var(--line-2);
   color: var(--ink);
 }
-.cref-dest .alpha button.on {
-  background: var(--ink);
-  color: #fff;
+.cref-dest .alpha a {
+  color: var(--ink-2);
+}
+.cref-dest .alpha button:disabled {
+  opacity: 0.28;
+  cursor: default;
 }
 .cref-dest .alpha span {
   opacity: 0.28;
@@ -2181,7 +2199,7 @@
   gap: 11px;
   margin-bottom: 9px;
 }
-.cref-dest .az-tile h3 {
+.cref-dest .az-tile h4 {
   font-size: 17px;
   font-weight: 700;
 }
@@ -4865,4 +4883,77 @@
 /* The specialisation row grew a link, so its parts stack against the icon. */
 .cref-subj .spec-card {
   align-items: flex-start;
+}
+
+/* structured destination filters, staged then applied together */
+.cref-dest .filtpanel {
+  display: none;
+}
+.cref-dest .filtpanel.is-open {
+  display: block;
+}
+.cref-dest .filtpanel-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  margin-top: 16px;
+  box-shadow: var(--shadow);
+}
+.cref-dest .filtpanel .fld {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  min-width: 190px;
+}
+.cref-dest .filtpanel .fld select {
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font: inherit;
+  font-weight: 500;
+  font-size: 14.5px;
+  color: var(--ink);
+  background: #fff;
+}
+.cref-dest .filtpanel-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+/* anchored directory groups */
+.cref-dest .az-letter {
+  scroll-margin-top: 140px;
+  margin-bottom: 28px;
+}
+.cref-dest .az-letter-head {
+  font-family: var(--dsp);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--muted-2);
+  letter-spacing: 0.08em;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 720px) {
+  .cref-dest .tabbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .cref-dest .filtpanel-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .cref-dest .filtpanel .fld {
+    min-width: 0;
+    width: 100%;
+  }
 }
