@@ -41,6 +41,16 @@ export class StructuredLogger {
     this.write('info', { ...entry, timestamp: new Date().toISOString() });
   }
 
+  /** Info-level application event. Goes through the same redaction as every
+   * other line, so a caller cannot accidentally log a secret. */
+  logEvent(message: string, details: Record<string, unknown> = {}): void {
+    this.write('info', {
+      message,
+      ...details,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   logError(message: string, details: Record<string, unknown> = {}): void {
     this.write('error', {
       message,
