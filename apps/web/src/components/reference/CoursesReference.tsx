@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
@@ -108,12 +108,29 @@ const TOOLS = [
   { ic: '💬', h: 'Free counselling', p: 'Book a session with an advisor.', href: '/counselling' },
 ];
 
+/** Dimensions the courses endpoint ORs within, carried comma-joined in the URL. */
+const MULTI_KEYS = ['level', 'country', 'subject', 'studyMode', 'intake', 'englishTest'] as const;
+
+function csvValues(value: string | undefined) {
+  return value
+    ? [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))]
+    : [];
+}
+
+function canonicalCsv(values: string[]) {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right)).join(',');
+}
+
+function draftFrom(filters: Record<string, string>): Record<string, string[]> {
+  return Object.fromEntries(MULTI_KEYS.map((key) => [key, csvValues(filters[key])]));
+}
+
+const SKIP_WORDS = new Set(['of', 'in', 'and', 'the', 'for', 'a', 'an', '&']);
+
 /** Connectives carry no identity, so "Doctor of Philosophy" reads as "DP" and
  * "Health & Medicine" as "HM" rather than "DO" and "H&". A single-word name
  * falls back to its first two letters, which is what makes a country tile say
  * "CA" instead of a lone "C". */
-const SKIP_WORDS = new Set(['of', 'in', 'and', 'the', 'for', 'a', 'an', '&']);
-
 function initials(value: string) {
   const words = value
     .split(/\s+/)
@@ -163,7 +180,35 @@ export function CoursesReference(props: CoursesReferenceProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [compare, setCompare] = useState<Array<{ slug: string; name: string }>>([]);
 
-  /** One place that turns a facet change into a URL, so the back button and a
+  /** A dimension holds several values at once and they OR together, so the URL
+   * carries them comma-joined. Sorting on the way out keeps one selection one
+   * URL, whatever order the boxes were ticked in. */
+  //
+  // The re-seed key is the server-resolved filters, not `searchParams`: on a
+  // back/forward step the URL hook updates a render before the new server
+  // props arrive, and keying on it re-seeded the draft from the outgoing
+  // page's filters and then never corrected itself.
+  const draftKey = JSON.stringify(filters);
+  const [draft, setDraft] = useState<Record<string, string[]>>(() => draftFrom(filters));
+  const [draftFor, setDraftFor] = useState(draftKey);
+  if (draftFor !== draftKey) {
+    // The page moved under us (Apply, back, forward, a browse link). Re-seed
+    // the pending selection from it rather than stranding the old draft.
+    setDraft(draftFrom(filters));
+    setDraftFor(draftKey);
+  }
+
+  const [tuitionRange, setTuitionRange] = useState({
+    min: filters.minTuition ?? '',
+    max: filters.maxTuition ?? '',
+  });
+  const [tuitionFor, setTuitionFor] = useState(draftKey);
+  if (tuitionFor !== draftKey) {
+    setTuitionRange({ min: filters.minTuition ?? '', max: filters.maxTuition ?? '' });
+    setTuitionFor(draftKey);
+  }
+
+  /** One place that turns a filter change into a URL, so the back button and a
    * shared link both keep working -- the prototype held filter state in
    * page-local JavaScript and lost it on every reload. */
   function commit(next: Record<string, string | null>) {
@@ -176,6 +221,37 @@ export function CoursesReference(props: CoursesReferenceProps) {
     router.push(`${pathname}${params.size ? `?${params}` : ''}`);
     setDrawerOpen(false);
   }
+
+  /** Applies every pending dimension at once. Ticking a box does not navigate:
+   * a visitor narrowing on four axes should pay for one page load, not four. */
+  function applyDraft() {
+    const next: Record<string, string | null> = {};
+    for (const key of MULTI_KEYS) next[key] = canonicalCsv(draft[key] ?? []) || null;
+    next.minTuition = tuitionRange.min.trim() || null;
+    next.maxTuition = tuitionRange.max.trim() || null;
+    commit(next);
+  }
+
+  function toggleDraft(key: string, value: string) {
+    setDraft((current) => {
+      const selected = current[key] ?? [];
+      return {
+        ...current,
+        [key]: selected.includes(value)
+          ? selected.filter((item) => item !== value)
+          : [...selected, value],
+      };
+    });
+  }
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setDrawerOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
 
   function pageHref(page: number) {
     const params = new URLSearchParams(searchParams.toString());
@@ -194,9 +270,9 @@ export function CoursesReference(props: CoursesReferenceProps) {
         { key: 'level', label: 'Degree level', options: filterOptions.levels, open: true },
         { key: 'country', label: 'Destination', options: filterOptions.countries, open: true },
         { key: 'subject', label: 'Subject', options: filterOptions.subjects, open: true },
-        { key: 'studyMode', label: 'Study mode', options: filterOptions.studyModes, open: false },
-        { key: 'intake', label: 'Intake', options: filterOptions.intakes, open: false },
-        { key: 'englishTest', label: 'English test', options: filterOptions.englishTests, open: false },
+        { key: 'studyMode', label: 'Study mode', options: filterOptions.studyModes, open: true },
+        { key: 'intake', label: 'Intake', options: filterOptions.intakes, open: true },
+        { key: 'englishTest', label: 'English test', options: filterOptions.englishTests, open: true },
       ].filter((group) => group.options.length > 0),
     [filterOptions],
   );
@@ -204,6 +280,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
   const activeCount = Object.keys(filters).filter(
     (key) => !['q', 'sort', 'page', 'pageSize'].includes(key),
   ).length;
+
+  /** Tuition only means something inside one destination's currency, and the
+   * API reports which one is in play. */
+  const tuitionCurrency =
+    (draft.country ?? []).length === 1 && filterOptions.tuition.enabled
+      ? filterOptions.tuition.currencyCode
+      : null;
 
   const compareHref = compare.length
     ? `/compare/courses?items=${compare.map((item) => item.slug).join(',')}`
@@ -267,11 +350,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 🔍
               </span>
               <input
-                type="search"
+                type="text"
+                role="combobox"
+                aria-expanded={false}
+                aria-label="Search courses"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search courses, subjects or qualifications…"
-                aria-label="Search courses"
               />
               <button type="submit" className="btn btn-primary">
                 Find courses
@@ -282,11 +367,34 @@ export function CoursesReference(props: CoursesReferenceProps) {
           {(filterOptions.extras.length || filterOptions.intakes.length) > 0 ? (
             <div className="pop" style={{ marginTop: 18 }}>
               <b>Popular:</b>
-              {filterOptions.extras.map((extra) => (
-                <Link key={extra.value} className="chip" href={browseHref({ [extra.value]: 'true' })}>
-                  {extra.label}
-                </Link>
-              ))}
+              {/* Quick filters toggle a single parameter straight away, so their
+                  pressed state is the URL rather than page-local memory. */}
+              <button
+                type="button"
+                className={`chip${filters.scholarshipAvailable === 'true' ? ' on' : ''}`}
+                aria-pressed={filters.scholarshipAvailable === 'true'}
+                onClick={() =>
+                  commit({
+                    scholarshipAvailable:
+                      filters.scholarshipAvailable === 'true' ? null : 'true',
+                  })
+                }
+              >
+                Scholarships
+              </button>
+              <button
+                type="button"
+                className={`chip${filters.postStudyWorkAvailable === 'true' ? ' on' : ''}`}
+                aria-pressed={filters.postStudyWorkAvailable === 'true'}
+                onClick={() =>
+                  commit({
+                    postStudyWorkAvailable:
+                      filters.postStudyWorkAvailable === 'true' ? null : 'true',
+                  })
+                }
+              >
+                Post-study work
+              </button>
               {filterOptions.intakes.slice(0, 3).map((intake) => (
                 <Link key={intake.value} className="chip" href={browseHref({ intake: intake.value })}>
                   {intake.label} intake
@@ -420,6 +528,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
           ) : null}
 
           <aside
+            id="course-filter-panel"
             className={`filters${drawerOpen ? ' open' : ''}`}
             aria-label="Filter courses"
             data-testid="course-filters"
@@ -444,6 +553,12 @@ export function CoursesReference(props: CoursesReferenceProps) {
               </div>
             </div>
 
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                applyDraft();
+              }}
+            >
             <div className="fscroll">
             {facetGroups.map((group) => (
               <details className="fgroup" key={group.key} open={group.open}>
@@ -452,15 +567,15 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </summary>
                 <div className="opts">
                   {group.options.slice(0, 12).map((option) => {
-                    const checked = filters[group.key] === option.value;
+                    const checked = (draft[group.key] ?? []).includes(option.value);
                     return (
                       <label className="opt" key={option.value}>
                         <input
                           type="checkbox"
                           checked={checked}
-                          onChange={() => commit({ [group.key]: checked ? null : option.value })}
+                          onChange={() => toggleDraft(group.key, option.value)}
                         />
-                        {option.label}
+                        {option.label}{' '}
                         <span className="cnt">{formatNumber(option.count)}</span>
                       </label>
                     );
@@ -484,7 +599,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                           checked={checked}
                           onChange={() => commit({ [extra.value]: checked ? null : 'true' })}
                         />
-                        {extra.label}
+                        {extra.label}{' '}
                         <span className="cnt">{formatNumber(extra.count)}</span>
                       </label>
                     );
@@ -492,19 +607,63 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </div>
               </details>
             ) : null}
+            <details
+              className="fgroup"
+              open={Boolean(tuitionCurrency || tuitionRange.min || tuitionRange.max)}
+            >
+              <summary>
+                Tuition fee <span className="caret">▾</span>
+              </summary>
+              <div className="opts">
+                {tuitionCurrency ? (
+                  <>
+                    <p className="fhelp">Amounts in {tuitionCurrency}, per year.</p>
+                    <label className="frange-field">
+                      <span>Minimum</span>
+                      <input
+                        name="minTuition"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={tuitionRange.min}
+                        onChange={(event) =>
+                          setTuitionRange((current) => ({ ...current, min: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="frange-field">
+                      <span>Maximum</span>
+                      <input
+                        name="maxTuition"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={tuitionRange.max}
+                        onChange={(event) =>
+                          setTuitionRange((current) => ({ ...current, max: event.target.value }))
+                        }
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <p className="fhelp">
+                    {/* Tuition is stored per destination in that destination's own
+                        currency, so a range across several is meaningless. */}
+                    Select exactly one destination to filter by tuition in a single currency.
+                  </p>
+                )}
+              </div>
+            </details>
             </div>
 
-            {/* Mobile only: the drawer covers the results, so it needs its own
-                way back to them. */}
             <div className="ffoot">
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                onClick={() => setDrawerOpen(false)}
-              >
-                Show {formatNumber(meta.total)} result{meta.total === 1 ? '' : 's'}
+              <button className="btn btn-primary btn-block" type="submit">
+                Apply filters
               </button>
             </div>
+            </form>
           </aside>
 
           <div>
@@ -513,8 +672,11 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 type="button"
                 className="btn btn-ghost btn-sm filter-toggle"
                 onClick={() => setDrawerOpen(true)}
+                aria-expanded={drawerOpen}
+                aria-controls="course-filter-panel"
               >
-                ☰ Filters{activeCount ? ` (${activeCount})` : ''}
+                <span aria-hidden="true">☰ </span>
+                Filters{activeCount ? ` (${activeCount})` : ''}
               </button>
               <p className="count" data-testid="course-count">
                 {formatNumber(meta.total)} course{meta.total === 1 ? '' : 's'}{' '}
@@ -525,6 +687,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                   <label htmlFor="course-sort">Sort by</label>
                   <select
                     id="course-sort"
+                    aria-label="Sort courses"
                     value={filters.sort ?? filterOptions.sorts[0]?.value ?? ''}
                     onChange={(event) => commit({ sort: event.target.value })}
                   >
@@ -547,7 +710,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </Link>
               </div>
             ) : (
-              <div className="slist">
+              <div className="slist course-list">
                 {courses.map((course) => {
                   const dur = duration(course);
                   const fee = tuition(course);
@@ -642,9 +805,16 @@ export function CoursesReference(props: CoursesReferenceProps) {
               </div>
             )}
 
-            {meta.totalPages > 1 ? (
-              <nav className="pager" aria-label="Pagination">
-                {meta.page > 1 ? <Link href={pageHref(meta.page - 1)}>‹</Link> : <span>‹</span>}
+            {meta.totalPages > 1 || meta.page > 1 ? (
+              <nav className="pager" aria-label="Course results pagination">
+                <button
+                  type="button"
+                  aria-label="Previous results page"
+                  disabled={meta.page <= 1}
+                  onClick={() => router.push(pageHref(meta.page - 1))}
+                >
+                  ‹
+                </button>
                 {Array.from({ length: meta.totalPages }, (_, index) => index + 1)
                   .filter(
                     (page) =>
@@ -655,19 +825,24 @@ export function CoursesReference(props: CoursesReferenceProps) {
                   .map((page, index, list) => (
                     <span key={page} style={{ display: 'contents' }}>
                       {index > 0 && page - list[index - 1] > 1 ? <span>…</span> : null}
-                      <Link
-                        href={pageHref(page)}
-                        aria-current={page === meta.page ? 'page' : undefined}
-                      >
-                        {page}
-                      </Link>
+                      {page === meta.page ? (
+                        <span className="cur">{page}</span>
+                      ) : (
+                        <Link href={pageHref(page)}>{page}</Link>
+                      )}
                     </span>
                   ))}
-                {meta.page < meta.totalPages ? (
-                  <Link href={pageHref(meta.page + 1)}>›</Link>
-                ) : (
-                  <span>›</span>
-                )}
+                <button
+                  type="button"
+                  aria-label="Next results page"
+                  disabled={meta.page >= meta.totalPages}
+                  onClick={() => router.push(pageHref(meta.page + 1))}
+                >
+                  ›
+                </button>
+                <span className="pager-status" aria-current="page">
+                  Page {meta.page} of {meta.totalPages}
+                </span>
               </nav>
             ) : null}
           </div>

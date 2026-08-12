@@ -520,7 +520,9 @@
   flex-wrap: wrap;
 }
 .cref .pager a,
-.cref .pager span {
+.cref .pager button,
+.cref .pager > span,
+.cref .pager span > span {
   min-width: 40px;
   height: 40px;
   display: grid;
@@ -532,15 +534,33 @@
   font-size: 14px;
   color: var(--ink-2);
   padding: 0 10px;
+  background: transparent;
 }
-.cref .pager a[aria-current] {
+.cref .pager button {
+  cursor: pointer;
+}
+.cref .pager button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cref .pager .cur {
   background: var(--blue);
   color: #fff;
   border-color: var(--blue);
 }
-.cref .pager a:hover:not([aria-current]) {
+.cref .pager a:hover,
+.cref .pager button:not(:disabled):hover {
   border-color: var(--blue);
   color: var(--blue);
+}
+/* The numbered chips carry the visual state; this spells it out in words for
+   assistive tech and for anyone reading the page at a glance. */
+.cref .pager .pager-status {
+  border: 0;
+  padding: 0 4px;
+  color: var(--muted);
+  font-weight: 500;
+  min-width: 0;
 }
 
 /* browse columns */
@@ -1711,13 +1731,15 @@
     margin-left: auto;
   }
 }
+/* Selections are deferred until Apply, so this action belongs to the rail at
+   every width -- not only inside the mobile drawer. */
 .cref .filters .ffoot {
-  display: none;
-  padding: 14px 18px;
+  padding: 14px 18px 2px;
   border-top: 1px solid var(--line);
   position: sticky;
   bottom: 0;
   background: #fff;
+  margin: 0 -18px -4px;
 }
 @media (max-width: 960px) {
   .cref .filters {
@@ -1732,7 +1754,6 @@
     min-height: 0;
   }
   .cref .filters .ffoot {
-    display: block;
     margin: 0 -20px;
   }
 }
@@ -4699,4 +4720,38 @@
   .cref .counselling-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Filter-rail help text, numeric range fields, and pressed quick filters */
+.cref .fhelp {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.cref .frange-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cref .frange-field input {
+  font-family: var(--body);
+  font-size: 14px;
+  padding: 9px 11px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  width: 100%;
+}
+.cref button.chip {
+  cursor: pointer;
+  font-family: var(--dsp);
+}
+.cref button.chip.on,
+.cref .chip[aria-pressed='true'] {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
 }

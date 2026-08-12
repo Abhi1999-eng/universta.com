@@ -318,12 +318,31 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.locator('#course-filter-panel')).not.toHaveClass(/open/);
   });
 
-  test('removes unfinished Save and Compare controls from the public course listing', async ({ page }) => {
+  test('shortlists courses into the approved comparison tray', async ({ page }) => {
     await page.goto(courses);
 
+    // The prototype's per-card "Save" button had nothing behind it and stays
+    // out. Compare is real: it shortlists and hands off to /compare/courses.
     await expect(page.getByRole('button', { name: /^Save / })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Compare courses/i })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Compare Courses/i })).toHaveCount(0);
+    await expect(page.getByTestId('course-compare-tray')).toHaveCount(0);
+
+    const cards = page.locator('.course-list .course');
+    await cards.nth(0).getByRole('checkbox', { name: 'Compare' }).check();
+    await cards.nth(1).getByRole('checkbox', { name: 'Compare' }).check();
+
+    const tray = page.getByTestId('course-compare-tray');
+    await expect(tray).toBeVisible();
+    const compareLink = tray.getByRole('link', { name: 'Compare 2' });
+    await expect(compareLink).toHaveAttribute(
+      'href',
+      /^\/compare\/courses\?items=[^,]+,[^,]+$/,
+    );
+
+    await tray.getByRole('button', { name: /^Remove / }).first().click();
+    await expect(tray.getByRole('link', { name: 'Compare 1' })).toBeVisible();
+
+    await tray.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.getByTestId('course-compare-tray')).toHaveCount(0);
   });
 
   test('mobile menus are functional and catalog layouts do not overflow horizontally', async ({ page }) => {
