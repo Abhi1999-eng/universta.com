@@ -78,7 +78,7 @@ const FAQS = [
 const WHY = [
   { ic: '🗄️', h: 'Published directory', p: 'Funding opportunities from universities, governments and organisations, kept in one place.' },
   { ic: '🎛️', h: 'Smart search & filters', p: 'Narrow results by destination, university, degree, subject and funding type.' },
-  { ic: '✅', h: 'Source-aware information', p: 'Scholarship details are recorded against the provider that publishes them.' },
+  { ic: '✅', h: 'Traceable to the provider', p: 'Scholarship details are recorded against the provider that publishes them.' },
   { ic: '🔖', h: 'Shortlist as you go', p: 'Open any award to see eligibility, amount and deadline in full before you apply.' },
   { ic: '🧭', h: 'Application guidance', p: 'Talk to a counsellor about eligibility, documents and submission.' },
   { ic: '🌍', h: 'Destination context', p: 'See the destination and university each award belongs to before applying.' },

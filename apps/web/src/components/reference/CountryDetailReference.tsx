@@ -694,7 +694,14 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             </div>
             <div className="cities">
               {cities.map((city) => (
-                <Link className="city" key={city.id} href={`/cities/${city.slug}`}>
+                <Link
+                  className="city"
+                  key={city.id}
+                  // A city guide lives under its destination; `/cities/<slug>`
+                  // is not a route the site serves, so every one of these
+                  // links was a 404.
+                  href={`/study-in/${country.slug}/${city.slug}`}
+                >
                   <div
                     className="city-img"
                     style={

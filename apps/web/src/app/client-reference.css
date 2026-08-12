@@ -1160,6 +1160,10 @@
   font-size: 14px;
   white-space: nowrap;
 }
+/* For link text built from record names, which can be longer than the column. */
+.cref .link-more.wrap {
+  white-space: normal;
+}
 
 /* subject cards */
 .cref .subj-card {
