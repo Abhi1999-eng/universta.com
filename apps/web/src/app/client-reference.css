@@ -4144,21 +4144,85 @@
   font-size: 13px;
   flex-shrink: 0;
 }
+/* Shortlist builder: search, add, review, then compare. */
 .cref-dest .cmp-picker {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: #fff;
+  padding: 20px 22px;
   margin-bottom: 22px;
 }
-.cref-dest .cmp-picker select {
+.cref-dest .cmp-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cref-dest .cmp-search label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.cref-dest .cmp-search input {
   font-family: var(--body);
-  font-size: 14px;
-  padding: 10px 14px;
+  font-size: 15px;
+  padding: 11px 14px;
   border: 1px solid var(--line-2);
   border-radius: 12px;
   background: #fff;
-  max-width: 100%;
+  max-width: 420px;
+}
+.cref-dest .cmp-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cref-dest .cmp-options .chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cref-dest .cmp-chosen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cref-dest .cmp-chosen > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 14px;
+  border-radius: var(--r-pill);
+  background: var(--blue-50);
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 600;
+}
+.cref-dest .cmp-chosen > span button {
+  border: 0;
+  background: rgba(22, 87, 207, 0.14);
+  color: inherit;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 13px;
+}
+.cref-dest .cmp-note {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+.cref-dest .cmp-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cref-dest .cmp-actions .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ==========================================================================
@@ -4956,4 +5020,28 @@
     min-width: 0;
     width: 100%;
   }
+}
+
+/* comparison, one card per item once the columns stop fitting */
+.cref-dest .cmp-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.cref-dest .cmp-card .fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.cref-dest .cmp-card .fact span {
+  color: var(--muted);
+  flex: none;
+}
+.cref-dest .cmp-card .fact strong {
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: right;
 }

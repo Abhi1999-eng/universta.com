@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { formatDate, formatNumber } from '@/lib/format';
@@ -61,12 +62,38 @@ export function UniversityCompareReference(props: UniversityCompareReferenceProp
   const router = useRouter();
   const pathname = usePathname();
 
+  /** A shortlist is built up, then compared. Navigating on every pick would
+   * reload the page two or three times on the way to a comparison, and would
+   * publish half-finished shortlists into the visitor's history. */
+  const selectedKey = selected.join(',');
+  const [draft, setDraft] = useState<string[]>(() => selected.slice(0, MAX));
+  const [draftFor, setDraftFor] = useState(selectedKey);
+  if (draftFor !== selectedKey) {
+    setDraft(selected.slice(0, MAX));
+    setDraftFor(selectedKey);
+  }
+  const [query, setQuery] = useState('');
+
   function go(next: string[]) {
     const unique = [...new Set(next)].slice(0, MAX);
     router.push(unique.length ? `${pathname}?items=${unique.join(',')}` : pathname);
   }
 
-  const remaining = options.filter((option) => !selected.includes(option.slug));
+  function label(slug: string) {
+    return options.find((option) => option.slug === slug)?.name ?? slug;
+  }
+
+  const available = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return options.filter((option) => {
+      if (draft.includes(option.slug)) return false;
+      if (!needle) return true;
+      return (
+        option.name.toLowerCase().includes(needle) ||
+        option.slug.toLowerCase().includes(needle)
+      );
+    });
+  }, [options, query, draft]);
 
   const rows: Array<[string, (item: CompareUniversity) => React.ReactNode]> = [
     ['Destination', (item) => item.country ?? '—'],
@@ -117,35 +144,81 @@ export function UniversityCompareReference(props: UniversityCompareReferenceProp
 
       <section className="sec wrap" style={{ paddingTop: 8 }}>
         <div className="cmp-picker">
-          <label htmlFor="add-university" style={{ fontSize: 14, color: 'var(--muted)' }}>
-            Add a university
-          </label>
-          <select
-            id="add-university"
-            value=""
-            disabled={selected.length >= MAX || remaining.length === 0}
-            onChange={(event) => {
-              if (event.target.value) go([...selected, event.target.value]);
-            }}
-          >
-            <option value="">
-              {selected.length >= MAX
-                ? `Maximum of ${MAX} selected`
-                : remaining.length
-                  ? 'Choose a university…'
-                  : 'No more published universities'}
-            </option>
-            {remaining.map((option) => (
-              <option key={option.slug} value={option.slug}>
-                {option.name}
-              </option>
+          <div className="cmp-search">
+            <label htmlFor="compare-search-universities">Search published universities</label>
+            <input
+              id="compare-search-universities"
+              type="text"
+              value={query}
+              placeholder="Search by name"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+
+          {available.length ? (
+            <div className="cmp-options" role="list" aria-label="Available universities">
+              {available.slice(0, 8).map((option) => (
+                <button
+                  type="button"
+                  key={option.slug}
+                  className="chip"
+                  disabled={draft.length >= MAX}
+                  onClick={() => {
+                    setDraft((current) => [...current, option.slug]);
+                    setQuery('');
+                  }}
+                >
+                  Add {option.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="cmp-note">
+              {options.length ? 'No published university matches that search.' : 'No published universities yet.'}
+            </p>
+          )}
+
+          <div className="cmp-chosen" aria-label="Selected comparison items">
+            {draft.map((slug) => (
+              <span key={slug}>
+                {label(slug)}
+                <button
+                  type="button"
+                  aria-label={`Remove ${label(slug)}`}
+                  onClick={() => setDraft((current) => current.filter((item) => item !== slug))}
+                >
+                  ×
+                </button>
+              </span>
             ))}
-          </select>
-          {selected.length ? (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => go([])}>
-              Clear all
+          </div>
+
+          <p className="cmp-note" role="status">
+            {draft.length}/{MAX} selected. Choose at least two.
+          </p>
+
+          <div className="cmp-actions">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={draft.length < 2}
+              onClick={() => go(draft)}
+            >
+              Compare selected
             </button>
-          ) : null}
+            {draft.length ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setDraft([]);
+                  go([]);
+                }}
+              >
+                Clear all
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {props.invalid.length ? (
@@ -163,7 +236,8 @@ export function UniversityCompareReference(props: UniversityCompareReferenceProp
             </Link>
           </div>
         ) : (
-          <div className="cmp-wrap">
+          <>
+          <div className="cmp-wrap phase1-compare-desktop">
             <table className="cmp" data-testid="compare-table">
               <thead>
                 <tr>
@@ -213,6 +287,21 @@ export function UniversityCompareReference(props: UniversityCompareReferenceProp
               </tbody>
             </table>
           </div>
+
+          <div className="phase1-compare-mobile">
+            {items.map((item) => (
+              <article className="card cmp-card" key={item.slug}>
+                <h3>{item.name}</h3>
+                {rows.map(([field, render]) => (
+                  <div className="fact" key={field}>
+                    <span>{field}</span>
+                    <strong>{render(item)}</strong>
+                  </div>
+                ))}
+              </article>
+            ))}
+          </div>
+          </>
         )}
       </section>
 
