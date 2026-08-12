@@ -17,6 +17,8 @@ import {
   AUTH_ISSUER,
   REFRESH_TOKEN_TYPE,
   SUPER_ADMIN_ROLE,
+  AUDIENCE_CONFIG,
+  type AuthAudience,
   type AccessTokenPayload,
   type AuthenticatedAdmin,
   type AuthRequestMetadata,
@@ -139,9 +141,13 @@ export class AuthService {
     private readonly logger: StructuredLogger,
   ) {}
 
+  /** Shared for both portals. `audience` decides which role may sign in and
+   * which JWT audience the session is stamped with; everything else — lockout,
+   * attempt logging, hashing, session creation — is identical on purpose. */
   async login(
     dto: LoginDto,
     metadata: AuthRequestMetadata,
+    audience: AuthAudience = 'ADMIN',
   ): Promise<AuthResponseData & { refreshToken: string }> {
     const email = normalizeEmail(dto.email);
     const user = await this.prisma.user.findUnique({
@@ -182,13 +188,13 @@ export class AuthService {
       );
     }
 
-    const hasSuperAdminRole = user.userRoles.some(
+    const hasRequiredRole = user.userRoles.some(
       (userRole) =>
-        userRole.role.code === SUPER_ADMIN_ROLE &&
+        userRole.role.code === AUDIENCE_CONFIG[audience].requiredRole &&
         userRole.role.status === 'ACTIVE',
     );
     const eligible =
-      user.status === 'ACTIVE' && !user.deletedAt && hasSuperAdminRole;
+      user.status === 'ACTIVE' && !user.deletedAt && hasRequiredRole;
     const passwordMatches = this.password.verify(
       dto.password,
       user.passwordHash,
@@ -200,16 +206,20 @@ export class AuthService {
     }
 
     const admin = this.toAdmin(user);
-    return this.createAuthenticatedSession(admin, metadata, user.id);
+    return this.createAuthenticatedSession(admin, metadata, user.id, audience);
   }
 
   async refresh(
     rawRefreshToken: string | undefined,
     metadata: AuthRequestMetadata,
+    audience: AuthAudience = 'ADMIN',
   ): Promise<AuthResponseData & { refreshToken: string }> {
-    const { admin, stored } =
-      await this.validatedRefreshSession(rawRefreshToken);
-    const next = await this.issueTokens(admin);
+    const { admin, stored } = await this.validatedRefreshSession(
+      rawRefreshToken,
+      false,
+      audience,
+    );
+    const next = await this.issueTokens(admin, audience);
     await this.prisma.$transaction(async (transaction) => {
       await transaction.refreshToken.create({
         data: {
@@ -240,8 +250,13 @@ export class AuthService {
    */
   async validateRefreshSession(
     rawRefreshToken: string | undefined,
+    audience: AuthAudience = 'ADMIN',
   ): Promise<AuthenticatedAdmin> {
-    const { admin } = await this.validatedRefreshSession(rawRefreshToken, true);
+    const { admin } = await this.validatedRefreshSession(
+      rawRefreshToken,
+      true,
+      audience,
+    );
     return admin;
   }
 
@@ -296,6 +311,7 @@ export class AuthService {
   private async validatedRefreshSession(
     rawRefreshToken: string | undefined,
     allowRotationGrace = false,
+    audience: AuthAudience = 'ADMIN',
   ) {
     if (!rawRefreshToken) {
       throw invalidRefreshToken();
@@ -308,7 +324,7 @@ export class AuthService {
         {
           secret: this.runtimeConfig.jwtRefreshSecret,
           issuer: AUTH_ISSUER,
-          audience: AUTH_AUDIENCE,
+          audience: AUDIENCE_CONFIG[audience].jwtAudience,
         },
       );
     } catch {
@@ -354,15 +370,15 @@ export class AuthService {
       await this.claimRotationGrace(stored);
     }
 
-    const hasSuperAdminRole = stored.user.userRoles.some(
+    const hasRequiredRole = stored.user.userRoles.some(
       (userRole) =>
-        userRole.role.code === SUPER_ADMIN_ROLE &&
+        userRole.role.code === AUDIENCE_CONFIG[audience].requiredRole &&
         userRole.role.status === 'ACTIVE',
     );
     if (
       stored.user.status !== 'ACTIVE' ||
       stored.user.deletedAt ||
-      !hasSuperAdminRole
+      !hasRequiredRole
     ) {
       throw invalidRefreshToken();
     }
@@ -373,6 +389,7 @@ export class AuthService {
   async logout(
     rawRefreshToken: string | undefined,
     metadata: AuthRequestMetadata,
+    audience: AuthAudience = 'ADMIN',
   ): Promise<void> {
     if (!rawRefreshToken) {
       return;
@@ -384,7 +401,7 @@ export class AuthService {
         {
           secret: this.runtimeConfig.jwtRefreshSecret,
           issuer: AUTH_ISSUER,
-          audience: AUTH_AUDIENCE,
+          audience: AUDIENCE_CONFIG[audience].jwtAudience,
         },
       );
       if (
@@ -459,8 +476,9 @@ export class AuthService {
     admin: AuthenticatedAdmin,
     metadata: AuthRequestMetadata,
     userId: string,
+    audience: AuthAudience = 'ADMIN',
   ): Promise<AuthResponseData & { refreshToken: string }> {
-    const issued = await this.issueTokens(admin);
+    const issued = await this.issueTokens(admin, audience);
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
@@ -488,7 +506,7 @@ export class AuthService {
           entityType: 'USER',
           entityId: userId,
           action: 'LOGIN',
-          description: 'Super Admin login',
+          description: AUDIENCE_CONFIG[audience].loginDescription,
           ipAddress: metadata.ipAddress,
           userAgent: metadata.userAgent,
           requestId: metadata.requestId,
@@ -508,7 +526,10 @@ export class AuthService {
     return issued.response;
   }
 
-  private async issueTokens(admin: AuthenticatedAdmin): Promise<{
+  private async issueTokens(
+    admin: AuthenticatedAdmin,
+    audience: AuthAudience = 'ADMIN',
+  ): Promise<{
     response: AuthResponseData & { refreshToken: string };
     refreshToken: string;
     refreshTokenId: string;
@@ -527,7 +548,7 @@ export class AuthService {
         secret: this.runtimeConfig.jwtAccessSecret,
         expiresIn: this.runtimeConfig.jwtAccessTtl as never,
         issuer: AUTH_ISSUER,
-        audience: AUTH_AUDIENCE,
+        audience: AUDIENCE_CONFIG[audience].jwtAudience,
       },
     );
     const refreshToken = await this.jwt.signAsync<RefreshTokenPayload>(
@@ -540,7 +561,7 @@ export class AuthService {
         secret: this.runtimeConfig.jwtRefreshSecret,
         expiresIn: this.runtimeConfig.jwtRefreshTtl as never,
         issuer: AUTH_ISSUER,
-        audience: AUTH_AUDIENCE,
+        audience: AUDIENCE_CONFIG[audience].jwtAudience,
       },
     );
     const refreshExpiresAt = new Date(

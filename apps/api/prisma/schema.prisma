@@ -49,6 +49,8 @@ model User {
   assignedUserRoles            UserRole[]                     @relation("UserRoleAssigner")
   refreshTokens                RefreshToken[]
   passwordResetTokens          PasswordResetToken[]
+  emailVerificationTokens      EmailVerificationToken[]
+  studentProfile               StudentProfile?
   loginAttempts                LoginAttempt[]
   auditLogs                    AuditLog[]
   uploadedMedia                MediaAsset[]                   @relation("MediaUploadedBy")
@@ -148,6 +150,26 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+/// Proves a person controls the address they registered with. Only the hash is
+/// stored, so a leaked row cannot be replayed; `usedAt` makes a token
+/// single-use and `expiresAt` bounds the window.
+model EmailVerificationToken {
+  id          String    @id @default(uuid()) @db.Char(36)
+  userId      String    @map("user_id") @db.Char(36)
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(255)
+  email       String    @db.VarChar(255)
+  expiresAt   DateTime  @map("expires_at") @db.DateTime(3)
+  usedAt      DateTime? @map("used_at") @db.DateTime(3)
+  requestedIp String?   @map("requested_ip") @db.VarChar(45)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("email_verification_tokens")
+}
+
 model LoginAttempt {
   id             String   @id @default(uuid()) @db.Char(36)
   userId         String?  @map("user_id") @db.Char(36)
@@ -242,6 +264,10 @@ model MediaAsset {
   courseSections           CourseContentSection[]  @relation("CourseSectionMedia")
   consultantIcons          ConsultantLandingCard[] @relation("ConsultantIconMedia")
   consultantFeaturedMedia  ConsultantLandingCard[] @relation("ConsultantFeaturedMedia")
+
+  studentEnglishTestResults StudentEnglishTest[] @relation("StudentEnglishTestResult")
+  studentPassportScans      StudentPassport[]    @relation("StudentPassportScan")
+  studentDocuments          StudentDocument[]    @relation("StudentDocumentMedia")
 
   @@index([uploadedByUserId])
   @@index([folder, status])
@@ -629,6 +655,8 @@ model Intake {
   leads                   Lead[]
   universityCourseIntakes UniversityCourseIntake[]
 
+  studentPreferences StudentProfile[] @relation("StudentPreferredIntake")
+
   @@index([status, displayOrder])
   @@map("intakes")
 }
@@ -660,6 +688,8 @@ model Subject {
   subSubjects  SubSubject[]
   courses      Course[]
   leads        Lead[]
+
+  studentPreferences StudentProfile[] @relation("StudentPreferredSubject")
 
   @@index([iconMediaId])
   @@index([listingMediaId])
@@ -719,6 +749,8 @@ model CourseLevel {
   courses                   Course[]
   leads                     Lead[]
   universityCourseOfferings UniversityCourseOffering[]
+
+  studentPreferences StudentProfile[] @relation("StudentPreferredCourseLevel")
 
   @@map("course_levels")
 }
@@ -802,6 +834,12 @@ model Country {
   preferredByLeads     Lead[]                      @relation("LeadPreferredCountry")
   jobs                 Job[]                       @relation("JobCountry")
   events               Event[]                     @relation("EventCountry")
+
+  studentNationalities    StudentProfile[]          @relation("StudentNationality")
+  studentCurrentResidents StudentProfile[]          @relation("StudentCurrentCountry")
+  studentPreferredBy      StudentPreferredCountry[] @relation("StudentPreferredCountry")
+  studentAcademicRecords  StudentAcademicRecord[]   @relation("StudentAcademicCountry")
+  studentPassports        StudentPassport[]         @relation("StudentPassportCountry")
 
   @@index([continentId, status, displayOrder])
   @@index([status, isFeatured, isPopular])
@@ -2195,4 +2233,190 @@ model ContentVersion {
   @@index([resourceType, resourceId, createdAt])
   @@index([createdByUserId])
   @@map("content_versions")
+}
+
+// ===========================================================================
+// Student domain (Phase 2-A)
+//
+// `User` stays identity and account: credentials, status, roles. Everything a
+// student tells us about themselves lives here instead, so the account table
+// does not grow a column per question we ever ask. Catalogue master data
+// (Country, Subject, CourseLevel, Intake) is referenced, never copied.
+// ===========================================================================
+
+model StudentProfile {
+  id     String @id @default(uuid()) @db.Char(36)
+  userId String @unique @map("user_id") @db.Char(36)
+
+  dateOfBirth          DateTime? @map("date_of_birth") @db.Date
+  gender               String?   @db.VarChar(30)
+  nationalityCountryId String?   @map("nationality_country_id") @db.Char(36)
+  currentCountryId     String?   @map("current_country_id") @db.Char(36)
+  currentCityText      String?   @map("current_city_text") @db.VarChar(150)
+  address              String?   @db.VarChar(500)
+  postalCode           String?   @map("postal_code") @db.VarChar(20)
+
+  // Study preferences. Single-value preferences are foreign keys; the
+  // destinations a student is open to are many, so they get a join table.
+  preferredSubjectId     String?  @map("preferred_subject_id") @db.Char(36)
+  preferredCourseLevelId String?  @map("preferred_course_level_id") @db.Char(36)
+  preferredIntakeId      String?  @map("preferred_intake_id") @db.Char(36)
+  budgetMin              Decimal? @map("budget_min") @db.Decimal(12, 2)
+  budgetMax              Decimal? @map("budget_max") @db.Decimal(12, 2)
+  budgetCurrency         String?  @map("budget_currency") @db.VarChar(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nationalityCountry   Country?                  @relation("StudentNationality", fields: [nationalityCountryId], references: [id], onDelete: SetNull)
+  currentCountry       Country?                  @relation("StudentCurrentCountry", fields: [currentCountryId], references: [id], onDelete: SetNull)
+  preferredSubject     Subject?                  @relation("StudentPreferredSubject", fields: [preferredSubjectId], references: [id], onDelete: SetNull)
+  preferredCourseLevel CourseLevel?              @relation("StudentPreferredCourseLevel", fields: [preferredCourseLevelId], references: [id], onDelete: SetNull)
+  preferredIntake      Intake?                   @relation("StudentPreferredIntake", fields: [preferredIntakeId], references: [id], onDelete: SetNull)
+  preferredCountries   StudentPreferredCountry[]
+  academicRecords      StudentAcademicRecord[]
+  workExperiences      StudentWorkExperience[]
+  englishTests         StudentEnglishTest[]
+  passport             StudentPassport?
+  documents            StudentDocument[]
+
+  @@index([nationalityCountryId])
+  @@index([currentCountryId])
+  @@map("student_profiles")
+}
+
+model StudentPreferredCountry {
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  countryId        String @map("country_id") @db.Char(36)
+  displayOrder     Int    @default(0) @map("display_order")
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  country        Country        @relation("StudentPreferredCountry", fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@id([studentProfileId, countryId])
+  @@index([countryId])
+  @@map("student_preferred_countries")
+}
+
+/// One row per qualification. Deliberately text-based for institution and board
+/// names: encoding every education system in the world is not the job here.
+model StudentAcademicRecord {
+  id               String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+
+  qualificationName  String    @map("qualification_name") @db.VarChar(200)
+  qualificationLevel String?   @map("qualification_level") @db.VarChar(60)
+  institutionName    String    @map("institution_name") @db.VarChar(200)
+  boardOrUniversity  String?   @map("board_or_university") @db.VarChar(200)
+  countryId          String?   @map("country_id") @db.Char(36)
+  specialization     String?   @db.VarChar(200)
+  startDate          DateTime? @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  currentlyStudying  Boolean   @default(false) @map("currently_studying")
+  percentage         Decimal?  @db.Decimal(5, 2)
+  gpa                Decimal?  @db.Decimal(5, 2)
+  gpaScale           Decimal?  @map("gpa_scale") @db.Decimal(5, 2)
+  notes              String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  country        Country?       @relation("StudentAcademicCountry", fields: [countryId], references: [id], onDelete: SetNull)
+
+  @@index([studentProfileId])
+  @@index([countryId])
+  @@map("student_academic_records")
+}
+
+model StudentWorkExperience {
+  id               String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+
+  companyName      String    @map("company_name") @db.VarChar(200)
+  jobTitle         String    @map("job_title") @db.VarChar(200)
+  employmentType   String?   @map("employment_type") @db.VarChar(40)
+  startDate        DateTime  @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  currentlyWorking Boolean   @default(false) @map("currently_working")
+  description      String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([studentProfileId])
+  @@map("student_work_experiences")
+}
+
+/// Component scores are JSON because each exam scores different things: IELTS
+/// has four bands, PTE and TOEFL do not match them one to one, and dedicated
+/// columns for one exam make every other exam awkward.
+model StudentEnglishTest {
+  id               String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+
+  testType        String    @map("test_type") @db.VarChar(30)
+  testDate        DateTime? @map("test_date") @db.Date
+  overallScore    Decimal   @map("overall_score") @db.Decimal(5, 2)
+  componentScores Json?     @map("component_scores")
+  expiryDate      DateTime? @map("expiry_date") @db.Date
+  resultMediaId   String?   @map("result_media_id") @db.Char(36)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  resultMedia    MediaAsset?    @relation("StudentEnglishTestResult", fields: [resultMediaId], references: [id], onDelete: SetNull)
+
+  @@index([studentProfileId])
+  @@map("student_english_tests")
+}
+
+/// Sensitive. Read and written only through the owner's own endpoint, never
+/// included in list responses, and never written to logs or audit descriptions.
+model StudentPassport {
+  id               String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @unique @map("student_profile_id") @db.Char(36)
+
+  passportNumber   String    @map("passport_number") @db.VarChar(60)
+  issuingCountryId String?   @map("issuing_country_id") @db.Char(36)
+  issueDate        DateTime? @map("issue_date") @db.Date
+  expiryDate       DateTime? @map("expiry_date") @db.Date
+  passportMediaId  String?   @map("passport_media_id") @db.Char(36)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  issuingCountry Country?       @relation("StudentPassportCountry", fields: [issuingCountryId], references: [id], onDelete: SetNull)
+  passportMedia  MediaAsset?    @relation("StudentPassportScan", fields: [passportMediaId], references: [id], onDelete: SetNull)
+
+  @@index([issuingCountryId])
+  @@map("student_passports")
+}
+
+/// Ownership metadata for a file already stored as a MediaAsset. The bytes stay
+/// in media storage; this row is what makes a file *this student's*.
+model StudentDocument {
+  id               String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  mediaAssetId     String @map("media_asset_id") @db.Char(36)
+
+  documentType String  @map("document_type") @db.VarChar(40)
+  title        String  @db.VarChar(255)
+  notes        String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  mediaAsset     MediaAsset     @relation("StudentDocumentMedia", fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@index([studentProfileId])
+  @@index([studentProfileId, documentType])
+  @@index([mediaAssetId])
+  @@map("student_documents")
 }
