@@ -27,7 +27,10 @@ describe('Public detail endpoints surface admin-configured SeoMetadata (e2e)', (
   let jobId = '';
   const jobSlug = `seo-e2e-job-${suffix}`;
 
-  const admin = (method: 'get' | 'post' | 'patch' | 'delete', path: string) =>
+  const admin = (
+    method: 'get' | 'post' | 'patch' | 'put' | 'delete',
+    path: string,
+  ) =>
     request(app.getHttpServer())
       [method](path)
       .set('Authorization', `Bearer ${adminToken}`);
@@ -89,7 +92,7 @@ describe('Public detail endpoints surface admin-configured SeoMetadata (e2e)', (
     expect(seo.robotsFollow).toBe(false);
   });
 
-  it('returns seo: null on the public detail response when nothing has been configured', async () => {
+  it('returns the safe default resolver output when no manual SEO is configured', async () => {
     const other = await admin('post', '/api/v1/admin/phase1/jobs')
       .send({
         title: `SEO E2E Job No Seo ${suffix}`,
@@ -102,7 +105,10 @@ describe('Public detail endpoints surface admin-configured SeoMetadata (e2e)', (
     const publicResponse = await request(app.getHttpServer())
       .get(`/api/v1/phase1/jobs/seo-e2e-job-no-seo-${suffix}`)
       .expect(200);
-    expect(data(publicResponse).seo).toBeNull();
+    const seo = record(data(publicResponse).seo);
+    expect(seo.seoTitle).toBe(`SEO E2E Job No Seo ${suffix}`);
+    expect(seo.metaDescription).toBeTruthy();
+    expect(record(seo.source).title).toBe('fallback');
     await prisma.job.deleteMany({ where: { id: otherId } });
   });
 });

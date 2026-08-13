@@ -8,9 +8,10 @@ import {
   StatesAdminController,
 } from './locations.controller';
 import { LocationsService } from './locations.service';
+import { SeoManagementModule } from '../seo-management/seo-management.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, SeoManagementModule],
   controllers: [
     LocationsPublicController,
     StatesAdminController,

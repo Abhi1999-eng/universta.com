@@ -1,6 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import type { SeoResolver } from '../seo-management/seo-management.types';
 import {
   catalogConflict,
   catalogNotFound,
@@ -106,7 +108,11 @@ function validUrl(value: string | undefined): boolean {
 
 @Injectable()
 export class SubjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(SEO_MANAGEMENT_RESOLVER)
+    private readonly seoManagement?: SeoResolver,
+  ) {}
 
   async publicList(query: SubjectListQueryDto) {
     const where: Prisma.SubjectWhereInput = {
@@ -229,7 +235,9 @@ export class SubjectsService {
         this.toCourseCard(course),
       ),
       availableCountryCount: countries.length,
-      seo: this.toSeo(seo),
+      seo: this.seoManagement
+        ? await this.seoManagement.resolve('subject', subject, this.toSeo(seo))
+        : this.toSeo(seo),
     };
   }
 

@@ -15,9 +15,12 @@ type StaticSeoRecord = {
 
 async function loadStaticPageSeo(key: string): Promise<StaticSeoRecord> {
   try {
-    const response = await fetch(`${baseUrl}/api/v1/phase1/static-page-seo/${key}`, {
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${baseUrl}/api/v1/phase1/static-page-seo/${key}`,
+      {
+        cache: "no-store",
+      },
+    );
     if (!response.ok) return null;
     const body = (await response.json()) as { data?: StaticSeoRecord };
     return body.data ?? null;
@@ -26,31 +29,41 @@ async function loadStaticPageSeo(key: string): Promise<StaticSeoRecord> {
   }
 }
 
-/** ISS-038. The admin's "Default SEO" settings screen's "Default title
- * suffix" field promises a fallback value "used when a page has no SEO of
- * its own", but nothing anywhere ever read it -- every page hardcoded
- * "| Universta" as its title suffix regardless of this setting. Only the
- * title suffix is wired here. `defaultDescription` is left for a future
- * fix: every current caller already supplies its own `fallbackDescription`,
- * so making that parameter optional (to give the global default an actual
- * path to matter) is a wider, separate change than this one. Robots
- * defaults are deliberately left alone too, since callers already pass a
- * route-specific default for good reason (e.g. comparison pages defaulting
- * to noindex), and inserting a global tier between them and the per-page SEO
- * record could silently override that. */
+/** Shared public defaults for code-defined pages. Entity pages resolve the
+ * same settings through SeoManagementService; static pages load this small
+ * public projection because they have no entity record to send to the API. */
 async function loadDefaultSeoSettings(): Promise<{
   defaultTitleSuffix: string;
+  defaultDescription: string | null;
+  defaultRobotsIndex: boolean;
+  defaultRobotsFollow: boolean;
+  defaultOgImage: { url: string; alt: string | null } | null;
 } | null> {
   try {
-    const response = await fetch(`${baseUrl}/api/v1/phase1/settings`, {
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${baseUrl}/api/v1/phase1/seo-management/defaults`,
+      {
+        cache: "no-store",
+      },
+    );
     if (!response.ok) return null;
     const body = (await response.json()) as {
-      data?: { seo?: { defaultTitleSuffix?: string } };
+      data?: {
+        defaultTitleSuffix?: string;
+        defaultDescription?: string | null;
+        defaultRobotsIndex?: boolean;
+        defaultRobotsFollow?: boolean;
+        defaultOgImage?: { url: string; alt: string | null } | null;
+      };
     };
-    return body.data?.seo
-      ? { defaultTitleSuffix: body.data.seo.defaultTitleSuffix ?? "" }
+    return body.data
+      ? {
+          defaultTitleSuffix: body.data.defaultTitleSuffix ?? "",
+          defaultDescription: body.data.defaultDescription ?? null,
+          defaultRobotsIndex: body.data.defaultRobotsIndex !== false,
+          defaultRobotsFollow: body.data.defaultRobotsFollow !== false,
+          defaultOgImage: body.data.defaultOgImage ?? null,
+        }
       : null;
   } catch {
     return null;
@@ -75,21 +88,36 @@ export async function staticPageMetadata(
   ]);
   const title = seo?.seoTitle ?? fallbackTitle;
   const titleSuffix = defaults?.defaultTitleSuffix?.trim() || "| Universta";
-  const description = seo?.metaDescription ?? fallbackDescription;
+  const description =
+    seo?.metaDescription ?? defaults?.defaultDescription ?? fallbackDescription;
   const canonical = seo?.canonicalUrl ?? canonicalPath;
   return {
     title: `${title} ${titleSuffix}`,
     description,
     alternates: { canonical },
     robots: {
-      index: seo?.robotsIndex ?? defaultRobotsIndex,
-      follow: seo?.robotsFollow ?? true,
+      // Comparison pages have an explicit route-level noindex rule. Global
+      // defaults apply to ordinary indexable static pages but never turn a
+      // comparison route indexable merely because no row has been saved.
+      index:
+        seo?.robotsIndex ??
+        (defaultRobotsIndex ? (defaults?.defaultRobotsIndex ?? true) : false),
+      follow: seo?.robotsFollow ?? defaults?.defaultRobotsFollow ?? true,
     },
     openGraph: {
       title: seo?.ogTitle ?? title,
       description: seo?.ogDescription ?? description,
       url: canonical,
-      images: seo?.ogMedia ? [{ url: seo.ogMedia.url, alt: seo.ogMedia.alt ?? title }] : undefined,
+      images: seo?.ogMedia
+        ? [{ url: seo.ogMedia.url, alt: seo.ogMedia.alt ?? title }]
+        : defaults?.defaultOgImage
+          ? [
+              {
+                url: defaults.defaultOgImage.url,
+                alt: defaults.defaultOgImage.alt ?? title,
+              },
+            ]
+          : undefined,
     },
   };
 }

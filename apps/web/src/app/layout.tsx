@@ -6,6 +6,7 @@ import {
 } from "@/components/chrome/SiteChrome";
 import { jsonLdString } from "@/lib/json-ld";
 import { siteOrigin } from "@/lib/site-origin";
+import { siteVerificationMetadata } from "@/lib/seo-management";
 import "./globals.css";
 import "./visual-reference.css";
 import "./global-chrome.css";
@@ -33,10 +34,13 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Universta",
-  description: "Structured study destination guidance from Universta",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Universta",
+    description: "Structured study destination guidance from Universta",
+    ...(await siteVerificationMetadata()),
+  };
+}
 
 export default function RootLayout({
   children,

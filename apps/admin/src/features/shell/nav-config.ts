@@ -17,7 +17,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Global Header", href: "/website/header" },
       { label: "Global Footer", href: "/website/footer" },
       { label: "Navigation menus", href: "/phase1/navigation-menus" },
-      { label: "Page templates", href: "/page-templates", hints: ["Reusable sections"] },
+      {
+        label: "Page templates",
+        href: "/page-templates",
+        hints: ["Reusable sections"],
+      },
       { label: "Media library", href: "/media" },
       { label: "SEO management", href: "/seo" },
     ],
@@ -43,7 +47,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Subjects", href: "/subjects", hints: ["Specializations"] },
       { label: "Generic courses", href: "/courses" },
-      { label: "Course levels", href: "/catalog-masters?section=course-levels" },
+      {
+        label: "Course levels",
+        href: "/catalog-masters?section=course-levels",
+      },
       { label: "Study modes", href: "/catalog-masters?section=study-modes" },
       { label: "Intakes", href: "/catalog-masters?section=intakes" },
     ],
@@ -51,7 +58,11 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Universities",
     items: [
-      { label: "Universities", href: "/phase1/universities", hints: ["Campuses", "Accreditations"] },
+      {
+        label: "Universities",
+        href: "/phase1/universities",
+        hints: ["Campuses", "Accreditations"],
+      },
       { label: "University course offerings", href: "/phase1/offerings" },
       { label: "University claim requests", href: "/university-claims" },
     ],
@@ -60,13 +71,20 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Scholarships",
     items: [
       { label: "Scholarships", href: "/phase1/scholarships" },
-      { label: "Scholarship providers", href: "/catalog-masters?section=scholarship-providers" },
+      {
+        label: "Scholarship providers",
+        href: "/catalog-masters?section=scholarship-providers",
+      },
     ],
   },
   {
     label: "Consultants",
     items: [
-      { label: "Consultants", href: "/phase1/consultants", hints: ["Services", "Languages"] },
+      {
+        label: "Consultants",
+        href: "/phase1/consultants",
+        hints: ["Services", "Languages"],
+      },
       { label: "Consultant locations", href: "/consultant-locations" },
     ],
   },
@@ -101,7 +119,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Social links", href: "/settings?section=social" },
       { label: "Header settings", href: "/settings?section=header" },
       { label: "Footer settings", href: "/settings?section=footer" },
-      { label: "Default SEO settings", href: "/settings?section=seo" },
     ],
   },
 ];
@@ -124,14 +141,16 @@ export function navItemKey(groupLabel: string, itemLabel: string): string {
 /** Strips the query string, hash and any trailing slash, so `/subjects?page=2`,
  * `/subjects#top` and `/subjects/` all resolve like `/subjects`. */
 function normalizePath(value: string): string {
-  const path = value.split('#')[0].split('?')[0];
-  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+  const path = value.split("#")[0].split("?")[0];
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
 
 function queryMatches(location: string, href: string): boolean {
-  const expected = new URLSearchParams(href.split('?')[1] ?? '');
+  const expected = new URLSearchParams(href.split("?")[1] ?? "");
   if (expected.size === 0) return true;
-  const actual = new URLSearchParams(location.split('#')[0].split('?')[1] ?? '');
+  const actual = new URLSearchParams(
+    location.split("#")[0].split("?")[1] ?? "",
+  );
   // A bare shared-screen URL intentionally falls back to that screen's first
   // leaf. Once any expected discriminator is present, it must match exactly so
   // Back/Forward between ?tab= or ?section= entries cannot highlight a sibling.
@@ -144,7 +163,7 @@ function queryMatches(location: string, href: string): boolean {
  * Segment-safe on purpose: a plain `startsWith` would light up `/subjects` for
  * `/subjects-archive`, and `/courses` for `/course-levels`. */
 function matchesBase(path: string, base: string): boolean {
-  if (base === '/') return path === '/';
+  if (base === "/") return path === "/";
   return path === base || path.startsWith(`${base}/`);
 }
 
@@ -184,7 +203,8 @@ export function resolveActiveNavItem(
     for (const item of group.items) {
       const base = normalizePath(item.href);
       const position = order++;
-      if (!matchesBase(path, base) || !queryMatches(pathname, item.href)) continue;
+      if (!matchesBase(path, base) || !queryMatches(pathname, item.href))
+        continue;
       const candidate = {
         key: navItemKey(group.label, item.label),
         group: group.label,

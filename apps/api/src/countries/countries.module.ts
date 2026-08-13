@@ -14,9 +14,10 @@ import {
   PublicCountryEditorialController,
 } from './editorial/country-editorial.controller';
 import { CountryEditorialService } from './editorial/country-editorial.service';
+import { SeoManagementModule } from '../seo-management/seo-management.module';
 
 @Module({
-  imports: [AuthModule, CatalogLookupsModule],
+  imports: [AuthModule, CatalogLookupsModule, SeoManagementModule],
   controllers: [
     AdminCountryProfilesController,
     AdminIntakesController,
