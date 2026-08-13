@@ -13,7 +13,6 @@ import { RuntimeConfigService } from '../config/runtime-config.service';
 import { PasswordService } from './password.service';
 import {
   ACCESS_TOKEN_TYPE,
-  AUTH_AUDIENCE,
   AUTH_ISSUER,
   REFRESH_TOKEN_TYPE,
   SUPER_ADMIN_ROLE,
