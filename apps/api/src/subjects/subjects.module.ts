@@ -3,9 +3,10 @@ import { AuthModule } from '../auth/auth.module';
 import { SubjectsController } from './subjects.controller';
 import { AdminSubjectsController } from './admin-subjects.controller';
 import { SubjectsService } from './subjects.service';
+import { SeoManagementModule } from '../seo-management/seo-management.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, SeoManagementModule],
   controllers: [SubjectsController, AdminSubjectsController],
   providers: [SubjectsService],
   exports: [SubjectsService],

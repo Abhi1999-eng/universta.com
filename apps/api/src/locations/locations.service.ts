@@ -1,11 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { slugify } from '../catalog/catalog.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import type { SeoResolver } from '../seo-management/seo-management.types';
 
 const PAGE_LIMIT = 12;
 const MAX_LIMIT = 50;
@@ -39,7 +42,11 @@ function isUniqueConflict(error: unknown): boolean {
 
 @Injectable()
 export class LocationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(SEO_MANAGEMENT_RESOLVER)
+    private readonly seoManagement?: SeoResolver,
+  ) {}
 
   // ---------- Public ----------
 
@@ -151,7 +158,12 @@ export class LocationsService {
     const seo = await this.prisma.seoMetadata.findUnique({
       where: { ownerType_ownerId: { ownerType: 'city', ownerId: city.id } },
     });
-    return { ...city, seo };
+    return {
+      ...city,
+      seo: this.seoManagement
+        ? await this.seoManagement.resolve('city', city, seo)
+        : seo,
+    };
   }
 
   // ---------- Admin: States ----------

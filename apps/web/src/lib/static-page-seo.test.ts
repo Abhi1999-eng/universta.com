@@ -17,8 +17,10 @@ function mockFetch(staticSeo: unknown, settingsSeo: unknown) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => {
-      if (url.includes("/static-page-seo/")) return Promise.resolve(jsonResponse(staticSeo));
-      if (url.includes("/settings")) return Promise.resolve(jsonResponse({ seo: settingsSeo }));
+      if (url.includes("/static-page-seo/"))
+        return Promise.resolve(jsonResponse(staticSeo));
+      if (url.includes("/seo-management/defaults"))
+        return Promise.resolve(jsonResponse(settingsSeo));
       return Promise.resolve(jsonResponse(null, false));
     }),
   );
@@ -41,7 +43,10 @@ describe("staticPageMetadata -- default title suffix (ISS-038)", () => {
   });
 
   it("falls back to the historical suffix when the settings fetch fails", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network error")),
+    );
     const metadata = await staticPageMetadata(
       "home",
       "Fallback Title",

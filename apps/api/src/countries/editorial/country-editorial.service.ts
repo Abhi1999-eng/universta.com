@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,8 @@ import type { AuthenticatedRequest } from '../../auth/auth.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CountriesService } from '../countries.service';
 import { CountryProfilesService } from '../profiles/country-profiles.service';
+import { SEO_MANAGEMENT_RESOLVER } from '../../seo-management/seo-management.tokens';
+import type { SeoResolver } from '../../seo-management/seo-management.types';
 import { COUNTRY_SECTION_TYPES, SEO_OWNER_TYPE } from './editorial.constants';
 import {
   ConsultantCardDto,
@@ -237,6 +240,8 @@ export class CountryEditorialService {
     private readonly prisma: PrismaService,
     private readonly countries: CountriesService,
     private readonly profiles: CountryProfilesService,
+    @Inject(SEO_MANAGEMENT_RESOLVER)
+    private readonly seoManagement?: SeoResolver,
   ) {}
 
   async adminEditorial(countryId: string) {
@@ -330,7 +335,15 @@ export class CountryEditorialService {
       profiles: this.profiles.publicDetail(bundle),
       sections: record.contentSections.map((item) => this.section(item)),
       faqs: record.faqs.map((item) => this.faq(item)),
-      seo: editorial ? this.publicSeo(editorial) : null,
+      seo: this.seoManagement
+        ? await this.seoManagement.resolve(
+            'country',
+            record,
+            editorial ? this.publicSeo(editorial) : null,
+          )
+        : editorial
+          ? this.publicSeo(editorial)
+          : null,
       consultantCards: record.consultantCards.map((item) =>
         this.card(item, true),
       ),

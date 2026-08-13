@@ -1,9 +1,52 @@
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { getCourse } from '@/lib/catalog';
-import { CoursePageView } from '@/components/catalog/CoursePageView';
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
-function one(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }
-async function load(slug: string, country?: string) { try { return await getCourse(slug, country); } catch { return null; } }
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> { const p = await params; const q = await searchParams; const course = await load(p.slug, one(q.country)); if (!course) return { title: 'Course not found | Universta' }; return { title: course.seo?.seoTitle ?? `${course.name} | Universta`, description: course.seo?.metaDescription ?? course.shortDescription ?? `Explore ${course.name}.`, alternates: { canonical: course.seo?.canonicalUrl ?? `/courses/${course.slug}` }, robots: { index: course.seo?.robotsIndex ?? true, follow: course.seo?.robotsFollow ?? true }, openGraph: { title: course.seo?.ogTitle ?? course.name, description: course.seo?.ogDescription ?? course.shortDescription ?? undefined, images: course.seo?.ogMedia ? [{ url: course.seo.ogMedia.url, alt: course.seo.ogMedia.alt ?? course.name }] : undefined } }; }
-export default async function CourseDetailPage({ params, searchParams }: Props) { const p = await params; const q = await searchParams; const country = one(q.country); const course = await load(p.slug, country); if (!course) notFound(); return <><CoursePageView course={course} country={country} /><script type="application/ld+json">{JSON.stringify(course.jsonLd).replace(/</g, '\\u003c')}</script></>; }
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getCourse } from "@/lib/catalog";
+import { CoursePageView } from "@/components/catalog/CoursePageView";
+import { resolvedMetadata } from "@/lib/seo-management";
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+function one(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+async function load(slug: string, country?: string) {
+  try {
+    return await getCourse(slug, country);
+  } catch {
+    return null;
+  }
+}
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
+  const p = await params;
+  const q = await searchParams;
+  const course = await load(p.slug, one(q.country));
+  if (!course) return { title: "Course not found | Universta" };
+  return resolvedMetadata(
+    course.seo,
+    course.name,
+    course.shortDescription ?? `Explore ${course.name}.`,
+    `/courses/${course.slug}`,
+  );
+}
+export default async function CourseDetailPage({
+  params,
+  searchParams,
+}: Props) {
+  const p = await params;
+  const q = await searchParams;
+  const country = one(q.country);
+  const course = await load(p.slug, country);
+  if (!course) notFound();
+  return (
+    <>
+      <CoursePageView course={course} country={country} />
+      <script type="application/ld+json">
+        {JSON.stringify(course.jsonLd).replace(/</g, "\\u003c")}
+      </script>
+    </>
+  );
+}

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -13,6 +14,11 @@ import { sanitizeRichText } from '../common/rich-text';
 import { DbNull } from '../generated/prisma/internal/prismaNamespaceBrowser';
 import { parseChromeConfig } from '../settings/chrome-overrides';
 import { isCanonicalPublicSlug } from '../common/public-slug';
+import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import type {
+  SeoBulkEntityType,
+  SeoResolver,
+} from '../seo-management/seo-management.types';
 
 export type Resource =
   | 'universities'
@@ -44,6 +50,16 @@ const resourceModel: Record<Resource, string> = {
   pages: 'page',
   'navigation-menus': 'navigationMenu',
   'contact-inquiries': 'contactInquiry',
+};
+
+const seoEntityTypeByResource: Partial<Record<Resource, SeoBulkEntityType>> = {
+  universities: 'university',
+  offerings: 'offering',
+  scholarships: 'scholarship',
+  consultants: 'consultant',
+  jobs: 'job',
+  events: 'event',
+  'success-stories': 'successStory',
 };
 
 function pageOf(query: Query) {
@@ -248,6 +264,8 @@ export class ExpandedService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly experiments: ExperimentsService,
+    @Inject(SEO_MANAGEMENT_RESOLVER)
+    private readonly seoManagement?: SeoResolver,
   ) {}
 
   async editorial(slug: string, anonymousId?: string) {
@@ -805,6 +823,9 @@ export class ExpandedService {
     ] as any;
     const row = await delegate.findFirst({
       where: { slug, ...publishedWhereScheduled(now) },
+      ...(resource === 'jobs' || resource === 'events'
+        ? { include: { country: true, city: true } }
+        : {}),
     });
     return this.withSeo(resource, row ?? this.notFound(resource));
   }
@@ -2087,15 +2108,21 @@ export class ExpandedService {
       media && typeof media.fileSizeBytes === 'bigint'
         ? { ...media, fileSizeBytes: Number(media.fileSizeBytes) }
         : media;
+    const manual = seo
+      ? {
+          ...seo,
+          ogMedia: jsonSafeMedia(seo.ogMedia),
+          twitterMedia: jsonSafeMedia(seo.twitterMedia),
+        }
+      : null;
+    const entityType = seoEntityTypeByResource[resource];
+    const resolved =
+      this.seoManagement && entityType
+        ? await this.seoManagement.resolve(entityType, record, manual)
+        : manual;
     return {
       ...record,
-      seo: seo
-        ? {
-            ...seo,
-            ogMedia: jsonSafeMedia(seo.ogMedia),
-            twitterMedia: jsonSafeMedia(seo.twitterMedia),
-          }
-        : null,
+      seo: resolved,
     };
   }
 

@@ -1,6 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import type { SeoResolver } from '../seo-management/seo-management.types';
 import {
   catalogBadRequest,
   catalogConflict,
@@ -172,7 +174,11 @@ function toDecimal(value: string | undefined): Prisma.Decimal | undefined {
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(SEO_MANAGEMENT_RESOLVER)
+    private readonly seoManagement?: SeoResolver,
+  ) {}
 
   async publicList(query: CourseListQueryDto) {
     await this.validatePublicQuery(query);
@@ -570,7 +576,9 @@ export class CoursesService {
       relatedCourses: course.relatedFrom.map((relation: any) =>
         this.toPublicList(relation.relatedCourse as PublicCourse),
       ),
-      seo: this.toSeo(seo),
+      seo: this.seoManagement
+        ? await this.seoManagement.resolve('course', course, this.toSeo(seo))
+        : this.toSeo(seo),
       jsonLd: this.courseJsonLd(course as any, seo),
     };
   }

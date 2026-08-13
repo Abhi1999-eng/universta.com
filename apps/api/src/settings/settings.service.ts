@@ -330,7 +330,11 @@ export class SettingsService {
     const valueJson = values as unknown as Prisma.InputJsonValue;
     const row = await this.prisma.siteSetting.upsert({
       where: { settingKey: group },
-      update: { valueJson, updatedByUserId: actorUserId ?? null },
+      update: {
+        valueJson,
+        isPublic: true,
+        updatedByUserId: actorUserId ?? null,
+      },
       create: {
         settingKey: group,
         settingGroup: group,

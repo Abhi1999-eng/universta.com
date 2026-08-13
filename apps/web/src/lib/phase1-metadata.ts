@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { resolvedMetadata, type ResolvedSeo } from "./seo-management";
 
 type PhaseOneMetadataRecord = {
   name?: string;
@@ -9,13 +10,7 @@ type PhaseOneMetadataRecord = {
   overview?: string;
   journey?: string;
   quote?: string;
-  seo?: {
-    seoTitle?: string;
-    metaDescription?: string;
-    canonicalUrl?: string | null;
-    robotsIndex?: boolean;
-    robotsFollow?: boolean;
-  } | null;
+  seo?: ResolvedSeo | null;
 };
 
 export function phaseOneMetadata(
@@ -32,19 +27,5 @@ export function phaseOneMetadata(
     record.journey ??
     record.quote ??
     `Published information about ${title}.`;
-  const seo = record.seo;
-  const resolvedTitle = seo?.seoTitle ?? title;
-  const description = seo?.metaDescription ?? fallbackDescription;
-  const resolvedCanonical = seo?.canonicalUrl ?? canonical;
-
-  return {
-    title: `${resolvedTitle} | Universta`,
-    description,
-    alternates: { canonical: resolvedCanonical },
-    robots: {
-      index: seo?.robotsIndex ?? true,
-      follow: seo?.robotsFollow ?? true,
-    },
-    openGraph: { title: resolvedTitle, description, url: resolvedCanonical },
-  };
+  return resolvedMetadata(record.seo, title, fallbackDescription, canonical);
 }

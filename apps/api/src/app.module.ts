@@ -35,6 +35,7 @@ import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
 import { PreviewModule } from './preview/preview.module';
 import { VersionsModule } from './versions/versions.module';
 import { StatsPillsModule } from './stats-pills/stats-pills.module';
+import { SeoManagementModule } from './seo-management/seo-management.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { StatsPillsModule } from './stats-pills/stats-pills.module';
     // matching is registration-order-first for equally-specific patterns.
     InternalLinksModule,
     SettingsModule,
+    SeoManagementModule,
     StaticPageSeoModule,
     WebsiteBuilderModule,
     // Same reason: its literal `phase1/cities` route must win over
