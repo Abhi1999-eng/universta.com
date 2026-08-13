@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createConsultantCard,
+  createContinent,
   createCountry,
   createCountryFaq,
   createEditorialSection,
@@ -49,9 +50,10 @@ import {
   type SectionDraft,
   type SectionType,
 } from './editorial/editor-types';
+import { CatalogDialog } from './CatalogDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
-import { nextAutoSlug } from '@/lib/slug';
+import { nextAutoSlug, slugFromText } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 
 type Intent = 'draft' | 'publish';
@@ -225,7 +227,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
 
   return <section className="mx-auto max-w-[1180px]" aria-labelledby="country-form-heading"><Link href="/countries" className="text-sm font-semibold text-[#1657CF]">← Countries</Link><div className="mt-8 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Unified country editor</p><h2 id="country-form-heading" className="mt-2 text-3xl font-semibold">{record ? 'Edit country' : 'Create country'}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-[#667085]">Identity, profiles, intakes, editorial sections, FAQs, guidance cards and SEO are one record workflow.</p></div><span className="rounded-full border border-[#D9E0EA] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{record?.status ?? 'DRAFT'}</span></div>{error ? <p role="alert" className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] px-4 py-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}{issues.length ? <div role="alert" className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4 text-sm text-[#B42318]"><p className="font-semibold">Fix these fields:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : null}
     <form onSubmit={submit} className="mt-8 space-y-6">
-      <Card eyebrow="Country" title="Identity & listing" description="Core catalogue identity and public listing content."><div className="grid gap-5 sm:grid-cols-2"><Select label="Continent" value={core.continentId} onChange={(value) => setCoreField('continentId',value)} options={continents.filter((row) => row.status === 'ACTIVE').map((row) => ({ id: row.id,label: row.name }))} /><Input label="Country name" value={core.name} onChange={(value) => setCoreField('name',value)} /><Input label="Slug" value={core.slug} onChange={(value) => setCoreField('slug',value)} /><Input label="ISO alpha-2" value={core.iso2Code} onChange={(value) => setCoreField('iso2Code',value.toUpperCase())} /><Input label="ISO alpha-3" value={core.iso3Code} onChange={(value) => setCoreField('iso3Code',value.toUpperCase())} /><Input label="Display order" value={core.displayOrder} onChange={(value) => setCoreField('displayOrder',value)} type="number" /><Input label="Page heading" value={core.pageHeading} onChange={(value) => setCoreField('pageHeading',value)} span /><Input label="Short description" value={core.shortDescription} onChange={(value) => setCoreField('shortDescription',value)} textarea span rows={4} /></div><label className="mt-5 flex items-center gap-3 rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={core.isFeatured} onChange={(event) => setCoreField('isFeatured',event.target.checked)} /> Featured country</label></Card>
+      <Card eyebrow="Country" title="Identity & listing" description="Core catalogue identity and public listing content."><div className="grid gap-5 sm:grid-cols-2"><ContinentField value={core.continentId} continents={continents} onSelect={(value) => setCoreField('continentId',value)} onCreated={(created) => { setContinents((rows) => [...rows,created]); setCoreField('continentId',created.id); }} /><Input label="Country name" value={core.name} onChange={(value) => setCoreField('name',value)} /><Input label="Slug" value={core.slug} onChange={(value) => setCoreField('slug',value)} /><Input label="ISO alpha-2" value={core.iso2Code} onChange={(value) => setCoreField('iso2Code',value.toUpperCase())} /><Input label="ISO alpha-3" value={core.iso3Code} onChange={(value) => setCoreField('iso3Code',value.toUpperCase())} /><Input label="Display order" value={core.displayOrder} onChange={(value) => setCoreField('displayOrder',value)} type="number" /><Input label="Page heading" value={core.pageHeading} onChange={(value) => setCoreField('pageHeading',value)} span /><Input label="Short description" value={core.shortDescription} onChange={(value) => setCoreField('shortDescription',value)} textarea span rows={4} /></div><label className="mt-5 flex items-center gap-3 rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={core.isFeatured} onChange={(event) => setCoreField('isFeatured',event.target.checked)} /> Featured country</label></Card>
       <Card eyebrow="Structured data" title="Country profiles" description="Verified cost, work, language and statistics data all save with the country."><div className="space-y-5">{(['cost','work','language','statistics'] as ProfileKind[]).map((kind) => <div key={kind} className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"><h4 className="font-semibold capitalize">{kind} profile</h4><div className="mt-4 grid gap-4 sm:grid-cols-2">{kind === 'work' ? ['partTimeAllowed','postStudyWorkAvailable'].map((key) => <BooleanField key={key} label={key === 'partTimeAllowed' ? 'Part-time allowed' : 'Post-study work available'} checked={Boolean(profiles[kind][key])} onChange={(checked) => setProfile(kind,key,checked)} />) : null}{kind === 'language' ? <BooleanField label="Language waiver available" checked={Boolean(profiles[kind].languageWaiverAvailable)} onChange={(checked) => setProfile(kind,'languageWaiverAvailable',checked)} /> : null}{profileFields[kind].map(([key,label]) => <Input key={key} label={label} value={String(profiles[kind][key] ?? '')} onChange={(value) => setProfile(kind,key,value)} type={key === 'verifiedAt' ? 'date' : key === 'sourceReference' ? 'url' : 'text'} />)}</div></div>)}</div></Card>
       <Card eyebrow="Admissions" title="Intakes" description="Select the intakes published for this destination."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{intakeOptions.map((item) => <label key={item.id} className="flex items-center gap-3 rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={Boolean(selectedIntakes[item.id])} onChange={(event) => { setSelectedIntakes((current) => ({ ...current,[item.id]: event.target.checked })); setDirty(true); }} /> {item.name}</label>)}</div></Card>
       <Card eyebrow="Editorial" title="Content sections" description="All public country sections are edited here; no separate section save."><div className="flex justify-end"><button type="button" onClick={() => { setSections((rows) => [...rows,{ ...blankSection }]); setDirty(true); }} className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]">+ Add section</button></div><div className="mt-5 space-y-5">{sections.length === 0 ? <Empty text="No editorial sections yet." /> : sections.map((row,index) => <CountrySection key={row.id ?? `section-${index}`} index={index} row={row} media={media} onChange={(patch) => updateSection(index,patch)} onRemove={() => removeSection(index)} />)}</div></Card>
@@ -240,5 +242,97 @@ function Card({ eyebrow,title,description,children }: { eyebrow:string; title:st
 function Empty({ text }: { text:string }) { return <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">{text}</div>; }
 function Input({ label,value,onChange,type='text',textarea=false,span=false,rows=3 }: { label:string; value:string; onChange:(value:string)=>void; type?:string; textarea?:boolean; span?:boolean; rows?:number }) { const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`; return <div className={`text-sm font-semibold ${span ? 'sm:col-span-2' : ''}`}><FieldLabel label={label} htmlFor={id} />{textarea ? <textarea id={id} rows={rows} className={input} value={value} onChange={(event) => onChange(event.target.value)} /> : <input id={id} type={type} className={input} value={value} onChange={(event) => onChange(event.target.value)} />}</div>; }
 function Select({ label,value,onChange,options }: { label:string; value:string; onChange:(value:string)=>void; options:Array<{id:string;label:string}> }) { const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`; return <div className="text-sm font-semibold"><FieldLabel label={label} htmlFor={id} /><select id={id} className={input} value={value} onChange={(event) => onChange(event.target.value)}><option value="">Select</option>{options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></div>; }
+
+/**
+ * The continent picker, plus a way out of the dead end where the continent a
+ * country belongs to does not exist yet. Adding one here creates the real
+ * catalogue record through the same endpoint the Continents screen uses — this
+ * is not a country-local value — and selects it, so the half-typed country is
+ * never lost to a detour.
+ *
+ * A name that already exists selects that continent instead of making a second
+ * one. The id stays `country-continent` because that is what gives the field
+ * its "Continent *" label and its help content.
+ */
+function ContinentField({ value, continents, onSelect, onCreated }: { value:string; continents:ContinentRecord[]; onSelect:(id:string)=>void; onCreated:(record:ContinentRecord)=>void }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState({ name: '', slug: '', code: '' });
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const close = () => { setOpen(false); setDraft({ name: '', slug: '', code: '' }); setSlugEdited(false); setError(''); setBusy(false); };
+
+  async function submit() {
+    const name = draft.name.trim();
+    if (!name || busy) return;
+    const slug = slugFromText(draft.slug || name);
+    const existing = continents.find((row) => row.slug === slug || row.name.trim().toLowerCase() === name.toLowerCase());
+    if (existing) {
+      // Already in the catalogue. Selecting beats creating a duplicate, but an
+      // inactive continent cannot be chosen for a country, so say so plainly.
+      if (existing.status === 'ACTIVE') { onSelect(existing.id); close(); return; }
+      setError(`“${existing.name}” already exists but is inactive. Activate it on the Continents screen first.`);
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const created = await createContinent({ name, slug, code: draft.code.trim() || undefined, status: 'ACTIVE' });
+      onCreated(created.data);
+      close();
+    } catch (cause: unknown) {
+      const typed = cause as Partial<CatalogMutationError>;
+      setError(typed.message ?? (cause instanceof Error ? cause.message : 'Unable to create continent'));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="text-sm font-semibold">
+      <div className="flex items-center justify-between gap-3">
+        <FieldLabel label="Continent" htmlFor="country-continent" />
+        <button type="button" onClick={() => setOpen(true)} className="text-xs font-semibold text-[#1657CF] focus:outline-none focus:underline">+ Add continent</button>
+      </div>
+      <select id="country-continent" className={input} value={value} onChange={(event) => onSelect(event.target.value)}>
+        <option value="">Select</option>
+        {continents.filter((row) => row.status === 'ACTIVE').map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+      </select>
+      {open ? (
+        <CatalogDialog title="Add continent" description="This creates a catalogue continent straight away and selects it for this country." onClose={close}>
+          {/* Deliberately not a <form>: CatalogDialog renders inline, so a form
+            * here would be nested inside the country form. The parser drops the
+            * inner tag, which turns this dialog's submit button into a submit
+            * button for the country. Enter is handled here for the same reason
+            * -- otherwise it would submit the half-filled country behind the
+            * dialog. */}
+          <div className="space-y-4" onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void submit(); } }}>
+            <div className="text-sm font-semibold">
+              <FieldLabel label="Continent name" htmlFor="new-continent-name" />
+              {/* No `required`: the country form is this input's real form
+                * owner, so a required marker here would block the country's own
+                * save. The Add button is disabled on an empty name instead. */}
+              <input id="new-continent-name" autoFocus className={input} value={draft.name} onChange={(event) => { const name = event.target.value; setDraft((current) => ({ ...current, name, slug: slugEdited ? current.slug : slugFromText(name) })); setError(''); }} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="text-sm font-semibold">
+                <FieldLabel label="Slug" htmlFor="new-continent-slug" />
+                <input id="new-continent-slug" className={input} value={draft.slug} onChange={(event) => { setSlugEdited(true); setDraft((current) => ({ ...current, slug: event.target.value })); }} />
+              </div>
+              <div className="text-sm font-semibold">
+                <FieldLabel label="Code" htmlFor="new-continent-code" />
+                <input id="new-continent-code" className={input} value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value.toUpperCase() }))} />
+              </div>
+            </div>
+            {error ? <p role="alert" className="text-sm font-semibold text-[#B42318]">{error}</p> : null}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={close} className="rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold">Cancel</button>
+              <button type="button" onClick={() => void submit()} disabled={busy || !draft.name.trim()} className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Adding…' : 'Add continent'}</button>
+            </div>
+          </div>
+        </CatalogDialog>
+      ) : null}
+    </div>
+  );
+}
 function BooleanField({ label,checked,onChange }: { label:string; checked:boolean; onChange:(checked:boolean)=>void }) { return <label className="flex items-center gap-3 self-end rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /> {label}</label>; }
 function CountrySection({ index,row,media,onChange,onRemove }: { index:number; row:SectionRow; media:EditorialMedia[]; onChange:(patch:Partial<SectionRow>)=>void; onRemove:()=>void }) { return <div className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"><div className="flex justify-between"><h4 className="font-semibold">Content section {index + 1}</h4><button type="button" onClick={onRemove} className="text-sm font-semibold text-[#B42318]">Remove</button></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Select label="Section key" value={row.sectionKey} onChange={(value) => onChange({ sectionKey:value as SectionRow['sectionKey'] })} options={SECTION_KEYS.map((id) => ({ id,label:id }))} /><Select label="Section type" value={row.sectionType} onChange={(value) => onChange({ sectionType:value as SectionType })} options={SECTION_TYPES.map((id) => ({ id,label:id.replaceAll('_',' ') }))} /><Input label="Eyebrow" value={row.eyebrow} onChange={(value) => onChange({ eyebrow:value })} /><Input label="Heading" value={row.heading} onChange={(value) => onChange({ heading:value })} /><Input label="Subheading" value={row.subheading} onChange={(value) => onChange({ subheading:value })} textarea span /><Input label="Display order" value={String(row.displayOrder)} onChange={(value) => onChange({ displayOrder:Number(value) || 0 })} type="number" /><MediaPickerDialog label="Primary media" value={row.primaryMediaId} media={media} onChange={(value) => onChange({ primaryMediaId:value })} /><MediaPickerDialog label="Secondary media" value={row.secondaryMediaId} media={media} onChange={(value) => onChange({ secondaryMediaId:value })} /><Input label="CTA label" value={row.ctaLabel} onChange={(value) => onChange({ ctaLabel:value })} /><Input label="CTA URL" value={row.ctaUrl} onChange={(value) => onChange({ ctaUrl:value })} /></div><div className="mt-5"><TypedBodyEditor type={row.sectionType} value={row.body} onChange={(body) => onChange({ body })} /></div></div>; }

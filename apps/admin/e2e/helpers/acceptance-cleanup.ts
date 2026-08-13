@@ -38,10 +38,13 @@ import {
 
 /** The private-use ISO 3166 range (QA-QZ), which impersonates no real country.
  *
- * `iso2Code` is DB-unique and ignores `deletedAt`, so a soft delete burns a
- * code permanently. With only 26 available, repeated runs exhaust the range and
- * the spec then fails with "every QA-QZ ISO code is already taken locally" --
- * which reads like a product bug and is not one.
+ * `iso2Code` used to be DB-unique across every row ever written, so a soft
+ * delete burned a code permanently. With only 26 available, repeated runs
+ * exhausted the range and the spec then failed with "every QA-QZ ISO code is
+ * already taken locally" -- which read like a product bug and was not one.
+ * Uniqueness is now scoped to live rows, so archived fixtures no longer consume
+ * the range; this reclaim stays because leaving them behind still grows the
+ * table without bound.
  *
  * This is the one predicate that cannot carry a run id, because the column is
  * two characters wide. It is therefore additionally constrained to rows that
