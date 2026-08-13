@@ -39,4 +39,21 @@ describe('same-origin catalog BFF', () => {
     expect(ready.status).toBe(422);
     expect((await ready.json()).error.details).toEqual([{ field: 'iso2Code', message: 'required' }]);
   });
+
+  it('rebuilds continent dependency details and drops everything else upstream sends', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'CONTINENT_IN_USE', message: 'raw', details: { countriesCount: 2.9, secret: 'mysql://secret', countries: [{ id: 'c1', name: 'Canada', slug: 'canada', status: 'PUBLISHED', internalNote: 'leak' }] } }, requestId: 'dep-1' })));
+    const blocked = await proxyCatalogRoute(request('/api/v1/admin/continents/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'continents:delete:id');
+    expect(blocked.status).toBe(409);
+    const payload = (await blocked.json()) as { error: { message: string; details: unknown } };
+    expect(payload.error.message).toBe('This continent still has countries assigned to it');
+    expect(payload.error.details).toEqual({ countriesCount: 2, countries: [{ id: 'c1', name: 'Canada', slug: 'canada', status: 'PUBLISHED' }] });
+    expect(JSON.stringify(payload)).not.toContain('mysql');
+    expect(JSON.stringify(payload)).not.toContain('leak');
+  });
+
+  it('degrades a malformed dependency payload to null rather than rendering junk', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'CONTINENT_IN_USE', message: 'raw', details: 'not-an-object' }, requestId: 'dep-2' })));
+    const blocked = await proxyCatalogRoute(request('/api/v1/admin/continents/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'continents:delete:id');
+    expect(((await blocked.json()) as { error: { details: unknown } }).error.details).toBeNull();
+  });
 });

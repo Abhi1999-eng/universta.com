@@ -621,11 +621,17 @@ model Redirect {
   @@map("redirects")
 }
 
+/// Continents are soft-deleted, so uniqueness has to be scoped to the live
+/// rows. `deletedKey` is the discriminator that makes that expressible as a
+/// plain unique index: empty while the row is live, the row's own id once it
+/// is deleted. Live rows therefore share the key and collide as intended,
+/// while every deleted row carries a value nothing else can match — which is
+/// what lets an admin recreate a continent they previously deleted.
 model Continent {
   id               String    @id @default(uuid()) @db.Char(36)
-  name             String    @unique @db.VarChar(150)
-  slug             String    @unique @db.VarChar(150)
-  code             String?   @unique @db.VarChar(20)
+  name             String    @db.VarChar(150)
+  slug             String    @db.VarChar(150)
+  code             String?   @db.VarChar(20)
   emoji            String?   @db.VarChar(20)
   shortDescription String?   @map("short_description") @db.VarChar(1000)
   overview         String?   @db.Text
@@ -639,6 +645,7 @@ model Continent {
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+  deletedKey       String    @default("") @map("deleted_key") @db.Char(36)
 
   iconMedia MediaAsset? @relation("ContinentIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
   heroMedia MediaAsset? @relation("ContinentHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
@@ -646,6 +653,9 @@ model Continent {
   updatedBy User?       @relation("ContinentUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   countries Country[]
 
+  @@unique([name, deletedKey], map: "continents_name_deleted_key")
+  @@unique([slug, deletedKey], map: "continents_slug_deleted_key")
+  @@unique([code, deletedKey], map: "continents_code_deleted_key")
   @@index([iconMediaId])
   @@index([heroMediaId])
   @@index([createdByUserId])
@@ -788,15 +798,17 @@ model StudyMode {
   @@map("study_modes")
 }
 
+/// Countries are soft-deleted too, and carried the same permanently-blocked
+/// recreation as Continent did. `deletedKey` works exactly as it does there.
 model Country {
   id               String    @id @default(uuid()) @db.Char(36)
   continentId      String    @map("continent_id") @db.Char(36)
-  name             String    @unique @db.VarChar(150)
+  name             String    @db.VarChar(150)
   shortName        String?   @map("short_name") @db.VarChar(100)
   pageHeading      String    @map("page_heading") @db.VarChar(255)
-  slug             String    @unique @db.VarChar(255)
-  iso2Code         String?   @unique @map("iso2_code") @db.Char(2)
-  iso3Code         String?   @unique @map("iso3_code") @db.Char(3)
+  slug             String    @db.VarChar(255)
+  iso2Code         String?   @map("iso2_code") @db.Char(2)
+  iso3Code         String?   @map("iso3_code") @db.Char(3)
   dialCode         String?   @map("dial_code") @db.VarChar(10)
   capitalCity      String?   @map("capital_city") @db.VarChar(150)
   nationalityName  String?   @map("nationality_name") @db.VarChar(150)
@@ -823,6 +835,7 @@ model Country {
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+  deletedKey       String    @default("") @map("deleted_key") @db.Char(36)
 
   continent            Continent                   @relation(fields: [continentId], references: [id], onDelete: Restrict)
   flagMedia            MediaAsset?                 @relation("CountryFlagMedia", fields: [flagMediaId], references: [id], onDelete: SetNull)
@@ -859,6 +872,10 @@ model Country {
   studentAcademicRecords  StudentAcademicRecord[]   @relation("StudentAcademicCountry")
   studentPassports        StudentPassport[]         @relation("StudentPassportCountry")
 
+  @@unique([name, deletedKey], map: "countries_name_deleted_key")
+  @@unique([slug, deletedKey], map: "countries_slug_deleted_key")
+  @@unique([iso2Code, deletedKey], map: "countries_iso2_deleted_key")
+  @@unique([iso3Code, deletedKey], map: "countries_iso3_deleted_key")
   @@index([continentId, status, displayOrder])
   @@index([status, isFeatured, isPopular])
   @@index([flagMediaId])

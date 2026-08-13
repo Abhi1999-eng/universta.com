@@ -19,10 +19,20 @@ import {
   DEFAULT_LIMIT,
   DEFAULT_PAGE,
   MAX_LIMIT,
+  slugify,
 } from '../../catalog/catalog.constants';
 
 function trimValue({ value }: TransformFnParams): unknown {
   return typeof value === 'string' ? value.trim() : value;
+}
+
+/* The Admin form already normalizes as you type, but a slug can also arrive
+ * from an API client or a pasted value with capitals or spaces. Normalizing
+ * here rather than rejecting means both sides agree on what "North America"
+ * becomes; `@Matches` below still guards anything slugify cannot rescue, and
+ * `@Length` catches input that normalizes away to nothing. */
+function slugValue({ value }: TransformFnParams): unknown {
+  return typeof value === 'string' ? slugify(value) : value;
 }
 
 function booleanValue({ value }: TransformFnParams): unknown {
@@ -43,7 +53,7 @@ export class CreateContinentDto {
   name!: string;
 
   @ApiPropertyOptional({ example: 'europe' })
-  @Transform(trimValue)
+  @Transform(slugValue)
   @IsOptional()
   @IsString()
   @Length(1, 150)

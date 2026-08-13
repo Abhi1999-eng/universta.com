@@ -129,7 +129,8 @@ async function main() {
   ] as const;
   for (const [name, slug, code] of continents) {
     await prisma.continent.upsert({
-      where: { slug },
+      // Uniqueness is scoped to live rows, so the seed addresses the live one.
+      where: { slug_deletedKey: { slug, deletedKey: '' } },
       update: {},
       create: {
         name,

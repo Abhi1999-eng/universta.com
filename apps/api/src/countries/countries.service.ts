@@ -487,6 +487,9 @@ export class CountriesService {
       data: {
         status: 'DELETED',
         deletedAt: new Date(),
+        // Releases this row's name, slug and ISO codes so the same country can
+        // be created again. See the `deletedKey` note on the Prisma model.
+        deletedKey: id,
         updatedByUserId: userId,
       },
     });

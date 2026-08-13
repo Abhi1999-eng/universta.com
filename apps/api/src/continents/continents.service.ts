@@ -37,6 +37,9 @@ export interface ContinentAdminDto extends ContinentPublicDto {
   updatedAt: string;
 }
 
+/** How many linked countries a dependency conflict names before it stops. */
+const DEPENDENCY_SAMPLE = 5;
+
 function actorId(request: AuthenticatedRequest): string {
   const id = request.user?.sub;
   if (!id) {
@@ -53,8 +56,12 @@ function normalizeCode(value: string | undefined): string | undefined {
   return value === undefined ? undefined : value.trim().toUpperCase();
 }
 
-function conflict(code: string, message: string): ConflictException {
-  return new ConflictException({ code, message, details: null });
+function conflict(
+  code: string,
+  message: string,
+  details: unknown = null,
+): ConflictException {
+  return new ConflictException({ code, message, details });
 }
 
 function notFound(): NotFoundException {
@@ -287,19 +294,36 @@ export class ContinentsService {
       dto.expectedUpdatedAt,
       'CONTINENT_STALE_VERSION',
     );
-    const countryCount = await this.prisma.country.count({
+    // Named rather than counted: an operator who is told "3 countries" still
+    // has to go looking for them, so the dependency answer carries the first
+    // few by name. Nothing cascades — the countries keep their continent and
+    // the delete is refused outright.
+    const linked = await this.prisma.country.findMany({
       where: { continentId: id, deletedAt: null },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      select: { id: true, name: true, slug: true, status: true },
+      take: DEPENDENCY_SAMPLE + 1,
     });
-    if (countryCount > 0) {
+    if (linked.length > 0) {
+      const countriesCount = await this.prisma.country.count({
+        where: { continentId: id, deletedAt: null },
+      });
       throw conflict(
         'CONTINENT_IN_USE',
-        'A continent containing countries cannot be deleted',
+        `${countriesCount} ${countriesCount === 1 ? 'country is' : 'countries are'} still assigned to this continent. Reassign or remove them first.`,
+        {
+          countriesCount,
+          countries: linked.slice(0, DEPENDENCY_SAMPLE),
+        },
       );
     }
     await this.prisma.continent.update({
       where: { id },
       data: {
         deletedAt: new Date(),
+        // Releases this row's name, slug and code so the same continent can be
+        // created again. See the `deletedKey` note on the Prisma model.
+        deletedKey: id,
         status: 'INACTIVE',
         updatedByUserId: userId,
       },

@@ -26,6 +26,12 @@ export interface ContinentRecord {
   updatedAt?: string;
 }
 
+/** Why a continent delete was refused: what is still pointing at it. */
+export interface ContinentDependency {
+  countriesCount: number;
+  countries: Array<{ id: string; name: string; slug: string; status: string }>;
+}
+
 export interface FlagRecord {
   url: string;
   alt: string;

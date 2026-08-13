@@ -45,7 +45,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   CONTINENT_NAME_CONFLICT: 'Continent name already exists',
   CONTINENT_SLUG_CONFLICT: 'Continent slug already exists',
   CONTINENT_CODE_CONFLICT: 'Continent code already exists',
-  CONTINENT_IN_USE: 'A continent containing countries cannot be deleted',
+  CONTINENT_IN_USE: 'This continent still has countries assigned to it',
   CONTINENT_STALE_VERSION: 'The continent changed in another session. Reload before saving',
   COUNTRY_NOT_FOUND: 'Country not found',
   COUNTRY_CONTINENT_INVALID: 'The selected continent is not available',
@@ -284,8 +284,43 @@ function safeBody(value: unknown, allowed: string[]): string | null {
  * code is passed through rather than named one at a time. */
 const READINESS_CODE = /^[A-Z][A-Z_]*_NOT_READY$/;
 
+/* A dependency refusal ("this continent still has countries") is only
+ * actionable if the operator can see what the dependants are, so
+ * CONTINENT_IN_USE carries a count and the first few country names.
+ *
+ * Unlike the readiness lists above, these name real records, so the payload is
+ * rebuilt field by field into a fixed shape rather than passed through: an
+ * unexpected key upstream cannot reach the browser, and a malformed payload
+ * degrades to null instead of rendering as junk. */
+const DEPENDENCY_TEXT_LIMIT = 150;
+const DEPENDENCY_LIST_LIMIT = 5;
+
+export interface DependencyDetails {
+  countriesCount: number;
+  countries: Array<{ id: string; name: string; slug: string; status: string }>;
+}
+
+function shortText(value: unknown): string {
+  return typeof value === 'string' ? value.slice(0, DEPENDENCY_TEXT_LIMIT) : '';
+}
+
+function dependencyDetails(details: unknown): DependencyDetails | null {
+  if (!details || typeof details !== 'object') return null;
+  const raw = details as { countriesCount?: unknown; countries?: unknown };
+  if (typeof raw.countriesCount !== 'number' || !Number.isFinite(raw.countriesCount)) return null;
+  const countries = Array.isArray(raw.countries) ? raw.countries : [];
+  return {
+    countriesCount: Math.max(0, Math.trunc(raw.countriesCount)),
+    countries: countries.slice(0, DEPENDENCY_LIST_LIMIT).map((entry) => {
+      const row = (entry ?? {}) as Record<string, unknown>;
+      return { id: shortText(row.id), name: shortText(row.name), slug: shortText(row.slug), status: shortText(row.status) };
+    }),
+  };
+}
+
 export function safeDetails(code: string, details: unknown): unknown {
   if (code === 'VALIDATION_ERROR' || READINESS_CODE.test(code)) return details;
+  if (code === 'CONTINENT_IN_USE') return dependencyDetails(details);
   return null;
 }
 

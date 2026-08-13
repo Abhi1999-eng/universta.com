@@ -114,7 +114,8 @@ async function main() {
   ] as const;
   for (const [name, slug, code] of continents) {
     await prisma.continent.upsert({
-      where: { slug },
+      // Uniqueness is scoped to live rows, so the seed addresses the live one.
+      where: { slug_deletedKey: { slug, deletedKey: '' } },
       update: { name, code, status: 'ACTIVE', updatedByUserId: admin.id },
       create: {
         name,
@@ -148,11 +149,13 @@ async function main() {
     });
   }
 
-  const northAmerica = await prisma.continent.findUnique({
-    where: { slug: 'north-america' },
+  const northAmerica = await prisma.continent.findFirst({
+    where: { slug: 'north-america', deletedAt: null },
   });
   if (northAmerica) {
-    let canada = await prisma.country.findUnique({ where: { slug: 'canada' } });
+    let canada = await prisma.country.findFirst({
+      where: { slug: 'canada', deletedAt: null },
+    });
     if (!canada) {
       canada = await prisma.country.create({
         data: {
@@ -643,13 +646,25 @@ async function main() {
       primarySourceUrl: sourceReference,
       updatedByUserId: admin.id,
       deletedAt: null,
+      // This seed revives a previously deleted fixture rather than skipping it,
+      // so the delete key has to be surrendered along with `deletedAt` — a live
+      // row holding a stale key would no longer collide with its own name.
+      deletedKey: '',
     };
+    // Live rows first. Now that a deleted country releases its slug and ISO
+    // codes, an archived fixture and a live one can share them; reviving the
+    // archived row would make a second live country with the same slug.
+    // MySQL orders NULL lowest, so `deletedAt: 'asc'` puts the live row first.
     const existingCountry =
-      (await prisma.country.findUnique({ where: { slug: item.slug } })) ??
+      (await prisma.country.findFirst({
+        where: { slug: item.slug },
+        orderBy: { deletedAt: 'asc' },
+      })) ??
       (await prisma.country.findFirst({
         where: {
           OR: [{ iso2Code: item.iso2 }, { iso3Code: item.iso3 }],
         },
+        orderBy: { deletedAt: 'asc' },
       }));
     const country = existingCountry
       ? await prisma.country.update({
