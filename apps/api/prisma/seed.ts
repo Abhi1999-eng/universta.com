@@ -67,6 +67,26 @@ async function main() {
     },
   });
 
+  // Registration assigns this role, so it must exist before the first student
+  // signs up. Seeded here rather than created on demand: a role appearing as a
+  // side effect of a public request is a role nobody reviewed.
+  await prisma.role.upsert({
+    where: { code: 'STUDENT' },
+    update: {
+      name: 'Student',
+      description: 'Student portal account',
+      isSystemRole: true,
+      status: 'ACTIVE',
+    },
+    create: {
+      code: 'STUDENT',
+      name: 'Student',
+      description: 'Student portal account',
+      isSystemRole: true,
+      status: 'ACTIVE',
+    },
+  });
+
   const passwordHash = hashPassword(adminPassword);
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },

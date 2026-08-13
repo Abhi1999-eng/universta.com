@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AppExceptionFilter } from './common/app-exception.filter';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
+import { StudentModule } from './student/student.module';
 import { RequestLoggingMiddleware } from './common/request-logging.middleware';
 import { validateEnvironment } from './config/environment';
 import { RuntimeConfigModule } from './config/runtime-config.module';
@@ -50,6 +51,7 @@ import { StatsPillsModule } from './stats-pills/stats-pills.module';
     RuntimeConfigModule,
     PrismaModule,
     AuthModule,
+    StudentModule,
     ContinentsModule,
     CountriesModule,
     SubjectsModule,
