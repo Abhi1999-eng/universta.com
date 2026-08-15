@@ -349,7 +349,7 @@ export class MediaService {
         storedFileName: filename,
         status: 'ACTIVE',
         deletedAt: null,
-        folder: { not: 'student-offers' },
+        OR: [{ folder: null }, { folder: { not: 'student-offers' } }],
       },
       select: { id: true },
     });
