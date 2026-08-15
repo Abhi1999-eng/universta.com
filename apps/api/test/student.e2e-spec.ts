@@ -124,6 +124,57 @@ describe('Student portal (e2e)', () => {
   });
 
   describe('boundaries', () => {
+    it('answers the public session probe without a 401 and keeps strict auth endpoints strict', async () => {
+      const anonymous = await request(server())
+        .post('/api/v1/student/auth/session')
+        .expect(200);
+      expect((anonymous.body as { data: unknown }).data).toEqual({
+        authenticated: false,
+      });
+
+      await request(server()).post('/api/v1/student/auth/refresh').expect(401);
+      await request(server()).get('/api/v1/student/auth/me').expect(401);
+    });
+
+    it('uses and rotates a valid Student cookie through the public session probe', async () => {
+      const student = await makeStudent('session-probe');
+      const login = await request(server())
+        .post('/api/v1/student/auth/login')
+        .send({ email: student.email, password: PASSWORD })
+        .expect(200);
+      const cookie = login.headers['set-cookie'];
+      expect(cookie).toBeDefined();
+
+      const session = await request(server())
+        .post('/api/v1/student/auth/session')
+        .set('Cookie', cookie)
+        .expect(200);
+      const data = (
+        session.body as {
+          data: {
+            authenticated: boolean;
+            accessToken?: string;
+            user?: { email: string };
+          };
+        }
+      ).data;
+      expect(data.authenticated).toBe(true);
+      expect(data.accessToken).toEqual(expect.any(String));
+      expect(data.user?.email).toBe(student.email);
+      expect(session.headers['set-cookie']).toBeDefined();
+    });
+
+    it('turns an invalid Student cookie into an anonymous session and clears it', async () => {
+      const session = await request(server())
+        .post('/api/v1/student/auth/session')
+        .set('Cookie', 'universta_student_refresh=invalid')
+        .expect(200);
+      expect((session.body as { data: unknown }).data).toEqual({
+        authenticated: false,
+      });
+      expect(session.headers['set-cookie']).toBeDefined();
+    });
+
     it('refuses a student token on admin routes', async () => {
       const student = await makeStudent('admin-probe');
       await request(server())

@@ -13,7 +13,11 @@ function newEmail(tag: string) {
   return `p2a.web.${tag}.${Date.now()}${Math.floor(Math.random() * 1000)}@example.test`;
 }
 
-async function registerAndSignIn(page: Page, email: string) {
+async function registerAndSignIn(
+  page: Page,
+  email: string,
+  returnTo = '/student',
+) {
   await page.goto(`${webBaseUrl}/student/register`);
   await page.getByLabel('First name').fill('Rahul');
   await page.getByLabel('Email address').fill(email);
@@ -22,14 +26,46 @@ async function registerAndSignIn(page: Page, email: string) {
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
 
-  await page.goto(`${webBaseUrl}/student/login`);
+  await page.goto(
+    `${webBaseUrl}/student/login?returnTo=${encodeURIComponent(returnTo)}`,
+  );
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/student$/);
+  await expect(page).toHaveURL(`${webBaseUrl}${returnTo}`);
 }
 
 test.describe('student portal', () => {
+  test('keeps public navigation normal for visitors without a student session', async ({
+    page,
+  }) => {
+    const studentAuthFailures: string[] = [];
+    const studentAuthRequests: string[] = [];
+    page.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.startsWith('/api/student/auth/')) {
+        studentAuthRequests.push(pathname);
+      }
+    });
+    page.on('response', (response) => {
+      if (
+        new URL(response.url()).pathname.startsWith('/api/student/auth/') &&
+        response.status() >= 400
+      ) {
+        studentAuthFailures.push(`${response.status()} ${response.url()}`);
+      }
+    });
+    await page.goto(`${webBaseUrl}/universities`);
+    await expect(page.locator('.usta-header')).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'My Dashboard' }),
+    ).toHaveCount(0);
+    await expect.poll(() => studentAuthFailures).toEqual([]);
+    expect(studentAuthRequests).toContain('/api/student/auth/session');
+    expect(studentAuthRequests).not.toContain('/api/student/auth/me');
+    expect(studentAuthRequests).not.toContain('/api/student/auth/refresh');
+  });
+
   test('sends anonymous visitors to sign in', async ({ page }) => {
     for (const route of ['/student', '/student/profile', '/student/documents']) {
       await page.goto(`${webBaseUrl}${route}`);
@@ -56,6 +92,53 @@ test.describe('student portal', () => {
       page.getByRole('heading', { name: 'My applications' }),
     ).toBeVisible();
     await expect(page.locator('h1')).toHaveCount(1);
+  });
+
+  test('keeps public discovery connected to the student dashboard', async ({
+    page,
+  }) => {
+    await registerAndSignIn(page, newEmail('public'), '/universities');
+    await expect(page.locator('.usta-header')).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'My Dashboard' }),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: 'Open student account menu' })
+      .click();
+    for (const name of ['Dashboard', 'Applications', 'Profile', 'Documents']) {
+      await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
+    }
+    await expect(page.getByText('Admin', { exact: true })).toHaveCount(0);
+    await page.getByRole('link', { name: 'My Dashboard' }).click();
+    await expect(page).toHaveURL(/\/student$/);
+    await page.goto(`${webBaseUrl}/universities`);
+    await page
+      .getByRole('button', { name: 'Open student account menu' })
+      .click();
+    await page.getByRole('button', { name: 'Log out' }).click();
+    await expect(
+      page.getByRole('link', { name: 'My Dashboard' }),
+    ).toHaveCount(0);
+  });
+
+  test('uses safe return paths and falls back from external ones', async ({
+    page,
+  }) => {
+    const email = newEmail('return');
+    await page.goto(`${webBaseUrl}/student/register`);
+    await page.getByLabel('First name').fill('Rahul');
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm password').fill(password);
+    await page.getByRole('button', { name: 'Create account' }).click();
+
+    await page.goto(
+      `${webBaseUrl}/student/login?returnTo=https%3A%2F%2Fexample.invalid`,
+    );
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/student$/);
   });
 
   test('walks onboarding and moves the completion the server reports', async ({
@@ -165,5 +248,19 @@ test.describe('student portal', () => {
     }
     // The phone gets a bottom bar, not a shrunken sidebar.
     await expect(page.locator('.stu-tabbar')).toBeVisible();
+    await page.goto(`${webBaseUrl}/universities`);
+    await expect(
+      page.getByRole('link', { name: 'My Dashboard' }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+      'public header must not scroll sideways at 390px',
+    ).toBe(true);
+    await page.getByRole('link', { name: 'My Dashboard' }).click();
+    await expect(page).toHaveURL(/\/student$/);
   });
 });

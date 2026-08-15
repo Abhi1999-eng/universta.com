@@ -124,6 +124,31 @@ export function StudentHome() {
         </div>
       </section>
 
+      <section className="stu-card" aria-labelledby="explore-heading">
+        <h2 id="explore-heading">Explore Universta</h2>
+        <p className="lede">
+          Browse published options, then return here whenever you are ready to
+          save or apply.
+        </p>
+        <div className="stu-actions">
+          <Link className="stu-btn ghost" href="/universities">
+            Explore universities
+          </Link>
+          <Link className="stu-btn ghost" href="/courses">
+            Explore courses
+          </Link>
+          <Link className="stu-btn ghost" href="/countries">
+            Explore countries
+          </Link>
+          <Link className="stu-btn ghost" href="/scholarships">
+            Explore scholarships
+          </Link>
+          <Link className="stu-btn ghost" href="/study-abroad-consultants">
+            Explore consultants
+          </Link>
+        </div>
+      </section>
+
       <section className="stu-card" aria-labelledby="journey-heading">
         <h2 id="journey-heading">Your journey</h2>
         {dashboard ? (

@@ -186,6 +186,83 @@
   text-decoration: none;
   white-space: nowrap;
 }
+.usta-student-account {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.usta-student-dashboard {
+  color: #0b1220;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.usta-student-dashboard:hover {
+  color: #2563eb;
+}
+.usta-student-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #dbe4f0;
+  border-radius: 50%;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+}
+.usta-student-menu-trigger:hover,
+.usta-student-menu-trigger[aria-expanded='true'] {
+  border-color: #9ab8f6;
+  color: #1d4ed8;
+  background: #eef3ff;
+}
+.usta-student-menu-trigger:focus-visible,
+.usta-student-menu a:focus-visible,
+.usta-student-menu button:focus-visible {
+  outline: 3px solid #dee8ff;
+  outline-offset: 2px;
+}
+.usta-student-menu-trigger svg {
+  width: 17px;
+  height: 17px;
+}
+.usta-student-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: var(--z-global-popover);
+  display: grid;
+  min-width: 196px;
+  padding: 8px;
+  border: 1px solid #e7ecf3;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.12);
+}
+.usta-student-menu a,
+.usta-student-menu button {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  font-size: 14.5px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.usta-student-menu a:hover,
+.usta-student-menu button:hover {
+  color: #0b1220;
+  background: #eef3ff;
+}
 .usta-burger {
   display: none;
   background: none;
@@ -368,6 +445,12 @@ a.usta-drawer-head.is-active {
   .usta-cta,
   .usta-ghost {
     display: none;
+  }
+  .usta-header-actions {
+    gap: 8px;
+  }
+  .usta-student-dashboard {
+    font-size: 13px;
   }
   .usta-drawer {
     padding: 12px 16px 22px;
