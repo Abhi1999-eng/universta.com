@@ -116,6 +116,7 @@ export function StudentLogin() {
 
 export function StudentRegister() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { error, report, setError } = useApiError();
   const [fields, setFields] = useState({
     firstName: '',
@@ -173,6 +174,7 @@ export function StudentRegister() {
               lastName: fields.lastName.trim() || undefined,
               email: fields.email.trim(),
               password: fields.password,
+              referralCode: searchParams.get('ref') ?? undefined,
             }),
           })
             .then(async (response) => {

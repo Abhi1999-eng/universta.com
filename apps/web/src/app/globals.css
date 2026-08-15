@@ -237,3 +237,6 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .phase1-compare-mobile { display: none; gap: 16px; }
 @media (max-width: 700px) { .phase1-compare-desktop { display: none; } .phase1-compare-mobile { display: grid; } .phase1-contact-form { width: 100%; } }
 @media (max-width: 700px) { .editorial-image-text, .editorial-image-text.position-right { grid-template-columns: 1fr; } .editorial-image-text.position-right img { order: 0; } .editorial-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Student Phase 2 catalogue actions retain the approved catalogue styling. */
+.student-catalogue-actions { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.student-catalogue-status { color: #155d35; font-size: 14px; font-weight: 600; }

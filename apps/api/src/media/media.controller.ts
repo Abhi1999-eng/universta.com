@@ -105,6 +105,13 @@ export class MediaPublicController {
     @Res() res: Response,
   ) {
     const path = this.media.resolveServablePath(filename);
+    if (!(await this.media.isPubliclyServable(filename))) {
+      throw new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'Media file not found',
+        details: null,
+      });
+    }
     try {
       await stat(path);
     } catch {

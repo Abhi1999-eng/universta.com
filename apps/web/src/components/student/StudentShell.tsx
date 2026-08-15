@@ -14,8 +14,22 @@ import { useRequireStudent } from './StudentSession';
 
 const NAV = [
   { href: '/student', label: 'Home', icon: '🏠' },
-  { href: '/student/profile', label: 'Profile', icon: '👤' },
+  { href: '/student/applications', label: 'My applications', icon: '🎓' },
+  { href: '/student/saved#universities', label: 'My universities', icon: '🏛️' },
+  { href: '/student/saved#courses', label: 'My courses', icon: '📚' },
+  { href: '/student/scholarships', label: 'My scholarships', icon: '🏅' },
   { href: '/student/documents', label: 'Documents', icon: '📄' },
+  { href: '/student/referrals', label: 'Refer & earn', icon: '🎁' },
+  { href: '/student/notifications', label: 'Notifications', icon: '🔔' },
+  { href: '/student/support', label: 'Support', icon: '💬' },
+  { href: '/student/profile', label: 'Profile', icon: '👤' },
+] as const;
+
+const MOBILE_NAV = [
+  NAV[0],
+  NAV[1],
+  { href: '/student/saved', label: 'Saved', icon: '🔖' },
+  { href: '/student/messages', label: 'Messages', icon: '💬' },
 ] as const;
 
 export function StudentShell({ children }: { children: React.ReactNode }) {
@@ -77,7 +91,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="stu-tabbar" aria-label="Student portal">
-        {NAV.map((item) => (
+        {MOBILE_NAV.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -90,13 +104,13 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           </Link>
         ))}
         <Link
-          href="/student/settings"
-          aria-current={current('/student/settings') ? 'page' : undefined}
+          href="/student/more"
+          aria-current={current('/student/more') ? 'page' : undefined}
         >
           <span className="ic" aria-hidden="true">
             ⚙️
           </span>
-          Account
+          More
         </Link>
       </nav>
     </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { counsellingHref } from '@/lib/counselling-link';
 import { formatDate } from '@/lib/format';
+import { StudentCatalogueActions } from '@/components/student/StudentCatalogueActions';
 
 /** The client-approved university course detail page.
  *
@@ -14,6 +15,7 @@ import { formatDate } from '@/lib/format';
 export type CourseDetailProps = {
   university: { name: string; slug: string; country: string | null };
   offering: {
+    id: string;
     name: string;
     slug: string;
     courseCode: string | null;
@@ -131,6 +133,11 @@ export function UniversityCourseDetailReference(props: CourseDetailProps) {
             <Link href={counselling} className="btn btn-glass btn-lg">
               Book free counselling
             </Link>
+            <StudentCatalogueActions
+              kind="offerings"
+              entityId={offering.id}
+              offeringId={offering.id}
+            />
           </div>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { StudentRegister } from '@/components/student/StudentAuthForms';
 
 export const metadata: Metadata = {
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function StudentRegisterPage() {
-  return <StudentRegister />;
+  return <Suspense><StudentRegister /></Suspense>;
 }

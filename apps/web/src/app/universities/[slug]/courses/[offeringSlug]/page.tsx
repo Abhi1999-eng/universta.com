@@ -89,6 +89,7 @@ export default async function UniversityCourseDetailPage({ params }: Props) {
         country: country?.name ? String(country.name) : null,
       }}
       offering={{
+        id: String(row.id),
         name: String(row.name),
         slug: String(row.slug),
         courseCode: typeof row.courseCode === 'string' ? row.courseCode : null,

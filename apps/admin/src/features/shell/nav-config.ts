@@ -93,6 +93,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Contact enquiries", href: "/phase1/contact-inquiries" },
       { label: "Counselling leads", href: "/leads" },
+      { label: "Student operations", href: "/student-operations" },
     ],
   },
   {

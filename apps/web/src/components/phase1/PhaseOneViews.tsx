@@ -3,6 +3,7 @@ import { intakeRange } from "@/lib/intake-range";
 import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
 import { consultantContactActions } from "@/lib/consultant-contact";
 import { RichText } from "./RichText";
+import { StudentCatalogueActions } from "@/components/student/StudentCatalogueActions";
 
 type NamedRecord = { name?: string; shortLabel?: string };
 type CourseOfferingRecord = { subject?: NamedRecord };
@@ -326,6 +327,9 @@ export function PhaseDetail({
             <p className="hero-copy">
               {description(row) || "Published record."}
             </p>
+            {resource === "scholarships" ? (
+              <StudentCatalogueActions kind="scholarships" entityId={row.id} scholarshipId={row.id} />
+            ) : null}
             {row.sourceReference ? (
               <p className="source-note">
                 Source:{" "}
@@ -477,6 +481,7 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
                 row.overview ??
                 "Published university information."}
             </p>
+            <StudentCatalogueActions kind="universities" entityId={row.id} />
             <div className="hero-actions">
               <Link
                 className="button"
