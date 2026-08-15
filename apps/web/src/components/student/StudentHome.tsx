@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useStudentSession } from "./StudentSession";
-import type { Completion } from "./student-types";
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useStudentSession } from './StudentSession';
+import type { Completion } from './student-types';
 
 /**
  * Home.
@@ -15,27 +15,15 @@ import type { Completion } from "./student-types";
 export function StudentHome() {
   const { api, student } = useStudentSession();
   const [completion, setCompletion] = useState<Completion | null>(null);
-  const [dashboard, setDashboard] = useState<{
-    applications: number;
-    scholarshipApplications: number;
-    unreadNotifications: number;
-  } | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    void api<Completion>("/profile/completion")
+    void api<Completion>('/profile/completion')
       .then(setCompletion)
       .catch(() => setFailed(true));
-    void api<{
-      applications: number;
-      scholarshipApplications: number;
-      unreadNotifications: number;
-    }>("/dashboard")
-      .then(setDashboard)
-      .catch(() => undefined);
   }, [api]);
 
-  const first = student?.firstName ?? "there";
+  const first = student?.firstName ?? 'there';
 
   return (
     <>
@@ -60,8 +48,10 @@ export function StudentHome() {
           <>
             <p style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
               {completion.percentage}%
-              <span style={{ fontSize: 15, fontWeight: 500, color: "#6b7688" }}>
-                {" "}
+              <span
+                style={{ fontSize: 15, fontWeight: 500, color: '#6b7688' }}
+              >
+                {' '}
                 complete
               </span>
             </p>
@@ -104,37 +94,8 @@ export function StudentHome() {
           <Link className="stu-btn ghost" href="/student/documents">
             Upload documents
           </Link>
-          <Link className="stu-btn ghost" href="/student/saved">
-            Saved items
-          </Link>
-          <Link className="stu-btn ghost" href="/student/applications">
-            My applications
-          </Link>
         </div>
       </section>
-
-      {dashboard ? (
-        <section className="stu-card" aria-labelledby="journey-heading">
-          <h2 id="journey-heading">Your journey</h2>
-          <div className="stu-grid">
-            <p>
-              <strong>{dashboard.applications}</strong>
-              <br />
-              <span className="meta">Applications</span>
-            </p>
-            <p>
-              <strong>{dashboard.scholarshipApplications}</strong>
-              <br />
-              <span className="meta">Scholarship applications</span>
-            </p>
-            <p>
-              <strong>{dashboard.unreadNotifications}</strong>
-              <br />
-              <span className="meta">Unread updates</span>
-            </p>
-          </div>
-        </section>
-      ) : null}
     </>
   );
 }

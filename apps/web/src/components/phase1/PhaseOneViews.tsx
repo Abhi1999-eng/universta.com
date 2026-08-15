@@ -69,12 +69,7 @@ export type AnyRecord = {
     visibility?: { desktop?: boolean; tablet?: boolean; mobile?: boolean };
   } | null;
   sectionType?: string;
-  media?: {
-    publicUrl?: string;
-    url?: string;
-    altText?: string;
-    title?: string;
-  } | null;
+  media?: { publicUrl?: string; url?: string; altText?: string; title?: string } | null;
   ctaPrimaryUrl?: string;
   ctaPrimaryLabel?: string;
   experimentKey?: string;
@@ -250,15 +245,10 @@ export function PhaseListing({
                       <span>{humanise(row.institutionType)}</span>
                     ) : null}
                     {row.location ? <span>{row.location}</span> : null}
-                    {row.benefitType ? (
-                      <span>{humanise(row.benefitType)}</span>
-                    ) : null}
+                    {row.benefitType ? <span>{humanise(row.benefitType)}</span> : null}
                   </div>
                   {details ? (
-                    <Link
-                      className="card-link"
-                      href={`${path}/${slugFor(row)}`}
-                    >
+                    <Link className="card-link" href={`${path}/${slugFor(row)}`}>
                       View details <span aria-hidden="true">→</span>
                     </Link>
                   ) : null}
@@ -337,6 +327,9 @@ export function PhaseDetail({
             <p className="hero-copy">
               {description(row) || "Published record."}
             </p>
+            {resource === "scholarships" ? (
+              <StudentCatalogueActions kind="scholarships" entityId={row.id} scholarshipId={row.id} />
+            ) : null}
             {row.sourceReference ? (
               <p className="source-note">
                 Source:{" "}
@@ -364,13 +357,6 @@ export function PhaseDetail({
                   Talk to a counsellor
                 </Link>
               )}
-              {resource === "scholarships" ? (
-                <StudentCatalogueActions
-                  kind="scholarships"
-                  entityId={row.id}
-                  scholarshipId={row.id}
-                />
-              ) : null}
               {resource !== "consultants" &&
               (row.applicationUrl || row.registrationUrl || row.websiteUrl) ? (
                 <a
@@ -398,16 +384,7 @@ export function PhaseDetail({
           <section className="editorial-section">
             <p className="eyebrow">Overview</p>
             <h2>What to know</h2>
-            <RichText
-              value={
-                row.overview ??
-                row.description ??
-                row.journey ??
-                row.quote ??
-                row.summary ??
-                "No further overview is published."
-              }
-            />
+            <RichText value={row.overview ?? row.description ?? row.journey ?? row.quote ?? row.summary ?? "No further overview is published."} />
           </section>
           {row.requirements?.length ? (
             <section className="editorial-section">
@@ -504,8 +481,8 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
                 row.overview ??
                 "Published university information."}
             </p>
+            <StudentCatalogueActions kind="universities" entityId={row.id} />
             <div className="hero-actions">
-              <StudentCatalogueActions kind="universities" entityId={row.id} />
               <Link
                 className="button"
                 href={`/universities/${slugFor(row)}/courses`}
