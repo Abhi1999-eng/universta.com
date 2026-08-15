@@ -66,8 +66,21 @@ export class SendMessageDto {
 }
 
 export class CreateSupportTicketDto extends SendMessageDto {
-  @IsIn(['GENERAL', 'APPLICATION', 'DOCUMENT', 'SCHOLARSHIP', 'TECHNICAL', 'OTHER'])
-  category!: 'GENERAL' | 'APPLICATION' | 'DOCUMENT' | 'SCHOLARSHIP' | 'TECHNICAL' | 'OTHER';
+  @IsIn([
+    'GENERAL',
+    'APPLICATION',
+    'DOCUMENT',
+    'SCHOLARSHIP',
+    'TECHNICAL',
+    'OTHER',
+  ])
+  category!:
+    | 'GENERAL'
+    | 'APPLICATION'
+    | 'DOCUMENT'
+    | 'SCHOLARSHIP'
+    | 'TECHNICAL'
+    | 'OTHER';
 
   @IsString()
   @MaxLength(255)

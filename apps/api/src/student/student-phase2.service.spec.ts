@@ -7,7 +7,11 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
     studentProfile: { upsert: jest.fn(), findUnique: jest.fn() },
     university: { findFirst: jest.fn() },
     studentSavedUniversity: { upsert: jest.fn() },
-    studentApplication: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    studentApplication: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
     studentApplicationTimeline: { create: jest.fn() },
     studentNotification: { create: jest.fn() },
     $transaction: jest.fn(),
@@ -71,7 +75,10 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
     ).rejects.toBeInstanceOf(HttpException);
     expect((prisma as any).studentApplication.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: '00000000-0000-0000-0000-000000000099', studentProfileId: profile.id },
+        where: {
+          id: '00000000-0000-0000-0000-000000000099',
+          studentProfileId: profile.id,
+        },
       }),
     );
   });
@@ -83,16 +90,26 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
       status: 'OFFER_RECEIVED',
       offerDecision: null,
     });
-    (prisma as any).studentApplication.update.mockReturnValue('application-update');
-    (prisma as any).studentApplicationTimeline.create.mockReturnValue('timeline-create');
+    (prisma as any).studentApplication.update.mockReturnValue(
+      'application-update',
+    );
+    (prisma as any).studentApplicationTimeline.create.mockReturnValue(
+      'timeline-create',
+    );
     (prisma as any).$transaction.mockResolvedValue([]);
     (prisma as any).studentNotification.create.mockResolvedValue({});
     (prisma as any).studentProfile.findUnique.mockResolvedValue(null);
     await expect(
-      service.decideOffer('student-a', '00000000-0000-0000-0000-000000000099', 'ACCEPTED'),
+      service.decideOffer(
+        'student-a',
+        '00000000-0000-0000-0000-000000000099',
+        'ACCEPTED',
+      ),
     ).resolves.toEqual({ status: 'ACCEPTED', decision: 'ACCEPTED' });
     expect((prisma as any).studentApplication.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'ACCEPTED' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'ACCEPTED' }),
+      }),
     );
   });
 
@@ -103,7 +120,11 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
       status: 'APPLICATION_STARTED',
     });
     await expect(
-      service.adminSetApplicationStatus('admin', '00000000-0000-0000-0000-000000000099', 'ENROLLED'),
+      service.adminSetApplicationStatus(
+        'admin',
+        '00000000-0000-0000-0000-000000000099',
+        'ENROLLED',
+      ),
     ).rejects.toBeInstanceOf(HttpException);
     expect((prisma as any).studentApplication.update).not.toHaveBeenCalled();
   });
