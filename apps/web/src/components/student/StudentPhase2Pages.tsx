@@ -34,7 +34,10 @@ const STATUS_LABELS: Record<string, string> = {
 
 function statusLabel(value: unknown) {
   const valueAsString = String(value ?? "");
-  return STATUS_LABELS[valueAsString] ?? valueAsString.toLowerCase().replaceAll("_", " ");
+  return (
+    STATUS_LABELS[valueAsString] ??
+    valueAsString.toLowerCase().replaceAll("_", " ")
+  );
 }
 
 function titleFor(mode: Mode) {
@@ -211,7 +214,11 @@ export function StudentPhase2Page({ mode }: { mode: Mode }) {
             <form onSubmit={createTicket}>
               <div className="stu-field">
                 <label htmlFor="ticket-category">Category</label>
-                <select id="ticket-category" value={ticketCategory} onChange={(event) => setTicketCategory(event.target.value)}>
+                <select
+                  id="ticket-category"
+                  value={ticketCategory}
+                  onChange={(event) => setTicketCategory(event.target.value)}
+                >
                   <option value="APPLICATION">Application</option>
                   <option value="DOCUMENT">Document</option>
                   <option value="SCHOLARSHIP">Scholarship</option>
@@ -244,7 +251,7 @@ export function StudentPhase2Page({ mode }: { mode: Mode }) {
               </button>
             </form>
           </section>
-          <SupportList data={data as Item[] | null} />
+          <SupportList data={data as Item[] | null} api={api} reload={load} />
         </>
       ) : null}
       {mode === "deadlines" ? (
@@ -272,7 +279,9 @@ function SavedItems({
   reload: () => void;
 }) {
   const router = useRouter();
-  const [comparisonItems, setComparisonItems] = useState<Record<string, string[]>>({});
+  const [comparisonItems, setComparisonItems] = useState<
+    Record<string, string[]>
+  >({});
   if (!data) return <Loading />;
   const groups = [
     ["Universities", data.universities as Item[], "universities", "university"],
@@ -287,72 +296,113 @@ function SavedItems({
   return (
     <>
       {groups.map(([label, rows, path, relation]) => {
-        const compareType = path === "universities" ? "universities" : path === "offerings" ? "courses" : null;
+        const compareType =
+          path === "universities"
+            ? "universities"
+            : path === "offerings"
+              ? "courses"
+              : null;
         const selected = comparisonItems[path] ?? [];
         return (
-        <section className="stu-card" key={path} id={path === "universities" ? "universities" : path === "offerings" ? "courses" : "scholarships"}>
-          <h2>{label}</h2>
-          {rows?.length ? (
-            rows.map((row) => {
-              const entity = row[relation] as Item;
-              const name = String(
-                entity?.name ?? entity?.title ?? "Saved item",
-              );
-              const slug = String(entity?.slug ?? "");
-              const universitySlug = String(
-                (entity?.university as Item | undefined)?.slug ?? "",
-              );
-              return (
-                <div
-                  className="stu-row"
-                  key={String(row.studentProfileId) + String(row.createdAt)}
-                >
-                  <div>
-                    <h3>{name}</h3>
-                    <p className="meta">
-                      {entity?.status === "PUBLISHED"
-                        ? "Available"
-                        : "No longer publicly available"}
-                    </p>
+          <section
+            className="stu-card"
+            key={path}
+            id={
+              path === "universities"
+                ? "universities"
+                : path === "offerings"
+                  ? "courses"
+                  : "scholarships"
+            }
+          >
+            <h2>{label}</h2>
+            {rows?.length ? (
+              rows.map((row) => {
+                const entity = row[relation] as Item;
+                const name = String(
+                  entity?.name ?? entity?.title ?? "Saved item",
+                );
+                const slug = String(entity?.slug ?? "");
+                const universitySlug = String(
+                  (entity?.university as Item | undefined)?.slug ?? "",
+                );
+                return (
+                  <div
+                    className="stu-row"
+                    key={String(row.studentProfileId) + String(row.createdAt)}
+                  >
+                    <div>
+                      <h3>{name}</h3>
+                      <p className="meta">
+                        {entity?.status === "PUBLISHED"
+                          ? "Available"
+                          : "No longer publicly available"}
+                      </p>
+                    </div>
+                    <div className="stu-actions">
+                      {compareType ? (
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(slug)}
+                            onChange={() =>
+                              setComparisonItems((current) => {
+                                const prior = current[path] ?? [];
+                                const next = prior.includes(slug)
+                                  ? prior.filter((item) => item !== slug)
+                                  : prior.length < 3
+                                    ? [...prior, slug]
+                                    : prior;
+                                return { ...current, [path]: next };
+                              })
+                            }
+                          />{" "}
+                          Compare
+                        </label>
+                      ) : null}
+                      <Link
+                        className="stu-btn ghost"
+                        href={
+                          relation === "offering"
+                            ? `/universities/${universitySlug}/courses/${slug}`
+                            : relation === "scholarship"
+                              ? `/scholarships/${slug}`
+                              : `/universities/${slug}`
+                        }
+                      >
+                        View
+                      </Link>
+                      <button
+                        className="stu-btn ghost"
+                        onClick={() =>
+                          void api(`/saved/${path}/${String(entity.id)}`, {
+                            method: "DELETE",
+                          }).then(reload)
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                  <div className="stu-actions">
-                    {compareType ? <label><input type="checkbox" checked={selected.includes(slug)} onChange={() => setComparisonItems((current) => {
-                      const prior = current[path] ?? [];
-                      const next = prior.includes(slug) ? prior.filter((item) => item !== slug) : prior.length < 3 ? [...prior, slug] : prior;
-                      return { ...current, [path]: next };
-                    })} /> Compare</label> : null}
-                    <Link
-                      className="stu-btn ghost"
-                      href={
-                        relation === "offering"
-                          ? `/universities/${universitySlug}/courses/${slug}`
-                          : relation === "scholarship"
-                            ? `/scholarships/${slug}`
-                            : `/universities/${slug}`
-                      }
-                    >
-                      View
-                    </Link>
-                    <button
-                      className="stu-btn ghost"
-                      onClick={() =>
-                        void api(`/saved/${path}/${String(entity.id)}`, {
-                          method: "DELETE",
-                        }).then(reload)
-                      }
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="stu-empty">No saved {label.toLowerCase()} yet.</p>
-          )}
-          {compareType && selected.length >= 2 ? <button className="stu-btn ghost" onClick={() => router.push(`/compare/${compareType}?items=${encodeURIComponent(selected.join(","))}`)}>Compare selected</button> : null}
-        </section>
-      );
+                );
+              })
+            ) : (
+              <p className="stu-empty">No saved {label.toLowerCase()} yet.</p>
+            )}
+            {compareType && selected.length >= 2 ? (
+              <button
+                className="stu-btn ghost"
+                onClick={() =>
+                  router.push(
+                    `/compare/${compareType}?items=${encodeURIComponent(selected.join(","))}`,
+                  )
+                }
+              >
+                Compare selected
+              </button>
+            ) : null}
+          </section>
+        );
       })}
     </>
   );
@@ -380,7 +430,12 @@ function ApplicationList({ data }: { data: Item[] | null }) {
                 · {statusLabel(row.status)}
               </p>
             </div>
-            <Link className="stu-btn ghost" href={`/student/applications/${String(row.id)}`}>Continue</Link>
+            <Link
+              className="stu-btn ghost"
+              href={`/student/applications/${String(row.id)}`}
+            >
+              Continue
+            </Link>
           </div>
         ))
       ) : (
@@ -408,7 +463,10 @@ function ScholarshipList({ data }: { data: Item[] | null }) {
               </h3>
               <p className="meta">{statusLabel(row.status)}</p>
             </div>
-            <Link className="stu-btn ghost" href={`/student/scholarships/${String(row.id)}`}>
+            <Link
+              className="stu-btn ghost"
+              href={`/student/scholarships/${String(row.id)}`}
+            >
               Continue
             </Link>
           </div>
@@ -425,9 +483,22 @@ function ScholarshipList({ data }: { data: Item[] | null }) {
 function Messages({ data }: { data: Item | null }) {
   if (!data) return <Loading />;
   const rows = (data.messages as Item[]) ?? [];
+  const consultant = ((data.consultantAssignment as Item | undefined)
+    ?.consultant ?? null) as Item | null;
   return (
     <>
       <h2>Your adviser conversation</h2>
+      {consultant ? (
+        <p className="stu-next">
+          Your counsellor: {String(consultant.name)}
+          {consultant.email ? ` · ${String(consultant.email)}` : ""}
+          {consultant.phone ? ` · ${String(consultant.phone)}` : ""}
+        </p>
+      ) : (
+        <p className="stu-empty">
+          A counsellor will appear here once one is assigned.
+        </p>
+      )}
       {rows.length ? (
         rows.map((row) => (
           <div className="stu-row" key={String(row.id)}>
@@ -461,7 +532,18 @@ function NotificationList({
   if (!data) return <Loading />;
   return (
     <section className="stu-card">
-      {data.some((row) => !row.readAt) ? <button className="stu-btn ghost" onClick={() => void api('/notifications/read-all', { method: 'PATCH' }).then(reload)}>Mark all read</button> : null}
+      {data.some((row) => !row.readAt) ? (
+        <button
+          className="stu-btn ghost"
+          onClick={() =>
+            void api("/notifications/read-all", { method: "PATCH" }).then(
+              reload,
+            )
+          }
+        >
+          Mark all read
+        </button>
+      ) : null}
       {data.length ? (
         data.map((row) => (
           <div className="stu-row" key={String(row.id)}>
@@ -489,8 +571,34 @@ function NotificationList({
     </section>
   );
 }
-function SupportList({ data }: { data: Item[] | null }) {
+function SupportList({
+  data,
+  api,
+  reload,
+}: {
+  data: Item[] | null;
+  api: <T>(path: string, init?: RequestInit) => Promise<T>;
+  reload: () => void;
+}) {
+  const [replies, setReplies] = useState<Record<string, string>>({});
+  const [busyTicketId, setBusyTicketId] = useState<string | null>(null);
   if (!data) return <Loading />;
+  const reply = async (ticketId: string) => {
+    const body = replies[ticketId]?.trim();
+    if (!body) return;
+    setBusyTicketId(ticketId);
+    try {
+      await api(`/support-tickets/${ticketId}/messages`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      setReplies((current) => ({ ...current, [ticketId]: "" }));
+      reload();
+    } finally {
+      setBusyTicketId(null);
+    }
+  };
   return (
     <section className="stu-card">
       <h2>Your requests</h2>
@@ -500,6 +608,44 @@ function SupportList({ data }: { data: Item[] | null }) {
             <div>
               <h3>{String(row.subject)}</h3>
               <p className="meta">{statusLabel(row.status)}</p>
+              {((row.messages as Item[]) ?? []).map((message) => (
+                <p className="meta" key={String(message.id)}>
+                  <strong>
+                    {String(message.senderType) === "STUDENT"
+                      ? "You"
+                      : "Universta support"}
+                    :
+                  </strong>{" "}
+                  {String(message.body)}
+                </p>
+              ))}
+              {String(row.status) !== "CLOSED" ? (
+                <div className="stu-field">
+                  <label htmlFor={`support-reply-${String(row.id)}`}>
+                    Reply
+                  </label>
+                  <textarea
+                    id={`support-reply-${String(row.id)}`}
+                    value={replies[String(row.id)] ?? ""}
+                    onChange={(event) =>
+                      setReplies((current) => ({
+                        ...current,
+                        [String(row.id)]: event.target.value,
+                      }))
+                    }
+                    maxLength={5000}
+                  />
+                  <button
+                    className="stu-btn ghost"
+                    disabled={busyTicketId === String(row.id)}
+                    onClick={() => void reply(String(row.id))}
+                  >
+                    {busyTicketId === String(row.id) ? "Sending…" : "Reply"}
+                  </button>
+                </div>
+              ) : (
+                <p className="meta">This request is closed.</p>
+              )}
             </div>
           </div>
         ))
@@ -516,13 +662,22 @@ function Referral({ data }: { data: Item | null }) {
     <>
       <h2>Your referral code</h2>
       <p className="stu-next">{String(data.code ?? "")}</p>
-      <p className="meta">Share this registration link with a friend. Referral attribution is set once when they create their account.</p>
-      <a className="stu-btn ghost" href={`/r/${encodeURIComponent(String(data.code ?? ""))}`}>Open referral link</a>
+      <p className="meta">
+        Share this registration link with a friend. Referral attribution is set
+        once when they create their account.
+      </p>
+      <a
+        className="stu-btn ghost"
+        href={`/r/${encodeURIComponent(String(data.code ?? ""))}`}
+      >
+        Open referral link
+      </a>
       <h2 style={{ marginTop: 24 }}>Referral progress</h2>
       {refs.length ? (
         refs.map((row) => (
           <p className="stu-row" key={String(row.id)}>
-            {String(row.referredStudent ?? "Referred student")} · {statusLabel(row.stage)} · {statusLabel(row.rewardStatus)}
+            {String(row.referredStudent ?? "Referred student")} ·{" "}
+            {statusLabel(row.stage)} · {statusLabel(row.rewardStatus)}
           </p>
         ))
       ) : (
@@ -574,31 +729,66 @@ function RecommendationList({ data }: { data: Item | null }) {
   const offerings = (data.offerings as Item[] | undefined) ?? [];
   return (
     <>
-      <section className="stu-card"><h2>Countries</h2>{countries.length ? countries.map((row) => <Link className="stu-row" key={String(row.id)} href={`/countries/${String(row.slug)}`}>{String(row.name)} <span>{String(row.reason)}</span></Link>) : <p className="stu-empty">Add preferred countries to see recommendations.</p>}</section>
-      <section className="stu-card"><h2>Universities</h2>{universities.length ? universities.map((row) => <Link className="stu-row" key={String(row.id)} href={`/universities/${String(row.slug)}`}>{String(row.name)} <span>{String(row.reason)}</span></Link>) : <p className="stu-empty">Add preferences to see universities.</p>}</section>
-      <section className="stu-card"><h2>Courses</h2>{offerings.length ? (
-        offerings.map((row) => (
-          <div className="stu-row" key={String(row.id)}>
-            <div>
-              <h3>{String(row.name)}</h3>
-              <p className="meta">
-                {String((row.university as Item)?.name ?? "")}
-              </p>
-            </div>
+      <section className="stu-card">
+        <h2>Countries</h2>
+        {countries.length ? (
+          countries.map((row) => (
             <Link
-              className="stu-btn ghost"
-              href={`/universities/${String((row.university as Item)?.slug ?? "")}/courses/${String(row.slug)}`}
+              className="stu-row"
+              key={String(row.id)}
+              href={`/countries/${String(row.slug)}`}
             >
-              View course
+              {String(row.name)} <span>{String(row.reason)}</span>
             </Link>
-          </div>
-        ))
-      ) : (
-        <Empty
-          text="Add your study preferences to receive recommendations."
-          link="/student/profile"
-        />
-      )}</section>
+          ))
+        ) : (
+          <p className="stu-empty">
+            Add preferred countries to see recommendations.
+          </p>
+        )}
+      </section>
+      <section className="stu-card">
+        <h2>Universities</h2>
+        {universities.length ? (
+          universities.map((row) => (
+            <Link
+              className="stu-row"
+              key={String(row.id)}
+              href={`/universities/${String(row.slug)}`}
+            >
+              {String(row.name)} <span>{String(row.reason)}</span>
+            </Link>
+          ))
+        ) : (
+          <p className="stu-empty">Add preferences to see universities.</p>
+        )}
+      </section>
+      <section className="stu-card">
+        <h2>Courses</h2>
+        {offerings.length ? (
+          offerings.map((row) => (
+            <div className="stu-row" key={String(row.id)}>
+              <div>
+                <h3>{String(row.name)}</h3>
+                <p className="meta">
+                  {String((row.university as Item)?.name ?? "")}
+                </p>
+              </div>
+              <Link
+                className="stu-btn ghost"
+                href={`/universities/${String((row.university as Item)?.slug ?? "")}/courses/${String(row.slug)}`}
+              >
+                View course
+              </Link>
+            </div>
+          ))
+        ) : (
+          <Empty
+            text="Add your study preferences to receive recommendations."
+            link="/student/profile"
+          />
+        )}
+      </section>
     </>
   );
 }

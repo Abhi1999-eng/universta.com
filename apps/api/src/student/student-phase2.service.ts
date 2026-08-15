@@ -3,6 +3,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailDeliveryService } from './email-delivery.service';
 
 const PUBLISHED = 'PUBLISHED';
+/** Single operational boundary for the currently configured referral reward. */
+const REFERRAL_REWARD = { amount: 1000, currency: 'INR' } as const;
+const REFERRAL_STAGE_ORDER: Record<string, number> = {
+  REGISTERED: 0,
+  APPLICATION_STARTED: 1,
+  APPLICATION_SUBMITTED: 2,
+  OFFER_RECEIVED: 3,
+  ENROLLED: 4,
+};
 const APPLICATION_TRANSITIONS: Record<string, readonly string[]> = {
   APPLICATION_STARTED: ['SUBMITTED', 'WITHDRAWN'],
   SUBMITTED: ['UNDER_REVIEW', 'WITHDRAWN'],
@@ -59,6 +68,37 @@ export class StudentPhase2Service {
     });
     if (count !== ids.length) throw notFound('One or more student documents');
     return ids;
+  }
+
+  /** Advances a referral through real portal and staff lifecycle events only. */
+  private async advanceReferral(
+    referredProfileId: string,
+    nextStage: keyof typeof REFERRAL_STAGE_ORDER,
+  ) {
+    const referral = await this.prisma.studentReferral.findUnique({
+      where: { referredProfileId },
+      select: { id: true, stage: true, rewardStatus: true },
+    });
+    if (
+      !referral ||
+      (REFERRAL_STAGE_ORDER[referral.stage] ?? -1) >=
+        REFERRAL_STAGE_ORDER[nextStage]
+    ) {
+      return;
+    }
+    await this.prisma.studentReferral.update({
+      where: { id: referral.id },
+      data:
+        nextStage === 'ENROLLED'
+          ? {
+              stage: nextStage,
+              rewardStatus:
+                referral.rewardStatus === 'PAID' ? 'PAID' : 'ELIGIBLE',
+              rewardAmount: REFERRAL_REWARD.amount,
+              rewardCurrency: REFERRAL_REWARD.currency,
+            }
+          : { stage: nextStage },
+    });
   }
 
   private async notify(
@@ -303,6 +343,7 @@ export class StudentPhase2Service {
       });
       return application;
     });
+    await this.advanceReferral(profile.id, 'APPLICATION_STARTED');
     return { id: created.id, existing: false };
   }
 
@@ -421,6 +462,7 @@ export class StudentPhase2Service {
         },
       }),
     ]);
+    await this.advanceReferral(profileId, 'APPLICATION_SUBMITTED');
     await this.notify(
       profileId,
       'APPLICATION_SUBMITTED',
@@ -764,7 +806,14 @@ export class StudentPhase2Service {
         consultantAssignmentId: assignment?.id ?? null,
       },
       update: {},
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        consultantAssignment: {
+          include: {
+            consultant: { select: { name: true, email: true, phone: true } },
+          },
+        },
+        messages: { orderBy: { createdAt: 'asc' } },
+      },
     });
     return conversation;
   }
@@ -877,6 +926,8 @@ export class StudentPhase2Service {
       unreadNotifications,
       assignment,
       nextApplication,
+      nextIntake,
+      nextScholarship,
     ] = await Promise.all([
       this.prisma.studentApplication.count({
         where: { studentProfileId: profile.id, status: { not: 'WITHDRAWN' } },
@@ -903,13 +954,77 @@ export class StudentPhase2Service {
         select: { id: true, status: true },
         orderBy: { updatedAt: 'desc' },
       }),
+      this.prisma.universityCourseIntake.findFirst({
+        where: {
+          status: 'ACTIVE',
+          deadline: { gte: new Date() },
+          offering: {
+            studentApplications: {
+              some: {
+                studentProfileId: profile.id,
+                status: {
+                  in: ['APPLICATION_STARTED', 'SUBMITTED', 'UNDER_REVIEW'],
+                },
+              },
+            },
+          },
+        },
+        select: {
+          deadline: true,
+          offering: {
+            select: {
+              name: true,
+              slug: true,
+              university: { select: { slug: true } },
+            },
+          },
+        },
+        orderBy: { deadline: 'asc' },
+      }),
+      this.prisma.studentScholarshipApplication.findFirst({
+        where: {
+          studentProfileId: profile.id,
+          status: { in: ['STARTED', 'SUBMITTED', 'UNDER_REVIEW'] },
+          scholarship: { deadline: { gte: new Date() } },
+        },
+        select: {
+          scholarship: { select: { title: true, slug: true, deadline: true } },
+        },
+        orderBy: { scholarship: { deadline: 'asc' } },
+      }),
     ]);
+    const recommendations = await this.recommendations(userId);
+    const deadlineCandidates = [
+      nextIntake?.deadline
+        ? {
+            label: nextIntake.offering.name,
+            date: iso(nextIntake.deadline),
+            href: `/universities/${nextIntake.offering.university.slug}/courses/${nextIntake.offering.slug}`,
+          }
+        : null,
+      nextScholarship?.scholarship.deadline
+        ? {
+            label: nextScholarship.scholarship.title,
+            date: iso(nextScholarship.scholarship.deadline),
+            href: `/scholarships/${nextScholarship.scholarship.slug}`,
+          }
+        : null,
+    ].filter(
+      (candidate): candidate is { label: string; date: string; href: string } =>
+        Boolean(candidate),
+    );
+    const nearestDeadline =
+      deadlineCandidates.sort((left, right) =>
+        left.date.localeCompare(right.date),
+      )[0] ?? null;
     return {
       applications,
       scholarshipApplications: scholarships,
       unreadNotifications,
       consultant: assignment?.consultant ?? null,
       referralCode: await this.referralCode(profile.id),
+      nearestDeadline,
+      recommendationPreview: recommendations.offerings.slice(0, 3),
       nextAction: nextApplication
         ? {
             label:
@@ -932,17 +1047,37 @@ export class StudentPhase2Service {
       include: { preferredCountries: { select: { countryId: true } } },
     });
     const countryIds = profile.preferredCountries.map((row) => row.countryId);
-    const where = {
+    const offeringCriteria: Record<string, unknown> = {
       status: PUBLISHED,
       deletedAt: null,
+      ...(profile.preferredCourseLevelId
+        ? { courseLevelId: profile.preferredCourseLevelId }
+        : {}),
+    };
+    if (profile.preferredSubjectId) {
+      offeringCriteria.genericCourse = {
+        subjectId: profile.preferredSubjectId,
+      };
+    }
+    if (profile.preferredIntakeId) {
+      offeringCriteria.intakes = {
+        some: { intakeId: profile.preferredIntakeId, status: 'ACTIVE' },
+      };
+    }
+    if (profile.budgetCurrency) {
+      offeringCriteria.currencyCode = profile.budgetCurrency;
+      if (profile.budgetMax)
+        offeringCriteria.tuitionMin = { lte: profile.budgetMax };
+      if (profile.budgetMin)
+        offeringCriteria.tuitionMax = { gte: profile.budgetMin };
+    }
+    const offeringWhere: Record<string, unknown> = {
+      ...offeringCriteria,
       university: {
         status: PUBLISHED,
         deletedAt: null,
         ...(countryIds.length ? { countryId: { in: countryIds } } : {}),
       },
-      ...(profile.preferredCourseLevelId
-        ? { courseLevelId: profile.preferredCourseLevelId }
-        : {}),
     };
     const [countries, universities, offerings] = await Promise.all([
       this.prisma.country.findMany({
@@ -955,6 +1090,7 @@ export class StudentPhase2Service {
           status: PUBLISHED,
           deletedAt: null,
           ...(countryIds.length ? { countryId: { in: countryIds } } : {}),
+          offerings: { some: offeringCriteria },
         },
         select: {
           id: true,
@@ -967,7 +1103,7 @@ export class StudentPhase2Service {
       }),
       this.prisma.universityCourseOffering.findMany({
         where: {
-          ...where,
+          ...offeringWhere,
         },
         select: {
           id: true,
@@ -985,23 +1121,30 @@ export class StudentPhase2Service {
         take: 12,
       }),
     ]);
-    const countryReason = countryIds.length
-      ? 'Matches your preferred destination'
-      : 'Published study destination';
+    const matchReasons = [
+      countryIds.length ? 'preferred destination' : null,
+      profile.preferredSubjectId ? 'preferred subject' : null,
+      profile.preferredCourseLevelId ? 'preferred course level' : null,
+      profile.preferredIntakeId ? 'preferred intake' : null,
+      profile.budgetCurrency ? 'budget currency and range' : null,
+    ].filter((reason): reason is string => Boolean(reason));
+    const matchReason = matchReasons.length
+      ? `Matches your ${matchReasons.join(', ')}`
+      : 'Published study option';
     return {
       countries: countries.map((country) => ({
         ...country,
-        reason: countryReason,
+        reason: countryIds.length
+          ? 'Matches your preferred destination'
+          : 'Published study destination',
       })),
       universities: universities.map((university) => ({
         ...university,
-        reason: countryReason,
+        reason: matchReason,
       })),
       offerings: offerings.map((offering) => ({
         ...offering,
-        reason: profile.preferredCourseLevelId
-          ? 'Matches your preferred course level'
-          : countryReason,
+        reason: matchReason,
       })),
     };
   }
@@ -1076,6 +1219,7 @@ export class StudentPhase2Service {
         rewardAmount: true,
         rewardCurrency: true,
         createdAt: true,
+        updatedAt: true,
         referredProfile: {
           select: { user: { select: { firstName: true } } },
         },
@@ -1084,9 +1228,13 @@ export class StudentPhase2Service {
     return {
       code,
       referrals: referrals.map((row) => ({
-        ...row,
+        id: row.id,
+        stage: row.stage,
+        rewardStatus: row.rewardStatus,
         rewardAmount: row.rewardAmount ? Number(row.rewardAmount) : null,
+        rewardCurrency: row.rewardCurrency,
         createdAt: iso(row.createdAt),
+        updatedAt: iso(row.updatedAt),
         referredStudent: row.referredProfile.user.firstName,
       })),
     };
@@ -1123,17 +1271,33 @@ export class StudentPhase2Service {
   // -- restricted Admin operations --------------------------------------
 
   async adminOverview() {
-    const [applications, scholarshipApplications, tickets] = await Promise.all([
-      this.prisma.studentApplication.findMany({
-        include: {
-          studentProfile: {
-            select: {
-              id: true,
-              user: {
-                select: { email: true, firstName: true, lastName: true },
-              },
+    const safeStudent = {
+      select: {
+        id: true,
+        user: { select: { firstName: true, lastName: true } },
+        consultantAssignments: {
+          where: { status: 'ACTIVE' },
+          orderBy: { assignedAt: 'desc' as const },
+          take: 1,
+          select: {
+            consultant: {
+              select: { id: true, name: true, email: true, phone: true },
             },
           },
+        },
+      },
+    };
+    const [
+      applications,
+      scholarshipApplications,
+      tickets,
+      conversations,
+      referrals,
+      consultants,
+    ] = await Promise.all([
+      this.prisma.studentApplication.findMany({
+        include: {
+          studentProfile: safeStudent,
           university: { select: { name: true } },
           offering: { select: { name: true } },
         },
@@ -1142,14 +1306,7 @@ export class StudentPhase2Service {
       }),
       this.prisma.studentScholarshipApplication.findMany({
         include: {
-          studentProfile: {
-            select: {
-              id: true,
-              user: {
-                select: { email: true, firstName: true, lastName: true },
-              },
-            },
-          },
+          studentProfile: safeStudent,
           scholarship: { select: { title: true } },
         },
         orderBy: { updatedAt: 'desc' },
@@ -1157,20 +1314,80 @@ export class StudentPhase2Service {
       }),
       this.prisma.studentSupportTicket.findMany({
         include: {
-          studentProfile: {
+          studentProfile: safeStudent,
+          messages: {
+            orderBy: { createdAt: 'asc' },
             select: {
               id: true,
-              user: {
-                select: { email: true, firstName: true, lastName: true },
-              },
+              senderType: true,
+              body: true,
+              createdAt: true,
             },
           },
         },
         orderBy: { updatedAt: 'desc' },
         take: 100,
       }),
+      this.prisma.studentConversation.findMany({
+        include: {
+          studentProfile: safeStudent,
+          consultantAssignment: {
+            select: {
+              consultant: { select: { name: true, email: true, phone: true } },
+            },
+          },
+          messages: {
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              senderType: true,
+              body: true,
+              readAt: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 100,
+      }),
+      this.prisma.studentReferral.findMany({
+        select: {
+          id: true,
+          stage: true,
+          rewardStatus: true,
+          rewardAmount: true,
+          rewardCurrency: true,
+          updatedAt: true,
+          referrerProfile: {
+            select: { user: { select: { firstName: true, lastName: true } } },
+          },
+          referredProfile: {
+            select: { user: { select: { firstName: true, lastName: true } } },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 100,
+      }),
+      this.prisma.consultant.findMany({
+        where: { status: PUBLISHED, deletedAt: null },
+        select: { id: true, name: true, email: true, phone: true },
+        orderBy: { name: 'asc' },
+      }),
     ]);
-    return { applications, scholarshipApplications, tickets };
+    return {
+      applications,
+      scholarshipApplications,
+      tickets,
+      conversations,
+      consultants,
+      referrals: referrals.map((referral) => ({
+        ...referral,
+        rewardAmount: referral.rewardAmount
+          ? Number(referral.rewardAmount)
+          : null,
+        updatedAt: iso(referral.updatedAt),
+      })),
+    };
   }
 
   async adminSetApplicationStatus(
@@ -1238,6 +1455,15 @@ export class StudentPhase2Service {
         },
       }),
     ]);
+    if (status === 'OFFER_RECEIVED') {
+      await this.advanceReferral(
+        application.studentProfileId,
+        'OFFER_RECEIVED',
+      );
+    }
+    if (status === 'ENROLLED') {
+      await this.advanceReferral(application.studentProfileId, 'ENROLLED');
+    }
     await this.notify(
       application.studentProfileId,
       'APPLICATION_STATUS',
@@ -1268,6 +1494,10 @@ export class StudentPhase2Service {
     await this.prisma.studentConversation.update({
       where: { id: conversationId },
       data: { updatedAt: new Date() },
+    });
+    await this.prisma.studentMessage.updateMany({
+      where: { conversationId, senderType: 'STUDENT', readAt: null },
+      data: { readAt: new Date() },
     });
     await this.notify(
       conversation.studentProfileId,
@@ -1349,6 +1579,28 @@ export class StudentPhase2Service {
       `/student/scholarship-applications/${applicationId}`,
     );
     return { status };
+  }
+
+  async adminMarkReferralPaid(referralId: string, rewardStatus: 'PAID') {
+    if (rewardStatus !== 'PAID') {
+      throw failure('VALIDATION_ERROR', 'Reward status must be paid');
+    }
+    const referral = await this.prisma.studentReferral.findUnique({
+      where: { id: referralId },
+      select: { id: true, stage: true, rewardStatus: true },
+    });
+    if (!referral) throw notFound('Referral');
+    if (referral.stage !== 'ENROLLED' || referral.rewardStatus !== 'ELIGIBLE') {
+      throw failure(
+        'INVALID_STATE',
+        'Only enrolled, eligible referrals can be marked as paid',
+      );
+    }
+    await this.prisma.studentReferral.update({
+      where: { id: referralId },
+      data: { rewardStatus: 'PAID' },
+    });
+    return { rewardStatus: 'PAID' };
   }
 
   async adminAssignConsultant(profileId: string, consultantId: string) {

@@ -25,6 +25,7 @@ import {
 import {
   AdminApplicationStatusDto,
   AdminConsultantAssignmentDto,
+  AdminReferralRewardDto,
   AdminScholarshipStatusDto,
   AdminSupportStatusDto,
   AdminReplyDto,
@@ -132,6 +133,14 @@ export class AdminStudentOperationsController {
     @Body() dto: AdminReplyDto,
   ) {
     return this.portal.adminReplyConversation(req.user!.sub, id, dto.body);
+  }
+
+  @Patch('referrals/:id/reward-status')
+  markReferralPaid(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminReferralRewardDto,
+  ) {
+    return this.portal.adminMarkReferralPaid(id, dto.rewardStatus);
   }
 
   @Patch('support-tickets/:id/reply')

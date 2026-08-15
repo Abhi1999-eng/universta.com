@@ -135,6 +135,11 @@ export class AdminSupportStatusDto {
 
 export class AdminReplyDto extends SendMessageDto {}
 
+export class AdminReferralRewardDto {
+  @IsIn(['PAID'])
+  rewardStatus!: 'PAID';
+}
+
 export class PaginationDto {
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

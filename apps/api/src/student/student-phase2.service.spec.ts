@@ -4,7 +4,12 @@ import { StudentPhase2Service } from './student-phase2.service';
 describe('StudentPhase2Service saved catalogue boundary', () => {
   const profile = { id: '00000000-0000-0000-0000-000000000001' };
   const prisma = {
-    studentProfile: { upsert: jest.fn(), findUnique: jest.fn() },
+    studentProfile: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      update: jest.fn(),
+    },
     university: { findFirst: jest.fn() },
     studentSavedUniversity: { upsert: jest.fn() },
     studentApplication: {
@@ -14,6 +19,11 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
     },
     studentApplicationTimeline: { create: jest.fn() },
     studentNotification: { create: jest.fn() },
+    studentReferral: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+    },
     $transaction: jest.fn(),
   } as never;
   const email = { sendPortalNotification: jest.fn() } as never;
@@ -127,5 +137,112 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
       ),
     ).rejects.toBeInstanceOf(HttpException);
     expect((prisma as any).studentApplication.update).not.toHaveBeenCalled();
+  });
+
+  it('moves a referral forward only when a student submits their own application', async () => {
+    (prisma as any).studentProfile.upsert.mockResolvedValue(profile);
+    (prisma as any).studentApplication.findFirst.mockResolvedValue({
+      id: '00000000-0000-0000-0000-000000000099',
+      status: 'APPLICATION_STARTED',
+    });
+    (prisma as any).studentApplication.update.mockReturnValue(
+      'application-update',
+    );
+    (prisma as any).studentApplicationTimeline.create.mockReturnValue(
+      'timeline-create',
+    );
+    (prisma as any).$transaction.mockResolvedValue([]);
+    (prisma as any).studentReferral.findUnique.mockResolvedValue({
+      id: 'referral-id',
+      stage: 'APPLICATION_STARTED',
+      rewardStatus: 'NOT_ELIGIBLE',
+    });
+    (prisma as any).studentProfile.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.submitApplication(
+        'student-a',
+        '00000000-0000-0000-0000-000000000099',
+      ),
+    ).resolves.toEqual({ status: 'SUBMITTED' });
+
+    expect((prisma as any).studentReferral.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { stage: 'APPLICATION_SUBMITTED' },
+      }),
+    );
+  });
+
+  it('makes an enrolled referral eligible from the single reward configuration', async () => {
+    (prisma as any).studentApplication.findUnique.mockResolvedValue({
+      id: '00000000-0000-0000-0000-000000000099',
+      studentProfileId: profile.id,
+      status: 'ACCEPTED',
+    });
+    (prisma as any).studentApplication.update.mockReturnValue(
+      'application-update',
+    );
+    (prisma as any).studentApplicationTimeline.create.mockReturnValue(
+      'timeline-create',
+    );
+    (prisma as any).$transaction.mockResolvedValue([]);
+    (prisma as any).studentReferral.findUnique.mockResolvedValue({
+      id: 'referral-id',
+      stage: 'OFFER_RECEIVED',
+      rewardStatus: 'NOT_ELIGIBLE',
+    });
+    (prisma as any).studentProfile.findUnique.mockResolvedValue(null);
+
+    await service.adminSetApplicationStatus(
+      'admin',
+      '00000000-0000-0000-0000-000000000099',
+      'ENROLLED',
+    );
+
+    expect((prisma as any).studentReferral.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          stage: 'ENROLLED',
+          rewardStatus: 'ELIGIBLE',
+          rewardAmount: 1000,
+          rewardCurrency: 'INR',
+        },
+      }),
+    );
+  });
+
+  it('returns a strictly safe referral progress payload', async () => {
+    (prisma as any).studentProfile.upsert.mockResolvedValue(profile);
+    (prisma as any).studentProfile.findUniqueOrThrow.mockResolvedValue({
+      referralCode: 'UNI-TEST',
+    });
+    (prisma as any).studentReferral.findMany.mockResolvedValue([
+      {
+        id: 'referral-id',
+        stage: 'REGISTERED',
+        rewardStatus: 'NOT_ELIGIBLE',
+        rewardAmount: null,
+        rewardCurrency: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+        referredProfile: { user: { firstName: 'Avery' } },
+      },
+    ]);
+
+    await expect(service.referral('student-a')).resolves.toEqual({
+      code: 'UNI-TEST',
+      referrals: [
+        expect.objectContaining({
+          id: 'referral-id',
+          referredStudent: 'Avery',
+          stage: 'REGISTERED',
+        }),
+      ],
+    });
+    expect((prisma as any).studentReferral.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.not.objectContaining({ email: expect.anything() }),
+      }),
+    );
   });
 });

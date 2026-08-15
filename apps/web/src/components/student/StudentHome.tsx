@@ -1,16 +1,29 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useStudentSession } from './StudentSession';
-import type { Completion } from './student-types';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useStudentSession } from "./StudentSession";
+import type { Completion } from "./student-types";
 
 type Dashboard = {
   applications: number;
   scholarshipApplications: number;
   unreadNotifications: number;
-  consultant: { name: string; slug: string; email: string | null; phone: string | null } | null;
+  consultant: {
+    name: string;
+    slug: string;
+    email: string | null;
+    phone: string | null;
+  } | null;
   referralCode: string;
+  nearestDeadline: { label: string; date: string; href: string } | null;
+  recommendationPreview: {
+    id: string;
+    name: string;
+    slug: string;
+    reason: string;
+    university: { slug: string };
+  }[];
   nextAction: { label: string; href: string };
 };
 
@@ -28,7 +41,10 @@ export function StudentHome() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    void Promise.all([api<Completion>('/profile/completion'), api<Dashboard>('/dashboard')])
+    void Promise.all([
+      api<Completion>("/profile/completion"),
+      api<Dashboard>("/dashboard"),
+    ])
       .then(([nextCompletion, nextDashboard]) => {
         setCompletion(nextCompletion);
         setDashboard(nextDashboard);
@@ -36,7 +52,7 @@ export function StudentHome() {
       .catch(() => setFailed(true));
   }, [api]);
 
-  const first = student?.firstName ?? 'there';
+  const first = student?.firstName ?? "there";
 
   return (
     <>
@@ -61,10 +77,8 @@ export function StudentHome() {
           <>
             <p style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
               {completion.percentage}%
-              <span
-                style={{ fontSize: 15, fontWeight: 500, color: '#6b7688' }}
-              >
-                {' '}
+              <span style={{ fontSize: 15, fontWeight: 500, color: "#6b7688" }}>
+                {" "}
                 complete
               </span>
             </p>
@@ -114,14 +128,63 @@ export function StudentHome() {
         <h2 id="journey-heading">Your journey</h2>
         {dashboard ? (
           <div className="stu-actions">
-            <Link className="stu-btn ghost" href="/student/applications">{dashboard.applications} applications</Link>
-            <Link className="stu-btn ghost" href="/student/scholarships">{dashboard.scholarshipApplications} scholarships</Link>
-            <Link className="stu-btn ghost" href="/student/notifications">{dashboard.unreadNotifications} unread updates</Link>
+            <Link className="stu-btn ghost" href="/student/applications">
+              {dashboard.applications} applications
+            </Link>
+            <Link className="stu-btn ghost" href="/student/scholarships">
+              {dashboard.scholarshipApplications} scholarships
+            </Link>
+            <Link className="stu-btn ghost" href="/student/notifications">
+              {dashboard.unreadNotifications} unread updates
+            </Link>
           </div>
-        ) : <p className="stu-empty">Loading your journey…</p>}
-        {dashboard?.consultant ? <p className="stu-next">Your assigned consultant: {dashboard.consultant.name}</p> : null}
-        {dashboard?.nextAction ? <Link className="stu-btn" href={dashboard.nextAction.href}>{dashboard.nextAction.label}</Link> : null}
+        ) : (
+          <p className="stu-empty">Loading your journey…</p>
+        )}
+        {dashboard?.consultant ? (
+          <p className="stu-next">
+            Your assigned consultant: {dashboard.consultant.name}
+          </p>
+        ) : null}
+        {dashboard?.nearestDeadline ? (
+          <p className="stu-next">
+            Nearest deadline:{" "}
+            <Link href={dashboard.nearestDeadline.href}>
+              {dashboard.nearestDeadline.label}
+            </Link>{" "}
+            (
+            {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(
+              new Date(dashboard.nearestDeadline.date),
+            )}
+            )
+          </p>
+        ) : null}
+        {dashboard?.nextAction ? (
+          <Link className="stu-btn" href={dashboard.nextAction.href}>
+            {dashboard.nextAction.label}
+          </Link>
+        ) : null}
       </section>
+
+      {dashboard?.recommendationPreview.length ? (
+        <section className="stu-card" aria-labelledby="recommendations-heading">
+          <h2 id="recommendations-heading">Recommended next</h2>
+          {dashboard.recommendationPreview.map((offering) => (
+            <div className="stu-row" key={offering.id}>
+              <div>
+                <h3>{offering.name}</h3>
+                <p className="meta">{offering.reason}</p>
+              </div>
+              <Link
+                className="stu-btn ghost"
+                href={`/universities/${offering.university.slug}/courses/${offering.slug}`}
+              >
+                View course
+              </Link>
+            </div>
+          ))}
+        </section>
+      ) : null}
     </>
   );
 }
