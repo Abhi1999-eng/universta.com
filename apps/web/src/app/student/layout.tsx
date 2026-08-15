@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { StudentSessionProvider } from '@/components/student/StudentSession';
 import './student.css';
 
 export const metadata: Metadata = {
@@ -13,5 +12,5 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <StudentSessionProvider>{children}</StudentSessionProvider>;
+  return children;
 }

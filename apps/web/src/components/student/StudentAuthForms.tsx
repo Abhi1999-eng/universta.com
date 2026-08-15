@@ -3,6 +3,11 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+  safeStudentReturnTo,
+  studentLoginHref,
+  studentRegisterHref,
+} from '@/lib/student-return-to';
 import { useStudentSession } from './StudentSession';
 
 /** Auth screens. One job per screen, errors next to the field that caused
@@ -46,14 +51,16 @@ function AuthCard({
 export function StudentLogin() {
   const { signIn, status } = useStudentSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { error, report, setError } = useApiError();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const returnTo = safeStudentReturnTo(searchParams.get('returnTo'));
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace('/student');
-  }, [status, router]);
+    if (status === 'authenticated') router.replace(returnTo);
+  }, [status, router, returnTo]);
 
   return (
     <AuthCard
@@ -61,7 +68,8 @@ export function StudentLogin() {
       lede="Sign in to continue building your study profile."
       foot={
         <>
-          New here? <Link href="/student/register">Create an account</Link>
+          New here?{' '}
+          <Link href={studentRegisterHref(returnTo)}>Create an account</Link>
         </>
       }
     >
@@ -71,7 +79,7 @@ export function StudentLogin() {
           setError(null);
           setBusy(true);
           void signIn(email.trim(), password)
-            .then(() => router.replace('/student'))
+            .then(() => router.replace(returnTo))
             .catch(report)
             .finally(() => setBusy(false));
         }}
@@ -128,6 +136,8 @@ export function StudentRegister() {
   const [mismatch, setMismatch] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const returnTo = safeStudentReturnTo(searchParams.get('returnTo'));
+  const loginHref = studentLoginHref(returnTo);
 
   const set = (key: keyof typeof fields) => (value: string) =>
     setFields((current) => ({ ...current, [key]: value }));
@@ -137,7 +147,7 @@ export function StudentRegister() {
       <AuthCard
         title="Check your email"
         lede="We have sent a link to confirm your address. You can sign in now and confirm later."
-        foot={<Link href="/student/login">Go to sign in</Link>}
+        foot={<Link href={loginHref}>Go to sign in</Link>}
       >
         <p className="stu-alert ok" role="status">
           Your account is ready.
@@ -152,7 +162,7 @@ export function StudentRegister() {
       lede="It takes a minute. You can fill in the rest of your profile whenever you like."
       foot={
         <>
-          Already have an account? <Link href="/student/login">Sign in</Link>
+          Already have an account? <Link href={loginHref}>Sign in</Link>
         </>
       }
     >
@@ -186,7 +196,7 @@ export function StudentRegister() {
                 );
               }
               setDone(true);
-              router.prefetch('/student/login');
+              router.prefetch(loginHref);
             })
             .catch(report)
             .finally(() => setBusy(false));

@@ -32,6 +32,22 @@ const MOBILE_NAV = [
   { href: '/student/messages', label: 'Messages', icon: '💬' },
 ] as const;
 
+function breadcrumbFor(pathname: string) {
+  if (pathname === '/student') return null;
+  if (pathname.startsWith('/student/applications/')) {
+    return ['Applications', 'Application'];
+  }
+  if (pathname.startsWith('/student/scholarships/')) {
+    return ['Scholarships', 'Application'];
+  }
+  const item = NAV.find((entry) =>
+    entry.href === '/student'
+      ? pathname === entry.href
+      : pathname.startsWith(entry.href),
+  );
+  return item ? [item.label] : null;
+}
+
 export function StudentShell({ children }: { children: React.ReactNode }) {
   const { status, student, signOut } = useRequireStudent();
   const pathname = usePathname();
@@ -50,6 +66,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
 
   const current = (href: string) =>
     href === '/student' ? pathname === href : pathname.startsWith(href);
+  const breadcrumb = breadcrumbFor(pathname);
 
   return (
     <div className="stu">
@@ -87,7 +104,24 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
 
-        <div>{children}</div>
+        <div>
+          {breadcrumb ? (
+            <nav className="stu-breadcrumbs" aria-label="Breadcrumb">
+              <Link href="/student">Dashboard</Link>
+              {breadcrumb.map((label, index) => (
+                <span
+                  key={`${label}-${index}`}
+                  aria-current={
+                    index === breadcrumb.length - 1 ? 'page' : undefined
+                  }
+                >
+                  {label}
+                </span>
+              ))}
+            </nav>
+          ) : null}
+          {children}
+        </div>
       </div>
 
       <nav className="stu-tabbar" aria-label="Student portal">

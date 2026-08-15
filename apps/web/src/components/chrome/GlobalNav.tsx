@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { NavNode, SiteChrome } from '@/lib/site-chrome';
+import { useStudentSession } from '@/components/student/StudentSession';
 import {
   ComposedFooter,
   type FooterLayoutDocument,
@@ -133,8 +134,94 @@ function NavDropdown({ node, pathname }: { node: NavNode; pathname: string }) {
   );
 }
 
+/** A public, student-only account entry. It shares the existing session
+ * provider, whose access token stays memory-only and whose durable credential
+ * remains the Student-only HttpOnly refresh cookie. */
+function StudentAccountEntry() {
+  const { status, signOut } = useStudentSession();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  if (status !== 'authenticated') return null;
+
+  const logout = async () => {
+    setOpen(false);
+    await signOut();
+    // On public pages this preserves the current context; protected Student
+    // pages retain their existing anonymous redirect to sign-in.
+    router.refresh();
+  };
+
+  return (
+    <div ref={wrapRef} className="usta-student-account">
+      <Link href="/student" className="usta-student-dashboard">
+        My Dashboard
+      </Link>
+      <button
+        type="button"
+        className="usta-student-menu-trigger"
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label="Open student account menu"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      <div
+        id={menuId}
+        className={`usta-student-menu${open ? ' is-open' : ''}`}
+        hidden={!open}
+        aria-label="Student account"
+      >
+        <Link href="/student" onClick={() => setOpen(false)}>
+          Dashboard
+        </Link>
+        <Link href="/student/applications" onClick={() => setOpen(false)}>
+          Applications
+        </Link>
+        <Link href="/student/profile" onClick={() => setOpen(false)}>
+          Profile
+        </Link>
+        <Link href="/student/documents" onClick={() => setOpen(false)}>
+          Documents
+        </Link>
+        <button type="button" onClick={() => void logout()}>
+          Log out
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
   const pathname = usePathname() ?? '/';
+  const { status: studentStatus } = useStudentSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { header } = chrome.settings;
   const drawerId = useId();
@@ -216,7 +303,8 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
           </nav>
 
           <div className="usta-header-actions">
-            {accountVisible ? (
+            <StudentAccountEntry />
+            {accountVisible && studentStatus === 'anonymous' ? (
               <Link href={header.accountCtaUrl!.trim()} className="usta-ghost">
                 {header.accountCtaLabel}
               </Link>
