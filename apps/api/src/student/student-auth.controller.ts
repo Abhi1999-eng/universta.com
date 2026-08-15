@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
   HttpCode,
   HttpStatus,
   Post,
@@ -78,6 +79,9 @@ function withoutRefreshToken(
   };
 }
 
+type StudentSessionProbe =
+  { authenticated: false } | ({ authenticated: true } & AuthResponseData);
+
 @ApiTags('student-auth')
 @Controller('student/auth')
 export class StudentAuthController {
@@ -148,6 +152,47 @@ export class StudentAuthController {
     );
     this.setRefreshCookie(response, result.refreshToken);
     return envelope(request, withoutRefreshToken(result));
+  }
+
+  /**
+   * A non-error probe for the public site chrome.
+   *
+   * The strict refresh endpoint remains an authentication boundary: callers
+   * that need a session renewal still receive 401 when no valid Student cookie
+   * exists. Public pages only need to know whether they should offer the
+   * Student account entry, so this endpoint turns an absent, expired or revoked
+   * Student cookie into a normal anonymous response. Valid cookies still use
+   * the same rotation service and receive only the short-lived access token.
+   */
+  @Post('session')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Probe the current student session for public chrome',
+  })
+  async session(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    try {
+      const result = await this.students.refresh(
+        readRefreshCookie(request),
+        metadata(request, this.context),
+      );
+      this.setRefreshCookie(response, result.refreshToken);
+      return envelope<StudentSessionProbe>(request, {
+        authenticated: true,
+        ...withoutRefreshToken(result),
+      });
+    } catch (error) {
+      // A stale cookie must not keep causing a public-page probe. Only the
+      // known unauthenticated outcome is normalized; real infrastructure and
+      // validation failures keep their original error semantics.
+      if (error instanceof HttpException && error.getStatus() === 401) {
+        this.clearRefreshCookie(response);
+        return envelope<StudentSessionProbe>(request, { authenticated: false });
+      }
+      throw error;
+    }
   }
 
   @Post('logout')

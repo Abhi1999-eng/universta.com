@@ -39,11 +39,31 @@ test.describe('student portal', () => {
   test('keeps public navigation normal for visitors without a student session', async ({
     page,
   }) => {
+    const studentAuthFailures: string[] = [];
+    const studentAuthRequests: string[] = [];
+    page.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.startsWith('/api/student/auth/')) {
+        studentAuthRequests.push(pathname);
+      }
+    });
+    page.on('response', (response) => {
+      if (
+        new URL(response.url()).pathname.startsWith('/api/student/auth/') &&
+        response.status() >= 400
+      ) {
+        studentAuthFailures.push(`${response.status()} ${response.url()}`);
+      }
+    });
     await page.goto(`${webBaseUrl}/universities`);
     await expect(page.locator('.usta-header')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
     ).toHaveCount(0);
+    await expect.poll(() => studentAuthFailures).toEqual([]);
+    expect(studentAuthRequests).toContain('/api/student/auth/session');
+    expect(studentAuthRequests).not.toContain('/api/student/auth/me');
+    expect(studentAuthRequests).not.toContain('/api/student/auth/refresh');
   });
 
   test('sends anonymous visitors to sign in', async ({ page }) => {

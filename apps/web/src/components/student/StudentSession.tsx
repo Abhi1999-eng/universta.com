@@ -28,6 +28,14 @@ export interface StudentUser {
   emailVerified: boolean;
 }
 
+type StudentSessionProbe =
+  | { authenticated: false }
+  | {
+      authenticated: true;
+      accessToken: string;
+      user: StudentUser;
+    };
+
 type Status = 'loading' | 'authenticated' | 'anonymous';
 
 interface StudentSessionValue {
@@ -130,11 +138,36 @@ export function StudentSessionProvider({
   }, [api]);
 
   useEffect(() => {
-    void (async () => {
-      await refresh();
-      await loadStudent();
-    })();
-  }, [refresh, loadStudent]);
+    // This is deliberately not the strict refresh endpoint. The provider now
+    // also renders the shared public header, where an anonymous visitor is the
+    // normal case rather than an authentication failure. The probe turns that
+    // expected state into 200, while a real refresh remains strict for API
+    // retries and protected Student workflows.
+    void fetch('/api/student/auth/session', {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+      .then((response) => readEnvelope<StudentSessionProbe>(response))
+      .then((session) => {
+        if (!session.authenticated) {
+          token.current = null;
+          setStudent(null);
+          setStatus('anonymous');
+          return;
+        }
+        token.current = session.accessToken;
+        setStudent(session.user);
+        setStatus('authenticated');
+      })
+      .catch(() => {
+        // An actual transport or server failure is safe to treat as anonymous
+        // for public chrome. Protected requests continue to enforce auth at
+        // the API boundary and use the strict refresh retry when appropriate.
+        token.current = null;
+        setStudent(null);
+        setStatus('anonymous');
+      });
+  }, []);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
