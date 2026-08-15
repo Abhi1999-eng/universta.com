@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useRequireStudent } from './StudentSession';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useRequireStudent } from "./StudentSession";
 
 /**
  * The portal frame.
@@ -13,16 +13,24 @@ import { useRequireStudent } from './StudentSession';
  */
 
 const NAV = [
-  { href: '/student', label: 'Home', icon: '🏠' },
-  { href: '/student/profile', label: 'Profile', icon: '👤' },
-  { href: '/student/documents', label: 'Documents', icon: '📄' },
+  { href: "/student", label: "Home", icon: "🏠" },
+  { href: "/student/profile", label: "Profile", icon: "👤" },
+  { href: "/student/documents", label: "Documents", icon: "📄" },
+  { href: "/student/saved", label: "Saved", icon: "🔖" },
+  { href: "/student/applications", label: "Applications", icon: "🎓" },
+  { href: "/student/deadlines", label: "Deadlines", icon: "📅" },
+  { href: "/student/recommendations", label: "For you", icon: "✨" },
+  { href: "/student/scholarships", label: "Scholarships", icon: "🏅" },
+  { href: "/student/messages", label: "Messages", icon: "💬" },
+  { href: "/student/support", label: "Support", icon: "🛟" },
+  { href: "/student/referrals", label: "Referrals", icon: "🎁" },
 ] as const;
 
 export function StudentShell({ children }: { children: React.ReactNode }) {
   const { status, student, signOut } = useRequireStudent();
   const pathname = usePathname();
 
-  if (status !== 'authenticated' || !student) {
+  if (status !== "authenticated" || !student) {
     return (
       <div className="stu">
         <div className="stu-shell">
@@ -35,7 +43,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   }
 
   const current = (href: string) =>
-    href === '/student' ? pathname === href : pathname.startsWith(href);
+    href === "/student" ? pathname === href : pathname.startsWith(href);
 
   return (
     <div className="stu">
@@ -45,7 +53,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={current(item.href) ? 'page' : undefined}
+              aria-current={current(item.href) ? "page" : undefined}
             >
               <span className="ic" aria-hidden="true">
                 {item.icon}
@@ -55,7 +63,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           ))}
           <div className="stu-account">
             <p>
-              {student.firstName} {student.lastName ?? ''}
+              {student.firstName} {student.lastName ?? ""}
             </p>
             <span>{student.email}</span>
             <div className="stu-actions">
@@ -81,7 +89,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           <Link
             key={item.href}
             href={item.href}
-            aria-current={current(item.href) ? 'page' : undefined}
+            aria-current={current(item.href) ? "page" : undefined}
           >
             <span className="ic" aria-hidden="true">
               {item.icon}
@@ -91,7 +99,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
         ))}
         <Link
           href="/student/settings"
-          aria-current={current('/student/settings') ? 'page' : undefined}
+          aria-current={current("/student/settings") ? "page" : undefined}
         >
           <span className="ic" aria-hidden="true">
             ⚙️
