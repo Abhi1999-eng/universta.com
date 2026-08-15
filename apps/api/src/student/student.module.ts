@@ -11,6 +11,9 @@ import { StudentDocumentController } from './student-document.controller';
 import { StudentDocumentService } from './student-document.service';
 import { EmailDeliveryService } from './email-delivery.service';
 import { MediaModule } from '../media/media.module';
+import { StudentPhase2Controller } from './student-phase2.controller';
+import { AdminStudentOperationsController } from './admin-student-operations.controller';
+import { StudentPhase2Service } from './student-phase2.service';
 
 /**
  * The student portal's own surface.
@@ -25,6 +28,8 @@ import { MediaModule } from '../media/media.module';
     StudentAuthController,
     StudentProfileController,
     StudentDocumentController,
+    StudentPhase2Controller,
+    AdminStudentOperationsController,
   ],
   providers: [
     StudentAuthService,
@@ -32,6 +37,7 @@ import { MediaModule } from '../media/media.module';
     StudentDocumentService,
     EmailDeliveryService,
     StudentAccessGuard,
+    StudentPhase2Service,
   ],
   exports: [StudentAuthService, StudentProfileService, StudentAccessGuard],
 })

@@ -51,6 +51,12 @@ model User {
   passwordResetTokens          PasswordResetToken[]
   emailVerificationTokens      EmailVerificationToken[]
   studentProfile               StudentProfile?
+  studentMessages              StudentMessage[]               @relation("StudentMessageSender")
+  internalMessages             StudentMessage[]               @relation("InternalMessageSender")
+  applicationStatusChanges     StudentApplicationTimeline[]   @relation("ApplicationStatusChangedBy")
+  scholarshipStatusChanges     StudentScholarshipTimeline[]   @relation("ScholarshipStatusChangedBy")
+  supportStatusChanges         StudentSupportTicket[]         @relation("SupportStatusChangedBy")
+  supportMessages              StudentSupportMessage[]        @relation("SupportMessageSender")
   loginAttempts                LoginAttempt[]
   auditLogs                    AuditLog[]
   uploadedMedia                MediaAsset[]                   @relation("MediaUploadedBy")
@@ -268,6 +274,7 @@ model MediaAsset {
   studentEnglishTestResults StudentEnglishTest[] @relation("StudentEnglishTestResult")
   studentPassportScans      StudentPassport[]    @relation("StudentPassportScan")
   studentDocuments          StudentDocument[]    @relation("StudentDocumentMedia")
+  applicationOffers         StudentApplication[] @relation("StudentApplicationOfferMedia")
 
   @@index([uploadedByUserId])
   @@index([folder, status])
@@ -684,6 +691,7 @@ model Intake {
   universityCourseIntakes UniversityCourseIntake[]
 
   studentPreferences StudentProfile[] @relation("StudentPreferredIntake")
+  studentApplications StudentApplication[]
 
   @@index([status, displayOrder])
   @@map("intakes")
@@ -1668,6 +1676,8 @@ model University {
   successStories SuccessStory[]
   testimonials   Testimonial[]
   claimRequests  UniversityClaimRequest[]
+  studentSavedBy StudentSavedUniversity[]
+  studentApplications StudentApplication[]
 
   @@unique([countryId, name])
   @@index([countryId, status, displayOrder])
@@ -1828,6 +1838,8 @@ model UniversityCourseOffering {
   scholarships   ScholarshipUniversityCourseOffering[]
   successStories SuccessStory[]
   testimonials   Testimonial[]
+  studentSavedBy StudentSavedOffering[]
+  studentApplications StudentApplication[]
 
   @@unique([universityId, name])
   @@index([universityId, status, displayOrder])
@@ -1924,6 +1936,8 @@ model Scholarship {
   countries    ScholarshipCountry[]
   universities ScholarshipUniversity[]
   offerings    ScholarshipUniversityCourseOffering[]
+  studentSavedBy StudentSavedScholarship[]
+  studentApplications StudentScholarshipApplication[]
 
   @@index([providerId, status, displayOrder])
   @@index([status, deadline])
@@ -1993,6 +2007,7 @@ model Consultant {
   services  ConsultantService[]
   countries ConsultantCountry[]
   languages ConsultantLanguage[]
+  studentAssignments StudentConsultantAssignment[]
 
   @@index([status, verificationStatus, displayOrder])
   @@map("consultants")
@@ -2299,6 +2314,7 @@ model StudentProfile {
   budgetMin              Decimal? @map("budget_min") @db.Decimal(12, 2)
   budgetMax              Decimal? @map("budget_max") @db.Decimal(12, 2)
   budgetCurrency         String?  @map("budget_currency") @db.VarChar(3)
+  referralCode           String?  @unique @map("referral_code") @db.VarChar(40)
 
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
@@ -2315,6 +2331,17 @@ model StudentProfile {
   englishTests         StudentEnglishTest[]
   passport             StudentPassport?
   documents            StudentDocument[]
+  savedUniversities    StudentSavedUniversity[]
+  savedOfferings       StudentSavedOffering[]
+  savedScholarships    StudentSavedScholarship[]
+  applications         StudentApplication[]
+  scholarshipApplications StudentScholarshipApplication[]
+  consultantAssignments StudentConsultantAssignment[]
+  conversations        StudentConversation[]
+  notifications        StudentNotification[]
+  supportTickets       StudentSupportTicket[]
+  referralsMade        StudentReferral[] @relation("StudentReferralReferrer")
+  referralReceived     StudentReferral?  @relation("StudentReferralReferred")
 
   @@index([nationalityCountryId])
   @@index([currentCountryId])
@@ -2449,9 +2476,250 @@ model StudentDocument {
 
   studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
   mediaAsset     MediaAsset     @relation("StudentDocumentMedia", fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  applicationLinks StudentApplicationDocument[]
+  scholarshipApplicationLinks StudentScholarshipDocument[]
 
   @@index([studentProfileId])
   @@index([studentProfileId, documentType])
   @@index([mediaAssetId])
   @@map("student_documents")
+}
+
+// Phase 2 lifecycle records deliberately keep catalogue relationships as
+// foreign keys. Display snapshots are limited to the name a student saw at the
+// moment they started an application, so historical pages remain readable
+// after a catalogue item is withdrawn without copying catalogue payloads.
+model StudentSavedUniversity {
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  universityId     String @map("university_id") @db.Char(36)
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  @@id([studentProfileId, universityId])
+  @@index([universityId])
+  @@map("student_saved_universities")
+}
+
+model StudentSavedOffering {
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  offeringId       String @map("offering_id") @db.Char(36)
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  offering UniversityCourseOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  @@id([studentProfileId, offeringId])
+  @@index([offeringId])
+  @@map("student_saved_offerings")
+}
+
+model StudentSavedScholarship {
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  scholarshipId     String @map("scholarship_id") @db.Char(36)
+  createdAt        DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  @@id([studentProfileId, scholarshipId])
+  @@index([scholarshipId])
+  @@map("student_saved_scholarships")
+}
+
+model StudentApplication {
+  id String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  universityId String @map("university_id") @db.Char(36)
+  offeringId String? @map("offering_id") @db.Char(36)
+  targetIntakeId String? @map("target_intake_id") @db.Char(36)
+  status String @default("APPLICATION_STARTED") @db.VarChar(40)
+  universityNameSnapshot String @map("university_name_snapshot") @db.VarChar(255)
+  offeringNameSnapshot String? @map("offering_name_snapshot") @db.VarChar(255)
+  submittedAt DateTime? @map("submitted_at") @db.DateTime(3)
+  decisionAt DateTime? @map("decision_at") @db.DateTime(3)
+  offerMediaId String? @map("offer_media_id") @db.Char(36)
+  offerDecision String? @map("offer_decision") @db.VarChar(20)
+  offerDecisionAt DateTime? @map("offer_decision_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Restrict)
+  offering UniversityCourseOffering? @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  targetIntake Intake? @relation(fields: [targetIntakeId], references: [id], onDelete: SetNull)
+  offerMedia MediaAsset? @relation("StudentApplicationOfferMedia", fields: [offerMediaId], references: [id], onDelete: SetNull)
+  timeline StudentApplicationTimeline[]
+  documents StudentApplicationDocument[]
+  @@index([studentProfileId, status, updatedAt])
+  @@index([universityId])
+  @@index([offeringId])
+  @@map("student_applications")
+}
+
+model StudentApplicationTimeline {
+  id String @id @default(uuid()) @db.Char(36)
+  applicationId String @map("application_id") @db.Char(36)
+  status String @db.VarChar(40)
+  message String? @db.VarChar(1000)
+  actorType String @map("actor_type") @db.VarChar(20)
+  changedByUserId String? @map("changed_by_user_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  application StudentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("ApplicationStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+  @@index([applicationId, createdAt])
+  @@map("student_application_timeline")
+}
+
+model StudentApplicationDocument {
+  applicationId String @map("application_id") @db.Char(36)
+  studentDocumentId String @map("student_document_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  application StudentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  studentDocument StudentDocument @relation(fields: [studentDocumentId], references: [id], onDelete: Cascade)
+  @@id([applicationId, studentDocumentId])
+  @@index([studentDocumentId])
+  @@map("student_application_documents")
+}
+
+model StudentScholarshipApplication {
+  id String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  scholarshipId String @map("scholarship_id") @db.Char(36)
+  status String @default("STARTED") @db.VarChar(30)
+  scholarshipTitleSnapshot String @map("scholarship_title_snapshot") @db.VarChar(255)
+  submittedAt DateTime? @map("submitted_at") @db.DateTime(3)
+  decisionAt DateTime? @map("decision_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Restrict)
+  timeline StudentScholarshipTimeline[]
+  documents StudentScholarshipDocument[]
+  @@unique([studentProfileId, scholarshipId])
+  @@index([studentProfileId, status, updatedAt])
+  @@map("student_scholarship_applications")
+}
+
+model StudentScholarshipTimeline {
+  id String @id @default(uuid()) @db.Char(36)
+  scholarshipApplicationId String @map("scholarship_application_id") @db.Char(36)
+  status String @db.VarChar(30)
+  message String? @db.VarChar(1000)
+  actorType String @map("actor_type") @db.VarChar(20)
+  changedByUserId String? @map("changed_by_user_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  scholarshipApplication StudentScholarshipApplication @relation(fields: [scholarshipApplicationId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("ScholarshipStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+  @@index([scholarshipApplicationId, createdAt])
+  @@map("student_scholarship_timeline")
+}
+
+model StudentScholarshipDocument {
+  scholarshipApplicationId String @map("scholarship_application_id") @db.Char(36)
+  studentDocumentId String @map("student_document_id") @db.Char(36)
+  scholarshipApplication StudentScholarshipApplication @relation(fields: [scholarshipApplicationId], references: [id], onDelete: Cascade)
+  studentDocument StudentDocument @relation(fields: [studentDocumentId], references: [id], onDelete: Cascade)
+  @@id([scholarshipApplicationId, studentDocumentId])
+  @@index([studentDocumentId])
+  @@map("student_scholarship_documents")
+}
+
+model StudentConsultantAssignment {
+  id String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  consultantId String @map("consultant_id") @db.Char(36)
+  status String @default("ACTIVE") @db.VarChar(20)
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.DateTime(3)
+  endedAt DateTime? @map("ended_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  consultant Consultant @relation(fields: [consultantId], references: [id], onDelete: Restrict)
+  conversations StudentConversation[]
+  @@index([studentProfileId, status])
+  @@index([consultantId, status])
+  @@map("student_consultant_assignments")
+}
+
+model StudentConversation {
+  id String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  consultantAssignmentId String? @map("consultant_assignment_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  consultantAssignment StudentConsultantAssignment? @relation(fields: [consultantAssignmentId], references: [id], onDelete: SetNull)
+  messages StudentMessage[]
+  @@index([studentProfileId, updatedAt])
+  @@map("student_conversations")
+}
+
+model StudentMessage {
+  id String @id @default(uuid()) @db.Char(36)
+  conversationId String @map("conversation_id") @db.Char(36)
+  senderType String @map("sender_type") @db.VarChar(20)
+  studentSenderId String? @map("student_sender_id") @db.Char(36)
+  internalSenderId String? @map("internal_sender_id") @db.Char(36)
+  body String @db.Text
+  readAt DateTime? @map("read_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  conversation StudentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  studentSender User? @relation("StudentMessageSender", fields: [studentSenderId], references: [id], onDelete: SetNull)
+  internalSender User? @relation("InternalMessageSender", fields: [internalSenderId], references: [id], onDelete: SetNull)
+  @@index([conversationId, createdAt])
+  @@map("student_messages")
+}
+
+model StudentNotification {
+  id String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  type String @db.VarChar(50)
+  title String @db.VarChar(255)
+  body String? @db.VarChar(1000)
+  href String? @db.VarChar(2048)
+  readAt DateTime? @map("read_at") @db.DateTime(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  @@index([studentProfileId, readAt, createdAt])
+  @@map("student_notifications")
+}
+
+model StudentSupportTicket {
+  id String @id @default(uuid()) @db.Char(36)
+  studentProfileId String @map("student_profile_id") @db.Char(36)
+  category String @db.VarChar(30)
+  subject String @db.VarChar(255)
+  status String @default("OPEN") @db.VarChar(30)
+  lastChangedByUserId String? @map("last_changed_by_user_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  lastChangedBy User? @relation("SupportStatusChangedBy", fields: [lastChangedByUserId], references: [id], onDelete: SetNull)
+  messages StudentSupportMessage[]
+  @@index([studentProfileId, status, updatedAt])
+  @@map("student_support_tickets")
+}
+
+model StudentSupportMessage {
+  id String @id @default(uuid()) @db.Char(36)
+  ticketId String @map("ticket_id") @db.Char(36)
+  senderType String @map("sender_type") @db.VarChar(20)
+  senderUserId String? @map("sender_user_id") @db.Char(36)
+  body String @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  ticket StudentSupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender User? @relation("SupportMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  @@index([ticketId, createdAt])
+  @@map("student_support_messages")
+}
+
+model StudentReferral {
+  id String @id @default(uuid()) @db.Char(36)
+  referrerProfileId String @map("referrer_profile_id") @db.Char(36)
+  referredProfileId String @unique @map("referred_profile_id") @db.Char(36)
+  referralCode String @map("referral_code") @db.VarChar(40)
+  stage String @default("REFERRED") @db.VarChar(40)
+  rewardStatus String @default("NOT_ELIGIBLE") @map("reward_status") @db.VarChar(30)
+  rewardAmount Decimal? @map("reward_amount") @db.Decimal(12,2)
+  rewardCurrency String? @map("reward_currency") @db.Char(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  referrerProfile StudentProfile @relation("StudentReferralReferrer", fields: [referrerProfileId], references: [id], onDelete: Cascade)
+  referredProfile StudentProfile @relation("StudentReferralReferred", fields: [referredProfileId], references: [id], onDelete: Cascade)
+  @@index([referrerProfileId, stage])
+  @@unique([referrerProfileId, referredProfileId])
+  @@map("student_referrals")
 }

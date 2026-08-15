@@ -43,6 +43,22 @@ export class EmailDeliveryService {
     this.record('password-reset', input.userId, input.token);
   }
 
+  /** Lifecycle notifications use the same provider boundary as account mail.
+   * The portal inbox is always persisted separately; this only records that
+   * an email transport should notify the student when one is configured. */
+  sendPortalNotification(input: {
+    userId: string;
+    email: string;
+    subject: string;
+  }): void {
+    this.logger.logEvent('student portal email pending delivery', {
+      module: 'STUDENT_EMAIL',
+      userId: input.userId,
+      transport: 'NONE_CONFIGURED',
+      subject: input.subject,
+    });
+  }
+
   private record(kind: string, userId: string, token: string): void {
     // Outside production the token goes to the local log so a developer can
     // complete the flow; the structured logger redacts nothing here because
