@@ -73,6 +73,12 @@ function readable(value: string) {
   return value.toLowerCase().replaceAll("_", " ");
 }
 
+const APPLICATION_ACTIONS: Record<string, string[]> = {
+  SUBMITTED: ["UNDER_REVIEW", "WITHDRAWN"],
+  UNDER_REVIEW: ["REJECTED", "WITHDRAWN"],
+  ACCEPTED: ["ENROLLED"],
+};
+
 export function StudentOperationsManager() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
@@ -139,7 +145,7 @@ export function StudentOperationsManager() {
             label={(row) =>
               row.offering?.name ?? row.university?.name ?? "Application"
             }
-            statuses={["UNDER_REVIEW", "OFFER_RECEIVED", "REJECTED"]}
+            statusOptions={(row) => APPLICATION_ACTIONS[row.status] ?? []}
             onStatus={(row, status) =>
               update(
                 `/api/v1/admin/student-operations/applications/${row.id}/status`,
@@ -153,13 +159,14 @@ export function StudentOperationsManager() {
               )
             }
             onOffer={(row, file) => void uploadOffer(row.id, file)}
+            showOfferUpload={(row) => row.status === "UNDER_REVIEW"}
           />
           <OperationsTable
             title="Scholarship applications"
             rows={data.scholarshipApplications}
             consultants={data.consultants}
             label={(row) => row.scholarship?.title ?? "Scholarship application"}
-            statuses={["UNDER_REVIEW", "AWARDED", "REJECTED"]}
+            statusOptions={() => ["UNDER_REVIEW", "AWARDED", "REJECTED"]}
             onStatus={(row, status) =>
               update(
                 `/api/v1/admin/student-operations/scholarship-applications/${row.id}/status`,
@@ -228,19 +235,21 @@ function OperationsTable({
   rows,
   consultants,
   label,
-  statuses,
+  statusOptions,
   onStatus,
   onAssign,
   onOffer,
+  showOfferUpload,
 }: {
   title: string;
   rows: Row[];
   consultants: Consultant[];
   label: (row: Row) => string;
-  statuses: string[];
+  statusOptions: (row: Row) => string[];
   onStatus: (row: Row, status: string) => void;
   onAssign: (profileId: string, consultantId: string) => void;
   onOffer?: (row: Row, file: File) => void;
+  showOfferUpload?: (row: Row) => boolean;
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -284,24 +293,30 @@ function OperationsTable({
                   </td>
                   <td className="p-2">{readable(row.status)}</td>
                   <td className="p-2">
-                    <select
-                      aria-label={`Change status for ${label(row)}`}
-                      defaultValue=""
-                      onChange={(event) => {
-                        if (event.target.value)
-                          onStatus(row, event.target.value);
-                      }}
-                    >
-                      <option value="" disabled>
-                        Change status
-                      </option>
-                      {statuses.map((status) => (
-                        <option key={status} value={status}>
-                          {readable(status)}
+                    {statusOptions(row).length ? (
+                      <select
+                        aria-label={`Change status for ${label(row)}`}
+                        defaultValue=""
+                        onChange={(event) => {
+                          if (event.target.value)
+                            onStatus(row, event.target.value);
+                        }}
+                      >
+                        <option value="" disabled>
+                          Change status
                         </option>
-                      ))}
-                    </select>
-                    {onOffer ? (
+                        {statusOptions(row).map((status) => (
+                          <option key={status} value={status}>
+                            {readable(status)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-slate-500">
+                        No lifecycle action
+                      </span>
+                    )}
+                    {onOffer && showOfferUpload?.(row) ? (
                       <label className="mt-2 block text-xs text-slate-600">
                         Upload offer{" "}
                         <input
