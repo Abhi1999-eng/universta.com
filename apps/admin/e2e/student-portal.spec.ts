@@ -46,8 +46,15 @@ test.describe('student portal', () => {
     // Completion comes from the API; a brand new profile has done nothing yet.
     await expect(page.getByText('0%')).toBeVisible();
     await expect(page.getByText(/Next step:/)).toBeVisible();
-    // No module that has not shipped may show a number.
-    await expect(page.getByText(/applications/i)).toHaveCount(0);
+    // Applications are now a shipped journey: the dashboard count must lead to
+    // the student's own application list rather than a placeholder.
+    const applications = page.getByRole('link', { name: '0 applications' });
+    await expect(applications).toBeVisible();
+    await applications.click();
+    await expect(page).toHaveURL(/\/student\/applications$/);
+    await expect(
+      page.getByRole('heading', { name: 'My applications' }),
+    ).toBeVisible();
     await expect(page.locator('h1')).toHaveCount(1);
   });
 
