@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { studentLoginHref } from "@/lib/student-return-to";
 
 type Kind = "universities" | "offerings" | "scholarships";
 
@@ -39,7 +40,7 @@ export function StudentCatalogueActions({
   const request = async (path: string, init: RequestInit) => {
     const token = await refresh();
     if (!token) {
-      router.push(`/student/login?returnTo=${encodeURIComponent(current)}`);
+      router.push(studentLoginHref(current));
       return null;
     }
     const response = await fetch(`/api/student${path}`, {

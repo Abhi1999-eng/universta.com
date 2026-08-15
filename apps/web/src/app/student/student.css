@@ -105,6 +105,28 @@
   display: none;
 }
 
+.stu-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+  color: var(--stu-muted);
+  font-size: 13px;
+}
+
+.stu-breadcrumbs a {
+  color: var(--stu-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.stu-breadcrumbs span::before {
+  content: '/';
+  margin-right: 7px;
+  color: var(--stu-line);
+}
+
 /* -- headings and cards --------------------------------------------------- */
 
 .stu h1 {
@@ -280,6 +302,11 @@
 .stu-field textarea:focus-visible,
 .stu-btn:focus-visible,
 .stu-nav a:focus-visible {
+  outline: 3px solid rgba(22, 87, 207, 0.35);
+  outline-offset: 2px;
+}
+
+.stu-breadcrumbs a:focus-visible {
   outline: 3px solid rgba(22, 87, 207, 0.35);
   outline-offset: 2px;
 }
