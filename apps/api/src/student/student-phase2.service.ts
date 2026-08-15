@@ -3,6 +3,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailDeliveryService } from './email-delivery.service';
 
 const PUBLISHED = 'PUBLISHED';
+const APPLICATION_TRANSITIONS: Record<string, readonly string[]> = {
+  APPLICATION_STARTED: ['SUBMITTED', 'WITHDRAWN'],
+  SUBMITTED: ['UNDER_REVIEW', 'WITHDRAWN'],
+  UNDER_REVIEW: ['OFFER_RECEIVED', 'REJECTED', 'WITHDRAWN'],
+  OFFER_RECEIVED: ['ACCEPTED', 'REJECTED'],
+  ACCEPTED: ['ENROLLED'],
+  REJECTED: [],
+  WITHDRAWN: [],
+  ENROLLED: [],
+};
+
+function applicationStatusLabel(status: string) {
+  return status.toLowerCase().replaceAll('_', ' ');
+}
 
 function failure(
   code: string,
@@ -313,6 +327,63 @@ export class StudentPhase2Service {
     });
   }
 
+  async application(userId: string, applicationId: string) {
+    const { id } = await this.profileIdFor(userId);
+    const application = await this.prisma.studentApplication.findFirst({
+      where: { id: applicationId, studentProfileId: id },
+      include: {
+        university: { select: { name: true, slug: true } },
+        offering: {
+          select: {
+            name: true,
+            slug: true,
+            university: { select: { slug: true } },
+          },
+        },
+        targetIntake: { select: { name: true, slug: true } },
+        timeline: { orderBy: { createdAt: 'asc' } },
+        documents: {
+          include: {
+            studentDocument: {
+              select: { id: true, title: true, documentType: true },
+            },
+          },
+        },
+        offerMedia: {
+          select: { id: true, originalFileName: true, mimeType: true },
+        },
+      },
+    });
+    if (!application) throw notFound('Application');
+    return application;
+  }
+
+  async applicationOffer(userId: string, applicationId: string) {
+    const { id } = await this.profileIdFor(userId);
+    const application = await this.prisma.studentApplication.findFirst({
+      where: {
+        id: applicationId,
+        studentProfileId: id,
+        offerMediaId: { not: null },
+      },
+      select: {
+        offerMedia: {
+          select: {
+            storedFileName: true,
+            originalFileName: true,
+            mimeType: true,
+            status: true,
+            deletedAt: true,
+          },
+        },
+      },
+    });
+    const media = application?.offerMedia;
+    if (!media || media.status !== 'ACTIVE' || media.deletedAt)
+      throw notFound('Offer letter');
+    return media;
+  }
+
   private async ownApplication(userId: string, applicationId: string) {
     const { id } = await this.profileIdFor(userId);
     const application = await this.prisma.studentApplication.findFirst({
@@ -369,7 +440,9 @@ export class StudentPhase2Service {
       applicationId,
     );
     if (
-      ['WITHDRAWN', 'REJECTED', 'OFFER_RECEIVED'].includes(application.status)
+      !['APPLICATION_STARTED', 'SUBMITTED', 'UNDER_REVIEW'].includes(
+        application.status,
+      )
     )
       throw failure('INVALID_STATE', 'This application cannot be withdrawn');
     await this.prisma.$transaction([
@@ -410,12 +483,17 @@ export class StudentPhase2Service {
     await this.prisma.$transaction([
       this.prisma.studentApplication.update({
         where: { id: applicationId },
-        data: { offerDecision: decision, offerDecisionAt: new Date() },
+        data: {
+          status: decision,
+          offerDecision: decision,
+          offerDecisionAt: new Date(),
+          decisionAt: new Date(),
+        },
       }),
       this.prisma.studentApplicationTimeline.create({
         data: {
           applicationId,
-          status: `OFFER_${decision}`,
+          status: decision,
           actorType: 'STUDENT',
           message: message ?? `Offer ${decision.toLowerCase()}`,
         },
@@ -427,7 +505,7 @@ export class StudentPhase2Service {
       `Offer ${decision.toLowerCase()}`,
       `/student/applications/${applicationId}`,
     );
-    return { decision };
+    return { status: decision, decision };
   }
 
   async attachApplicationDocuments(
@@ -528,6 +606,27 @@ export class StudentPhase2Service {
     });
   }
 
+  async scholarshipApplication(userId: string, applicationId: string) {
+    const { id } = await this.profileIdFor(userId);
+    const application =
+      await this.prisma.studentScholarshipApplication.findFirst({
+        where: { id: applicationId, studentProfileId: id },
+        include: {
+          scholarship: { select: { title: true, slug: true, deadline: true } },
+          timeline: { orderBy: { createdAt: 'asc' } },
+          documents: {
+            include: {
+              studentDocument: {
+                select: { id: true, title: true, documentType: true },
+              },
+            },
+          },
+        },
+      });
+    if (!application) throw notFound('Scholarship application');
+    return application;
+  }
+
   private async ownScholarshipApplication(
     userId: string,
     applicationId: string,
@@ -599,6 +698,46 @@ export class StudentPhase2Service {
     return { attached: ids.length };
   }
 
+  async withdrawScholarshipApplication(
+    userId: string,
+    applicationId: string,
+    message?: string,
+  ) {
+    const { profileId, application } = await this.ownScholarshipApplication(
+      userId,
+      applicationId,
+    );
+    if (
+      !['STARTED', 'SUBMITTED', 'UNDER_REVIEW'].includes(application.status)
+    ) {
+      throw failure(
+        'INVALID_STATE',
+        'This scholarship application cannot be withdrawn',
+      );
+    }
+    await this.prisma.$transaction([
+      this.prisma.studentScholarshipApplication.update({
+        where: { id: applicationId },
+        data: { status: 'WITHDRAWN' },
+      }),
+      this.prisma.studentScholarshipTimeline.create({
+        data: {
+          scholarshipApplicationId: applicationId,
+          status: 'WITHDRAWN',
+          actorType: 'STUDENT',
+          message: message ?? 'Scholarship application withdrawn',
+        },
+      }),
+    ]);
+    await this.notify(
+      profileId,
+      'SCHOLARSHIP_WITHDRAWN',
+      'Scholarship application withdrawn',
+      `/student/scholarship-applications/${applicationId}`,
+    );
+    return { status: 'WITHDRAWN' };
+  }
+
   // -- conversations, notifications, support ---------------------------
 
   async conversation(userId: string) {
@@ -631,7 +770,6 @@ export class StudentPhase2Service {
   }
 
   async sendMessage(userId: string, body: string) {
-    const { id } = await this.profileIdFor(userId);
     const conversation = await this.conversation(userId);
     const message = await this.prisma.studentMessage.create({
       data: {
@@ -645,7 +783,6 @@ export class StudentPhase2Service {
       where: { id: conversation.id },
       data: { updatedAt: new Date() },
     });
-    await this.notify(id, 'MESSAGE_SENT', 'Message sent', '/student/messages');
     return message;
   }
 
@@ -666,6 +803,15 @@ export class StudentPhase2Service {
     });
     if (!result.count) throw notFound('Notification');
     return { read: true };
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    const { id } = await this.profileIdFor(userId);
+    const result = await this.prisma.studentNotification.updateMany({
+      where: { studentProfileId: id, readAt: null },
+      data: { readAt: new Date() },
+    });
+    return { read: result.count };
   }
 
   async listSupportTickets(userId: string) {
@@ -725,32 +871,57 @@ export class StudentPhase2Service {
 
   async dashboard(userId: string) {
     const profile = await this.profileIdFor(userId);
-    const [applications, scholarships, unreadNotifications, assignment] =
-      await Promise.all([
-        this.prisma.studentApplication.count({
-          where: { studentProfileId: profile.id, status: { not: 'WITHDRAWN' } },
-        }),
-        this.prisma.studentScholarshipApplication.count({
-          where: { studentProfileId: profile.id, status: { not: 'WITHDRAWN' } },
-        }),
-        this.prisma.studentNotification.count({
-          where: { studentProfileId: profile.id, readAt: null },
-        }),
-        this.prisma.studentConsultantAssignment.findFirst({
-          where: { studentProfileId: profile.id, status: 'ACTIVE' },
-          include: {
-            consultant: {
-              select: { name: true, slug: true, email: true, phone: true },
-            },
+    const [
+      applications,
+      scholarships,
+      unreadNotifications,
+      assignment,
+      nextApplication,
+    ] = await Promise.all([
+      this.prisma.studentApplication.count({
+        where: { studentProfileId: profile.id, status: { not: 'WITHDRAWN' } },
+      }),
+      this.prisma.studentScholarshipApplication.count({
+        where: { studentProfileId: profile.id, status: { not: 'WITHDRAWN' } },
+      }),
+      this.prisma.studentNotification.count({
+        where: { studentProfileId: profile.id, readAt: null },
+      }),
+      this.prisma.studentConsultantAssignment.findFirst({
+        where: { studentProfileId: profile.id, status: 'ACTIVE' },
+        include: {
+          consultant: {
+            select: { name: true, slug: true, email: true, phone: true },
           },
-        }),
-      ]);
+        },
+      }),
+      this.prisma.studentApplication.findFirst({
+        where: {
+          studentProfileId: profile.id,
+          status: { in: ['OFFER_RECEIVED', 'APPLICATION_STARTED'] },
+        },
+        select: { id: true, status: true },
+        orderBy: { updatedAt: 'desc' },
+      }),
+    ]);
     return {
       applications,
       scholarshipApplications: scholarships,
       unreadNotifications,
       consultant: assignment?.consultant ?? null,
       referralCode: await this.referralCode(profile.id),
+      nextAction: nextApplication
+        ? {
+            label:
+              nextApplication.status === 'OFFER_RECEIVED'
+                ? 'Review your offer'
+                : 'Continue your application',
+            href: `/student/applications/${nextApplication.id}`,
+          }
+        : {
+            label: 'Explore recommended courses',
+            href: '/student/recommendations',
+          },
     };
   }
 
@@ -761,34 +932,78 @@ export class StudentPhase2Service {
       include: { preferredCountries: { select: { countryId: true } } },
     });
     const countryIds = profile.preferredCountries.map((row) => row.countryId);
-    return this.prisma.universityCourseOffering.findMany({
-      where: {
+    const where = {
+      status: PUBLISHED,
+      deletedAt: null,
+      university: {
         status: PUBLISHED,
         deletedAt: null,
-        university: {
+        ...(countryIds.length ? { countryId: { in: countryIds } } : {}),
+      },
+      ...(profile.preferredCourseLevelId
+        ? { courseLevelId: profile.preferredCourseLevelId }
+        : {}),
+    };
+    const [countries, universities, offerings] = await Promise.all([
+      this.prisma.country.findMany({
+        where: { id: { in: countryIds }, status: PUBLISHED, deletedAt: null },
+        select: { id: true, name: true, slug: true },
+        take: 6,
+      }),
+      this.prisma.university.findMany({
+        where: {
           status: PUBLISHED,
           deletedAt: null,
           ...(countryIds.length ? { countryId: { in: countryIds } } : {}),
         },
-        ...(profile.preferredCourseLevelId
-          ? { courseLevelId: profile.preferredCourseLevelId }
-          : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        university: {
-          select: {
-            name: true,
-            slug: true,
-            country: { select: { name: true, slug: true } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          country: { select: { name: true, slug: true } },
+        },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: 6,
+      }),
+      this.prisma.universityCourseOffering.findMany({
+        where: {
+          ...where,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          university: {
+            select: {
+              name: true,
+              slug: true,
+              country: { select: { name: true, slug: true } },
+            },
           },
         },
-      },
-      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-      take: 12,
-    });
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: 12,
+      }),
+    ]);
+    const countryReason = countryIds.length
+      ? 'Matches your preferred destination'
+      : 'Published study destination';
+    return {
+      countries: countries.map((country) => ({
+        ...country,
+        reason: countryReason,
+      })),
+      universities: universities.map((university) => ({
+        ...university,
+        reason: countryReason,
+      })),
+      offerings: offerings.map((offering) => ({
+        ...offering,
+        reason: profile.preferredCourseLevelId
+          ? 'Matches your preferred course level'
+          : countryReason,
+      })),
+    };
   }
 
   async deadlines(userId: string) {
@@ -861,6 +1076,9 @@ export class StudentPhase2Service {
         rewardAmount: true,
         rewardCurrency: true,
         createdAt: true,
+        referredProfile: {
+          select: { user: { select: { firstName: true } } },
+        },
       },
     });
     return {
@@ -869,6 +1087,7 @@ export class StudentPhase2Service {
         ...row,
         rewardAmount: row.rewardAmount ? Number(row.rewardAmount) : null,
         createdAt: iso(row.createdAt),
+        referredStudent: row.referredProfile.user.firstName,
       })),
     };
   }
@@ -963,15 +1182,47 @@ export class StudentPhase2Service {
   ) {
     const application = await this.prisma.studentApplication.findUnique({
       where: { id: applicationId },
-      select: { id: true, studentProfileId: true },
+      select: { id: true, studentProfileId: true, status: true },
     });
     if (!application) throw notFound('Application');
+    if (!APPLICATION_TRANSITIONS[application.status]?.includes(status)) {
+      throw failure(
+        'INVALID_STATE',
+        `Cannot move an application from ${applicationStatusLabel(application.status)} to ${applicationStatusLabel(status)}`,
+      );
+    }
+    if (status === 'OFFER_RECEIVED' && !offerMediaId) {
+      throw failure(
+        'OFFER_LETTER_REQUIRED',
+        'Upload and attach an offer letter before marking an application as offer received',
+      );
+    }
+    if (offerMediaId) {
+      const offer = await this.prisma.mediaAsset.findFirst({
+        where: {
+          id: offerMediaId,
+          status: 'ACTIVE',
+          deletedAt: null,
+          folder: 'student-offers',
+          uploadedByUserId: adminUserId,
+        },
+        select: { id: true },
+      });
+      if (!offer) {
+        throw failure(
+          'INVALID_OFFER_MEDIA',
+          'Upload the offer letter through the authorised student-offers media flow before attaching it',
+        );
+      }
+    }
     await this.prisma.$transaction([
       this.prisma.studentApplication.update({
         where: { id: applicationId },
         data: {
           status,
-          decisionAt: ['OFFER_RECEIVED', 'REJECTED'].includes(status)
+          decisionAt: ['OFFER_RECEIVED', 'REJECTED', 'ACCEPTED'].includes(
+            status,
+          )
             ? new Date()
             : undefined,
           offerMediaId: offerMediaId ?? undefined,
@@ -994,6 +1245,69 @@ export class StudentPhase2Service {
       `/student/applications/${applicationId}`,
     );
     return { status };
+  }
+
+  async adminReplyConversation(
+    adminUserId: string,
+    conversationId: string,
+    body: string,
+  ) {
+    const conversation = await this.prisma.studentConversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, studentProfileId: true },
+    });
+    if (!conversation) throw notFound('Conversation');
+    const message = await this.prisma.studentMessage.create({
+      data: {
+        conversationId,
+        senderType: 'ADMIN',
+        internalSenderId: adminUserId,
+        body: body.trim(),
+      },
+    });
+    await this.prisma.studentConversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    });
+    await this.notify(
+      conversation.studentProfileId,
+      'ADVISER_REPLY',
+      'Your adviser replied',
+      '/student/messages',
+    );
+    return message;
+  }
+
+  async adminReplySupportTicket(
+    adminUserId: string,
+    ticketId: string,
+    body: string,
+  ) {
+    const ticket = await this.prisma.studentSupportTicket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, studentProfileId: true, status: true },
+    });
+    if (!ticket) throw notFound('Support ticket');
+    if (ticket.status === 'CLOSED')
+      throw failure(
+        'INVALID_STATE',
+        'Closed support tickets cannot receive replies',
+      );
+    const message = await this.prisma.studentSupportMessage.create({
+      data: {
+        ticketId,
+        senderType: 'ADMIN',
+        senderUserId: adminUserId,
+        body: body.trim(),
+      },
+    });
+    await this.notify(
+      ticket.studentProfileId,
+      'SUPPORT_REPLY',
+      'Your support request has a reply',
+      '/student/support',
+    );
+    return message;
   }
 
   async adminSetScholarshipStatus(

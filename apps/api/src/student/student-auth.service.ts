@@ -64,6 +64,7 @@ export class StudentAuthService {
       phoneCountryCode?: string;
       phoneNumber?: string;
       password: string;
+      referralCode?: string;
     },
     metadata: AuthRequestMetadata,
   ): Promise<{ verificationRequired: boolean }> {
@@ -98,6 +99,33 @@ export class StudentAuthService {
       );
     }
 
+    const referralCode = input.referralCode?.trim().toUpperCase() || null;
+    const referrer = referralCode
+      ? await this.prisma.studentProfile.findFirst({
+          where: { referralCode },
+          select: { id: true, user: { select: { email: true } } },
+        })
+      : null;
+    if (referralCode && !referrer) {
+      throw new HttpException(
+        {
+          code: 'INVALID_REFERRAL_CODE',
+          message: 'Referral code is invalid',
+          details: null,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (referrer?.user.email === email) {
+      throw new HttpException(
+        {
+          code: 'INVALID_REFERRAL_CODE',
+          message: 'You cannot use your own referral code',
+          details: null,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const passwordHash = this.password.hash(input.password);
     const user = await this.prisma.user.create({
       data: {
@@ -110,7 +138,20 @@ export class StudentAuthService {
         status: 'ACTIVE',
         passwordChangedAt: new Date(),
         userRoles: { create: { roleId: role.id } },
-        studentProfile: { create: {} },
+        studentProfile: {
+          create:
+            referrer && referralCode
+              ? {
+                  referralReceived: {
+                    create: {
+                      referrerProfileId: referrer.id,
+                      referralCode,
+                      stage: 'REGISTERED',
+                    },
+                  },
+                }
+              : {},
+        },
       },
     });
 

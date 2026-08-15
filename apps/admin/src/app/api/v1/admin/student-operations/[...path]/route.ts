@@ -19,17 +19,18 @@ async function forward(request: NextRequest, context: Context) {
     `/api/v1/admin/student-operations/${path}`,
     process.env.API_BASE_URL ?? "http://127.0.0.1:4000",
   );
+  const contentType = request.headers.get("content-type");
   const body = ["GET", "DELETE"].includes(request.method)
     ? undefined
-    : await request.text();
+    : await request.arrayBuffer();
   const upstream = await fetch(target, {
     method: request.method,
     headers: {
       accept: "application/json",
       authorization,
-      ...(body ? { "content-type": "application/json" } : {}),
+      ...(contentType ? { "content-type": contentType } : {}),
     },
-    body,
+    body: body && body.byteLength ? body : undefined,
     cache: "no-store",
     signal: AbortSignal.timeout(8_000),
   });

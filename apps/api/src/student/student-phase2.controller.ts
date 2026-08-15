@@ -10,13 +10,18 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type { ResponseEnvelope } from '../common/http.types';
 import { StudentAccessGuard, studentUserId } from './student-access.guard';
 import { StudentPhase2Service } from './student-phase2.service';
+import { MediaService } from '../media/media.service';
 import {
   ApplyReferralDto,
   ApplicationActionDto,
@@ -46,7 +51,10 @@ function envelope<T>(
 @Controller('student')
 @UseGuards(StudentAccessGuard)
 export class StudentPhase2Controller {
-  constructor(private readonly portal: StudentPhase2Service) {}
+  constructor(
+    private readonly portal: StudentPhase2Service,
+    private readonly media: MediaService,
+  ) {}
 
   @Get('saved') listSaved(@Req() req: AuthenticatedRequest) {
     return this.respond(req, this.portal.listSaved(studentUserId(req)));
@@ -105,6 +113,33 @@ export class StudentPhase2Controller {
 
   @Get('applications') listApplications(@Req() req: AuthenticatedRequest) {
     return this.respond(req, this.portal.listApplications(studentUserId(req)));
+  }
+  @Get('applications/:id') application(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.respond(req, this.portal.application(studentUserId(req), id));
+  }
+  @Get('applications/:id/offer')
+  async offerLetter(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() response: Response,
+  ) {
+    const offer = await this.portal.applicationOffer(studentUserId(req), id);
+    const path = this.media.resolveServablePath(offer.storedFileName);
+    try {
+      await stat(path);
+    } catch {
+      throw new Error('Offer letter storage is unavailable');
+    }
+    response.setHeader('Content-Type', offer.mimeType);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${offer.originalFileName.replaceAll('"', '')}"`,
+    );
+    response.setHeader('Cache-Control', 'private, no-store');
+    createReadStream(path).pipe(response);
   }
   @Post('applications') @HttpCode(HttpStatus.CREATED) startApplication(
     @Req() req: AuthenticatedRequest,
@@ -173,6 +208,15 @@ export class StudentPhase2Controller {
       this.portal.listScholarshipApplications(studentUserId(req)),
     );
   }
+  @Get('scholarship-applications/:id') scholarshipApplication(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.respond(
+      req,
+      this.portal.scholarshipApplication(studentUserId(req), id),
+    );
+  }
   @Post('scholarship-applications')
   @HttpCode(HttpStatus.CREATED)
   startScholarshipApplication(
@@ -212,6 +256,20 @@ export class StudentPhase2Controller {
       ),
     );
   }
+  @Post('scholarship-applications/:id/withdraw') withdrawScholarshipApplication(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ApplicationActionDto,
+  ) {
+    return this.respond(
+      req,
+      this.portal.withdrawScholarshipApplication(
+        studentUserId(req),
+        id,
+        dto.message,
+      ),
+    );
+  }
 
   @Get('messages') conversation(@Req() req: AuthenticatedRequest) {
     return this.respond(req, this.portal.conversation(studentUserId(req)));
@@ -235,6 +293,14 @@ export class StudentPhase2Controller {
     return this.respond(
       req,
       this.portal.markNotificationRead(studentUserId(req), id),
+    );
+  }
+  @Patch('notifications/read-all') readAllNotifications(
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.respond(
+      req,
+      this.portal.markAllNotificationsRead(studentUserId(req)),
     );
   }
   @Get('support-tickets') supportTickets(@Req() req: AuthenticatedRequest) {

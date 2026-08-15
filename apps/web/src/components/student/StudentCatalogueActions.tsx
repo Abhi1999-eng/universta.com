@@ -22,6 +22,7 @@ export function StudentCatalogueActions({
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const current =
     typeof window === "undefined"
       ? "/"
@@ -61,7 +62,21 @@ export function StudentCatalogueActions({
     setMessage("");
     try {
       await request(`/saved/${kind}/${entityId}`, { method: "POST" });
+      setSaved(true);
       setMessage("Saved to your portal.");
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const unsave = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await request(`/saved/${kind}/${entityId}`, { method: "DELETE" });
+      setSaved(false);
+      setMessage("Removed from your portal.");
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
@@ -103,10 +118,10 @@ export function StudentCatalogueActions({
       <button
         type="button"
         className="button secondary"
-        onClick={() => void save()}
+        onClick={() => void (saved ? unsave() : save())}
         disabled={busy}
       >
-        {busy ? "Saving…" : "Save"}
+        {busy ? "Saving…" : saved ? "Saved" : "Save"}
       </button>
       {offeringId || scholarshipId ? (
         <button

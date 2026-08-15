@@ -66,8 +66,8 @@ export class SendMessageDto {
 }
 
 export class CreateSupportTicketDto extends SendMessageDto {
-  @IsIn(['GENERAL', 'APPLICATION', 'DOCUMENT', 'TECHNICAL'])
-  category!: 'GENERAL' | 'APPLICATION' | 'DOCUMENT' | 'TECHNICAL';
+  @IsIn(['GENERAL', 'APPLICATION', 'DOCUMENT', 'SCHOLARSHIP', 'TECHNICAL', 'OTHER'])
+  category!: 'GENERAL' | 'APPLICATION' | 'DOCUMENT' | 'SCHOLARSHIP' | 'TECHNICAL' | 'OTHER';
 
   @IsString()
   @MaxLength(255)
@@ -86,8 +86,10 @@ export class AdminApplicationStatusDto extends ApplicationActionDto {
     'SUBMITTED',
     'UNDER_REVIEW',
     'OFFER_RECEIVED',
+    'ACCEPTED',
     'REJECTED',
     'WITHDRAWN',
+    'ENROLLED',
   ])
   status!: string;
 
@@ -117,6 +119,8 @@ export class AdminSupportStatusDto {
   @IsIn(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'])
   status!: string;
 }
+
+export class AdminReplyDto extends SendMessageDto {}
 
 export class PaginationDto {
   @ApiPropertyOptional({ default: 1 })

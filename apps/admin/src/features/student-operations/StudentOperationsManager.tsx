@@ -48,10 +48,23 @@ export function StudentOperationsManager() {
       setError((cause as Error).message);
     }
   };
+  const uploadOffer = async (applicationId: string, file: File) => {
+    setError("");
+    const form = new FormData();
+    form.set("file", file);
+    try {
+      const response = await authFetch(
+        `/api/v1/admin/student-operations/applications/${applicationId}/offer`,
+        { method: "PATCH", body: form },
+      );
+      if (!response.ok) throw new Error("Unable to upload the offer letter");
+      load();
+    } catch (cause) { setError((cause as Error).message); }
+  };
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-6">
+    <section className="mx-auto max-w-7xl space-y-6 p-6" aria-labelledby="student-operations-heading">
       <div>
-        <h1 className="text-2xl font-semibold">Student operations</h1>
+        <h2 id="student-operations-heading" className="text-2xl font-semibold">Student operations</h2>
         <p className="mt-1 text-sm text-slate-600">
           Review applications and support requests. Student personal records are
           only shown where operationally necessary.
@@ -79,6 +92,7 @@ export function StudentOperationsManager() {
                 status,
               )
             }
+            onOffer={(row, file) => void uploadOffer(row.id, file)}
           />
           <OperationsTable
             title="Scholarship applications"
@@ -106,7 +120,7 @@ export function StudentOperationsManager() {
           />
         </>
       )}
-    </main>
+    </section>
   );
 }
 function OperationsTable({
@@ -115,12 +129,14 @@ function OperationsTable({
   label,
   statuses,
   onStatus,
+  onOffer,
 }: {
   title: string;
   rows: Row[];
   label: (row: Row) => string;
   statuses: string[];
   onStatus: (row: Row, status: string) => void;
+  onOffer?: (row: Row, file: File) => void;
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -162,6 +178,7 @@ function OperationsTable({
                         </option>
                       ))}
                     </select>
+                    {onOffer ? <label className="mt-2 block text-xs text-slate-600">Upload offer <input className="block max-w-48" type="file" accept="application/pdf,.doc,.docx,image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) onOffer(row, file); }} /></label> : null}
                   </td>
                 </tr>
               ))}

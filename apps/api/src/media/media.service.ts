@@ -342,6 +342,20 @@ export class MediaService {
     return join(this.uploadsDir, filename);
   }
 
+  async isPubliclyServable(filename: string): Promise<boolean> {
+    if (!FILENAME_PATTERN.test(filename)) return false;
+    const asset = await this.prisma.mediaAsset.findFirst({
+      where: {
+        storedFileName: filename,
+        status: 'ACTIVE',
+        deletedAt: null,
+        folder: { not: 'student-offers' },
+      },
+      select: { id: true },
+    });
+    return Boolean(asset);
+  }
+
   private async deleteFileFromDisk(storedFileName: string) {
     try {
       await unlink(join(this.uploadsDir, storedFileName));

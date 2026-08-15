@@ -66,6 +66,16 @@ export class StudentRegisterDto {
   @IsString()
   @Matches(PASSWORD_POLICY, { message: PASSWORD_MESSAGE })
   password!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional referral code supplied by a Universta referral link.',
+  })
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  referralCode?: string;
 }
 
 export class StudentLoginDto {

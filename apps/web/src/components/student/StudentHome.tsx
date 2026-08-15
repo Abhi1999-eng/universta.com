@@ -5,6 +5,15 @@ import { useEffect, useState } from 'react';
 import { useStudentSession } from './StudentSession';
 import type { Completion } from './student-types';
 
+type Dashboard = {
+  applications: number;
+  scholarshipApplications: number;
+  unreadNotifications: number;
+  consultant: { name: string; slug: string; email: string | null; phone: string | null } | null;
+  referralCode: string;
+  nextAction: { label: string; href: string };
+};
+
 /**
  * Home.
  *
@@ -15,11 +24,15 @@ import type { Completion } from './student-types';
 export function StudentHome() {
   const { api, student } = useStudentSession();
   const [completion, setCompletion] = useState<Completion | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    void api<Completion>('/profile/completion')
-      .then(setCompletion)
+    void Promise.all([api<Completion>('/profile/completion'), api<Dashboard>('/dashboard')])
+      .then(([nextCompletion, nextDashboard]) => {
+        setCompletion(nextCompletion);
+        setDashboard(nextDashboard);
+      })
       .catch(() => setFailed(true));
   }, [api]);
 
@@ -95,6 +108,19 @@ export function StudentHome() {
             Upload documents
           </Link>
         </div>
+      </section>
+
+      <section className="stu-card" aria-labelledby="journey-heading">
+        <h2 id="journey-heading">Your journey</h2>
+        {dashboard ? (
+          <div className="stu-actions">
+            <Link className="stu-btn ghost" href="/student/applications">{dashboard.applications} applications</Link>
+            <Link className="stu-btn ghost" href="/student/scholarships">{dashboard.scholarshipApplications} scholarships</Link>
+            <Link className="stu-btn ghost" href="/student/notifications">{dashboard.unreadNotifications} unread updates</Link>
+          </div>
+        ) : <p className="stu-empty">Loading your journey…</p>}
+        {dashboard?.consultant ? <p className="stu-next">Your assigned consultant: {dashboard.consultant.name}</p> : null}
+        {dashboard?.nextAction ? <Link className="stu-btn" href={dashboard.nextAction.href}>{dashboard.nextAction.label}</Link> : null}
       </section>
     </>
   );

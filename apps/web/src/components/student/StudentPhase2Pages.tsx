@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useStudentSession } from "./StudentSession";
 
@@ -15,6 +16,26 @@ type Mode =
   | "deadlines"
   | "recommendations";
 type Item = Record<string, unknown>;
+
+const STATUS_LABELS: Record<string, string> = {
+  APPLICATION_STARTED: "Application started",
+  SUBMITTED: "Submitted",
+  UNDER_REVIEW: "Under review",
+  OFFER_RECEIVED: "Offer received",
+  ACCEPTED: "Offer accepted",
+  REJECTED: "Not successful",
+  WITHDRAWN: "Withdrawn",
+  ENROLLED: "Enrolled",
+  STARTED: "Application started",
+  AWARDED: "Awarded",
+  NOT_ELIGIBLE: "Not eligible yet",
+  IN_PROGRESS: "In progress",
+};
+
+function statusLabel(value: unknown) {
+  const valueAsString = String(value ?? "");
+  return STATUS_LABELS[valueAsString] ?? valueAsString.toLowerCase().replaceAll("_", " ");
+}
 
 function titleFor(mode: Mode) {
   return (
@@ -64,7 +85,7 @@ export function StudentPhase2Page({ mode }: { mode: Mode }) {
   const [message, setMessage] = useState("");
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketBody, setTicketBody] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [ticketCategory, setTicketCategory] = useState("APPLICATION");
   const [heading, lede] = titleFor(mode);
 
   const path =
@@ -125,32 +146,13 @@ export function StudentPhase2Page({ mode }: { mode: Mode }) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          category: "GENERAL",
+          category: ticketCategory,
           subject: ticketSubject,
           body: ticketBody,
         }),
       });
       setTicketSubject("");
       setTicketBody("");
-      load();
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const applyReferral = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!referralCode.trim()) return;
-    setBusy(true);
-    setError("");
-    try {
-      await api("/referrals/apply", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: referralCode }),
-      });
-      setReferralCode("");
       load();
     } catch (cause) {
       setError((cause as Error).message);
@@ -208,6 +210,16 @@ export function StudentPhase2Page({ mode }: { mode: Mode }) {
             <h2>New support request</h2>
             <form onSubmit={createTicket}>
               <div className="stu-field">
+                <label htmlFor="ticket-category">Category</label>
+                <select id="ticket-category" value={ticketCategory} onChange={(event) => setTicketCategory(event.target.value)}>
+                  <option value="APPLICATION">Application</option>
+                  <option value="DOCUMENT">Document</option>
+                  <option value="SCHOLARSHIP">Scholarship</option>
+                  <option value="TECHNICAL">Technical</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div className="stu-field">
                 <label htmlFor="ticket-subject">Subject</label>
                 <input
                   id="ticket-subject"
@@ -239,25 +251,11 @@ export function StudentPhase2Page({ mode }: { mode: Mode }) {
         <DeadlineList data={data as Item | null} />
       ) : null}
       {mode === "recommendations" ? (
-        <RecommendationList data={data as Item[] | null} />
+        <RecommendationList data={data as Item | null} />
       ) : null}
       {mode === "referrals" ? (
         <section className="stu-card">
           <Referral data={data as Item | null} />
-          <form onSubmit={applyReferral} className="stu-field">
-            <label htmlFor="referral-code">Apply a referral code</label>
-            <input
-              id="referral-code"
-              value={referralCode}
-              onChange={(event) =>
-                setReferralCode(event.target.value.toUpperCase())
-              }
-              maxLength={40}
-            />
-            <button className="stu-btn" disabled={busy}>
-              {busy ? "Applying…" : "Apply code"}
-            </button>
-          </form>
         </section>
       ) : null}
     </>
@@ -273,6 +271,8 @@ function SavedItems({
   api: <T>(path: string, init?: RequestInit) => Promise<T>;
   reload: () => void;
 }) {
+  const router = useRouter();
+  const [comparisonItems, setComparisonItems] = useState<Record<string, string[]>>({});
   if (!data) return <Loading />;
   const groups = [
     ["Universities", data.universities as Item[], "universities", "university"],
@@ -286,8 +286,11 @@ function SavedItems({
   ] as const;
   return (
     <>
-      {groups.map(([label, rows, path, relation]) => (
-        <section className="stu-card" key={path}>
+      {groups.map(([label, rows, path, relation]) => {
+        const compareType = path === "universities" ? "universities" : path === "offerings" ? "courses" : null;
+        const selected = comparisonItems[path] ?? [];
+        return (
+        <section className="stu-card" key={path} id={path === "universities" ? "universities" : path === "offerings" ? "courses" : "scholarships"}>
           <h2>{label}</h2>
           {rows?.length ? (
             rows.map((row) => {
@@ -296,6 +299,9 @@ function SavedItems({
                 entity?.name ?? entity?.title ?? "Saved item",
               );
               const slug = String(entity?.slug ?? "");
+              const universitySlug = String(
+                (entity?.university as Item | undefined)?.slug ?? "",
+              );
               return (
                 <div
                   className="stu-row"
@@ -310,11 +316,16 @@ function SavedItems({
                     </p>
                   </div>
                   <div className="stu-actions">
+                    {compareType ? <label><input type="checkbox" checked={selected.includes(slug)} onChange={() => setComparisonItems((current) => {
+                      const prior = current[path] ?? [];
+                      const next = prior.includes(slug) ? prior.filter((item) => item !== slug) : prior.length < 3 ? [...prior, slug] : prior;
+                      return { ...current, [path]: next };
+                    })} /> Compare</label> : null}
                     <Link
                       className="stu-btn ghost"
                       href={
                         relation === "offering"
-                          ? `/universities/courses/${slug}`
+                          ? `/universities/${universitySlug}/courses/${slug}`
                           : relation === "scholarship"
                             ? `/scholarships/${slug}`
                             : `/universities/${slug}`
@@ -339,8 +350,10 @@ function SavedItems({
           ) : (
             <p className="stu-empty">No saved {label.toLowerCase()} yet.</p>
           )}
+          {compareType && selected.length >= 2 ? <button className="stu-btn ghost" onClick={() => router.push(`/compare/${compareType}?items=${encodeURIComponent(selected.join(","))}`)}>Compare selected</button> : null}
         </section>
-      ))}
+      );
+      })}
     </>
   );
 }
@@ -364,9 +377,10 @@ function ApplicationList({ data }: { data: Item[] | null }) {
                   (row.university as Item | null)?.name ??
                     row.universityNameSnapshot,
                 )}{" "}
-                · {String(row.status).replaceAll("_", " ")}
+                · {statusLabel(row.status)}
               </p>
             </div>
+            <Link className="stu-btn ghost" href={`/student/applications/${String(row.id)}`}>Continue</Link>
           </div>
         ))
       ) : (
@@ -392,8 +406,11 @@ function ScholarshipList({ data }: { data: Item[] | null }) {
                     row.scholarshipTitleSnapshot,
                 )}
               </h3>
-              <p className="meta">{String(row.status).replaceAll("_", " ")}</p>
+              <p className="meta">{statusLabel(row.status)}</p>
             </div>
+            <Link className="stu-btn ghost" href={`/student/scholarships/${String(row.id)}`}>
+              Continue
+            </Link>
           </div>
         ))
       ) : (
@@ -444,6 +461,7 @@ function NotificationList({
   if (!data) return <Loading />;
   return (
     <section className="stu-card">
+      {data.some((row) => !row.readAt) ? <button className="stu-btn ghost" onClick={() => void api('/notifications/read-all', { method: 'PATCH' }).then(reload)}>Mark all read</button> : null}
       {data.length ? (
         data.map((row) => (
           <div className="stu-row" key={String(row.id)}>
@@ -481,7 +499,7 @@ function SupportList({ data }: { data: Item[] | null }) {
           <div className="stu-row" key={String(row.id)}>
             <div>
               <h3>{String(row.subject)}</h3>
-              <p className="meta">{String(row.status).replaceAll("_", " ")}</p>
+              <p className="meta">{statusLabel(row.status)}</p>
             </div>
           </div>
         ))
@@ -498,13 +516,13 @@ function Referral({ data }: { data: Item | null }) {
     <>
       <h2>Your referral code</h2>
       <p className="stu-next">{String(data.code ?? "")}</p>
-      <p className="meta">Share this code with a friend when they register.</p>
+      <p className="meta">Share this registration link with a friend. Referral attribution is set once when they create their account.</p>
+      <a className="stu-btn ghost" href={`/r/${encodeURIComponent(String(data.code ?? ""))}`}>Open referral link</a>
       <h2 style={{ marginTop: 24 }}>Referral progress</h2>
       {refs.length ? (
         refs.map((row) => (
           <p className="stu-row" key={String(row.id)}>
-            {String(row.stage).replaceAll("_", " ")} ·{" "}
-            {String(row.rewardStatus).replaceAll("_", " ")}
+            {String(row.referredStudent ?? "Referred student")} · {statusLabel(row.stage)} · {statusLabel(row.rewardStatus)}
           </p>
         ))
       ) : (
@@ -549,12 +567,17 @@ function DeadlineList({ data }: { data: Item | null }) {
     </section>
   );
 }
-function RecommendationList({ data }: { data: Item[] | null }) {
+function RecommendationList({ data }: { data: Item | null }) {
   if (!data) return <Loading />;
+  const countries = (data.countries as Item[] | undefined) ?? [];
+  const universities = (data.universities as Item[] | undefined) ?? [];
+  const offerings = (data.offerings as Item[] | undefined) ?? [];
   return (
-    <section className="stu-card">
-      {data.length ? (
-        data.map((row) => (
+    <>
+      <section className="stu-card"><h2>Countries</h2>{countries.length ? countries.map((row) => <Link className="stu-row" key={String(row.id)} href={`/countries/${String(row.slug)}`}>{String(row.name)} <span>{String(row.reason)}</span></Link>) : <p className="stu-empty">Add preferred countries to see recommendations.</p>}</section>
+      <section className="stu-card"><h2>Universities</h2>{universities.length ? universities.map((row) => <Link className="stu-row" key={String(row.id)} href={`/universities/${String(row.slug)}`}>{String(row.name)} <span>{String(row.reason)}</span></Link>) : <p className="stu-empty">Add preferences to see universities.</p>}</section>
+      <section className="stu-card"><h2>Courses</h2>{offerings.length ? (
+        offerings.map((row) => (
           <div className="stu-row" key={String(row.id)}>
             <div>
               <h3>{String(row.name)}</h3>
@@ -575,8 +598,8 @@ function RecommendationList({ data }: { data: Item[] | null }) {
           text="Add your study preferences to receive recommendations."
           link="/student/profile"
         />
-      )}
-    </section>
+      )}</section>
+    </>
   );
 }
 function Loading() {

@@ -36,6 +36,7 @@ interface StudentSessionValue {
   /** Calls the student API through the same-origin proxy, refreshing once if
    * the token has aged out. */
   api: <T>(path: string, init?: RequestInit) => Promise<T>;
+  apiFile: (path: string) => Promise<Blob>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   reload: () => Promise<void>;
@@ -103,6 +104,20 @@ export function StudentSessionProvider({
     [refresh],
   );
 
+  const apiFile = useCallback(async (path: string): Promise<Blob> => {
+    const send = async () => fetch(`/api/student${path}`, {
+      headers: token.current ? { authorization: `Bearer ${token.current}` } : undefined,
+      credentials: 'same-origin',
+    });
+    let response = await send();
+    if (response.status === 401 && (await refresh())) response = await send();
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(body?.error?.message ?? 'We could not download your offer letter');
+    }
+    return response.blob();
+  }, [refresh]);
+
   const loadStudent = useCallback(async () => {
     try {
       const me = await api<StudentUser>('/auth/me');
@@ -151,8 +166,8 @@ export function StudentSessionProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ status, student, api, signIn, signOut, reload: loadStudent }),
-    [status, student, api, signIn, signOut, loadStudent],
+    () => ({ status, student, api, apiFile, signIn, signOut, reload: loadStudent }),
+    [status, student, api, apiFile, signIn, signOut, loadStudent],
   );
 
   return (
