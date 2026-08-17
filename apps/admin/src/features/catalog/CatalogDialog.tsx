@@ -2,6 +2,19 @@
 
 import { useEffect, useRef } from 'react';
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]:not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
+  'input:not([disabled]):not([type="hidden"]):not([tabindex="-1"])',
+  'select:not([disabled]):not([tabindex="-1"])',
+  'textarea:not([disabled]):not([tabindex="-1"])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function getFocusableElements(container: HTMLElement) {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+}
+
 export function CatalogDialog({
   title,
   description,
@@ -16,22 +29,66 @@ export function CatalogDialog({
   wide?: boolean;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+
   useEffect(() => {
-    closeRef.current?.focus();
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const dialog = dialogRef.current;
+
+    // A dialog may contain an auto-focused confirmation field. Otherwise,
+    // prefer the first editable control rather than its close button.
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const initialFocus = dialog.querySelector<HTMLElement>(
+        '[autofocus], input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [data-dialog-initial-focus], button:not([disabled]):not([aria-label="Close dialog"])',
+      );
+      (initialFocus ?? closeRef.current)?.focus();
+    }
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+
+      const focusable = getFocusableElements(dialogRef.current);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) {
+        event.preventDefault();
+        dialogRef.current.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center bg-[#0D1524]/45 p-4" role="presentation">
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 cursor-default" onClick={onClose} />
+      <button type="button" aria-hidden="true" tabIndex={-1} className="absolute inset-0 cursor-default" onClick={onClose} />
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="catalog-dialog-title"
         aria-describedby="catalog-dialog-description"
+        tabIndex={-1}
         className={`relative max-h-[90vh] w-full overflow-y-auto rounded-[24px] bg-white p-6 shadow-2xl sm:p-8 ${wide ? 'max-w-3xl' : 'max-w-xl'}`}
       >
         <div className="flex items-start justify-between gap-4">
