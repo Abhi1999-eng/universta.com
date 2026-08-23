@@ -156,7 +156,9 @@ describe('CountryDerivedService', () => {
       }),
     });
     await expect(
-      service.validateCuratedRelationships('country-1', undefined, ['course-2']),
+      service.validateCuratedRelationships('country-1', undefined, [
+        'course-2',
+      ]),
     ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'COUNTRY_CURATED_RELATION_INVALID',
