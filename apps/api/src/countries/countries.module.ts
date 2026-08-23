@@ -4,6 +4,7 @@ import { CatalogLookupsModule } from '../catalog-lookups/catalog-lookups.module'
 import { AdminCountriesController } from './admin-countries.controller';
 import { CountriesController } from './countries.controller';
 import { CountriesService } from './countries.service';
+import { CountryDerivedService } from './country-derived.service';
 import {
   AdminCountryProfilesController,
   AdminIntakesController,
@@ -28,6 +29,7 @@ import { SeoManagementModule } from '../seo-management/seo-management.module';
   ],
   providers: [
     CountriesService,
+    CountryDerivedService,
     CountryProfilesService,
     CountryEditorialService,
   ],

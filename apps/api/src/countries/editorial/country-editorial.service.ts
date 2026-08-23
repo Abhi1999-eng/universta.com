@@ -11,6 +11,7 @@ import type { AuthenticatedRequest } from '../../auth/auth.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CountriesService } from '../countries.service';
 import { CountryProfilesService } from '../profiles/country-profiles.service';
+import { sanitizeRichText } from '../../common/rich-text';
 import { SEO_MANAGEMENT_RESOLVER } from '../../seo-management/seo-management.tokens';
 import type { SeoResolver } from '../../seo-management/seo-management.types';
 import { COUNTRY_SECTION_TYPES, SEO_OWNER_TYPE } from './editorial.constants';
@@ -166,7 +167,7 @@ export function validateEditorialBody(
         (item) =>
           typeof item !== 'string' ||
           item.length > 2000 ||
-          /<[^>]*>|javascript:|data:/i.test(item),
+          /javascript:|data:/i.test(item),
       ))
   )
     throw bad(
@@ -221,7 +222,7 @@ export function validateEditorialBody(
     value.supportingText !== undefined &&
     (typeof value.supportingText !== 'string' ||
       value.supportingText.length > 2000 ||
-      /<[^>]*>|javascript:|data:/i.test(value.supportingText))
+      /javascript:|data:/i.test(value.supportingText))
   )
     throw bad('EDITORIAL_BODY_INVALID', 'CTA supporting text is invalid');
   if (
@@ -232,6 +233,25 @@ export function validateEditorialBody(
       /<[^>]*>|javascript:|data:/i.test(value.caption))
   )
     throw bad('EDITORIAL_BODY_INVALID', 'Media caption is invalid');
+}
+
+function sanitizeEditorialBody(
+  type: string,
+  value: Record<string, unknown> | undefined,
+) {
+  if (!value) return value;
+  if (type === 'RICH_TEXT' && Array.isArray(value.paragraphs)) {
+    return {
+      ...value,
+      paragraphs: value.paragraphs.map((item) =>
+        typeof item === 'string' ? sanitizeRichText(item) : item,
+      ),
+    };
+  }
+  if (type === 'CTA' && typeof value.supportingText === 'string') {
+    return { ...value, supportingText: sanitizeRichText(value.supportingText) };
+  }
+  return value;
 }
 
 @Injectable()
@@ -357,7 +377,8 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     await this.country(countryId);
-    validateEditorialBody(dto.sectionType, dto.bodyJson);
+    const bodyJson = sanitizeEditorialBody(dto.sectionType, dto.bodyJson);
+    validateEditorialBody(dto.sectionType, bodyJson);
     validateEditorialConfiguration(dto.configurationJson);
     assertSafeCopy([dto.eyebrow, dto.heading, dto.subheading, dto.ctaLabel]);
     await this.mediaIds([dto.primaryMediaId, dto.secondaryMediaId]);
@@ -369,7 +390,7 @@ export class CountryEditorialService {
         eyebrow: trim(dto.eyebrow),
         heading: trim(dto.heading),
         subheading: trim(dto.subheading),
-        bodyJson: inputJson(dto.bodyJson),
+        bodyJson: inputJson(bodyJson),
         primaryMediaId: dto.primaryMediaId,
         secondaryMediaId: dto.secondaryMediaId,
         ctaLabel: trim(dto.ctaLabel),
@@ -414,7 +435,8 @@ export class CountryEditorialService {
       dto.expectedUpdatedAt,
       'COUNTRY_CONTENT_SECTION_STALE_VERSION',
     );
-    validateEditorialBody(dto.sectionType, dto.bodyJson);
+    const bodyJson = sanitizeEditorialBody(dto.sectionType, dto.bodyJson);
+    validateEditorialBody(dto.sectionType, bodyJson);
     validateEditorialConfiguration(dto.configurationJson);
     assertSafeCopy([dto.eyebrow, dto.heading, dto.subheading, dto.ctaLabel]);
     await this.mediaIds([dto.primaryMediaId, dto.secondaryMediaId]);
@@ -426,7 +448,7 @@ export class CountryEditorialService {
         eyebrow: trim(dto.eyebrow),
         heading: trim(dto.heading),
         subheading: trim(dto.subheading),
-        bodyJson: inputJson(dto.bodyJson),
+        bodyJson: inputJson(bodyJson),
         primaryMediaId: dto.primaryMediaId,
         secondaryMediaId: dto.secondaryMediaId,
         ctaLabel: trim(dto.ctaLabel),

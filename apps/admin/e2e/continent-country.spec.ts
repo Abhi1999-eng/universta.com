@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { loginAsAdmin } from './helpers/admin-auth';
 import {
   acceptanceContinentName,
-  acceptanceCountryName,
+  acceptanceSlugPrefix,
 } from './helpers/acceptance-run';
 
 /**
@@ -115,38 +115,25 @@ test.describe.serial('continent administration', () => {
   test('refuses to delete a continent that still has countries, and says which', async ({ page }, testInfo) => {
     const suffix = `Dependency ${testInfo.repeatEachIndex}-${testInfo.retry}`;
     const continentName = `${acceptanceContinentName()} ${suffix}`;
-    const countryName = `${acceptanceCountryName()} ${suffix}`;
+    const countryName =
+      ['Denmark', 'Finland', 'India', 'Austria'][
+        testInfo.repeatEachIndex * 2 + testInfo.retry
+      ] ?? 'Belgium';
     await loginAsAdmin(page);
     await createContinent(page, continentName);
 
     await page.goto('/countries/new');
     await page.getByLabel('Continent *').selectOption({ label: continentName });
     await page.getByLabel('Country name *').fill(countryName);
-    await page.getByLabel('Slug *').fill(slugOf(countryName));
+    await page
+      .getByLabel('Slug *')
+      .fill(`${acceptanceSlugPrefix()}${slugOf(countryName)}`);
     await page.getByLabel('Page heading *').fill(`Study in ${countryName}`);
     await page.getByLabel('Short description *').fill('A browser E2E record for the continent dependency rule.');
 
-    // The private-use QA-QZ range impersonates no real country. Uniqueness is
-    // scoped to live rows now, but a concurrent live fixture can still hold a
-    // code, so walk the range until one is free.
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    let saved = false;
-    for (const letter of letters) {
-      await page.getByLabel('ISO alpha-2 *').fill(`Q${letter}`);
-      await page.getByLabel('ISO alpha-3 *').fill(`Q${letter}Y`);
-      await page.getByRole('button', { name: 'Save draft', exact: true }).click();
-      try {
-        await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/, { timeout: 3_000 });
-        saved = true;
-        break;
-      } catch {
-        await expect(
-          page.getByText('Country ISO code already exists'),
-          'Save draft failed for a reason other than an ISO code clash',
-        ).toBeVisible();
-      }
-    }
-    expect(saved, 'every QA-QZ ISO code is already taken locally').toBe(true);
+    await expect(page.getByLabel(/ISO alpha-2/i)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/);
 
     const row = await findContinent(page, continentName);
     await expect(row.getByText('1', { exact: true })).toBeVisible();
@@ -163,5 +150,24 @@ test.describe.serial('continent administration', () => {
     // Nothing was deleted: the continent and its country are both still there.
     await blocked.getByRole('button', { name: 'Close', exact: true }).click();
     await expect((await findContinent(page, continentName)).getByText('1', { exact: true })).toBeVisible();
+
+    // Remove both fixture records through the normal UI. Unlike the former
+    // synthetic private-use country, this test uses a canonical identity, so
+    // it must not leave a real-name fixture available to a later local run.
+    await page.goto('/countries');
+    await page.getByRole('textbox', { name: 'Search countries' }).fill(countryName);
+    const countryRow = page.getByRole('row').filter({ hasText: countryName });
+    await countryRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    const countryDelete = page.getByRole('dialog');
+    await countryDelete.getByPlaceholder(countryName).fill(countryName);
+    await countryDelete.getByRole('button', { name: 'Delete country', exact: true }).click();
+    await expect(page.getByText('Country soft-deleted.', { exact: true })).toBeVisible();
+
+    const removable = await findContinent(page, continentName);
+    await removable.getByRole('button', { name: 'Delete', exact: true }).click();
+    const continentDelete = page.getByRole('dialog');
+    await continentDelete.getByLabel('Confirmation').fill(continentName);
+    await continentDelete.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByText('Continent deleted.', { exact: true })).toBeVisible();
   });
 });

@@ -1,4 +1,8 @@
-import { CoursesService } from './courses.service';
+import {
+  CoursesService,
+  sanitizeCourseRichText,
+  sanitizeCourseRichTextBody,
+} from './courses.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 describe('CoursesService catalogue policies', () => {
@@ -38,5 +42,26 @@ describe('CoursesService catalogue policies', () => {
     ).rejects.toMatchObject({
       response: { code: 'COURSE_MAPPING_SOURCE_REQUIRED' },
     });
+  });
+
+  it('preserves legacy course copy while sanitizing rich course overview HTML', () => {
+    expect(sanitizeCourseRichText('Existing plain overview')).toBe(
+      'Existing plain overview',
+    );
+    expect(
+      sanitizeCourseRichText(
+        '<p>{courseName}</p><script>alert(1)</script><img src="data:image/png;base64,blocked">',
+      ),
+    ).toBe('<p>{courseName}</p>');
+  });
+
+  it('allows sanitized HTML only in RICH_TEXT course section paragraphs', () => {
+    expect(
+      sanitizeCourseRichTextBody({
+        paragraphs: [
+          '<p><strong>{courseName}</strong></p><script>bad()</script>',
+        ],
+      }),
+    ).toEqual({ paragraphs: ['<p><strong>{courseName}</strong></p>'] });
   });
 });

@@ -19,6 +19,8 @@ export function MediaPickerDialog({
   value,
   media = [],
   onChange,
+  onSelectMedia,
+  compact = false,
   help,
   helpKey,
 }: {
@@ -26,6 +28,8 @@ export function MediaPickerDialog({
   value: string;
   media?: EditorialMedia[];
   onChange: (value: string) => void;
+  onSelectMedia?: (media: EditorialMedia) => void;
+  compact?: boolean;
   /** Inline help content; falls back to the shared "media" definition when
    * neither this nor `helpKey` is provided, since every current caller is a
    * media-picker field. */
@@ -78,6 +82,11 @@ export function MediaPickerDialog({
     setOpen(false);
     window.setTimeout(() => trigger.current?.focus(), 0);
   }
+  function selectMedia(item: EditorialMedia) {
+    onChange(item.id);
+    onSelectMedia?.(item);
+    close();
+  }
 
   const selected =
     results.find((item) => item.id === value) ??
@@ -87,7 +96,7 @@ export function MediaPickerDialog({
 
   return (
     <div>
-      <span className="block text-sm font-semibold">
+      <span className={compact ? 'sr-only' : 'block text-sm font-semibold'}>
         <FieldLabel label={label} help={resolvedHelp} helpKey={helpKey} />
       </span>
       <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -95,9 +104,9 @@ export function MediaPickerDialog({
           ref={trigger}
           type="button"
           onClick={() => openPicker('library')}
-          className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+          className={compact ? 'rounded-lg border border-[#D9E0EA] px-2.5 py-1.5 text-xs font-semibold hover:border-[#1657CF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF]' : 'rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm font-semibold'}
         >
-          {selected ? 'Change media' : 'Choose media'}
+          {compact ? 'Image' : selected ? 'Change media' : 'Choose media'}
         </button>
         {selected ? (
           <div className="flex min-w-0 items-center gap-3">
@@ -189,14 +198,13 @@ export function MediaPickerDialog({
                     setTab('library');
                     void loadLibrary(query);
                   }}
-                  onUploaded={(asset) => {
+                    onUploaded={(asset) => {
                     const editorialMedia = toEditorialMedia(asset);
                     setResults((current) => [
                       editorialMedia,
                       ...current.filter((item) => item.id !== editorialMedia.id),
                     ]);
-                    onChange(editorialMedia.id);
-                    close();
+                    selectMedia(editorialMedia);
                   }}
                 />
               ) : (
@@ -249,10 +257,7 @@ export function MediaPickerDialog({
                         <button
                           type="button"
                           key={item.id}
-                          onClick={() => {
-                            onChange(item.id);
-                            close();
-                          }}
+                          onClick={() => selectMedia(item)}
                           className={`flex gap-3 rounded-xl border p-3 text-left hover:border-[#1657CF] ${
                             item.id === value
                               ? 'border-[#1657CF] bg-[#F3F7FF]'

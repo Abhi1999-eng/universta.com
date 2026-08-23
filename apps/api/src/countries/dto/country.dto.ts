@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, type TransformFnParams } from 'class-transformer';
 import {
+  ArrayUnique,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -28,13 +30,13 @@ import {
   PATHWAY_STRENGTHS,
   VISA_SUCCESS_BANDS,
 } from '../profiles/profile.constants';
+import {
+  COUNTRY_FEATURE_CODES,
+  COUNTRY_TESTS,
+} from '../country-configuration.constants';
 
 function trimValue({ value }: TransformFnParams): unknown {
   return typeof value === 'string' ? value.trim() : value;
-}
-
-function uppercaseValue({ value }: TransformFnParams): unknown {
-  return typeof value === 'string' ? value.trim().toUpperCase() : value;
 }
 
 function booleanValue({ value }: TransformFnParams): unknown {
@@ -45,6 +47,15 @@ function booleanValue({ value }: TransformFnParams): unknown {
 
 function numberValue({ value }: TransformFnParams): unknown {
   return value === undefined || value === '' ? value : Number(value);
+}
+
+function countryCodeValue({ value }: TransformFnParams): unknown {
+  return typeof value === 'string' ? value.trim().toUpperCase() : value;
+}
+
+function arrayValue({ value }: TransformFnParams): unknown {
+  if (Array.isArray(value)) return value;
+  return typeof value === 'string' && value.trim() ? [value] : value;
 }
 
 export class CreateCountryDto {
@@ -66,22 +77,6 @@ export class CreateCountryDto {
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   slug?: string;
 
-  @ApiPropertyOptional({ example: 'CA' })
-  @Transform(uppercaseValue)
-  @IsOptional()
-  @IsString()
-  @Length(2, 2)
-  @Matches(/^[A-Z]{2}$/)
-  iso2Code?: string;
-
-  @ApiPropertyOptional({ example: 'CAN' })
-  @Transform(uppercaseValue)
-  @IsOptional()
-  @IsString()
-  @Length(3, 3)
-  @Matches(/^[A-Z]{3}$/)
-  iso3Code?: string;
-
   @ApiProperty({ example: 'Study in Canada' })
   @Transform(trimValue)
   @IsString()
@@ -93,6 +88,28 @@ export class CreateCountryDto {
   @IsString()
   @Length(1, 1000)
   shortDescription!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Legacy API compatibility only. The Admin derives ISO values from a recognised country name.',
+    deprecated: true,
+  })
+  @Transform(countryCodeValue)
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{2}$/)
+  iso2Code?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Legacy API compatibility only. The Admin derives ISO values from a recognised country name.',
+    deprecated: true,
+  })
+  @Transform(countryCodeValue)
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/)
+  iso3Code?: string;
 
   @ApiPropertyOptional({ example: false })
   @Transform(booleanValue)
@@ -112,6 +129,60 @@ export class CreateCountryDto {
   @IsOptional()
   @IsUUID()
   flagMediaId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Country-level feature codes; not institutional requirements',
+    enum: COUNTRY_FEATURE_CODES,
+    isArray: true,
+  })
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(COUNTRY_FEATURE_CODES, { each: true })
+  featureCodes?: string[];
+
+  @ApiPropertyOptional({ enum: COUNTRY_TESTS, isArray: true })
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(COUNTRY_TESTS, { each: true })
+  acceptedTests?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Month numbers, 1 (January) through 12 (December)',
+    type: [Number],
+  })
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(12, { each: true })
+  intakeMonths?: number[];
+
+  @Transform(numberValue)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  postStudyWorkPermitMonths?: number;
+
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  popularUniversityIds?: string[];
+
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  popularCourseIds?: string[];
 }
 
 export class UpdateCountryDto extends CreateCountryDto {

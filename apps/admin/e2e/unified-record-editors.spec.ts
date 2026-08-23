@@ -49,12 +49,13 @@ test.describe('unified record editors', () => {
     await expect(page.getByRole('button', { name: /save seo/i })).toHaveCount(0);
   });
 
-  test('Country exposes profiles, intakes, editorial content and SEO before the first draft save', async ({ page }) => {
+  test('Country exposes source-owned data guidance, configuration, editorial content and SEO before the first draft save', async ({ page }) => {
     await page.goto('/countries/new');
 
     await expect(page.getByRole('heading', { name: 'Create country' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Country profiles' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Intakes' })).toBeVisible();
+    await expect(page.getByLabel(/ISO alpha-2/i)).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Study destination setup' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Available intake months' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Content sections' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'FAQs' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Consultant cards' })).toBeVisible();

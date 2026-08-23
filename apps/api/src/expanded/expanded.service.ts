@@ -2176,6 +2176,7 @@ export class ExpandedService {
         'name',
         'slug',
         'institutionType',
+        'qsRanking',
         'shortDescription',
         'overview',
         'featuredMediaId',
@@ -2496,7 +2497,23 @@ export class ExpandedService {
       normalizeDecimal('amount');
       normalizeDate('deadline');
     }
-    if (resource === 'universities') normalizeDate('verifiedAt');
+    if (resource === 'universities') {
+      normalizeDate('verifiedAt');
+      if ('qsRanking' in data) {
+        if (data.qsRanking === null || data.qsRanking === '')
+          data.qsRanking = null;
+        else {
+          const ranking = Number(data.qsRanking);
+          if (!Number.isInteger(ranking) || ranking < 1)
+            throw new UnprocessableEntityException({
+              code: 'VALIDATION_ERROR',
+              message: 'qsRanking must be a positive whole number',
+              details: null,
+            });
+          data.qsRanking = ranking;
+        }
+      }
+    }
     const FEATURED_RESOURCES = new Set([
       'universities',
       'offerings',

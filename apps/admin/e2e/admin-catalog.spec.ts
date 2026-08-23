@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { loginAsAdmin } from './helpers/admin-auth';
 import {
   acceptanceContinentName,
-  acceptanceCountryName,
+  acceptanceSlugPrefix,
 } from './helpers/acceptance-run';
 import { apiBaseUrl } from './helpers/e2e-urls';
 
@@ -24,7 +24,14 @@ test.describe.serial('catalog management', () => {
     // owned by this run.
     const invocationSuffix = ` ${testInfo.repeatEachIndex}-${testInfo.retry}`;
     const continentName = `${acceptanceContinentName()}${invocationSuffix}`;
-    const countryName = `${acceptanceCountryName()}${invocationSuffix}`;
+    // Country Admin derives identity from local canonical metadata, so choose
+    // a real, non-demo country rather than filling no-longer-editable ISO
+    // fields. A retry uses a distinct canonical identity in case a failed
+    // attempt left its preceding draft behind.
+    const countryName =
+      ['Belgium', 'Austria', 'Bangladesh', 'China'][
+        testInfo.repeatEachIndex * 2 + testInfo.retry
+      ] ?? 'Denmark';
     const continentCode = `E${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
     let countrySlug = '';
 
@@ -51,31 +58,16 @@ test.describe.serial('catalog management', () => {
     await page.goto('/countries/new');
     await page.getByLabel('Continent *').selectOption({ label: continentName });
     await page.getByLabel('Country name *').fill(countryName);
-    countrySlug = countryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    countrySlug = `${acceptanceSlugPrefix()}${countryName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')}`;
     await page.getByLabel('Slug *').fill(countrySlug);
     await page.getByLabel('Page heading *').fill(`Study in ${countryName}`);
     await page.getByLabel('Short description *').fill('An isolated browser E2E catalog record.');
 
-    // ISO alpha-2/alpha-3 are DB-unique and ignore soft deletes, so walk the
-    // private-use QA-QZ range until the test finds a value that is still free.
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    let saved = false;
-    for (const letter of letters) {
-      await page.getByLabel('ISO alpha-2 *').fill(`Q${letter}`);
-      await page.getByLabel('ISO alpha-3 *').fill(`Q${letter}X`);
-      await page.getByRole('button', { name: 'Save draft', exact: true }).click();
-      try {
-        await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/, { timeout: 3_000 });
-        saved = true;
-        break;
-      } catch {
-        await expect(
-          page.getByText('Country ISO code already exists'),
-          'Save draft failed for a reason other than an ISO code clash',
-        ).toBeVisible();
-      }
-    }
-    expect(saved, 'every QA-QZ ISO code is already taken locally').toBe(true);
+    await expect(page.getByLabel(/ISO alpha-2/i)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/);
 
     await expect(page.getByRole('heading', { name: 'Edit country' })).toBeVisible();
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();

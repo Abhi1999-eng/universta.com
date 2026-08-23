@@ -1,16 +1,27 @@
 type Props = { value: string; className?: string };
+const allowedTags = new Set(['p', 'h2', 'h3', 'h4', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'ul', 'ol', 'li', 'a', 'blockquote', 'hr', 'br', 'img']);
+const escape = (value: string) => value.replace(/[&"<>]/g, (char) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[char] ?? char);
+const safeHref = (value: string) => /^https:\/\//i.test(value) || /^\/(?!\/)/.test(value) || /^#[a-zA-Z0-9_-]+$/.test(value);
+const safeImage = (value: string) => /^https:\/\//i.test(value) || /^\/api\/v1\/media\//.test(value) || /^\/media\//.test(value);
 
-const safe = (value: string) => value.replace(/<\/?[^>]+>/g, (tag) => {
-  const match = tag.match(/^<\s*(\/?)\s*([a-z0-9]+)/i);
-  const allowed = new Set(['p', 'h2', 'h3', 'h4', 'strong', 'b', 'em', 'i', 'ul', 'ol', 'li', 'a', 'blockquote', 'hr', 'br']);
-  if (!match || !allowed.has(match[2].toLowerCase())) return '';
-  const name = match[2].toLowerCase();
-  if (match[1] === '/' || name !== 'a') return `<${match[1] === '/' ? '/' : ''}${name}>`;
-  const href = tag.match(/\shref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
-  return /^https?:\/\//i.test(href) ? `<a href="${href.replace(/"/g, '')}" rel="noopener noreferrer">` : '<a>';
-});
+export function safeRichText(value: string) {
+  return value.replace(/<(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\/\1\s*>/gi, '').replace(/<\/?[^>]+>/g, (tag) => {
+    const match = tag.match(/^<\s*(\/?)\s*([a-z0-9]+)/i);
+    if (!match || !allowedTags.has(match[2].toLowerCase())) return '';
+    const name = match[2].toLowerCase();
+    const closing = match[1] === '/';
+    if (closing || !['a', 'img'].includes(name)) return `<${closing ? '/' : ''}${name}>`;
+    if (name === 'a') {
+      const href = tag.match(/\shref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+      return safeHref(href) ? `<a href="${escape(href)}" rel="noopener noreferrer">` : '<a>';
+    }
+    const src = tag.match(/\ssrc\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+    const alt = tag.match(/\salt\s*=\s*["']([^"']*)["']/i)?.[1] ?? '';
+    return safeImage(src) ? `<img src="${escape(src)}" alt="${escape(alt)}">` : '';
+  });
+}
 
 export function RichText({ value, className }: Props) {
   if (!/<\/?[a-z][^>]*>/i.test(value)) return <p className={className} style={{ whiteSpace: 'pre-line' }}>{value}</p>;
-  return <div className={className} dangerouslySetInnerHTML={{ __html: safe(value) }} />;
+  return <div className={className} dangerouslySetInnerHTML={{ __html: safeRichText(value) }} />;
 }

@@ -29,6 +29,13 @@ import {
   type ProfileStatisticsRecord,
 } from './profiles/profile.mappers';
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
+import { CountryDerivedService } from './country-derived.service';
+import {
+  countryFeatureLabel,
+  COUNTRY_FEATURE_CODES,
+  COUNTRY_TESTS,
+} from './country-configuration.constants';
+import { resolveCountryMetadata } from './country-metadata';
 
 const COUNTRY_INCLUDE = {
   continent: {
@@ -36,6 +43,14 @@ const COUNTRY_INCLUDE = {
   },
   flagMedia: {
     select: { publicUrl: true, altText: true, status: true, deletedAt: true },
+  },
+  popularUniversities: {
+    select: { universityId: true, displayOrder: true },
+    orderBy: [{ displayOrder: 'asc' }, { universityId: 'asc' }],
+  },
+  popularCourses: {
+    select: { courseId: true, displayOrder: true },
+    orderBy: [{ displayOrder: 'asc' }, { courseId: 'asc' }],
   },
   ...PROFILE_INCLUDE,
 } satisfies Prisma.CountryInclude;
@@ -48,6 +63,12 @@ type CountryRecord = {
   slug: string;
   iso2Code: string | null;
   iso3Code: string | null;
+  currencyCode: string | null;
+  currencySymbol: string | null;
+  featureCodes: Prisma.JsonValue | null;
+  acceptedTests: Prisma.JsonValue | null;
+  intakeMonths: Prisma.JsonValue | null;
+  postStudyWorkPermitMonths: number | null;
   shortDescription: string;
   isFeatured: boolean;
   displayOrder: number;
@@ -69,6 +90,8 @@ type CountryRecord = {
     status: string;
     deletedAt: Date | null;
   } | null;
+  popularUniversities: Array<{ universityId: string; displayOrder: number }>;
+  popularCourses: Array<{ courseId: string; displayOrder: number }>;
   statistics: ProfileStatisticsRecord | null;
 } & ProfileBundle;
 
@@ -89,6 +112,14 @@ export interface CountryPublicDto {
   displayOrder: number;
   statistics: { universitiesCount: number | null } | null;
   profiles: ReturnType<typeof publicProfileSummary>;
+  configuration: {
+    features: Array<{ code: string; label: string }>;
+    acceptedTests: string[];
+    intakeMonths: number[];
+    postStudyWorkPermitMonths: number | null;
+  };
+  currency: { code: string; symbol: string | null } | null;
+  derived?: Awaited<ReturnType<CountryDerivedService['detail']>>;
 }
 
 export interface CountryAdminDto extends CountryPublicDto {
@@ -98,6 +129,8 @@ export interface CountryAdminDto extends CountryPublicDto {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  popularUniversityIds: string[];
+  popularCourseIds: string[];
 }
 
 function actorId(request: AuthenticatedRequest): string {
@@ -132,7 +165,10 @@ function isVerifiedStatistics(
 
 @Injectable()
 export class CountriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly derived: CountryDerivedService,
+  ) {}
 
   async publicList(query: CountryListQueryDto) {
     const where = this.publicWhere(query);
@@ -232,7 +268,22 @@ export class CountriesService {
       include: COUNTRY_INCLUDE,
     });
     if (!country) throw notFound();
-    return this.toPublic(country);
+    const record = country as unknown as CountryRecord;
+    const metadata = resolveCountryMetadata(record.name);
+    const currencyCode = record.currencyCode ?? metadata?.currencyCode ?? null;
+    const currencySymbol =
+      record.currencySymbol ?? metadata?.currencySymbol ?? null;
+    return {
+      ...this.toPublic(record),
+      currency: currencyCode
+        ? { code: currencyCode, symbol: currencySymbol }
+        : null,
+      derived: await this.derived.detail({
+        id: record.id,
+        currencyCode,
+        currencySymbol,
+      }),
+    };
   }
 
   async adminList(query: CountryListQueryDto) {
@@ -272,7 +323,31 @@ export class CountriesService {
 
   async getAdmin(id: string): Promise<CountryAdminDto> {
     const country = await this.adminRecord(id);
-    return this.toAdmin(country);
+    const [curation, derived] = await Promise.all([
+      this.derived.curationOptions(country.id),
+      this.derived.detail({
+        id: country.id,
+        currencyCode: country.currencyCode,
+        currencySymbol: country.currencySymbol,
+      }),
+    ]);
+    return {
+      ...this.toAdmin(country),
+      popularUniversityIds: country.popularUniversities
+        .map((relation) => relation.universityId)
+        .filter((id) =>
+          curation.universities.some((university) => university.id === id),
+        ),
+      popularCourseIds: country.popularCourses
+        .map((relation) => relation.courseId)
+        .filter((id) => curation.courses.some((course) => course.id === id)),
+      derived,
+    };
+  }
+
+  async curationOptions(id: string) {
+    await this.adminRecord(id);
+    return this.derived.curationOptions(id);
   }
 
   async create(
@@ -281,22 +356,34 @@ export class CountriesService {
   ): Promise<CountryAdminDto> {
     const userId = actorId(request);
     await this.ensureContinent(dto.continentId);
+    if (dto.popularUniversityIds?.length || dto.popularCourseIds?.length) {
+      throw new UnprocessableEntityException({
+        code: 'COUNTRY_CURATED_RELATION_INVALID',
+        message:
+          'Save the country before curating published Universities or Courses',
+        details: null,
+      });
+    }
     const name = dto.name.trim();
     const slug = dto.slug?.trim() || slugify(name);
-    await this.ensureUnique(name, slug, dto.iso2Code, dto.iso3Code);
+    const metadata = this.metadataOrLegacyIdentity(name, dto);
+    await this.ensureUnique(name, slug, metadata?.iso2Code, metadata?.iso3Code);
     try {
       const country = await this.prisma.country.create({
         data: {
           continentId: dto.continentId,
           name,
           slug,
-          iso2Code: dto.iso2Code?.trim().toUpperCase(),
-          iso3Code: dto.iso3Code?.trim().toUpperCase(),
+          iso2Code: metadata?.iso2Code,
+          iso3Code: metadata?.iso3Code,
+          currencyCode: metadata?.currencyCode,
+          currencySymbol: metadata?.currencySymbol,
           pageHeading: dto.pageHeading.trim(),
           shortDescription: dto.shortDescription.trim(),
           isFeatured: dto.isFeatured ?? false,
           displayOrder: dto.displayOrder ?? 0,
           flagMediaId: dto.flagMediaId,
+          ...this.configurationData(dto),
           status: 'DRAFT',
           createdByUserId: userId,
           updatedByUserId: userId,
@@ -321,7 +408,12 @@ export class CountriesService {
         },
         'Country created',
       );
-      return this.toAdmin(country);
+      await this.derived.replaceCuratedRelationships(
+        country.id,
+        dto.popularUniversityIds,
+        dto.popularCourseIds,
+      );
+      return this.getAdmin(country.id);
     } catch (error) {
       this.throwUniqueConflict(error);
       throw error;
@@ -339,15 +431,27 @@ export class CountriesService {
     await this.ensureContinent(dto.continentId);
     const name = dto.name.trim();
     const slug = dto.slug?.trim() ?? current.slug;
-    const iso2Code = dto.iso2Code?.trim().toUpperCase();
-    const iso3Code = dto.iso3Code?.trim().toUpperCase();
+    const metadata = resolveCountryMetadata(name);
+    const iso2Code = metadata?.iso2Code ?? current.iso2Code ?? undefined;
+    const iso3Code = metadata?.iso3Code ?? current.iso3Code ?? undefined;
     await this.ensureUnique(name, slug, iso2Code, iso3Code, id);
+    await this.derived.validateCuratedRelationships(
+      id,
+      dto.popularUniversityIds,
+      dto.popularCourseIds,
+    );
     const data: Prisma.CountryUncheckedUpdateInput = {
       continentId: dto.continentId,
       name,
       slug,
       iso2Code,
       iso3Code,
+      ...(metadata
+        ? {
+            currencyCode: metadata.currencyCode,
+            currencySymbol: metadata.currencySymbol,
+          }
+        : {}),
       pageHeading: dto.pageHeading.trim(),
       shortDescription: dto.shortDescription.trim(),
       ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
@@ -357,6 +461,7 @@ export class CountriesService {
       ...(dto.flagMediaId !== undefined
         ? { flagMediaId: dto.flagMediaId }
         : {}),
+      ...this.configurationData(dto),
       updatedByUserId: userId,
     };
     try {
@@ -387,7 +492,12 @@ export class CountriesService {
         },
         'Country updated',
       );
-      return this.toAdmin(updated);
+      await this.derived.replaceCuratedRelationships(
+        id,
+        dto.popularUniversityIds,
+        dto.popularCourseIds,
+      );
+      return this.getAdmin(updated.id);
     } catch (error) {
       this.throwUniqueConflict(error);
       throw error;
@@ -708,6 +818,67 @@ export class CountriesService {
       );
   }
 
+  private metadataOrLegacyIdentity(name: string, dto: CreateCountryDto) {
+    const metadata = resolveCountryMetadata(name);
+    if (metadata) return metadata;
+    // The Admin no longer exposes ISO fields, but old integrations and the
+    // established isolated E2E fixtures still submit them. Retaining this
+    // narrow fallback prevents a breaking API change while recognised real
+    // country names always use the authoritative offline metadata above.
+    if (dto.iso2Code && dto.iso3Code) {
+      return {
+        iso2Code: dto.iso2Code,
+        iso3Code: dto.iso3Code,
+        currencyCode: undefined,
+        currencySymbol: undefined,
+      };
+    }
+    // An unrecognised draft remains editable but cannot pass publication
+    // readiness until its name is canonical or legacy identity data is
+    // supplied. This preserves the established draft/review workflow.
+    return undefined;
+  }
+
+  private configurationData(
+    dto: Pick<
+      CreateCountryDto,
+      | 'featureCodes'
+      | 'acceptedTests'
+      | 'intakeMonths'
+      | 'postStudyWorkPermitMonths'
+    >,
+  ): Pick<
+    Prisma.CountryUncheckedCreateInput,
+    | 'featureCodes'
+    | 'acceptedTests'
+    | 'intakeMonths'
+    | 'postStudyWorkPermitMonths'
+  > {
+    const features = dto.featureCodes
+      ? [...new Set(dto.featureCodes)].filter((code) =>
+          COUNTRY_FEATURE_CODES.includes(
+            code as (typeof COUNTRY_FEATURE_CODES)[number],
+          ),
+        )
+      : undefined;
+    const acceptedTests = dto.acceptedTests
+      ? [...new Set(dto.acceptedTests)].filter((test) =>
+          COUNTRY_TESTS.includes(test as (typeof COUNTRY_TESTS)[number]),
+        )
+      : undefined;
+    const intakeMonths = dto.intakeMonths
+      ? [...new Set(dto.intakeMonths)].sort((left, right) => left - right)
+      : undefined;
+    return {
+      ...(features !== undefined ? { featureCodes: features } : {}),
+      ...(acceptedTests !== undefined ? { acceptedTests } : {}),
+      ...(intakeMonths !== undefined ? { intakeMonths } : {}),
+      ...(dto.postStudyWorkPermitMonths !== undefined
+        ? { postStudyWorkPermitMonths: dto.postStudyWorkPermitMonths }
+        : {}),
+    };
+  }
+
   private throwUniqueConflict(error: unknown): void {
     if (isUniqueConstraintError(error)) {
       throw conflict(
@@ -816,6 +987,22 @@ export class CountriesService {
           }
         : null,
       profiles: publicProfileSummary(record),
+      configuration: {
+        features: this.featureCodes(record).map((code) => ({
+          code,
+          label: countryFeatureLabel(code),
+        })),
+        acceptedTests: this.stringList(record.acceptedTests, COUNTRY_TESTS),
+        intakeMonths: this.monthList(record),
+        postStudyWorkPermitMonths:
+          record.postStudyWorkPermitMonths ??
+          record.workProfile?.postStudyWorkMaxMonths ??
+          record.workProfile?.postStudyWorkMinMonths ??
+          null,
+      },
+      currency: record.currencyCode
+        ? { code: record.currencyCode, symbol: record.currencySymbol }
+        : null,
     };
   }
 
@@ -828,6 +1015,59 @@ export class CountriesService {
       publishedAt: record.publishedAt?.toISOString() ?? null,
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
+      popularUniversityIds: record.popularUniversities.map(
+        (relation) => relation.universityId,
+      ),
+      popularCourseIds: record.popularCourses.map(
+        (relation) => relation.courseId,
+      ),
     };
+  }
+
+  private featureCodes(record: CountryRecord): string[] {
+    const saved = this.stringList(record.featureCodes, COUNTRY_FEATURE_CODES);
+    if (saved.length) return saved;
+    return [
+      ...(record.workProfile?.partTimeAllowed ? ['PART_TIME_ALLOWED'] : []),
+      ...(record.workProfile?.postStudyWorkAvailable
+        ? ['POST_STUDY_WORK_AVAILABLE']
+        : []),
+      ...(record.languageRequirements?.languageWaiverAvailable
+        ? ['LANGUAGE_WAIVER']
+        : []),
+    ];
+  }
+
+  private stringList(
+    value: Prisma.JsonValue | null,
+    allowed: readonly string[],
+  ): string[] {
+    return Array.isArray(value)
+      ? value.filter(
+          (item): item is string =>
+            typeof item === 'string' && allowed.includes(item),
+        )
+      : [];
+  }
+
+  private monthList(record: CountryRecord): number[] {
+    const saved = Array.isArray(record.intakeMonths)
+      ? record.intakeMonths.filter(
+          (value): value is number => typeof value === 'number',
+        )
+      : [];
+    if (saved.length)
+      return saved.filter(
+        (month) => Number.isInteger(month) && month >= 1 && month <= 12,
+      );
+    return [
+      ...new Set(
+        record.intakes
+          .map((intake) => intake.intake.startMonth)
+          .filter((month): month is number =>
+            Boolean(month && month >= 1 && month <= 12),
+          ),
+      ),
+    ].sort((left, right) => left - right);
   }
 }

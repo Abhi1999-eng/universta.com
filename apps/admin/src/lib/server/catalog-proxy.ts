@@ -3,35 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export type CatalogProxyOperation =
-  | 'continents:list'
-  | 'continents:create'
-  | `continents:get:${string}`
-  | `continents:update:${string}`
-  | `continents:delete:${string}`
-  | 'countries:list'
-  | 'countries:create'
-  | `countries:get:${string}`
-  | `countries:update:${string}`
-  | `countries:publish:${string}`
-  | `countries:unpublish:${string}`
-  | `countries:delete:${string}`
-  | `country-profiles:all:${string}`
-  | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
-  | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}`
-  | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}`
-  | `editorial:${string}`
-  | 'intakes:list'
-  | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}`
-  | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}`
-  | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}`
-  | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}`
-  | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}`
-  | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}`
-  | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}`
-  | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}`
-  | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}`
-  | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
+export type CatalogProxyOperation = 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
@@ -54,6 +26,8 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_CODE_CONFLICT: 'Country ISO code already exists',
   COUNTRY_STALE_VERSION: 'The country changed in another session. Reload before saving',
   COUNTRY_NOT_READY: 'Complete the required fields before publishing',
+  COUNTRY_METADATA_UNAVAILABLE: 'Use a canonical country name recognised by the catalogue metadata',
+  COUNTRY_CURATED_RELATION_INVALID: 'Selected popular records must be published and available in this country',
   COUNTRY_COST_PROFILE_STALE_VERSION: 'The cost profile changed in another session. Reload before saving',
   COUNTRY_WORK_PROFILE_STALE_VERSION: 'The work profile changed in another session. Reload before saving',
   COUNTRY_LANGUAGE_PROFILE_STALE_VERSION: 'The language profile changed in another session. Reload before saving',
@@ -140,12 +114,7 @@ function requestIdFrom(request: NextRequest): string {
   return /^[a-zA-Z0-9._:-]{1,100}$/.test(incoming) ? incoming : randomUUID();
 }
 
-function envelope(
-  requestId: string,
-  data: unknown,
-  error: SafeEnvelope['error'],
-  meta: unknown = null,
-): SafeEnvelope {
+function envelope(requestId: string, data: unknown, error: SafeEnvelope['error'], meta: unknown = null): SafeEnvelope {
   return {
     data,
     meta,
@@ -169,16 +138,38 @@ function errorResponse(status: number, requestId: string, code: string): NextRes
   return response;
 }
 
-function operationDetails(operation: CatalogProxyOperation): { method: string; path: string; query: string[]; body: string[] } {
-  if (operation === 'intakes:list') return { method: 'GET', path: '/api/v1/admin/intakes', query: [], body: [] };
+function operationDetails(operation: CatalogProxyOperation): {
+  method: string;
+  path: string;
+  query: string[];
+  body: string[];
+} {
+  if (operation === 'intakes:list')
+    return {
+      method: 'GET',
+      path: '/api/v1/admin/intakes',
+      query: [],
+      body: [],
+    };
   if (operation.startsWith('editorial:')) {
     const [, method, countryId, resource, childId] = operation.split(':');
     const safeCountryId = encodeURIComponent(countryId ?? '');
     const safeChildId = childId ? `/${encodeURIComponent(childId)}` : '';
     const base = `/api/v1/admin/countries/${safeCountryId}`;
     if (resource === 'all') return { method: 'GET', path: `${base}/editorial`, query: [], body: [] };
-    if (resource === 'media-options') return { method: 'GET', path: '/api/v1/admin/media-options', query: ['q', 'limit'], body: [] };
-    const paths: Record<string, string> = { sections: 'content-sections', faqs: 'faqs', cards: 'consultant-cards', seo: 'seo' };
+    if (resource === 'media-options')
+      return {
+        method: 'GET',
+        path: '/api/v1/admin/media-options',
+        query: ['q', 'limit'],
+        body: [],
+      };
+    const paths: Record<string, string> = {
+      sections: 'content-sections',
+      faqs: 'faqs',
+      cards: 'consultant-cards',
+      seo: 'seo',
+    };
     const path = `${base}/${paths[resource ?? ''] ?? resource}${safeChildId}`;
     const bodies: Record<string, string[]> = {
       sections: ['sectionKey', 'sectionType', 'eyebrow', 'heading', 'subheading', 'bodyJson', 'primaryMediaId', 'secondaryMediaId', 'ctaLabel', 'ctaUrl', 'configurationJson', 'displayOrder', 'status', 'expectedUpdatedAt'],
@@ -186,7 +177,12 @@ function operationDetails(operation: CatalogProxyOperation): { method: string; p
       seo: ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'],
       cards: ['title', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'featuredMediaId', 'isFreeConsultation', 'ctaLabel', 'ctaUrl', 'status', 'isFeatured', 'displayOrder', 'publishedAt', 'expectedUpdatedAt'],
     };
-    return { method: method ?? 'GET', path, query: [], body: bodies[resource ?? ''] ?? ['expectedUpdatedAt'] };
+    return {
+      method: method ?? 'GET',
+      path,
+      query: [],
+      body: bodies[resource ?? ''] ?? ['expectedUpdatedAt'],
+    };
   }
   if (operation.startsWith('country-profiles:')) {
     const parts = operation.split(':');
@@ -205,61 +201,228 @@ function operationDetails(operation: CatalogProxyOperation): { method: string; p
       intakes: ['intakes'],
       statistics: ['universitiesCount', 'publicUniversitiesCount', 'privateUniversitiesCount', 'coursesCount', 'ugCoursesCount', 'pgCoursesCount', 'pgdmCoursesCount', 'mbaCoursesCount', 'phdCoursesCount', 'scholarshipsCount', 'citiesCount', 'topRankedUniversitiesCount', 'internationalStudentsCount', 'studentSatisfactionPercentage', 'sourceMode'],
     };
-    return { method: 'PUT', path, query: [], body: [...common, ...(profileFields[profile ?? ''] ?? [])] };
+    return {
+      method: 'PUT',
+      path,
+      query: [],
+      body: [...common, ...(profileFields[profile ?? ''] ?? [])],
+    };
   }
   if (operation.startsWith('subjects-seo:')) {
     const [, action, id] = operation.split(':');
     const path = `/api/v1/admin/subjects/${encodeURIComponent(id ?? '')}/seo`;
-    return { method: action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE', path, query: [], body: action === 'put' ? ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    return {
+      method: action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE',
+      path,
+      query: [],
+      body: action === 'put' ? ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+    };
   }
   if (operation.startsWith('courses-seo:')) {
     const [, action, id] = operation.split(':');
     const path = `/api/v1/admin/courses/${encodeURIComponent(id ?? '')}/seo`;
-    return { method: action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE', path, query: [], body: action === 'put' ? ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    return {
+      method: action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE',
+      path,
+      query: [],
+      body: action === 'put' ? ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId', 'robotsIndex', 'robotsFollow', 'schemaJson', 'hreflangJson', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+    };
   }
   if (operation.startsWith('subsubjects:')) {
-    const parts = operation.split(':'); const action = parts[1]; const subjectId = encodeURIComponent(parts[2] ?? ''); const id = parts[3] ? `/${encodeURIComponent(parts[3])}` : ''; const base = `/api/v1/admin/subjects/${subjectId}/sub-subjects`;
+    const parts = operation.split(':');
+    const action = parts[1];
+    const subjectId = encodeURIComponent(parts[2] ?? '');
+    const id = parts[3] ? `/${encodeURIComponent(parts[3])}` : '';
+    const base = `/api/v1/admin/subjects/${subjectId}/sub-subjects`;
     const method = action === 'list' || action === 'get' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : action === 'publish' || action === 'unpublish' ? 'POST' : 'DELETE';
     const path = `${base}${id}${action === 'publish' || action === 'unpublish' ? `/${action}` : ''}`;
-    return { method, path, query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [], body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    return {
+      method,
+      path,
+      query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [],
+      body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+    };
   }
   if (operation.startsWith('subjects:')) {
-    const [, action, id] = operation.split(':'); const safeId = encodeURIComponent(id ?? ''); const path = action === 'list' || action === 'create' ? '/api/v1/admin/subjects' : `/api/v1/admin/subjects/${safeId}${action === 'publish' || action === 'unpublish' ? `/${action}` : ''}`;
-    return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : action === 'get' ? 'GET' : action === 'publish' || action === 'unpublish' ? 'POST' : 'DELETE', path, query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [], body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    const [, action, id] = operation.split(':');
+    const safeId = encodeURIComponent(id ?? '');
+    const path = action === 'list' || action === 'create' ? '/api/v1/admin/subjects' : `/api/v1/admin/subjects/${safeId}${action === 'publish' || action === 'unpublish' ? `/${action}` : ''}`;
+    return {
+      method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : action === 'get' ? 'GET' : action === 'publish' || action === 'unpublish' ? 'POST' : 'DELETE',
+      path,
+      query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [],
+      body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+    };
   }
   if (operation.startsWith('course-levels:') || operation.startsWith('study-modes:')) {
-    const parts = operation.split(':'); const resource = parts[0]; const action = parts[1]; const id = encodeURIComponent(parts[2] ?? ''); const base = `/api/v1/admin/${resource}`; const path = action === 'list' || action === 'create' ? base : `${base}/${id}`;
-    return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE', path, query: action === 'list' ? ['q', 'status', 'page', 'limit'] : [], body: action === 'create' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status'] : action === 'update' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    const parts = operation.split(':');
+    const resource = parts[0];
+    const action = parts[1];
+    const id = encodeURIComponent(parts[2] ?? '');
+    const base = `/api/v1/admin/${resource}`;
+    const path = action === 'list' || action === 'create' ? base : `${base}/${id}`;
+    return {
+      method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE',
+      path,
+      query: action === 'list' ? ['q', 'status', 'page', 'limit'] : [],
+      body: action === 'create' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status'] : action === 'update' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+    };
   }
   if (operation.startsWith('courses:')) {
-    const parts = operation.split(':'); const resource = parts[1]; const action = parts[2]; const rawId = ['get', 'update', 'publish', 'unpublish', 'delete', 'modes'].includes(resource ?? '') ? parts[2] : parts[3]; const id = encodeURIComponent(rawId ?? ''); const child = parts[4] ? encodeURIComponent(parts[4]) : ''; const base = `/api/v1/admin/courses/${id}`;
+    const parts = operation.split(':');
+    const resource = parts[1];
+    const action = parts[2];
+    const rawId = ['get', 'update', 'publish', 'unpublish', 'delete', 'modes'].includes(resource ?? '') ? parts[2] : parts[3];
+    const id = encodeURIComponent(rawId ?? '');
+    const child = parts[4] ? encodeURIComponent(parts[4]) : '';
+    const base = `/api/v1/admin/courses/${id}`;
     const coreFields = ['subjectId', 'subSubjectId', 'courseLevelId', 'name', 'shortName', 'qualificationName', 'slug', 'courseCode', 'shortDescription', 'overview', 'durationMin', 'durationMax', 'durationUnit', 'credits', 'featuredMediaId', 'careerSummary', 'popularityScore', 'isFeatured', 'displayOrder'];
-    if (resource === 'list' || resource === 'create') return { method: resource === 'list' ? 'GET' : 'POST', path: '/api/v1/admin/courses', query: resource === 'list' ? ['q', 'subject', 'subSubject', 'level', 'country', 'studyMode', 'status', 'featured', 'sort', 'page', 'limit'] : [], body: resource === 'create' ? coreFields : [] };
-    if (resource === 'modes') return { method: 'PUT', path: `${base}/study-modes`, query: [], body: ['studyModeIds', 'expectedUpdatedAt'] };
+    if (resource === 'list' || resource === 'create')
+      return {
+        method: resource === 'list' ? 'GET' : 'POST',
+        path: '/api/v1/admin/courses',
+        query: resource === 'list' ? ['q', 'subject', 'subSubject', 'level', 'country', 'studyMode', 'status', 'featured', 'sort', 'page', 'limit'] : [],
+        body: resource === 'create' ? coreFields : [],
+      };
+    if (resource === 'modes')
+      return {
+        method: 'PUT',
+        path: `${base}/study-modes`,
+        query: [],
+        body: ['studyModeIds', 'expectedUpdatedAt'],
+      };
     const leafPath = child ? `/${child}` : '';
-    if (resource === 'countries') return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE', path: `${base}/countries${leafPath}`, query: [], body: action === 'create' ? ['countryId', 'availabilityStatus', 'indicativeTuitionMin', 'indicativeTuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationFeeMin', 'applicationFeeMax', 'durationMinOverride', 'durationMaxOverride', 'durationUnitOverride', 'academicMinPercentage', 'academicMinCgpa', 'ieltsMinScore', 'pteMinScore', 'toeflMinScore', 'duolingoMinScore', 'workExperienceMonths', 'scholarshipAvailable', 'admissionRequirements', 'englishRequirements', 'applicationNotes', 'careerOpportunities', 'sourceReference', 'verifiedAt', 'status', 'isFeatured', 'displayOrder'] : action === 'update' ? ['countryId', 'availabilityStatus', 'indicativeTuitionMin', 'indicativeTuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationFeeMin', 'applicationFeeMax', 'durationMinOverride', 'durationMaxOverride', 'durationUnitOverride', 'academicMinPercentage', 'academicMinCgpa', 'ieltsMinScore', 'pteMinScore', 'toeflMinScore', 'duolingoMinScore', 'workExperienceMonths', 'scholarshipAvailable', 'admissionRequirements', 'englishRequirements', 'applicationNotes', 'careerOpportunities', 'sourceReference', 'verifiedAt', 'status', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
-    if (resource === 'intakes') return { method: action === 'list' ? 'GET' : 'PUT', path: `${base}/countries/${child}/intakes`, query: [], body: action === 'list' ? [] : ['intakes', 'expectedUpdatedAt'] };
-    if (resource === 'sections' || resource === 'faqs') { const pathName = resource === 'sections' ? 'content-sections' : 'faqs'; return { method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE', path: `${base}/${pathName}${leafPath}`, query: [], body: resource === 'sections' ? (action === 'create' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status'] : action === 'update' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt']) : (action === 'create' ? ['question', 'answer', 'status', 'displayOrder'] : action === 'update' ? ['question', 'answer', 'status', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt']) }; }
-    if (resource === 'related') return { method: action === 'list' ? 'GET' : 'PUT', path: `${base}/related`, query: [], body: action === 'list' ? [] : ['related', 'expectedUpdatedAt'] };
-    return { method: resource === 'get' ? 'GET' : resource === 'update' ? 'PATCH' : resource === 'publish' || resource === 'unpublish' ? 'POST' : 'DELETE', path: `${base}${resource === 'publish' || resource === 'unpublish' ? `/${resource}` : ''}`, query: [], body: resource === 'update' ? [...coreFields, 'expectedUpdatedAt'] : ['expectedUpdatedAt'] };
+    if (resource === 'countries')
+      return {
+        method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE',
+        path: `${base}/countries${leafPath}`,
+        query: [],
+        body: action === 'create' ? ['countryId', 'availabilityStatus', 'indicativeTuitionMin', 'indicativeTuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationFeeMin', 'applicationFeeMax', 'durationMinOverride', 'durationMaxOverride', 'durationUnitOverride', 'academicMinPercentage', 'academicMinCgpa', 'ieltsMinScore', 'pteMinScore', 'toeflMinScore', 'duolingoMinScore', 'workExperienceMonths', 'scholarshipAvailable', 'admissionRequirements', 'englishRequirements', 'applicationNotes', 'careerOpportunities', 'sourceReference', 'verifiedAt', 'status', 'isFeatured', 'displayOrder'] : action === 'update' ? ['countryId', 'availabilityStatus', 'indicativeTuitionMin', 'indicativeTuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationFeeMin', 'applicationFeeMax', 'durationMinOverride', 'durationMaxOverride', 'durationUnitOverride', 'academicMinPercentage', 'academicMinCgpa', 'ieltsMinScore', 'pteMinScore', 'toeflMinScore', 'duolingoMinScore', 'workExperienceMonths', 'scholarshipAvailable', 'admissionRequirements', 'englishRequirements', 'applicationNotes', 'careerOpportunities', 'sourceReference', 'verifiedAt', 'status', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+      };
+    if (resource === 'intakes')
+      return {
+        method: action === 'list' ? 'GET' : 'PUT',
+        path: `${base}/countries/${child}/intakes`,
+        query: [],
+        body: action === 'list' ? [] : ['intakes', 'expectedUpdatedAt'],
+      };
+    if (resource === 'sections' || resource === 'faqs') {
+      const pathName = resource === 'sections' ? 'content-sections' : 'faqs';
+      return {
+        method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE',
+        path: `${base}/${pathName}${leafPath}`,
+        query: [],
+        body: resource === 'sections' ? (action === 'create' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status'] : action === 'update' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt']) : action === 'create' ? ['question', 'answer', 'status', 'displayOrder'] : action === 'update' ? ['question', 'answer', 'status', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+      };
+    }
+    if (resource === 'related')
+      return {
+        method: action === 'list' ? 'GET' : 'PUT',
+        path: `${base}/related`,
+        query: [],
+        body: action === 'list' ? [] : ['related', 'expectedUpdatedAt'],
+      };
+    return {
+      method: resource === 'get' ? 'GET' : resource === 'update' ? 'PATCH' : resource === 'publish' || resource === 'unpublish' ? 'POST' : 'DELETE',
+      path: `${base}${resource === 'publish' || resource === 'unpublish' ? `/${resource}` : ''}`,
+      query: [],
+      body: resource === 'update' ? [...coreFields, 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+    };
   }
   const [resource, action, id] = operation.split(':');
   if (resource === 'continents') {
-    if (action === 'list') return { method: 'GET', path: '/api/v1/admin/continents', query: ['q', 'status', 'sort', 'page', 'limit'], body: [] };
-    if (action === 'create') return { method: 'POST', path: '/api/v1/admin/continents', query: [], body: ['name', 'slug', 'code', 'shortDescription', 'isFeatured', 'displayOrder', 'status'] };
+    if (action === 'list')
+      return {
+        method: 'GET',
+        path: '/api/v1/admin/continents',
+        query: ['q', 'status', 'sort', 'page', 'limit'],
+        body: [],
+      };
+    if (action === 'create')
+      return {
+        method: 'POST',
+        path: '/api/v1/admin/continents',
+        query: [],
+        body: ['name', 'slug', 'code', 'shortDescription', 'isFeatured', 'displayOrder', 'status'],
+      };
     const safeId = encodeURIComponent(id ?? '');
-    if (action === 'get') return { method: 'GET', path: `/api/v1/admin/continents/${safeId}`, query: [], body: [] };
-    if (action === 'update') return { method: 'PATCH', path: `/api/v1/admin/continents/${safeId}`, query: [], body: ['name', 'slug', 'code', 'shortDescription', 'isFeatured', 'displayOrder', 'status', 'iconMediaId', 'heroMediaId', 'expectedUpdatedAt'] };
-    return { method: 'DELETE', path: `/api/v1/admin/continents/${safeId}`, query: [], body: ['expectedUpdatedAt'] };
+    if (action === 'get')
+      return {
+        method: 'GET',
+        path: `/api/v1/admin/continents/${safeId}`,
+        query: [],
+        body: [],
+      };
+    if (action === 'update')
+      return {
+        method: 'PATCH',
+        path: `/api/v1/admin/continents/${safeId}`,
+        query: [],
+        body: ['name', 'slug', 'code', 'shortDescription', 'isFeatured', 'displayOrder', 'status', 'iconMediaId', 'heroMediaId', 'expectedUpdatedAt'],
+      };
+    return {
+      method: 'DELETE',
+      path: `/api/v1/admin/continents/${safeId}`,
+      query: [],
+      body: ['expectedUpdatedAt'],
+    };
   }
-  if (action === 'list') return { method: 'GET', path: '/api/v1/admin/countries', query: ['q', 'continentId', 'status', 'featured', 'sort', 'page', 'limit'], body: [] };
-  if (action === 'create') return { method: 'POST', path: '/api/v1/admin/countries', query: [], body: ['continentId', 'name', 'slug', 'iso2Code', 'iso3Code', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId'] };
+  if (action === 'list')
+    return {
+      method: 'GET',
+      path: '/api/v1/admin/countries',
+      query: ['q', 'continentId', 'status', 'featured', 'sort', 'page', 'limit'],
+      body: [],
+    };
+  if (action === 'create')
+    return {
+      method: 'POST',
+      path: '/api/v1/admin/countries',
+      query: [],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
+    };
   const safeId = encodeURIComponent(id ?? '');
-  if (action === 'get') return { method: 'GET', path: `/api/v1/admin/countries/${safeId}`, query: [], body: [] };
-  if (action === 'update') return { method: 'PATCH', path: `/api/v1/admin/countries/${safeId}`, query: [], body: ['continentId', 'name', 'slug', 'iso2Code', 'iso3Code', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'expectedUpdatedAt'] };
-  if (action === 'publish') return { method: 'POST', path: `/api/v1/admin/countries/${safeId}/publish`, query: [], body: ['expectedUpdatedAt'] };
-  if (action === 'unpublish') return { method: 'POST', path: `/api/v1/admin/countries/${safeId}/unpublish`, query: [], body: ['expectedUpdatedAt'] };
-  return { method: 'DELETE', path: `/api/v1/admin/countries/${safeId}`, query: [], body: ['expectedUpdatedAt'] };
+  if (action === 'curation-options')
+    return {
+      method: 'GET',
+      path: `/api/v1/admin/countries/${safeId}/curation-options`,
+      query: [],
+      body: [],
+    };
+  if (action === 'get')
+    return {
+      method: 'GET',
+      path: `/api/v1/admin/countries/${safeId}`,
+      query: [],
+      body: [],
+    };
+  if (action === 'update')
+    return {
+      method: 'PATCH',
+      path: `/api/v1/admin/countries/${safeId}`,
+      query: [],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt'],
+    };
+  if (action === 'publish')
+    return {
+      method: 'POST',
+      path: `/api/v1/admin/countries/${safeId}/publish`,
+      query: [],
+      body: ['expectedUpdatedAt'],
+    };
+  if (action === 'unpublish')
+    return {
+      method: 'POST',
+      path: `/api/v1/admin/countries/${safeId}/unpublish`,
+      query: [],
+      body: ['expectedUpdatedAt'],
+    };
+  return {
+    method: 'DELETE',
+    path: `/api/v1/admin/countries/${safeId}`,
+    query: [],
+    body: ['expectedUpdatedAt'],
+  };
 }
 
 function safeBody(value: unknown, allowed: string[]): string | null {
@@ -313,7 +476,12 @@ function dependencyDetails(details: unknown): DependencyDetails | null {
     countriesCount: Math.max(0, Math.trunc(raw.countriesCount)),
     countries: countries.slice(0, DEPENDENCY_LIST_LIMIT).map((entry) => {
       const row = (entry ?? {}) as Record<string, unknown>;
-      return { id: shortText(row.id), name: shortText(row.name), slug: shortText(row.slug), status: shortText(row.status) };
+      return {
+        id: shortText(row.id),
+        name: shortText(row.name),
+        slug: shortText(row.slug),
+        status: shortText(row.status),
+      };
     }),
   };
 }
@@ -332,10 +500,15 @@ function normalizeBody(value: unknown, requestId: string, status: number): SafeE
       details: null,
     });
   }
-  const candidate = value as { data?: unknown; meta?: unknown; error?: unknown; requestId?: unknown };
+  const candidate = value as {
+    data?: unknown;
+    meta?: unknown;
+    error?: unknown;
+    requestId?: unknown;
+  };
   const upstreamRequestId = typeof candidate.requestId === 'string' && candidate.requestId.length <= 100 ? candidate.requestId : requestId;
   if (status >= 400 || candidate.error) {
-    const rawError = candidate.error && typeof candidate.error === 'object' ? candidate.error as { code?: unknown; details?: unknown } : {};
+    const rawError = candidate.error && typeof candidate.error === 'object' ? (candidate.error as { code?: unknown; details?: unknown }) : {};
     const code = typeof rawError.code === 'string' && SAFE_ERROR_MESSAGES[rawError.code] ? rawError.code : 'CATALOG_REQUEST_FAILED';
     return envelope(upstreamRequestId, null, {
       code,
@@ -353,7 +526,11 @@ export async function proxyCatalogRoute(request: NextRequest, operation: Catalog
   if (!authorization?.startsWith('Bearer ') || authorization.trim().length < 8) {
     return errorResponse(401, requestId, 'UNAUTHORIZED');
   }
-  const headers = new Headers({ accept: 'application/json', authorization, 'x-request-id': requestId });
+  const headers = new Headers({
+    accept: 'application/json',
+    authorization,
+    'x-request-id': requestId,
+  });
   let body: string | undefined;
   if (details.method !== 'GET') {
     const declaredLength = Number(request.headers.get('content-length') ?? 0);
@@ -362,7 +539,11 @@ export async function proxyCatalogRoute(request: NextRequest, operation: Catalog
     if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return errorResponse(413, requestId, 'VALIDATION_ERROR');
     let parsed: unknown = {};
     if (raw.trim()) {
-      try { parsed = JSON.parse(raw); } catch { return errorResponse(400, requestId, 'VALIDATION_ERROR'); }
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return errorResponse(400, requestId, 'VALIDATION_ERROR');
+      }
     }
     body = safeBody(parsed, details.body) ?? '{}';
     headers.set('content-type', 'application/json');
@@ -387,7 +568,11 @@ export async function proxyCatalogRoute(request: NextRequest, operation: Catalog
     return errorResponse(502, requestId, 'CATALOG_SERVICE_UNAVAILABLE');
   }
   let parsed: unknown;
-  try { parsed = await upstream.json(); } catch { return errorResponse(502, requestId, 'CATALOG_SERVICE_UNAVAILABLE'); }
+  try {
+    parsed = await upstream.json();
+  } catch {
+    return errorResponse(502, requestId, 'CATALOG_SERVICE_UNAVAILABLE');
+  }
   const responseBody = normalizeBody(parsed, requestId, upstream.status);
   const response = NextResponse.json(responseBody, { status: upstream.status });
   response.headers.set('cache-control', 'no-store');
