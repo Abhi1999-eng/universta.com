@@ -96,7 +96,7 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
       <Phase1StructuredEditor {...props} />
       {actions}
       <style jsx global>{`
-        .unified-phase1-editor form > fieldset > div:last-child {
+        .unified-phase1-editor [data-testid='structured-editor-save-row'] {
           display: none !important;
         }
       `}</style>

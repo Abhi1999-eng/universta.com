@@ -64,6 +64,7 @@ describe('Phase1StructuredEditor failed detail load', () => {
     const fieldset = name.closest('fieldset') as HTMLFieldSetElement | null;
     expect(fieldset).not.toBeNull();
     await waitFor(() => expect(fieldset?.disabled).toBe(true));
+    expect(screen.getByTestId('structured-editor-sections')).toHaveClass('space-y-6');
     expect(screen.getByRole('button', { name: 'Retry loading' })).toBeTruthy();
   });
 });

@@ -21,6 +21,7 @@ export function MediaPickerDialog({
   onChange,
   onSelectMedia,
   compact = false,
+  disabled = false,
   help,
   helpKey,
 }: {
@@ -30,6 +31,7 @@ export function MediaPickerDialog({
   onChange: (value: string) => void;
   onSelectMedia?: (media: EditorialMedia) => void;
   compact?: boolean;
+  disabled?: boolean;
   /** Inline help content; falls back to the shared "media" definition when
    * neither this nor `helpKey` is provided, since every current caller is a
    * media-picker field. */
@@ -73,6 +75,7 @@ export function MediaPickerDialog({
   }
 
   function openPicker(initialTab: Tab = 'library') {
+    if (disabled) return;
     setTab(initialTab);
     setOpen(true);
     if (initialTab === 'library') void loadLibrary();
@@ -103,8 +106,9 @@ export function MediaPickerDialog({
         <button
           ref={trigger}
           type="button"
+          disabled={disabled}
           onClick={() => openPicker('library')}
-          className={compact ? 'rounded-lg border border-[#D9E0EA] px-2.5 py-1.5 text-xs font-semibold hover:border-[#1657CF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF]' : 'rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm font-semibold'}
+          className={compact ? 'rounded-lg border border-[#D9E0EA] px-2.5 py-1.5 text-xs font-semibold hover:border-[#1657CF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-[#98A2B3]' : 'rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45'}
         >
           {compact ? 'Image' : selected ? 'Change media' : 'Choose media'}
         </button>

@@ -17,4 +17,11 @@ describe('RichText', () => {
     expect(safe).not.toContain('javascript:');
     expect(safe).not.toContain('<img');
   });
+
+  it('preserves only safe alignment emitted by the shared Admin editor', () => {
+    expect(
+      safeRichText('<p style="text-align: center; color: red">Aligned</p>'),
+    ).toBe('<p style="text-align: center">Aligned</p>');
+    expect(safeRichText('<p style="text-align: justify">Nope</p>')).toBe('<p>Nope</p>');
+  });
 });

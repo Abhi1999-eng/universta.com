@@ -411,26 +411,28 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
           </p>
         ) : null}
         <fieldset disabled={loading || loadError} className="contents" aria-busy={loading}>
-          {resource === 'universities' ? <UniversityFields values={values} set={set} errors={errors} countries={options.countries} media={options.media} rows={rows} addRow={addRow} updateRow={updateRow} /> : null}
-          {resource === 'offerings' ? <OfferingFields values={values} set={set} errors={errors} universities={options.universities} courses={options.courses} campuses={campuses} levels={options.levels} modes={options.modes} media={options.media} intakes={options.intakes} selected={selected} toggle={toggle} rows={rows} addRow={addRow} updateRow={updateRow} /> : null}
-          {resource === 'scholarships' ? <ScholarshipFields values={values} set={set} errors={errors} providers={options.providers} media={options.media} countries={options.countries} universities={options.universities} offerings={options.offerings} selected={selected} toggle={toggle} /> : null}
-          {resource === 'consultants' ? <ConsultantFields values={values} set={set} errors={errors} countries={options.countries} locations={options.locations} media={options.media} selected={selected} toggle={toggle} tags={tags} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
-          {resource === 'jobs' ? <JobFields values={values} set={set} errors={errors} cities={options.cities} states={options.states} countries={options.countries} /> : null}
-          {resource === 'events' ? <EventFields values={values} set={set} errors={errors} tags={tags} media={options.media} cities={options.cities} states={options.states} countries={options.countries} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
-          {resource === 'success-stories' ? <StoryFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-          {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-          <SeoFields values={values} set={set} />
-          <div className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-5">
-            <label className="text-sm font-semibold">
-              Publish state
-              <select value={values.status ?? 'DRAFT'} onChange={(event) => set('status', event.target.value)} className={inputClass}>
-                <option value="DRAFT">Draft</option>
-                <option value="PUBLISHED">Published</option>
-              </select>
-            </label>
-            <button disabled={busy} type="submit" className="self-end rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">
-              {busy ? 'Saving…' : recordId ? 'Save changes' : 'Create draft'}
-            </button>
+          <div className="space-y-6" data-testid="structured-editor-sections">
+            {resource === 'universities' ? <UniversityFields values={values} set={set} errors={errors} countries={options.countries} media={options.media} rows={rows} addRow={addRow} updateRow={updateRow} /> : null}
+            {resource === 'offerings' ? <OfferingFields values={values} set={set} errors={errors} universities={options.universities} courses={options.courses} campuses={campuses} levels={options.levels} modes={options.modes} media={options.media} intakes={options.intakes} selected={selected} toggle={toggle} rows={rows} addRow={addRow} updateRow={updateRow} /> : null}
+            {resource === 'scholarships' ? <ScholarshipFields values={values} set={set} errors={errors} providers={options.providers} media={options.media} countries={options.countries} universities={options.universities} offerings={options.offerings} selected={selected} toggle={toggle} /> : null}
+            {resource === 'consultants' ? <ConsultantFields values={values} set={set} errors={errors} countries={options.countries} locations={options.locations} media={options.media} selected={selected} toggle={toggle} tags={tags} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
+            {resource === 'jobs' ? <JobFields values={values} set={set} errors={errors} cities={options.cities} states={options.states} countries={options.countries} /> : null}
+            {resource === 'events' ? <EventFields values={values} set={set} errors={errors} tags={tags} media={options.media} cities={options.cities} states={options.states} countries={options.countries} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
+            {resource === 'success-stories' ? <StoryFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
+            {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
+            <SeoFields values={values} set={set} />
+            <div data-testid="structured-editor-save-row" className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-6">
+              <label className="text-sm font-semibold">
+                Publish state
+                <select value={values.status ?? 'DRAFT'} onChange={(event) => set('status', event.target.value)} className={inputClass}>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
+                </select>
+              </label>
+              <button disabled={busy} type="submit" className="self-end rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">
+                {busy ? 'Saving…' : recordId ? 'Save changes' : 'Create draft'}
+              </button>
+            </div>
           </div>
         </fieldset>
       </form>
