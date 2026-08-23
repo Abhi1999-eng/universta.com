@@ -113,8 +113,41 @@ set -a
 # shellcheck disable=SC1091
 source "${UNIVERSTA_ROOT}/shared/env/api.env"
 set +a
+set +e
+runuser --preserve-environment -u universta -- \
+  bash -lc "cd '${release}' && npm --workspace apps/api run db:migrate:recover-country-derived"
+migration_recovery_status=$?
+set -e
+if [[ "${migration_recovery_status}" -eq 10 ]]; then
+  log "Recovering the verified partial Country derived-data migration."
+  runuser --preserve-environment -u universta -- \
+    bash -lc "cd '${release}' && npm --workspace apps/api exec -- prisma migrate resolve --applied 20260823090000_country_derived_configuration"
+elif [[ "${migration_recovery_status}" -ne 0 ]]; then
+  fail "Country derived-data migration recovery check failed."
+fi
+set +e
 runuser --preserve-environment -u universta -- \
   bash -lc "cd '${release}' && npm run db:migrate:deploy"
+migration_status=$?
+set -e
+if [[ "${migration_status}" -ne 0 ]]; then
+  # A fresh database with a non-unicode default collation fails at the same
+  # known migration only after the first deploy attempt. Retry exactly once
+  # and only after the recovery guard confirms that exact partial state.
+  set +e
+  runuser --preserve-environment -u universta -- \
+    bash -lc "cd '${release}' && npm --workspace apps/api run db:migrate:recover-country-derived"
+  migration_recovery_status=$?
+  set -e
+  if [[ "${migration_recovery_status}" -ne 10 ]]; then
+    fail "Prisma migration failed and no safe Country derived-data recovery applied."
+  fi
+  log "Recovering the verified partial Country derived-data migration."
+  runuser --preserve-environment -u universta -- \
+    bash -lc "cd '${release}' && npm --workspace apps/api exec -- prisma migrate resolve --applied 20260823090000_country_derived_configuration"
+  runuser --preserve-environment -u universta -- \
+    bash -lc "cd '${release}' && npm run db:migrate:deploy"
+fi
 runuser --preserve-environment -u universta -- \
   bash -lc "cd '${release}' && npm run db:seed"
 set +a
