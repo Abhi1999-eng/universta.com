@@ -421,7 +421,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
             {resource === 'success-stories' ? <StoryFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
             {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
             <SeoFields values={values} set={set} />
-            <div className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-6">
+            <div data-testid="structured-editor-save-row" className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-6">
               <label className="text-sm font-semibold">
                 Publish state
                 <select value={values.status ?? 'DRAFT'} onChange={(event) => set('status', event.target.value)} className={inputClass}>
