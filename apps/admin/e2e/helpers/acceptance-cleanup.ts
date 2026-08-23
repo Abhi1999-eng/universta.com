@@ -117,7 +117,9 @@ export async function countAcceptanceRecords(
       where: { name: { startsWith: own.continentName } },
     });
     const browserCountries = await prisma.country.count({
-      where: { name: { startsWith: own.countryName } },
+      where: {
+        OR: [{ name: { startsWith: own.countryName } }, { slug: own.slug }],
+      },
     });
     const testInquiries = await prisma.contactInquiry.count({
       where: { email },
@@ -234,7 +236,9 @@ export async function purgeAcceptanceRecords(
       : 0;
 
     // The catalog spec's location fixtures. Countries go first because they
-    // reference a continent.
+    // reference a continent. Canonical-name Country tests own their records
+    // through the run-scoped slug; their visible names must remain real names
+    // so Country Admin can derive ISO identity from local metadata.
     // `startsWith`, not an exact match: a test may append a per-invocation
     // suffix (repeat/retry index) to keep its fixtures unique across repeated
     // runs of the same test. The run id is still inside the prefix, so this
@@ -242,7 +246,9 @@ export async function purgeAcceptanceRecords(
     // which an exact match silently left behind.
     removed.browserCountries = (
       await prisma.country.deleteMany({
-        where: { name: { startsWith: own.countryName } },
+        where: {
+          OR: [{ name: { startsWith: own.countryName } }, { slug: own.slug }],
+        },
       })
     ).count;
     removed.browserContinents = (
