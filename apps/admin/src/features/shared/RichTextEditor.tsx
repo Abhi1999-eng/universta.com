@@ -3,6 +3,7 @@
 import {
   type ClipboardEvent,
   type KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -40,34 +41,66 @@ type ToolbarCommand = {
   command?: Command;
   value?: string;
   action?: 'link';
+  group: 'block' | 'inline' | 'list' | 'align' | 'link' | 'history';
+  toggle?: boolean;
 };
 type Picker = { range: Range; trigger: VariableTrigger; activeIndex: number };
+type ToolbarState = {
+  block: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote';
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strikeThrough: boolean;
+  unorderedList: boolean;
+  orderedList: boolean;
+  alignment: 'left' | 'center' | 'right';
+  link: boolean;
+  imageSelected: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
+const EMPTY_TOOLBAR_STATE: ToolbarState = {
+  block: 'p',
+  bold: false,
+  italic: false,
+  underline: false,
+  strikeThrough: false,
+  unorderedList: false,
+  orderedList: false,
+  alignment: 'left',
+  link: false,
+  imageSelected: false,
+  canUndo: false,
+  canRedo: false,
+};
 
 const TOOLBAR_COMMANDS: ToolbarCommand[] = [
-  { name: 'Paragraph', label: 'Paragraph', command: 'formatBlock', value: 'p' },
-  { name: 'H2', label: 'H2', command: 'formatBlock', value: 'h2' },
-  { name: 'H3', label: 'H3', command: 'formatBlock', value: 'h3' },
-  { name: 'H4', label: 'H4', command: 'formatBlock', value: 'h4' },
-  { name: 'Bold', label: 'B', command: 'bold' },
-  { name: 'Italic', label: 'I', command: 'italic' },
-  { name: 'Underline', label: 'U', command: 'underline' },
-  { name: 'Strikethrough', label: 'S', command: 'strikeThrough' },
-  { name: 'Bulleted list', label: 'Bullets', command: 'insertUnorderedList' },
-  { name: 'Numbered list', label: 'Numbered', command: 'insertOrderedList' },
-  { name: 'Blockquote', label: 'Quote', command: 'formatBlock', value: 'blockquote' },
-  { name: 'Align left', label: 'Left', command: 'justifyLeft' },
-  { name: 'Align center', label: 'Center', command: 'justifyCenter' },
-  { name: 'Align right', label: 'Right', command: 'justifyRight' },
-  { name: 'Add link', label: 'Link', action: 'link' },
-  { name: 'Remove link', label: 'Unlink', command: 'unlink' },
-  { name: 'Undo', label: 'Undo', command: 'undo' },
-  { name: 'Redo', label: 'Redo', command: 'redo' },
+  { name: 'Paragraph', label: 'Paragraph', command: 'formatBlock', value: 'p', group: 'block', toggle: true },
+  { name: 'H2', label: 'H2', command: 'formatBlock', value: 'h2', group: 'block', toggle: true },
+  { name: 'H3', label: 'H3', command: 'formatBlock', value: 'h3', group: 'block', toggle: true },
+  { name: 'H4', label: 'H4', command: 'formatBlock', value: 'h4', group: 'block', toggle: true },
+  { name: 'Bold', label: 'B', command: 'bold', group: 'inline', toggle: true },
+  { name: 'Italic', label: 'I', command: 'italic', group: 'inline', toggle: true },
+  { name: 'Underline', label: 'U', command: 'underline', group: 'inline', toggle: true },
+  { name: 'Strikethrough', label: 'S', command: 'strikeThrough', group: 'inline', toggle: true },
+  { name: 'Bulleted list', label: 'Bullets', command: 'insertUnorderedList', group: 'list', toggle: true },
+  { name: 'Numbered list', label: 'Numbered', command: 'insertOrderedList', group: 'list', toggle: true },
+  { name: 'Blockquote', label: 'Quote', command: 'formatBlock', value: 'blockquote', group: 'list', toggle: true },
+  { name: 'Align left', label: 'Left', command: 'justifyLeft', group: 'align', toggle: true },
+  { name: 'Align center', label: 'Center', command: 'justifyCenter', group: 'align', toggle: true },
+  { name: 'Align right', label: 'Right', command: 'justifyRight', group: 'align', toggle: true },
+  { name: 'Add link', label: 'Link', action: 'link', group: 'link', toggle: true },
+  { name: 'Remove link', label: 'Unlink', command: 'unlink', group: 'link' },
+  { name: 'Undo', label: 'Undo', command: 'undo', group: 'history' },
+  { name: 'Redo', label: 'Redo', command: 'redo', group: 'history' },
 ];
 
 const ALLOWED_TAGS = new Set([
   'p', 'h2', 'h3', 'h4', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'ul',
   'ol', 'li', 'a', 'blockquote', 'hr', 'br', 'img',
 ]);
+const ALIGNED_BLOCK_TAGS = new Set(['p', 'h2', 'h3', 'h4', 'blockquote']);
 
 export type RichTextEditorProps = {
   label: string;
@@ -102,6 +135,7 @@ export function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<Range | null>(null);
   const [picker, setPicker] = useState<Picker | null>(null);
+  const [toolbarState, setToolbarState] = useState<ToolbarState>(EMPTY_TOOLBAR_STATE);
   const isDisabled = disabled || readOnly;
   const visibleVariables = useMemo(() => {
     const query = picker?.trigger.query.trim().toLowerCase() ?? '';
@@ -118,6 +152,46 @@ export function RichTextEditor({
     if (editor && editor.innerHTML !== value) editor.innerHTML = sanitizeEditorHtml(value);
   }, [value]);
 
+  const refreshToolbarState = useCallback(() => {
+    const editor = editorRef.current;
+    const range = currentEditorRange(editor);
+    if (!editor || !range) {
+      setToolbarState((current) => sameToolbarState(current, EMPTY_TOOLBAR_STATE) ? current : EMPTY_TOOLBAR_STATE);
+      return;
+    }
+
+    const ancestors = selectionAncestors(range, editor);
+    const block = currentBlock(ancestors);
+    const alignment = commandIsActive('justifyCenter')
+      ? 'center'
+      : commandIsActive('justifyRight')
+        ? 'right'
+        : commandIsActive('justifyLeft')
+          ? 'left'
+          : currentAlignment(ancestors);
+    const next: ToolbarState = {
+      block,
+      bold: commandIsActive('bold') || hasTag(ancestors, 'strong', 'b'),
+      italic: commandIsActive('italic') || hasTag(ancestors, 'em', 'i'),
+      underline: commandIsActive('underline') || hasTag(ancestors, 'u'),
+      strikeThrough: commandIsActive('strikeThrough') || hasTag(ancestors, 's', 'strike'),
+      unorderedList: commandIsActive('insertUnorderedList') || hasTag(ancestors, 'ul'),
+      orderedList: commandIsActive('insertOrderedList') || hasTag(ancestors, 'ol'),
+      alignment,
+      link: hasTag(ancestors, 'a'),
+      imageSelected: selectedImage(range, editor),
+      canUndo: commandIsEnabled('undo'),
+      canRedo: commandIsEnabled('redo'),
+    };
+    setToolbarState((current) => sameToolbarState(current, next) ? current : next);
+  }, []);
+
+  useEffect(() => {
+    const onSelectionChange = () => refreshToolbarState();
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => document.removeEventListener('selectionchange', onSelectionChange);
+  }, [refreshToolbarState]);
+
   function emit() {
     const editor = editorRef.current;
     if (editor) onChange(sanitizeEditorHtml(editor.innerHTML));
@@ -129,6 +203,7 @@ export function RichTextEditor({
     if (selection?.rangeCount && editor?.contains(selection.getRangeAt(0).commonAncestorContainer)) {
       selectionRef.current = selection.getRangeAt(0).cloneRange();
     }
+    refreshToolbarState();
   }
 
   function restoreSelection() {
@@ -140,7 +215,7 @@ export function RichTextEditor({
   }
 
   function command(name: Command, commandValue?: string) {
-    if (isDisabled) return;
+    if (isDisabled || !canRunCommand(name, toolbarState)) return;
     editorRef.current?.focus();
     restoreSelection();
     document.execCommand(name, false, commandValue);
@@ -155,6 +230,7 @@ export function RichTextEditor({
   }
 
   function runToolbarAction(action: ToolbarCommand) {
+    if (actionDisabled(action, isDisabled, toolbarState)) return;
     if (action.action === 'link') {
       addLink();
     } else if (action.command) {
@@ -182,6 +258,7 @@ export function RichTextEditor({
     if (!selection?.rangeCount || !selection.anchorNode || selection.anchorNode.nodeType !== Node.TEXT_NODE) {
       setPicker(null);
       emit();
+      refreshToolbarState();
       return;
     }
 
@@ -190,6 +267,7 @@ export function RichTextEditor({
     if (!trigger || !allowedVariables.length) {
       setPicker(null);
       emit();
+      refreshToolbarState();
       return;
     }
 
@@ -197,6 +275,7 @@ export function RichTextEditor({
     range.setStart(selection.anchorNode, Math.max(0, selection.anchorOffset - (trigger.end - trigger.start)));
     setPicker({ range, trigger, activeIndex: 0 });
     emit();
+    refreshToolbarState();
   }
 
   function insertVariable(variable: DynamicVariable) {
@@ -214,6 +293,7 @@ export function RichTextEditor({
     setPicker(null);
     editorRef.current?.focus();
     emit();
+    refreshToolbarState();
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -255,42 +335,51 @@ export function RichTextEditor({
   return (
     <div className="block text-sm font-semibold">
       {hideLabel ? null : <span>{label}</span>}
-      <div className="mt-2 flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-[#D9E0EA] bg-[#F8FAFC] p-2" aria-label={`${label} formatting`}>
-        {TOOLBAR_COMMANDS.map((action) => (
-          <button
-            key={action.name}
-            disabled={isDisabled}
-            type="button"
-            aria-label={action.name}
-            title={action.name}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => runToolbarAction(action)}
-            className="rounded-md border border-transparent px-2.5 py-1.5 text-xs font-semibold hover:border-[#C9D7F2] hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {action.label}
-          </button>
+      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-t-xl border border-b-0 border-[#D9E0EA] bg-[#F8FAFC] p-2" aria-label={`${label} formatting`}>
+        {(['block', 'inline', 'list', 'align', 'link', 'history'] as const).map((group) => (
+          <div key={group} className="flex flex-wrap items-center gap-1 border-r border-[#D9E0EA] pr-2 last:border-r-0 last:pr-0" role="group" aria-label={`${group} formatting`}>
+            {TOOLBAR_COMMANDS.filter((action) => action.group === group).map((action) => {
+              const active = actionIsActive(action, toolbarState);
+              return <button
+                key={action.name}
+                disabled={actionDisabled(action, isDisabled, toolbarState)}
+                type="button"
+                aria-label={action.name}
+                aria-pressed={action.toggle ? active : undefined}
+                title={action.name}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => runToolbarAction(action)}
+                className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-[#98A2B3] disabled:opacity-100 ${active ? 'border-[#9DBBFA] bg-[#EAF1FF] text-[#1249AC]' : 'border-transparent text-[#344054] hover:border-[#C9D7F2] hover:bg-white'}`}
+              >
+                {action.label}
+              </button>;
+            })}
+          </div>
         ))}
         {enableImages ? (
-          <MediaPickerDialog
-            label="Insert image"
-            value=""
-            media={media}
-            onChange={() => undefined}
-            onSelectMedia={(item) => insertImage(item)}
-            compact
-          />
+          <div className="flex items-center gap-1" role="group" aria-label="Media formatting">
+            <MediaPickerDialog
+              label="Insert image"
+              value=""
+              media={media}
+              onChange={() => undefined}
+              onSelectMedia={(item) => insertImage(item)}
+              compact
+              disabled={isDisabled}
+            />
+            <button
+              disabled={isDisabled || !toolbarState.imageSelected}
+              type="button"
+              aria-label="Remove selected image"
+              title="Remove selected image"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => command('delete')}
+              className="rounded-md border border-transparent px-2.5 py-1.5 text-xs font-semibold text-[#344054] transition-colors hover:border-[#C9D7F2] hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-[#98A2B3] disabled:opacity-100"
+            >
+              Remove image
+            </button>
+          </div>
         ) : null}
-        <button
-          disabled={isDisabled}
-          type="button"
-          aria-label="Remove selected image"
-          title="Remove selected image"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => command('delete')}
-          className="rounded-md px-2.5 py-1.5 text-xs font-semibold hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] disabled:opacity-45"
-        >
-          Remove image
-        </button>
       </div>
       <div className="relative">
         <div
@@ -315,6 +404,105 @@ export function RichTextEditor({
       </div>
     </div>
   );
+}
+
+function currentEditorRange(editor: HTMLDivElement | null) {
+  const selection = window.getSelection();
+  if (!editor || !selection?.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  return editor.contains(range.commonAncestorContainer) ? range : null;
+}
+
+function selectionAncestors(range: Range, editor: HTMLDivElement) {
+  const elements: HTMLElement[] = [];
+  let node: Node | null = range.startContainer.nodeType === Node.ELEMENT_NODE
+    ? range.startContainer
+    : range.startContainer.parentElement;
+  while (node && node !== editor) {
+    if (node instanceof HTMLElement) elements.push(node);
+    node = node.parentNode;
+  }
+  return elements;
+}
+
+function hasTag(ancestors: HTMLElement[], ...tags: string[]) {
+  return ancestors.some((element) => tags.includes(element.tagName.toLowerCase()));
+}
+
+function currentBlock(ancestors: HTMLElement[]): ToolbarState['block'] {
+  const element = ancestors.find((item) => ['p', 'h2', 'h3', 'h4', 'blockquote'].includes(item.tagName.toLowerCase()));
+  return (element?.tagName.toLowerCase() as ToolbarState['block'] | undefined) ?? 'p';
+}
+
+function currentAlignment(ancestors: HTMLElement[]): ToolbarState['alignment'] {
+  const aligned = ancestors.find((element) => ['left', 'center', 'right'].includes(element.style.textAlign));
+  return (aligned?.style.textAlign as ToolbarState['alignment'] | undefined) ?? 'left';
+}
+
+function commandIsActive(command: Command) {
+  try {
+    return document.queryCommandState(command);
+  } catch {
+    return false;
+  }
+}
+
+function commandIsEnabled(command: 'undo' | 'redo') {
+  try {
+    return document.queryCommandEnabled(command);
+  } catch {
+    return false;
+  }
+}
+
+function selectedImage(range: Range, editor: HTMLDivElement) {
+  const directImage = range.startContainer.nodeType === Node.ELEMENT_NODE && range.startContainer instanceof HTMLImageElement
+    ? range.startContainer
+    : range.startContainer.parentElement?.closest('img');
+  if (directImage && editor.contains(directImage)) return true;
+  if (range.collapsed) return false;
+  return Array.from(editor.querySelectorAll('img')).some((image) => range.intersectsNode(image));
+}
+
+function actionIsActive(action: ToolbarCommand, state: ToolbarState) {
+  switch (action.name) {
+    case 'Paragraph': return state.block === 'p';
+    case 'H2': return state.block === 'h2';
+    case 'H3': return state.block === 'h3';
+    case 'H4': return state.block === 'h4';
+    case 'Bold': return state.bold;
+    case 'Italic': return state.italic;
+    case 'Underline': return state.underline;
+    case 'Strikethrough': return state.strikeThrough;
+    case 'Bulleted list': return state.unorderedList;
+    case 'Numbered list': return state.orderedList;
+    case 'Blockquote': return state.block === 'blockquote';
+    case 'Align left': return state.alignment === 'left';
+    case 'Align center': return state.alignment === 'center';
+    case 'Align right': return state.alignment === 'right';
+    case 'Add link': return state.link;
+    default: return false;
+  }
+}
+
+function actionDisabled(action: ToolbarCommand, disabled: boolean, state: ToolbarState) {
+  if (disabled) return true;
+  if (action.name === 'Undo') return !state.canUndo;
+  if (action.name === 'Redo') return !state.canRedo;
+  if (action.name === 'Remove link') return !state.link;
+  return false;
+}
+
+function canRunCommand(command: Command, state: ToolbarState) {
+  if (command === 'unlink') return state.link;
+  if (command === 'delete') return state.imageSelected;
+  if (command === 'undo') return state.canUndo;
+  if (command === 'redo') return state.canRedo;
+  return true;
+}
+
+function sameToolbarState(a: ToolbarState, b: ToolbarState) {
+  return Object.keys(a).every((key) => a[key as keyof ToolbarState] === b[key as keyof ToolbarState]);
 }
 
 function safeHref(value: string) {
@@ -342,7 +530,12 @@ export function sanitizeEditorHtml(value: string) {
 
       const closing = match[1] === '/';
       const name = match[2].toLowerCase();
-      if (closing || !['a', 'img'].includes(name)) return `<${closing ? '/' : ''}${name}>`;
+      if (closing) return `</${name}>`;
+      if (ALIGNED_BLOCK_TAGS.has(name)) {
+        const alignment = safeAlignment(tag);
+        return alignment ? `<${name} style="text-align: ${alignment}">` : `<${name}>`;
+      }
+      if (!['a', 'img'].includes(name)) return `<${name}>`;
       if (name === 'a') {
         const href = tag.match(/\shref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
         return safeHref(href) ? `<a href="${escapeAttribute(href)}" rel="noopener noreferrer">` : '<a>';
@@ -352,4 +545,10 @@ export function sanitizeEditorHtml(value: string) {
       const alt = tag.match(/\salt\s*=\s*["']([^"']*)["']/i)?.[1] ?? '';
       return safeImageUrl(src) ? `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}">` : '';
     });
+}
+
+function safeAlignment(tag: string) {
+  const style = tag.match(/\sstyle\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+  const alignment = style.match(/(?:^|;)\s*text-align\s*:\s*(left|center|right)\s*(?:;|$)/i)?.[1]?.toLowerCase();
+  return alignment === 'left' || alignment === 'center' || alignment === 'right' ? alignment : null;
 }

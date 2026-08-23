@@ -19,6 +19,7 @@ const allowedTags = new Set([
   'br',
   'img',
 ]);
+const alignedBlockTags = new Set(['p', 'h2', 'h3', 'h4', 'blockquote']);
 const escape = (value: string) =>
   value.replace(
     /[&"<>]/g,
@@ -44,8 +45,14 @@ export function sanitizeRichText(value: unknown) {
       if (!match || !allowedTags.has(match[2].toLowerCase())) return '';
       const closing = match[1] === '/';
       const name = match[2].toLowerCase();
-      if (closing || !['a', 'img'].includes(name))
-        return `<${closing ? '/' : ''}${name}>`;
+      if (closing) return `</${name}>`;
+      if (alignedBlockTags.has(name)) {
+        const alignment = safeAlignment(tag);
+        return alignment
+          ? `<${name} style="text-align: ${alignment}">`
+          : `<${name}>`;
+      }
+      if (!['a', 'img'].includes(name)) return `<${name}>`;
       if (name === 'a') {
         const href = tag.match(/\shref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
         return safeHref(href)
@@ -58,4 +65,14 @@ export function sanitizeRichText(value: unknown) {
         ? `<img src="${escape(src)}" alt="${escape(alt)}">`
         : '';
     });
+}
+
+function safeAlignment(tag: string) {
+  const style = tag.match(/\sstyle\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+  const alignment = style
+    .match(/(?:^|;)\s*text-align\s*:\s*(left|center|right)\s*(?:;|$)/i)?.[1]
+    ?.toLowerCase();
+  return alignment === 'left' || alignment === 'center' || alignment === 'right'
+    ? alignment
+    : null;
 }

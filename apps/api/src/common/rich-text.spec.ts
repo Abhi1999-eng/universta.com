@@ -19,6 +19,15 @@ describe('sanitizeRichText', () => {
     expect(result).not.toContain('alert(1)');
   });
 
+  it('preserves only safe editor alignment on supported block elements', () => {
+    expect(
+      sanitizeRichText('<p style="text-align: center; color: red">Aligned</p>'),
+    ).toBe('<p style="text-align: center">Aligned</p>');
+    expect(sanitizeRichText('<p style="text-align: justify">Nope</p>')).toBe(
+      '<p>Nope</p>',
+    );
+  });
+
   it('keeps approved Media Library image URLs and drops base64 image payloads', () => {
     expect(
       sanitizeRichText('<img src="/api/v1/media/banner.webp" alt="Banner">'),
