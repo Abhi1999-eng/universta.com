@@ -13,6 +13,7 @@ import {
   registerWebsiteBuilderRecords,
 } from '../src/website-builder/register-website-pages';
 import { assertDemoCatalogSeedAllowed } from '../src/prisma/demo-seed-policy';
+import { reconcileFoundationContinents } from '../src/prisma/foundation-continent-seed';
 
 assertDemoCatalogSeedAllowed();
 
@@ -103,30 +104,7 @@ async function main() {
     },
   });
 
-  const continents = [
-    ['Europe', 'europe', 'EU'],
-    ['North America', 'north-america', 'NA'],
-    ['Asia', 'asia', 'AS'],
-    ['Australia & New Zealand', 'australia-new-zealand', 'ANZ'],
-    ['Middle East', 'middle-east', 'ME'],
-    ['Africa', 'africa', 'AF'],
-    ['South America', 'south-america', 'SA'],
-  ] as const;
-  for (const [name, slug, code] of continents) {
-    await prisma.continent.upsert({
-      // Uniqueness is scoped to live rows, so the seed addresses the live one.
-      where: { slug_deletedKey: { slug, deletedKey: '' } },
-      update: { name, code, status: 'ACTIVE', updatedByUserId: admin.id },
-      create: {
-        name,
-        slug,
-        code,
-        status: 'ACTIVE',
-        createdByUserId: admin.id,
-        updatedByUserId: admin.id,
-      },
-    });
-  }
+  await reconcileFoundationContinents(prisma, admin.id);
 
   const intakes = [
     ['January', 'january', 1, 'WINTER', 'Jan'],
@@ -136,7 +114,14 @@ async function main() {
   for (const [name, slug, monthNumber, seasonName, shortLabel] of intakes) {
     await prisma.intake.upsert({
       where: { slug },
-      update: { name, startMonth: monthNumber, endMonth: monthNumber, seasonName, shortLabel, status: 'ACTIVE' },
+      update: {
+        name,
+        startMonth: monthNumber,
+        endMonth: monthNumber,
+        seasonName,
+        shortLabel,
+        status: 'ACTIVE',
+      },
       create: {
         name,
         slug,

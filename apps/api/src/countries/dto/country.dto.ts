@@ -49,6 +49,10 @@ function numberValue({ value }: TransformFnParams): unknown {
   return value === undefined || value === '' ? value : Number(value);
 }
 
+function countryCodeValue({ value }: TransformFnParams): unknown {
+  return typeof value === 'string' ? value.trim().toUpperCase() : value;
+}
+
 function arrayValue({ value }: TransformFnParams): unknown {
   if (Array.isArray(value)) return value;
   return typeof value === 'string' && value.trim() ? [value] : value;
@@ -84,6 +88,28 @@ export class CreateCountryDto {
   @IsString()
   @Length(1, 1000)
   shortDescription!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Legacy API compatibility only. The Admin derives ISO values from a recognised country name.',
+    deprecated: true,
+  })
+  @Transform(countryCodeValue)
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{2}$/)
+  iso2Code?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Legacy API compatibility only. The Admin derives ISO values from a recognised country name.',
+    deprecated: true,
+  })
+  @Transform(countryCodeValue)
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/)
+  iso3Code?: string;
 
   @ApiPropertyOptional({ example: false })
   @Transform(booleanValue)

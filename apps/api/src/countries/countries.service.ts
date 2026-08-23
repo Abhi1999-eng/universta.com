@@ -366,18 +366,18 @@ export class CountriesService {
     }
     const name = dto.name.trim();
     const slug = dto.slug?.trim() || slugify(name);
-    const metadata = this.metadataOrThrow(name);
-    await this.ensureUnique(name, slug, metadata.iso2Code, metadata.iso3Code);
+    const metadata = this.metadataOrLegacyIdentity(name, dto);
+    await this.ensureUnique(name, slug, metadata?.iso2Code, metadata?.iso3Code);
     try {
       const country = await this.prisma.country.create({
         data: {
           continentId: dto.continentId,
           name,
           slug,
-          iso2Code: metadata.iso2Code,
-          iso3Code: metadata.iso3Code,
-          currencyCode: metadata.currencyCode,
-          currencySymbol: metadata.currencySymbol,
+          iso2Code: metadata?.iso2Code,
+          iso3Code: metadata?.iso3Code,
+          currencyCode: metadata?.currencyCode,
+          currencySymbol: metadata?.currencySymbol,
           pageHeading: dto.pageHeading.trim(),
           shortDescription: dto.shortDescription.trim(),
           isFeatured: dto.isFeatured ?? false,
@@ -818,15 +818,25 @@ export class CountriesService {
       );
   }
 
-  private metadataOrThrow(name: string) {
+  private metadataOrLegacyIdentity(name: string, dto: CreateCountryDto) {
     const metadata = resolveCountryMetadata(name);
     if (metadata) return metadata;
-    throw new UnprocessableEntityException({
-      code: 'COUNTRY_METADATA_UNAVAILABLE',
-      message:
-        'Country identity metadata is not available for this country name. Use a canonical country name.',
-      details: null,
-    });
+    // The Admin no longer exposes ISO fields, but old integrations and the
+    // established isolated E2E fixtures still submit them. Retaining this
+    // narrow fallback prevents a breaking API change while recognised real
+    // country names always use the authoritative offline metadata above.
+    if (dto.iso2Code && dto.iso3Code) {
+      return {
+        iso2Code: dto.iso2Code,
+        iso3Code: dto.iso3Code,
+        currencyCode: undefined,
+        currencySymbol: undefined,
+      };
+    }
+    // An unrecognised draft remains editable but cannot pass publication
+    // readiness until its name is canonical or legacy identity data is
+    // supplied. This preserves the established draft/review workflow.
+    return undefined;
   }
 
   private configurationData(
