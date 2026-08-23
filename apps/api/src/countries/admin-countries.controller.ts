@@ -51,6 +51,18 @@ export class AdminCountriesController {
     return successEnvelope(request, await this.countries.create(dto, request));
   }
 
+  @Get(':id/curation-options')
+  @ApiOperation({
+    summary:
+      'List published university and course choices for country curation',
+  })
+  async curationOptions(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(request, await this.countries.curationOptions(id));
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a country for editing' })
   async get(@Req() request: AuthenticatedRequest, @Param('id') id: string) {

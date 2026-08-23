@@ -4,6 +4,7 @@ import { type AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { ConsultantDetailReference } from "@/components/reference/ConsultantDetailReference";
 import { phaseDetail, phaseResolveRedirect } from "@/lib/phase1";
 import { phaseOneMetadata } from "@/lib/phase1-metadata";
+import { resolveContentVariables } from "../../../../../../packages/content-variables";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function ConsultantPage({ params }: Props) {
         slug: String(record.slug),
         shortDescription:
           typeof record.shortDescription === "string" ? record.shortDescription : null,
-        description: typeof record.description === "string" ? record.description : null,
+        description: typeof record.description === "string" ? resolveContentVariables("consultant", record.description, record) : null,
         email: typeof record.email === "string" ? record.email : null,
         phone: typeof record.phone === "string" ? record.phone : null,
         websiteUrl: typeof record.websiteUrl === "string" ? record.websiteUrl : null,

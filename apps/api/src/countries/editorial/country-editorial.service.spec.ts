@@ -58,12 +58,12 @@ describe('country editorial body policy', () => {
     }
   });
 
-  it('rejects markup, unsafe URLs, and unapproved item fields', () => {
+  it('allows the shared editor HTML subset but rejects unsafe URLs and unapproved item fields', () => {
     expect(() =>
       validateEditorialBody('RICH_TEXT', {
-        paragraphs: ['<b>not allowed</b>'],
+        paragraphs: ['<p><strong>Allowed</strong></p>'],
       }),
-    ).toThrow(BadRequestException);
+    ).not.toThrow();
     expect(() =>
       validateEditorialBody('CARD_GRID', {
         items: [{ title: 'Card', description: 'Text', date: '2026-01-01' }],

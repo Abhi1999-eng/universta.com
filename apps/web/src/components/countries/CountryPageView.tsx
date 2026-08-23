@@ -2,11 +2,129 @@ import Link from 'next/link';
 /* API-selected media can come from approved external asset hosts. */
 /* eslint-disable @next/next/no-img-element */
 import type { CountryPage } from '@/lib/countries';
-import { consultationTarget, isPublishedValue } from '@/lib/country-experience';
 import { SiteFooter, SiteHeader } from './SiteChrome';
 import { CountryEditorialSections, editorialNavItems } from './CountryEditorialSections';
 import { CountryJumpNav } from './CountryJumpNav';
 import { CountryStructuredSections, structuredNavItems } from './CountryStructuredSections';
 
-export function CountryPageView({ page }: { page: CountryPage }) { const { country, profiles, sections, faqs, consultantCards } = page; const structured = structuredNavItems(profiles); const editorial = editorialNavItems(sections); const configuredDestination = sections.find((section) => section.sectionKey === 'consultant-cta')?.ctaUrl; const target = consultationTarget({ hasConsultants: consultantCards.length > 0, hasStructuredTrust: structured.some((item) => item.id === 'structured-trust'), configuredDestination }); const navItems = [...editorial, ...structured, ...(faqs.length ? [{ id: 'faqs', label: 'FAQs' }] : []), ...(consultantCards.length ? [{ id: 'consultants', label: 'Guidance' }] : []), { id: 'consultation', label: 'Consultation' }]; return <main><SiteHeader detail /><section className="detail-hero"><div className="shell detail-hero-grid"><div><Link className="back-link" href="/countries">← All destinations</Link><p className="eyebrow">Study destination · {country.continent.name}</p><h1>{country.pageHeading || `Study in ${country.name}`}</h1><p className="hero-copy">{country.shortDescription}</p><Link className="button" href="#consultation">Talk to a counsellor</Link></div><div className="hero-card">{country.flag ? <img src={country.flag.url} alt={country.flag.alt || `${country.name} flag`} /> : <div className="hero-placeholder" aria-hidden="true">{country.name.slice(0, 1)}</div>}<span>{country.name}</span><small>{country.continent.name}</small></div></div></section><CountryJumpNav items={navItems} /><div className="shell detail-layout"><div className="detail-main"><p className="eyebrow">Your destination guide</p><CountryStructuredSections profiles={profiles} /><CountryEditorialSections sections={sections} />{faqs.length ? <section id="faqs" className="editorial-section"><p className="eyebrow">Questions answered</p><h2>Frequently asked questions</h2><div className="faq-list">{faqs.map((faq) => <details key={faq.id}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div></section> : null}</div><aside id="facts" className="facts-panel"><p className="eyebrow">At a glance</p><h2>{country.name}</h2>{factsFor(profiles).map((fact) => <div className="fact" key={fact.label}><span>{fact.label}</span><strong>{fact.value}</strong></div>)}<p className="source-note">Only published, source-aware profile fields are shown.</p></aside></div><section id="consultation" className="consultation-band"><div className="shell consultation-inner"><div><p className="eyebrow">Plan with confidence</p><h2>Get a personalised study plan</h2><p>Use the published country guidance to frame your next conversation.</p></div>{target ? <Link className="button light" href={target}>{consultantCards.length ? 'Explore guidance' : 'Review source notes'}</Link> : <span className="button light button-disabled" role="status">Guidance destination unavailable</span>}</div></section>{consultantCards.length ? <section id="consultants" className="shell consultants"><p className="eyebrow">Guidance for your journey</p><h2>Explore consultation options</h2><div className="consultant-grid">{consultantCards.map((card) => <article key={card.id} className="consultant-card">{card.featuredMedia ? <img className="consultant-media" src={card.featuredMedia.url} alt={card.featuredMedia.alt || card.title} /> : card.iconMedia ? <img className="consultant-icon" src={card.iconMedia.url} alt={card.iconMedia.alt || ''} /> : null}<h3>{card.title}</h3><p>{card.shortDescription}</p><Link href={card.ctaUrl && (/^\//.test(card.ctaUrl) || /^#[a-zA-Z0-9_-]+$/.test(card.ctaUrl) || /^https:\/\//.test(card.ctaUrl)) ? card.ctaUrl : '#consultation'}>{card.ctaLabel} →</Link></article>)}</div></section> : null}<SiteFooter /></main>; }
-export function factsFor(profiles: CountryPage['profiles']) { const values: Array<{ label: string; value: string | number }> = []; if (profiles.statistics?.universitiesCount != null) values.push({ label: 'Universities', value: profiles.statistics.universitiesCount }); if (profiles.statistics?.coursesCount != null) values.push({ label: 'Courses', value: profiles.statistics.coursesCount }); const tuition = isPublishedValue(profiles.cost?.tuitionMin) ? `${profiles.cost?.currencySymbol ?? profiles.cost?.currencyCode} ${profiles.cost?.tuitionMin}${isPublishedValue(profiles.cost?.tuitionMax) ? `–${profiles.cost?.tuitionMax}` : '+'}` : null; if (tuition) values.push({ label: 'Tuition', value: tuition }); const intakes = profiles.intakes.map((item) => item.shortLabel ?? item.name).filter(Boolean); if (intakes.length) values.push({ label: 'Major intakes', value: intakes.join(', ') }); return values; }
+export function CountryPageView({ page }: { page: CountryPage }) {
+  const { country, sections, faqs, consultantCards } = page;
+  const structured = structuredNavItems(country);
+  const editorial = editorialNavItems(sections);
+  const consultantHref = `/study-abroad-consultants?country=${encodeURIComponent(country.slug)}`;
+  const navItems = [...editorial, ...structured, ...(faqs.length ? [{ id: 'faqs', label: 'FAQs' }] : []), ...(consultantCards.length ? [{ id: 'consultants', label: 'Guidance' }] : []), { id: 'consultation', label: 'Consultation' }];
+  return (
+    <main>
+      <SiteHeader detail />
+      <section className="detail-hero">
+        <div className="shell detail-hero-grid">
+          <div>
+            <Link className="back-link" href="/countries">
+              ← All destinations
+            </Link>
+            <p className="eyebrow">Study destination · {country.continent.name}</p>
+            <h1>{country.pageHeading || `Study in ${country.name}`}</h1>
+            <p className="hero-copy">{country.shortDescription}</p>
+            <Link className="button" href={consultantHref}>
+              Find consultants
+            </Link>
+          </div>
+          <div className="hero-card">
+            {country.flag ? (
+              <img src={country.flag.url} alt={country.flag.alt || `${country.name} flag`} />
+            ) : (
+              <div className="hero-placeholder" aria-hidden="true">
+                {country.name.slice(0, 1)}
+              </div>
+            )}
+            <span>{country.name}</span>
+            <small>{country.continent.name}</small>
+          </div>
+        </div>
+      </section>
+      <CountryJumpNav items={navItems} />
+      <div className="shell detail-layout">
+        <div className="detail-main">
+          <p className="eyebrow">Your destination guide</p>
+          <CountryStructuredSections country={country} />
+          <CountryEditorialSections sections={sections} variables={{ countryName: country.name, countrySlug: country.slug }} />
+          {faqs.length ? (
+            <section id="faqs" className="editorial-section">
+              <p className="eyebrow">Questions answered</p>
+              <h2>Frequently asked questions</h2>
+              <div className="faq-list">
+                {faqs.map((faq) => (
+                  <details key={faq.id}>
+                    <summary>{faq.question}</summary>
+                    <p>{faq.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+        <aside id="facts" className="facts-panel">
+          <p className="eyebrow">At a glance</p>
+          <h2>{country.name}</h2>
+          {factsFor(country).map((fact) => (
+            <div className="fact" key={fact.label}>
+              <span>{fact.label}</span>
+              <strong>{fact.value}</strong>
+            </div>
+          ))}
+          <p className="source-note">Facts are calculated from published Universities and University Course Offerings.</p>
+        </aside>
+      </div>
+      <section id="consultation" className="consultation-band">
+        <div className="shell consultation-inner">
+          <div>
+            <p className="eyebrow">Plan with confidence</p>
+            <h2>Find study-abroad consultants</h2>
+            <p>Browse consultants serving {country.name} and contact the right team for your plans.</p>
+          </div>
+          <Link className="button light" href={consultantHref}>
+            View consultants
+          </Link>
+        </div>
+      </section>
+      {consultantCards.length ? (
+        <section id="consultants" className="shell consultants">
+          <p className="eyebrow">Guidance for your journey</p>
+          <h2>Explore consultation options</h2>
+          <div className="consultant-grid">
+            {consultantCards.map((card) => (
+              <article key={card.id} className="consultant-card">
+                {card.featuredMedia ? <img className="consultant-media" src={card.featuredMedia.url} alt={card.featuredMedia.alt || card.title} /> : card.iconMedia ? <img className="consultant-icon" src={card.iconMedia.url} alt={card.iconMedia.alt || ''} /> : null}
+                <h3>{card.title}</h3>
+                <p>{card.shortDescription}</p>
+                <Link href={card.ctaUrl && (/^\//.test(card.ctaUrl) || /^#[a-zA-Z0-9_-]+$/.test(card.ctaUrl) || /^https:\/\//.test(card.ctaUrl)) ? card.ctaUrl : consultantHref}>{card.ctaLabel} →</Link>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <SiteFooter />
+    </main>
+  );
+}
+export function factsFor(country: CountryPage['country']) {
+  const values: Array<{ label: string; value: string | number }> = [];
+  const derived = country.derived;
+  if (derived?.statistics.universitiesCount != null)
+    values.push({
+      label: 'Universities',
+      value: derived.statistics.universitiesCount,
+    });
+  if (derived?.statistics.coursesCount != null) values.push({ label: 'Courses', value: derived.statistics.coursesCount });
+  if (derived?.averageTuition)
+    values.push({
+      label: 'Average Tuition',
+      value: `${derived.averageTuition.currencySymbol ?? derived.averageTuition.currencyCode} ${derived.averageTuition.amount}`,
+    });
+  if (country.configuration?.intakeMonths.length)
+    values.push({
+      label: 'Intakes',
+      value: country.configuration.intakeMonths.length,
+    });
+  return values;
+}

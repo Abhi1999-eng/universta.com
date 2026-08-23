@@ -865,6 +865,8 @@ model Country {
   cities               City[]
   courses              CountryCourse[]
   consultantCards      ConsultantLandingCard[]
+  popularUniversities  CountryPopularUniversity[]
+  popularCourses       CountryPopularCourse[]
   universities         University[]
   scholarshipCountries ScholarshipCountry[]
   consultantCountries  ConsultantCountry[]
@@ -873,6 +875,14 @@ model Country {
   preferredByLeads     Lead[]                      @relation("LeadPreferredCountry")
   jobs                 Job[]                       @relation("JobCountry")
   events               Event[]                     @relation("EventCountry")
+
+  /// Country-owned editorial configuration. These JSON lists intentionally use
+  /// stable codes/numbers so legacy profile columns can remain readable while
+  /// new Country editing avoids duplicate institutional facts.
+  featureCodes              Json? @map("feature_codes")
+  acceptedTests             Json? @map("accepted_tests")
+  intakeMonths              Json? @map("intake_months")
+  postStudyWorkPermitMonths Int?  @map("post_study_work_permit_months")
 
   studentNationalities    StudentProfile[]          @relation("StudentNationality")
   studentCurrentResidents StudentProfile[]          @relation("StudentCurrentCountry")
@@ -1259,6 +1269,7 @@ model Course {
   relatedTo           RelatedCourse[]            @relation("RelatedCourseTarget")
   preferredByLeads    Lead[]                     @relation("LeadPreferredCourse")
   universityOfferings UniversityCourseOffering[]
+  popularInCountries  CountryPopularCourse[]
 
   @@index([subjectId, subSubjectId, courseLevelId, status])
   @@index([courseLevelId])
@@ -1650,6 +1661,7 @@ model University {
   name             String    @db.VarChar(255)
   slug             String    @unique @db.VarChar(255)
   institutionType  String?   @map("institution_type") @db.VarChar(80)
+  qsRanking        Int?      @map("qs_ranking")
   shortDescription String?   @map("short_description") @db.VarChar(1000)
   overview         String?   @db.LongText
   featuredMediaId  String?   @map("featured_media_id") @db.Char(36)
@@ -1678,11 +1690,46 @@ model University {
   claimRequests       UniversityClaimRequest[]
   studentSavedBy      StudentSavedUniversity[]
   studentApplications StudentApplication[]
+  popularInCountries  CountryPopularUniversity[]
 
   @@unique([countryId, name])
   @@index([countryId, status, displayOrder])
   @@index([status, institutionType, isFeatured])
+  @@index([countryId, qsRanking])
   @@map("universities")
+}
+
+/// Editorial selection, deliberately distinct from a Country's automatically
+/// derived top-ranked universities. `displayOrder` keeps curated frontend
+/// order stable without copying University content into Country rows.
+model CountryPopularUniversity {
+  countryId    String   @map("country_id") @db.Char(36)
+  universityId String   @map("university_id") @db.Char(36)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  country    Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@id([countryId, universityId])
+  @@index([universityId])
+  @@map("country_popular_universities")
+}
+
+/// Editorial selection of existing generic Courses that are available through
+/// the Country's university/course relationships.
+model CountryPopularCourse {
+  countryId    String   @map("country_id") @db.Char(36)
+  courseId     String   @map("course_id") @db.Char(36)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([countryId, courseId])
+  @@index([courseId])
+  @@map("country_popular_courses")
 }
 
 model UniversityClaimRequest {

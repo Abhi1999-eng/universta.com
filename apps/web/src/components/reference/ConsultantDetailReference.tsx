@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { consultantContactActions } from '@/lib/consultant-contact';
 import { formatDate } from '@/lib/format';
+import { RichText } from '@/components/phase1/RichText';
 
 /** The client-approved consultant profile.
  *
@@ -156,11 +157,7 @@ export function ConsultantDetailReference(props: ConsultantDetailProps) {
               <span className="eyebrow">About</span>
               <h2>About {consultant.name}</h2>
             </div>
-            <div className="prose">
-              {consultant.description.split(/\n{2,}/).map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
-            </div>
+            <RichText className="prose" value={consultant.description} />
           </div>
         </section>
       ) : null}

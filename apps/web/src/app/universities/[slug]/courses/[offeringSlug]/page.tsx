@@ -6,6 +6,7 @@ import { phaseUniversityCourses } from '@/lib/phase1';
 import { intakeRange } from '@/lib/intake-range';
 import { formatNumber } from '@/lib/format';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
+import { resolveContentVariables } from '../../../../../../../../packages/content-variables';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,7 +95,7 @@ export default async function UniversityCourseDetailPage({ params }: Props) {
         slug: String(row.slug),
         courseCode: typeof row.courseCode === 'string' ? row.courseCode : null,
         shortDescription: typeof row.shortDescription === 'string' ? row.shortDescription : null,
-        overview: typeof row.overview === 'string' ? row.overview : null,
+        overview: typeof row.overview === 'string' ? resolveContentVariables('offering', row.overview, row) : null,
         level: level?.name ? String(level.name) : null,
         subject: subject?.slug
           ? { name: String(subject.name), slug: String(subject.slug) }

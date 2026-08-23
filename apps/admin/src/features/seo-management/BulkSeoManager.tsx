@@ -9,6 +9,11 @@ import {
   type KeyboardEvent,
 } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import {
+  findVariableTrigger,
+  insertVariableToken,
+  type DynamicVariable,
+} from "@/features/shared/variable-autocomplete";
 
 type Template = {
   seoTitleTemplate: string | null;
@@ -28,7 +33,7 @@ type TemplateTextFieldKey = Extract<
   | "ogDescriptionTemplate"
   | "canonicalTemplate"
 >;
-type Variable = { key: string; label: string };
+type Variable = DynamicVariable;
 type Definition = {
   key: string;
   label: string;
@@ -409,14 +414,11 @@ export function BulkSeoManager() {
     const next = event.target.value;
     const cursor = event.target.selectionStart ?? next.length;
     set(field, next);
-    const prefix = next.slice(0, cursor);
-    const match = prefix.match(/([{%])([^{}%\s]*)$/);
-    if (match && match.index !== undefined) {
+    const trigger = findVariableTrigger(next, cursor);
+    if (trigger) {
       setPicker({
         field,
-        start: match.index,
-        end: cursor,
-        query: match[2],
+        ...trigger,
         activeIndex: 0,
       });
     } else if (picker?.field === field) {
@@ -427,16 +429,14 @@ export function BulkSeoManager() {
   function insertVariable(variable: Variable) {
     if (!picker) return;
     const current = value[picker.field] ?? "";
-    const token = `{${variable.key}}`;
-    const next = `${current.slice(0, picker.start)}${token}${current.slice(picker.end)}`;
-    set(picker.field, next);
-    const position = picker.start + token.length;
+    const next = insertVariableToken(current, picker, variable);
+    set(picker.field, next.value);
     const field = picker.field;
     setPicker(null);
     requestAnimationFrame(() => {
       const element = inputRefs.current[field];
       element?.focus();
-      element?.setSelectionRange(position, position);
+      element?.setSelectionRange(next.cursor, next.cursor);
     });
   }
 

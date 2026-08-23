@@ -54,6 +54,8 @@ import type {
 } from './catalog.types';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
+import { RichTextEditor } from '@/features/shared/RichTextEditor';
+import { variablesForContext } from '@/features/shared/variable-autocomplete';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
@@ -284,6 +286,7 @@ function faqFromRecord(row: CourseFaqRecord): FaqDraft {
   return { id: row.id, updatedAt: row.updatedAt, question: row.question, answer: row.answer, status: row.status, displayOrder: String(row.displayOrder) };
 }
 function bodyJson(text: string, type: string) {
+  if (type === 'RICH_TEXT') return { paragraphs: text.trim() ? [text.trim()] : [] };
   const paragraphs = text.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
   const lines = text.split(/\n+/).map((x) => x.trim()).filter(Boolean);
   if (type === 'CHECKLIST') return { paragraphs, items: lines };
@@ -691,7 +694,7 @@ export function CourseForm({ id }: { id?: string }) {
             <Input label="Qualification" value={core.qualificationName} onChange={(value) => setCoreField('qualificationName', value)} />
             <Input label="Course code" value={core.courseCode} onChange={(value) => setCoreField('courseCode', value)} />
             <Input label="Short description" value={core.shortDescription} onChange={(value) => setCoreField('shortDescription', value)} textarea span />
-            <Input label="Overview" value={core.overview} onChange={(value) => setCoreField('overview', value)} textarea span rows={6} />
+            <Input label="Overview" value={core.overview} onChange={(value) => setCoreField('overview', value)} richText variableContext="course" media={media} span />
             <MediaPickerDialog label="Featured media" value={core.featuredMediaId} media={media} onChange={(value) => setCoreField('featuredMediaId', value)} />
             <Input label="Display order" value={core.displayOrder} onChange={(value) => setCoreField('displayOrder', value)} type="number" />
           </div>
@@ -746,9 +749,10 @@ function EditorCard({ eyebrow, title, description, children }: { eyebrow: string
   return <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8"><legend className="sr-only">{title}</legend><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">{eyebrow}</p><h3 className="mt-2 text-xl font-semibold text-[#101828]">{title}</h3><p className="mt-2 text-sm leading-6 text-[#667085]">{description}</p><div className="mt-6">{children}</div></fieldset>;
 }
 
-function Input({ label, value, onChange, type = 'text', textarea = false, span = false, rows = 3, required = false, placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; textarea?: boolean; span?: boolean; rows?: number; required?: boolean; placeholder?: string }) {
+function Input({ label, value, onChange, type = 'text', textarea = false, richText = false, variableContext, media, span = false, rows = 3, required = false, placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; textarea?: boolean; richText?: boolean; variableContext?: Parameters<typeof variablesForContext>[0]; media?: EditorialMedia[]; span?: boolean; rows?: number; required?: boolean; placeholder?: string }) {
   const reactId = useId();
   const id = `course-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  if (richText) return <div className={`text-sm font-semibold ${span ? 'sm:col-span-full' : ''}`}><RichTextEditor label={label} value={value} onChange={onChange} allowedVariables={variablesForContext(variableContext)} media={media} /></div>;
   return <div className={`text-sm font-semibold ${span ? 'sm:col-span-full' : ''}`}><FieldLabel label={label} htmlFor={id} required={required} />{textarea ? <textarea id={id} required={required} aria-required={required} rows={rows} className={input} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /> : <input id={id} required={required} aria-required={required} type={type} className={input} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}</div>;
 }
 
@@ -768,5 +772,5 @@ function AvailabilityRow({ index, row, countries, intakes, onChange, onRemove }:
 
 function ContentRow({ index, row, media, onChange, onRemove }: { index: number; row: SectionDraft; media: EditorialMedia[]; onChange: (patch: Partial<SectionDraft>) => void; onRemove: () => void }) {
   const sectionUsed = Boolean(row.id || row.heading.trim() || row.bodyText.trim() || row.subheading.trim() || row.mediaId);
-  return <div className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"><div className="flex justify-between gap-3"><h4 className="font-semibold">Content section {index + 1}</h4>{index > 0 || row.id ? <button type="button" onClick={onRemove} className="text-sm font-semibold text-[#B42318]">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="Section key" value={row.sectionKey} onChange={(value) => onChange({ sectionKey: value })} required={sectionUsed} /><Select label="Section type" value={row.sectionType} onChange={(value) => onChange({ sectionType: value })} options={['RICH_TEXT','CHECKLIST','STEPS','FACT_GRID','CARD_GRID'].map((id) => ({ id, label: id.replaceAll('_', ' ') }))} required={sectionUsed} /><Input label="Heading" value={row.heading} onChange={(value) => onChange({ heading: value })} /><Input label="Subheading" value={row.subheading} onChange={(value) => onChange({ subheading: value })} /><Input label="Body" value={row.bodyText} onChange={(value) => onChange({ bodyText: value })} textarea span rows={6} /><MediaPickerDialog label="Section media" value={row.mediaId} media={media} onChange={(value) => onChange({ mediaId: value })} /><Select label="Status" value={row.status} onChange={(value) => onChange({ status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => onChange({ displayOrder: value })} type="number" /></div></div>;
+  return <div className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"><div className="flex justify-between gap-3"><h4 className="font-semibold">Content section {index + 1}</h4>{index > 0 || row.id ? <button type="button" onClick={onRemove} className="text-sm font-semibold text-[#B42318]">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="Section key" value={row.sectionKey} onChange={(value) => onChange({ sectionKey: value })} required={sectionUsed} /><Select label="Section type" value={row.sectionType} onChange={(value) => onChange({ sectionType: value })} options={['RICH_TEXT','CHECKLIST','STEPS','FACT_GRID','CARD_GRID'].map((id) => ({ id, label: id.replaceAll('_', ' ') }))} required={sectionUsed} /><Input label="Heading" value={row.heading} onChange={(value) => onChange({ heading: value })} /><Input label="Subheading" value={row.subheading} onChange={(value) => onChange({ subheading: value })} />{row.sectionType === 'RICH_TEXT' ? <div className="sm:col-span-full"><RichTextEditor label="Body" value={row.bodyText} onChange={(bodyText) => onChange({ bodyText })} allowedVariables={variablesForContext('course')} media={media} /></div> : <Input label="Body" value={row.bodyText} onChange={(value) => onChange({ bodyText: value })} textarea span rows={6} />}<MediaPickerDialog label="Section media" value={row.mediaId} media={media} onChange={(value) => onChange({ mediaId: value })} /><Select label="Status" value={row.status} onChange={(value) => onChange({ status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => onChange({ displayOrder: value })} type="number" /></div></div>;
 }

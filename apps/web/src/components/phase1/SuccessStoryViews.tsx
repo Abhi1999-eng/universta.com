@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Crumbs, PhaseOneFooter, PhaseOneHeader } from "./PhaseOneChrome";
 import { RichText } from "./RichText";
+import { resolveContentVariables } from "../../../../../packages/content-variables";
 import {
   countryPath,
   journeyExcerpt,
@@ -124,7 +125,7 @@ export function SuccessStoryDetail({ story }: { story: SuccessStoryRow }) {
           <section className="editorial-section">
             <p className="eyebrow">The journey</p>
             <h2>The Journey</h2>
-            <RichText value={story.journey} />
+            <RichText value={resolveContentVariables("successStory", story.journey, story)} />
           </section>
           <RelatedStoryFact
             label="Study destination"

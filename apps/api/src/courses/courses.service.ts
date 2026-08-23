@@ -17,6 +17,7 @@ import {
   slugify,
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
+import { sanitizeRichText } from '../common/rich-text';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type {
   AdminCourseListQueryDto,
@@ -170,6 +171,29 @@ function rangeError(
 }
 function toDecimal(value: string | undefined): Prisma.Decimal | undefined {
   return value === undefined ? undefined : new Prisma.Decimal(value);
+}
+
+export function sanitizeCourseRichText(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? (sanitizeRichText(trimmed) as string) : undefined;
+}
+
+export function sanitizeCourseRichTextBody(
+  value: unknown,
+): Prisma.InputJsonObject {
+  const body =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as { paragraphs?: unknown })
+      : null;
+  const paragraphs = Array.isArray(body?.paragraphs)
+    ? body.paragraphs
+        .filter(
+          (paragraph): paragraph is string => typeof paragraph === 'string',
+        )
+        .map((paragraph) => sanitizeRichText(paragraph.trim()) as string)
+        .filter(Boolean)
+    : [];
+  return { paragraphs };
 }
 
 @Injectable()
@@ -628,7 +652,7 @@ export class CoursesService {
           slug,
           courseCode: dto.courseCode?.trim(),
           shortDescription: dto.shortDescription?.trim(),
-          overview: dto.overview?.trim(),
+          overview: sanitizeCourseRichText(dto.overview),
           durationMin: toDecimal(dto.durationMin),
           durationMax: toDecimal(dto.durationMax),
           durationUnit: dto.durationUnit,
@@ -694,7 +718,7 @@ export class CoursesService {
           slug: dto.slug?.trim() || current.slug,
           courseCode: dto.courseCode?.trim(),
           shortDescription: dto.shortDescription?.trim(),
-          overview: dto.overview?.trim(),
+          overview: sanitizeCourseRichText(dto.overview),
           durationMin: toDecimal(dto.durationMin),
           durationMax: toDecimal(dto.durationMax),
           durationUnit: dto.durationUnit,
@@ -2070,7 +2094,11 @@ export class CoursesService {
         'COURSE_SECTION_INVALID',
         'Content section body is too large',
       );
-    if (dto.bodyJson && JSON.stringify(dto.bodyJson).includes('<'))
+    if (
+      dto.sectionType !== 'RICH_TEXT' &&
+      dto.bodyJson &&
+      JSON.stringify(dto.bodyJson).includes('<')
+    )
       throw catalogBadRequest(
         'COURSE_SECTION_INVALID',
         'HTML is not allowed in course content',
@@ -2259,9 +2287,14 @@ export class CoursesService {
   private sectionBody(
     dto: CreateContentSectionDto | UpdateContentSectionDto,
   ): Prisma.InputJsonValue {
+    const content: Prisma.InputJsonValue | null =
+      dto.sectionType === 'RICH_TEXT'
+        ? sanitizeCourseRichTextBody(dto.bodyJson)
+        : ((dto.bodyJson as Prisma.InputJsonObject | undefined) ?? null);
+
     return {
       type: dto.sectionType,
-      content: (dto.bodyJson ?? null) as Prisma.InputJsonValue,
+      content,
     };
   }
   private sectionType(row: { bodyJson: unknown }): string {

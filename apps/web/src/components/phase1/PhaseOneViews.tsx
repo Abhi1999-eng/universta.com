@@ -4,6 +4,10 @@ import { PhaseOneFooter, PhaseOneHeader, Crumbs } from "./PhaseOneChrome";
 import { consultantContactActions } from "@/lib/consultant-contact";
 import { RichText } from "./RichText";
 import { StudentCatalogueActions } from "@/components/student/StudentCatalogueActions";
+import {
+  resolveContentVariables,
+  type ContentVariableContext,
+} from "../../../../../packages/content-variables";
 
 type NamedRecord = { name?: string; shortLabel?: string };
 type CourseOfferingRecord = { subject?: NamedRecord };
@@ -46,6 +50,9 @@ export type AnyRecord = {
   phone?: string | null;
   applicationEmail?: string;
   overview?: string;
+  eligibility?: string;
+  responsibilities?: string;
+  qualifications?: string;
   requirements?: AnyRecord[];
   intakes?: AnyRecord[];
   services?: AnyRecord[];
@@ -109,6 +116,14 @@ const paths: Record<string, string> = {
   "success-stories": "/success-stories",
   testimonials: "/testimonials",
 };
+const variableContextByResource: Record<string, ContentVariableContext> = {
+  universities: "university",
+  scholarships: "scholarship",
+  consultants: "consultant",
+  jobs: "job",
+  events: "event",
+  "success-stories": "successStory",
+};
 
 function title(row: AnyRecord) {
   return row.title ?? row.name ?? row.quote?.slice(0, 80) ?? "Published record";
@@ -122,6 +137,16 @@ function description(row: AnyRecord) {
     row.quote ??
     ""
   );
+}
+function resolvedRichText(resource: string, row: AnyRecord) {
+  const value = row.overview ?? row.description ?? row.journey ?? row.quote ?? row.summary ?? "No further overview is published.";
+  return resolveRichTextValue(resource, value, row);
+}
+function resolveRichTextValue(resource: string, value: string, row: AnyRecord) {
+  const context = variableContextByResource[resource];
+  return context
+    ? resolveContentVariables(context, value, row as Record<string, unknown>)
+    : value;
 }
 /** Turns a stored enum such as PUBLIC_UNIVERSITY into "Public university". */
 function humanise(value: unknown) {
@@ -384,8 +409,29 @@ export function PhaseDetail({
           <section className="editorial-section">
             <p className="eyebrow">Overview</p>
             <h2>What to know</h2>
-            <RichText value={row.overview ?? row.description ?? row.journey ?? row.quote ?? row.summary ?? "No further overview is published."} />
+            <RichText value={resolvedRichText(resource, row)} />
           </section>
+          {resource === "scholarships" && row.eligibility ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Eligibility</p>
+              <h2>Who can apply</h2>
+              <RichText value={resolveRichTextValue(resource, row.eligibility, row)} />
+            </section>
+          ) : null}
+          {resource === "jobs" && row.responsibilities ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Role details</p>
+              <h2>Responsibilities</h2>
+              <RichText value={resolveRichTextValue(resource, row.responsibilities, row)} />
+            </section>
+          ) : null}
+          {resource === "jobs" && row.qualifications ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Requirements</p>
+              <h2>Qualifications</h2>
+              <RichText value={resolveRichTextValue(resource, row.qualifications, row)} />
+            </section>
+          ) : null}
           {row.requirements?.length ? (
             <section className="editorial-section">
               <p className="eyebrow">Entry requirements</p>
@@ -517,7 +563,7 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
           <section className="editorial-section">
             <p className="eyebrow">Overview</p>
             <h2>About this university</h2>
-            <RichText value={row.overview ?? "No overview is published."} />
+            <RichText value={resolveContentVariables("university", row.overview ?? "No overview is published.", row as Record<string, unknown>)} />
           </section>
           <section className="editorial-section">
             <p className="eyebrow">Campuses</p>

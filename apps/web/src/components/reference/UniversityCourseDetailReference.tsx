@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { counsellingHref } from '@/lib/counselling-link';
 import { formatDate } from '@/lib/format';
 import { StudentCatalogueActions } from '@/components/student/StudentCatalogueActions';
+import { RichText } from '@/components/phase1/RichText';
 
 /** The client-approved university course detail page.
  *
@@ -151,11 +152,7 @@ export function UniversityCourseDetailReference(props: CourseDetailProps) {
                 <span className="eyebrow">Overview</span>
                 <h2>About this programme</h2>
               </div>
-              <div className="prose">
-                {offering.overview.split(/\n{2,}/).map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
+              <RichText className="prose" value={offering.overview} />
             </section>
           ) : null}
 
