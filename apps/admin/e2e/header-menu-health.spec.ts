@@ -10,6 +10,10 @@ import { webBaseUrl } from './helpers/e2e-urls';
 
 test.describe('public header menu health', () => {
   test('the header renders at least one navigation item', async ({ page }) => {
+    // The desktop primary menu intentionally gives way to the complete drawer
+    // below its capacity breakpoint. This regression covers the desktop menu
+    // at the width where that control family is rendered.
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(webBaseUrl);
     const items = page.locator('header nav a, header nav button');
     await expect(items.first()).toBeVisible();

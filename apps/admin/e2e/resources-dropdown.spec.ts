@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { webBaseUrl } from './helpers/e2e-urls';
 
+async function openDesktopHeader(page: import('@playwright/test').Page) {
+  // Resources is part of the desktop primary menu. The responsive drawer is
+  // the intended control at the default 1280px CI viewport.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(webBaseUrl);
+}
+
 /** Direct regression coverage for the header's Resources dropdown.
  *
  * The trigger opened on hover but also toggled on click. A real mouse click
@@ -11,7 +18,7 @@ import { webBaseUrl } from './helpers/e2e-urls';
 
 test.describe('header Resources dropdown', () => {
   test('a real mouse click opens it and keeps it open, repeatedly', async ({ page }) => {
-    await page.goto(webBaseUrl);
+    await openDesktopHeader(page);
     const trigger = page.getByRole('button', { name: 'Resources' });
     const panel = page.locator('header').getByRole('link', { name: 'FAQ', exact: true });
 
@@ -26,7 +33,7 @@ test.describe('header Resources dropdown', () => {
   });
 
   test('Escape closes it and returns focus to the trigger', async ({ page }) => {
-    await page.goto(webBaseUrl);
+    await openDesktopHeader(page);
     const trigger = page.getByRole('button', { name: 'Resources' });
     await trigger.click();
     await expect(page.locator('header').getByRole('link', { name: 'FAQ' })).toBeVisible();
@@ -37,7 +44,7 @@ test.describe('header Resources dropdown', () => {
   });
 
   test('clicking outside the panel closes it', async ({ page }) => {
-    await page.goto(webBaseUrl);
+    await openDesktopHeader(page);
     const trigger = page.getByRole('button', { name: 'Resources' });
     await trigger.click();
     await expect(page.locator('header').getByRole('link', { name: 'FAQ' })).toBeVisible();
@@ -49,7 +56,7 @@ test.describe('header Resources dropdown', () => {
   test('keyboard-only: Tab reaches the trigger, Enter opens it, Tab reaches its links', async ({
     page,
   }) => {
-    await page.goto(webBaseUrl);
+    await openDesktopHeader(page);
     const trigger = page.getByRole('button', { name: 'Resources' });
 
     await trigger.focus();
@@ -66,7 +73,7 @@ test.describe('header Resources dropdown', () => {
   test('a touch tap opens it and a second tap closes it', async ({ browser }) => {
     const context = await browser.newContext({ hasTouch: true, isMobile: false });
     const page = await context.newPage();
-    await page.goto(webBaseUrl);
+    await openDesktopHeader(page);
     const trigger = page.getByRole('button', { name: 'Resources' });
     const link = page.locator('header').getByRole('link', { name: 'FAQ', exact: true });
 
