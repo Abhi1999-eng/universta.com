@@ -86,7 +86,6 @@ export function StudentApplicationDetail({ id }: { id: string }) {
   const offer = application.offerMedia as Item | undefined;
   return (
     <>
-      <Link className="back-link" href="/student/applications">← My applications</Link>
       <h1>{String(offering?.name ?? application.offeringNameSnapshot ?? 'Application')}</h1>
       <p className="lede">{String(university?.name ?? application.universityNameSnapshot ?? '')} · {label(status)}</p>
       {error ? <p className="stu-alert error" role="alert">{error}</p> : null}
@@ -103,7 +102,7 @@ export function StudentApplicationDetail({ id }: { id: string }) {
       <section className="stu-card">
         <h2>Documents</h2>
         {attached.length ? <ul className="stu-list">{attached.map((entry) => <li key={String(entry.studentDocumentId)}>{String((entry.studentDocument as Item)?.title ?? 'Document')}</li>)}</ul> : <p className="stu-empty">No documents attached yet.</p>}
-        {documents.length ? <fieldset className="stu-field"><legend>Attach your uploaded documents</legend>{documents.map((document) => <label key={String(document.id)}><input type="checkbox" checked={selected.includes(String(document.id))} onChange={() => setSelected((current) => current.includes(String(document.id)) ? current.filter((value) => value !== String(document.id)) : [...current, String(document.id)])} /> {String(document.title)}</label>)}<button type="button" className="stu-btn ghost" disabled={!selected.length || busy} onClick={() => void action(`/applications/${id}/documents`, { documentIds: selected })}>Attach selected</button></fieldset> : <Link className="stu-btn ghost" href="/student/documents">Upload a document</Link>}
+        {documents.length ? <fieldset className="stu-field"><legend>Attach your uploaded documents</legend>{documents.map((document) => <label className="stu-choice" key={String(document.id)}><input type="checkbox" checked={selected.includes(String(document.id))} onChange={() => setSelected((current) => current.includes(String(document.id)) ? current.filter((value) => value !== String(document.id)) : [...current, String(document.id)])} /> {String(document.title)}</label>)}<button type="button" className="stu-btn ghost" disabled={!selected.length || busy} onClick={() => void action(`/applications/${id}/documents`, { documentIds: selected })}>Attach selected</button></fieldset> : <Link className="stu-btn ghost" href="/student/documents">Upload a document</Link>}
       </section>
       {offer ? <section className="stu-card"><h2>Offer letter available</h2><p>{String(offer.originalFileName)}</p><button className="stu-btn ghost" disabled={busy} onClick={() => void downloadOffer()}>Download offer letter</button>{status === 'OFFER_RECEIVED' ? <div className="stu-actions"><button className="stu-btn" disabled={busy} onClick={() => void action(`/applications/${id}/offer-decision`, { decision: 'ACCEPTED' })}>Accept offer</button><button className="stu-btn ghost" disabled={busy} onClick={() => void action(`/applications/${id}/offer-decision`, { decision: 'REJECTED' })}>Reject offer</button></div> : null}</section> : null}
     </>

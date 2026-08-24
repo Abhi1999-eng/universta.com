@@ -328,6 +328,41 @@
   gap: 0 16px;
 }
 
+/* -- inline choice --------------------------------------------------------
+
+   A checkbox that sits in a row of buttons (Compare, on saved items). The bare
+   control renders 13px tall and top-aligned against 46px buttons; this gives it
+   the same height as its neighbours and a target a thumb can hit.
+   -------------------------------------------------------------------------- */
+
+.stu-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 2px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--stu-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.stu-choice input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--stu-blue);
+  cursor: pointer;
+}
+
+.stu-choice:focus-within {
+  outline: 3px solid rgba(22, 87, 207, 0.35);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 /* -- messages ------------------------------------------------------------- */
 
 .stu-alert {
@@ -405,6 +440,89 @@
   flex-wrap: wrap;
 }
 
+/* -- progress timeline ----------------------------------------------------
+
+   Application and scholarship progress. Each entry is a status plus the note
+   that came with it, so it follows the same label-over-meta shape the record
+   rows and the document checklist already use: the status reads first, the
+   message sits under it in muted text. Without these rules the <strong> and
+   <span> are both inline and render as one run-on string
+   ("SubmittedApplication submitted").
+   -------------------------------------------------------------------------- */
+
+.stu-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stu-timeline li {
+  position: relative;
+  padding: 0 0 18px 24px;
+  border-left: 2px solid var(--stu-line);
+}
+
+.stu-timeline li:last-child {
+  padding-bottom: 0;
+  border-left-color: transparent;
+}
+
+/* The marker sits on the rail rather than beside it, so the line reads as one
+   continuous track. */
+.stu-timeline li::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--stu-blue);
+  box-shadow: 0 0 0 3px var(--stu-blue-50);
+}
+
+/* The API returns the timeline oldest-first, so the last entry is where the
+   application actually stands today. That is the one a student is looking for. */
+.stu-timeline li:last-child::before {
+  background: var(--stu-blue-dark);
+  box-shadow: 0 0 0 4px var(--stu-blue-50);
+}
+
+.stu-timeline strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--stu-ink);
+}
+
+.stu-timeline span {
+  display: block;
+  font-size: 14px;
+  color: var(--stu-muted);
+}
+
+/* -- plain record list ----------------------------------------------------
+
+   Attached documents, and anything else that is a bare list of names inside a
+   card. Matches the divider rhythm of .stu-row without its two-column layout.
+   -------------------------------------------------------------------------- */
+
+.stu-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.stu-list li {
+  padding: 11px 0;
+  border-top: 1px solid var(--stu-line);
+  font-size: 15px;
+}
+
+.stu-list li:first-child {
+  border-top: 0;
+}
+
 /* -- steps ---------------------------------------------------------------- */
 
 .stu-steps {
@@ -467,6 +585,27 @@
   padding: 6px 0 2px;
 }
 
+/* The way out of an empty state is a link inside the sentence ("Explore now").
+   Inheriting .stu-empty's muted colour left it with no colour difference, no
+   weight difference and no underline, so nothing marked it as a link at all.
+   Matches the link treatment the breadcrumbs and auth footer already use, and
+   keeps the underline because this one sits mid-sentence. */
+.stu-empty a {
+  color: var(--stu-blue);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.stu-empty a:hover {
+  color: var(--stu-blue-dark);
+}
+
+.stu-empty a:focus-visible {
+  outline: 3px solid rgba(22, 87, 207, 0.35);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* -- auth screens --------------------------------------------------------- */
 
 .stu-auth {
@@ -520,6 +659,7 @@
   /* Thumb-reachable, and only the destinations that exist today. */
   .stu-tabbar {
     display: flex;
+    align-items: stretch;
     position: fixed;
     left: 0;
     right: 0;
@@ -532,13 +672,20 @@
 
   .stu-tabbar a {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    /* Every tab is the same height even if one label is longer than the rest,
+       so the bar keeps a single baseline and a predictable overall height. */
+    min-height: 54px;
     gap: 2px;
-    padding: 8px 4px;
+    padding: 6px 2px;
     border-radius: 10px;
     font-size: 11.5px;
+    line-height: 1.25;
+    text-align: center;
     font-weight: 600;
     color: var(--stu-muted);
     text-decoration: none;

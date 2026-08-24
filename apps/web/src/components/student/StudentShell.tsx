@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useRequireStudent } from './StudentSession';
 
 /**
@@ -10,6 +11,10 @@ import { useRequireStudent } from './StudentSession';
  * Only the destinations that exist today appear. A nav full of greyed-out
  * promises tells a student the product is unfinished; the rest of Phase 2 can
  * add its own entries when it ships.
+ *
+ * The reverse also has to hold: a page that ships needs a way in. Deadlines
+ * shipped with no link to it from anywhere in the product, so it is listed
+ * here, and the More menu carries the entries this list does not.
  */
 
 const NAV = [
@@ -18,6 +23,7 @@ const NAV = [
   { href: '/student/saved#universities', label: 'My universities', icon: '🏛️' },
   { href: '/student/saved#courses', label: 'My courses', icon: '📚' },
   { href: '/student/scholarships', label: 'My scholarships', icon: '🏅' },
+  { href: '/student/deadlines', label: 'Upcoming deadlines', icon: '📅' },
   { href: '/student/documents', label: 'Documents', icon: '📄' },
   { href: '/student/referrals', label: 'Refer & earn', icon: '🎁' },
   { href: '/student/notifications', label: 'Notifications', icon: '🔔' },
@@ -25,32 +31,83 @@ const NAV = [
   { href: '/student/profile', label: 'Profile', icon: '👤' },
 ] as const;
 
+/* The tab bar gets its own labels, not the sidebar's. Five tabs share a 390px
+ * phone, so each slot is about 76px: "My applications" wrapped onto a second
+ * line there and made that one tab 18px taller than its neighbours. The Saved
+ * entry was already shortened this way; Applications simply had not been. */
 const MOBILE_NAV = [
-  NAV[0],
-  NAV[1],
+  { href: '/student', label: 'Home', icon: '🏠' },
+  { href: '/student/applications', label: 'Applications', icon: '🎓' },
   { href: '/student/saved', label: 'Saved', icon: '🔖' },
   { href: '/student/messages', label: 'Messages', icon: '💬' },
 ] as const;
 
-function breadcrumbFor(pathname: string) {
+/** The route part of a nav href, without any `#section` the sidebar links to.
+ *
+ * Two sidebar entries deep-link into `/student/saved`, so comparing a pathname
+ * against the raw href never matched and that page was left with no highlighted
+ * nav item and no breadcrumb. */
+function routeOf(href: string) {
+  return href.split('#')[0];
+}
+
+/** Every destination a signed-in student can land on, and what to call it.
+ *
+ * The sidebar cannot be the only source. Recommendations, Settings, Messages,
+ * More and Onboarding are all reachable without appearing in it, and deriving
+ * the breadcrumb from the sidebar alone left each of them with no breadcrumb
+ * at all. */
+const ROUTE_LABELS: Array<[string, string]> = [
+  ['/student/applications', 'My applications'],
+  ['/student/saved', 'Saved items'],
+  ['/student/scholarships', 'My scholarships'],
+  ['/student/documents', 'Documents'],
+  ['/student/deadlines', 'Upcoming deadlines'],
+  ['/student/recommendations', 'Recommended for you'],
+  ['/student/messages', 'Messages'],
+  ['/student/notifications', 'Notifications'],
+  ['/student/support', 'Support'],
+  ['/student/referrals', 'Refer & earn'],
+  ['/student/profile', 'Profile'],
+  ['/student/settings', 'Your account'],
+  ['/student/more', 'More'],
+  ['/student/onboarding', 'Your study profile'],
+];
+
+/** Breadcrumb trail below the header, or null on the dashboard root itself.
+ *
+ * Each entry carries the href of the page it names, so a detail page's parent
+ * is a real link rather than inert text. */
+function breadcrumbFor(pathname: string): Array<{ label: string; href?: string }> | null {
   if (pathname === '/student') return null;
   if (pathname.startsWith('/student/applications/')) {
-    return ['Applications', 'Application'];
+    return [
+      { label: 'My applications', href: '/student/applications' },
+      { label: 'Application' },
+    ];
   }
   if (pathname.startsWith('/student/scholarships/')) {
-    return ['Scholarships', 'Application'];
+    return [
+      { label: 'My scholarships', href: '/student/scholarships' },
+      { label: 'Application' },
+    ];
   }
-  const item = NAV.find((entry) =>
-    entry.href === '/student'
-      ? pathname === entry.href
-      : pathname.startsWith(entry.href),
-  );
-  return item ? [item.label] : null;
+  const match = ROUTE_LABELS.find(([href]) => pathname.startsWith(href));
+  return match ? [{ label: match[1] }] : null;
 }
 
 export function StudentShell({ children }: { children: React.ReactNode }) {
   const { status, student, signOut } = useRequireStudent();
   const pathname = usePathname();
+  /* The hash never reaches the server and does not re-render on its own, so it
+   * is mirrored into state and kept in step with in-page section links. */
+  const [hash, setHash] = useState('');
+  useEffect(() => {
+    const read = () => setHash(window.location.hash);
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }, [pathname]);
 
   if (status !== 'authenticated' || !student) {
     return (
@@ -64,8 +121,21 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const current = (href: string) =>
-    href === '/student' ? pathname === href : pathname.startsWith(href);
+  /* Exactly one entry may be the current page. Two sidebar entries deep-link
+   * into different sections of /student/saved, so when several share a route
+   * the hash decides between them — and with no hash the page opens on the
+   * first of them. */
+  const current = (href: string) => {
+    const route = routeOf(href);
+    const onRoute =
+      route === '/student' ? pathname === route : pathname.startsWith(route);
+    if (!onRoute) return false;
+    const siblings = NAV.filter((entry) => routeOf(entry.href) === route);
+    if (siblings.length < 2) return true;
+    const active =
+      siblings.find((entry) => entry.href === `${route}${hash}`) ?? siblings[0];
+    return active.href === href;
+  };
   const breadcrumb = breadcrumbFor(pathname);
 
   return (
@@ -108,14 +178,23 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           {breadcrumb ? (
             <nav className="stu-breadcrumbs" aria-label="Breadcrumb">
               <Link href="/student">Dashboard</Link>
-              {breadcrumb.map((label, index) => (
+              {/* One <span> per crumb: the separator is drawn by
+                * `.stu-breadcrumbs span::before`, so nesting a second span
+                * inside would print it twice. */}
+              {breadcrumb.map((entry, index) => (
                 <span
-                  key={`${label}-${index}`}
+                  key={`${entry.label}-${index}`}
                   aria-current={
-                    index === breadcrumb.length - 1 ? 'page' : undefined
+                    !entry.href && index === breadcrumb.length - 1
+                      ? 'page'
+                      : undefined
                   }
                 >
-                  {label}
+                  {entry.href ? (
+                    <Link href={entry.href}>{entry.label}</Link>
+                  ) : (
+                    entry.label
+                  )}
                 </span>
               ))}
             </nav>
