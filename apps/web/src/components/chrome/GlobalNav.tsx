@@ -272,7 +272,7 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
         </div>
       ) : null}
       <header
-        className={`usta-header${header.sticky === false ? '' : ' is-sticky'}${variantClass}`}
+        className={`usta-header${header.sticky === false ? '' : ' is-sticky'}${variantClass}${studentStatus === 'authenticated' ? ' has-student-account' : ''}`}
       >
         <div className="usta-header-inner">
           <Link href="/" className="usta-logo">

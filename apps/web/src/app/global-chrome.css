@@ -49,7 +49,12 @@
   top: 0;
 }
 .usta-header-inner {
-  max-width: 1320px;
+  /* The Admin-managed primary menu has nine top-level groups. Its former
+     1320px outer cap left only 1272px of usable content space, so the final
+     Contact trigger and CTA overlapped even on a 1440px desktop. Match the
+     product's wider desktop canvas; the existing drawer takes over before
+     this row becomes constrained on smaller laptops. */
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 24px;
   height: 72px;
@@ -205,8 +210,10 @@
 .usta-student-menu-trigger {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  /* This is the only account-menu trigger on mobile. Keep a comfortable
+     direct-touch target without changing the surrounding header hierarchy. */
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 1px solid #dbe4f0;
   border-radius: 50%;
@@ -425,7 +432,7 @@ a.usta-drawer-head.is-active {
   color: #fff;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1360px) {
   .usta-nav {
     display: none;
   }
@@ -435,6 +442,19 @@ a.usta-drawer-head.is-active {
   .usta-footer-inner {
     grid-template-columns: 1fr;
     gap: 34px;
+  }
+}
+
+/* A signed-in student adds the account entry and menu trigger to the same
+   public header. Keep that useful state visible rather than letting it collide
+   with the final top-level group; the existing drawer remains the complete,
+   keyboard-accessible navigation at this intermediate desktop width. */
+@media (max-width: 1600px) {
+  .usta-header.has-student-account .usta-nav {
+    display: none;
+  }
+  .usta-header.has-student-account .usta-burger {
+    display: block;
   }
 }
 @media (max-width: 640px) {

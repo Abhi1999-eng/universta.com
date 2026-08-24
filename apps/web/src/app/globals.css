@@ -229,7 +229,7 @@ nav { display: flex; align-items: center; gap: 28px; color: var(--body); font-si
 .comparison-options, .comparison-selected { display: flex; flex-wrap: wrap; gap: 8px; }
 .comparison-options button, .comparison-selected span { border: 1px solid var(--line); border-radius: 999px; background: white; padding: 8px 12px; }
 .comparison-selected span { background: var(--soft); }
-.comparison-selected button { border: 0; background: transparent; margin-left: 8px; cursor: pointer; }
+.comparison-selected button { border: 0; background: transparent; width: 32px; height: 32px; margin-left: 4px; padding: 0; border-radius: 50%; vertical-align: middle; cursor: pointer; }
 .phase1-compare-desktop { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: white; }
 .phase1-compare-desktop table { width: 100%; min-width: 720px; border-collapse: collapse; }
 .phase1-compare-desktop th, .phase1-compare-desktop td { padding: 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }

@@ -102,6 +102,16 @@ test.describe('student portal', () => {
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
     ).toBeVisible();
+    // A signed-in account entry adds controls to the public header. At the
+    // standard desktop viewport it must use the same drawer breakpoint rather
+    // than colliding with the final primary-navigation group.
+    await expect(page.locator('header nav.usta-nav')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
+    const accountMenuBox = await page
+      .getByRole('button', { name: 'Open student account menu' })
+      .boundingBox();
+    expect(accountMenuBox?.width).toBeGreaterThanOrEqual(40);
+    expect(accountMenuBox?.height).toBeGreaterThanOrEqual(40);
     await page
       .getByRole('button', { name: 'Open student account menu' })
       .click();

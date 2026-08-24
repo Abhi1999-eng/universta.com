@@ -11,7 +11,12 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "visual:qa": "npx --no-install tsx scripts/visual-qa.ts",
+    "visual:qa:phase1": "npm run visual:qa -- phase1",
+    "visual:qa:phase2": "npm run visual:qa -- phase2",
+    "visual:qa:student": "npm run visual:qa -- student",
+    "visual:qa:all": "npm run visual:qa -- all"
   },
   "dependencies": {
     "next": "16.2.11",
