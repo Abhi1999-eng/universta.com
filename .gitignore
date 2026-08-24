@@ -46,3 +46,7 @@ pnpm-debug.log*
 # Playwright run output (screenshots, traces, error contexts). Never committed.
 test-results/
 playwright-report/
+
+# Deterministic local visual-QA evidence. The runner is versioned, but its
+# screenshots and JSON reports are intentionally local, run-specific output.
+visual-qa/

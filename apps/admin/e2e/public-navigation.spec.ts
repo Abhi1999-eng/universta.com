@@ -80,6 +80,10 @@ test.describe('public navigation discoverability', () => {
     // "Study Destinations" is a plain top-level link, not a dropdown --
     // "Resources" is the header's only real dropdown (see
     // register-website-navigation.ts), so it is what this exercises.
+    // The shared header deliberately switches to the accessible drawer below
+    // its desktop capacity breakpoint. Exercise the hover-only desktop menu
+    // at a viewport where it is actually rendered.
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(webBaseUrl);
     // The dropdown opens on hover, which is how a mouse user actually reaches
     // it. Its trigger button also has its own onClick toggle for touch and
@@ -91,6 +95,41 @@ test.describe('public navigation discoverability', () => {
     await page.locator('header').getByRole('link', { name: 'FAQ', exact: true }).click();
     await expect(page).toHaveURL(`${webBaseUrl}/faq`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
+  test('keeps desktop header controls distinct and collapses before they can overlap', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(webBaseUrl);
+    await expect(page.locator('header nav.usta-nav')).toBeVisible();
+
+    const overlaps = await page.evaluate(() => {
+      const visible = [...document.querySelectorAll<HTMLElement>('header a, header button')]
+        .filter((element) => {
+          const style = getComputedStyle(element);
+          const box = element.getBoundingClientRect();
+          return style.display !== 'none' && box.width > 1 && box.height > 1;
+        });
+      const pairs: string[] = [];
+      for (let first = 0; first < visible.length; first += 1) {
+        const a = visible[first].getBoundingClientRect();
+        for (let second = first + 1; second < visible.length; second += 1) {
+          const b = visible[second].getBoundingClientRect();
+          if (
+            Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 &&
+            Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2
+          ) {
+            pairs.push(`${visible[first].textContent?.trim()} ↔ ${visible[second].textContent?.trim()}`);
+          }
+        }
+      }
+      return pairs;
+    });
+    expect(overlaps, 'desktop header controls must not overlap').toEqual([]);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(webBaseUrl);
+    await expect(page.locator('header nav.usta-nav')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
   });
 
   test('exposes every top-level group in the mobile drawer', async ({ page }) => {

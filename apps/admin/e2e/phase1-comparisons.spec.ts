@@ -95,6 +95,13 @@ test.describe('published Phase 1 comparisons', () => {
 
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(page.locator('.phase1-compare-mobile article')).toHaveCount(3);
+      const removeButtonBox = await page
+        .getByLabel('Selected comparison items')
+        .getByRole('button', { name: /^Remove / })
+        .first()
+        .boundingBox();
+      expect(removeButtonBox?.width).toBeGreaterThanOrEqual(32);
+      expect(removeButtonBox?.height).toBeGreaterThanOrEqual(32);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
