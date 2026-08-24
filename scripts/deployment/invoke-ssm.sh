@@ -67,8 +67,29 @@ bash /opt/universta/current/scripts/deployment/rollback.sh '${sha}'"
     remote_script="set -euo pipefail
 bash /opt/universta/current/scripts/deployment/status.sh"
     ;;
+  qa-seed)
+    qa_admin_password_b64="$(printf '%s' "${QA_FORGE_E2E_ADMIN_PASSWORD:-}" | base64 | tr -d '\n')"
+    qa_password_b64="$(printf '%s' "${QA_FORGE_E2E_STUDENT_PASSWORD:-}" | base64 | tr -d '\n')"
+    [[ -n "${qa_admin_password_b64}" && -n "${qa_password_b64}" ]] || {
+      printf 'QA seed requires QA_FORGE_E2E_ADMIN_PASSWORD and QA_FORGE_E2E_STUDENT_PASSWORD.\n' >&2
+      exit 1
+    }
+    remote_script="set -euo pipefail
+QA_ADMIN_PASSWORD=\$(printf '%s' '${qa_admin_password_b64}' | base64 --decode)
+QA_STUDENT_PASSWORD=\$(printf '%s' '${qa_password_b64}' | base64 --decode)
+export QA_ADMIN_PASSWORD QA_STUDENT_PASSWORD
+bash /opt/universta/current/scripts/deployment/qa-dataset.sh seed"
+    ;;
+  qa-report)
+    remote_script="set -euo pipefail
+bash /opt/universta/current/scripts/deployment/qa-dataset.sh report"
+    ;;
+  qa-cleanup)
+    remote_script="set -euo pipefail
+bash /opt/universta/current/scripts/deployment/qa-dataset.sh cleanup"
+    ;;
   *)
-    printf 'Action must be deploy, rollback, or status.\n' >&2
+    printf 'Action must be deploy, rollback, status, qa-seed, qa-report, or qa-cleanup.\n' >&2
     exit 1
     ;;
 esac

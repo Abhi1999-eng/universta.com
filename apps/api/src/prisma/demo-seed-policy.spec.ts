@@ -58,4 +58,28 @@ describe('demo catalog seed policy', () => {
       }),
     ).toThrow('forbidden in staging and production');
   });
+
+  it('permits only the explicit marker-scoped AWS demo QA operation', () => {
+    expect(() =>
+      assertDemoCatalogSeedAllowed({
+        NODE_ENV: 'production',
+        APP_ENV: 'production',
+        DEPLOYMENT_ENV: 'demo',
+        SEED_DEMO_CATALOG: 'true',
+        QA_E2E_DATASET: 'true',
+        QA_DATASET_MARKER: 'FORGE_E2E_2026',
+      }),
+    ).not.toThrow();
+  });
+
+  it('does not permit a production demo host without every QA guard', () => {
+    expect(() =>
+      assertDemoCatalogSeedAllowed({
+        NODE_ENV: 'production',
+        DEPLOYMENT_ENV: 'demo',
+        SEED_DEMO_CATALOG: 'true',
+        QA_E2E_DATASET: 'true',
+      }),
+    ).toThrow('forbidden in staging and production');
+  });
 });

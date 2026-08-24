@@ -21,7 +21,8 @@
     "db:migrate:status": "npm --workspace apps/api exec -- prisma migrate status",
     "db:studio": "npm --workspace apps/api exec -- prisma studio",
     "db:seed": "npm --workspace apps/api exec -- prisma db seed",
-    "seed:phase1-demo": "npm --workspace apps/api run db:seed:demo"
+    "seed:phase1-demo": "npm --workspace apps/api run db:seed:demo",
+    "qa:dataset": "npm --workspace apps/api run db:qa-dataset --"
   },
   "engines": {
     "node": ">=24"

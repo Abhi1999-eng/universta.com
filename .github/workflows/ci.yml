@@ -16,6 +16,9 @@ on:
           - deploy
           - rollback
           - status
+          - qa-seed
+          - qa-report
+          - qa-cleanup
       sha:
         description: Exact 40-character commit SHA (required for deploy, optional for rollback)
         required: false
@@ -295,6 +298,10 @@ jobs:
       AWS_ROLE_ARN: arn:aws:iam::771413672221:role/universta-demo-github-deploy-role
       AWS_ARTIFACT_BUCKET: universta-demo-artifacts-771413672221-us-east-1
       AWS_INSTANCE_ID: i-0288a3283c26638b3
+      # Deliberately present only for the manual QA seed operation. It is never
+      # available to push/PR CI or automatic deployment.
+      QA_FORGE_E2E_ADMIN_PASSWORD: ${{ inputs.action == 'qa-seed' && secrets.QA_FORGE_E2E_ADMIN_PASSWORD || '' }}
+      QA_FORGE_E2E_STUDENT_PASSWORD: ${{ inputs.action == 'qa-seed' && secrets.QA_FORGE_E2E_STUDENT_PASSWORD || '' }}
 
     steps:
       - name: Checkout deployment scripts
