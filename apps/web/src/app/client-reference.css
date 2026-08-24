@@ -433,6 +433,7 @@
   padding: 16px 0 12px;
   z-index: 2;
 }
+.cref .filters h2,
 .cref .filters h3 {
   font-size: 16px;
 }
@@ -591,6 +592,7 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 22px;
 }
+.cref .bcol h3,
 .cref .bcol h4 {
   font-size: 15px;
   margin-bottom: 14px;
@@ -598,6 +600,7 @@
   align-items: center;
   gap: 8px;
 }
+.cref .bcol h3 .d,
 .cref .bcol h4 .d {
   width: 26px;
   height: 26px;
@@ -1074,6 +1077,7 @@
   padding: 20px 22px;
   margin: 24px 0;
 }
+.cref .takeaways h2,
 .cref .takeaways h4 {
   font-size: 13px;
   text-transform: uppercase;
@@ -2522,6 +2526,7 @@
   padding: 26px;
   box-shadow: var(--shadow);
 }
+.cref-dest .quickfacts h2,
 .cref-dest .quickfacts h3 {
   font-size: 15px;
   font-weight: 700;

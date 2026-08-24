@@ -270,7 +270,7 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
           data-testid="scholarship-filters"
         >
           <div className="fhead">
-            <h3>Filters</h3>
+            <h2>Filters</h2>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               {activeCount ? (
                 <Link
@@ -498,9 +498,9 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
             <div className="browse">
               {props.countries.length ? (
                 <div className="bcol">
-                  <h4>
+                  <h3>
                     <span className="d">🌍</span>By destination
-                  </h4>
+                  </h3>
                   {props.countries.slice(0, 6).map((country) => (
                     <Link key={country.value} href={`/scholarships?country=${country.value}`}>
                       Scholarships in {country.label}
@@ -510,9 +510,9 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
               ) : null}
               {props.levels.length ? (
                 <div className="bcol">
-                  <h4>
+                  <h3>
                     <span className="d">🎓</span>By degree
-                  </h4>
+                  </h3>
                   {props.levels.slice(0, 6).map((level) => (
                     <Link key={level.value} href={`/scholarships?degreeLevel=${level.value}`}>
                       {level.label} scholarships
@@ -522,9 +522,9 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
               ) : null}
               {props.subjects.length ? (
                 <div className="bcol">
-                  <h4>
+                  <h3>
                     <span className="d">📚</span>By subject
-                  </h4>
+                  </h3>
                   {props.subjects.slice(0, 6).map((subject) => (
                     <Link key={subject.value} href={`/scholarships?subject=${subject.value}`}>
                       {subject.label} scholarships
@@ -534,9 +534,9 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
               ) : null}
               {props.benefitTypes.length ? (
                 <div className="bcol">
-                  <h4>
+                  <h3>
                     <span className="d">💰</span>By funding type
-                  </h4>
+                  </h3>
                   {props.benefitTypes.slice(0, 6).map((type) => (
                     <Link key={type.value} href={`/scholarships?type=${type.value}`}>
                       {type.label}

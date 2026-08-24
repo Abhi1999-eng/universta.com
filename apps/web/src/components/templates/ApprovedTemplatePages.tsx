@@ -940,7 +940,7 @@ export function ApprovedCountryDetail({ page, cities = [] }: { page: CountryPage
             </div>
           </div>
           <aside className="quickfacts">
-            <h3>{country.name} at a glance</h3>
+            <h2>{country.name} at a glance</h2>
             <p className="qf-note">Currently published profile data</p>
             <div className="qf-row"><span><Icon name="money" />Tuition</span><b>{profileMoney(page, 'tuition')}</b></div>
             <div className="qf-row"><span><Icon name="home" />Living cost</span><b>{profileMoney(page, 'living')}</b></div>
