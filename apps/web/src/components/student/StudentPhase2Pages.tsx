@@ -341,7 +341,7 @@ function SavedItems({
                     </div>
                     <div className="stu-actions">
                       {compareType ? (
-                        <label>
+                        <label className="stu-choice">
                           <input
                             type="checkbox"
                             checked={selected.includes(slug)}
@@ -412,6 +412,10 @@ function ApplicationList({ data }: { data: Item[] | null }) {
   if (!data) return <Loading />;
   return (
     <section className="stu-card">
+      {/* The item titles are h3, matching every other record row. Without a
+        * group heading the page would jump h1 -> h3; the page title already
+        * says "My applications", so the group name is for screen readers. */}
+      <h2 className="sr-only">Your applications</h2>
       {data.length ? (
         data.map((row) => (
           <div className="stu-row" key={String(row.id)}>
@@ -451,6 +455,7 @@ function ScholarshipList({ data }: { data: Item[] | null }) {
   if (!data) return <Loading />;
   return (
     <section className="stu-card">
+      <h2 className="sr-only">Your scholarship applications</h2>
       {data.length ? (
         data.map((row) => (
           <div className="stu-row" key={String(row.id)}>
@@ -532,6 +537,7 @@ function NotificationList({
   if (!data) return <Loading />;
   return (
     <section className="stu-card">
+      <h2 className="sr-only">Your notifications</h2>
       {data.some((row) => !row.readAt) ? (
         <button
           className="stu-btn ghost"
@@ -702,6 +708,7 @@ function DeadlineList({ data }: { data: Item | null }) {
   ].filter((row) => row.deadline);
   return (
     <section className="stu-card">
+      <h2 className="sr-only">Your upcoming deadlines</h2>
       {rows.length ? (
         rows.map((row) => (
           <div className="stu-row" key={`${row.label}-${row.deadline}`}>

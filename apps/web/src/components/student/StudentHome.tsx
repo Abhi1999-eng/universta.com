@@ -27,6 +27,11 @@ type Dashboard = {
   nextAction: { label: string; href: string };
 };
 
+/** "1 application", not "1 applications". These counters are frequently 1. */
+function count(value: number, noun: string) {
+  return `${value} ${noun}${value === 1 ? '' : 's'}`;
+}
+
 /**
  * Home.
  *
@@ -154,13 +159,13 @@ export function StudentHome() {
         {dashboard ? (
           <div className="stu-actions">
             <Link className="stu-btn ghost" href="/student/applications">
-              {dashboard.applications} applications
+              {count(dashboard.applications, 'application')}
             </Link>
             <Link className="stu-btn ghost" href="/student/scholarships">
-              {dashboard.scholarshipApplications} scholarships
+              {count(dashboard.scholarshipApplications, 'scholarship')}
             </Link>
             <Link className="stu-btn ghost" href="/student/notifications">
-              {dashboard.unreadNotifications} unread updates
+              {count(dashboard.unreadNotifications, 'unread update')}
             </Link>
           </div>
         ) : (
