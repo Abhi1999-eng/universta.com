@@ -34,6 +34,11 @@ function databaseConfig() {
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ''),
+    // Explicit local-only escape hatch for disposable QA databases using
+    // MySQL caching SHA-2 authentication. Production configuration remains
+    // unchanged unless an operator opts in.
+    allowPublicKeyRetrieval:
+      process.env.QA_ALLOW_PUBLIC_KEY_RETRIEVAL === 'true',
   };
 }
 

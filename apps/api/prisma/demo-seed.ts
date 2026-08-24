@@ -39,6 +39,10 @@ function databaseConfig() {
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ''),
+    // Used only by an explicitly opted-in local QA runner when MySQL requires
+    // public-key retrieval for a disposable test account.
+    allowPublicKeyRetrieval:
+      process.env.QA_ALLOW_PUBLIC_KEY_RETRIEVAL === 'true',
   };
 }
 
@@ -2549,6 +2553,15 @@ async function main() {
         await prisma.testimonial.update({ where: { id: existing.id }, data });
       else await prisma.testimonial.create({ data });
     }
+  }
+
+  // The marker-scoped AWS DEMO QA operation uses this established catalog
+  // fixture but must never overwrite the Website Builder's global Page,
+  // navigation, settings, flags, or metric records. Those are Admin-owned
+  // foundation content, not QA catalog data.
+  if (process.env.QA_E2E_DATASET === 'true') {
+    console.log(`Seeded demo catalog data for ${admin.email}.`);
+    return;
   }
 
   const editorialPages = [

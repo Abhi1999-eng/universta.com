@@ -70,6 +70,23 @@ Select action `status`. The SSM output reports:
 - API, Web, Admin, Nginx, and MySQL systemd states;
 - API/database health.
 
+### Seed or inspect the marker-scoped QA dataset
+
+The `qa-seed`, `qa-report`, and `qa-cleanup` actions are manual **demo-only**
+operations. They never run as part of CI or automatic deployment.
+
+- `qa-seed` requires the repository secrets
+  `QA_FORGE_E2E_ADMIN_PASSWORD` and `QA_FORGE_E2E_STUDENT_PASSWORD`. It creates
+  only the marker-owned fictional catalog and QA accounts used for acceptance.
+- `qa-report` returns non-secret record counts and manifest readiness.
+- `qa-cleanup` is manifest-gated and refuses cleanup when non-QA records depend
+  on the dataset. Do not run cleanup while a handoff or acceptance session is
+  still using the dataset.
+
+Select the relevant action in **Run workflow**. Do not invoke the normal demo
+catalog command against the demo host; the QA operation carries the required
+explicit guards and preserves Admin-owned global content.
+
 ## Direct operator diagnostics
 
 All commands use SSM; SSH is intentionally unavailable.
