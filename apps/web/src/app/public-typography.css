@@ -1,0 +1,288 @@
+/*
+ * Public typography contract
+ *
+ * The public product intentionally has several editorial templates, but the
+ * reader should encounter the same type roles in each. Keep visual treatments
+ * (colour, layout, surfaces and spacing) in their owning stylesheets; this
+ * file owns only the semantic typographic rhythm.
+ */
+
+:root {
+  /* Each shorthand contains weight, size, leading and the canonical family. */
+  --type-display: 800 clamp(42px, 5vw, 64px) / 1.04 var(--font-inter), sans-serif;
+  --type-h1: 800 clamp(32px, 4vw, 52px) / 1.08 var(--font-inter), sans-serif;
+  --type-h2: 800 clamp(28px, 3vw, 38px) / 1.12 var(--font-inter), sans-serif;
+  --type-h3: 700 20px / 1.25 var(--font-inter), sans-serif;
+  --type-h4: 700 16px / 1.35 var(--font-inter), sans-serif;
+  --type-body-lg: 400 17px / 1.65 var(--font-inter), sans-serif;
+  --type-body: 400 16px / 1.6 var(--font-inter), sans-serif;
+  --type-body-sm: 400 14px / 1.55 var(--font-inter), sans-serif;
+  --type-label: 700 12px / 1.3 var(--font-inter), sans-serif;
+  --type-nav: 500 14.5px / 1.35 var(--font-inter), sans-serif;
+  --type-button: 600 14px / 1.3 var(--font-inter), sans-serif;
+  --type-stat: 800 26px / 1.1 var(--font-inter), sans-serif;
+  --type-caption: 600 12px / 1.4 var(--font-inter), sans-serif;
+  --type-dashboard-title: 700 28px / 1.2 var(--font-inter), sans-serif;
+
+  --type-display-tracking: -0.04em;
+  --type-heading-tracking: -0.03em;
+  --type-label-tracking: 0.06em;
+  --type-caption-tracking: 0.04em;
+}
+
+/* Reusable semantic hooks for future public content. */
+.type-display { font: var(--type-display); letter-spacing: var(--type-display-tracking); }
+.type-h1 { font: var(--type-h1); letter-spacing: var(--type-heading-tracking); }
+.type-h2 { font: var(--type-h2); letter-spacing: var(--type-heading-tracking); }
+.type-h3 { font: var(--type-h3); letter-spacing: -0.015em; }
+.type-h4 { font: var(--type-h4); }
+.type-body-lg { font: var(--type-body-lg); }
+.type-body { font: var(--type-body); }
+.type-body-sm { font: var(--type-body-sm); }
+.type-label { font: var(--type-label); letter-spacing: var(--type-label-tracking); }
+.type-nav { font: var(--type-nav); }
+.type-button { font: var(--type-button); }
+.type-stat { font: var(--type-stat); letter-spacing: -0.03em; }
+.type-caption { font: var(--type-caption); letter-spacing: var(--type-caption-tracking); }
+.type-dashboard-title { font: var(--type-dashboard-title); letter-spacing: -0.02em; }
+
+body {
+  font: var(--type-body);
+}
+
+/* Native controls otherwise retain browser-specific font metrics, notably
+ * select and textarea. Inherit the public family first, then role-specific
+ * form rules below provide the readable field metric. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* The shared public chrome is present on every public, auth and student page. */
+.usta-announce,
+.usta-nav-link,
+.usta-dropdown a,
+.usta-drawer a,
+.usta-ghost,
+.usta-student-dashboard {
+  font: var(--type-nav);
+}
+
+.usta-cta,
+.usta-student-menu button {
+  font: var(--type-button);
+}
+
+/* Generic page heading structure. Card-title rules below intentionally come
+ * later so an h2 used as a listing card title is not promoted to a section. */
+:is(main[class*='page'], main .cref) h1 {
+  font: var(--type-h1);
+  letter-spacing: var(--type-heading-tracking);
+}
+
+:is(main[class*='page'], main .cref) h2 {
+  font: var(--type-h2);
+  letter-spacing: var(--type-heading-tracking);
+}
+
+:is(main[class*='page'], main .cref) h3 {
+  font: var(--type-h3);
+  letter-spacing: -0.015em;
+}
+
+:is(main[class*='page'], main .cref) h4 {
+  font: var(--type-h4);
+}
+
+/* Hero/display headings retain their stronger existing hierarchy. */
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .hero,
+  .listing-hero,
+  .detail-hero,
+  .reference-detail-hero,
+  .reference-static-hero,
+  .visual-counselling-page .visual-hero,
+  .visual-countries-page .hero,
+  .visual-country-detail-page .hero,
+  .visual-courses-page .hero,
+  .visual-subject-page .hero,
+  .visual-subjects-page .hero
+) h1 {
+  font: var(--type-display);
+  letter-spacing: var(--type-display-tracking);
+}
+
+/* Shared editorial and listing support copy. */
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .hero-sub,
+  .hero-copy,
+  .lede,
+  .listing-hero p:not(.eyebrow),
+  .detail-hero p,
+  .reference-detail-hero p,
+  .reference-static-hero p,
+  .reference-resource-copy,
+  .rich-text
+) {
+  font: var(--type-body-lg);
+}
+
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .card p,
+  .catalog-card p,
+  .country-card p,
+  .consultant-card p,
+  .reference-record-card p,
+  .reference-offering-list p,
+  .reference-requirements p
+) {
+  font: var(--type-body-sm);
+}
+
+/* A card title has the same role wherever a public listing renders it. */
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .card h2,
+  .card h3,
+  .catalog-card h2,
+  .catalog-card h3,
+  .country-card h3,
+  .consultant-card h3,
+  .reference-record-card h2,
+  .reference-record-card h3,
+  .reference-offering-list h3,
+  .reference-feature-card h3
+) {
+  font: var(--type-h3);
+  letter-spacing: -0.015em;
+}
+
+/* The student portal has a deliberately compact dashboard hierarchy. It uses
+ * the same scale and rhythm, without promoting routine dashboard headings to
+ * marketing-page display sizes. */
+main .stu h1 {
+  font: var(--type-dashboard-title);
+  letter-spacing: -0.02em;
+}
+
+main .stu h2 {
+  font: var(--type-h3);
+  letter-spacing: -0.015em;
+}
+
+main .stu h3 {
+  font: var(--type-h4);
+}
+
+main .stu-nav a,
+main .stu-tabbar a {
+  font: var(--type-nav);
+}
+
+/* Labels, filters and metadata share a deliberately compact, readable role. */
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .filter-field,
+  .filter-field label,
+  .course-filter-grid label,
+  .catalog-toolbar label,
+  .course-search label,
+  .phase1-contact-form label,
+  .reference-contact-form-wrap .phase1-contact-form label,
+  .stu-field label
+) {
+  font: var(--type-label);
+  letter-spacing: var(--type-label-tracking);
+}
+
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .result-count,
+  .res-count,
+  .card-badges,
+  .card-facts,
+  .catalog-card-facts,
+  .reference-crumbs,
+  .reference-static-crumbs,
+  .stu-breadcrumbs,
+  .stu-account span,
+  .source-note,
+  .editorial-caption,
+  .reference-pagination
+) {
+  font: var(--type-caption);
+}
+
+/* Form values intentionally use body metrics even when an input is nested in
+ * a compact label. This keeps selects such as “Featured first” readable. */
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .search-control input,
+  .catalog-search input,
+  .course-search input,
+  .course-filter-form input,
+  .course-filter-form select,
+  .filter-field select,
+  .phase1-contact-form input,
+  .phase1-contact-form select,
+  .phase1-contact-form textarea,
+  .reference-contact-form-wrap .phase1-contact-form input,
+  .reference-contact-form-wrap .phase1-contact-form textarea,
+  .cref .searchbar input,
+  .cref .sortsel select,
+  .cref .field input,
+  .cref .field select,
+  .cref .field textarea,
+  .cref .counselling-form input,
+  .cref .counselling-form select,
+  .cref .counselling-form textarea,
+  .usta-listing .fgroup-body select,
+  .usta-listing .fgroup-body input,
+  .usta-listing .results-bar select,
+  .stu-field input,
+  .stu-field select,
+  .stu-field textarea
+) {
+  font: var(--type-body);
+}
+
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .button,
+  .btn,
+  .stu-btn,
+  .search-control button,
+  .filter-toggle,
+  .chip,
+  .tab,
+  .reference-detail-actions > a,
+  .reference-final-cta a,
+  .reference-resource-final a,
+  .reference-static-actions a,
+  .reference-static-final a
+) {
+  font: var(--type-button);
+}
+
+:is(main[class*='page'], main .cref, main .stu) :is(
+  .stat b,
+  .platform-metrics strong,
+  .editorial-stat strong,
+  .hero-card span,
+  .s-amt,
+  .reference-callout span
+) {
+  font: var(--type-stat);
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 700px) {
+  /* Preserve the existing mobile hierarchy while preventing display titles
+   * from introducing one-off per-template sizes. */
+  :is(main[class*='page'], main .cref, main .stu) :is(
+    .hero,
+    .listing-hero,
+    .detail-hero,
+    .reference-detail-hero,
+    .reference-static-hero
+  ) h1 {
+    font-size: clamp(36px, 10vw, 44px);
+  }
+}

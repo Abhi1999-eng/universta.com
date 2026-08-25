@@ -68,6 +68,90 @@ async function signUpAndIn(page: Page) {
   await page.waitForURL(/\/student$/);
 }
 
+function primaryFamily(font: string) {
+  return font.split(',')[0].trim().toLowerCase();
+}
+
+test('public typography roles keep headings, cards and native controls on the shared contract', async ({ page }) => {
+  await page.setViewportSize(viewports[0]);
+
+  await page.goto(`${webBaseUrl}/courses`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('body')).toBeVisible();
+
+  const courses = await page.evaluate(() => {
+    const style = (selector: string) => {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (!element) return null;
+      const computed = getComputedStyle(element);
+      return {
+        family: computed.fontFamily,
+        size: computed.fontSize,
+        weight: computed.fontWeight,
+        lineHeight: computed.lineHeight,
+      };
+    };
+
+    return {
+      roles: [
+        '--type-display',
+        '--type-h1',
+        '--type-h2',
+        '--type-h3',
+        '--type-h4',
+        '--type-body-lg',
+        '--type-body',
+        '--type-body-sm',
+        '--type-label',
+        '--type-nav',
+        '--type-button',
+        '--type-stat',
+        '--type-caption',
+      ].map((name) => [name, getComputedStyle(document.documentElement).getPropertyValue(name).trim()]),
+      display: style('h1'),
+      section: style('h2'),
+      cardTitles: [...document.querySelectorAll<HTMLElement>('.card h3, .catalog-card h2, .catalog-card h3')]
+        .slice(0, 8)
+        .map((element) => getComputedStyle(element).font),
+      button: style('button:not([aria-label])'),
+      input: style('input:not([type="hidden"])'),
+      select: style('select'),
+    };
+  });
+
+  expect(courses.roles.every(([, value]) => value), 'every documented public type role has a value').toBe(true);
+  expect(Number.parseFloat(courses.display?.size ?? '0')).toBeGreaterThan(
+    Number.parseFloat(courses.section?.size ?? '0'),
+  );
+  expect(courses.cardTitles.length).toBeGreaterThan(0);
+  expect(new Set(courses.cardTitles).size, 'equivalent public listing card titles use one role').toBe(1);
+  for (const control of [courses.button, courses.input, courses.select]) {
+    expect(control).not.toBeNull();
+    expect(primaryFamily(control!.family)).toContain('inter');
+  }
+  expect(courses.input?.size).toBe('16px');
+  expect(courses.select?.size).toBe('16px');
+
+  await page.goto(`${webBaseUrl}/contact`, { waitUntil: 'domcontentloaded' });
+  const textarea = await page.locator('textarea').first().evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, size: style.fontSize, lineHeight: style.lineHeight };
+  });
+  expect(primaryFamily(textarea.family)).toContain('inter');
+  expect(textarea.size).toBe('16px');
+
+  await signUpAndIn(page);
+  const student = await page.evaluate(() => {
+    const heading = document.querySelector<HTMLElement>('.stu h1');
+    const navigation = document.querySelector<HTMLElement>('.stu-nav a');
+    return {
+      heading: heading ? getComputedStyle(heading).font : null,
+      navigation: navigation ? getComputedStyle(navigation).font : null,
+    };
+  });
+  expect(student.heading).toContain('28px');
+  expect(student.navigation).toContain('14.5px');
+});
+
 test('all visible public text resolves to Inter at supported viewports', async ({ page }) => {
   // This is deliberately a cross-route audit (30 public/auth navigations plus
   // the signed-in portal), so the normal one-screen interaction budget is not

@@ -16,6 +16,7 @@ import "./public-ui-polish-fixes.css";
 import "./phase1-shared-template.css";
 import "./reference-listing-fidelity.css";
 import "./client-reference.css";
+import "./public-typography.css";
 
 const siteUrl = siteOrigin;
 const organizationJsonLd = {
