@@ -557,7 +557,10 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
           <div className="hero-card">
             <div className="hero-placeholder">{title(row).slice(0, 1)}</div>
             <span>
-              {row._count?.offerings ?? row.offerings?.length ?? 0} offerings
+              {(() => {
+                const count = row._count?.offerings ?? row.offerings?.length ?? 0;
+                return `${count} offering${count === 1 ? '' : 's'}`;
+              })()}
             </span>
             <small>{row.institutionType ?? "Institution"}</small>
           </div>
