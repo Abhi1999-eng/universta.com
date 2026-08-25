@@ -1123,11 +1123,17 @@
   display: grid;
   gap: 18px;
 }
+/* Same `minmax(auto, 1fr)` floor as the .g4 note below. These stay two and
+   three across down to 720px, but the tracks are floored at their items'
+   min-content width, so a long institution name ("Technical University of
+   Munich" in a nested mini-card) pushed the row past its container and gave
+   the whole page 5px of horizontal scroll at 768px. A zero floor lets the
+   track shrink instead. */
 .cref .g2 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .cref .g3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 /* `1fr` is `minmax(auto, 1fr)`, so every track is floored at its item's
    min-content width. A long level name ("Post Graduate Diploma in Management")
