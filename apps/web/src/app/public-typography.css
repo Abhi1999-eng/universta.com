@@ -96,14 +96,6 @@ textarea {
   font: var(--type-h4);
 }
 
-/* Compact reference cards are deliberately dense grid/flex content. They
- * retain the H4 role rather than inheriting the larger section-level H3
- * scale, keeping long published titles within narrow mobile cards. */
-main .cref .card h3 {
-  font: var(--type-h4);
-  letter-spacing: -0.01em;
-}
-
 /* Hero/display headings retain their stronger existing hierarchy. */
 :is(main[class*='page'], main .cref, main .stu) :is(
   .hero,
@@ -164,6 +156,15 @@ main .cref .card h3 {
 ) {
   font: var(--type-h3);
   letter-spacing: -0.015em;
+}
+
+/* The approved reference templates use compact cards inside constrained
+ * mobile grids. Their titles are H4-level detail, while generic listing cards
+ * above remain H3-level. Keeping this override after the shared card rule is
+ * important: it prevents the larger role from widening featured cards. */
+main .cref .card :is(h2, h3) {
+  font: var(--type-h4);
+  letter-spacing: -0.01em;
 }
 
 /* The student portal has a deliberately compact dashboard hierarchy. It uses
