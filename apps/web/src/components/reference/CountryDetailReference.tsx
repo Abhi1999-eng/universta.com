@@ -96,10 +96,29 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
   const { page, cities, universities, scholarships, subjects } = props;
   const { country, profiles, faqs, consultantCards } = page;
   const { cost, work, language, statistics } = profiles;
+  // Institutional totals and curated highlights are calculated by the API from
+  // published catalogue records. Country profiles remain the source for
+  // editorial facts (cost notes, visas, language and intake guidance), but
+  // must not duplicate the catalogue's counts or rankings.
+  const derived = country.derived;
+  const derivedTuition = derived?.averageTuition ?? null;
+  const derivedStatistics = derived?.statistics ?? null;
+  const topRankedUniversities = derived?.topRankedUniversities ?? [];
+  const popularUniversities = derived?.popularUniversities ?? [];
+  const popularCourses = derived?.popularCourses ?? [];
+  const derivedUniversityCount = derivedStatistics?.universitiesCount ?? null;
+  const derivedPublicUniversityCount =
+    derivedStatistics?.publicUniversitiesCount ?? null;
+  const derivedCourseCount = derivedStatistics?.coursesCount ?? null;
   const intakes = profiles.intakes ?? [];
-  const currency = cost?.currencyCode ? `${cost.currencyCode} ` : '';
+  const profileTuition = range(cost?.tuitionMin, cost?.tuitionMax);
+  const tuition =
+    profileTuition ??
+    (derivedTuition ? formatNumber(derivedTuition.amount) : null);
+  const tuitionIsDerived = !profileTuition && Boolean(derivedTuition);
+  const currencyCode = cost?.currencyCode ?? derivedTuition?.currencyCode;
+  const currency = currencyCode ? `${currencyCode} ` : '';
 
-  const tuition = range(cost?.tuitionMin, cost?.tuitionMax);
   const living = range(cost?.livingCostMin, cost?.livingCostMax);
 
   const postStudyWork =
@@ -157,18 +176,21 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
       p: language.waiverNotes ?? language.generalNotes ?? 'Some programmes waive the English test where your prior degree was taught in English.',
       stat: ielts ? `IELTS ${ielts.toLowerCase()}` : 'Waiver available',
     },
-    statistics?.universitiesCount && {
+    derivedUniversityCount && {
       h: 'A catalogue you can browse',
       p: 'Every institution, course and scholarship on this page is a published record you can open and compare.',
-      stat: `${formatNumber(statistics.universitiesCount)} universities · ${formatNumber(statistics.coursesCount ?? 0)} courses`,
+      stat: `${formatNumber(derivedUniversityCount)} universities${derivedCourseCount ? ` · ${formatNumber(derivedCourseCount)} courses` : ''}`,
     },
   ].filter(Boolean) as Array<{ h: string; p: string; stat: string }>;
 
   const costRows = [
     tuition && {
-      label: 'Tuition',
+      label: tuitionIsDerived ? 'Average tuition' : 'Tuition',
       value: `${currency}${tuition}`,
-      note: PERIOD_LABEL[cost?.tuitionPeriod ?? ''] ?? '',
+      note:
+        PERIOD_LABEL[
+          cost?.tuitionPeriod ?? derivedTuition?.period ?? ''
+        ] ?? '',
     },
     living && {
       label: 'Living costs',
@@ -219,11 +241,11 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
   ].filter(Boolean) as Array<[string, string]>;
 
   const statRows = [
-    statistics?.universitiesCount && ['Universities', formatNumber(statistics.universitiesCount)],
-    statistics?.publicUniversitiesCount && ['Public universities', formatNumber(statistics.publicUniversitiesCount)],
+    derivedUniversityCount && ['Universities', formatNumber(derivedUniversityCount)],
+    derivedPublicUniversityCount && ['Public universities', formatNumber(derivedPublicUniversityCount)],
     statistics?.privateUniversitiesCount && ['Private universities', formatNumber(statistics.privateUniversitiesCount)],
-    statistics?.coursesCount && ['Courses', formatNumber(statistics.coursesCount)],
-    statistics?.topRankedUniversitiesCount && ['Top-ranked universities', formatNumber(statistics.topRankedUniversitiesCount)],
+    derivedCourseCount && ['Courses', formatNumber(derivedCourseCount)],
+    topRankedUniversities.length > 0 && ['Top-ranked universities', formatNumber(topRankedUniversities.length)],
     statistics?.scholarshipsCount && ['Scholarships', formatNumber(statistics.scholarshipsCount)],
     statistics?.citiesCount && ['Cities', formatNumber(statistics.citiesCount)],
     statistics?.internationalStudentsCount && ['International students', formatNumber(statistics.internationalStudentsCount)],
@@ -241,6 +263,12 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
     cost?.verifiedAt ?? work?.verifiedAt ?? language?.verifiedAt ?? statistics?.verifiedAt ?? null;
 
   const overview = page.sections.find((section) => section.sectionKey === 'overview');
+  const universityTotal = derivedUniversityCount ?? props.universityTotal;
+  const universityHighlightsAvailable =
+    topRankedUniversities.length > 0 ||
+    popularUniversities.length > 0 ||
+    popularCourses.length > 0;
+  const universitySectionAvailable = universities.length > 0 || universityHighlightsAvailable;
 
   /** Counselling booked from a destination keeps that provenance, so the form
    * pre-selects the country and the lead records where it came from. */
@@ -253,7 +281,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
   /** Built after the fact from what actually rendered. */
   const jump = [
     whyCards.length && ['why', `Why ${country.name}`],
-    universities.length && ['unis', 'Universities'],
+    universitySectionAvailable && ['unis', 'Universities'],
     subjects.length && ['subjects', 'Subjects'],
     intakes.length && ['intakes', 'Intakes'],
     costRows.length && ['cost', 'Cost'],
@@ -404,53 +432,110 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
       ) : null}
 
       {/* UNIVERSITIES */}
-      {universities.length ? (
+      {universitySectionAvailable ? (
         <section className="sec sec-alt" id="unis">
           <div className="wrap">
             <div className="head">
               <span className="eyebrow">Institutions</span>
               <h2>Universities in {country.name}</h2>
-              <p>
-                {formatNumber(props.universityTotal)} published institution
-                {props.universityTotal === 1 ? '' : 's'} with courses you can open and compare.
-              </p>
+              {universityTotal ? (
+                <p>
+                  {formatNumber(universityTotal)} published institution
+                  {universityTotal === 1 ? '' : 's'} with courses you can open and compare.
+                </p>
+              ) : null}
             </div>
-            <div className="partners">
-              {universities.map((university) => (
-                <article className="partner" key={university.slug}>
-                  {university.verified ? <span className="p-badge">Verified</span> : null}
-                  <span className="p-logo" aria-hidden="true">
-                    {initials(university.name)}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3>{university.name}</h3>
-                    {university.city ? <div className="loc">{university.city}</div> : null}
-                    {university.institutionType ? (
-                      <div className="p-meta">
-                        <div>
-                          <span>Type</span>
-                          <b>{humanise(university.institutionType)}</b>
+            {universities.length ? (
+              <div className="partners">
+                {universities.map((university) => (
+                  <article className="partner" key={university.slug}>
+                    {university.verified ? <span className="p-badge">Verified</span> : null}
+                    <span className="p-logo" aria-hidden="true">
+                      {initials(university.name)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3>{university.name}</h3>
+                      {university.city ? <div className="loc">{university.city}</div> : null}
+                      {university.institutionType ? (
+                        <div className="p-meta">
+                          <div>
+                            <span>Type</span>
+                            <b>{humanise(university.institutionType)}</b>
+                          </div>
                         </div>
+                      ) : null}
+                      <div className="p-act">
+                        <Link className="mini fill" href={`/universities/${university.slug}/courses`}>
+                          View courses
+                        </Link>
+                        <Link className="mini" href={`/universities/${university.slug}`}>
+                          View profile
+                        </Link>
                       </div>
-                    ) : null}
-                    <div className="p-act">
-                      <Link className="mini fill" href={`/universities/${university.slug}/courses`}>
-                        View courses
-                      </Link>
-                      <Link className="mini" href={`/universities/${university.slug}`}>
-                        View profile
-                      </Link>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-            {props.universityTotal > universities.length ? (
+                  </article>
+                ))}
+              </div>
+            ) : null}
+            {universityTotal > universities.length ? (
               <p style={{ marginTop: 22 }}>
                 <Link className="btn btn-ghost" href={`/universities?country=${country.slug}`}>
-                  All {formatNumber(props.universityTotal)} universities in {country.name}
+                  All {formatNumber(universityTotal)} universities in {country.name}
                 </Link>
               </p>
+            ) : null}
+            {topRankedUniversities.length ? (
+              <div style={{ marginTop: 32 }}>
+                <div className="head">
+                  <h3>Top ranked universities</h3>
+                </div>
+                <div className="partners">
+                  {topRankedUniversities.map((university) => (
+                    <article className="partner" key={university.id}>
+                      <span className="p-logo" aria-hidden="true">{initials(university.name)}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3>{university.name}</h3>
+                        <div className="p-meta">
+                          {university.institutionType ? <div><span>Type</span><b>{humanise(university.institutionType)}</b></div> : null}
+                          {university.qsRanking ? <div><span>QS ranking</span><b>#{formatNumber(university.qsRanking)}</b></div> : null}
+                        </div>
+                        <div className="p-act"><Link className="mini" href={`/universities/${university.slug}`}>View profile</Link></div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {popularUniversities.length ? (
+              <div style={{ marginTop: 32 }}>
+                <div className="head"><h3>Popular universities</h3></div>
+                <div className="partners">
+                  {popularUniversities.map((university) => (
+                    <article className="partner" key={university.id}>
+                      <span className="p-logo" aria-hidden="true">{initials(university.name)}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3>{university.name}</h3>
+                        {university.institutionType ? <div className="p-meta"><div><span>Type</span><b>{humanise(university.institutionType)}</b></div></div> : null}
+                        <div className="p-act"><Link className="mini" href={`/universities/${university.slug}`}>View profile</Link></div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {popularCourses.length ? (
+              <div style={{ marginTop: 32 }}>
+                <div className="head"><h3>Popular courses</h3></div>
+                <div className="grid g3">
+                  {popularCourses.map((course) => (
+                    <Link className="card mini-card" href={`/courses/${course.slug}`} key={course.id}>
+                      <span className="mini-ic" aria-hidden="true">{initials(course.name)}</span>
+                      <div><h3>{course.name}</h3>{course.shortDescription ? <div className="mc-sub">{course.shortDescription}</div> : null}</div>
+                      <span className="go" aria-hidden="true">→</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ) : null}
           </div>
         </section>
@@ -747,7 +832,9 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             <div className="head">
               <span className="eyebrow">Published figures</span>
               <h2>{country.name} at a glance</h2>
-              {statistics?.sourceReference ? (
+              {derivedStatistics ? (
+                <p>Calculated from published universities and course offerings in the Universta catalogue.</p>
+              ) : statistics?.sourceReference ? (
                 <p>Sourced and verified figures from {country.name}’s statistics profile.</p>
               ) : null}
             </div>

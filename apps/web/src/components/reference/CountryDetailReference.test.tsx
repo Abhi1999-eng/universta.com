@@ -23,6 +23,7 @@ const emptyProfiles = {
 
 function build(
   profiles: CountryDetailReferenceProps['page']['profiles'],
+  derived?: unknown,
 ): CountryDetailReferenceProps {
   return {
     page: {
@@ -36,6 +37,7 @@ function build(
         flag: null,
         featured: false,
         displayOrder: 0,
+        derived,
       },
       profiles,
       sections: [],
@@ -71,6 +73,66 @@ describe('CountryDetailReference hero quick facts', () => {
     expect(html).toContain('quickfacts');
     expect(html).toContain('at a glance');
     expect(html).toContain('Tuition');
+    expect(html).not.toContain('hero-grid-solo');
+  });
+
+  it('uses API-derived institutional facts without requiring duplicate country profiles', () => {
+    const derived = {
+      averageTuition: {
+        amount: '28666.67',
+        currencyCode: 'GBP',
+        currencySymbol: '£',
+        period: 'PER_YEAR',
+        offeringCount: 3,
+      },
+      statistics: {
+        universitiesCount: 2,
+        publicUniversitiesCount: 2,
+        coursesCount: 3,
+      },
+      topRankedUniversities: [
+        {
+          id: 'u-top',
+          name: 'Acceptance Ranked University',
+          slug: 'acceptance-ranked-university',
+          institutionType: 'PUBLIC',
+          qsRanking: 24,
+        },
+      ],
+      popularUniversities: [
+        {
+          id: 'u-popular',
+          name: 'Acceptance Popular University',
+          slug: 'acceptance-popular-university',
+          institutionType: 'PUBLIC',
+          qsRanking: null,
+        },
+      ],
+      popularCourses: [
+        {
+          id: 'course-popular',
+          name: 'Acceptance Popular Course',
+          slug: 'acceptance-popular-course',
+          shortDescription: 'A catalogue-backed course card.',
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      <CountryDetailReference {...build(emptyProfiles, derived)} />,
+    );
+
+    expect(html).toContain('Average tuition');
+    expect(html).toContain('GBP 28,666.67');
+    expect(html).toContain('Universities');
+    expect(html).toContain('Public universities');
+    expect(html).toContain('Courses');
+    expect(html).toContain('Top ranked universities');
+    expect(html).toContain('Acceptance Ranked University');
+    expect(html).toContain('Popular universities');
+    expect(html).toContain('Acceptance Popular University');
+    expect(html).toContain('Popular courses');
+    expect(html).toContain('Acceptance Popular Course');
     expect(html).not.toContain('hero-grid-solo');
   });
 });
