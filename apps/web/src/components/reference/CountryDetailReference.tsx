@@ -307,7 +307,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
         </div>
 
         <aside className="quickfacts">
-          <h3>{country.name} at a glance</h3>
+          <h2>{country.name} at a glance</h2>
           <p className="qf-note">
             {verifiedAt ? `Published figures, verified ${formatDate(verifiedAt)}` : 'Published figures'}
           </p>

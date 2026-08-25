@@ -454,7 +454,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
             actually eligible for, shortlist them, then compare them side by side before you apply.
           </p>
           <div className="takeaways">
-            <h4>Key takeaways</h4>
+            <h2>Key takeaways</h2>
             <ul>
               <li>Compare up to three courses side by side across tuition, duration, intakes and study modes.</li>
               <li>Every filter in the rail is backed by real catalogue data — nothing is decorative.</li>

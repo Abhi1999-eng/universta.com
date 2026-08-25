@@ -126,7 +126,7 @@ export function ConsultantDetailReference(props: ConsultantDetailProps) {
         </div>
 
         <aside className="quickfacts">
-          <h3>Profile at a glance</h3>
+          <h2>Profile at a glance</h2>
           <p className="qf-note">Every figure below is a published field on this record.</p>
           {facts.map(([label, value]) => (
             <div className="qf-row" key={label}>
