@@ -167,6 +167,14 @@ main .cref .card :is(h2, h3) {
   letter-spacing: -0.01em;
 }
 
+/* Typography can change an intrinsic grid item's minimum width. Featured
+ * subject cards must therefore be allowed to shrink to their one-column phone
+ * track rather than widening the document. */
+main .cref .feat-card {
+  min-width: 0;
+  width: 100%;
+}
+
 /* The student portal has a deliberately compact dashboard hierarchy. It uses
  * the same scale and rhythm, without promoting routine dashboard headings to
  * marketing-page display sizes. */
