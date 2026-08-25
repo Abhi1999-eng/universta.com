@@ -2466,6 +2466,11 @@
   color: var(--ink);
 }
 
+/* Without the quick-facts aside the hero would keep an empty 0.75fr column and
+   leave the heading stranded at 62% width. */
+.cref-dest .hero-grid.hero-grid-solo {
+  grid-template-columns: minmax(0, 1fr);
+}
 .cref-dest .hero-grid {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;
