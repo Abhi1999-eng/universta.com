@@ -130,6 +130,11 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
 
   const activeCount = Object.keys(filters).filter((key) => !['q', 'page'].includes(key)).length;
 
+  /* With nothing published there are no facet options, so the panel would
+   * render as an empty "Filters" card whose only control closes a drawer that
+   * desktop never opens. A filter panel that cannot filter is chrome. */
+  const hasFilterControls = groups.length > 0 || activeCount > 0;
+
   return (
     <div className="cref cref-dest">
       <div className="wrap">
@@ -214,8 +219,8 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
             <h2>Find a consultant</h2>
           </div>
 
-          <div className="market">
-            {drawerOpen ? (
+          <div className={`market${hasFilterControls ? '' : ' market-unfiltered'}`}>
+            {hasFilterControls && drawerOpen ? (
               <button
                 type="button"
                 className="cref-overlay"
@@ -224,6 +229,7 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
               />
             ) : null}
 
+            {hasFilterControls ? (
             <aside
               className={`filters${drawerOpen ? ' open' : ''}`}
               aria-label="Filter consultants"
@@ -297,16 +303,19 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
                 )}
               </div>
             </aside>
+            ) : null}
 
             <div>
               <div className="resbar">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm filter-toggle"
-                  onClick={() => setDrawerOpen(true)}
-                >
-                  ☰ Filters{activeCount ? ` (${activeCount})` : ''}
-                </button>
+                {hasFilterControls ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm filter-toggle"
+                    onClick={() => setDrawerOpen(true)}
+                  >
+                    ☰ Filters{activeCount ? ` (${activeCount})` : ''}
+                  </button>
+                ) : null}
                 <p className="rescount" data-testid="consultant-count">
                   {loadFailed ? (
                     'Directory unavailable'
