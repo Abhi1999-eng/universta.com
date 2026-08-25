@@ -17,6 +17,7 @@ import "./phase1-shared-template.css";
 import "./reference-listing-fidelity.css";
 import "./client-reference.css";
 import "./public-typography.css";
+import "./public-detail-system.css";
 
 const siteUrl = siteOrigin;
 const organizationJsonLd = {

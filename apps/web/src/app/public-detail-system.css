@@ -1,0 +1,754 @@
+/*
+ * Public detail system
+ *
+ * The public site has two detail templates that grew apart: the Phase 1
+ * `detail-hero`/`detail-content` pages (scholarships, universities, events)
+ * and the `cref` reference pages (consultants). They were rendering the same
+ * ideas — an identity block, a set of published facts, a contact panel — with
+ * unrelated markup, and both sized a section by its heading rather than by its
+ * content, so a single chip claimed a full-viewport band.
+ *
+ * This file owns the primitives both templates now share. Typography comes
+ * from the `--type-*` roles in public-typography.css; colour and surface stay
+ * on the existing Universta palette. Nothing here is route-specific.
+ */
+
+:root {
+  --pd-ink: #0b1220;
+  --pd-ink-2: #334155;
+  --pd-muted: #64748b;
+  --pd-line: #e7ecf3;
+  --pd-line-strong: #dbe3ee;
+  --pd-surface: #f7f9fc;
+  --pd-blue: #2563eb;
+  --pd-blue-soft: rgba(37, 99, 235, 0.08);
+  --pd-radius: 16px;
+  --pd-radius-lg: 20px;
+}
+
+/* ---------- identity ---------------------------------------------------- */
+
+/* Avatar and name read as one object. Previously the fallback monogram sat on
+ * its own line above the title, so the two halves of the identity did not
+ * look related. */
+.pd-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 0 0 18px;
+}
+
+.pd-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font: 800 20px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.02em;
+  /* Optically anchored to the first line of the title rather than centred on
+   * the whole block, so a one-line and a three-line name look the same. */
+  margin-top: 4px;
+}
+
+.pd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--pd-line-strong);
+  background: #fff;
+  color: var(--pd-ink-2);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-tracking);
+  white-space: nowrap;
+}
+
+.pd-badge.is-verified {
+  border-color: rgba(37, 99, 235, 0.24);
+  background: var(--pd-blue-soft);
+  color: #1d4ed8;
+}
+
+.pd-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pd-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ---------- fact blocks ------------------------------------------------- */
+
+/* The rule this grid exists to enforce: a block is as tall as its content.
+ * `auto-fit` lets four one-chip blocks share a single row on a wide screen and
+ * a service list of twenty expand on its own. */
+.pd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+  /* Blocks in the same row share a height so the row reads as one band; the
+   * grid as a whole is still sized by its content, which is the point. */
+  align-items: stretch;
+}
+
+.pd-block {
+  min-width: 0;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--pd-line);
+  border-radius: var(--pd-radius);
+  background: #fff;
+}
+
+main .pd-block > h3 {
+  margin: 0 0 12px;
+  color: var(--pd-muted);
+  font: var(--type-label);
+  letter-spacing: var(--type-label-tracking);
+  text-transform: uppercase;
+}
+
+.pd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--pd-line-strong);
+  background: var(--pd-surface);
+  color: var(--pd-ink-2);
+  font: 600 13.5px/1.35 var(--font-inter), sans-serif;
+  text-decoration: none;
+}
+
+a.pd-chip:hover {
+  border-color: rgba(37, 99, 235, 0.36);
+  background: var(--pd-blue-soft);
+  color: #1d4ed8;
+}
+
+.pd-chip .pd-cc {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  font: 800 10px/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* A labelled row per attribute. Three one-chip attributes as three separate
+ * cards left each chip floating in its own box; as rows of one card they read
+ * as a spec sheet and the label column earns the horizontal space. */
+.pd-deflist {
+  margin: 0;
+}
+
+.pd-defrow {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 8px 18px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-top: 1px solid var(--pd-line);
+}
+
+.pd-defrow:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.pd-defrow:last-child {
+  padding-bottom: 2px;
+}
+
+.pd-defrow dt {
+  color: var(--pd-muted);
+  font: var(--type-body-sm);
+}
+
+.pd-defrow dd {
+  margin: 0;
+  min-width: 0;
+}
+
+/* One wide block of attributes beside a narrower list of places. `start`
+ * rather than the default stretch: the attribute block sets the row height and
+ * a short office list hugs its own content instead of trailing dead space. */
+.pd-grid.pd-grid-split {
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  align-items: start;
+}
+
+@media (max-width: 940px) {
+  .pd-grid.pd-grid-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .pd-defrow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
+/* A list of places or campuses: denser than a card grid, still scannable. */
+.pd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd-list > li {
+  min-width: 0;
+}
+
+.pd-list strong {
+  display: block;
+  color: var(--pd-ink);
+  font: var(--type-h4);
+}
+
+.pd-list span {
+  display: block;
+  margin-top: 2px;
+  color: var(--pd-muted);
+  font: var(--type-body-sm);
+}
+
+.pd-list a.pd-more {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--pd-blue);
+  font: 700 13.5px/1.4 var(--font-inter), sans-serif;
+  text-decoration: none;
+}
+
+.pd-list a.pd-more:hover {
+  text-decoration: underline;
+}
+
+/* ---------- contact panel ----------------------------------------------- */
+
+/* Replaces a panel that counted the chips shown further down the page. Every
+ * row here is a value a visitor can act on. */
+.pd-panel {
+  align-self: start;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--pd-line);
+  border-radius: var(--pd-radius-lg);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055);
+}
+
+/* The public typography contract gives every `h2` under a page template the
+ * section-heading role at (0,1,2). A panel label is not a section heading, so
+ * these rules match that specificity to restate the role deliberately. */
+main .pd-panel > h2 {
+  margin: 0 0 4px;
+  font: var(--type-h4);
+  color: var(--pd-ink);
+}
+
+.pd-panel > p.pd-panel-note {
+  margin: 0 0 16px;
+  color: var(--pd-muted);
+  font: var(--type-body-sm);
+}
+
+.pd-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.pd-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 0;
+  border-top: 1px solid var(--pd-line);
+  min-width: 0;
+}
+
+.pd-row:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.pd-row dt,
+.pd-row .pd-row-label {
+  color: var(--pd-muted);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-tracking);
+  text-transform: uppercase;
+}
+
+.pd-row dd,
+.pd-row .pd-row-value {
+  margin: 0;
+  color: var(--pd-ink);
+  font: 600 15px/1.45 var(--font-inter), sans-serif;
+  /* Long addresses like an email break inside the panel instead of pushing
+   * the card wider than its column. */
+  overflow-wrap: anywhere;
+}
+
+.pd-row a {
+  color: var(--pd-blue);
+  text-decoration: none;
+  /* The value wraps but the link inside it is its own formatting context, so
+   * an email address ran past the card edge on a phone without this. */
+  overflow-wrap: anywhere;
+}
+
+.pd-row a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- section rhythm ---------------------------------------------- */
+
+.pd-section-head {
+  margin: 0 0 20px;
+}
+
+.pd-section-head .pd-eyebrow {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--pd-blue);
+  font: var(--type-label);
+  letter-spacing: var(--type-label-tracking);
+  text-transform: uppercase;
+}
+
+main .pd-section-head h2 {
+  margin: 0;
+  font: 800 clamp(24px, 2.4vw, 32px) / 1.15 var(--font-inter), sans-serif;
+  letter-spacing: var(--type-heading-tracking);
+  color: var(--pd-ink);
+}
+
+.pd-section-head p {
+  margin: 8px 0 0;
+  max-width: 62ch;
+  color: var(--pd-muted);
+  font: var(--type-body);
+}
+
+@media (max-width: 720px) {
+  .pd-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 17px;
+  }
+
+  .pd-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pd-panel {
+    padding: 20px;
+  }
+}
+
+/* ---------- consultant detail ------------------------------------------- */
+
+/* Each crumb carries its own leading separator so a wrapped trail never
+ * leaves a stranded chevron at the end of a line. */
+.cdetail .crumb .crumb-step {
+  display: inline;
+}
+
+.cdetail .crumb .crumb-step::before {
+  content: '\203A';
+  margin: 0 6px 0 0;
+  color: var(--pd-muted);
+}
+
+/* The identity, the lede and the actions form the left column; contact
+ * details sit beside them instead of below the fold. `align-items: start`
+ * keeps a short panel from stretching to the height of the intro. */
+.cdetail .cdetail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
+  gap: 44px;
+  align-items: start;
+  /* `padding-block` only: this element is also the `.wrap` container, and a
+   * four-value `padding` here would zero the 24px gutter it inherits. */
+  padding-block: 22px 48px;
+}
+
+.cdetail .cdetail-intro {
+  min-width: 0;
+}
+
+/* Sized to sit beside a 56px avatar rather than to dominate the viewport.
+ * The old hero ran to 46px on a line of its own above the monogram. */
+.cdetail .pd-identity h1 {
+  margin: 0;
+  font: 800 clamp(27px, 3.2vw, 40px) / 1.12 var(--font-inter), sans-serif;
+  letter-spacing: var(--type-heading-tracking);
+  color: var(--pd-ink);
+  overflow-wrap: anywhere;
+}
+
+.cdetail .cdetail-intro .lede {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--pd-ink-2);
+  font: var(--type-body-lg);
+}
+
+.cdetail .cdetail-intro .hero-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cdetail .cdetail-contact .btn-block {
+  display: flex;
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* 76px band padding is right for a marketing section and far too much for a
+ * grid of compact fact blocks. */
+.cdetail .cdetail-sec {
+  padding: 52px 0 56px;
+}
+
+.cdetail .cdetail-offices .pd-list > li + li {
+  padding-top: 12px;
+  border-top: 1px solid var(--pd-line);
+}
+
+.cdetail .cdetail-source {
+  margin: 24px 0 0;
+  max-width: 74ch;
+  color: var(--pd-muted);
+  font: var(--type-body-sm);
+}
+
+@media (max-width: 940px) {
+  .cdetail .cdetail-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding-block-end: 40px;
+  }
+}
+
+@media (max-width: 720px) {
+  .cdetail .cdetail-sec {
+    padding: 40px 0 44px;
+  }
+
+  .cdetail .pd-identity {
+    gap: 14px;
+  }
+
+  /* The badge drops under the name on a phone; keeping it inline squeezed
+   * the title into two or three very short lines. */
+  .cdetail .pd-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cdetail .cdetail-intro .hero-btns .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---------- phase 1 detail template ------------------------------------- */
+
+/* With the placeholder card gone the hero is one column, so the title and
+ * lede use the full measure instead of 1.5fr of it with an empty rail beside
+ * them. `max-width` keeps the line length readable. */
+main > .detail-hero .detail-hero-grid.detail-hero-solo {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+main > .detail-hero .detail-hero-solo h1 {
+  /* Matches the `--type-h1` role the listings already use. The detail hero
+   * ran to 68px, so a title changed size when a reader followed a card. */
+  font: var(--type-h1);
+  letter-spacing: var(--type-heading-tracking);
+  max-width: 17ch;
+}
+
+main > .detail-hero .detail-hero-solo .hero-copy {
+  max-width: 62ch;
+}
+
+main > .detail-hero {
+  padding: 44px 0 52px;
+}
+
+/* No published facts means no panel, and then no reason to reserve its
+ * column. */
+main > .detail-content.shell.detail-content-solo {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+main > .detail-content .editorial-section {
+  padding: 28px 0;
+}
+
+main > .detail-content .editorial-section:first-child {
+  padding-top: 0;
+}
+
+main > .detail-content .editorial-section h2 {
+  font: 800 clamp(24px, 2.4vw, 32px) / 1.15 var(--font-inter), sans-serif;
+  letter-spacing: var(--type-heading-tracking);
+}
+
+/* The panel is a labelled group of facts, not a second title for the page. */
+main > .detail-content .facts-panel h2 {
+  margin: 0 0 14px;
+  color: var(--pd-muted);
+  font: var(--type-label);
+  letter-spacing: var(--type-label-tracking);
+  text-transform: uppercase;
+}
+
+/* A whole card is the target, so the name does not have to be hit exactly. */
+.pd-block-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.pd-block-link:hover {
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.pd-block-link strong {
+  display: block;
+  color: var(--pd-ink);
+  font: var(--type-h4);
+}
+
+.pd-block-link .pd-more {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--pd-blue);
+  font: 700 13.5px/1.4 var(--font-inter), sans-serif;
+}
+
+@media (max-width: 720px) {
+  main > .detail-hero {
+    padding: 30px 0 38px;
+  }
+
+  main > .detail-content .editorial-section {
+    padding: 22px 0;
+  }
+}
+
+/* Object cards keep a card's natural width: `auto-fill` leaves the empty
+ * tracks in place, so a section holding one course offering shows one card
+ * rather than one card stretched across the whole column. */
+.pd-grid.pd-grid-cards {
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+}
+
+.pd-grid-cards .pd-block > strong {
+  display: block;
+  color: var(--pd-ink);
+  font: var(--type-h4);
+}
+
+/* A record whose only published content is a fact or two shows it beside the
+ * title rather than in a card under an otherwise empty band. */
+main > .detail-hero .detail-hero-panel {
+  align-self: center;
+}
+
+/* Section labels inside the detail body were grey pills heavier than the
+ * content under them, and unrelated to the blue labels the consultant and
+ * country pages use. One treatment across the family. */
+main > .detail-content .editorial-section > .eyebrow {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--pd-blue);
+  font: var(--type-label);
+  letter-spacing: var(--type-label-tracking);
+  text-transform: uppercase;
+}
+
+/* A text link among pill buttons sat on a different baseline. */
+main > .detail-hero .hero-actions {
+  align-items: center;
+}
+
+main > .detail-content.shell {
+  padding-bottom: 76px;
+}
+
+.pd-grid-cards .pd-block > .pd-block-sub {
+  display: block;
+  margin-top: 4px;
+  color: var(--pd-muted);
+  font: var(--type-body-sm);
+}
+
+/* Below 820px the facts panel moves above the content as a summary. Stacked
+ * rows made a three-fact record into a 340px card; as an auto-fit grid the
+ * same facts read as one compact strip. */
+@media (max-width: 820px) {
+  main > .detail-content .facts-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 0 22px;
+  }
+
+  main > .detail-content .facts-panel > h2 {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--pd-line);
+  }
+
+  /* A row rule reads as a ragged column divider once the facts sit side by
+   * side, so the strip carries one full-width rule under its label instead. */
+  main > .detail-content .facts-panel .fact {
+    padding: 12px 0;
+    border-top: 0;
+  }
+}
+
+/* An empty directory spanning the full 1200px for two lines of text read as a
+ * layout failure. Contained, centred and with somewhere to go next. */
+main > .catalog-explorer .empty-state {
+  max-width: 620px;
+  margin: 8px auto 0;
+  padding: 40px 32px 44px;
+  text-align: center;
+}
+
+main > .catalog-explorer .empty-state h3 {
+  margin: 0 0 8px;
+  font: var(--type-h3);
+  letter-spacing: -0.015em;
+  color: var(--pd-ink);
+}
+
+main > .catalog-explorer .empty-state p {
+  margin: 0 auto;
+  max-width: 46ch;
+  color: var(--pd-muted);
+  font: var(--type-body);
+}
+
+main > .catalog-explorer .empty-state .empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+/* Once the hero stacks, three facts in a column make a 260px card out of
+ * three short values. Same compact strip the facts panel uses below 820. */
+@media (max-width: 820px) {
+  main > .detail-hero .detail-hero-panel > h2 {
+    margin-bottom: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--pd-line);
+  }
+
+  main > .detail-hero .detail-hero-panel .pd-rows {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0 22px;
+  }
+
+  main > .detail-hero .detail-hero-panel .pd-row {
+    padding: 12px 0;
+    border-top: 0;
+  }
+}
+
+/* ---------- country detail ---------------------------------------------- */
+
+/* `repeat(3, 1fr)` meant a destination that publishes one supporting point
+ * showed one 380px card with 840px of empty band beside it. The track count
+ * now follows the number of points, and a lone point becomes a full-width bar
+ * with its figure on the right rather than an orphan in a three-up grid. */
+.cref-dest .why-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.cref-dest .why-grid > .whycard:only-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 32px;
+}
+
+.cref-dest .why-grid > .whycard:only-child h3 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.cref-dest .why-grid > .whycard:only-child p {
+  grid-column: 1;
+  grid-row: 2;
+  max-width: 70ch;
+}
+
+.cref-dest .why-grid > .whycard:only-child .stat {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cref-dest .why-grid > .whycard:only-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cref-dest .why-grid > .whycard:only-child .stat {
+    grid-column: 1;
+    grid-row: auto;
+    white-space: normal;
+  }
+}
