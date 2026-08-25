@@ -31,6 +31,9 @@ export type ConsultantRow = {
 };
 
 export type ConsultantsReferenceProps = {
+  /** True when the directory could not be loaded at all, which is not the same
+   * fact as a directory that is legitimately empty. */
+  loadFailed?: boolean;
   rows: ConsultantRow[];
   meta: { page: number; limit: number; total: number; totalPages: number };
   filters: Record<string, string>;
@@ -87,6 +90,12 @@ function initials(value: string) {
 }
 
 export function ConsultantsReference(props: ConsultantsReferenceProps) {
+  const loadFailed = props.loadFailed ?? false;
+  const hasStats =
+    Boolean(props.meta.total) ||
+    Boolean(props.facets.countries.length) ||
+    Boolean(props.facets.services.length) ||
+    Boolean(props.facets.languages.length);
   const { rows, meta, filters, facets } = props;
   const router = useRouter();
   const pathname = usePathname();
@@ -164,24 +173,37 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
             </div>
           </form>
 
-          <div className="hstats">
-            <div className="hstat">
-              <b>{meta.total ? formatNumber(meta.total) : '—'}</b>
-              <span>Consultants</span>
+          {/* Four cards each reading "—" is chrome without information. The
+            * strip earns its space only once there is at least one figure to
+            * put in it, and each card appears only if its own figure exists. */}
+          {hasStats ? (
+            <div className="hstats">
+              {meta.total ? (
+                <div className="hstat">
+                  <b>{formatNumber(meta.total)}</b>
+                  <span>Consultants</span>
+                </div>
+              ) : null}
+              {facets.countries.length ? (
+                <div className="hstat">
+                  <b>{facets.countries.length}</b>
+                  <span>Destinations covered</span>
+                </div>
+              ) : null}
+              {facets.services.length ? (
+                <div className="hstat">
+                  <b>{facets.services.length}</b>
+                  <span>Services</span>
+                </div>
+              ) : null}
+              {facets.languages.length ? (
+                <div className="hstat">
+                  <b>{facets.languages.length}</b>
+                  <span>Languages</span>
+                </div>
+              ) : null}
             </div>
-            <div className="hstat">
-              <b>{facets.countries.length || '—'}</b>
-              <span>Destinations covered</span>
-            </div>
-            <div className="hstat">
-              <b>{facets.services.length || '—'}</b>
-              <span>Services</span>
-            </div>
-            <div className="hstat">
-              <b>{facets.languages.length || '—'}</b>
-              <span>Languages</span>
-            </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
@@ -253,13 +275,26 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
               </div>
 
               <div className="ffoot">
-                <button
-                  type="button"
-                  className="btn btn-primary btn-block"
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  Show {formatNumber(meta.total)} result{meta.total === 1 ? '' : 's'}
-                </button>
+                {/* Offering "Show 0 results" as the primary action invites a tap
+                  * that cannot do anything. With nothing to show, the useful
+                  * action is clearing the filters. */}
+                {meta.total ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-block"
+                    onClick={() => setDrawerOpen(false)}
+                  >
+                    Show {formatNumber(meta.total)} result{meta.total === 1 ? '' : 's'}
+                  </button>
+                ) : activeCount ? (
+                  <Link className="btn btn-ghost btn-block" href="/study-abroad-consultants#results">
+                    Clear filters
+                  </Link>
+                ) : (
+                  <button type="button" className="btn btn-ghost btn-block" onClick={() => setDrawerOpen(false)}>
+                    Close
+                  </button>
+                )}
               </div>
             </aside>
 
@@ -273,17 +308,49 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
                   ☰ Filters{activeCount ? ` (${activeCount})` : ''}
                 </button>
                 <p className="rescount" data-testid="consultant-count">
-                  <b>{formatNumber(meta.total)}</b> consultant{meta.total === 1 ? '' : 's'}
+                  {loadFailed ? (
+                    'Directory unavailable'
+                  ) : (
+                    <>
+                      <b>{formatNumber(meta.total)}</b> consultant{meta.total === 1 ? '' : 's'}
+                    </>
+                  )}
                 </p>
               </div>
 
-              {rows.length === 0 ? (
-                <div className="cref-empty" data-testid="consultant-empty">
-                  <h3>No consultants match these filters</h3>
-                  <p>Clear a filter to see the full published directory.</p>
+              {loadFailed ? (
+                <div className="cref-empty" data-testid="consultant-error" role="alert">
+                  <h3>Consultants could not be loaded</h3>
+                  <p>
+                    The directory did not respond just now. This is a problem on our side, not a
+                    sign that no consultants are published.
+                  </p>
                   <Link className="btn btn-primary" href="/study-abroad-consultants#results">
-                    Clear filters
+                    Try again
                   </Link>
+                </div>
+              ) : rows.length === 0 ? (
+                <div className="cref-empty" data-testid="consultant-empty">
+                  {activeCount ? (
+                    <>
+                      <h3>No consultants match these filters</h3>
+                      <p>Clear a filter to see the full published directory.</p>
+                      <Link className="btn btn-primary" href="/study-abroad-consultants#results">
+                        Clear filters
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <h3>No consultants published yet</h3>
+                      <p>
+                        Consultant profiles appear here as they are published. In the meantime a
+                        Universta counsellor can talk through your options.
+                      </p>
+                      <Link className="btn btn-primary" href="/counselling">
+                        Book free counselling
+                      </Link>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="clist">

@@ -344,17 +344,14 @@ export function PhaseDetail({
       <section className="detail-hero">
         <div className="shell detail-hero-grid">
           <div>
-            <Link className="back-link" href={path}>
-              ← All {label.toLowerCase()}
-            </Link>
+            {/* No "← All scholarships" link here: the breadcrumb above already
+              * names the parent and links to it, and two back affordances
+              * stacked on top of each other read as an unfinished page. */}
             <p className="eyebrow">Published information</p>
             <h1>{title(row)}</h1>
             <p className="hero-copy">
               {description(row) || "Published record."}
             </p>
-            {resource === "scholarships" ? (
-              <StudentCatalogueActions kind="scholarships" entityId={row.id} scholarshipId={row.id} />
-            ) : null}
             {row.sourceReference ? (
               <p className="source-note">
                 Source:{" "}
@@ -363,7 +360,13 @@ export function PhaseDetail({
                 </a>
               </p>
             ) : null}
+            {/* One row for every call to action. Save/Apply previously rendered
+              * in their own block above this one, which split the hero into two
+              * disconnected button groups. */}
             <div className="hero-actions">
+              {resource === "scholarships" ? (
+                <StudentCatalogueActions kind="scholarships" entityId={row.id} scholarshipId={row.id} />
+              ) : null}
               {consultantActions ? (
                 consultantActions.map((action) => (
                   <a
@@ -375,8 +378,12 @@ export function PhaseDetail({
                   </a>
                 ))
               ) : (
+                /* One primary per hero. A scholarship already offers "Apply
+                 * with Universta" as its main action, so counselling steps down
+                 * to secondary there; on records with no action of their own it
+                 * remains the primary. */
                 <Link
-                  className="button"
+                  className={resource === "scholarships" ? "button secondary" : "button"}
                   href={`/counselling?source=general&from=${encodeURIComponent(path)}`}
                 >
                   Talk to a counsellor
@@ -515,9 +522,7 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
       <section className="detail-hero">
         <div className="shell detail-hero-grid">
           <div>
-            <Link className="back-link" href="/universities">
-              ← All universities
-            </Link>
+            {/* The breadcrumb above links back to Universities. */}
             <p className="eyebrow">
               {row.country?.name ?? "Published university"}
             </p>
@@ -527,8 +532,8 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
                 row.overview ??
                 "Published university information."}
             </p>
-            <StudentCatalogueActions kind="universities" entityId={row.id} />
             <div className="hero-actions">
+              <StudentCatalogueActions kind="universities" entityId={row.id} />
               <Link
                 className="button"
                 href={`/universities/${slugFor(row)}/courses`}

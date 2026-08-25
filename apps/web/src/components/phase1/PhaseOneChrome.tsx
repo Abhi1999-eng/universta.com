@@ -14,7 +14,31 @@ export function PhaseOneFooter() {
   return null;
 }
 
-/** Breadcrumbs are page content, not site chrome, so this one is unchanged. */
+/** The shared public breadcrumb.
+ *
+ * The separator is drawn by CSS rather than shipped as a literal "/" text
+ * node: the markup previously emitted one, and because the only `.crumbs`
+ * rules lived inside `@scope (.visual-courses-page)` in visual-reference.css,
+ * every page outside that scope fell back to a default <ol> and rendered the
+ * trail as a vertical stack of "/Label" lines. The unscoped rules now live in
+ * phase1-shared-template.css. The final crumb carries aria-current="page" so
+ * the trail matches the listing pages it sits alongside. */
 export function Crumbs({ items }: { items: Array<[string, string?]> }) {
-  return <div className="shell crumbs"><nav aria-label="Breadcrumb"><ol>{items.map(([label, href], index) => <li key={`${label}-${index}`}>{index ? <span className="sep">/</span> : null}{href ? <Link href={href}>{label}</Link> : label}</li>)}</ol></nav></div>;
+  return (
+    <div className="shell crumbs">
+      <nav aria-label="Breadcrumb">
+        <ol>
+          {items.map(([label, href], index) => (
+            <li key={`${label}-${index}`}>
+              {href ? (
+                <Link href={href}>{label}</Link>
+              ) : (
+                <span aria-current={index === items.length - 1 ? 'page' : undefined}>{label}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </div>
+  );
 }

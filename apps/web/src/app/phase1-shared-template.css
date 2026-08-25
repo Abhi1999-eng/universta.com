@@ -412,3 +412,118 @@ main > .detail-content .facts-panel h2 {
     padding-bottom: 72px;
   }
 }
+
+/* ---------- Shared public breadcrumb ----------------------------------------
+ * The `.crumbs` rules in visual-reference.css are wrapped in
+ * `@scope (.visual-courses-page)`, so every Phase 1 detail page, the compare
+ * views, success stories and editorial pages rendered the trail as an unstyled
+ * <ol>: one "/Label" per line, stacked vertically, with no current-page
+ * marker. These unscoped rules restore the same compact horizontal trail the
+ * listing pages already use. Type scale is deliberately left to the shared
+ * typography layer. */
+.crumbs {
+  padding: 14px 0 0;
+}
+
+.crumbs ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  color: #64748b;
+}
+
+.crumbs li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* A subtle chevron, matching the listing trails. */
+.crumbs li + li::before {
+  content: '\203A';
+  color: #cbd5e1;
+}
+
+.crumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: #2563eb;
+}
+
+.crumbs [aria-current='page'] {
+  color: #0b1220;
+  font-weight: 600;
+}
+
+/* A long record title is the last crumb, so it is the one that must give way
+   on a narrow screen rather than pushing the trail into several lines. */
+@media (max-width: 640px) {
+  .crumbs li:last-child {
+    min-width: 0;
+  }
+
+  .crumbs li:last-child > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ---------- Detail hero: media fallback -------------------------------------
+ * With no published image the hero card fell back to a single letter at 80px
+ * filling a 300px panel — the largest, most eye-catching element on the page,
+ * carrying no information. The country pages already solve this with a small
+ * badge beside the title, so the fallback becomes a restrained branded panel:
+ * the initial reads as a mark, and the record label carries the meaning. */
+main > .detail-hero .hero-card {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 26px 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+main > .detail-hero .hero-card .hero-placeholder {
+  flex: none;
+  min-height: 0;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #3975df, #0f3fa0);
+}
+
+main > .detail-hero .hero-card > span {
+  color: #0b1220;
+  font-weight: 600;
+}
+
+main > .detail-hero .hero-card > small {
+  color: #64748b;
+}
+
+/* The hero grid is content-led: with a compact card the two columns should
+   align at the top rather than centring a short card against a tall title. */
+main > .detail-hero .detail-hero-grid {
+  align-items: start;
+}

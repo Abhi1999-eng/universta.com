@@ -89,11 +89,17 @@ export default async function ConsultantsPage({
   let rows: ConsultantRow[] = [];
   let meta = { page: 1, limit: 12, total: 0, totalPages: 0 };
   let everything: AnyRecord[] = [];
+  // A directory with no published consultants and a directory we could not
+  // load are different facts. Collapsing the second into the first told a
+  // visitor "0 consultants" during an API outage, which is simply untrue, and
+  // hid the outage from anyone watching the page.
+  let loadFailed = false;
   try {
     const [result, all] = await Promise.all([
       phaseList<AnyRecord>('consultants', { limit: '12', ...filters }),
       // Unfiltered, so the facets are derived from the whole directory and can
-      // never offer a value that returns nothing.
+      // never offer a value that returns nothing. Facets are decoration: if
+      // only this call fails the directory itself is still trustworthy.
       phaseList<AnyRecord>('consultants', { limit: '100' })
         .then((r) => r.data)
         .catch(() => []),
@@ -102,7 +108,7 @@ export default async function ConsultantsPage({
     meta = result.meta as typeof meta;
     everything = all;
   } catch {
-    // Honest empty state rather than a failed route.
+    loadFailed = true;
   }
 
   function facet(pick: (row: Row) => Array<[string, string]>) {
@@ -121,6 +127,7 @@ export default async function ConsultantsPage({
     <ConsultantsReference
       rows={rows}
       meta={meta}
+      loadFailed={loadFailed}
       filters={filters}
       facets={{
         countries: facet((row) => slugs(row.countries, 'country')),
