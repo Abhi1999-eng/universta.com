@@ -47,8 +47,8 @@
   --r-xl: 26px;
   --r-pill: 999px;
 
-  --dsp: "Plus Jakarta Sans", system-ui, sans-serif;
-  --body: "Inter", system-ui, sans-serif;
+  --dsp: var(--font-inter);
+  --body: var(--font-inter);
 
   font-family: var(--body);
   color: var(--ink);

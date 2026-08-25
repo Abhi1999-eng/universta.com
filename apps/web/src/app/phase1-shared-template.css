@@ -12,7 +12,7 @@ main > :is(.listing-hero,.catalog-explorer,.detail-hero,.detail-content),
 
 main > :is(.listing-hero,.catalog-explorer,.detail-hero,.detail-content) :is(h1,h2,h3,h4),
 .phase1-editorial :is(h1,h2,h3,h4) {
-  font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  font-family: var(--font-inter), var(--font-inter), sans-serif;
   color: #0b1220;
   letter-spacing: -.025em;
 }
@@ -153,7 +153,7 @@ main > .catalog-explorer .catalog-card-placeholder {
   overflow: hidden;
   background: linear-gradient(135deg, #eef3ff 0%, #cddcff 100%);
   color: #2563eb;
-  font-family: var(--font-jakarta), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 50px;
   font-weight: 800;
 }
