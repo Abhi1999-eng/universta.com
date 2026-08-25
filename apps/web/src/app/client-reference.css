@@ -3806,6 +3806,11 @@
   gap: 26px;
   align-items: start;
 }
+/* No facet options and no active filter means no sidebar, so the results
+ * column owns the full row instead of sitting in the 274px filter track. */
+.cref-dest .market.market-unfiltered {
+  grid-template-columns: 1fr;
+}
 .cref-dest .market > .filters {
   position: sticky;
   top: 120px;

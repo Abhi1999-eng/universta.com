@@ -84,6 +84,30 @@ describe('consultants directory states', () => {
     expect(html).not.toContain('Languages</span>');
   });
 
+  it('drops the filter panel when there is nothing to filter by', () => {
+    const html = render(build());
+    // An empty "Filters" card whose only control is Close filters nothing.
+    expect(html).not.toContain('consultant-filters');
+    expect(html).toContain('market-unfiltered');
+  });
+
+  it('keeps the filter panel while a filter is applied or facets exist', () => {
+    // Applied filter with no matches: the operator still needs a way out.
+    expect(render(build({ filters: { country: 'canada' } }))).toContain('consultant-filters');
+    expect(
+      render(
+        build({
+          facets: {
+            countries: [{ value: 'canada', label: 'Canada' }],
+            services: [],
+            languages: [],
+            locations: [],
+          },
+        }),
+      ),
+    ).toContain('consultant-filters');
+  });
+
   it('never offers "Show 0 results" as the primary action', () => {
     expect(render(build())).not.toMatch(/Show\s*0\s*result/);
     expect(render(build({ filters: { country: 'canada' } }))).not.toMatch(/Show\s*0\s*result/);
