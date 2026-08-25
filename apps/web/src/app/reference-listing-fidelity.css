@@ -293,7 +293,7 @@
 .reference-resource-wrap { width: min(1200px, calc(100% - 48px)); margin: 0 auto; }
 .reference-crumbs { padding: 16px 0; }
 .reference-crumbs ol { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; color: #64748b; font-size: 13px; list-style: none; }
-.reference-crumbs li + li::before { content: '/'; margin-right: 8px; color: #a0aec0; }
+.reference-crumbs li + li::before { content: '\203A'; margin-right: 8px; color: #cbd5e1; }
 .reference-crumbs a { color: inherit; text-decoration: none; }
 .reference-crumbs a:hover { color: #2563eb; }
 .reference-detail-hero { padding: 66px 0 72px; border-top: 1px solid #e7ecf3; background: radial-gradient(circle at 50% -20%, rgba(37,99,235,.11), transparent 55%), #f7f9fc; text-align: center; }
