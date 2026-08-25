@@ -229,6 +229,14 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
     statistics?.internationalStudentsCount && ['International students', formatNumber(statistics.internationalStudentsCount)],
   ].filter(Boolean) as Array<[string, string]>;
 
+  /* Every row in this panel is optional. On a destination whose cost, work,
+   * language and intake profiles are all unpublished the aside still rendered
+   * as a titled card with nothing in it, so it is only mounted when it has at
+   * least one figure to show. */
+  const hasQuickFacts = Boolean(
+    tuition || living || postStudyWork || intakeLabels.length || ielts || pathway,
+  );
+
   const verifiedAt =
     cost?.verifiedAt ?? work?.verifiedAt ?? language?.verifiedAt ?? statistics?.verifiedAt ?? null;
 
@@ -281,7 +289,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
       </div>
 
       {/* HERO + QUICK FACTS */}
-      <section className="wrap hero-grid">
+      <section className={`wrap hero-grid${hasQuickFacts ? '' : ' hero-grid-solo'}`}>
         <div>
           <span className="h-flag" aria-hidden="true">
             {country.flag?.url ? (
@@ -306,6 +314,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
           </div>
         </div>
 
+        {hasQuickFacts ? (
         <aside className="quickfacts">
           <h2>{country.name} at a glance</h2>
           <p className="qf-note">
@@ -356,6 +365,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             </div>
           ) : null}
         </aside>
+        ) : null}
       </section>
 
       {/* OVERVIEW (admin-managed) */}
