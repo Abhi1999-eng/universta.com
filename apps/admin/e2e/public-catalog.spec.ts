@@ -394,13 +394,27 @@ test.describe('approved public subject and course discovery', () => {
         `${courses}/diploma-cybersecurity?country=canada`,
       ]) {
         await page.goto(route);
-        expect(
-          await page.evaluate(
-            () =>
-              document.documentElement.scrollWidth <=
-              document.documentElement.clientWidth,
-          ),
-        ).toBe(true);
+        const overflow = await page.evaluate(() => {
+          const viewport = document.documentElement.clientWidth;
+          if (document.documentElement.scrollWidth <= viewport) return [];
+
+          return [...document.querySelectorAll<HTMLElement>('*')]
+            .map((element) => {
+              const rect = element.getBoundingClientRect();
+              return {
+                tag: element.tagName,
+                className: element.className,
+                id: element.id,
+                left: Math.round(rect.left),
+                right: Math.round(rect.right),
+                width: Math.round(rect.width),
+                text: (element.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80),
+              };
+            })
+            .filter(({ left, right }) => left < 0 || right > viewport)
+            .slice(0, 10);
+        });
+        expect(overflow, `horizontal overflow on ${route}`).toEqual([]);
       }
 
       await page.goto(subjects);
