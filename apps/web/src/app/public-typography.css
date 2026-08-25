@@ -96,6 +96,14 @@ textarea {
   font: var(--type-h4);
 }
 
+/* Compact reference cards are deliberately dense grid/flex content. They
+ * retain the H4 role rather than inheriting the larger section-level H3
+ * scale, keeping long published titles within narrow mobile cards. */
+main .cref .card h3 {
+  font: var(--type-h4);
+  letter-spacing: -0.01em;
+}
+
 /* Hero/display headings retain their stronger existing hierarchy. */
 :is(main[class*='page'], main .cref, main .stu) :is(
   .hero,
