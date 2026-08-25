@@ -30,6 +30,10 @@ export type AnyRecord = {
   verificationStatus?: string;
   institutionType?: string;
   benefitType?: string;
+  /* Published on scholarships and shown on the listing card; the detail page
+   * shows it too rather than dropping to just the deadline. The currency is
+   * already declared further down this type. */
+  amount?: string | number | null;
   location?: string;
   deadline?: string | Date | null;
   startsAt?: string | Date | null;
@@ -138,8 +142,17 @@ function description(row: AnyRecord) {
     ""
   );
 }
-function resolvedRichText(resource: string, row: AnyRecord) {
-  const value = row.overview ?? row.description ?? row.journey ?? row.quote ?? row.summary ?? "No further overview is published.";
+/** The published prose for a record, or null when there is none.
+ *
+ * Returning a "nothing here" sentence gave every sparse record a full section
+ * -- an eyebrow, a 38px heading and one grey line -- so the page looked long
+ * without saying anything. Callers now skip the section instead. Copy that
+ * merely repeats the hero lede is treated as absent for the same reason. */
+function overviewValue(resource: string, row: AnyRecord): string | null {
+  const value = row.overview ?? row.description ?? row.journey ?? row.quote ?? row.summary ?? null;
+  if (!value || typeof value !== "string" || !value.trim()) return null;
+  const lede = description(row);
+  if (typeof lede === "string" && lede.trim() === value.trim()) return null;
   return resolveRichTextValue(resource, value, row);
 }
 function resolveRichTextValue(resource: string, value: string, row: AnyRecord) {
@@ -147,6 +160,14 @@ function resolveRichTextValue(resource: string, value: string, row: AnyRecord) {
   return context
     ? resolveContentVariables(context, value, row as Record<string, unknown>)
     : value;
+}
+/** "10000" with "GBP" becomes "GBP 10,000"; either half missing yields null. */
+function money(amount: unknown, currency: unknown) {
+  if (amount === null || amount === undefined || amount === "") return null;
+  const value = Number(amount);
+  if (!Number.isFinite(value)) return null;
+  const formatted = new Intl.NumberFormat("en-IN").format(value);
+  return currency ? `${String(currency)} ${formatted}` : formatted;
 }
 /** Turns a stored enum such as PUBLIC_UNIVERSITY into "Public university". */
 function humanise(value: unknown) {
@@ -261,10 +282,9 @@ export function PhaseListing({
                     ) : null}
                   </div>
                   <h2>{title(row)}</h2>
-                  <p>
-                    {description(row) ||
-                      "Published information will appear here when available."}
-                  </p>
+                  {/* A card with no summary said so in a full sentence, which
+                    * reads as a broken record rather than a short one. */}
+                  {description(row) ? <p>{description(row)}</p> : null}
                   <div className="catalog-card-facts">
                     {row.institutionType ? (
                       <span>{humanise(row.institutionType)}</span>
@@ -282,12 +302,26 @@ export function PhaseListing({
             ))}
           </div>
         ) : (
+          /* An empty directory was a dead end: a full-width card with two lines
+           * and nowhere to go. It now offers the same next steps the consultant
+           * directory does. */
           <div className="empty-state">
-            <h2>Nothing published here yet</h2>
+            <h3>Nothing published here yet</h3>
             <p>
-              This directory only lists published records. Check back soon, or
-              browse the rest of the catalogue in the meantime.
+              This directory only lists published records. A counsellor can
+              talk through your options while it fills up.
             </p>
+            <div className="empty-actions">
+              <Link
+                className="button"
+                href={`/counselling?source=general&from=${encodeURIComponent(path)}`}
+              >
+                Book free counselling
+              </Link>
+              <Link className="button secondary" href="/countries">
+                Browse study destinations
+              </Link>
+            </div>
           </div>
         )}
         {meta && meta.totalPages > 1 ? (
@@ -318,7 +352,12 @@ export function PhaseDetail({
 }) {
   const label = labels[resource] ?? resource;
   const path = basePath ?? paths[resource] ?? `/${resource}`;
-  const facts: Array<[string, string | null]> = [
+  const facts = ([
+    /* The scholarship listing card already showed funding and award type, so
+     * a reader who followed the card reached a page with less on it than the
+     * card. Both are published fields; they belong here too. */
+    ["Funding", money(row.amount, row.currencyCode)],
+    ["Award type", row.benefitType ? humanise(row.benefitType) : null],
     ["Country", row.country?.name ?? null],
     ["University", row.university?.name ?? null],
     ["Provider", row.provider?.name ?? null],
@@ -327,9 +366,38 @@ export function PhaseDetail({
     ["Deadline", date(row.deadline) ?? null],
     ["Event date", date(row.startsAt) ?? null],
     ["Verification", row.verificationStatus ?? null],
-  ].filter((item): item is [string, string] => Boolean(item[1]));
+  ] as Array<[string, string | null]>).filter(
+    (item): item is [string, string] => Boolean(item[1]),
+  );
   const consultantActions =
     resource === "consultants" ? consultantContactActions(row) : null;
+  const overview = overviewValue(resource, row);
+  /* The hero used to close with a card reading "Scholarships / Published local
+   * record" -- the resource's own name and a status, beside the title that
+   * already said both. The published facts live in the sidebar instead, and
+   * the hero is a single column with nothing competing for the eye. */
+  const hasFacts = facts.length > 0 || Boolean(row.applicationEmail);
+  /* Suppressing empty prose sections left records whose only content is a
+   * deadline with a two-column body: an empty main column beside one small
+   * card. When there is no prose to read, the facts move up into the hero --
+   * the same panel the consultant profile uses -- so the one thing the record
+   * publishes sits beside the title instead of alone under it. */
+  const hasBody = Boolean(
+    overview ||
+      (resource === "scholarships" && row.eligibility) ||
+      (resource === "jobs" && (row.responsibilities || row.qualifications)) ||
+      row.requirements?.length ||
+      row.intakes?.length ||
+      row.services?.length ||
+      row.speakersJson,
+  );
+  const factRows: Array<[string, string]> = [
+    ...facts,
+    ...(row.applicationEmail
+      ? ([["Apply by email", String(row.applicationEmail)]] as Array<[string, string]>)
+      : []),
+  ];
+  const heroPanel = !hasBody && factRows.length > 0;
   return (
     <main>
       <PhaseOneHeader />
@@ -342,7 +410,7 @@ export function PhaseDetail({
         ]}
       />
       <section className="detail-hero">
-        <div className="shell detail-hero-grid">
+        <div className={`shell detail-hero-grid${heroPanel ? "" : " detail-hero-solo"}`}>
           <div>
             {/* No "← All scholarships" link here: the breadcrumb above already
               * names the parent and links to it, and two back affordances
@@ -404,20 +472,31 @@ export function PhaseDetail({
               ) : null}
             </div>
           </div>
-          <div className="hero-card">
-            <div className="hero-placeholder">{title(row).slice(0, 1)}</div>
-            <span>{label}</span>
-            <small>Published local record</small>
-          </div>
+          {heroPanel ? (
+            <aside className="pd-panel detail-hero-panel">
+              <h2>At a glance</h2>
+              <dl className="pd-rows">
+                {factRows.map(([key, value]) => (
+                  <div className="pd-row" key={key}>
+                    <dt>{key}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </aside>
+          ) : null}
         </div>
       </section>
-      <section className="shell detail-content">
+      {hasBody ? (
+      <section className={`shell detail-content${hasFacts ? "" : " detail-content-solo"}`}>
         <div className="detail-main">
-          <section className="editorial-section">
-            <p className="eyebrow">Overview</p>
-            <h2>What to know</h2>
-            <RichText value={resolvedRichText(resource, row)} />
-          </section>
+          {overview ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Overview</p>
+              <h2>What to know</h2>
+              <RichText value={overview} />
+            </section>
+          ) : null}
           {resource === "scholarships" && row.eligibility ? (
             <section className="editorial-section">
               <p className="eyebrow">Eligibility</p>
@@ -490,29 +569,38 @@ export function PhaseDetail({
             </section>
           ) : null}
         </div>
-        <aside className="facts-panel">
-          <p className="eyebrow">At a glance</p>
-          <h2>{title(row)}</h2>
-          {facts.map(([key, value]) => (
-            <div className="fact" key={key}>
-              <span>{key}</span>
-              <strong>{value}</strong>
-            </div>
-          ))}
-          {row.applicationEmail ? (
-            <div className="fact">
-              <span>Apply by email</span>
-              <strong>{row.applicationEmail}</strong>
-            </div>
-          ) : null}
-        </aside>
+        {/* The panel repeated the h1 as its own heading and rendered even when
+          * it had no rows to show. It is now labelled, not titled, and absent
+          * when the record publishes no facts. */}
+        {hasFacts ? (
+          <aside className="facts-panel">
+            <h2>At a glance</h2>
+            {facts.map(([key, value]) => (
+              <div className="fact" key={key}>
+                <span>{key}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+            {row.applicationEmail ? (
+              <div className="fact">
+                <span>Apply by email</span>
+                <strong>{row.applicationEmail}</strong>
+              </div>
+            ) : null}
+          </aside>
+        ) : null}
       </section>
+      ) : null}
       <PhaseOneFooter />
     </main>
   );
 }
 
 export function UniversityDetail({ row }: { row: AnyRecord }) {
+  const offerings: AnyRecord[] = row.offerings ?? [];
+  const campuses: AnyRecord[] = row.campuses ?? [];
+  const offeringCount = row._count?.offerings ?? offerings.length ?? 0;
+  const overview = typeof row.overview === "string" && row.overview.trim() ? row.overview : null;
   return (
     <main>
       <PhaseOneHeader />
@@ -520,9 +608,11 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
         items={[["Home", "/"], ["Universities", "/universities"], [title(row)]]}
       />
       <section className="detail-hero">
-        <div className="shell detail-hero-grid">
+        <div className="shell detail-hero-grid detail-hero-solo">
           <div>
-            {/* The breadcrumb above links back to Universities. */}
+            {/* The breadcrumb above links back to Universities. The offering
+              * count and institution type moved into the facts panel, which
+              * was already showing the same two values. */}
             <p className="eyebrow">
               {row.country?.name ?? "Published university"}
             </p>
@@ -554,76 +644,92 @@ export function UniversityDetail({ row }: { row: AnyRecord }) {
               </Link>
             </div>
           </div>
-          <div className="hero-card">
-            <div className="hero-placeholder">{title(row).slice(0, 1)}</div>
-            <span>
-              {(() => {
-                const count = row._count?.offerings ?? row.offerings?.length ?? 0;
-                return `${count} offering${count === 1 ? '' : 's'}`;
-              })()}
-            </span>
-            <small>{row.institutionType ?? "Institution"}</small>
-          </div>
         </div>
       </section>
       <section className="shell detail-content">
         <div className="detail-main">
-          <section className="editorial-section">
-            <p className="eyebrow">Overview</p>
-            <h2>About this university</h2>
-            <RichText value={resolveContentVariables("university", row.overview ?? "No overview is published.", row as Record<string, unknown>)} />
-          </section>
-          <section className="editorial-section">
-            <p className="eyebrow">Campuses</p>
-            <h2>Locations</h2>
-            <div className="editorial-items">
-              {row.campuses?.length ? (
-                row.campuses.map((campus: AnyRecord) => (
-                  <div key={campus.id}>
+          {/* Three sections that each rendered a "nothing is published" line
+            * turned a record with one campus and one course into a page of
+            * empty bands. Every block below appears only when it has content,
+            * and the campus and course lists use the shared detail primitives
+            * rather than two more one-off list styles. */}
+          {overview ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Overview</p>
+              <h2>About this university</h2>
+              <RichText value={resolveContentVariables("university", overview, row as Record<string, unknown>)} />
+            </section>
+          ) : null}
+          {campuses.length ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Campuses</p>
+              <h2>{campuses.length === 1 ? "Location" : "Locations"}</h2>
+              {/* Same card as a course offering, so the two lists on this
+                * page read as one system rather than two treatments. */}
+              <div className="pd-grid pd-grid-cards">
+                {campuses.map((campus: AnyRecord) => (
+                  <div className="pd-block" key={campus.id}>
+                    <h3>Campus</h3>
                     <strong>{campus.name}</strong>
-                    <span>
+                    <span className="pd-block-sub">
                       {[campus.city, campus.state, campus.address]
                         .filter(Boolean)
-                        .join(", ")}
+                        .join(", ") || "Published without an address"}
                     </span>
                   </div>
-                ))
-              ) : (
-                <p>No campuses are published.</p>
-              )}
-            </div>
-          </section>
-          <section className="editorial-section">
-            <p className="eyebrow">Available programs</p>
-            <h2>University course offerings</h2>
-            <div className="editorial-items">
-              {row.offerings?.length ? (
-                row.offerings.map((offering: AnyRecord) => (
-                  <div key={offering.id}>
-                    <Link
-                      className="text-link"
-                      href={`/universities/${slugFor(row)}/courses/${slugFor(offering)}`}
-                    >
-                      {offering.name}
-                    </Link>
-                    <span>
-                      {offering.genericCourse?.subject?.name ??
-                        "Published offering"}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p>No offerings are published.</p>
-              )}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {offerings.length ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Available programs</p>
+              <h2>Course offerings</h2>
+              <div className="pd-grid pd-grid-cards">
+                {offerings.map((offering: AnyRecord) => (
+                  <Link
+                    className="pd-block pd-block-link"
+                    key={offering.id}
+                    href={`/universities/${slugFor(row)}/courses/${slugFor(offering)}`}
+                  >
+                    <h3>
+                      {offering.genericCourse?.subject?.name ?? "Published offering"}
+                    </h3>
+                    <strong>{offering.name}</strong>
+                    <span className="pd-more">View offering &rarr;</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {!overview && !campuses.length && !offerings.length ? (
+            <section className="editorial-section">
+              <p className="eyebrow">Overview</p>
+              <h2>About this university</h2>
+              <p>
+                This institution is published with its name and country only.
+                Course offerings and campuses appear here as they are added.
+              </p>
+            </section>
+          ) : null}
         </div>
         <aside className="facts-panel">
-          <p className="eyebrow">Institution facts</p>
-          <h2>{row.country?.name ?? "University"}</h2>
+          <h2>Institution facts</h2>
+          {row.country?.name ? (
+            <div className="fact">
+              <span>Country</span>
+              <strong>{row.country.name}</strong>
+            </div>
+          ) : null}
+          {row.institutionType ? (
+            <div className="fact">
+              <span>Type</span>
+              <strong>{humanise(row.institutionType)}</strong>
+            </div>
+          ) : null}
           <div className="fact">
-            <span>Type</span>
-            <strong>{row.institutionType ?? "Not published"}</strong>
+            <span>Course offerings</span>
+            <strong>{offeringCount}</strong>
           </div>
           {row.sourceReference ? (
             <p className="source-note">

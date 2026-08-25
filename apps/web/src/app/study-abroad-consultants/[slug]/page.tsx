@@ -71,12 +71,19 @@ export default async function ConsultantPage({ params }: Props) {
         .filter(Boolean)}
       locations={list(record.locations, "location")
         .filter(({ nested }) => nested?.slug)
-        .map(({ item, nested }) => ({
-          name: String(nested!.name),
-          slug: String(nested!.slug),
-          city: nested!.city ? String(nested!.city) : null,
-          address: typeof item.address === "string" ? item.address : null,
-        }))}
+        .map(({ item, nested }) => {
+          const country = nested!.country as Record<string, unknown> | undefined;
+          return {
+            name: String(nested!.name),
+            slug: String(nested!.slug),
+            city: nested!.city ? String(nested!.city) : null,
+            /* State and country are published on the location too. Rendering
+             * them turns a bare office name into a place a reader recognises. */
+            state: nested!.state ? String(nested!.state) : null,
+            country: country?.name ? String(country.name) : null,
+            address: typeof item.address === "string" ? item.address : null,
+          };
+        })}
     />
   );
 }

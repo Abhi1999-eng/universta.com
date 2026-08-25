@@ -3,15 +3,22 @@ import { consultantContactActions } from '@/lib/consultant-contact';
 import { formatDate } from '@/lib/format';
 import { RichText } from '@/components/phase1/RichText';
 
-/** The client-approved consultant profile.
+/** The consultant profile.
  *
- * The template leads with a star rating, review count, success rate, students
- * placed, response time and a booking calendar, and closes with testimonials
- * and a comparison against other consultants. Universta records a consultant's
- * name, description, contact details, verification state, destinations,
- * services, languages and office locations — so the page is built from those,
- * and the contact action stays with the consultant's own published email or
- * phone rather than routing the visitor into Universta counselling. */
+ * The client-approved template leads with a star rating, review count, success
+ * rate, students placed, response time and a booking calendar, and closes with
+ * testimonials and a comparison against other consultants. Universta records a
+ * consultant's name, description, contact details, verification state,
+ * destinations, services, languages and office locations -- so the page is
+ * built from those, and the contact action stays with the consultant's own
+ * published email or phone rather than routing the visitor into Universta
+ * counselling.
+ *
+ * Composition note: services, destinations, languages and offices used to be
+ * four full-width bands, each with an eyebrow and a 38px heading above a
+ * single chip -- roughly 250px of page for one word. They are now blocks in
+ * one content-sized grid, and the panel beside the identity carries contact
+ * details a reader can act on instead of a table counting those same chips. */
 
 export type ConsultantDetailProps = {
   consultant: {
@@ -29,7 +36,14 @@ export type ConsultantDetailProps = {
   countries: Array<{ name: string; slug: string }>;
   services: string[];
   languages: string[];
-  locations: Array<{ name: string; slug: string; city: string | null; address: string | null }>;
+  locations: Array<{
+    name: string;
+    slug: string;
+    city: string | null;
+    state?: string | null;
+    country?: string | null;
+    address: string | null;
+  }>;
 };
 
 const SKIP_WORDS = new Set(['of', 'in', 'and', 'the', 'for', 'a', 'an', '&']);
@@ -47,6 +61,26 @@ function initials(value: string) {
     .join('');
 }
 
+function VerifiedMark() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path
+        d="M8 1.4 9.9 3l2.4-.3.6 2.4 2 1.4-1.1 2.2.4 2.4-2.4.6L10.2 14 8 12.9 5.8 14l-1.6-1.9-2.4-.6.4-2.4L1.1 6.9l2-1.4.6-2.4L6.1 3 8 1.4Z"
+        fill="currentColor"
+        opacity=".18"
+      />
+      <path
+        d="m5.4 8.1 1.8 1.8 3.5-3.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function ConsultantDetailReference(props: ConsultantDetailProps) {
   const { consultant, countries, services, languages, locations } = props;
   /** The helper returns a primary "Contact Consultant" action plus per-channel
@@ -59,40 +93,49 @@ export function ConsultantDetailReference(props: ConsultantDetailProps) {
     (action, index, list) => list.findIndex((other) => other.href === action.href) === index,
   );
 
-  const facts = [
-    countries.length && ['Destinations covered', String(countries.length)],
-    services.length && ['Services', String(services.length)],
-    languages.length && ['Languages', String(languages.length)],
-    locations.length && ['Offices', String(locations.length)],
-  ].filter(Boolean) as Array<[string, string]>;
+  const hasContact = Boolean(consultant.email || consultant.phone || consultant.websiteUrl);
+  const hasProfile = Boolean(
+    services.length || countries.length || languages.length || locations.length,
+  );
 
   return (
-    <div className="cref cref-dest">
+    <div className="cref cref-dest cdetail">
       <div className="wrap">
         <nav className="crumb" aria-label="Breadcrumb">
-          <Link href="/">Home</Link> ›{' '}
-          <Link href="/study-abroad-consultants">Study abroad consultants</Link> ›{' '}
-          <span aria-current="page">{consultant.name}</span>
+          <Link href="/">Home</Link>
+          <span className="crumb-step">
+            <Link href="/study-abroad-consultants">Study abroad consultants</Link>
+          </span>
+          <span className="crumb-step" aria-current="page">
+            {consultant.name}
+          </span>
         </nav>
       </div>
 
-      <section className="wrap hero-grid">
-        <div>
-          <span className="h-flag" aria-hidden="true">
-            {initials(consultant.name)}
-          </span>
-          <h1>{consultant.name}</h1>
+      <section className="wrap cdetail-hero">
+        <div className="cdetail-intro">
+          <div className="pd-identity">
+            <span className="pd-avatar" aria-hidden="true">
+              {initials(consultant.name)}
+            </span>
+            <div className="pd-title-row">
+              <h1>{consultant.name}</h1>
+              {consultant.verified ? (
+                <span className="pd-badge is-verified">
+                  <VerifiedMark />
+                  Verified
+                  {consultant.verifiedAt ? ` · ${formatDate(consultant.verifiedAt)}` : ''}
+                </span>
+              ) : (
+                <span className="pd-badge">Not yet verified</span>
+              )}
+            </div>
+          </div>
+
           {consultant.shortDescription ? (
             <p className="lede">{consultant.shortDescription}</p>
           ) : null}
-          {consultant.verified ? (
-            <div className="updated">
-              Verified record
-              {consultant.verifiedAt ? ` · checked ${formatDate(consultant.verifiedAt)}` : ''}
-            </div>
-          ) : (
-            <div className="updated">Published record — not yet verified</div>
-          )}
+
           <div className="hero-btns">
             {actions.map((action) => (
               <a
@@ -114,47 +157,61 @@ export function ConsultantDetailReference(props: ConsultantDetailProps) {
               </a>
             ) : null}
           </div>
-          {actions.length === 0 && !consultant.websiteUrl ? (
-            <p className="disclaimer">
-              This consultant has not published contact details. You can{' '}
-              <Link href="/counselling" style={{ color: 'var(--blue)' }}>
-                book free Universta counselling
-              </Link>{' '}
-              instead.
-            </p>
-          ) : null}
         </div>
 
-        <aside className="quickfacts">
-          <h2>Profile at a glance</h2>
-          <p className="qf-note">Every figure below is a published field on this record.</p>
-          {facts.map(([label, value]) => (
-            <div className="qf-row" key={label}>
-              <span>{label}</span>
-              <b>{value}</b>
-            </div>
-          ))}
-          {consultant.email ? (
-            <div className="qf-row">
-              <span>Email</span>
-              <b style={{ wordBreak: 'break-all' }}>{consultant.email}</b>
-            </div>
-          ) : null}
-          {consultant.phone ? (
-            <div className="qf-row">
-              <span>Phone</span>
-              <b>{consultant.phone}</b>
-            </div>
-          ) : null}
+        <aside className="pd-panel cdetail-contact">
+          <h2>Contact</h2>
+          {hasContact ? (
+            <>
+              <p className="pd-panel-note">Published by the consultant on this record.</p>
+              <dl className="pd-rows">
+                {consultant.email ? (
+                  <div className="pd-row">
+                    <dt>Email</dt>
+                    <dd>
+                      <a href={`mailto:${consultant.email}`}>{consultant.email}</a>
+                    </dd>
+                  </div>
+                ) : null}
+                {consultant.phone ? (
+                  <div className="pd-row">
+                    <dt>Phone</dt>
+                    <dd>
+                      <a href={`tel:${consultant.phone.replace(/[^\d+]/g, '')}`}>
+                        {consultant.phone}
+                      </a>
+                    </dd>
+                  </div>
+                ) : null}
+                {consultant.websiteUrl ? (
+                  <div className="pd-row">
+                    <dt>Website</dt>
+                    <dd>
+                      <a href={consultant.websiteUrl} target="_blank" rel="noreferrer noopener">
+                        {consultant.websiteUrl.replace(/^https?:\/\//, '')}
+                      </a>
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+            </>
+          ) : (
+            <>
+              <p className="pd-panel-note">This consultant has not published contact details.</p>
+              <Link className="btn btn-primary btn-block" href="/counselling">
+                Book free counselling
+              </Link>
+            </>
+          )}
         </aside>
       </section>
 
-      {/* ABOUT */}
+      {/* ABOUT -- only when the consultant published prose of their own. */}
       {consultant.description ? (
-        <section className="sec sec-alt" id="about">
+        <section className="sec sec-alt cdetail-sec" id="about">
           <div className="wrap narrow">
-            <div className="head">
-              <span className="eyebrow">About</span>
+            <div className="pd-section-head">
+              <span className="pd-eyebrow">About</span>
               <h2>About {consultant.name}</h2>
             </div>
             <RichText className="prose" value={consultant.description} />
@@ -162,116 +219,117 @@ export function ConsultantDetailReference(props: ConsultantDetailProps) {
         </section>
       ) : null}
 
-      {/* SERVICES */}
-      {services.length ? (
-        <section className="sec" id="services">
+      {/* PROFILE -- one section for every published attribute. Each block is
+        * sized by its own content, so a consultant with one service and one
+        * destination gets two compact cards rather than two page bands. */}
+      {hasProfile ? (
+        <section className="sec cdetail-sec" id="profile">
           <div className="wrap">
-            <div className="head">
-              <span className="eyebrow">What they do</span>
-              <h2>Services</h2>
+            <div className="pd-section-head">
+              <span className="pd-eyebrow">Profile</span>
+              <h2>What this consultant covers</h2>
+              <p>Every entry below is a published field on this record.</p>
             </div>
-            <div className="dest-flags">
-              {services.map((service) => (
-                <span className="dest-flag" key={service}>
-                  {service}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* DESTINATIONS */}
-      {countries.length ? (
-        <section className="sec sec-alt" id="destinations">
-          <div className="wrap">
-            <div className="head">
-              <span className="eyebrow">Where they help</span>
-              <h2>Destinations covered</h2>
-            </div>
-            <div className="dest-flags">
-              {countries.map((country) => (
-                <Link key={country.slug} className="dest-flag" href={`/countries/${country.slug}`}>
-                  <span className="cc">{initials(country.name)}</span>
-                  {country.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* OFFICES */}
-      {locations.length ? (
-        <section className="sec" id="offices">
-          <div className="wrap">
-            <div className="head">
-              <span className="eyebrow">Where to find them</span>
-              <h2>Offices</h2>
-            </div>
-            <div className="grid g3">
-              {locations.map((location) => (
-                <article className="card" key={location.slug}>
-                  <h3 style={{ fontSize: 17 }}>{location.name}</h3>
-                  {location.city ? (
-                    <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 4 }}>
-                      {location.city}
-                    </p>
+            <div className="pd-grid pd-grid-split">
+              {services.length || countries.length || languages.length ? (
+              <div className="pd-block">
+                <h3>Coverage</h3>
+                <dl className="pd-deflist">
+                  {services.length ? (
+                    <div className="pd-defrow" id="services">
+                      <dt>Services</dt>
+                      <dd>
+                        <ul className="pd-chips">
+                          {services.map((service) => (
+                            <li key={service}>
+                              <span className="pd-chip">{service}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
                   ) : null}
-                  {location.address ? (
-                    <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 10 }}>
-                      {location.address}
-                    </p>
+
+                  {countries.length ? (
+                    <div className="pd-defrow" id="destinations">
+                      <dt>Destinations</dt>
+                      <dd>
+                        <ul className="pd-chips">
+                          {countries.map((country) => (
+                            <li key={country.slug}>
+                              <Link className="pd-chip" href={`/countries/${country.slug}`}>
+                                <span className="pd-cc" aria-hidden="true">
+                                  {initials(country.name)}
+                                </span>
+                                {country.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
                   ) : null}
-                  <p style={{ marginTop: 12 }}>
-                    <Link
-                      className="link-more"
-                      href={`/study-abroad-consultants/locations/${location.slug}`}
-                    >
-                      Consultants in {location.name} →
-                    </Link>
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
 
-      {/* LANGUAGES */}
-      {languages.length ? (
-        <section className="sec sec-alt" id="languages">
-          <div className="wrap">
-            <div className="head">
-              <span className="eyebrow">Communication</span>
-              <h2>Languages</h2>
-            </div>
-            <div className="dest-flags">
-              {languages.map((language) => (
-                <span className="dest-flag" key={language}>
-                  {language}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+                  {languages.length ? (
+                    <div className="pd-defrow" id="languages">
+                      <dt>Languages</dt>
+                      <dd>
+                        <ul className="pd-chips">
+                          {languages.map((language) => (
+                            <li key={language}>
+                              <span className="pd-chip">{language}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </div>
+              ) : null}
 
-      {consultant.sourceReference ? (
-        <section className="wrap" style={{ paddingBottom: 24 }}>
-          <p className="disclaimer">
-            Published from{' '}
-            <a
-              href={consultant.sourceReference}
-              target="_blank"
-              rel="noreferrer noopener"
-              style={{ color: 'var(--blue)' }}
-            >
-              this consultant’s own listing
-            </a>
-            {consultant.verifiedAt ? `, verified ${formatDate(consultant.verifiedAt)}` : ''}.
-            Universta does not endorse consultants and collects no ratings.
-          </p>
+              {locations.length ? (
+                <div className="pd-block cdetail-offices" id="offices">
+                  <h3>{locations.length === 1 ? 'Office' : 'Offices'}</h3>
+                  <ul className="pd-list">
+                    {locations.map((location) => (
+                      <li key={location.slug}>
+                        <strong>{location.name}</strong>
+                        <span>
+                          {[location.city, location.state, location.country]
+                            .filter(Boolean)
+                            .join(', ') || 'Location published without a city'}
+                        </span>
+                        {location.address ? <span>{location.address}</span> : null}
+                        <Link
+                          className="pd-more"
+                          href={`/study-abroad-consultants/locations/${location.slug}`}
+                        >
+                          Other consultants here &rarr;
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+
+            {consultant.sourceReference ? (
+              <p className="disclaimer cdetail-source">
+                Published from{' '}
+                <a
+                  href={consultant.sourceReference}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  style={{ color: 'var(--blue)' }}
+                >
+                  this consultant&rsquo;s own listing
+                </a>
+                {consultant.verifiedAt ? `, verified ${formatDate(consultant.verifiedAt)}` : ''}.
+                Universta does not endorse consultants and collects no ratings.
+              </p>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
