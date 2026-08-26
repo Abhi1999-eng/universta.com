@@ -29,6 +29,10 @@ describe('runtime environment validation', () => {
       AUTH_REFRESH_COOKIE_NAME: 'universta_admin_refresh',
       AUTH_MAX_FAILED_ATTEMPTS: 5,
       AUTH_LOCK_MINUTES: 15,
+      /* Bounded so a database outage fails inside the Admin BFF's 5s upstream
+       * budget instead of after the driver's own ~11s. */
+      DATABASE_CONNECT_TIMEOUT_MS: 1000,
+      DATABASE_ACQUIRE_TIMEOUT_MS: 2500,
     });
   });
 
@@ -160,5 +164,24 @@ describe('Secure cookies and origin scheme', () => {
     expect(requiresSecureCookies('staging')).toBe(true);
     expect(requiresSecureCookies('development')).toBe(false);
     expect(requiresSecureCookies('test')).toBe(false);
+  });
+
+  /* The acquire timeout is the setting that decides whether an operator sees
+   * the API's real error or the Admin proxy's timeout verdict, so it has to be
+   * tunable without a code change. */
+  it('accepts explicit database timeouts and rejects unusable values', () => {
+    const tuned = validateEnvironment({
+      ...validEnvironment,
+      DATABASE_CONNECT_TIMEOUT_MS: '750',
+      DATABASE_ACQUIRE_TIMEOUT_MS: '1800',
+    });
+    expect(tuned.DATABASE_CONNECT_TIMEOUT_MS).toBe(750);
+    expect(tuned.DATABASE_ACQUIRE_TIMEOUT_MS).toBe(1800);
+    expect(() =>
+      validateEnvironment({
+        ...validEnvironment,
+        DATABASE_ACQUIRE_TIMEOUT_MS: '0',
+      }),
+    ).toThrow();
   });
 });

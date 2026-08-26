@@ -32,17 +32,35 @@ export function databaseConnectionFromUrl(
   };
 }
 
+/** Everything the MariaDB pool is configured with, in one testable place.
+ *
+ * Two independent fixes live here and both must survive a refactor: the
+ * `allowPublicKeyRetrieval` flag above, without which the caching_sha2_password
+ * handshake never completes, and the bounded timeouts below, without which a
+ * database that cannot be reached holds every request for ~11s. */
+export function databaseAdapterConfig(
+  runtimeConfig: Pick<
+    RuntimeConfigService,
+    'databaseUrl' | 'databaseConnectTimeoutMs' | 'databaseAcquireTimeoutMs'
+  >,
+) {
+  return {
+    ...databaseConnectionFromUrl(runtimeConfig.databaseUrl),
+    /* Unbounded in practice before this: the pool's default 10s acquire
+     * timeout meant a single unreachable database held every request --
+     * public pages and admin sign-in alike -- for ~11s before failing. */
+    connectTimeout: runtimeConfig.databaseConnectTimeoutMs,
+    acquireTimeout: runtimeConfig.databaseAcquireTimeoutMs,
+  };
+}
+
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(runtimeConfig: RuntimeConfigService) {
-    super({
-      adapter: new PrismaMariaDb(
-        databaseConnectionFromUrl(runtimeConfig.databaseUrl),
-      ),
-    });
+    super({ adapter: new PrismaMariaDb(databaseAdapterConfig(runtimeConfig)) });
   }
 
   async onModuleInit(): Promise<void> {

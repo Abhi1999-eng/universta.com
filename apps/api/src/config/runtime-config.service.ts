@@ -33,6 +33,12 @@ export class RuntimeConfigService {
         'AUTH_MAX_FAILED_ATTEMPTS',
       ),
       authLockMinutes: this.configService.getOrThrow('AUTH_LOCK_MINUTES'),
+      databaseConnectTimeoutMs: this.configService.getOrThrow(
+        'DATABASE_CONNECT_TIMEOUT_MS',
+      ),
+      databaseAcquireTimeoutMs: this.configService.getOrThrow(
+        'DATABASE_ACQUIRE_TIMEOUT_MS',
+      ),
     };
   }
 
@@ -46,6 +52,18 @@ export class RuntimeConfigService {
 
   get databaseUrl(): string {
     return this.value.databaseUrl;
+  }
+
+  /** How long the driver may spend opening a socket to the database. */
+  get databaseConnectTimeoutMs(): number {
+    return this.value.databaseConnectTimeoutMs;
+  }
+
+  /** How long a request may wait for a pooled connection before giving up.
+   * Must stay below the Admin BFF's upstream budget so the API, not the
+   * proxy, decides what the caller is told. */
+  get databaseAcquireTimeoutMs(): number {
+    return this.value.databaseAcquireTimeoutMs;
   }
 
   get corsOrigins(): string[] {

@@ -27,6 +27,18 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   VALIDATION_ERROR: 'Invalid request',
 };
 
+/* Upstream codes that mean "the API could not serve this right now", as
+ * opposed to a verdict on the request. They are reported to the browser as
+ * AUTH_SERVICE_UNAVAILABLE -- the same code an unreachable API already
+ * produces -- rather than passed through, so the console never learns which
+ * internal dependency failed, and rather than collapsing to the generic
+ * AUTH_REQUEST_FAILED, which would have hidden a real outage behind
+ * "Authentication request failed". */
+const UPSTREAM_UNAVAILABLE_CODES = new Set([
+  'DATABASE_UNAVAILABLE',
+  'SERVICE_UNAVAILABLE',
+]);
+
 interface SafeEnvelope {
   data: unknown;
   meta: unknown;
@@ -92,6 +104,16 @@ function safeError(value: unknown): SafeEnvelope['error'] {
     };
   }
   const candidate = value as { code?: unknown };
+  if (
+    typeof candidate.code === 'string' &&
+    UPSTREAM_UNAVAILABLE_CODES.has(candidate.code)
+  ) {
+    return {
+      code: 'AUTH_SERVICE_UNAVAILABLE',
+      message: 'Authentication service is temporarily unavailable',
+      details: null,
+    };
+  }
   const code =
     typeof candidate.code === 'string' && SAFE_ERROR_MESSAGES[candidate.code]
       ? candidate.code

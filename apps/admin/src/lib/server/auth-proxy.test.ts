@@ -106,4 +106,50 @@ describe('same-origin authentication BFF', () => {
     expect(body.error).toEqual({ code: 'AUTH_REQUEST_FAILED', message: 'Authentication request failed', details: null });
     expect(JSON.stringify(body)).not.toContain('secret');
   });
+
+  /* The live symptom this covers: with the database down the API answered
+   * every login -- valid, invalid, nonexistent -- with 500 INTERNAL_ERROR,
+   * which this proxy collapsed to the generic AUTH_REQUEST_FAILED. The API
+   * now names the outage, and the proxy passes that through as the service
+   * code the console already knows how to phrase, without telling the browser
+   * which internal dependency failed. */
+  it('reports an upstream database outage as AUTH_SERVICE_UNAVAILABLE', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(503, {
+      data: null,
+      meta: null,
+      error: { code: 'DATABASE_UNAVAILABLE', message: 'Database is temporarily unavailable', details: null },
+      requestId: 'server-request',
+    })));
+    const response = await proxyAuthRoute(request('/api/v1/admin/auth/login', {
+      method: 'POST',
+      headers: { 'x-universta-admin-client': 'web' },
+      body: JSON.stringify({ email: 'admin@universta.local', password: 'secret' }),
+    }), 'login');
+    expect(response.status).toBe(503);
+    const body = await response.json();
+    expect(body.error).toEqual({
+      code: 'AUTH_SERVICE_UNAVAILABLE',
+      message: 'Authentication service is temporarily unavailable',
+      details: null,
+    });
+    // The browser learns that auth is unavailable, not what failed behind it.
+    expect(JSON.stringify(body)).not.toContain('DATABASE');
+  });
+
+  it('keeps a wrong password distinguishable from an outage', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(401, {
+      data: null,
+      meta: null,
+      error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password', details: null },
+      requestId: 'server-request',
+    })));
+    const response = await proxyAuthRoute(request('/api/v1/admin/auth/login', {
+      method: 'POST',
+      headers: { 'x-universta-admin-client': 'web' },
+      body: JSON.stringify({ email: 'admin@universta.local', password: 'wrong' }),
+    }), 'login');
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.error.code).toBe('INVALID_CREDENTIALS');
+  });
 });

@@ -5,6 +5,11 @@ import {
   type ExceptionFilter,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import {
+  DATABASE_UNAVAILABLE_CODE,
+  DATABASE_UNAVAILABLE_MESSAGE,
+  isDatabaseUnavailableError,
+} from './database-availability';
 import { RequestContextService } from './request-context.service';
 import type { ResponseEnvelope } from './http.types';
 import {
@@ -114,6 +119,21 @@ export class AppExceptionFilter implements ExceptionFilter {
       status = 413;
       code = 'REQUEST_TOO_LARGE';
       message = 'Request body is too large';
+    } else if (isDatabaseUnavailableError(exception)) {
+      // The request was fine; the database could not be reached. Reporting it
+      // as 500 INTERNAL_ERROR told every caller -- the Admin console included
+      // -- that the API had a bug, and left an operator with nothing to act
+      // on. 503 with its own code says what actually happened, and the
+      // requestId still ties it to the log line below.
+      status = 503;
+      code = DATABASE_UNAVAILABLE_CODE;
+      message = DATABASE_UNAVAILABLE_MESSAGE;
+      this.logger.logError('database unavailable', {
+        requestId,
+        method: request.method,
+        path: request.originalUrl.split('?')[0],
+        reason: 'DATABASE_UNAVAILABLE',
+      });
     } else {
       this.logger.logError('unhandled request exception', {
         requestId,

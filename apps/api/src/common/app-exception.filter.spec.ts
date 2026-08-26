@@ -1,5 +1,6 @@
 import { HttpException, NotFoundException } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
 import { AppExceptionFilter } from './app-exception.filter';
 import { RequestContextService } from './request-context.service';
 import { StructuredLogger } from './structured-logger.service';
@@ -63,6 +64,43 @@ describe('AppExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         error: expect.objectContaining({ message: 'Route not found' }),
+      }),
+    );
+  });
+
+  /* The deployed Admin login failed here. With the database unreachable every
+   * request -- including `POST /api/v1/admin/auth/login` for an address that
+   * does not exist -- answered 500 INTERNAL_ERROR after ~11s, so the console
+   * could not tell an outage from a bug and the operator got no signal at
+   * all. The failure must name itself. */
+  it('reports an unreachable database as 503 DATABASE_UNAVAILABLE', () => {
+    const exception = new Prisma.PrismaClientKnownRequestError(
+      'Invalid `prisma.user.findUnique()` invocation\nDatabase error. Code: `45028`.',
+      { code: 'P2039', clientVersion: '6.0.0' },
+    );
+    const { status, json } = run(exception);
+    expect(status).toHaveBeenCalledWith(503);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'Database is temporarily unavailable',
+          details: null,
+        },
+      }),
+    );
+  });
+
+  it('still reports an ordinary unhandled error as 500', () => {
+    const { status, json } = run(new Error('a genuine bug'));
+    expect(status).toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error',
+          details: null,
+        },
       }),
     );
   });
