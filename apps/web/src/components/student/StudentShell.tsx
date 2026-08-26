@@ -151,7 +151,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
               <span className="ic" aria-hidden="true">
                 {item.icon}
               </span>
-              {item.label}
+              <span className="stu-nav-label">{item.label}</span>
             </Link>
           ))}
           <div className="stu-account">

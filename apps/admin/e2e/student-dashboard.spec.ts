@@ -116,6 +116,39 @@ test.describe('student dashboard', () => {
     }
   });
 
+  test('keeps desktop and tablet sidebar navigation in one left-aligned icon grid', async ({ page }) => {
+    await signUpAndIn(page, 'sidebar-alignment');
+
+    for (const width of [1440, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${webBaseUrl}/student`, { waitUntil: 'networkidle' });
+
+      const layout = await page.locator('.stu-nav > a').evaluateAll((items) =>
+        items.map((item) => {
+          const icon = item.querySelector<HTMLElement>('.ic')!;
+          const label = item.querySelector<HTMLElement>('.stu-nav-label')!;
+
+          return {
+            iconLeft: Math.round(icon.getBoundingClientRect().left),
+            iconWidth: Math.round(icon.getBoundingClientRect().width),
+            labelLeft: Math.round(label.getBoundingClientRect().left),
+            justifyContent: getComputedStyle(item).justifyContent,
+            overflow: item.scrollWidth > item.clientWidth,
+          };
+        }),
+      );
+
+      expect(layout.length, `${width}px sidebar entries`).toBeGreaterThan(3);
+      const diagnostic = JSON.stringify(layout);
+      expect(new Set(layout.map((item) => item.iconLeft)).size, diagnostic).toBe(1);
+      expect(new Set(layout.map((item) => item.iconWidth)).size, diagnostic).toBe(1);
+      expect(new Set(layout.map((item) => item.labelLeft)).size, diagnostic).toBe(1);
+      expect(layout.every((item) => item.justifyContent === 'flex-start')).toBe(true);
+      expect(layout.every((item) => !item.overflow)).toBe(true);
+      await expect(page.locator('.stu-nav a[aria-current="page"]')).toHaveCount(1);
+    }
+  });
+
   test('shows application progress as separate status and note lines', async ({ page }) => {
     const { applicationId } = await studentWithApplication(page);
     test.skip(!applicationId, 'no published offering available to apply to');
