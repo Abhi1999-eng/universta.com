@@ -20,6 +20,8 @@ export interface ValidatedEnvironment {
   AUTH_REFRESH_COOKIE_NAME: string;
   AUTH_MAX_FAILED_ATTEMPTS: number;
   AUTH_LOCK_MINUTES: number;
+  DATABASE_CONNECT_TIMEOUT_MS: number;
+  DATABASE_ACQUIRE_TIMEOUT_MS: number;
 }
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
@@ -263,6 +265,22 @@ export function validateEnvironment(
       env.AUTH_LOCK_MINUTES,
       'AUTH_LOCK_MINUTES',
       15,
+    ),
+    /* The driver's own defaults are 1s to open a socket but 10s to obtain a
+     * pooled connection, so with the database unreachable every request sat
+     * for ~11s before failing. The Admin BFF gives the API 5s, so it timed
+     * out first and reported AUTH_SERVICE_UNAVAILABLE -- the proxy's verdict,
+     * not the API's. Failing inside the caller's budget lets the real reason
+     * reach the console. */
+    DATABASE_CONNECT_TIMEOUT_MS: parsePositiveInteger(
+      env.DATABASE_CONNECT_TIMEOUT_MS,
+      'DATABASE_CONNECT_TIMEOUT_MS',
+      1_000,
+    ),
+    DATABASE_ACQUIRE_TIMEOUT_MS: parsePositiveInteger(
+      env.DATABASE_ACQUIRE_TIMEOUT_MS,
+      'DATABASE_ACQUIRE_TIMEOUT_MS',
+      2_500,
     ),
   };
 }

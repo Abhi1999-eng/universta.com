@@ -17,6 +17,8 @@ export interface AppConfiguration {
   authRefreshCookieName: string;
   authMaxFailedAttempts: number;
   authLockMinutes: number;
+  databaseConnectTimeoutMs: number;
+  databaseAcquireTimeoutMs: number;
 }
 
 export const configuration = (): { app: AppConfiguration } => {
@@ -36,6 +38,8 @@ export const configuration = (): { app: AppConfiguration } => {
       authRefreshCookieName: environment.AUTH_REFRESH_COOKIE_NAME,
       authMaxFailedAttempts: environment.AUTH_MAX_FAILED_ATTEMPTS,
       authLockMinutes: environment.AUTH_LOCK_MINUTES,
+      databaseConnectTimeoutMs: environment.DATABASE_CONNECT_TIMEOUT_MS,
+      databaseAcquireTimeoutMs: environment.DATABASE_ACQUIRE_TIMEOUT_MS,
     },
   };
 };
