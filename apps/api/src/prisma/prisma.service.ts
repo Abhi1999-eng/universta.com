@@ -9,6 +9,13 @@ export interface DatabaseConnectionConfig {
   user: string;
   password: string;
   database: string;
+  /**
+   * The deployed MySQL instance uses caching_sha2_password and the API reaches
+   * it only through the loopback interface. The MariaDB driver otherwise has
+   * no server key with which to encrypt the initial password exchange, leaving
+   * the Prisma pool empty until each request times out.
+   */
+  allowPublicKeyRetrieval: boolean;
 }
 
 export function databaseConnectionFromUrl(
@@ -21,6 +28,7 @@ export function databaseConnectionFromUrl(
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ''),
+    allowPublicKeyRetrieval: true,
   };
 }
 
