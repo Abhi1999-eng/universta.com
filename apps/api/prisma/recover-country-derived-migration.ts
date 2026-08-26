@@ -12,11 +12,23 @@ type MigrationRow = {
   rolled_back_at: Date | null;
 };
 
-function databaseUrl(): string {
+function databaseConfig() {
   const value = process.env.DATABASE_URL;
   if (!value)
     throw new Error('DATABASE_URL is required for migration recovery');
-  return value;
+
+  const url = new URL(value);
+  return {
+    host: url.hostname,
+    port: Number(url.port || 3306),
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: url.pathname.replace(/^\//, ''),
+    // This recovery script runs before the API starts. Match the API adapter
+    // configuration so MySQL caching_sha2_password can complete its loopback
+    // RSA key exchange rather than timing out the deployment.
+    allowPublicKeyRetrieval: true,
+  };
 }
 
 async function tableColumns(prisma: PrismaClient, table: string) {
@@ -50,7 +62,7 @@ async function indexExists(prisma: PrismaClient, table: string, index: string) {
 
 async function main() {
   const prisma = new PrismaClient({
-    adapter: new PrismaMariaDb(databaseUrl()),
+    adapter: new PrismaMariaDb(databaseConfig()),
   });
 
   try {
