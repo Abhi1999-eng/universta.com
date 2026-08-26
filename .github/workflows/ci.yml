@@ -150,6 +150,21 @@ jobs:
       - name: Build web, admin, and API
         run: npm run build
 
+      - name: Confirm the Admin auth BFF routes are in the build
+        # The Admin console reaches the API only through these four route
+        # handlers. If a build ever stops emitting them the console answers 404
+        # on sign-in while `/login` itself still renders, so checking the page
+        # alone would not notice. Assert the compiled manifest, before the
+        # release is packaged.
+        run: |
+          manifest=apps/admin/.next/server/app-paths-manifest.json
+          test -f "$manifest"
+          for route in login refresh logout me; do
+            jq -e --arg key "/api/v1/admin/auth/$route/route" \
+              'has($key)' "$manifest" > /dev/null \
+              || { echo "Admin BFF route missing from build: $route"; exit 1; }
+          done
+
       - name: Confirm generated and build output is clean
         run: |
           git diff --check
@@ -271,6 +286,37 @@ jobs:
           done
           curl --fail --silent --show-error --max-time 30 \
             --output /dev/null "${DEPLOY_ADMIN_URL}/login"
+
+      - name: Verify the Admin sign-in path answers end to end
+        # `/login` rendering only proves the page is served. This drives the
+        # whole chain -- Admin host, Next BFF, API, database, AuthService --
+        # and requires no credential: the account is in the reserved .invalid
+        # TLD, so it cannot exist and cannot lock a real administrator out. A
+        # verdict of INVALID_CREDENTIALS is the pass; 404, 502 or 500 are the
+        # failures this exists to catch.
+        run: |
+          set -euo pipefail
+
+          expect_code() {
+            local path="$1" expected="$2" body status
+            body="$(mktemp)"
+            status="$(curl --silent --show-error --max-time 30 \
+              --output "${body}" --write-out '%{http_code}' \
+              -X POST "${DEPLOY_ADMIN_URL}${path}" \
+              -H 'content-type: application/json' \
+              -H 'x-universta-admin-client: web' \
+              --data '{"email":"deploy-smoke@universta.invalid","password":"deploy-smoke-not-a-real-password"}')"
+            if [ "${status}" != "401" ]; then
+              echo "${path} answered HTTP ${status}, expected 401:"
+              cat "${body}"
+              exit 1
+            fi
+            jq -e --arg code "${expected}" '.error.code == $code' "${body}" > /dev/null \
+              || { echo "${path} did not report ${expected}:"; cat "${body}"; exit 1; }
+          }
+
+          expect_code /api/v1/admin/auth/login INVALID_CREDENTIALS
+          expect_code /api/v1/admin/auth/refresh INVALID_REFRESH_TOKEN
 
       - name: Record deployment summary
         run: |
