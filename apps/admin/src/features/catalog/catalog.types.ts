@@ -48,6 +48,10 @@ export interface CountryRecord {
   slug: string;
   pageHeading: string;
   shortDescription: string;
+  overview?: string | null;
+  tagline?: string | null;
+  capitalCity?: string | null;
+  officialLanguage?: string | null;
   continent: { id: string; name: string; slug: string };
   flag: FlagRecord | null;
   featured: boolean;
@@ -55,6 +59,7 @@ export interface CountryRecord {
   statistics: { universitiesCount: number | null } | null;
   iso2Code?: string | null;
   iso3Code?: string | null;
+  externalUid?: string | null;
   currency?: { code: string; symbol: string | null } | null;
   configuration?: {
     features: Array<{ code: string; label: string }>;
@@ -64,6 +69,11 @@ export interface CountryRecord {
   };
   popularUniversityIds?: string[];
   popularCourseIds?: string[];
+  subjectIds?: string[];
+  tagIds?: string[];
+  subjects?: Array<{ id: string; name: string; slug: string }>;
+  tags?: Array<{ id: string; name: string; slug: string }>;
+  linkedCounts?: { universities: number; courses: number; scholarships: number };
   status?: string;
   publishedAt?: string | null;
   createdAt?: string;
@@ -160,11 +170,21 @@ export interface CatalogListParams {
   maxTuition?: string;
   continent?: string;
   continentId?: string;
+  subjectId?: string;
+  tagId?: string;
   status?: string;
   featured?: boolean;
   sort?: string;
   page?: number;
   limit?: number;
+}
+
+export interface CountryTagRecord {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  description?: string | null;
 }
 
 export interface CatalogMutationError extends Error {

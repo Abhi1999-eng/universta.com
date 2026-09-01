@@ -34,6 +34,7 @@ export const INTAKE_AVAILABILITY = [
   'NOT_PUBLISHED',
 ] as const;
 export const STATISTICS_SOURCE_MODES = [
+  'DERIVED',
   'MANUAL',
   'OFFICIAL',
   'IMPORTED',

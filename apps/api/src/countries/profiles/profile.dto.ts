@@ -137,6 +137,9 @@ export class CostProfileDto extends ProfileVersionDto {
 }
 
 export class WorkProfileDto extends ProfileVersionDto {
+  @IsOptional() @IsString() @MaxLength(255) visaType?: string;
+  @IsOptional() @IsString() visaFee?: string;
+  @IsOptional() @IsString() @MaxLength(3) visaFeeCurrencyCode?: string;
   @Transform(bool) @IsOptional() @IsBoolean() partTimeAllowed?: boolean;
   @IsOptional() @IsString() partTimeHoursPerWeek?: string;
   @IsOptional() @IsString() partTimeHoursDuringBreaks?: string;

@@ -379,8 +379,15 @@ export class BulkOperationsService {
       }
       try {
         const slug = parsed.data.slug as string;
+        const externalUid =
+          resourceKey === 'countries'
+            ? (parsed.data.externalUid as string | null | undefined)
+            : undefined;
         const existing = await table.findFirst({
-          where: { slug, deletedAt: null },
+          where:
+            resourceKey === 'countries' && externalUid
+              ? { externalUid, deletedAt: null }
+              : { slug, deletedAt: null },
         });
         if (existing) {
           if (mode !== 'upsert') {

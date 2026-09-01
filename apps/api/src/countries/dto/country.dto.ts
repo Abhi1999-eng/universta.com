@@ -59,6 +59,15 @@ function arrayValue({ value }: TransformFnParams): unknown {
 }
 
 export class CreateCountryDto {
+  @ApiPropertyOptional({
+    description:
+      'Stable client/import identity; never the internal Country UUID',
+  })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(191)
+  externalUid?: string;
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   continentId!: string;
@@ -111,6 +120,38 @@ export class CreateCountryDto {
   @Matches(/^[A-Z]{3}$/)
   iso3Code?: string;
 
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  capitalCity?: string;
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  officialLanguage?: string;
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  currencyName?: string;
+  @Transform(countryCodeValue)
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/)
+  currencyCode?: string;
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  currencySymbol?: string;
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  tagline?: string;
+  @Transform(trimValue) @IsOptional() @IsString() overview?: string;
+
   @ApiPropertyOptional({ example: false })
   @Transform(booleanValue)
   @IsOptional()
@@ -129,6 +170,28 @@ export class CreateCountryDto {
   @IsOptional()
   @IsUUID()
   flagMediaId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  listingMediaId?: string;
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  heroMediaId?: string;
+
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  subjectIds?: string[];
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  tagIds?: string[];
 
   @ApiPropertyOptional({
     description: 'Country-level feature codes; not institutional requirements',
@@ -214,6 +277,15 @@ export class CountryListQueryDto {
   @IsOptional()
   @IsUUID()
   continentId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  subjectId?: string;
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  tagId?: string;
 
   @ApiPropertyOptional()
   @Transform(booleanValue)

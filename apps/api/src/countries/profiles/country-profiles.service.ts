@@ -707,6 +707,16 @@ export class CountryProfilesService {
       'visaSuccessPercentage',
       3,
     );
+    const visaFee = decimal(dto.visaFee, 2, 'visaFee', 10);
+    if (
+      dto.visaFeeCurrencyCode !== undefined &&
+      dto.visaFeeCurrencyCode !== '' &&
+      !/^[A-Za-z]{3}$/.test(dto.visaFeeCurrencyCode.trim())
+    )
+      throw bad(
+        'PROFILE_CURRENCY_INVALID',
+        'visaFeeCurrencyCode must be a three-letter code',
+      );
     if (weekly?.greaterThan(168) || breaks?.greaterThan(168))
       throw bad(
         'PROFILE_HOURS_INVALID',
@@ -762,6 +772,9 @@ export class CountryProfilesService {
       visaSuccessBand: dto.visaSuccessBand,
       visaSuccessPercentage: percentage,
       visaInformation: optionalText(dto.visaInformation),
+      visaType: optionalText(dto.visaType),
+      visaFee,
+      visaFeeCurrencyCode: optionalText(dto.visaFeeCurrencyCode)?.toUpperCase(),
       visaProcessingTime: optionalText(dto.visaProcessingTime),
       proofOfFundsSummary: optionalText(dto.proofOfFundsSummary),
       sourceReference,
@@ -914,6 +927,14 @@ export class CountryProfilesService {
     data.verifiedAt = verifiedAt(
       (dto as unknown as { verifiedAt?: string }).verifiedAt,
     );
+    if (
+      data.sourceMode !== 'DERIVED' &&
+      (!data.sourceReference || !data.verifiedAt)
+    )
+      throw bad(
+        'PROFILE_SOURCE_REQUIRED',
+        'Manual, imported, and official statistics require a source and verification date',
+      );
     return data;
   }
 }

@@ -125,7 +125,7 @@ export default async function CountryDetailPage({ params }: Props) {
           };
         })}
         scholarshipTotal={scholarshipMeta?.total ?? scholarships.data.length}
-        subjects={filterOptions?.subjects.slice(0, 8) ?? []}
+        subjects={page.country.subjects ?? []}
         courseTotal={
           filterOptions?.subjects.reduce(
             (sum, subject) => sum + subject.count,
