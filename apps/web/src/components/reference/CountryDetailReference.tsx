@@ -4,6 +4,7 @@ import type { CitySummary } from "@/lib/locations";
 import { counsellingHref } from "@/lib/counselling-link";
 import { intakeRange } from "@/lib/intake-range";
 import { formatDate, formatNumber } from "@/lib/format";
+import { RichText } from "../phase1/RichText";
 
 /** The client-approved destination detail page.
  *
@@ -251,6 +252,11 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
   >;
 
   const visaFacts = [
+    work?.visaType && ["Visa type", work.visaType],
+    work?.visaFee && [
+      "Visa fee",
+      `${work.visaFeeCurrencyCode ? `${work.visaFeeCurrencyCode} ` : ""}${formatNumber(work.visaFee)}`,
+    ],
     work?.visaSuccessBand &&
       work.visaSuccessBand !== "NOT_PUBLISHED" && [
         "Visa success band",
@@ -259,6 +265,53 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
     work?.visaProcessingTime && ["Processing time", work.visaProcessingTime],
     work?.proofOfFundsSummary && ["Proof of funds", work.proofOfFundsSummary],
   ].filter(Boolean) as Array<[string, string]>;
+
+  /* Country identity the client contract asks for. These are plain published
+   * attributes of the destination rather than verified statistics, so they are
+   * not behind the profile verification gate. */
+  const identityRows = [
+    country.capitalCity && ["Capital", country.capitalCity],
+    country.officialLanguage && ["Language", country.officialLanguage],
+    country.currency?.code && [
+      "Currency",
+      `${country.currency.code}${country.currency.symbol ? ` (${country.currency.symbol})` : ""}`,
+    ],
+  ].filter(Boolean) as Array<[string, string]>;
+
+  /* The four long-form fields in the client contract map to stable section
+   * keys. `overview` is rendered separately above, so it is excluded here to
+   * avoid showing the same body twice. */
+  const clientSections = (
+    [
+      ["why-study", `Why study in ${country.name}`],
+      ["admission-process", "Admission process"],
+      ["cost-breakdown", "Cost breakdown"],
+      ["visa-process", "Visa process"],
+    ] as Array<[string, string]>
+  )
+    .map(([key, fallbackHeading]) => {
+      const section = page.sections.find((row) => row.sectionKey === key);
+      if (!section) return null;
+      const body = (section.bodyJson ?? {}) as { paragraphs?: unknown };
+      const paragraphs = Array.isArray(body.paragraphs)
+        ? body.paragraphs.filter(
+            (line): line is string => typeof line === "string" && Boolean(line.trim()),
+          )
+        : [];
+      if (!paragraphs.length) return null;
+      return {
+        key,
+        heading: section.heading ?? fallbackHeading,
+        eyebrow: section.eyebrow ?? null,
+        paragraphs,
+      };
+    })
+    .filter(Boolean) as Array<{
+    key: string;
+    heading: string;
+    eyebrow: string | null;
+    paragraphs: string[];
+  }>;
 
   const statRows = [
     derivedUniversityCount && [
@@ -340,6 +393,9 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
     (work?.visaInformation || visaFacts.length) && ["visa", "Work and visa"],
     cities.length && ["cities", "Cities"],
     statRows.length && ["statistics", "At a glance"],
+    ...clientSections.map(
+      (section) => [`country-${section.key}`, section.heading] as [string, string],
+    ),
     faqs.length && ["faq", "FAQ"],
     ["consultation", "Get guidance"],
     ["structured-trust", "About these figures"],
@@ -1017,10 +1073,61 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
                   <span>{label}</span>
                 </div>
               ))}
+              {identityRows.map(([label, value]) => (
+                <div className="stat" key={label}>
+                  <b>{value}</b>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : identityRows.length ? (
+        // Identity is published for every country, so it still has a home when
+        // no verified statistics exist to anchor the section.
+        <section className="sec sec-alt" id="statistics">
+          <div className="wrap">
+            <div className="head">
+              <span className="eyebrow">Published figures</span>
+              <h2>{country.name} at a glance</h2>
+            </div>
+            <div className="statgrid" style={{ marginTop: 0 }}>
+              {identityRows.map(([label, value]) => (
+                <div className="stat" key={label}>
+                  <b>{value}</b>
+                  <span>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>
       ) : null}
+
+      {/* CLIENT LONG-FORM SECTIONS */}
+      {clientSections.map((section, index) => (
+        <section
+          className={`sec${index % 2 === 0 ? "" : " sec-alt"}`}
+          id={`country-${section.key}`}
+          key={section.key}
+        >
+          <div className="wrap narrow">
+            <div className="head">
+              {section.eyebrow ? (
+                <span className="eyebrow">{section.eyebrow}</span>
+              ) : null}
+              <h2>{section.heading}</h2>
+            </div>
+            <div className="prose">
+              {section.paragraphs.map((paragraph, paragraphIndex) => (
+                <RichText
+                  key={`${section.key}-${paragraphIndex}`}
+                  value={paragraph}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      ))}
 
       {/* FAQ */}
       {faqs.length ? (

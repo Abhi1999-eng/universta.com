@@ -375,6 +375,45 @@ describe('country taxonomy admin (e2e)', () => {
     expect(Array.isArray(subject!.subSubjects)).toBe(true);
   });
 
+  it('exposes the client contract on the public country payload', async () => {
+    // Re-assign a subject: the earlier tests deliberately left the set empty.
+    const current = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+      ...corePayload(current),
+      subjectIds: [subjectIds[0], subjectIds[1]],
+      expectedUpdatedAt: current.updatedAt,
+    }).expect(200);
+    await admin('post', `/api/v1/admin/countries/${countryId}/publish`).catch(
+      () => undefined,
+    );
+
+    const detail = record(
+      await request(app.getHttpServer())
+        .get(`/api/v1/countries/${countrySlug}`)
+        .expect(200),
+    );
+    // Authored assignments, in the order the join stores them.
+    const subjects = detail.subjects as Array<{ id: string; slug: string }>;
+    expect(subjects.map((row) => row.id)).toEqual([subjectIds[0], subjectIds[1]]);
+    expect(subjects.every((row) => typeof row.slug === 'string')).toBe(true);
+
+    for (const key of [
+      'tagline',
+      'capitalCity',
+      'officialLanguage',
+      'currency',
+      'overview',
+    ])
+      expect(key in detail).toBe(true);
+
+    // Admin-only identity stays out of the public payload.
+    expect(detail.externalUid).toBeUndefined();
+    expect(detail.tagIds).toBeUndefined();
+    expect(detail.linkedCounts).toBeUndefined();
+  });
+
   it('keeps taxonomy writes off the public surface', async () => {
     const publicList = await request(app.getHttpServer())
       .get('/api/v1/countries?limit=5')
