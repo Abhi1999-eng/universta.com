@@ -62,6 +62,14 @@ export interface ImportSummary {
   errors: RowError[];
 }
 
+type TransactionalTable = {
+  create(args: { data: Record<string, unknown> }): Promise<{ id: string }>;
+  update(args: {
+    where: { id: string | null };
+    data: Record<string, unknown>;
+  }): Promise<{ id: string }>;
+};
+
 function delegate(prisma: PrismaService, definition: BulkResourceDefinition) {
   // Every resource's Prisma model is selected from a fixed, validated
   // registry key, never from unvalidated user input directly.
@@ -227,7 +235,33 @@ export class BulkOperationsService {
 
   private static readonly INCLUDE_MAP: Record<string, Record<string, unknown>> =
     {
-      countries: { continent: { select: { slug: true, name: true } } },
+      countries: {
+        continent: { select: { slug: true, name: true } },
+        subjectMaps: {
+          include: { subject: { select: { name: true, slug: true } } },
+          orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
+        },
+        tagMaps: {
+          include: { tag: { select: { name: true, slug: true } } },
+          orderBy: { tag: { slug: 'asc' } },
+        },
+        intakes: {
+          include: { intake: { select: { name: true, slug: true } } },
+          orderBy: [{ displayOrder: 'asc' }, { intakeId: 'asc' }],
+        },
+        faqs: {
+          where: { deletedAt: null },
+          orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+        },
+        contentSections: { where: { deletedAt: null } },
+        costProfile: true,
+        workProfile: true,
+        languageRequirements: true,
+        statistics: true,
+        listingMedia: { select: { publicUrl: true } },
+        flagMedia: { select: { publicUrl: true } },
+        heroMedia: { select: { publicUrl: true } },
+      },
       states: { country: { select: { slug: true, name: true } } },
       cities: {
         country: { select: { slug: true, name: true } },
@@ -314,6 +348,37 @@ export class BulkOperationsService {
    * required-field validation (it already knows which fields need a
    * relation lookup vs. a plain presence check), so this just runs it per
    * row and collects the line number alongside the result. */
+  /**
+   * Writes one row. When a resource declares a reconciler the scalar write and
+   * the relation work share a transaction, so a row can never land with new
+   * scalars beside stale taxonomy.
+   */
+  private async writeRow(
+    definition: BulkResourceDefinition,
+    id: string | null,
+    parsed: { data: Record<string, unknown>; relations?: unknown },
+    mode: 'create' | 'update',
+  ): Promise<void> {
+    if (!definition.reconcile) {
+      const table = delegate(this.prisma, definition);
+      if (mode === 'update')
+        await table.update({ where: { id }, data: parsed.data });
+      else await table.create({ data: parsed.data });
+      return;
+    }
+    await this.prisma.$transaction(async (tx) => {
+      // Same fixed-registry selection the non-transactional path uses.
+      const scoped = (tx as unknown as Record<string, TransactionalTable>)[
+        definition.model
+      ];
+      const record =
+        mode === 'update'
+          ? await scoped.update({ where: { id }, data: parsed.data })
+          : await scoped.create({ data: parsed.data });
+      await definition.reconcile!(tx, String(record.id), parsed.relations);
+    });
+  }
+
   private async validateRows(
     definition: BulkResourceDefinition,
     rows: BulkRow[],
@@ -383,12 +448,30 @@ export class BulkOperationsService {
           resourceKey === 'countries'
             ? (parsed.data.externalUid as string | null | undefined)
             : undefined;
+        // A supplied uid identifies the record; slug is only the fallback.
         const existing = await table.findFirst({
-          where:
-            resourceKey === 'countries' && externalUid
-              ? { externalUid, deletedAt: null }
-              : { slug, deletedAt: null },
+          where: externalUid
+            ? { externalUid, deletedAt: null }
+            : { slug, deletedAt: null },
         });
+        if (externalUid && existing) {
+          // The uid points at one record and the slug at another: renaming one
+          // and re-pointing the other are both plausible readings, so the row
+          // is rejected rather than guessed at.
+          const slugOwner = await table.findFirst({
+            where: { slug, deletedAt: null },
+          });
+          if (slugOwner && slugOwner.id !== existing.id) {
+            summary.failed += 1;
+            summary.errors.push({
+              line,
+              errors: [
+                `uid "${externalUid}" matches a different record than slug "${slug}"; resolve the conflict before importing`,
+              ],
+            });
+            continue;
+          }
+        }
         if (existing) {
           if (mode !== 'upsert') {
             summary.failed += 1;
@@ -400,10 +483,10 @@ export class BulkOperationsService {
             });
             continue;
           }
-          await table.update({ where: { id: existing.id }, data: parsed.data });
+          await this.writeRow(definition, existing.id, parsed, 'update');
           summary.updated += 1;
         } else {
-          await table.create({ data: parsed.data });
+          await this.writeRow(definition, null, parsed, 'create');
           summary.created += 1;
         }
       } catch (error) {
