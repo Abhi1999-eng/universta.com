@@ -211,6 +211,12 @@ export class CountryProfilesService {
   async adminProfiles(countryId: string) {
     const country = await this.country(countryId);
     const bundle = country as unknown as ProfileBundle;
+    /* The editor explains the statistics source mode in terms of a real
+     * number, so it needs the live count the public page would use when the
+     * stored figure does not qualify as an override. */
+    const derivedUniversitiesCount = await this.prisma.university.count({
+      where: { countryId, status: 'PUBLISHED', deletedAt: null },
+    });
     return {
       country: {
         id: country.id,
@@ -219,6 +225,7 @@ export class CountryProfilesService {
         status: country.status,
         updatedAt: country.updatedAt.toISOString(),
       },
+      derivedUniversitiesCount,
       cost: serializeCost(bundle.costProfile),
       work: serializeWork(bundle.workProfile),
       language: serializeLanguage(bundle.languageRequirements),

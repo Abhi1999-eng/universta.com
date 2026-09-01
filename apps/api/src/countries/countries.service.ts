@@ -234,10 +234,23 @@ function notFound(): NotFoundException {
   });
 }
 
+/**
+ * Whether a stored statistics row is allowed to speak for the country.
+ *
+ * Two conditions, both required. `sourceMode` says an editor deliberately took
+ * ownership of the number -- DERIVED means "keep following the catalogue", and
+ * a row left on DERIVED must never override the live count even if it still
+ * carries verification from an earlier manual period. The source reference and
+ * verification date then say the number was actually checked. Without both
+ * halves the caller falls back to `CountryDerivedService`, so a stale figure
+ * can never quietly contradict the published universities it claims to count.
+ */
 function isVerifiedStatistics(
   statistics: CountryRecord['statistics'],
 ): boolean {
-  return Boolean(statistics?.verifiedAt && statistics.sourceReference);
+  if (!statistics) return false;
+  if (statistics.sourceMode === 'DERIVED') return false;
+  return Boolean(statistics.verifiedAt && statistics.sourceReference);
 }
 
 @Injectable()

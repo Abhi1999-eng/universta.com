@@ -107,6 +107,9 @@ export interface CountryProfileBundle {
     status: string;
     updatedAt: string;
   };
+  /** Live count of published universities, so the editor can say what the
+   * public page shows when the stored statistics do not qualify. */
+  derivedUniversitiesCount?: number;
   cost: Record<string, unknown> | null;
   work: Record<string, unknown> | null;
   language: Record<string, unknown> | null;
