@@ -41,6 +41,10 @@ import type {
   CountryTagRecord,
   SubjectRecord,
 } from "./catalog.types";
+import {
+  CountryTaxonomyPicker,
+  type CreateOutcome,
+} from "./CountryTaxonomyPicker";
 import { MediaPickerDialog } from "./editorial/MediaPickerDialog";
 import { TypedBodyEditor } from "./editorial/TypedBodyEditor";
 import {
@@ -923,19 +927,50 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             />
           </div>
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <TaxonomyPicker
+            <CountryTaxonomyPicker
               title="Subjects"
-              rows={subjects.map((row) => ({ id: row.id, label: row.name }))}
+              singular="Subject"
+              testId="country-subjects"
+              rows={subjects.map((row) => ({
+                id: row.id,
+                label: row.name,
+                usage: row.courseCount ?? 0,
+                children: (row.subSubjects ?? []).map((child) => ({
+                  id: child.id,
+                  label: child.name,
+                })),
+              }))}
               selected={subjectIds}
               onChange={setSubjectIds}
-              onCreate={async (name) => { const created = (await createSubject({ name, slug: slugify(name) })).data; setSubjects((rows) => [...rows, created]); setSubjectIds((rows) => [...rows, created.id]); }}
+              onCreate={async (name): Promise<CreateOutcome> => {
+                const created = (
+                  await createSubject({ name, slug: slugify(name) })
+                ).data;
+                setSubjects((rows) => [...rows, created]);
+                return { kind: "created", id: created.id, label: created.name };
+              }}
             />
-            <TaxonomyPicker
+            <CountryTaxonomyPicker
               title="Tags"
+              singular="Tag"
+              testId="country-tags"
               rows={tags.map((row) => ({ id: row.id, label: row.name }))}
               selected={tagIds}
               onChange={setTagIds}
-              onCreate={async (name) => { const created = (await createCountryTag({ name, slug: slugify(name) })).data; setTags((rows) => [...rows, created]); setTagIds((rows) => [...rows, created.id]); }}
+              onCreate={async (name): Promise<CreateOutcome> => {
+                const created = (
+                  await createCountryTag({ name, slug: slugify(name) })
+                ).data;
+                setTags((rows) => [...rows, created]);
+                // The API returns the existing active tag rather than a
+                // duplicate, so a matching id means it was already there.
+                const existed = tags.some((row) => row.id === created.id);
+                return {
+                  kind: existed ? "existing" : "created",
+                  id: created.id,
+                  label: created.name,
+                };
+              }}
             />
           </div>
         </Card>
@@ -1296,60 +1331,6 @@ function Empty({ text }: { text: string }) {
     <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">
       {text}
     </div>
-  );
-}
-function TaxonomyPicker({
-  title,
-  rows,
-  selected,
-  onChange,
-  onCreate,
-}: {
-  title: string;
-  rows: Array<{ id: string; label: string }>;
-  selected: string[];
-  onChange: (next: string[]) => void;
-  onCreate: (name: string) => Promise<void>;
-}) {
-  const [q, setQ] = useState("");
-  const [error, setError] = useState("");
-  const visible = rows.filter((row) =>
-    row.label.toLowerCase().includes(q.toLowerCase()),
-  );
-  const toggle = (id: string) =>
-    onChange(
-      selected.includes(id)
-        ? selected.filter((value) => value !== id)
-        : [...selected, id],
-    );
-  return (
-    <fieldset className="rounded-xl border border-[#D9E0EA] p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
-      <input
-        value={q}
-        onChange={(event) => setQ(event.target.value)}
-        placeholder={`Search ${title.toLowerCase()}`}
-        className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm"
-      />
-      <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
-        {visible.map((row) => (
-          <label
-            key={row.id}
-            className="flex cursor-pointer items-center gap-2 text-sm"
-          >
-            <input
-              type="checkbox"
-              checked={selected.includes(row.id)}
-              onChange={() => toggle(row.id)}
-            />
-            {row.label}
-          </label>
-        ))}
-      </div>
-      <button type="button" className="mt-3 text-sm font-semibold text-[#1657CF]" onClick={() => { const name = window.prompt(`Add new ${title.slice(0, -1)}`)?.trim(); if (!name) return; setError(""); void onCreate(name).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Unable to create term')); }}>+ Add New {title.slice(0, -1)}</button>
-      {error ? <p role="alert" className="mt-2 text-xs text-[#B42318]">{error}</p> : null}
-      <p className="mt-3 text-xs text-[#667085]">{selected.length} selected</p>
-    </fieldset>
   );
 }
 function Input({

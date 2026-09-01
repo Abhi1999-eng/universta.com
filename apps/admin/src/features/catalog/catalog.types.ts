@@ -284,6 +284,12 @@ export interface SubjectRecord {
   id: string;
   name: string;
   slug: string;
+  /** Shown beneath the parent for navigation; the Country taxonomy itself is
+   * assigned at Subject level only. */
+  subSubjects?: Array<{ id: string; name: string; slug: string; status: string }>;
+  /** Real usage, used to order the picker's "Most used" view. */
+  courseCount?: number;
+  countryCount?: number;
   shortDescription: string | null;
   overview: string | null;
   iconMedia: EditorialMedia | null;

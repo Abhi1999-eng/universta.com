@@ -6,6 +6,9 @@ import { CountriesPage } from './CountriesPage';
 const mocks = vi.hoisted(() => ({
   listContinents: vi.fn(),
   listCountries: vi.fn(),
+  // The countries screen loads the taxonomy filter options as well.
+  listSubjects: vi.fn(),
+  listCountryTags: vi.fn(),
   createContinent: vi.fn(),
   updateContinent: vi.fn(),
   deleteContinent: vi.fn(),
@@ -19,7 +22,7 @@ const continent = { id: 'continent-1', name: 'Europe', slug: 'europe', code: 'EU
 const country = { id: 'country-1', name: 'Canada', slug: 'canada', pageHeading: 'Study in Canada', shortDescription: 'Core record', continent: { id: 'continent-1', name: 'North America', slug: 'north-america' }, flag: null, featured: false, displayOrder: 1, statistics: null, iso2Code: 'CA', iso3Code: 'CAN', status: 'DRAFT', updatedAt: new Date().toISOString() };
 
 describe('catalog admin screens', () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.listContinents.mockResolvedValue({ data: [continent], meta }); mocks.listCountries.mockResolvedValue({ data: [country], meta }); });
+  beforeEach(() => { vi.clearAllMocks(); mocks.listContinents.mockResolvedValue({ data: [continent], meta }); mocks.listCountries.mockResolvedValue({ data: [country], meta }); mocks.listSubjects.mockResolvedValue({ data: [], meta }); mocks.listCountryTags.mockResolvedValue({ data: [], meta }); });
 
   it('renders continent data and countries data with real management links', async () => {
     render(<><ContinentsPage /><CountriesPage /></>);

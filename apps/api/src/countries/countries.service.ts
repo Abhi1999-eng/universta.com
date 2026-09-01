@@ -207,6 +207,8 @@ export interface CountryAdminDto extends CountryPublicDto {
   popularCourseIds: string[];
   subjectIds: string[];
   tagIds: string[];
+  subjects: Array<{ id: string; name: string; slug: string }>;
+  tags: Array<{ id: string; name: string; slug: string }>;
   linkedCounts: { universities: number; courses: number; scholarships: number };
 }
 
@@ -1243,6 +1245,19 @@ export class CountriesService {
       ),
       subjectIds: record.subjectMaps.map((relation) => relation.subjectId),
       tagIds: record.tagMaps.map((relation) => relation.tagId),
+      /* Labels as well as ids: the Countries list renders assigned taxonomy
+       * per row, and both relations are already loaded by COUNTRY_INCLUDE, so
+       * this costs no additional query. */
+      subjects: record.subjectMaps.map((relation) => ({
+        id: relation.subject.id,
+        name: relation.subject.name,
+        slug: relation.subject.slug,
+      })),
+      tags: record.tagMaps.map((relation) => ({
+        id: relation.tag.id,
+        name: relation.tag.name,
+        slug: relation.tag.slug,
+      })),
       linkedCounts: {
         universities: record._count.universities,
         courses: record._count.courses,
