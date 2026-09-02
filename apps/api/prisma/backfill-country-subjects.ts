@@ -32,7 +32,7 @@ async function main() {
       SELECT DISTINCT u.country_id, c.subject_id
       FROM universities u
       JOIN university_course_offerings o ON o.university_id = u.id
-      JOIN courses c ON c.id = o.course_id
+      JOIN courses c ON c.id = o.generic_course_id
       JOIN subjects s ON s.id = c.subject_id
       WHERE u.deleted_at IS NULL AND u.status = 'PUBLISHED'
         AND o.deleted_at IS NULL AND o.status = 'PUBLISHED'
