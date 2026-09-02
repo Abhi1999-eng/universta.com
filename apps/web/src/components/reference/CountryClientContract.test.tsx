@@ -124,8 +124,9 @@ function build(
       },
       sections: overrides.sections ?? [
         section('why-study', 'Why study in Australia', 'English-taught degrees and a large research sector.'),
-        section('admission-process', 'Admission process', 'Apply directly to the institution.'),
-        section('cost-breakdown', 'Cost breakdown', 'Tuition is published per year.'),
+        // The keys the Country editor can actually produce.
+        section('application-steps', 'Admission process', 'Apply directly to the institution.'),
+        section('cost-of-study', 'Cost breakdown', 'Tuition is published per year.'),
         section('visa-process', 'Visa process', 'The student visa is applied for online.'),
       ],
       faqs: overrides.faqs ?? [

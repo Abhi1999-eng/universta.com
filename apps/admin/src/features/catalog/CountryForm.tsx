@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createConsultantCard,
@@ -21,7 +21,7 @@ import {
   listContinents,
   listCountryTags,
   listEditorialMedia,
-  listSubjects,
+  listAllSubjects,
   publishCountry,
   saveCountrySeo,
   unpublishCountry,
@@ -281,17 +281,17 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     let active = true;
     const load = async () => {
       try {
-        const [continentResult, mediaResult, subjectResult, tagResult] =
+        const [continentResult, mediaResult, subjectRows, tagResult] =
           await Promise.all([
             listContinents({ limit: 100 }),
             listEditorialMedia({ limit: 50 }),
-            listSubjects({ limit: 200 }),
+            listAllSubjects(),
             listCountryTags(),
           ]);
         if (!active) return;
         setContinents(continentResult.data);
         setMedia(mediaResult.data);
-        setSubjects(subjectResult.data);
+        setSubjects(subjectRows);
         setTags(tagResult.data);
         if (!countryId) return;
         const [countryResult, editorialResult, curationResult] =
@@ -317,12 +317,15 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           iso3Code: country.iso3Code ?? "",
           capitalCity: country.capitalCity ?? "",
           officialLanguage: country.officialLanguage ?? "",
-          currencyName: "",
+          currencyName: country.currencyName ?? "",
           currencyCode: country.currency?.code ?? "",
           currencySymbol: country.currency?.symbol ?? "",
-          flagMediaId: "",
-          listingMediaId: "",
-          heroMediaId: "",
+          // Blank placeholders here used to clear the country's media and
+          // currency name on the next save, because the form submits whatever
+          // it is holding.
+          flagMediaId: country.flagMediaId ?? "",
+          listingMediaId: country.listingMediaId ?? "",
+          heroMediaId: country.heroMediaId ?? "",
           isFeatured: country.featured,
           displayOrder: String(country.displayOrder),
         });
@@ -547,7 +550,10 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     for (const row of removedSections)
       if (row.id) await deleteEditorialSection(id, row.id, row.updatedAt);
     const nextSections: SectionRow[] = [];
-    for (const row of activeSections) {
+    // The list itself is the running order — a section has no display-order
+    // field of its own, so without this every section saved as 0 and came back
+    // in whatever order the database chose.
+    for (const [index, row] of activeSections.entries()) {
       const payload = {
         externalUid: optional(core.externalUid),
         sectionKey: row.sectionKey,
@@ -560,7 +566,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         secondaryMediaId: row.secondaryMediaId || undefined,
         ctaLabel: optional(row.ctaLabel),
         ctaUrl: optional(row.ctaUrl),
-        displayOrder: row.displayOrder,
+        displayOrder: index,
         status: row.status,
         ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
       };
@@ -1350,7 +1356,11 @@ function Input({
   span?: boolean;
   rows?: number;
 }) {
-  const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  // A label-derived id alone collides wherever a field repeats: every content
+  // section renders a "Section key", so the sections shared one id, both labels
+  // pointed at the first control, and the rest were left with none.
+  const unique = useId();
+  const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${unique}`;
   return (
     <div className={`text-sm font-semibold ${span ? "sm:col-span-2" : ""}`}>
       <FieldLabel label={label} htmlFor={id} />
@@ -1385,7 +1395,8 @@ function Select({
   onChange: (value: string) => void;
   options: Array<{ id: string; label: string }>;
 }) {
-  const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const unique = useId();
+  const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${unique}`;
   return (
     <div className="text-sm font-semibold">
       <FieldLabel label={label} htmlFor={id} />

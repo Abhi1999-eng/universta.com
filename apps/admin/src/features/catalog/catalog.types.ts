@@ -61,6 +61,12 @@ export interface CountryRecord {
   iso3Code?: string | null;
   externalUid?: string | null;
   currency?: { code: string; symbol: string | null } | null;
+  /* The raw editable values behind `currency` and `flag`; the editor reloads
+   * from these, so leaving them out silently blanks them on the next save. */
+  currencyName?: string | null;
+  flagMediaId?: string | null;
+  listingMediaId?: string | null;
+  heroMediaId?: string | null;
   configuration?: {
     features: Array<{ code: string; label: string }>;
     acceptedTests: string[];

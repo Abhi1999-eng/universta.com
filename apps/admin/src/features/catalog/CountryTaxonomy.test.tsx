@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   listContinents: vi.fn(),
   listCountries: vi.fn(),
   listSubjects: vi.fn(),
+  listAllSubjects: vi.fn(),
   listCountryTags: vi.fn(),
   createContinent: vi.fn(),
   updateContinent: vi.fn(),
@@ -279,6 +280,9 @@ describe('countries list taxonomy columns', () => {
       data: [{ id: 's2', name: 'Engineering', slug: 'engineering' }],
       meta,
     });
+    mocks.listAllSubjects.mockResolvedValue([
+      { id: 's2', name: 'Engineering', slug: 'engineering' },
+    ]);
     mocks.listCountryTags.mockResolvedValue({
       data: [{ id: 't1', name: 'Popular', slug: 'popular' }],
       meta,

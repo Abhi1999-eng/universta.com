@@ -98,6 +98,9 @@ type CountryRecord = {
   currencyName: string | null;
   currencyCode: string | null;
   currencySymbol: string | null;
+  flagMediaId: string | null;
+  listingMediaId: string | null;
+  heroMediaId: string | null;
   featureCodes: Prisma.JsonValue | null;
   acceptedTests: Prisma.JsonValue | null;
   intakeMonths: Prisma.JsonValue | null;
@@ -199,6 +202,13 @@ export interface CountryAdminDto extends CountryPublicDto {
   externalUid: string | null;
   iso2Code: string | null;
   iso3Code: string | null;
+  /* The public payload renders media and currency for display; the editor
+   * needs the raw values back, or reopening a country and saving it clears
+   * whatever it could not repopulate. */
+  currencyName: string | null;
+  flagMediaId: string | null;
+  listingMediaId: string | null;
+  heroMediaId: string | null;
   status: string;
   publishedAt: string | null;
   createdAt: string;
@@ -1233,6 +1243,10 @@ export class CountriesService {
       externalUid: record.externalUid,
       iso2Code: record.iso2Code,
       iso3Code: record.iso3Code,
+      currencyName: record.currencyName,
+      flagMediaId: record.flagMediaId,
+      listingMediaId: record.listingMediaId,
+      heroMediaId: record.heroMediaId,
       status: record.status,
       publishedAt: record.publishedAt?.toISOString() ?? null,
       createdAt: record.createdAt.toISOString(),

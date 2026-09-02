@@ -35,7 +35,12 @@ function bool({ value }: TransformFnParams): unknown {
 }
 
 function integer({ value }: TransformFnParams): unknown {
-  return value === undefined || value === '' ? value : Number(value);
+  // null has to survive: it is what the serializer returns for an unset
+  // column, so an editor that saves what it was given sends it straight back.
+  // Number(null) is 0, which @IsOptional() no longer skips and @Min then
+  // rejects — that is what made every second profile save fail.
+  if (value === undefined || value === null || value === '') return value;
+  return Number(value);
 }
 
 export class ProfileVersionDto {

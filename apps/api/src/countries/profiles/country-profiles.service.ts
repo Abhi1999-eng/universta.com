@@ -74,12 +74,14 @@ function stale(code: string): ConflictException {
 }
 
 function decimal(
-  value: string | undefined,
+  value: string | null | undefined,
   scale: number,
   field: string,
   maxIntegerDigits: number,
 ): Prisma.Decimal | undefined {
-  if (value === undefined || value === '') return undefined;
+  // null is what the serializer reports for an unset column, so a round-tripped
+  // payload carries it back; it means "not provided", the same as '' does.
+  if (value === undefined || value === null || value === '') return undefined;
   if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value))
     throw bad(
       'PROFILE_DECIMAL_INVALID',
@@ -94,11 +96,12 @@ function decimal(
   return new Prisma.Decimal(value).toDecimalPlaces(scale);
 }
 
-function optionalText(value: string | undefined): string | undefined {
-  return value === undefined ? undefined : value.trim();
+function optionalText(value: string | null | undefined): string | undefined {
+  return value === undefined || value === null ? undefined : value.trim();
 }
 
-function url(value: string | undefined): string | undefined {
+function url(value: string | null | undefined): string | undefined {
+  if (value === null) return undefined;
   if (value === undefined || value === '') return value;
   try {
     const parsed = new URL(value);
@@ -113,8 +116,8 @@ function url(value: string | undefined): string | undefined {
   return value;
 }
 
-function verifiedAt(value: string | undefined): Date | undefined {
-  if (value === undefined) return undefined;
+function verifiedAt(value: string | null | undefined): Date | undefined {
+  if (value === undefined || value === null) return undefined;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime()) || parsed.getTime() > Date.now())
     throw bad(
@@ -669,6 +672,7 @@ export class CountryProfilesService {
     );
     if (
       dto.currencyCode !== undefined &&
+      dto.currencyCode !== null &&
       !/^[A-Za-z]{3}$/.test(dto.currencyCode.trim())
     )
       throw bad(
@@ -717,6 +721,7 @@ export class CountryProfilesService {
     const visaFee = decimal(dto.visaFee, 2, 'visaFee', 10);
     if (
       dto.visaFeeCurrencyCode !== undefined &&
+      dto.visaFeeCurrencyCode !== null &&
       dto.visaFeeCurrencyCode !== '' &&
       !/^[A-Za-z]{3}$/.test(dto.visaFeeCurrencyCode.trim())
     )

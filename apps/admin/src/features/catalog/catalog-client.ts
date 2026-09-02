@@ -286,16 +286,40 @@ export function getCountryEditorial(id: string) {
  * rejection, an image that was already attached still rendered as "No media
  * selected". Clamping here keeps every call site inside the contract. */
 export const MEDIA_OPTIONS_MAX_LIMIT = 50;
-export function listEditorialMedia(
+/** The endpoint answers in the stored shape (publicUrl/altText); every picker
+ * reads url/alt, so map here rather than letting each caller render a blank
+ * thumbnail against fields that were never there. */
+export async function listEditorialMedia(
   params: { q?: string; limit?: number } = {},
 ) {
   const limit =
     params.limit === undefined
       ? undefined
       : Math.min(params.limit, MEDIA_OPTIONS_MAX_LIMIT);
-  return request<EditorialMedia[]>(
+  const response = await request<MediaOption[]>(
     `/api/v1/admin/media-options${query({ ...params, limit })}`,
   );
+  return { ...response, data: response.data.map(toEditorialMedia) };
+}
+
+type MediaOption = {
+  id: string;
+  publicUrl: string;
+  title: string | null;
+  altText: string | null;
+  width?: number | null;
+  height?: number | null;
+};
+
+function toEditorialMedia(asset: MediaOption): EditorialMedia {
+  return {
+    id: asset.id,
+    url: asset.publicUrl.replace("/media/", "/api/v1/media/"),
+    title: asset.title,
+    alt: asset.altText,
+    width: asset.width ?? null,
+    height: asset.height ?? null,
+  };
 }
 export function createEditorialSection(
   id: string,
@@ -402,6 +426,25 @@ export function listSubjects(
     signal,
   });
 }
+
+const SUBJECT_PAGE_LIMIT = 100;
+
+/** The API caps `limit` at 100, so a picker that wants every subject has to
+ * page rather than ask for a bigger window — asking for more is a validation
+ * error, which took the whole Country editor down with it. */
+export async function listAllSubjects(
+  signal?: AbortSignal,
+): Promise<SubjectRecord[]> {
+  const first = await listSubjects({ limit: SUBJECT_PAGE_LIMIT }, signal);
+  const rows = [...first.data];
+  const pages = first.meta?.totalPages ?? 1;
+  for (let page = 2; page <= pages; page += 1) {
+    const next = await listSubjects({ limit: SUBJECT_PAGE_LIMIT, page }, signal);
+    rows.push(...next.data);
+  }
+  return rows;
+}
+
 export function getSubject(id: string) {
   return request<SubjectRecord>(`/api/v1/admin/subjects/${id}`);
 }

@@ -284,8 +284,11 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
   const clientSections = (
     [
       ["why-study", `Why study in ${country.name}`],
-      ["admission-process", "Admission process"],
-      ["cost-breakdown", "Cost breakdown"],
+      // These are the keys the Country editor actually offers; "admission-process"
+      // and "cost-breakdown" read naturally but are not in its vocabulary, so a
+      // section written for them could never reach this page.
+      ["application-steps", "Admission process"],
+      ["cost-of-study", "Cost breakdown"],
       ["visa-process", "Visa process"],
     ] as Array<[string, string]>
   )

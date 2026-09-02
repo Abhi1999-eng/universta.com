@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
-import { deleteCountry, listContinents, listCountries, listCountryTags, listSubjects, publishCountry, unpublishCountry } from './catalog-client';
+import { deleteCountry, listContinents, listCountries, listCountryTags, listAllSubjects, publishCountry, unpublishCountry } from './catalog-client';
 import type { CatalogMutationError, ContinentRecord, CountryRecord, CountryTagRecord, PageMeta, SubjectRecord } from './catalog.types';
 
 type PendingAction = { kind: 'publish' | 'unpublish' | 'delete'; country: CountryRecord } | null;
@@ -36,7 +36,7 @@ export function CountriesPage() {
 
   useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => void load(controller.signal), 250); return () => { window.clearTimeout(timer); controller.abort(); }; }, [load, reload]);
   useEffect(() => { void listContinents({ limit: 100 }).then((result) => setContinents(result.data)).catch(() => undefined); }, []);
-  useEffect(() => { void listSubjects({ limit: 200 }).then((result) => setSubjects(result.data)).catch(() => undefined); void listCountryTags().then((result) => setTags(result.data)).catch(() => undefined); }, []);
+  useEffect(() => { void listAllSubjects().then(setSubjects).catch(() => undefined); void listCountryTags().then((result) => setTags(result.data)).catch(() => undefined); }, []);
 
   async function performAction() {
     if (!pending || (pending.kind === 'delete' && pendingValue !== pending.country.name)) return;
