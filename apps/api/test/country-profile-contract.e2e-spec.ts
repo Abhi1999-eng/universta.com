@@ -119,7 +119,10 @@ describe('country profile client contract (e2e)', () => {
     let iso2 = '';
     let iso3 = '';
     for (let attempt = 0; attempt < 40; attempt += 1) {
-      const seed = randomUUID().replace(/[^a-f]/gi, '').toUpperCase().padEnd(6, 'Q');
+      const seed = randomUUID()
+        .replace(/[^a-f]/gi, '')
+        .toUpperCase()
+        .padEnd(6, 'Q');
       const candidate2 = seed.slice(0, 2);
       const candidate3 = seed.slice(0, 3);
       const conflict = await prisma.country.findFirst({
@@ -277,21 +280,27 @@ describe('country profile client contract (e2e)', () => {
       ? (bundle.intakes as Array<Record<string, unknown>>)
       : [];
     const stamps = existing
-      .map((row) => String(row.updatedAt ?? ''))
+      .map((row) => (typeof row.updatedAt === 'string' ? row.updatedAt : ''))
       .filter(Boolean)
       .sort();
-    await admin('put', `/api/v1/admin/countries/${countryId}/profiles/intakes`, {
-      expectedUpdatedAt: stamps.length ? stamps[stamps.length - 1] : undefined,
-      intakes: intakes.map((row, index) => ({
-        intakeId: row.id,
-        isMajor: index === 0,
-        availabilityStatus: 'AVAILABLE',
-        applicationOpeningMonth: 3,
-        applicationDeadlineMonth: 6,
-        notes: `Applications for ${row.name}.`,
-        displayOrder: index,
-      })),
-    }).expect(200);
+    await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/intakes`,
+      {
+        expectedUpdatedAt: stamps.length
+          ? stamps[stamps.length - 1]
+          : undefined,
+        intakes: intakes.map((row, index) => ({
+          intakeId: row.id,
+          isMajor: index === 0,
+          availabilityStatus: 'AVAILABLE',
+          applicationOpeningMonth: 3,
+          applicationDeadlineMonth: 6,
+          notes: `Applications for ${row.name}.`,
+          displayOrder: index,
+        })),
+      },
+    ).expect(200);
 
     const saved = await prisma.countryIntake.findMany({
       where: { countryId },
@@ -315,12 +324,13 @@ describe('country profile client contract (e2e)', () => {
         .get(`/api/v1/countries/${countrySlug}`)
         .expect(200),
     );
-    const statistics = detail.statistics as { universitiesCount: number | null } | null;
+    const statistics = detail.statistics as {
+      universitiesCount: number | null;
+    } | null;
     // 99 was stored but must not be published while the mode says DERIVED.
     expect(statistics?.universitiesCount ?? null).toBeNull();
     const derived = detail.derived as
-      | { statistics?: { universitiesCount?: number } }
-      | undefined;
+      { statistics?: { universitiesCount?: number } } | undefined;
     expect(derived?.statistics?.universitiesCount).toBe(2);
   });
 
@@ -338,7 +348,9 @@ describe('country profile client contract (e2e)', () => {
         .get(`/api/v1/countries/${countrySlug}`)
         .expect(200),
     );
-    const statistics = detail.statistics as { universitiesCount: number | null } | null;
+    const statistics = detail.statistics as {
+      universitiesCount: number | null;
+    } | null;
     expect(statistics?.universitiesCount).toBe(42);
   });
 
@@ -364,11 +376,12 @@ describe('country profile client contract (e2e)', () => {
         .get(`/api/v1/countries/${countrySlug}`)
         .expect(200),
     );
-    const statistics = detail.statistics as { universitiesCount: number | null } | null;
+    const statistics = detail.statistics as {
+      universitiesCount: number | null;
+    } | null;
     expect(statistics?.universitiesCount ?? null).toBeNull();
     const derived = detail.derived as
-      | { statistics?: { universitiesCount?: number } }
-      | undefined;
+      { statistics?: { universitiesCount?: number } } | undefined;
     expect(derived?.statistics?.universitiesCount).toBe(2);
   });
 

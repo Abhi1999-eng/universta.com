@@ -26,19 +26,21 @@ import type { PrismaService } from '../prisma/prisma.service';
 export const CLEAR_TOKEN = '__CLEAR__';
 
 /** Long-form client fields and the section key each one owns. */
+/* The client's column names on the left, the canonical section keys the Admin
+ * editor offers and the public page reads on the right. "admission-process"
+ * and "cost-breakdown" read naturally but are in neither vocabulary, so a
+ * section imported under them would reach no surface at all. */
 export const COUNTRY_SECTION_KEYS = {
   why_study: 'why-study',
-  admission_process: 'admission-process',
-  cost_breakdown: 'cost-breakdown',
+  admission_process: 'application-steps',
+  cost_breakdown: 'cost-of-study',
   visa_process: 'visa-process',
 } as const;
 
 export type SectionColumn = keyof typeof COUNTRY_SECTION_KEYS;
 
 export type CellState<T> =
-  | { kind: 'absent' }
-  | { kind: 'clear' }
-  | { kind: 'value'; value: T };
+  { kind: 'absent' } | { kind: 'clear' } | { kind: 'value'; value: T };
 
 export type CountryRelations = {
   subjects: CellState<string[]>;
@@ -72,7 +74,10 @@ export function splitTerms(value: string): string[] {
 
 /** `Engineering > Computer Science` keeps only the parent for assignment; the
  * child is still validated so a wrong path is reported rather than ignored. */
-export function splitHierarchy(term: string): { parent: string; child?: string } {
+export function splitHierarchy(term: string): {
+  parent: string;
+  child?: string;
+} {
   const [parent, ...rest] = term.split('>').map((part) => part.trim());
   return { parent, child: rest.length ? rest.join(' > ') : undefined };
 }
@@ -88,12 +93,16 @@ export function cellState<T>(
   return { kind: 'value', value: parse(value) };
 }
 
-function decimalOrNull(raw: string | undefined): Prisma.Decimal | null | undefined {
+function decimalOrNull(
+  raw: string | undefined,
+): Prisma.Decimal | null | undefined {
   const value = trim(raw);
   if (raw === undefined || value === '') return undefined;
   if (value === CLEAR_TOKEN) return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? (value as unknown as Prisma.Decimal) : undefined;
+  return Number.isFinite(parsed)
+    ? (value as unknown as Prisma.Decimal)
+    : undefined;
 }
 
 function intOrNull(raw: string | undefined): number | null | undefined {
@@ -121,8 +130,12 @@ function boolOrUndefined(raw: string | undefined): boolean | undefined {
 
 /** Only writes a profile when the row actually carried one of its columns, so
  * an import that never mentions PTE cannot blank it. */
-function compact(record: Record<string, unknown>): Record<string, unknown> | null {
-  const entries = Object.entries(record).filter(([, value]) => value !== undefined);
+function compact(
+  record: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const entries = Object.entries(record).filter(
+    ([, value]) => value !== undefined,
+  );
   return entries.length ? Object.fromEntries(entries) : null;
 }
 
@@ -140,7 +153,8 @@ export function parseFaqCell(value: string): FaqInput[] {
     if (!entry || typeof entry !== 'object')
       throw new Error(`faqs[${index}] must be an object`);
     const row = entry as Record<string, unknown>;
-    const question = typeof row.question === 'string' ? row.question.trim() : '';
+    const question =
+      typeof row.question === 'string' ? row.question.trim() : '';
     const answer = typeof row.answer === 'string' ? row.answer.trim() : '';
     if (!question) throw new Error(`faqs[${index}].question is required`);
     if (!answer) throw new Error(`faqs[${index}].answer is required`);
@@ -303,7 +317,10 @@ export async function parseCountryRelations(
         : subjectCell,
     tags:
       tagCell.kind === 'value'
-        ? { kind: 'value', value: await resolveTags(tagCell.value, prisma, errors) }
+        ? {
+            kind: 'value',
+            value: await resolveTags(tagCell.value, prisma, errors),
+          }
         : tagCell,
     intakes:
       intakeCell.kind === 'value'
@@ -321,7 +338,9 @@ export async function parseCountryRelations(
       livingCostMin: decimalOrNull(row.living_min),
       livingCostMax: decimalOrNull(row.living_max),
       applicationFeeMin: decimalOrNull(row.application_fee),
-      applicationFeeMax: decimalOrNull(row.application_fee_max ?? row.application_fee),
+      applicationFeeMax: decimalOrNull(
+        row.application_fee_max ?? row.application_fee,
+      ),
     }),
     work: compact({
       visaType: textOrNull(row.visa_type),
@@ -344,9 +363,24 @@ export async function resolveCountryMedia(
   errors: string[],
 ) {
   return compact({
-    listingMediaId: await resolveMedia(row.featured_image, 'featured_image', prisma, errors),
-    flagMediaId: await resolveMedia(row.flag_image, 'flag_image', prisma, errors),
-    heroMediaId: await resolveMedia(row.hero_image, 'hero_image', prisma, errors),
+    listingMediaId: await resolveMedia(
+      row.featured_image,
+      'featured_image',
+      prisma,
+      errors,
+    ),
+    flagMediaId: await resolveMedia(
+      row.flag_image,
+      'flag_image',
+      prisma,
+      errors,
+    ),
+    heroMediaId: await resolveMedia(
+      row.hero_image,
+      'hero_image',
+      prisma,
+      errors,
+    ),
   });
 }
 
@@ -381,11 +415,15 @@ export async function reconcileCountry(
   }
 
   if (relations.intakes.kind !== 'absent') {
-    const ids = relations.intakes.kind === 'clear' ? [] : relations.intakes.value;
+    const ids =
+      relations.intakes.kind === 'clear' ? [] : relations.intakes.value;
     const existing = await tx.countryIntake.findMany({ where: { countryId } });
     const keep = new Map(existing.map((row) => [row.intakeId, row]));
     await tx.countryIntake.deleteMany({
-      where: { countryId, intakeId: { notIn: ids.length ? ids : ['__none__'] } },
+      where: {
+        countryId,
+        intakeId: { notIn: ids.length ? ids : ['__none__'] },
+      },
     });
     for (const [index, intakeId] of ids.entries()) {
       const current = keep.get(intakeId);
@@ -430,7 +468,9 @@ export async function reconcileCountry(
       continue;
     }
     if (state.kind !== 'value') continue;
-    const heading = column.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+    const heading = column
+      .replace(/_/g, ' ')
+      .replace(/^\w/, (c) => c.toUpperCase());
     // `[countryId, sectionKey]` is unique, so the same key updates in place on
     // every re-import instead of adding another section.
     await tx.countryContentSection.upsert({
@@ -453,9 +493,13 @@ export async function reconcileCountry(
       update: relations.cost,
       create: {
         countryId,
-        currencyCode: String(relations.cost.currencyCode ?? 'USD'),
+        currencyCode:
+          typeof relations.cost.currencyCode === 'string' &&
+          relations.cost.currencyCode
+            ? relations.cost.currencyCode
+            : 'USD',
         ...relations.cost,
-      } as Prisma.CountryCostProfileUncheckedCreateInput,
+      },
     });
 
   if (relations.work)
@@ -465,7 +509,7 @@ export async function reconcileCountry(
       create: {
         countryId,
         ...relations.work,
-      } as Prisma.CountryWorkProfileUncheckedCreateInput,
+      },
     });
 
   if (relations.language)
@@ -475,7 +519,7 @@ export async function reconcileCountry(
       create: {
         countryId,
         ...relations.language,
-      } as Prisma.CountryLanguageRequirementUncheckedCreateInput,
+      },
     });
 
   if (relations.statistics)
@@ -490,6 +534,6 @@ export async function reconcileCountry(
         countryId,
         sourceMode: 'IMPORTED',
         ...relations.statistics,
-      } as Prisma.CountryStatisticUncheckedCreateInput,
+      },
     });
 }

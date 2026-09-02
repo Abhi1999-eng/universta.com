@@ -51,7 +51,7 @@ const FAQ_ANSWER_2 = 'Yes, and the second acceptance answer replaced it.';
 /** The admin API is Bearer-protected, so the reads that prove persistence need
  * their own token rather than the browser session. */
 async function withAdminApi<T>(
-  use: (api: APIRequestContext, headers: Record<string, string>) => Promise<T>,
+  run: (api: APIRequestContext, headers: Record<string, string>) => Promise<T>,
 ): Promise<T> {
   const api = await playwrightRequest.newContext({ baseURL: apiBaseUrl });
   try {
@@ -59,7 +59,7 @@ async function withAdminApi<T>(
       data: { email: e2eEmail, password: e2ePassword },
     });
     const token = ((await login.json()) as { data: { accessToken: string } }).data.accessToken;
-    return await use(api, { Authorization: `Bearer ${token}` });
+    return await run(api, { Authorization: `Bearer ${token}` });
   } finally {
     await api.dispose();
   }

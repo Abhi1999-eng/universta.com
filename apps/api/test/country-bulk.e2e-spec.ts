@@ -54,13 +54,22 @@ describe('country bulk contract (e2e)', () => {
       /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
     const lines = [
       headers.join(','),
-      ...rows.map((row) => headers.map((key) => escape(row[key] ?? '')).join(',')),
+      ...rows.map((row) =>
+        headers.map((key) => escape(row[key] ?? '')).join(','),
+      ),
     ];
     return Buffer.from(lines.join('\n'), 'utf8');
   }
 
   const importRows = (rows: Row[], mode: 'create' | 'upsert' = 'upsert') =>
-    bulk.import('countries', csv(rows), 'countries.csv', mode, request, actorId);
+    bulk.import(
+      'countries',
+      csv(rows),
+      'countries.csv',
+      mode,
+      request,
+      actorId,
+    );
 
   let actorId = '';
 
@@ -82,7 +91,9 @@ describe('country bulk contract (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const fixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const fixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = fixture.createNestApplication(new ExpressAdapter());
     configureApplication(app);
     await app.init();
@@ -128,7 +139,9 @@ describe('country bulk contract (e2e)', () => {
       });
       tagIds.push(tag.id);
     }
-    const intake = await prisma.intake.findFirstOrThrow({ where: { status: 'ACTIVE' } });
+    const intake = await prisma.intake.findFirstOrThrow({
+      where: { status: 'ACTIVE' },
+    });
     intakeName = intake.name;
 
     mediaUrl = `https://media.example.invalid/${stamp}.png`;
@@ -148,16 +161,31 @@ describe('country bulk contract (e2e)', () => {
 
   afterAll(async () => {
     const ids = await prisma.country.findMany({
-      where: { OR: [{ externalUid: { contains: stamp } }, { slug: { contains: stamp } }] },
+      where: {
+        OR: [
+          { externalUid: { contains: stamp } },
+          { slug: { contains: stamp } },
+        ],
+      },
       select: { id: true },
     });
     for (const row of [...ids.map((r) => r.id), ...created])
-      await prisma.country.deleteMany({ where: { id: row } }).catch(() => undefined);
-    await prisma.subSubject.deleteMany({ where: { subjectId: { in: subjectIds } } }).catch(() => undefined);
-    await prisma.subject.deleteMany({ where: { id: { in: subjectIds } } }).catch(() => undefined);
-    await prisma.countryTag.deleteMany({ where: { id: { in: tagIds } } }).catch(() => undefined);
+      await prisma.country
+        .deleteMany({ where: { id: row } })
+        .catch(() => undefined);
+    await prisma.subSubject
+      .deleteMany({ where: { subjectId: { in: subjectIds } } })
+      .catch(() => undefined);
+    await prisma.subject
+      .deleteMany({ where: { id: { in: subjectIds } } })
+      .catch(() => undefined);
+    await prisma.countryTag
+      .deleteMany({ where: { id: { in: tagIds } } })
+      .catch(() => undefined);
     if (mediaId)
-      await prisma.mediaAsset.deleteMany({ where: { id: mediaId } }).catch(() => undefined);
+      await prisma.mediaAsset
+        .deleteMany({ where: { id: mediaId } })
+        .catch(() => undefined);
     await app.close();
   });
 
@@ -192,7 +220,11 @@ describe('country bulk contract (e2e)', () => {
     tag: `bulktag-one-${stamp}`,
     intakes: intakeName,
     faqs: JSON.stringify([
-      { question: 'Can I work?', answer: 'Yes, within the permitted hours.', category: 'Work' },
+      {
+        question: 'Can I work?',
+        answer: 'Yes, within the permitted hours.',
+        category: 'Work',
+      },
     ]),
     why_study: 'Because the programmes are taught in English.',
     admission_process: 'Apply directly to the institution.',
@@ -219,20 +251,24 @@ describe('country bulk contract (e2e)', () => {
     expect(row.workProfile?.visaType).toBe('Student permit');
     expect(String(row.languageRequirements?.ieltsMinScore)).toBe('6.5');
     expect(row.contentSections.map((s) => s.sectionKey).sort()).toEqual([
-      'admission-process',
+      'application-steps',
       'why-study',
     ]);
   });
 
   it('updates the same country on a second import with the same uid', async () => {
     const before = await country();
-    const summary = await importRows([{ ...baseRow(), title: `Renamed ${stamp}` }]);
+    const summary = await importRows([
+      { ...baseRow(), title: `Renamed ${stamp}` },
+    ]);
     expect(summary.updated).toBe(1);
     expect(summary.created).toBe(0);
     const after = await country();
     expect(after.id).toBe(before.id);
     expect(after.name).toBe(`Renamed ${stamp}`);
-    const all = await prisma.country.count({ where: { externalUid: uid, deletedAt: null } });
+    const all = await prisma.country.count({
+      where: { externalUid: uid, deletedAt: null },
+    });
     expect(all).toBe(1);
   });
 
@@ -249,7 +285,12 @@ describe('country bulk contract (e2e)', () => {
   it('rejects a row whose uid and slug point at different countries', async () => {
     const otherUid = `${uid}-other`;
     await importRows([
-      { ...baseRow(), uid: otherUid, slug: `${slug}-other`, title: `Other ${stamp}` },
+      {
+        ...baseRow(),
+        uid: otherUid,
+        slug: `${slug}-other`,
+        title: `Other ${stamp}`,
+      },
     ]);
     const summary = await importRows([{ ...baseRow(), uid: otherUid, slug }]);
     expect(summary.failed).toBe(1);
@@ -265,7 +306,9 @@ describe('country bulk contract (e2e)', () => {
     expect(preserved.subjectMaps).toHaveLength(2);
     expect(preserved.tagMaps).toHaveLength(1);
 
-    await importRows([{ ...baseRow(), subject: CLEAR_TOKEN, tag: CLEAR_TOKEN }]);
+    await importRows([
+      { ...baseRow(), subject: CLEAR_TOKEN, tag: CLEAR_TOKEN },
+    ]);
     const cleared = await country();
     expect(cleared.subjectMaps).toHaveLength(0);
     expect(cleared.tagMaps).toHaveLength(0);
@@ -293,14 +336,24 @@ describe('country bulk contract (e2e)', () => {
   });
 
   it('errors on an unknown subject, tag, continent and hierarchy path', async () => {
-    const unknownSubject = await importRows([{ ...baseRow(), subject: 'no-such-subject' }]);
-    expect(unknownSubject.errors[0].errors.join(' ')).toContain('subject "no-such-subject"');
+    const unknownSubject = await importRows([
+      { ...baseRow(), subject: 'no-such-subject' },
+    ]);
+    expect(unknownSubject.errors[0].errors.join(' ')).toContain(
+      'subject "no-such-subject"',
+    );
 
     const unknownTag = await importRows([{ ...baseRow(), tag: 'no-such-tag' }]);
-    expect(unknownTag.errors[0].errors.join(' ')).toContain('tag "no-such-tag"');
+    expect(unknownTag.errors[0].errors.join(' ')).toContain(
+      'tag "no-such-tag"',
+    );
 
-    const unknownContinent = await importRows([{ ...baseRow(), continent: 'atlantis' }]);
-    expect(unknownContinent.errors[0].errors.join(' ')).toContain('continent "atlantis"');
+    const unknownContinent = await importRows([
+      { ...baseRow(), continent: 'atlantis' },
+    ]);
+    expect(unknownContinent.errors[0].errors.join(' ')).toContain(
+      'continent "atlantis"',
+    );
 
     const badPath = await importRows([
       { ...baseRow(), subject: `${subjectB} > ${subSubjectName}` },
@@ -312,7 +365,11 @@ describe('country bulk contract (e2e)', () => {
     const row = await country();
     await prisma.countryIntake.updateMany({
       where: { countryId: row.id },
-      data: { applicationOpeningMonth: 3, applicationDeadlineMonth: 6, notes: 'Editor note' },
+      data: {
+        applicationOpeningMonth: 3,
+        applicationDeadlineMonth: 6,
+        notes: 'Editor note',
+      },
     });
     await importRows([baseRow()]);
     const after = await country();
@@ -322,7 +379,11 @@ describe('country bulk contract (e2e)', () => {
 
   it('reconciles FAQs without duplicating them on re-import', async () => {
     const faqs = JSON.stringify([
-      { question: 'Can I work?', answer: 'Yes, within the permitted hours.', category: 'Work' },
+      {
+        question: 'Can I work?',
+        answer: 'Yes, within the permitted hours.',
+        category: 'Work',
+      },
       { question: 'Is there a visa fee?', answer: 'Yes.', displayOrder: 1 },
     ]);
     await importRows([{ ...baseRow(), faqs }]);
@@ -336,14 +397,20 @@ describe('country bulk contract (e2e)', () => {
   });
 
   it('reports an unparsable FAQ payload clearly', async () => {
-    const summary = await importRows([{ ...baseRow(), faqs: 'not json at all' }]);
+    const summary = await importRows([
+      { ...baseRow(), faqs: 'not json at all' },
+    ]);
     expect(summary.failed).toBe(1);
-    expect(summary.errors[0].errors.join(' ')).toContain('faqs must be a JSON array');
+    expect(summary.errors[0].errors.join(' ')).toContain(
+      'faqs must be a JSON array',
+    );
 
     const missingAnswer = await importRows([
       { ...baseRow(), faqs: JSON.stringify([{ question: 'Q only' }]) },
     ]);
-    expect(missingAnswer.errors[0].errors.join(' ')).toContain('answer is required');
+    expect(missingAnswer.errors[0].errors.join(' ')).toContain(
+      'answer is required',
+    );
   });
 
   it('updates a long-form section in place and preserves unrelated sections', async () => {
@@ -353,11 +420,15 @@ describe('country bulk contract (e2e)', () => {
     expect(why).toHaveLength(1);
     expect(JSON.stringify(why[0].bodyJson)).toContain('Updated reason.');
     // The admission section was not in this import and must survive.
-    expect(row.contentSections.some((s) => s.sectionKey === 'admission-process')).toBe(true);
+    expect(
+      row.contentSections.some((s) => s.sectionKey === 'application-steps'),
+    ).toBe(true);
   });
 
   it('resolves media by id and by public URL, and refuses an unknown reference', async () => {
-    await importRows([{ ...baseRow(), flag_image: mediaId, hero_image: mediaUrl }]);
+    await importRows([
+      { ...baseRow(), flag_image: mediaId, hero_image: mediaUrl },
+    ]);
     const row = await country();
     expect(row.flagMediaId).toBe(mediaId);
     expect(row.heroMediaId).toBe(mediaId);
@@ -366,11 +437,15 @@ describe('country bulk contract (e2e)', () => {
       { ...baseRow(), flag_image: 'https://example.invalid/missing.png' },
     ]);
     expect(unknown.failed).toBe(1);
-    expect(unknown.errors[0].errors.join(' ')).toContain('did not match an existing media asset');
+    expect(unknown.errors[0].errors.join(' ')).toContain(
+      'did not match an existing media asset',
+    );
   });
 
   it('stores an imported university count without letting it override the live one', async () => {
-    await importRows([{ ...baseRow(), universities_count: '250', intl_students: '4000' }]);
+    await importRows([
+      { ...baseRow(), universities_count: '250', intl_students: '4000' },
+    ]);
     const row = await country();
     expect(row.statistics?.universitiesCount).toBe(250);
     expect(row.statistics?.sourceMode).toBe('IMPORTED');
@@ -383,7 +458,11 @@ describe('country bulk contract (e2e)', () => {
   it('leaves the row untouched when reconciliation fails', async () => {
     const before = await country();
     const summary = await importRows([
-      { ...baseRow(), title: `Should Not Persist ${stamp}`, subject: 'no-such-subject' },
+      {
+        ...baseRow(),
+        title: `Should Not Persist ${stamp}`,
+        subject: 'no-such-subject',
+      },
     ]);
     expect(summary.failed).toBe(1);
     const after = await country();
@@ -396,14 +475,45 @@ describe('country bulk contract (e2e)', () => {
     const text = exported.buffer.toString('utf8');
     const header = text.split('\n')[0];
     for (const column of [
-      'uid', 'slug', 'title', 'status', 'excerpt', 'content', 'featured_image',
-      'iso_code', 'capital', 'currency', 'language', 'tagline', 'tuition_min',
-      'tuition_max', 'tuition_currency', 'living_min', 'living_max',
-      'application_fee', 'intakes', 'visa_type', 'visa_fee', 'visa_processing',
-      'post_study_work', 'work_hours', 'ielts_min', 'universities_count',
-      'intl_students', 'why_study', 'admission_process', 'cost_breakdown',
-      'visa_process', 'flag_image', 'hero_image', 'featured', 'rank_order',
-      'faqs', 'continent', 'subject', 'tag',
+      'uid',
+      'slug',
+      'title',
+      'status',
+      'excerpt',
+      'content',
+      'featured_image',
+      'iso_code',
+      'capital',
+      'currency',
+      'language',
+      'tagline',
+      'tuition_min',
+      'tuition_max',
+      'tuition_currency',
+      'living_min',
+      'living_max',
+      'application_fee',
+      'intakes',
+      'visa_type',
+      'visa_fee',
+      'visa_processing',
+      'post_study_work',
+      'work_hours',
+      'ielts_min',
+      'universities_count',
+      'intl_students',
+      'why_study',
+      'admission_process',
+      'cost_breakdown',
+      'visa_process',
+      'flag_image',
+      'hero_image',
+      'featured',
+      'rank_order',
+      'faqs',
+      'continent',
+      'subject',
+      'tag',
     ])
       expect(header).toContain(column);
 
@@ -415,7 +525,9 @@ describe('country bulk contract (e2e)', () => {
       faqs: before.faqs.length,
       sections: before.contentSections.length,
     };
-    const countriesBefore = await prisma.country.count({ where: { deletedAt: null } });
+    const countriesBefore = await prisma.country.count({
+      where: { deletedAt: null },
+    });
 
     // Feed the export straight back in.
     const summary = await bulk.import(
@@ -435,7 +547,9 @@ describe('country bulk contract (e2e)', () => {
     expect(after.intakes).toHaveLength(beforeCounts.intakes);
     expect(after.faqs).toHaveLength(beforeCounts.faqs);
     expect(after.contentSections).toHaveLength(beforeCounts.sections);
-    expect(await prisma.country.count({ where: { deletedAt: null } })).toBe(countriesBefore);
+    expect(await prisma.country.count({ where: { deletedAt: null } })).toBe(
+      countriesBefore,
+    );
   });
 });
 

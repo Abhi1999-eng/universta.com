@@ -449,11 +449,12 @@ export class BulkOperationsService {
             ? (parsed.data.externalUid as string | null | undefined)
             : undefined;
         // A supplied uid identifies the record; slug is only the fallback.
-        const existing = await table.findFirst({
+        // The delegate is untyped here, so name the one field this branch uses.
+        const existing = (await table.findFirst({
           where: externalUid
             ? { externalUid, deletedAt: null }
             : { slug, deletedAt: null },
-        });
+        })) as { id: string } | null;
         if (externalUid && existing) {
           // The uid points at one record and the slug at another: renaming one
           // and re-pointing the other are both plausible readings, so the row

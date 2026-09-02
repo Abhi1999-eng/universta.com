@@ -28,7 +28,9 @@ function record(response: { body: unknown }): Record<string, unknown> {
 }
 /** The update DTO extends the create DTO, so every PATCH restates the core
  * record -- which is exactly what the Admin form posts. */
-function corePayload(current: Record<string, unknown>): Record<string, unknown> {
+function corePayload(
+  current: Record<string, unknown>,
+): Record<string, unknown> {
   const continent = current.continent as { id?: string } | undefined;
   return {
     continentId: continent?.id,
@@ -71,7 +73,10 @@ describe('country taxonomy admin (e2e)', () => {
 
   async function isoPair() {
     for (let attempt = 0; attempt < 40; attempt += 1) {
-      const seed = randomUUID().replace(/[^a-f]/gi, '').toUpperCase().padEnd(6, 'X');
+      const seed = randomUUID()
+        .replace(/[^a-f]/gi, '')
+        .toUpperCase()
+        .padEnd(6, 'X');
       const two = seed.slice(0, 2);
       const three = seed.slice(0, 3);
       const clash = await prisma.country.findFirst({
@@ -91,15 +96,20 @@ describe('country taxonomy admin (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const fixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const fixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = fixture.createNestApplication(new ExpressAdapter());
     configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
 
     const email =
-      process.env.SEED_ADMIN_EMAIL ?? process.env.SUPER_ADMIN_EMAIL ?? 'admin@universta.local';
-    const password = process.env.SEED_ADMIN_PASSWORD ?? process.env.SUPER_ADMIN_PASSWORD;
+      process.env.SEED_ADMIN_EMAIL ??
+      process.env.SUPER_ADMIN_EMAIL ??
+      'admin@universta.local';
+    const password =
+      process.env.SEED_ADMIN_PASSWORD ?? process.env.SUPER_ADMIN_PASSWORD;
     if (!password) throw new Error('A local Super Admin password is required');
     const login = await request(app.getHttpServer())
       .post('/api/v1/admin/auth/login')
@@ -172,7 +182,9 @@ describe('country taxonomy admin (e2e)', () => {
       });
       universityIds.push(university.id);
     }
-    const level = await prisma.courseLevel.findFirstOrThrow({ where: { status: 'ACTIVE' } });
+    const level = await prisma.courseLevel.findFirstOrThrow({
+      where: { status: 'ACTIVE' },
+    });
     const course = await prisma.course.create({
       data: {
         subjectId: subjectIds[0],
@@ -185,7 +197,12 @@ describe('country taxonomy admin (e2e)', () => {
     });
     courseId = course.id;
     await prisma.countryCourse.create({
-      data: { countryId, courseId, availabilityStatus: 'AVAILABLE', status: 'PUBLISHED' },
+      data: {
+        countryId,
+        courseId,
+        availabilityStatus: 'AVAILABLE',
+        status: 'PUBLISHED',
+      },
     });
     const scholarship = await prisma.scholarship.create({
       data: {
@@ -202,21 +219,33 @@ describe('country taxonomy admin (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.scholarshipCountry.deleteMany({ where: { countryId } }).catch(() => undefined);
+    await prisma.scholarshipCountry
+      .deleteMany({ where: { countryId } })
+      .catch(() => undefined);
     await prisma.scholarship
       .deleteMany({ where: { id: { in: scholarshipIds } } })
       .catch(() => undefined);
-    await prisma.countryCourse.deleteMany({ where: { countryId } }).catch(() => undefined);
+    await prisma.countryCourse
+      .deleteMany({ where: { countryId } })
+      .catch(() => undefined);
     if (courseId)
-      await prisma.course.deleteMany({ where: { id: courseId } }).catch(() => undefined);
+      await prisma.course
+        .deleteMany({ where: { id: courseId } })
+        .catch(() => undefined);
     await prisma.university
       .deleteMany({ where: { id: { in: universityIds } } })
       .catch(() => undefined);
     await prisma.country
-      .deleteMany({ where: { id: { in: [countryId, otherCountryId].filter(Boolean) } } })
+      .deleteMany({
+        where: { id: { in: [countryId, otherCountryId].filter(Boolean) } },
+      })
       .catch(() => undefined);
-    await prisma.subject.deleteMany({ where: { id: { in: subjectIds } } }).catch(() => undefined);
-    await prisma.countryTag.deleteMany({ where: { id: { in: tagIds } } }).catch(() => undefined);
+    await prisma.subject
+      .deleteMany({ where: { id: { in: subjectIds } } })
+      .catch(() => undefined);
+    await prisma.countryTag
+      .deleteMany({ where: { id: { in: tagIds } } })
+      .catch(() => undefined);
     await app.close();
   });
 
@@ -293,7 +322,9 @@ describe('country taxonomy admin (e2e)', () => {
   });
 
   it('replaces the subject and tag sets rather than appending to them', async () => {
-    const before = record(await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200));
+    const before = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
     await admin('patch', `/api/v1/admin/countries/${countryId}`, {
       ...corePayload(before),
       subjectIds: [subjectIds[2]],
@@ -301,16 +332,22 @@ describe('country taxonomy admin (e2e)', () => {
       expectedUpdatedAt: before.updatedAt,
     }).expect(200);
 
-    const after = record(await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200));
+    const after = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
     expect(after.subjectIds).toEqual([subjectIds[2]]);
     expect(after.tagIds).toEqual([tagIds[1]]);
 
-    const joins = await prisma.countrySubject.findMany({ where: { countryId } });
+    const joins = await prisma.countrySubject.findMany({
+      where: { countryId },
+    });
     expect(joins).toHaveLength(1);
   });
 
   it('clears the sets when given empty arrays', async () => {
-    const before = record(await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200));
+    const before = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
     await admin('patch', `/api/v1/admin/countries/${countryId}`, {
       ...corePayload(before),
       subjectIds: [],
@@ -318,11 +355,15 @@ describe('country taxonomy admin (e2e)', () => {
       expectedUpdatedAt: before.updatedAt,
     }).expect(200);
 
-    const after = record(await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200));
+    const after = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
     expect(after.subjectIds).toEqual([]);
     expect(after.tagIds).toEqual([]);
     // Removing a country's subject must not disturb Course -> Subject.
-    const course = await prisma.course.findUniqueOrThrow({ where: { id: courseId } });
+    const course = await prisma.course.findUniqueOrThrow({
+      where: { id: courseId },
+    });
     expect(course.subjectId).toBe(subjectIds[0]);
   });
 
@@ -396,7 +437,10 @@ describe('country taxonomy admin (e2e)', () => {
     );
     // Authored assignments, in the order the join stores them.
     const subjects = detail.subjects as Array<{ id: string; slug: string }>;
-    expect(subjects.map((row) => row.id)).toEqual([subjectIds[0], subjectIds[1]]);
+    expect(subjects.map((row) => row.id)).toEqual([
+      subjectIds[0],
+      subjectIds[1],
+    ]);
     expect(subjects.every((row) => typeof row.slug === 'string')).toBe(true);
 
     for (const key of [

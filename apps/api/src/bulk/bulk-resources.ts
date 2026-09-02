@@ -68,11 +68,7 @@ export interface BulkResourceDefinition {
   parseRow(row: BulkRow, prisma: PrismaService): Promise<BulkParseResult>;
   /** Applies relations and profiles for one row inside that row's own
    * transaction, so scalars and relations succeed or fail together. */
-  reconcile?(
-    tx: unknown,
-    id: string,
-    relations: unknown,
-  ): Promise<void>;
+  reconcile?(tx: unknown, id: string, relations: unknown): Promise<void>;
   toExportRow(record: Record<string, unknown>): Record<string, unknown>;
   /** Returns a human-readable reason the row can't be archived (e.g. "3
    * cities still reference this state"), or null if it's safe to archive. */
@@ -197,46 +193,145 @@ const countries: BulkResourceDefinition = {
    * literally the client's column contract -- and so `slug` survives export,
    * which the derived path strips. */
   fields: [
-    { key: 'uid', label: 'uid', required: false, type: 'text', description: 'Stable client identifier; matched before slug on re-import.' },
+    {
+      key: 'uid',
+      label: 'uid',
+      required: false,
+      type: 'text',
+      description:
+        'Stable client identifier; matched before slug on re-import.',
+    },
     { key: 'slug', label: 'slug', required: false, type: 'text' },
     { key: 'title', label: 'title', required: true, type: 'text' },
-    { key: 'status', label: 'status', required: false, type: 'status', allowedValues: COUNTRY_STATUSES },
+    {
+      key: 'status',
+      label: 'status',
+      required: false,
+      type: 'status',
+      allowedValues: COUNTRY_STATUSES,
+    },
     { key: 'excerpt', label: 'excerpt', required: false, type: 'text' },
     { key: 'content', label: 'content', required: false, type: 'text' },
-    { key: 'featured_image', label: 'featured_image', required: false, type: 'text', description: 'Existing media asset id or public URL.' },
+    {
+      key: 'featured_image',
+      label: 'featured_image',
+      required: false,
+      type: 'text',
+      description: 'Existing media asset id or public URL.',
+    },
     { key: 'iso_code', label: 'iso_code', required: false, type: 'text' },
     { key: 'iso3_code', label: 'iso3_code', required: false, type: 'text' },
     { key: 'capital', label: 'capital', required: false, type: 'text' },
     { key: 'currency', label: 'currency', required: false, type: 'text' },
     { key: 'language', label: 'language', required: false, type: 'text' },
     { key: 'tagline', label: 'tagline', required: false, type: 'text' },
-    { key: 'tuition_min', label: 'tuition_min', required: false, type: 'number' },
-    { key: 'tuition_max', label: 'tuition_max', required: false, type: 'number' },
-    { key: 'tuition_currency', label: 'tuition_currency', required: false, type: 'text' },
+    {
+      key: 'tuition_min',
+      label: 'tuition_min',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'tuition_max',
+      label: 'tuition_max',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'tuition_currency',
+      label: 'tuition_currency',
+      required: false,
+      type: 'text',
+    },
     { key: 'living_min', label: 'living_min', required: false, type: 'number' },
     { key: 'living_max', label: 'living_max', required: false, type: 'number' },
-    { key: 'application_fee', label: 'application_fee', required: false, type: 'text' },
-    { key: 'intakes', label: 'intakes', required: false, type: 'relation', description: 'Pipe-separated intake names.' },
+    {
+      key: 'application_fee',
+      label: 'application_fee',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'intakes',
+      label: 'intakes',
+      required: false,
+      type: 'relation',
+      description: 'Pipe-separated intake names.',
+    },
     { key: 'visa_type', label: 'visa_type', required: false, type: 'text' },
     { key: 'visa_fee', label: 'visa_fee', required: false, type: 'number' },
-    { key: 'visa_processing', label: 'visa_processing', required: false, type: 'text' },
-    { key: 'post_study_work', label: 'post_study_work', required: false, type: 'number' },
+    {
+      key: 'visa_processing',
+      label: 'visa_processing',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'post_study_work',
+      label: 'post_study_work',
+      required: false,
+      type: 'number',
+    },
     { key: 'work_hours', label: 'work_hours', required: false, type: 'number' },
     { key: 'ielts_min', label: 'ielts_min', required: false, type: 'number' },
-    { key: 'universities_count', label: 'universities_count', required: false, type: 'number' },
-    { key: 'intl_students', label: 'intl_students', required: false, type: 'number' },
+    {
+      key: 'universities_count',
+      label: 'universities_count',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'intl_students',
+      label: 'intl_students',
+      required: false,
+      type: 'number',
+    },
     { key: 'why_study', label: 'why_study', required: false, type: 'text' },
-    { key: 'admission_process', label: 'admission_process', required: false, type: 'text' },
-    { key: 'cost_breakdown', label: 'cost_breakdown', required: false, type: 'text' },
-    { key: 'visa_process', label: 'visa_process', required: false, type: 'text' },
+    {
+      key: 'admission_process',
+      label: 'admission_process',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'cost_breakdown',
+      label: 'cost_breakdown',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'visa_process',
+      label: 'visa_process',
+      required: false,
+      type: 'text',
+    },
     { key: 'flag_image', label: 'flag_image', required: false, type: 'text' },
     { key: 'hero_image', label: 'hero_image', required: false, type: 'text' },
     { key: 'featured', label: 'featured', required: false, type: 'boolean' },
     { key: 'rank_order', label: 'rank_order', required: false, type: 'number' },
-    { key: 'faqs', label: 'faqs', required: false, type: 'text', description: 'JSON array of {question, answer, category, isFeatured, displayOrder}.' },
+    {
+      key: 'faqs',
+      label: 'faqs',
+      required: false,
+      type: 'text',
+      description:
+        'JSON array of {question, answer, category, isFeatured, displayOrder}.',
+    },
     { key: 'continent', label: 'continent', required: true, type: 'relation' },
-    { key: 'subject', label: 'subject', required: false, type: 'relation', description: `Pipe-separated Subjects; "${CLEAR_TOKEN}" removes all.` },
-    { key: 'tag', label: 'tag', required: false, type: 'relation', description: `Pipe-separated Tags; "${CLEAR_TOKEN}" removes all.` },
+    {
+      key: 'subject',
+      label: 'subject',
+      required: false,
+      type: 'relation',
+      description: `Pipe-separated Subjects; "${CLEAR_TOKEN}" removes all.`,
+    },
+    {
+      key: 'tag',
+      label: 'tag',
+      required: false,
+      type: 'relation',
+      description: `Pipe-separated Tags; "${CLEAR_TOKEN}" removes all.`,
+    },
   ],
   statusAllowedValues: COUNTRY_STATUSES,
   requiredColumns: ['title', 'continent'],
@@ -374,13 +469,23 @@ function sectionText(
   );
   if (!match) return '';
   const body = match.bodyJson as { paragraphs?: unknown } | null;
-  const paragraphs = Array.isArray(body?.paragraphs) ? body!.paragraphs : [];
+  const paragraphs = Array.isArray(body?.paragraphs) ? body.paragraphs : [];
   return paragraphs.filter((line) => typeof line === 'string').join('\n\n');
 }
 
 function decimalText(value: unknown): string {
   if (value === null || value === undefined) return '';
-  return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return (value as { toString: () => string }).toString();
+  // Prisma decimals arrive as objects carrying their own toString.
+  if (
+    typeof value === 'object' &&
+    'toString' in value &&
+    typeof value.toString === 'function'
+  )
+    return (value as { toString: () => string }).toString();
+  return '';
 }
 
 export function exportCountryRow(
@@ -428,37 +533,27 @@ export function exportCountryRow(
     tagline: record.tagline ?? '',
     tuition_min: decimalText(cost.tuitionMin),
     tuition_max: decimalText(cost.tuitionMax),
-    tuition_currency: (cost.currencyCode as string | undefined) ?? '',
+    tuition_currency: cost.currencyCode ?? '',
     living_min: decimalText(cost.livingCostMin),
     living_max: decimalText(cost.livingCostMax),
     // A single stored value round-trips as one number; a genuine range is
     // written as `min-max` rather than silently losing the maximum.
     application_fee:
-      feeMin && feeMax && feeMin !== feeMax ? `${feeMin}-${feeMax}` : feeMin || feeMax,
+      feeMin && feeMax && feeMin !== feeMax
+        ? `${feeMin}-${feeMax}`
+        : feeMin || feeMax,
     intakes: (rel.intakes ?? [])
       .map((row) => row.intake?.name ?? '')
       .filter(Boolean)
       .join(' | '),
-    visa_type: (work.visaType as string | undefined) ?? '',
+    visa_type: work.visaType ?? '',
     visa_fee: decimalText(work.visaFee),
-    visa_processing: (work.visaProcessingTime as string | undefined) ?? '',
-    post_study_work:
-      work.postStudyWorkMaxMonths === null ||
-      work.postStudyWorkMaxMonths === undefined
-        ? ''
-        : String(work.postStudyWorkMaxMonths),
+    visa_processing: work.visaProcessingTime ?? '',
+    post_study_work: decimalText(work.postStudyWorkMaxMonths),
     work_hours: decimalText(work.partTimeHoursPerWeek),
     ielts_min: decimalText(language.ieltsMinScore),
-    universities_count:
-      statistics.universitiesCount === undefined ||
-      statistics.universitiesCount === null
-        ? ''
-        : String(statistics.universitiesCount),
-    intl_students:
-      statistics.internationalStudentsCount === undefined ||
-      statistics.internationalStudentsCount === null
-        ? ''
-        : String(statistics.internationalStudentsCount),
+    universities_count: decimalText(statistics.universitiesCount),
+    intl_students: decimalText(statistics.internationalStudentsCount),
     why_study: sectionText(record, 'why_study'),
     admission_process: sectionText(record, 'admission_process'),
     cost_breakdown: sectionText(record, 'cost_breakdown'),
@@ -466,7 +561,7 @@ export function exportCountryRow(
     flag_image: rel.flagMedia?.publicUrl ?? '',
     hero_image: rel.heroMedia?.publicUrl ?? '',
     featured: record.isFeatured ? 'true' : 'false',
-    rank_order: String(record.displayOrder ?? 0),
+    rank_order: decimalText(record.displayOrder ?? 0),
     faqs: (rel.faqs ?? []).length
       ? JSON.stringify(
           [...(rel.faqs ?? [])]
