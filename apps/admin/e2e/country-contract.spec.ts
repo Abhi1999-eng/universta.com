@@ -609,6 +609,9 @@ test.describe.serial('country client contract, end to end', () => {
     expect(data.externalUid).toBeUndefined();
     expect(data.tagIds).toBeUndefined();
     expect(data.linkedCounts).toBeUndefined();
+    // Tags are an Admin, import and filter taxonomy; the public site is never
+    // told about them, even though this country carries one.
+    expect(data.tags).toBeUndefined();
   });
 
   test('renders the contract on the public page at three widths', async ({ page }) => {

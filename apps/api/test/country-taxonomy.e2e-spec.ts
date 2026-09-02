@@ -442,6 +442,9 @@ describe('country taxonomy admin (e2e)', () => {
       subjectIds[1],
     ]);
     expect(subjects.every((row) => typeof row.slug === 'string')).toBe(true);
+    // Tags stay an Admin, import and filter taxonomy: the country carries one,
+    // and the public payload still must not mention it.
+    expect(detail.tags).toBeUndefined();
 
     for (const key of [
       'tagline',

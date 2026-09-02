@@ -194,7 +194,9 @@ export interface CountryPublicDto {
   };
   currency: { code: string; symbol: string | null } | null;
   subjects: Array<{ id: string; name: string; slug: string }>;
-  tags: Array<{ id: string; name: string; slug: string }>;
+  /* Tags are deliberately absent: they are an Admin, import and filter
+   * taxonomy, and never part of what the public site is told about a country.
+   * `toAdmin` maps them itself. */
   derived?: Awaited<ReturnType<CountryDerivedService['detail']>>;
 }
 
@@ -1231,9 +1233,6 @@ export class CountriesService {
           name: subject.name,
           slug: subject.slug,
         })),
-      tags: record.tagMaps
-        .filter(({ tag }) => tag.status === 'ACTIVE')
-        .map(({ tag }) => ({ id: tag.id, name: tag.name, slug: tag.slug })),
     };
   }
 
