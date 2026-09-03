@@ -3,6 +3,7 @@ import { Transform, type TransformFnParams } from 'class-transformer';
 import {
   ArrayUnique,
   IsArray,
+  IsNumber,
   IsBoolean,
   IsIn,
   IsInt,
@@ -258,6 +259,18 @@ export class UpdateCountryDto extends CreateCountryDto {
   expectedUpdatedAt?: string;
 }
 
+/** `a,b,c` -> ['a','b','c']. Bounded and de-duplicated so a hostile query
+ * string cannot turn one request into an unbounded IN clause. */
+const listValue = ({ value }: TransformFnParams): unknown => {
+  if (Array.isArray(value)) value = value.join(',');
+  if (typeof value !== 'string') return value;
+  const parts = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return [...new Set(parts)].slice(0, 24);
+};
+
 export class CountryListQueryDto {
   @ApiPropertyOptional()
   @Transform(trimValue)
@@ -303,10 +316,131 @@ export class CountryListQueryDto {
   @Matches(/^[A-Z]$/)
   letter?: string;
 
-  @ApiPropertyOptional({ enum: ['displayOrder', 'name', 'featured'] })
+  @ApiPropertyOptional({
+    enum: [
+      'displayOrder',
+      'name',
+      'featured',
+      'recommended',
+      'tuition',
+      'living',
+      'universities',
+    ],
+  })
   @IsOptional()
-  @IsIn(['displayOrder', 'name', 'featured'])
+  @IsIn([
+    'displayOrder',
+    'name',
+    'featured',
+    'recommended',
+    'tuition',
+    'living',
+    'universities',
+  ])
   sort?: string;
+
+  /* ---- public discovery filters -------------------------------------- */
+
+  @ApiPropertyOptional({
+    description: 'Assigned Subject slugs or ids; OR within the group',
+    type: [String],
+  })
+  @Transform(listValue)
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(150, { each: true })
+  subjects?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Intake slugs or ids; OR within the group',
+    type: [String],
+  })
+  @Transform(listValue)
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(150, { each: true })
+  intakes?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Highest publishable IELTS a destination may require',
+  })
+  @Transform(numberValue)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(9)
+  ieltsMax?: number;
+
+  @ApiPropertyOptional({ description: 'Post-study work available' })
+  @Transform(booleanValue)
+  @IsOptional()
+  @IsBoolean()
+  postStudyWork?: boolean;
+
+  @ApiPropertyOptional({ description: 'Minimum post-study work months' })
+  @Transform(numberValue)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  postStudyWorkMonthsMin?: number;
+
+  @ApiPropertyOptional({ description: 'Part-time work permitted during study' })
+  @Transform(booleanValue)
+  @IsOptional()
+  @IsBoolean()
+  partTimeWork?: boolean;
+
+  @ApiPropertyOptional({ description: 'Minimum permitted work hours a week' })
+  @Transform(numberValue)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(168)
+  workHoursMin?: number;
+
+  @ApiPropertyOptional({ enum: ['none', 'any'] })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsIn(['none', 'any'])
+  applicationFee?: string;
+
+  @ApiPropertyOptional({ description: 'Minimum published universities' })
+  @Transform(numberValue)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  universitiesMin?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Three-letter currency. Required before any money filter or money sort, because destinations publish in their own currency and there is no conversion layer.',
+  })
+  @Transform(({ value }: TransformFnParams) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsOptional()
+  @Matches(/^[A-Z]{3}$/)
+  currency?: string;
+
+  @ApiPropertyOptional({ description: 'Highest tuition, within `currency`' })
+  @Transform(numberValue)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  tuitionMax?: number;
+
+  @ApiPropertyOptional({
+    description: 'Highest living cost, within `currency`',
+  })
+  @Transform(numberValue)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  livingMax?: number;
 
   @ApiPropertyOptional({ enum: COUNTRY_STATUSES })
   @IsOptional()

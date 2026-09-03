@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   isUniqueConstraintError,
@@ -209,6 +209,36 @@ export interface CountryPublicDto {
   derived?: Awaited<ReturnType<CountryDerivedService['detail']>>;
 }
 
+/** Everything the public listing may narrow on. `tagId` rides along because
+ * Admin shares this query object; the public path never reads it. */
+export type PublicCountryFilters = {
+  q?: string;
+  continent?: string;
+  subjectId?: string;
+  tagId?: string;
+  featured?: boolean;
+  letter?: string;
+  budgetBand?: string;
+  ieltsOptional?: boolean;
+  intake?: string;
+  visaSuccessBand?: string;
+  pathwayStrength?: string;
+  hasTopRankedUniversities?: boolean;
+  subjects?: string[];
+  intakes?: string[];
+  ieltsMax?: number;
+  postStudyWork?: boolean;
+  postStudyWorkMonthsMin?: number;
+  partTimeWork?: boolean;
+  workHoursMin?: number;
+  applicationFee?: string;
+  currency?: string;
+  tuitionMax?: number;
+  livingMax?: number;
+  /** Pre-resolved ids for the university-count filter. */
+  universityIds?: string[];
+};
+
 export interface CountryAdminDto extends CountryPublicDto {
   externalUid: string | null;
   iso2Code: string | null;
@@ -283,14 +313,107 @@ export class CountriesService {
     private readonly derived: CountryDerivedService,
   ) {}
 
+  /**
+   * What the public listing can actually be narrowed by, drawn from the data
+   * itself: a Subject nobody has been assigned, or a currency nobody publishes
+   * in, would only be an option that returns nothing. Three grouped queries,
+   * independent of how many destinations exist.
+   */
+  async filterOptions() {
+    const published = {
+      country: { status: 'PUBLISHED', deletedAt: null },
+    } as const;
+    const [subjectRows, intakeRows, currencyRows] = await Promise.all([
+      this.prisma.countrySubject.groupBy({
+        by: ['subjectId'],
+        where: {
+          ...published,
+          subject: { status: 'PUBLISHED', deletedAt: null },
+        },
+        _count: { subjectId: true },
+      }),
+      this.prisma.countryIntake.groupBy({
+        by: ['intakeId'],
+        where: {
+          ...published,
+          availabilityStatus: { in: [...PUBLIC_INTAKE_AVAILABILITY] },
+          intake: { status: 'ACTIVE' },
+        },
+        _count: { intakeId: true },
+      }),
+      this.prisma.countryCostProfile.groupBy({
+        by: ['currencyCode'],
+        where: {
+          ...published,
+          sourceReference: { not: null },
+          verifiedAt: { not: null },
+        },
+        _count: { currencyCode: true },
+      }),
+    ]);
+
+    const [subjects, intakes] = await Promise.all([
+      this.prisma.subject.findMany({
+        where: { id: { in: subjectRows.map((row) => row.subjectId) } },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.intake.findMany({
+        where: { id: { in: intakeRows.map((row) => row.intakeId) } },
+        select: { id: true, name: true, slug: true, startMonth: true },
+        orderBy: { startMonth: 'asc' },
+      }),
+    ]);
+    const subjectCounts = new Map(
+      subjectRows.map((row) => [row.subjectId, row._count.subjectId]),
+    );
+    const intakeCounts = new Map(
+      intakeRows.map((row) => [row.intakeId, row._count.intakeId]),
+    );
+    return {
+      subjects: subjects.map((row) => ({
+        name: row.name,
+        slug: row.slug,
+        count: subjectCounts.get(row.id) ?? 0,
+      })),
+      intakes: intakes.map((row) => ({
+        name: row.name,
+        slug: row.slug,
+        count: intakeCounts.get(row.id) ?? 0,
+      })),
+      /* Amounts are only comparable inside one of these. */
+      currencies: currencyRows
+        .map((row) => ({
+          code: row.currencyCode,
+          count: row._count.currencyCode,
+        }))
+        .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code)),
+    };
+  }
+
   async publicList(query: CountryListQueryDto) {
-    const where = this.publicWhere(query);
+    const filters: PublicCountryFilters = {
+      ...query,
+      // Resolved once, not per row: one grouped query answers the whole page.
+      ...(query.universitiesMin !== undefined
+        ? {
+            universityIds: await this.universitiesAtLeast(
+              query.universitiesMin,
+            ),
+          }
+        : {}),
+    };
+    const where = this.publicWhere(filters);
+
+    if (query.sort === 'universities')
+      return this.publicListByUniversities(where, query);
+
     const [total, countries] = await Promise.all([
       this.prisma.country.count({ where }),
       this.prisma.country.findMany({
         where,
         include: COUNTRY_INCLUDE,
-        orderBy: this.publicOrderBy(query.sort),
+        orderBy: this.publicOrderBy(query.sort, query.currency),
         skip: (query.page - 1) * query.limit,
         take: query.limit,
       }),
@@ -300,6 +423,47 @@ export class CountriesService {
         this.toPublic(country as unknown as CountryRecord),
       ),
       meta: paginationMeta(query.page, query.limit, total),
+    };
+  }
+
+  /**
+   * "Most universities" orders by the resolved count, which is a rule rather
+   * than a column, so it cannot be an `orderBy`. Three bounded queries -- the
+   * matching ids, their counts, then the page -- never one per row.
+   */
+  private async publicListByUniversities(
+    where: Prisma.CountryWhereInput,
+    query: CountryListQueryDto,
+  ) {
+    const matches = await this.prisma.country.findMany({
+      where,
+      select: { id: true, displayOrder: true, name: true },
+    });
+    const counts = await this.resolvedUniversityCounts(
+      matches.map((row) => row.id),
+    );
+    const ordered = [...matches].sort(
+      (a, b) =>
+        (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) ||
+        a.displayOrder - b.displayOrder ||
+        a.name.localeCompare(b.name),
+    );
+    const pageIds = ordered
+      .slice((query.page - 1) * query.limit, query.page * query.limit)
+      .map((row) => row.id);
+    const countries = pageIds.length
+      ? await this.prisma.country.findMany({
+          where: { id: { in: pageIds } },
+          include: COUNTRY_INCLUDE,
+        })
+      : [];
+    const byId = new Map(countries.map((row) => [row.id, row]));
+    return {
+      data: pageIds
+        .map((id) => byId.get(id))
+        .filter((row): row is NonNullable<typeof row> => Boolean(row))
+        .map((country) => this.toPublic(country as unknown as CountryRecord)),
+      meta: paginationMeta(query.page, query.limit, ordered.length),
     };
   }
 
@@ -804,53 +968,136 @@ export class CountriesService {
     return { deleted: true };
   }
 
-  private publicWhere(query: {
-    q?: string;
-    continent?: string;
-    subjectId?: string;
-    tagId?: string;
-    featured?: boolean;
-    letter?: string;
-    budgetBand?: string;
-    ieltsOptional?: boolean;
-    intake?: string;
-    visaSuccessBand?: string;
-    pathwayStrength?: string;
-    hasTopRankedUniversities?: boolean;
-  }): Prisma.CountryWhereInput {
-    const workProfileFilter: Prisma.CountryWorkProfileWhereInput = {};
-    if (query.visaSuccessBand) {
-      Object.assign(workProfileFilter, {
-        visaSuccessBand: query.visaSuccessBand,
-        sourceReference: { not: null },
-        verifiedAt: { not: null },
-      });
-    }
-    if (query.pathwayStrength) {
-      Object.assign(workProfileFilter, {
+  /**
+   * Country ids whose resolved university count reaches `minimum`, following
+   * the same rule the page itself publishes: a verified non-DERIVED statistic
+   * speaks for the destination, otherwise the live published catalogue does.
+   * One grouped query, so this never scales with the number of results.
+   */
+  /** Resolved counts for a bounded id list, in one grouped query. */
+  private async resolvedUniversityCounts(
+    ids: string[],
+  ): Promise<Map<string, number>> {
+    if (!ids.length) return new Map();
+    const rows = await this.prisma.$queryRaw<
+      Array<{ id: string; total: bigint | number }>
+    >`
+      SELECT c.id AS id,
+             CASE
+               WHEN s.source_mode IS NOT NULL
+                AND s.source_mode <> 'DERIVED'
+                AND s.source_reference IS NOT NULL
+                AND s.verified_at IS NOT NULL
+                AND s.universities_count IS NOT NULL
+               THEN s.universities_count
+               ELSE COALESCE(u.n, 0)
+             END AS total
+      FROM countries c
+      LEFT JOIN country_statistics s ON s.country_id = c.id
+      LEFT JOIN (
+        SELECT country_id, COUNT(*) AS n
+        FROM universities
+        WHERE status = 'PUBLISHED' AND deleted_at IS NULL
+        GROUP BY country_id
+      ) u ON u.country_id = c.id
+      WHERE c.id IN (${Prisma.join(ids)})
+    `;
+    return new Map(rows.map((row) => [row.id, Number(row.total)]));
+  }
+
+  private async universitiesAtLeast(minimum: number): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT c.id AS id
+      FROM countries c
+      LEFT JOIN country_statistics s ON s.country_id = c.id
+      LEFT JOIN (
+        SELECT country_id, COUNT(*) AS n
+        FROM universities
+        WHERE status = 'PUBLISHED' AND deleted_at IS NULL
+        GROUP BY country_id
+      ) u ON u.country_id = c.id
+      WHERE c.status = 'PUBLISHED' AND c.deleted_at IS NULL
+        AND CASE
+              WHEN s.source_mode IS NOT NULL
+               AND s.source_mode <> 'DERIVED'
+               AND s.source_reference IS NOT NULL
+               AND s.verified_at IS NOT NULL
+               AND s.universities_count IS NOT NULL
+              THEN s.universities_count
+              ELSE COALESCE(u.n, 0)
+            END >= ${minimum}
+    `;
+    return rows.map((row) => row.id);
+  }
+
+  private publicWhere(query: PublicCountryFilters): Prisma.CountryWhereInput {
+    /* Every predicate that lands on the same to-one relation has to be merged
+     * into a single object: spreading two `costProfile` keys would silently
+     * keep only the last one, quietly widening the result set. */
+    const work: Prisma.CountryWorkProfileWhereInput = {};
+    const cost: Prisma.CountryCostProfileWhereInput = {};
+    const verified = {
+      sourceReference: { not: null },
+      verifiedAt: { not: null },
+    };
+
+    if (query.visaSuccessBand)
+      Object.assign(work, verified, { visaSuccessBand: query.visaSuccessBand });
+    if (query.pathwayStrength)
+      Object.assign(work, verified, {
         immigrationPathwayStrength: query.pathwayStrength,
-        sourceReference: { not: null },
-        verifiedAt: { not: null },
       });
+    if (query.postStudyWork !== undefined)
+      Object.assign(work, verified, {
+        postStudyWorkAvailable: query.postStudyWork,
+      });
+    if (query.postStudyWorkMonthsMin !== undefined)
+      Object.assign(work, verified, {
+        postStudyWorkAvailable: true,
+        postStudyWorkMaxMonths: {
+          not: null,
+          gte: query.postStudyWorkMonthsMin,
+        },
+      });
+    if (query.partTimeWork !== undefined)
+      Object.assign(work, verified, { partTimeAllowed: query.partTimeWork });
+    if (query.workHoursMin !== undefined)
+      Object.assign(work, verified, {
+        partTimeAllowed: true,
+        partTimeHoursPerWeek: { not: null, gte: query.workHoursMin },
+      });
+
+    if (query.budgetBand)
+      Object.assign(cost, verified, { budgetBand: query.budgetBand });
+    /* Money bounds only ever apply inside one currency. Destinations publish in
+     * their own currency and there is no conversion layer, so comparing 20,000
+     * SEK with 20,000 SGD would be meaningless; without `currency` the amount
+     * bounds are ignored rather than silently answering the wrong question. */
+    if (query.currency) {
+      Object.assign(cost, verified, { currencyCode: query.currency });
+      if (query.tuitionMax !== undefined)
+        Object.assign(cost, {
+          tuitionMin: { not: null, lte: query.tuitionMax },
+        });
+      if (query.livingMax !== undefined)
+        Object.assign(cost, {
+          livingCostMin: { not: null, lte: query.livingMax },
+        });
     }
+    if (query.applicationFee === 'none')
+      Object.assign(cost, verified, {
+        OR: [{ applicationFeeMin: null }, { applicationFeeMin: 0 }],
+      });
+    if (query.applicationFee === 'any')
+      Object.assign(cost, verified, { applicationFeeMin: { gt: 0 } });
+
     return {
       status: 'PUBLISHED',
       deletedAt: null,
-      continent: { status: 'ACTIVE', deletedAt: null },
-      ...(query.continent
-        ? {
-            continent: {
-              slug: query.continent,
-              status: 'ACTIVE',
-              deletedAt: null,
-            },
-          }
-        : {}),
+      continent: query.continent
+        ? { slug: query.continent, status: 'ACTIVE', deletedAt: null }
+        : { status: 'ACTIVE', deletedAt: null },
       ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
-      ...(query.subjectId
-        ? { subjectMaps: { some: { subjectId: query.subjectId } } }
-        : {}),
-      ...(query.tagId ? { tagMaps: { some: { tagId: query.tagId } } } : {}),
       ...(query.letter ? { name: { startsWith: query.letter } } : {}),
       ...(query.q
         ? {
@@ -860,54 +1107,84 @@ export class CountriesService {
             ],
           }
         : {}),
-      ...(query.budgetBand
+      /* Country Tags stay Admin, import and filter metadata: the shared query
+       * object carries `tagId` for Admin's own listing, and the public path
+       * deliberately never honours it. */
+      ...(query.subjectId || query.subjects?.length
         ? {
-            costProfile: {
-              is: {
-                budgetBand: query.budgetBand,
-                sourceReference: { not: null },
-                verifiedAt: { not: null },
+            subjectMaps: {
+              some: {
+                ...(query.subjectId ? { subjectId: query.subjectId } : {}),
+                ...(query.subjects?.length
+                  ? {
+                      subject: {
+                        status: 'PUBLISHED',
+                        deletedAt: null,
+                        OR: [
+                          { slug: { in: query.subjects } },
+                          { id: { in: query.subjects } },
+                        ],
+                      },
+                    }
+                  : {}),
               },
             },
           }
         : {}),
-      ...(query.ieltsOptional
-        ? {
-            languageRequirements: {
-              is: {
-                sourceReference: { not: null },
-                verifiedAt: { not: null },
-                OR: [
-                  { ieltsRequirement: 'OPTIONAL' },
-                  { ieltsRequirement: 'NOT_REQUIRED' },
-                  { languageWaiverAvailable: true },
-                ],
-              },
-            },
-          }
-        : {}),
-      ...(query.intake
+      ...(query.intake || query.intakes?.length
         ? {
             intakes: {
               some: {
                 availabilityStatus: { in: [...PUBLIC_INTAKE_AVAILABILITY] },
                 intake: {
                   status: 'ACTIVE',
-                  OR: [{ id: query.intake }, { slug: query.intake }],
+                  OR: [
+                    ...(query.intake
+                      ? [{ id: query.intake }, { slug: query.intake }]
+                      : []),
+                    ...(query.intakes?.length
+                      ? [
+                          { slug: { in: query.intakes } },
+                          { id: { in: query.intakes } },
+                        ]
+                      : []),
+                  ],
                 },
               },
             },
           }
         : {}),
-      ...(Object.keys(workProfileFilter).length > 0
-        ? { workProfile: { is: workProfileFilter } }
+      ...(query.ieltsOptional || query.ieltsMax !== undefined
+        ? {
+            languageRequirements: {
+              is: {
+                ...verified,
+                ...(query.ieltsOptional
+                  ? {
+                      OR: [
+                        { ieltsRequirement: 'OPTIONAL' },
+                        { ieltsRequirement: 'NOT_REQUIRED' },
+                        { languageWaiverAvailable: true },
+                      ],
+                    }
+                  : {}),
+                /* A destination that publishes nothing must not read as
+                 * "requires zero" -- it has no answer to this question. */
+                ...(query.ieltsMax !== undefined
+                  ? { ieltsMinScore: { not: null, lte: query.ieltsMax } }
+                  : {}),
+              },
+            },
+          }
         : {}),
+      ...(Object.keys(work).length ? { workProfile: { is: work } } : {}),
+      ...(Object.keys(cost).length ? { costProfile: { is: cost } } : {}),
+      ...(query.universityIds ? { id: { in: query.universityIds } } : {}),
       ...(query.hasTopRankedUniversities !== undefined
         ? {
             statistics: {
               is: {
-                sourceReference: { not: null },
-                verifiedAt: { not: null },
+                ...verified,
                 topRankedUniversitiesCount: query.hasTopRankedUniversities
                   ? { gt: 0 }
                   : 0,
@@ -920,10 +1197,30 @@ export class CountriesService {
 
   private publicOrderBy(
     sort: string | undefined,
+    currency?: string,
   ): Prisma.CountryOrderByWithRelationInput[] {
     switch (sort) {
       case 'name':
         return [{ name: 'asc' }, { id: 'asc' }];
+      /* Money sorts only mean something inside one currency, so without a
+       * currency scope they fall back to the recommended order rather than
+       * ranking SEK against SGD as though the numbers were comparable. */
+      case 'tuition':
+        return currency
+          ? [
+              { costProfile: { tuitionMin: 'asc' } },
+              { name: 'asc' },
+              { id: 'asc' },
+            ]
+          : [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
+      case 'living':
+        return currency
+          ? [
+              { costProfile: { livingCostMin: 'asc' } },
+              { name: 'asc' },
+              { id: 'asc' },
+            ]
+          : [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
       case 'featured':
         return [
           { isFeatured: 'desc' },

@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { CountriesReference, type SectionCopy } from '@/components/reference/CountriesReference';
-import { getContinents, getCountries, getDirectory } from '@/lib/countries';
+import {
+  getContinents,
+  getCountries,
+  getCountryFilterOptions,
+  getDirectory,
+} from '@/lib/countries';
 import { phaseList, phasePage } from '@/lib/phase1';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { staticPageMetadata } from '@/lib/static-page-seo';
@@ -60,6 +65,20 @@ const allowed = [
   'visaSuccessBand',
   'pathwayStrength',
   'hasTopRankedUniversities',
+  // Discovery filters. Each one is shareable, so each one lives in the URL.
+  'subjects',
+  'intakes',
+  'ieltsMax',
+  'postStudyWork',
+  'postStudyWorkMonthsMin',
+  'partTimeWork',
+  'workHoursMin',
+  'applicationFee',
+  'universitiesMin',
+  'currency',
+  'tuitionMax',
+  'livingMax',
+  'sort',
   'page',
 ] as const;
 
@@ -87,7 +106,7 @@ function apiFilters(filters: Record<string, string>) {
 
 async function loadData(filters: Record<string, string>) {
   try {
-    const [countries, continents, directory, consultants, everyCountry] = await Promise.all([
+    const [countries, continents, directory, consultants, everyCountry, filterOptions] = await Promise.all([
       getCountries({ ...apiFilters(filters), limit: '12' }),
       getContinents(),
       getDirectory({ limit: '100' }),
@@ -95,6 +114,12 @@ async function loadData(filters: Record<string, string>) {
       // Unfiltered, so the region tabs can carry a real count and a region with
       // no published destination is not offered at all.
       getCountries({ limit: '100' }).then((result) => result.data),
+      // The drawer only ever offers what the data can answer.
+      getCountryFilterOptions().catch(() => ({
+        subjects: [],
+        intakes: [],
+        currencies: [],
+      })),
     ]);
     const perRegion = new Map<string, number>();
     for (const country of everyCountry) {
@@ -110,6 +135,7 @@ async function loadData(filters: Record<string, string>) {
       directory: directory.data,
       directoryMeta: directory.meta,
       consultants: consultants.data,
+      filterOptions,
     };
   } catch {
     return null;
@@ -150,6 +176,7 @@ export default async function CountriesPage({
         verified: row.verificationStatus === 'VERIFIED',
       }))}
       filters={filters}
+      filterOptions={data.filterOptions}
       content={content}
     />
   );

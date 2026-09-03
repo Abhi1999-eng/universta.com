@@ -28,7 +28,7 @@ test.describe('approved public country experience', () => {
     await expect(page.getByRole('button', { name: /North America/i })).toHaveClass(/on/);
     await page.getByRole('button', { name: /^Filters/ }).click();
     await expect(page.getByLabel('Budget')).toHaveValue('MID_RANGE');
-    await expect(page.getByLabel('IELTS')).toHaveValue('true');
+    await expect(page.getByLabel('IELTS requirement')).toHaveValue('true');
   });
 
   test('submits country search through the router and keeps the URL canonical', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('approved public country experience', () => {
     await page.goto(`${listing}?q=Canada&region=north-america&budgetBand=MID_RANGE&ieltsOptional=true`);
     await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByLabel('Budget').selectOption('PREMIUM');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await page.getByTestId('country-apply').click();
 
     await expect(page).toHaveURL(/q=Canada/);
     await expect(page).toHaveURL(/region=north-america/);
@@ -61,7 +61,7 @@ test.describe('approved public country experience', () => {
     await page.goto(`${listing}?q=Canada&region=north-america&budgetBand=MID_RANGE&page=2`);
     await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByLabel('Budget').selectOption('PREMIUM');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await page.getByTestId('country-apply').click();
     await expect(page).toHaveURL(/budgetBand=PREMIUM/);
     expect(new URL(page.url()).searchParams.has('page')).toBe(false);
 

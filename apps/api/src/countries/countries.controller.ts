@@ -25,6 +25,12 @@ export class CountriesController {
     return successEnvelope(request, result.data, result.meta);
   }
 
+  @Get('filter-options')
+  @ApiOperation({ summary: 'Options the public listing can be narrowed by' })
+  async filterOptions(@Req() request: RequestWithId) {
+    return successEnvelope(request, await this.countries.filterOptions());
+  }
+
   @Get('suggestions')
   @ApiOperation({ summary: 'Search published country suggestions' })
   async suggestions(
