@@ -983,7 +983,9 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             <div className="head">
               <span className="eyebrow">Student visa</span>
               <h2>Work and visa pathways in {country.name}</h2>
-              {work?.visaInformation ? <p>{work.visaInformation}</p> : null}
+              {work?.visaInformation ? (
+                <RichText value={work.visaInformation} />
+              ) : null}
             </div>
             {visaFacts.length ? (
               <div className="cost-table">
@@ -1168,7 +1170,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
                   <summary>
                     {faq.question} <span className="plus">+</span>
                   </summary>
-                  <p className="ans">{faq.answer}</p>
+                  <RichText className="ans" value={faq.answer} />
                 </details>
               ))}
             </div>
