@@ -247,6 +247,14 @@ describe('country detail — client contract', () => {
     expect(html).toContain('Main intake.');
   });
 
+  /** Just the overview section's markup. Other blocks render their own
+   * content, and this change is only about this one. */
+  const overviewHtml = (html: string) => {
+    const start = html.indexOf('id="overview"');
+    if (start === -1) return '';
+    return html.slice(start, html.indexOf('<section', start + 1));
+  };
+
   it('renders Country.overview as the country content', () => {
     const html = render(
       build({ country: { overview: 'The client supplied this overview.' } }),
@@ -254,12 +262,84 @@ describe('country detail — client contract', () => {
     expect(html).toContain('The client supplied this overview.');
   });
 
-  it('splits a multi-paragraph overview into paragraphs', () => {
-    const html = render(
-      build({ country: { overview: 'First para.\n\nSecond para.' } }),
+  it('renders a plain-text overview, keeping its line breaks', () => {
+    const block = overviewHtml(
+      render(build({ country: { overview: 'First para.\n\nSecond para.' } })),
     );
-    expect(html).toContain('<p>First para.</p>');
-    expect(html).toContain('<p>Second para.</p>');
+    expect(block).toContain('First para.');
+    expect(block).toContain('Second para.');
+    // The plain-text branch preserves the author's own breaks.
+    expect(block).toContain('pre-line');
+  });
+
+  /**
+   * Production rendered `<p>...</p>` from Country.overview as visible markup:
+   * the column holds rich text, and it was being printed as escaped text. It
+   * goes through the same RichText renderer the long-form sections use.
+   */
+  it('renders an HTML overview as content, not as visible markup', () => {
+    const block = overviewHtml(
+      render(build({ country: { overview: '<p>Study in Poland</p>' } })),
+    );
+    expect(block).toContain('<p>Study in Poland</p>');
+    // The literal tags must not reach the reader.
+    expect(block).not.toContain('&lt;p&gt;');
+    expect(block).not.toContain('&lt;/p&gt;');
+  });
+
+  it('keeps the formatting an editor applied', () => {
+    const block = overviewHtml(
+      render(
+        build({
+          country: {
+            overview:
+              '<p><strong>Bold</strong> and <em>italic</em>.</p>' +
+              '<ul><li>First point</li><li>Second point</li></ul>' +
+              '<p><a href="https://example.com/guide">Read the guide</a></p>',
+          },
+        }),
+      ),
+    );
+    expect(block).toContain('<strong>Bold</strong>');
+    expect(block).toContain('<em>italic</em>');
+    expect(block).toContain('<ul><li>First point</li><li>Second point</li></ul>');
+    expect(block).toContain('href="https://example.com/guide"');
+    expect(block).toContain('rel="noopener noreferrer"');
+  });
+
+  it('treats unsafe overview content exactly as it treats any other rich text', () => {
+    const overview =
+      '<p>Safe copy.</p><script>alert(1)</script>' +
+      '<p onclick="steal()">Attribute dropped.</p>' +
+      '<a href="javascript:alert(1)">Bad link</a>';
+    const block = overviewHtml(render(build({ country: { overview } })));
+    // Same guarantees the shared renderer already gives the long-form sections.
+    expect(block).toContain('Safe copy.');
+    expect(block).not.toContain('<script');
+    expect(block).not.toContain('alert(1)');
+    expect(block).not.toContain('onclick');
+    expect(block).not.toContain('javascript:');
+  });
+
+  it('renders the overview exactly once', () => {
+    const html = render(
+      build({ country: { overview: '<p>Only once.</p>' } }),
+    );
+    expect(html.split('Only once.').length - 1).toBe(1);
+    expect(html.split('id="overview"').length - 1).toBe(1);
+  });
+
+  it('leaves the long-form client sections rendering as they were', () => {
+    const html = render(build({ country: { overview: '<p>An overview.</p>' } }));
+    // Still the same four sections, still through RichText.
+    for (const heading of [
+      'Why study in Australia',
+      'Admission process',
+      'Cost breakdown',
+      'Visa process',
+    ])
+      expect(html).toContain(heading);
+    expect(html).toContain('English-taught degrees and a large research sector.');
   });
 
   it('falls back to a legacy overview section only when the column is empty', () => {

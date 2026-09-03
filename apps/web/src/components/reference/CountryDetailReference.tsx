@@ -367,19 +367,14 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
 
   /* The client's `content` column. Country.overview is canonical; the legacy
    * editorial "overview" section supplies the body only when it is absent, so
-   * the page never shows two overviews. */
+   * the page never shows two overviews. It holds rich text, so it goes through
+   * the same RichText renderer the long-form sections use -- splitting it into
+   * paragraphs printed the markup itself on the page. */
   const overviewSection = page.sections.find(
     (section) => section.sectionKey === "overview",
   );
-  const overviewParagraphs = (country.overview ?? "")
-    .split(/\n{2,}/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const overviewBody = overviewParagraphs.length
-    ? overviewParagraphs
-    : overviewSection?.subheading
-      ? [overviewSection.subheading]
-      : [];
+  const overviewBody =
+    country.overview?.trim() || overviewSection?.subheading?.trim() || "";
   const universityTotal = derivedUniversityCount ?? props.universityTotal;
   const universityHighlightsAvailable =
     topRankedUniversities.length > 0 ||
@@ -540,7 +535,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
       </section>
 
       {/* OVERVIEW (the client's `content`) */}
-      {overviewBody.length ? (
+      {overviewBody ? (
         <section className="sec sec-alt" id="overview">
           <div className="wrap narrow">
             <div className="head">
@@ -551,9 +546,9 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
                 {overviewSection?.heading ??
                   `About studying in ${country.name}`}
               </h2>
-              {overviewBody.map((paragraph, index) => (
-                <p key={`overview-${index}`}>{paragraph}</p>
-              ))}
+            </div>
+            <div className="prose">
+              <RichText value={overviewBody} />
             </div>
           </div>
         </section>
