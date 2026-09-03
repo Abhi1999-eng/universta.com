@@ -327,6 +327,15 @@ export function getDirectory(params: Record<string, string> = {}) {
     `/countries/directory${query ? `?${query}` : ""}`,
   );
 }
+export interface CountryFilterOptions {
+  subjects: Array<{ name: string; slug: string; count: number }>;
+  intakes: Array<{ name: string; slug: string; count: number }>;
+  currencies: Array<{ code: string; count: number }>;
+}
+/** What the listing can actually be narrowed by, straight from the data. */
+export function getCountryFilterOptions() {
+  return api<CountryFilterOptions>("/countries/filter-options");
+}
 export function getContinents() {
   return api<Array<{ id: string; name: string; slug: string; status: string }>>(
     "/continents?limit=100",

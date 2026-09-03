@@ -1,9 +1,24 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SearchCombobox } from './SearchCombobox';
+import {
+  FILTER_KEYS,
+  IELTS_CHOICES,
+  SORTS,
+  UNIVERSITY_CHOICES,
+  activeChips as buildChips,
+  activeFilterCount,
+  commitHref,
+  draftFromFilters,
+  dropHref,
+  hasValue,
+  stagedCountQuery,
+  toggleValue,
+  type FilterDraft,
+} from './country-filters';
 import type { Country, DirectoryRecord, PaginationMeta } from '@/lib/countries';
 import { intakeRange } from '@/lib/intake-range';
 import { formatNumber } from '@/lib/format';
@@ -44,8 +59,15 @@ export type CountriesReferenceProps = {
   directoryMeta: PaginationMeta;
   consultants: ConsultantSummary[];
   filters: Record<string, string>;
+  /** Only what the data can actually answer, resolved server-side. */
+  filterOptions?: {
+    subjects: Array<{ name: string; slug: string; count: number }>;
+    intakes: Array<{ name: string; slug: string; count: number }>;
+    currencies: Array<{ code: string; count: number }>;
+  };
   content: Record<string, SectionCopy | undefined>;
 };
+
 
 /** Every quick filter maps onto a parameter `/countries` already honours, so
  * none of them is decorative. */
@@ -121,6 +143,11 @@ function prFriendly(country: Country | DirectoryRecord) {
 
 export function CountriesReference(props: CountriesReferenceProps) {
   const { countries, meta, directory, filters, content } = props;
+  const options = props.filterOptions ?? {
+    subjects: [],
+    intakes: [],
+    currencies: [],
+  };
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -131,28 +158,58 @@ export function CountriesReference(props: CountriesReferenceProps) {
    * budget and English requirement costs one page load rather than two. Keyed
    * on the server-resolved filters so back/forward re-seeds the controls. */
   const filterKey = JSON.stringify(filters);
-  const [panelDraft, setPanelDraft] = useState({
-    budgetBand: filters.budgetBand ?? '',
-    ieltsOptional: filters.ieltsOptional ?? '',
-  });
+  const [panelDraft, setPanelDraft] = useState<FilterDraft>(() =>
+    draftFromFilters(filters),
+  );
   const [panelFor, setPanelFor] = useState(filterKey);
   if (panelFor !== filterKey) {
-    setPanelDraft({
-      budgetBand: filters.budgetBand ?? '',
-      ieltsOptional: filters.ieltsOptional ?? '',
-    });
+    setPanelDraft(draftFromFilters(filters));
     setPanelFor(filterKey);
   }
+  const [subjectSearch, setSubjectSearch] = useState('');
+
+  /** Toggle one value inside a comma-separated group (OR within the group). */
+  const toggleInDraft = (key: 'subjects' | 'intakes', value: string) =>
+    setPanelDraft((current) => ({
+      ...current,
+      [key]: toggleValue(current[key], value),
+    }));
+  const draftHas = (key: 'subjects' | 'intakes', value: string) =>
+    hasValue(panelDraft[key], value);
+
+  /* Amounts are only comparable inside one currency, so the money controls stay
+   * disabled until one is chosen rather than quietly comparing SEK with SGD. */
+  const currencyScoped = Boolean(panelDraft.currency);
+
+  /** The drawer stages its choices, so the action has to count the set the
+   * visitor is about to see, not the one already on screen. */
+  const [stagedTotal, setStagedTotal] = useState<number | null>(meta.total);
+  const draftKey = JSON.stringify(panelDraft);
+  useEffect(() => {
+    if (!panelOpen) return;
+    const search = stagedCountQuery(filters, panelDraft);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      // Only once the debounce fires, so the action never flickers on a
+      // keystroke and no state is set synchronously during the effect.
+      setStagedTotal(null);
+      fetch(`/api/countries/count?${search}`, {
+        signal: controller.signal,
+      })
+        .then((response) => response.json())
+        .then((body: { total: number | null }) => setStagedTotal(body.total))
+        .catch(() => undefined);
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, panelOpen, filters.q, filters.region]);
 
   function commit(next: Record<string, string | null>) {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const [key, value] of Object.entries(next)) {
-      if (value === null || value === '') params.delete(key);
-      else params.set(key, value);
-    }
-    params.delete('page');
     setPanelOpen(false);
-    router.push(`${pathname}${params.size ? `?${params}` : ''}#regions`);
+    router.push(commitHref(pathname, searchParams.toString(), next));
   }
 
   /** Drops every filter and returns to the listing's own address, so the
@@ -228,10 +285,21 @@ export function CountriesReference(props: CountriesReferenceProps) {
   const consultantsCopy = content.consultants ?? {};
   const final = content.final ?? {};
 
-  const hasFilters = Object.keys(filters).some((key) => key !== 'page');
-  const structuredCount = ['budgetBand', 'ieltsOptional', 'visaSuccessBand', 'pathwayStrength', 'hasTopRankedUniversities'].filter(
-    (key) => filters[key],
-  ).length;
+  const hasFilters = Object.keys(filters).some(
+    (key) => key !== 'page' && key !== 'sort',
+  );
+  /** Counted the way a visitor reads them: three subjects is three filters. */
+  const structuredCount = activeFilterCount(filters);
+
+  /** Removes one value, leaving the rest of its group in place. */
+  function dropValue(key: string, value?: string) {
+    router.push(dropHref(pathname, searchParams.toString(), key, value));
+  }
+
+  const activeChips = buildChips(filters, {
+    subjects: new Map(options.subjects.map((row) => [row.slug, row.name])),
+    intakes: new Map(options.intakes.map((row) => [row.slug, row.name])),
+  });
 
   return (
     <div className="cref cref-dest">
@@ -369,6 +437,27 @@ export function CountriesReference(props: CountriesReferenceProps) {
             >
               Filters{structuredCount ? ` (${structuredCount})` : ''}
             </button>
+            <label className="sortby">
+              <span className="sr-only">Sort by</span>
+              <select
+                data-testid="country-sort"
+                value={filters.sort ?? 'recommended'}
+                onChange={(event) =>
+                  commit({
+                    sort:
+                      event.target.value === 'recommended'
+                        ? null
+                        : event.target.value,
+                  })
+                }
+              >
+                {SORTS.map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
             {hasFilters ? (
               <button type="button" className="linkbtn" onClick={clearAll}>
                 Clear all filters
@@ -377,51 +466,335 @@ export function CountriesReference(props: CountriesReferenceProps) {
           </div>
         </div>
 
-        {/* Structured filters, staged and applied together. */}
+        {/* Structured filters, staged and applied together, so narrowing on
+            several things costs one page load rather than one per choice. */}
         <div
           id="country-filter-panel"
           className={`filtpanel${panelOpen ? ' is-open' : ''}`}
+          role="dialog"
+          aria-modal="false"
           aria-label="Destination filters"
+          hidden={!panelOpen}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setPanelOpen(false);
+          }}
         >
           <form
             className="filtpanel-in"
             onSubmit={(event) => {
               event.preventDefault();
-              commit({
-                budgetBand: panelDraft.budgetBand || null,
-                ieltsOptional: panelDraft.ieltsOptional || null,
-              });
+              commit(
+                Object.fromEntries(
+                  FILTER_KEYS.map((key) => [key, panelDraft[key] || null]),
+                ),
+              );
             }}
           >
-            <label className="fld">
-              <span>Budget</span>
-              <select
-                value={panelDraft.budgetBand}
-                onChange={(event) =>
-                  setPanelDraft((current) => ({ ...current, budgetBand: event.target.value }))
-                }
-              >
-                <option value="">Any budget</option>
-                <option value="BUDGET_FRIENDLY">Budget friendly</option>
-                <option value="MID_RANGE">Mid range</option>
-                <option value="PREMIUM">Premium</option>
-              </select>
-            </label>
-            <label className="fld">
-              <span>IELTS</span>
-              <select
-                value={panelDraft.ieltsOptional}
-                onChange={(event) =>
-                  setPanelDraft((current) => ({ ...current, ieltsOptional: event.target.value }))
-                }
-              >
-                <option value="">Any requirement</option>
-                <option value="true">Optional or waived</option>
-              </select>
-            </label>
+            <fieldset className="filtgroup">
+              <legend>Study</legend>
+
+              <label className="fld">
+                <span>Budget</span>
+                <select
+                  value={panelDraft.budgetBand}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      budgetBand: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any budget</option>
+                  <option value="BUDGET_FRIENDLY">Budget friendly</option>
+                  <option value="MID_RANGE">Mid range</option>
+                  <option value="PREMIUM">Premium</option>
+                </select>
+              </label>
+              <label className="fld">
+                {/* Named for what it asks: whether the test is required at all,
+                    as distinct from the score ceiling below. */}
+                <span>IELTS requirement</span>
+                <select
+                  value={panelDraft.ieltsOptional}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      ieltsOptional: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any requirement</option>
+                  <option value="true">Optional or waived</option>
+                </select>
+              </label>
+
+              <div className="fld fld-wide">
+                <span id="filt-subjects-label">Subjects</span>
+                <input
+                  type="search"
+                  className="filt-search"
+                  placeholder="Search subjects"
+                  aria-label="Search subjects"
+                  value={subjectSearch}
+                  onChange={(event) => setSubjectSearch(event.target.value)}
+                />
+                <div
+                  className="filt-scroll"
+                  role="group"
+                  aria-labelledby="filt-subjects-label"
+                >
+                  {options.subjects.length === 0 ? (
+                    <p className="filt-none">No subjects are assigned yet.</p>
+                  ) : null}
+                  {options.subjects
+                    .filter((subject) =>
+                      subject.name
+                        .toLowerCase()
+                        .includes(subjectSearch.trim().toLowerCase()),
+                    )
+                    .map((subject) => (
+                      <label className="filt-check" key={subject.slug}>
+                        <input
+                          type="checkbox"
+                          checked={draftHas('subjects', subject.slug)}
+                          onChange={() => toggleInDraft('subjects', subject.slug)}
+                        />
+                        <span>{subject.name}</span>
+                        <span className="filt-n">{subject.count}</span>
+                      </label>
+                    ))}
+                </div>
+              </div>
+
+              <div className="fld">
+                <span id="filt-intakes-label">Intakes</span>
+                <div
+                  className="filt-scroll"
+                  role="group"
+                  aria-labelledby="filt-intakes-label"
+                >
+                  {options.intakes.length === 0 ? (
+                    <p className="filt-none">No intakes are published yet.</p>
+                  ) : null}
+                  {options.intakes.map((intake) => (
+                    <label className="filt-check" key={intake.slug}>
+                      <input
+                        type="checkbox"
+                        checked={draftHas('intakes', intake.slug)}
+                        onChange={() => toggleInDraft('intakes', intake.slug)}
+                      />
+                      <span>{intake.name}</span>
+                      <span className="filt-n">{intake.count}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="fld">
+                <span>IELTS score</span>
+                <select
+                  value={panelDraft.ieltsMax}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      ieltsMax: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any requirement</option>
+                  {IELTS_CHOICES.map((score) => (
+                    <option value={score} key={score}>
+                      Up to {score}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="fld">
+                <span>Currency</span>
+                <select
+                  value={panelDraft.currency}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      currency: event.target.value,
+                      ...(event.target.value
+                        ? {}
+                        : { tuitionMax: '', livingMax: '' }),
+                    }))
+                  }
+                >
+                  <option value="">Any currency</option>
+                  {options.currencies.map((currency) => (
+                    <option value={currency.code} key={currency.code}>
+                      {currency.code} ({currency.count})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="fld">
+                <span>Tuition fees</span>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  placeholder={currencyScoped ? 'Up to' : 'Choose a currency'}
+                  disabled={!currencyScoped}
+                  value={panelDraft.tuitionMax}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      tuitionMax: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="fld">
+                <span>Living cost</span>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  placeholder={currencyScoped ? 'Up to' : 'Choose a currency'}
+                  disabled={!currencyScoped}
+                  value={panelDraft.livingMax}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      livingMax: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              {!currencyScoped ? (
+                <p className="filt-note fld-wide">
+                  Destinations publish tuition in their own currency, so pick one
+                  before setting an amount.
+                </p>
+              ) : null}
+            </fieldset>
+
+            <fieldset className="filtgroup">
+              <legend>Work and visa</legend>
+              <label className="fld">
+                <span>Post-study work</span>
+                <select
+                  value={panelDraft.postStudyWork}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      postStudyWork: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any</option>
+                  <option value="true">Available</option>
+                  <option value="false">Not available</option>
+                </select>
+              </label>
+              <label className="fld">
+                <span>Post-study work length</span>
+                <select
+                  value={panelDraft.postStudyWorkMonthsMin}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      postStudyWorkMonthsMin: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any length</option>
+                  <option value="12">12+ months</option>
+                  <option value="24">24+ months</option>
+                  <option value="36">36+ months</option>
+                </select>
+              </label>
+              <label className="fld">
+                <span>Work while studying</span>
+                <select
+                  value={panelDraft.partTimeWork}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      partTimeWork: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any</option>
+                  <option value="true">Part-time work allowed</option>
+                  <option value="false">Not allowed</option>
+                </select>
+              </label>
+              <label className="fld">
+                <span>Weekly hours</span>
+                <select
+                  value={panelDraft.workHoursMin}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      workHoursMin: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any</option>
+                  <option value="20">20+ hours a week</option>
+                </select>
+              </label>
+            </fieldset>
+
+            <fieldset className="filtgroup">
+              <legend>Destination</legend>
+              <label className="fld">
+                <span>Application fee</span>
+                <select
+                  value={panelDraft.applicationFee}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      applicationFee: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any</option>
+                  <option value="none">No application fee</option>
+                  <option value="any">Has an application fee</option>
+                </select>
+              </label>
+              <label className="fld">
+                <span>Universities</span>
+                <select
+                  value={panelDraft.universitiesMin}
+                  onChange={(event) =>
+                    setPanelDraft((current) => ({
+                      ...current,
+                      universitiesMin: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any number</option>
+                  {UNIVERSITY_CHOICES.map((minimum) => (
+                    <option value={minimum} key={minimum}>
+                      {minimum}+ universities
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </fieldset>
+
             <div className="filtpanel-actions">
-              <button type="submit" className="btn btn-primary btn-sm">
-                Apply filters
+              <button type="button" className="linkbtn" onClick={clearAll}>
+                Clear all
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary btn-sm"
+                data-testid="country-apply"
+              >
+                {stagedTotal === null
+                  ? 'Show destinations'
+                  : `Show ${stagedTotal} destination${stagedTotal === 1 ? '' : 's'}`}
               </button>
               <button
                 type="button"
@@ -433,6 +806,26 @@ export function CountriesReference(props: CountriesReferenceProps) {
             </div>
           </form>
         </div>
+
+        {activeChips.length ? (
+          <div className="filtchips" data-testid="country-chips">
+            {activeChips.map((chip) => (
+              <button
+                type="button"
+                className="filtchip"
+                key={`${chip.key}:${chip.value}`}
+                onClick={() => dropValue(chip.key, chip.value)}
+              >
+                {chip.label}
+                <span aria-hidden="true">×</span>
+                <span className="sr-only">Remove filter</span>
+              </button>
+            ))}
+            <button type="button" className="linkbtn" onClick={clearAll}>
+              Clear all
+            </button>
+          </div>
+        ) : null}
 
         <p className="res-count" data-testid="country-count">
           Showing {countries.length} of {meta.total} destination{meta.total === 1 ? '' : 's'}
