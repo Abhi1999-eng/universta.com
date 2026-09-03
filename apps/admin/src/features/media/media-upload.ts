@@ -93,11 +93,15 @@ export function toEditorialMedia(asset: UploadedMediaAsset): EditorialMedia {
 export async function listActiveMediaLibrary(
   query = '',
   limit = 50,
+  /** Image slots pass 'image'; the Media Library itself passes nothing and
+   * still sees every asset. */
+  kind?: 'image',
 ): Promise<EditorialMedia[]> {
   const params = new URLSearchParams({
     limit: String(Math.min(50, Math.max(1, limit))),
   });
   if (query.trim()) params.set('q', query.trim());
+  if (kind) params.set('kind', kind);
 
   const response = await authFetch(
     `/api/v1/admin/media?${params.toString()}`,

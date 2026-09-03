@@ -59,7 +59,7 @@ export async function proxyMediaList(request: NextRequest) {
   if (auth.error) return auth.error;
   const url = apiUrl("");
   for (const [key, value] of new URL(request.url).searchParams) {
-    if (["q", "folder", "page", "limit"].includes(key)) url.searchParams.set(key, value);
+    if (["q", "folder", "page", "limit", "kind"].includes(key)) url.searchParams.set(key, value);
   }
   const upstream = await fetch(url, {
     headers: { accept: "application/json", authorization: auth.authorization!, "x-request-id": requestId },
