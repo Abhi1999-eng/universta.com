@@ -48,6 +48,10 @@ export interface CountryRecord {
   slug: string;
   pageHeading: string;
   shortDescription: string;
+  overview?: string | null;
+  tagline?: string | null;
+  capitalCity?: string | null;
+  officialLanguage?: string | null;
   continent: { id: string; name: string; slug: string };
   flag: FlagRecord | null;
   featured: boolean;
@@ -55,7 +59,14 @@ export interface CountryRecord {
   statistics: { universitiesCount: number | null } | null;
   iso2Code?: string | null;
   iso3Code?: string | null;
+  externalUid?: string | null;
   currency?: { code: string; symbol: string | null } | null;
+  /* The raw editable values behind `currency` and `flag`; the editor reloads
+   * from these, so leaving them out silently blanks them on the next save. */
+  currencyName?: string | null;
+  flagMediaId?: string | null;
+  listingMediaId?: string | null;
+  heroMediaId?: string | null;
   configuration?: {
     features: Array<{ code: string; label: string }>;
     acceptedTests: string[];
@@ -64,6 +75,11 @@ export interface CountryRecord {
   };
   popularUniversityIds?: string[];
   popularCourseIds?: string[];
+  subjectIds?: string[];
+  tagIds?: string[];
+  subjects?: Array<{ id: string; name: string; slug: string }>;
+  tags?: Array<{ id: string; name: string; slug: string }>;
+  linkedCounts?: { universities: number; courses: number; scholarships: number };
   status?: string;
   publishedAt?: string | null;
   createdAt?: string;
@@ -97,6 +113,9 @@ export interface CountryProfileBundle {
     status: string;
     updatedAt: string;
   };
+  /** Live count of published universities, so the editor can say what the
+   * public page shows when the stored statistics do not qualify. */
+  derivedUniversitiesCount?: number;
   cost: Record<string, unknown> | null;
   work: Record<string, unknown> | null;
   language: Record<string, unknown> | null;
@@ -160,11 +179,21 @@ export interface CatalogListParams {
   maxTuition?: string;
   continent?: string;
   continentId?: string;
+  subjectId?: string;
+  tagId?: string;
   status?: string;
   featured?: boolean;
   sort?: string;
   page?: number;
   limit?: number;
+}
+
+export interface CountryTagRecord {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  description?: string | null;
 }
 
 export interface CatalogMutationError extends Error {
@@ -261,6 +290,12 @@ export interface SubjectRecord {
   id: string;
   name: string;
   slug: string;
+  /** Shown beneath the parent for navigation; the Country taxonomy itself is
+   * assigned at Subject level only. */
+  subSubjects?: Array<{ id: string; name: string; slug: string; status: string }>;
+  /** Real usage, used to order the picker's "Most used" view. */
+  courseCount?: number;
+  countryCount?: number;
   shortDescription: string | null;
   overview: string | null;
   iconMedia: EditorialMedia | null;

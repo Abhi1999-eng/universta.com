@@ -44,6 +44,35 @@ const COUNTRY_INCLUDE = {
   flagMedia: {
     select: { publicUrl: true, altText: true, status: true, deletedAt: true },
   },
+  listingMedia: {
+    select: { publicUrl: true, altText: true, status: true, deletedAt: true },
+  },
+  heroMedia: {
+    select: { publicUrl: true, altText: true, status: true, deletedAt: true },
+  },
+  subjectMaps: {
+    include: {
+      subject: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          status: true,
+          deletedAt: true,
+        },
+      },
+    },
+    orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
+  },
+  tagMaps: {
+    include: {
+      tag: { select: { id: true, name: true, slug: true, status: true } },
+    },
+    orderBy: { tag: { name: 'asc' } },
+  },
+  _count: {
+    select: { universities: true, courses: true, scholarshipCountries: true },
+  },
   popularUniversities: {
     select: { universityId: true, displayOrder: true },
     orderBy: [{ displayOrder: 'asc' }, { universityId: 'asc' }],
@@ -63,13 +92,22 @@ type CountryRecord = {
   slug: string;
   iso2Code: string | null;
   iso3Code: string | null;
+  externalUid: string | null;
+  capitalCity: string | null;
+  officialLanguage: string | null;
+  currencyName: string | null;
   currencyCode: string | null;
   currencySymbol: string | null;
+  flagMediaId: string | null;
+  listingMediaId: string | null;
+  heroMediaId: string | null;
   featureCodes: Prisma.JsonValue | null;
   acceptedTests: Prisma.JsonValue | null;
   intakeMonths: Prisma.JsonValue | null;
   postStudyWorkPermitMonths: number | null;
   shortDescription: string;
+  overview: string | null;
+  tagline: string | null;
   isFeatured: boolean;
   displayOrder: number;
   status: string;
@@ -90,6 +128,38 @@ type CountryRecord = {
     status: string;
     deletedAt: Date | null;
   } | null;
+  listingMedia: {
+    publicUrl: string;
+    altText: string | null;
+    status: string;
+    deletedAt: Date | null;
+  } | null;
+  heroMedia: {
+    publicUrl: string;
+    altText: string | null;
+    status: string;
+    deletedAt: Date | null;
+  } | null;
+  subjectMaps: Array<{
+    subjectId: string;
+    displayOrder: number;
+    subject: {
+      id: string;
+      name: string;
+      slug: string;
+      status: string;
+      deletedAt: Date | null;
+    };
+  }>;
+  tagMaps: Array<{
+    tagId: string;
+    tag: { id: string; name: string; slug: string; status: string };
+  }>;
+  _count: {
+    universities: number;
+    courses: number;
+    scholarshipCountries: number;
+  };
   popularUniversities: Array<{ universityId: string; displayOrder: number }>;
   popularCourses: Array<{ courseId: string; displayOrder: number }>;
   statistics: ProfileStatisticsRecord | null;
@@ -100,14 +170,27 @@ export interface FlagDto {
   alt: string;
 }
 
+/** What the public site is told about an image: where to fetch it and what to
+ * call it. Nothing about who uploaded it or how it is stored. */
+export interface PublicMediaDto {
+  url: string;
+  alt: string;
+}
+
 export interface CountryPublicDto {
   id: string;
   name: string;
   slug: string;
   pageHeading: string;
   shortDescription: string;
+  tagline: string | null;
+  overview: string | null;
+  capitalCity: string | null;
+  officialLanguage: string | null;
   continent: { id: string; name: string; slug: string };
   flag: FlagDto | null;
+  listingImage: PublicMediaDto | null;
+  heroImage: PublicMediaDto | null;
   featured: boolean;
   displayOrder: number;
   statistics: { universitiesCount: number | null } | null;
@@ -119,18 +202,35 @@ export interface CountryPublicDto {
     postStudyWorkPermitMonths: number | null;
   };
   currency: { code: string; symbol: string | null } | null;
+  subjects: Array<{ id: string; name: string; slug: string }>;
+  /* Tags are deliberately absent: they are an Admin, import and filter
+   * taxonomy, and never part of what the public site is told about a country.
+   * `toAdmin` maps them itself. */
   derived?: Awaited<ReturnType<CountryDerivedService['detail']>>;
 }
 
 export interface CountryAdminDto extends CountryPublicDto {
+  externalUid: string | null;
   iso2Code: string | null;
   iso3Code: string | null;
+  /* The public payload renders media and currency for display; the editor
+   * needs the raw values back, or reopening a country and saving it clears
+   * whatever it could not repopulate. */
+  currencyName: string | null;
+  flagMediaId: string | null;
+  listingMediaId: string | null;
+  heroMediaId: string | null;
   status: string;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
   popularUniversityIds: string[];
   popularCourseIds: string[];
+  subjectIds: string[];
+  tagIds: string[];
+  subjects: Array<{ id: string; name: string; slug: string }>;
+  tags: Array<{ id: string; name: string; slug: string }>;
+  linkedCounts: { universities: number; courses: number; scholarships: number };
 }
 
 function actorId(request: AuthenticatedRequest): string {
@@ -157,10 +257,23 @@ function notFound(): NotFoundException {
   });
 }
 
+/**
+ * Whether a stored statistics row is allowed to speak for the country.
+ *
+ * Two conditions, both required. `sourceMode` says an editor deliberately took
+ * ownership of the number -- DERIVED means "keep following the catalogue", and
+ * a row left on DERIVED must never override the live count even if it still
+ * carries verification from an earlier manual period. The source reference and
+ * verification date then say the number was actually checked. Without both
+ * halves the caller falls back to `CountryDerivedService`, so a stale figure
+ * can never quietly contradict the published universities it claims to count.
+ */
 function isVerifiedStatistics(
   statistics: CountryRecord['statistics'],
 ): boolean {
-  return Boolean(statistics?.verifiedAt && statistics.sourceReference);
+  if (!statistics) return false;
+  if (statistics.sourceMode === 'DERIVED') return false;
+  return Boolean(statistics.verifiedAt && statistics.sourceReference);
 }
 
 @Injectable()
@@ -292,6 +405,10 @@ export class CountriesService {
       ...(query.status ? { status: query.status } : {}),
       ...(query.continentId ? { continentId: query.continentId } : {}),
       ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
+      ...(query.subjectId
+        ? { subjectMaps: { some: { subjectId: query.subjectId } } }
+        : {}),
+      ...(query.tagId ? { tagMaps: { some: { tagId: query.tagId } } } : {}),
       ...(query.q
         ? {
             OR: [
@@ -367,28 +484,53 @@ export class CountriesService {
     const name = dto.name.trim();
     const slug = dto.slug?.trim() || slugify(name);
     const metadata = this.metadataOrLegacyIdentity(name, dto);
-    await this.ensureUnique(name, slug, metadata?.iso2Code, metadata?.iso3Code);
+    const iso2Code = dto.iso2Code ?? metadata?.iso2Code;
+    const iso3Code = dto.iso3Code ?? metadata?.iso3Code;
+    await this.ensureUnique(name, slug, iso2Code, iso3Code);
     try {
-      const country = await this.prisma.country.create({
-        data: {
-          continentId: dto.continentId,
-          name,
-          slug,
-          iso2Code: metadata?.iso2Code,
-          iso3Code: metadata?.iso3Code,
-          currencyCode: metadata?.currencyCode,
-          currencySymbol: metadata?.currencySymbol,
-          pageHeading: dto.pageHeading.trim(),
-          shortDescription: dto.shortDescription.trim(),
-          isFeatured: dto.isFeatured ?? false,
-          displayOrder: dto.displayOrder ?? 0,
-          flagMediaId: dto.flagMediaId,
-          ...this.configurationData(dto),
-          status: 'DRAFT',
-          createdByUserId: userId,
-          updatedByUserId: userId,
-        },
-        include: COUNTRY_INCLUDE,
+      const country = await this.prisma.$transaction(async (tx) => {
+        await this.ensureSubjects(dto.subjectIds, tx);
+        await this.ensureTags(dto.tagIds, tx);
+        return tx.country.create({
+          data: {
+            continentId: dto.continentId,
+            name,
+            slug,
+            iso2Code,
+            iso3Code,
+            externalUid: dto.externalUid,
+            capitalCity: dto.capitalCity,
+            officialLanguage: dto.officialLanguage,
+            currencyName: dto.currencyName,
+            currencyCode: dto.currencyCode ?? metadata?.currencyCode,
+            currencySymbol: dto.currencySymbol ?? metadata?.currencySymbol,
+            tagline: dto.tagline,
+            overview: dto.overview,
+            pageHeading: dto.pageHeading.trim(),
+            shortDescription: dto.shortDescription.trim(),
+            isFeatured: dto.isFeatured ?? false,
+            displayOrder: dto.displayOrder ?? 0,
+            flagMediaId: dto.flagMediaId,
+            listingMediaId: dto.listingMediaId,
+            heroMediaId: dto.heroMediaId,
+            subjectMaps: dto.subjectIds
+              ? {
+                  create: dto.subjectIds.map((subjectId, displayOrder) => ({
+                    subjectId,
+                    displayOrder,
+                  })),
+                }
+              : undefined,
+            tagMaps: dto.tagIds
+              ? { create: dto.tagIds.map((tagId) => ({ tagId })) }
+              : undefined,
+            ...this.configurationData(dto),
+            status: 'DRAFT',
+            createdByUserId: userId,
+            updatedByUserId: userId,
+          },
+          include: COUNTRY_INCLUDE,
+        });
       });
       await writeAudit(
         this.prisma,
@@ -432,8 +574,10 @@ export class CountriesService {
     const name = dto.name.trim();
     const slug = dto.slug?.trim() ?? current.slug;
     const metadata = resolveCountryMetadata(name);
-    const iso2Code = metadata?.iso2Code ?? current.iso2Code ?? undefined;
-    const iso3Code = metadata?.iso3Code ?? current.iso3Code ?? undefined;
+    const iso2Code =
+      dto.iso2Code ?? current.iso2Code ?? metadata?.iso2Code ?? undefined;
+    const iso3Code =
+      dto.iso3Code ?? current.iso3Code ?? metadata?.iso3Code ?? undefined;
     await this.ensureUnique(name, slug, iso2Code, iso3Code, id);
     await this.derived.validateCuratedRelationships(
       id,
@@ -446,12 +590,26 @@ export class CountriesService {
       slug,
       iso2Code,
       iso3Code,
-      ...(metadata
-        ? {
-            currencyCode: metadata.currencyCode,
-            currencySymbol: metadata.currencySymbol,
-          }
+      ...(dto.externalUid !== undefined
+        ? { externalUid: dto.externalUid }
         : {}),
+      ...(dto.capitalCity !== undefined
+        ? { capitalCity: dto.capitalCity }
+        : {}),
+      ...(dto.officialLanguage !== undefined
+        ? { officialLanguage: dto.officialLanguage }
+        : {}),
+      ...(dto.currencyName !== undefined
+        ? { currencyName: dto.currencyName }
+        : {}),
+      ...(dto.currencyCode !== undefined
+        ? { currencyCode: dto.currencyCode }
+        : {}),
+      ...(dto.currencySymbol !== undefined
+        ? { currencySymbol: dto.currencySymbol }
+        : {}),
+      ...(dto.tagline !== undefined ? { tagline: dto.tagline } : {}),
+      ...(dto.overview !== undefined ? { overview: dto.overview } : {}),
       pageHeading: dto.pageHeading.trim(),
       shortDescription: dto.shortDescription.trim(),
       ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
@@ -461,14 +619,42 @@ export class CountriesService {
       ...(dto.flagMediaId !== undefined
         ? { flagMediaId: dto.flagMediaId }
         : {}),
+      ...(dto.listingMediaId !== undefined
+        ? { listingMediaId: dto.listingMediaId }
+        : {}),
+      ...(dto.heroMediaId !== undefined
+        ? { heroMediaId: dto.heroMediaId }
+        : {}),
       ...this.configurationData(dto),
       updatedByUserId: userId,
     };
     try {
-      const updated = await this.prisma.country.update({
-        where: { id },
-        data,
-        include: COUNTRY_INCLUDE,
+      const updated = await this.prisma.$transaction(async (tx) => {
+        await this.ensureSubjects(dto.subjectIds, tx);
+        await this.ensureTags(dto.tagIds, tx);
+        if (dto.subjectIds !== undefined) {
+          await tx.countrySubject.deleteMany({ where: { countryId: id } });
+          if (dto.subjectIds.length)
+            await tx.countrySubject.createMany({
+              data: dto.subjectIds.map((subjectId, displayOrder) => ({
+                countryId: id,
+                subjectId,
+                displayOrder,
+              })),
+            });
+        }
+        if (dto.tagIds !== undefined) {
+          await tx.countryTagMap.deleteMany({ where: { countryId: id } });
+          if (dto.tagIds.length)
+            await tx.countryTagMap.createMany({
+              data: dto.tagIds.map((tagId) => ({ countryId: id, tagId })),
+            });
+        }
+        return tx.country.update({
+          where: { id },
+          data,
+          include: COUNTRY_INCLUDE,
+        });
       });
       await writeAudit(
         this.prisma,
@@ -621,6 +807,8 @@ export class CountriesService {
   private publicWhere(query: {
     q?: string;
     continent?: string;
+    subjectId?: string;
+    tagId?: string;
     featured?: boolean;
     letter?: string;
     budgetBand?: string;
@@ -659,6 +847,10 @@ export class CountriesService {
           }
         : {}),
       ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
+      ...(query.subjectId
+        ? { subjectMaps: { some: { subjectId: query.subjectId } } }
+        : {}),
+      ...(query.tagId ? { tagMaps: { some: { tagId: query.tagId } } } : {}),
       ...(query.letter ? { name: { startsWith: query.letter } } : {}),
       ...(query.q
         ? {
@@ -780,6 +972,40 @@ export class CountriesService {
         'COUNTRY_CONTINENT_INVALID',
         'The selected continent is not available',
       );
+  }
+
+  private async ensureSubjects(
+    ids: string[] | undefined,
+    prisma: Pick<PrismaService, 'subject'>,
+  ): Promise<void> {
+    if (ids === undefined || ids.length === 0) return;
+    const found = await prisma.subject.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      select: { id: true },
+    });
+    if (found.length !== ids.length)
+      throw new UnprocessableEntityException({
+        code: 'COUNTRY_SUBJECT_INVALID',
+        message: 'One or more selected Subjects are unavailable',
+        details: null,
+      });
+  }
+
+  private async ensureTags(
+    ids: string[] | undefined,
+    prisma: Pick<PrismaService, 'countryTag'>,
+  ): Promise<void> {
+    if (ids === undefined || ids.length === 0) return;
+    const found = await prisma.countryTag.findMany({
+      where: { id: { in: ids }, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (found.length !== ids.length)
+      throw new UnprocessableEntityException({
+        code: 'COUNTRY_TAG_INVALID',
+        message: 'One or more selected tags are unavailable',
+        details: null,
+      });
   }
 
   private async ensureUnique(
@@ -954,6 +1180,16 @@ export class CountriesService {
     };
   }
 
+  /** Same active/not-deleted gate the flag uses, so an archived asset stops
+   * being published everywhere at once. */
+  private publicMedia(
+    media: CountryRecord['flagMedia'],
+    countryName: string,
+  ): PublicMediaDto | null {
+    if (!media || media.status !== 'ACTIVE' || media.deletedAt) return null;
+    return { url: media.publicUrl, alt: media.altText || countryName };
+  }
+
   private flag(record: CountryRecord): FlagDto | null {
     if (
       !record.flagMedia ||
@@ -975,8 +1211,14 @@ export class CountriesService {
       slug: record.slug,
       pageHeading: record.pageHeading,
       shortDescription: record.shortDescription,
+      tagline: record.tagline,
+      overview: record.overview,
+      capitalCity: record.capitalCity,
+      officialLanguage: record.officialLanguage,
       continent: this.continent(record),
       flag: this.flag(record),
+      listingImage: this.publicMedia(record.listingMedia, record.name),
+      heroImage: this.publicMedia(record.heroMedia, record.name),
       featured: record.isFeatured,
       displayOrder: record.displayOrder,
       statistics: record.statistics
@@ -1003,14 +1245,28 @@ export class CountriesService {
       currency: record.currencyCode
         ? { code: record.currencyCode, symbol: record.currencySymbol }
         : null,
+      subjects: record.subjectMaps
+        .filter(
+          ({ subject }) => subject.status === 'PUBLISHED' && !subject.deletedAt,
+        )
+        .map(({ subject }) => ({
+          id: subject.id,
+          name: subject.name,
+          slug: subject.slug,
+        })),
     };
   }
 
   private toAdmin(record: CountryRecord): CountryAdminDto {
     return {
       ...this.toPublic(record),
+      externalUid: record.externalUid,
       iso2Code: record.iso2Code,
       iso3Code: record.iso3Code,
+      currencyName: record.currencyName,
+      flagMediaId: record.flagMediaId,
+      listingMediaId: record.listingMediaId,
+      heroMediaId: record.heroMediaId,
       status: record.status,
       publishedAt: record.publishedAt?.toISOString() ?? null,
       createdAt: record.createdAt.toISOString(),
@@ -1021,6 +1277,26 @@ export class CountriesService {
       popularCourseIds: record.popularCourses.map(
         (relation) => relation.courseId,
       ),
+      subjectIds: record.subjectMaps.map((relation) => relation.subjectId),
+      tagIds: record.tagMaps.map((relation) => relation.tagId),
+      /* Labels as well as ids: the Countries list renders assigned taxonomy
+       * per row, and both relations are already loaded by COUNTRY_INCLUDE, so
+       * this costs no additional query. */
+      subjects: record.subjectMaps.map((relation) => ({
+        id: relation.subject.id,
+        name: relation.subject.name,
+        slug: relation.subject.slug,
+      })),
+      tags: record.tagMaps.map((relation) => ({
+        id: relation.tag.id,
+        name: relation.tag.name,
+        slug: relation.tag.slug,
+      })),
+      linkedCounts: {
+        universities: record._count.universities,
+        courses: record._count.courses,
+        scholarships: record._count.scholarshipCountries,
+      },
     };
   }
 

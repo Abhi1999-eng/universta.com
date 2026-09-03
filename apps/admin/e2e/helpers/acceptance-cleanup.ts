@@ -121,6 +121,19 @@ export async function countAcceptanceRecords(
         OR: [{ name: { startsWith: own.countryName } }, { slug: own.slug }],
       },
     });
+    // The Country contract spec creates taxonomy inline, through the editor's
+    // own "Add New" dialogs; both carry this run's country name as a prefix.
+    const browserSubjects = await prisma.subject.count({
+      where: { name: { startsWith: own.countryName } },
+    });
+    const browserCountryTags = await prisma.countryTag.count({
+      where: { name: { startsWith: own.countryName } },
+    });
+    // The Country contract spec uploads its own image rather than assuming the
+    // Media Library already holds one.
+    const browserMedia = await prisma.mediaAsset.count({
+      where: { title: { startsWith: own.countryName } },
+    });
     const testInquiries = await prisma.contactInquiry.count({
       where: { email },
     });
@@ -134,6 +147,9 @@ export async function countAcceptanceRecords(
       testClaims,
       browserContinents,
       browserCountries,
+      browserSubjects,
+      browserCountryTags,
+      browserMedia,
       universities,
       offerings,
       scholarships,
@@ -254,6 +270,23 @@ export async function purgeAcceptanceRecords(
     removed.browserContinents = (
       await prisma.continent.deleteMany({
         where: { name: { startsWith: own.continentName } },
+      })
+    ).count;
+    // After the countries, so the join rows are already gone.
+    removed.browserSubjects = (
+      await prisma.subject.deleteMany({
+        where: { name: { startsWith: own.countryName } },
+      })
+    ).count;
+    removed.browserCountryTags = (
+      await prisma.countryTag.deleteMany({
+        where: { name: { startsWith: own.countryName } },
+      })
+    ).count;
+    // After the countries, whose media columns reference these rows.
+    removed.browserMedia = (
+      await prisma.mediaAsset.deleteMany({
+        where: { title: { startsWith: own.countryName } },
       })
     ).count;
 

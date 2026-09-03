@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export type CatalogProxyOperation = 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
+export type CatalogProxyOperation = 'country-tags:list' | 'country-tags:create' | 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
@@ -144,6 +144,7 @@ function operationDetails(operation: CatalogProxyOperation): {
   query: string[];
   body: string[];
 } {
+  if (operation === 'country-tags:list' || operation === 'country-tags:create') return { method: operation.endsWith(':list') ? 'GET' : 'POST', path: '/api/v1/admin/country-tags', query: [], body: operation.endsWith(':list') ? [] : ['name', 'slug', 'description'] };
   if (operation === 'intakes:list')
     return {
       method: 'GET',
@@ -196,7 +197,7 @@ function operationDetails(operation: CatalogProxyOperation): {
     const common = ['expectedUpdatedAt', 'sourceReference', 'verifiedAt', 'disclaimer'];
     const profileFields: Record<string, string[]> = {
       cost: ['currencyCode', 'currencySymbol', 'tuitionMin', 'tuitionMax', 'tuitionPeriod', 'tuitionNotes', 'livingCostMin', 'livingCostMax', 'livingCostPeriod', 'livingCostNotes', 'accommodationMin', 'accommodationMax', 'foodCostMin', 'foodCostMax', 'transportCostMin', 'transportCostMax', 'healthInsuranceCost', 'applicationFeeMin', 'applicationFeeMax', 'budgetBand', 'applicableYear'],
-      work: ['partTimeAllowed', 'partTimeHoursPerWeek', 'partTimeHoursDuringBreaks', 'partTimeSummary', 'postStudyWorkAvailable', 'postStudyWorkMinMonths', 'postStudyWorkMaxMonths', 'postStudyWorkSummary', 'immigrationPathwayStrength', 'immigrationPathwaySummary', 'visaSuccessBand', 'visaSuccessPercentage', 'visaInformation', 'visaProcessingTime', 'proofOfFundsSummary'],
+      work: ['visaType', 'visaFee', 'visaFeeCurrencyCode', 'partTimeAllowed', 'partTimeHoursPerWeek', 'partTimeHoursDuringBreaks', 'partTimeSummary', 'postStudyWorkAvailable', 'postStudyWorkMinMonths', 'postStudyWorkMaxMonths', 'postStudyWorkSummary', 'immigrationPathwayStrength', 'immigrationPathwaySummary', 'visaSuccessBand', 'visaSuccessPercentage', 'visaInformation', 'visaProcessingTime', 'proofOfFundsSummary'],
       language: ['ieltsRequirement', 'ieltsMinScore', 'ieltsNotes', 'pteRequirement', 'pteMinScore', 'pteNotes', 'toeflRequirement', 'toeflMinScore', 'toeflNotes', 'duolingoRequirement', 'duolingoMinScore', 'duolingoNotes', 'languageWaiverAvailable', 'waiverNotes', 'generalNotes'],
       intakes: ['intakes'],
       statistics: ['universitiesCount', 'publicUniversitiesCount', 'privateUniversitiesCount', 'coursesCount', 'ugCoursesCount', 'pgCoursesCount', 'pgdmCoursesCount', 'mbaCoursesCount', 'phdCoursesCount', 'scholarshipsCount', 'citiesCount', 'topRankedUniversitiesCount', 'internationalStudentsCount', 'studentSatisfactionPercentage', 'sourceMode'],
@@ -371,7 +372,9 @@ function operationDetails(operation: CatalogProxyOperation): {
     return {
       method: 'GET',
       path: '/api/v1/admin/countries',
-      query: ['q', 'continentId', 'status', 'featured', 'sort', 'page', 'limit'],
+      // The proxy forwards only listed parameters, so a filter the Admin
+      // sends but this list omits is silently dropped.
+      query: ['q', 'continentId', 'subjectId', 'tagId', 'status', 'featured', 'sort', 'page', 'limit'],
       body: [],
     };
   if (action === 'create')
@@ -379,7 +382,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: 'POST',
       path: '/api/v1/admin/countries',
       query: [],
-      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'tagIds', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
     };
   const safeId = encodeURIComponent(id ?? '');
   if (action === 'curation-options')
@@ -401,7 +404,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: 'PATCH',
       path: `/api/v1/admin/countries/${safeId}`,
       query: [],
-      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt'],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'tagIds', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt'],
     };
   if (action === 'publish')
     return {

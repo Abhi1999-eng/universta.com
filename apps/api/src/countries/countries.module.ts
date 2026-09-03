@@ -16,6 +16,8 @@ import {
 } from './editorial/country-editorial.controller';
 import { CountryEditorialService } from './editorial/country-editorial.service';
 import { SeoManagementModule } from '../seo-management/seo-management.module';
+import { AdminCountryTagsController } from './admin-country-tags.controller';
+import { CountryTagsService } from './country-tags.service';
 
 @Module({
   imports: [AuthModule, CatalogLookupsModule, SeoManagementModule],
@@ -26,12 +28,14 @@ import { SeoManagementModule } from '../seo-management/seo-management.module';
     PublicCountryEditorialController,
     CountriesController,
     AdminCountriesController,
+    AdminCountryTagsController,
   ],
   providers: [
     CountriesService,
     CountryDerivedService,
     CountryProfilesService,
     CountryEditorialService,
+    CountryTagsService,
   ],
   exports: [CountriesService],
 })

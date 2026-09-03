@@ -40,6 +40,15 @@ const SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
   listingMedia: { select: MEDIA_SELECT },
   heroMedia: { select: MEDIA_SELECT },
+  /* The Country taxonomy picker orders by real usage and shows sub-subjects
+   * beneath their parent for navigation. Both come from this include so the
+   * picker never issues a query per row. */
+  subSubjects: {
+    where: { deletedAt: null },
+    select: { id: true, name: true, slug: true, status: true },
+    orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+  },
+  _count: { select: { courses: true, countrySubjects: true } },
 } satisfies Prisma.SubjectInclude;
 const SUB_SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
@@ -1017,6 +1026,11 @@ export class SubjectsService {
       id: row.id,
       name: row.name,
       slug: row.slug,
+      subSubjects: row.subSubjects ?? [],
+      /* "Most used" is ordered by these, so they have to be real counts
+       * rather than a display hint. */
+      courseCount: row._count?.courses ?? 0,
+      countryCount: row._count?.countrySubjects ?? 0,
       shortDescription: row.shortDescription,
       overview: row.overview,
       isFeatured: row.isFeatured,

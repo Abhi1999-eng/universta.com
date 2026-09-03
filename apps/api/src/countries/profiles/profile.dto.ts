@@ -35,7 +35,12 @@ function bool({ value }: TransformFnParams): unknown {
 }
 
 function integer({ value }: TransformFnParams): unknown {
-  return value === undefined || value === '' ? value : Number(value);
+  // null has to survive: it is what the serializer returns for an unset
+  // column, so an editor that saves what it was given sends it straight back.
+  // Number(null) is 0, which @IsOptional() no longer skips and @Min then
+  // rejects — that is what made every second profile save fail.
+  if (value === undefined || value === null || value === '') return value;
+  return Number(value);
 }
 
 export class ProfileVersionDto {
@@ -137,6 +142,9 @@ export class CostProfileDto extends ProfileVersionDto {
 }
 
 export class WorkProfileDto extends ProfileVersionDto {
+  @IsOptional() @IsString() @MaxLength(255) visaType?: string;
+  @IsOptional() @IsString() visaFee?: string;
+  @IsOptional() @IsString() @MaxLength(3) visaFeeCurrencyCode?: string;
   @Transform(bool) @IsOptional() @IsBoolean() partTimeAllowed?: boolean;
   @IsOptional() @IsString() partTimeHoursPerWeek?: string;
   @IsOptional() @IsString() partTimeHoursDuringBreaks?: string;

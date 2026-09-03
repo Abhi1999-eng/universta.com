@@ -1,5 +1,17 @@
 import { COUNTRY_STATUSES, slugify } from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
+import {
+  boolOrUndefined,
+  CLEAR_TOKEN,
+  COUNTRY_SECTION_KEYS,
+  intOrNull,
+  parseCountryRelations,
+  reconcileCountry,
+  resolveCountryMedia,
+  textOrNull,
+  type CountryRelations,
+  type SectionColumn,
+} from './country-bulk';
 
 export type BulkRow = Record<string, string>;
 export type BulkField = {
@@ -12,8 +24,14 @@ export type BulkField = {
   allowedValues?: readonly string[];
 };
 export type BulkParseResult =
-  | { data: Record<string, unknown>; errors?: undefined }
-  | { data?: undefined; errors: string[] };
+  | {
+      data: Record<string, unknown>;
+      /** Resolved non-scalar payload handed to `reconcile`; never written to
+       * the record itself. */
+      relations?: unknown;
+      errors?: undefined;
+    }
+  | { data?: undefined; relations?: undefined; errors: string[] };
 
 export interface BulkResourceDefinition {
   key: string;
@@ -48,6 +66,9 @@ export interface BulkResourceDefinition {
    * though CSV *import* create mode does resolve them). */
   updatableColumns: string[];
   parseRow(row: BulkRow, prisma: PrismaService): Promise<BulkParseResult>;
+  /** Applies relations and profiles for one row inside that row's own
+   * transaction, so scalars and relations succeed or fail together. */
+  reconcile?(tx: unknown, id: string, relations: unknown): Promise<void>;
   toExportRow(record: Record<string, unknown>): Record<string, unknown>;
   /** Returns a human-readable reason the row can't be archived (e.g. "3
    * cities still reference this state"), or null if it's safe to archive. */
@@ -127,77 +148,464 @@ const countries: BulkResourceDefinition = {
   model: 'country',
   uniqueColumn: 'slug',
   columns: [
+    'uid',
     'slug',
-    'name',
-    'continentSlug',
-    'pageHeading',
-    'shortDescription',
-    'iso2Code',
-    'iso3Code',
+    'title',
     'status',
+    'excerpt',
+    'content',
+    'featured_image',
+    'iso_code',
+    'iso3_code',
+    'capital',
+    'currency',
+    'language',
+    'tagline',
+    'tuition_min',
+    'tuition_max',
+    'tuition_currency',
+    'living_min',
+    'living_max',
+    'application_fee',
+    'intakes',
+    'visa_type',
+    'visa_fee',
+    'visa_processing',
+    'post_study_work',
+    'work_hours',
+    'ielts_min',
+    'universities_count',
+    'intl_students',
+    'why_study',
+    'admission_process',
+    'cost_breakdown',
+    'visa_process',
+    'flag_image',
+    'hero_image',
+    'featured',
+    'rank_order',
+    'faqs',
+    'continent',
+    'subject',
+    'tag',
+  ],
+  /* Declared explicitly rather than derived, so the exported header row is
+   * literally the client's column contract -- and so `slug` survives export,
+   * which the derived path strips. */
+  fields: [
+    {
+      key: 'uid',
+      label: 'uid',
+      required: false,
+      type: 'text',
+      description:
+        'Stable client identifier; matched before slug on re-import.',
+    },
+    { key: 'slug', label: 'slug', required: false, type: 'text' },
+    { key: 'title', label: 'title', required: true, type: 'text' },
+    {
+      key: 'status',
+      label: 'status',
+      required: false,
+      type: 'status',
+      allowedValues: COUNTRY_STATUSES,
+    },
+    { key: 'excerpt', label: 'excerpt', required: false, type: 'text' },
+    { key: 'content', label: 'content', required: false, type: 'text' },
+    {
+      key: 'featured_image',
+      label: 'featured_image',
+      required: false,
+      type: 'text',
+      description: 'Existing media asset id or public URL.',
+    },
+    { key: 'iso_code', label: 'iso_code', required: false, type: 'text' },
+    { key: 'iso3_code', label: 'iso3_code', required: false, type: 'text' },
+    { key: 'capital', label: 'capital', required: false, type: 'text' },
+    { key: 'currency', label: 'currency', required: false, type: 'text' },
+    { key: 'language', label: 'language', required: false, type: 'text' },
+    { key: 'tagline', label: 'tagline', required: false, type: 'text' },
+    {
+      key: 'tuition_min',
+      label: 'tuition_min',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'tuition_max',
+      label: 'tuition_max',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'tuition_currency',
+      label: 'tuition_currency',
+      required: false,
+      type: 'text',
+    },
+    { key: 'living_min', label: 'living_min', required: false, type: 'number' },
+    { key: 'living_max', label: 'living_max', required: false, type: 'number' },
+    {
+      key: 'application_fee',
+      label: 'application_fee',
+      required: false,
+      type: 'text',
+      description: 'A single fee ("60") or a range ("60-120").',
+    },
+    {
+      key: 'intakes',
+      label: 'intakes',
+      required: false,
+      type: 'relation',
+      description: 'Pipe-separated intake names.',
+    },
+    { key: 'visa_type', label: 'visa_type', required: false, type: 'text' },
+    {
+      key: 'visa_fee',
+      label: 'visa_fee',
+      required: false,
+      // Text, because the cell carries a currency as well: "185" or "USD 185".
+      type: 'text',
+      description: 'Amount, optionally prefixed with a currency: "USD 185".',
+    },
+    {
+      key: 'visa_processing',
+      label: 'visa_processing',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'post_study_work',
+      label: 'post_study_work',
+      required: false,
+      type: 'number',
+    },
+    { key: 'work_hours', label: 'work_hours', required: false, type: 'number' },
+    { key: 'ielts_min', label: 'ielts_min', required: false, type: 'number' },
+    {
+      key: 'universities_count',
+      label: 'universities_count',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'intl_students',
+      label: 'intl_students',
+      required: false,
+      type: 'number',
+    },
+    { key: 'why_study', label: 'why_study', required: false, type: 'text' },
+    {
+      key: 'admission_process',
+      label: 'admission_process',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'cost_breakdown',
+      label: 'cost_breakdown',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'visa_process',
+      label: 'visa_process',
+      required: false,
+      type: 'text',
+    },
+    { key: 'flag_image', label: 'flag_image', required: false, type: 'text' },
+    { key: 'hero_image', label: 'hero_image', required: false, type: 'text' },
+    { key: 'featured', label: 'featured', required: false, type: 'boolean' },
+    { key: 'rank_order', label: 'rank_order', required: false, type: 'number' },
+    {
+      key: 'faqs',
+      label: 'faqs',
+      required: false,
+      type: 'text',
+      description:
+        'JSON array of {question, answer, category, isFeatured, displayOrder}.',
+    },
+    { key: 'continent', label: 'continent', required: true, type: 'relation' },
+    {
+      key: 'subject',
+      label: 'subject',
+      required: false,
+      type: 'relation',
+      description: `Pipe-separated Subjects; "${CLEAR_TOKEN}" removes all.`,
+    },
+    {
+      key: 'tag',
+      label: 'tag',
+      required: false,
+      type: 'relation',
+      description: `Pipe-separated Tags; "${CLEAR_TOKEN}" removes all.`,
+    },
   ],
   statusAllowedValues: COUNTRY_STATUSES,
-  requiredColumns: ['name', 'continentSlug', 'pageHeading', 'shortDescription'],
+  requiredColumns: ['title', 'continent'],
   exampleRow: {
+    uid: 'demo-country-001',
     slug: '',
-    name: 'Demo Country',
-    continentSlug: 'asia',
-    pageHeading: 'Study in Demo Country',
-    shortDescription:
-      'A fictional demo country used only to show the expected import shape.',
-    iso2Code: '',
-    iso3Code: '',
+    title: 'Demo Country',
     status: 'DRAFT',
+    excerpt: 'A fictional demo country used only to show the expected shape.',
+    content: 'Longer editorial overview for the country page.',
+    featured_image: '',
+    iso_code: '',
+    iso3_code: '',
+    capital: 'Demo City',
+    currency: 'DMC',
+    language: 'English',
+    tagline: 'A fictional destination for import testing.',
+    tuition_min: '9000',
+    tuition_max: '15000',
+    tuition_currency: 'EUR',
+    living_min: '700',
+    living_max: '1100',
+    application_fee: '60-120',
+    intakes: 'September | January',
+    visa_type: 'Student residence permit',
+    visa_fee: 'USD 85',
+    visa_processing: '4 to 6 weeks',
+    post_study_work: '24',
+    work_hours: '20',
+    ielts_min: '6.5',
+    universities_count: '',
+    intl_students: '',
+    why_study: 'Why students choose this destination.',
+    admission_process: 'How applications are assessed.',
+    cost_breakdown: 'What a year costs in practice.',
+    visa_process: 'How the study visa is applied for.',
+    flag_image: '',
+    hero_image: '',
+    featured: 'false',
+    rank_order: '0',
+    faqs: '[{"question":"Can I work while studying?","answer":"Yes, within the permitted hours."}]',
+    continent: 'asia',
+    subject: 'Engineering | Nursing',
+    tag: 'featured | english-speaking',
   },
   updatableColumns: [
-    'name',
-    'pageHeading',
-    'shortDescription',
-    'iso2Code',
-    'iso3Code',
+    'title',
     'status',
+    'excerpt',
+    'content',
+    'iso_code',
+    'iso3_code',
+    'capital',
+    'currency',
+    'language',
+    'tagline',
+    'featured',
+    'rank_order',
   ],
   async parseRow(row, prisma) {
     const errors: string[] = [];
-    if (!row.name?.trim()) errors.push('name is required');
-    if (!row.pageHeading?.trim()) errors.push('pageHeading is required');
-    if (!row.shortDescription?.trim())
-      errors.push('shortDescription is required');
-    const continent = row.continentSlug?.trim()
+    const title = (row.title ?? '').trim();
+    if (!title) errors.push('title is required');
+
+    const continentTerm = (row.continent ?? '').trim();
+    const continent = continentTerm
       ? await prisma.continent.findFirst({
-          where: { slug: row.continentSlug.trim(), deletedAt: null },
+          where: {
+            deletedAt: null,
+            OR: [{ slug: slugify(continentTerm) }, { name: continentTerm }],
+          },
         })
       : null;
-    if (!continent)
-      errors.push(`continentSlug "${row.continentSlug}" was not found`);
+    if (continentTerm && !continent)
+      errors.push(`continent "${continentTerm}" was not found`);
+    if (!continentTerm) errors.push('continent is required');
+
+    const relations = await parseCountryRelations(row, prisma, errors);
+    const media = await resolveCountryMedia(row, prisma, errors);
     if (errors.length) return { errors };
+
+    const slug = (row.slug ?? '').trim() || slugify(title);
+    const excerpt = (row.excerpt ?? '').trim();
     return {
       data: {
-        slug: slugOrFallback(row, row.name),
-        name: row.name.trim(),
+        slug,
+        name: title,
         continentId: continent!.id,
-        pageHeading: row.pageHeading.trim(),
-        shortDescription: row.shortDescription.trim(),
-        iso2Code: row.iso2Code?.trim() || null,
-        iso3Code: row.iso3Code?.trim() || null,
-        status: row.status?.trim() || 'DRAFT',
+        // The public page heading is not part of the client contract, so it
+        // is derived once on create rather than blanked on every import.
+        pageHeading: (row.pageHeading ?? '').trim() || `Study in ${title}`,
+        shortDescription: excerpt || `Study in ${title}.`,
+        overview: textOrNull(row.content),
+        externalUid: textOrNull(row.uid),
+        iso2Code: textOrNull(row.iso_code)?.toUpperCase(),
+        iso3Code: textOrNull(row.iso3_code)?.toUpperCase(),
+        capitalCity: textOrNull(row.capital),
+        officialLanguage: textOrNull(row.language),
+        tagline: textOrNull(row.tagline),
+        // Currency arrives as a single client column; the code is the
+        // canonical field and the name/symbol are left untouched rather than
+        // blanked by an import that does not carry them.
+        currencyCode: textOrNull(row.currency)?.toUpperCase(),
+        isFeatured: boolOrUndefined(row.featured),
+        displayOrder: intOrNull(row.rank_order) ?? undefined,
+        status: (row.status ?? '').trim() || 'DRAFT',
+        ...media,
       },
+      relations,
     };
+  },
+  async reconcile(tx, id, relations) {
+    await reconcileCountry(
+      tx as Parameters<typeof reconcileCountry>[0],
+      id,
+      relations as CountryRelations,
+    );
   },
   toExportRow(record) {
-    return {
-      slug: record.slug,
-      name: record.name,
-      continentSlug:
-        (record as { continent?: { slug?: string } }).continent?.slug ?? '',
-      pageHeading: record.pageHeading,
-      shortDescription: record.shortDescription,
-      iso2Code: record.iso2Code ?? '',
-      iso3Code: record.iso3Code ?? '',
-      status: record.status,
-    };
+    return exportCountryRow(record);
   },
 };
+
+/** Reads the section body back out of the stored typed-body shape. */
+/** The canonical `visa_fee` representation: currency and amount when both are
+ * stored, the amount alone otherwise. `parseVisaFee` reads both back. */
+function visaFeeText(fee: unknown, currency: unknown): string {
+  const amount = decimalText(fee);
+  if (!amount) return '';
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  return code ? `${code} ${amount}` : amount;
+}
+
+function sectionText(
+  record: Record<string, unknown>,
+  column: SectionColumn,
+): string {
+  const sections = (record.contentSections ?? []) as Array<{
+    sectionKey: string;
+    bodyJson?: unknown;
+  }>;
+  const match = sections.find(
+    (row) => row.sectionKey === COUNTRY_SECTION_KEYS[column],
+  );
+  if (!match) return '';
+  const body = match.bodyJson as { paragraphs?: unknown } | null;
+  const paragraphs = Array.isArray(body?.paragraphs) ? body.paragraphs : [];
+  return paragraphs.filter((line) => typeof line === 'string').join('\n\n');
+}
+
+function decimalText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return (value as { toString: () => string }).toString();
+  // Prisma decimals arrive as objects carrying their own toString.
+  if (
+    typeof value === 'object' &&
+    'toString' in value &&
+    typeof value.toString === 'function'
+  )
+    return (value as { toString: () => string }).toString();
+  return '';
+}
+
+export function exportCountryRow(
+  record: Record<string, unknown>,
+): Record<string, unknown> {
+  const rel = record as {
+    continent?: { slug?: string };
+    subjectMaps?: Array<{ subject?: { name?: string; slug?: string } }>;
+    tagMaps?: Array<{ tag?: { name?: string; slug?: string } }>;
+    intakes?: Array<{ intake?: { name?: string } }>;
+    faqs?: Array<{
+      question: string;
+      answer: string;
+      category: string | null;
+      isFeatured: boolean;
+      displayOrder: number;
+    }>;
+    costProfile?: Record<string, unknown> | null;
+    workProfile?: Record<string, unknown> | null;
+    languageRequirements?: Record<string, unknown> | null;
+    statistics?: Record<string, unknown> | null;
+    listingMedia?: { publicUrl?: string } | null;
+    flagMedia?: { publicUrl?: string } | null;
+    heroMedia?: { publicUrl?: string } | null;
+  };
+  const cost = rel.costProfile ?? {};
+  const work = rel.workProfile ?? {};
+  const language = rel.languageRequirements ?? {};
+  const statistics = rel.statistics ?? {};
+  const feeMin = decimalText(cost.applicationFeeMin);
+  const feeMax = decimalText(cost.applicationFeeMax);
+  return {
+    uid: record.externalUid ?? '',
+    slug: record.slug,
+    title: record.name,
+    status: record.status,
+    excerpt: record.shortDescription,
+    content: record.overview ?? '',
+    featured_image: rel.listingMedia?.publicUrl ?? '',
+    iso_code: record.iso2Code ?? '',
+    iso3_code: record.iso3Code ?? '',
+    capital: record.capitalCity ?? '',
+    currency: record.currencyCode ?? '',
+    language: record.officialLanguage ?? '',
+    tagline: record.tagline ?? '',
+    tuition_min: decimalText(cost.tuitionMin),
+    tuition_max: decimalText(cost.tuitionMax),
+    tuition_currency: cost.currencyCode ?? '',
+    living_min: decimalText(cost.livingCostMin),
+    living_max: decimalText(cost.livingCostMax),
+    // A single stored value round-trips as one number; a genuine range is
+    // written as `min-max` rather than silently losing the maximum.
+    application_fee:
+      feeMin && feeMax && feeMin !== feeMax
+        ? `${feeMin}-${feeMax}`
+        : feeMin || feeMax,
+    intakes: (rel.intakes ?? [])
+      .map((row) => row.intake?.name ?? '')
+      .filter(Boolean)
+      .join(' | '),
+    visa_type: work.visaType ?? '',
+    // One client column carries both stored values: "USD 185" when a currency
+    // is known, the bare amount when none is, rather than inventing one.
+    visa_fee: visaFeeText(work.visaFee, work.visaFeeCurrencyCode),
+    visa_processing: work.visaProcessingTime ?? '',
+    post_study_work: decimalText(work.postStudyWorkMaxMonths),
+    work_hours: decimalText(work.partTimeHoursPerWeek),
+    ielts_min: decimalText(language.ieltsMinScore),
+    universities_count: decimalText(statistics.universitiesCount),
+    intl_students: decimalText(statistics.internationalStudentsCount),
+    why_study: sectionText(record, 'why_study'),
+    admission_process: sectionText(record, 'admission_process'),
+    cost_breakdown: sectionText(record, 'cost_breakdown'),
+    visa_process: sectionText(record, 'visa_process'),
+    flag_image: rel.flagMedia?.publicUrl ?? '',
+    hero_image: rel.heroMedia?.publicUrl ?? '',
+    featured: record.isFeatured ? 'true' : 'false',
+    rank_order: decimalText(record.displayOrder ?? 0),
+    faqs: (rel.faqs ?? []).length
+      ? JSON.stringify(
+          [...(rel.faqs ?? [])]
+            .sort((a, b) => a.displayOrder - b.displayOrder)
+            .map((faq) => ({
+              question: faq.question,
+              answer: faq.answer,
+              category: faq.category,
+              isFeatured: faq.isFeatured,
+              displayOrder: faq.displayOrder,
+            })),
+        )
+      : '',
+    continent: rel.continent?.slug ?? '',
+    // Slugs, so an export re-imports without depending on display names.
+    subject: (rel.subjectMaps ?? [])
+      .map((row) => row.subject?.slug ?? '')
+      .filter(Boolean)
+      .join(' | '),
+    tag: (rel.tagMaps ?? [])
+      .map((row) => row.tag?.slug ?? '')
+      .filter(Boolean)
+      .join(' | '),
+  };
+}
 
 const states: BulkResourceDefinition = {
   key: 'states',

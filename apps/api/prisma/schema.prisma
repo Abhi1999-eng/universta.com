@@ -716,14 +716,15 @@ model Subject {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  iconMedia    MediaAsset?  @relation("SubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
-  listingMedia MediaAsset?  @relation("SubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
-  heroMedia    MediaAsset?  @relation("SubjectHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
-  createdBy    User?        @relation("SubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy    User?        @relation("SubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  subSubjects  SubSubject[]
-  courses      Course[]
-  leads        Lead[]
+  iconMedia       MediaAsset?      @relation("SubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia    MediaAsset?      @relation("SubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  heroMedia       MediaAsset?      @relation("SubjectHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  createdBy       User?            @relation("SubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?            @relation("SubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  subSubjects     SubSubject[]
+  courses         Course[]
+  countrySubjects CountrySubject[]
+  leads           Lead[]
 
   studentPreferences StudentProfile[] @relation("StudentPreferredSubject")
 
@@ -815,10 +816,12 @@ model Country {
   shortName        String?   @map("short_name") @db.VarChar(100)
   pageHeading      String    @map("page_heading") @db.VarChar(255)
   slug             String    @db.VarChar(255)
+  externalUid      String?   @unique @map("external_uid") @db.VarChar(191)
   iso2Code         String?   @map("iso2_code") @db.Char(2)
   iso3Code         String?   @map("iso3_code") @db.Char(3)
   dialCode         String?   @map("dial_code") @db.VarChar(10)
   capitalCity      String?   @map("capital_city") @db.VarChar(150)
+  officialLanguage String?   @map("official_language") @db.VarChar(255)
   nationalityName  String?   @map("nationality_name") @db.VarChar(150)
   currencyName     String?   @map("currency_name") @db.VarChar(100)
   currencyCode     String?   @map("currency_code") @db.Char(3)
@@ -831,6 +834,7 @@ model Country {
   shortDescription String    @map("short_description") @db.VarChar(1000)
   overview         String?   @db.LongText
   featuredLabel    String?   @map("featured_label") @db.VarChar(100)
+  tagline          String?   @db.VarChar(500)
   isFeatured       Boolean   @default(false) @map("is_featured")
   isPopular        Boolean   @default(false) @map("is_popular")
   status           String    @default("DRAFT") @db.VarChar(30)
@@ -861,6 +865,7 @@ model Country {
   contentSections      CountryContentSection[]
   faqs                 CountryFaq[]
   tagMaps              CountryTagMap[]
+  subjectMaps          CountrySubject[]
   states               State[]
   cities               City[]
   courses              CountryCourse[]
@@ -895,6 +900,7 @@ model Country {
   @@unique([iso2Code, deletedKey], map: "countries_iso2_deleted_key")
   @@unique([iso3Code, deletedKey], map: "countries_iso3_deleted_key")
   @@index([continentId, status, displayOrder])
+  @@index([externalUid])
   @@index([status, isFeatured, isPopular])
   @@index([flagMediaId])
   @@index([listingMediaId])
@@ -975,6 +981,9 @@ model CountryWorkProfile {
   visaSuccessBand            String    @default("NOT_PUBLISHED") @map("visa_success_band") @db.VarChar(30)
   visaSuccessPercentage      Decimal?  @map("visa_success_percentage") @db.Decimal(5, 2)
   visaInformation            String?   @map("visa_information") @db.LongText
+  visaType                   String?   @map("visa_type") @db.VarChar(255)
+  visaFee                    Decimal?  @map("visa_fee") @db.Decimal(12, 2)
+  visaFeeCurrencyCode        String?   @map("visa_fee_currency_code") @db.Char(3)
   visaProcessingTime         String?   @map("visa_processing_time") @db.VarChar(255)
   proofOfFundsSummary        String?   @map("proof_of_funds_summary") @db.Text
   sourceReference            String?   @map("source_reference") @db.VarChar(2048)
@@ -1061,7 +1070,7 @@ model CountryStatistic {
   topRankedUniversitiesCount    Int       @default(0) @map("top_ranked_universities_count")
   internationalStudentsCount    Int?      @map("international_students_count")
   studentSatisfactionPercentage Decimal?  @map("student_satisfaction_percentage") @db.Decimal(5, 2)
-  sourceMode                    String    @default("MANUAL") @map("source_mode") @db.VarChar(30)
+  sourceMode                    String    @default("DERIVED") @map("source_mode") @db.VarChar(30)
   sourceReference               String?   @map("source_reference") @db.VarChar(2048)
   verifiedAt                    DateTime? @map("verified_at") @db.DateTime(3)
   createdAt                     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
@@ -1156,6 +1165,22 @@ model CountryTagMap {
   @@index([countryId])
   @@index([tagId, countryId])
   @@map("country_tag_map")
+}
+
+model CountrySubject {
+  id           String   @id @default(uuid()) @db.Char(36)
+  countryId    String   @map("country_id") @db.Char(36)
+  subjectId    String   @map("subject_id") @db.Char(36)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, subjectId])
+  @@index([countryId, displayOrder])
+  @@index([subjectId, countryId])
+  @@map("country_subjects")
 }
 
 model State {

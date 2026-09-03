@@ -21,13 +21,20 @@ export interface Country {
   slug: string;
   pageHeading: string;
   shortDescription: string;
+  overview?: string | null;
+  tagline?: string | null;
+  capitalCity?: string | null;
+  officialLanguage?: string | null;
   continent: { id: string; name: string; slug: string };
   flag: Flag | null;
+  listingImage: Flag | null;
+  heroImage: Flag | null;
   featured: boolean;
   displayOrder: number;
   statistics: { universitiesCount: number | null } | null;
   profiles?: ProfileSummary;
   currency?: { code: string; symbol: string | null } | null;
+  subjects?: Array<{ id: string; name: string; slug: string }>;
   configuration?: {
     features: Array<{ code: string; label: string }>;
     acceptedTests: string[];
@@ -107,6 +114,9 @@ export interface ProfileSummary {
     immigrationPathwaySummary?: string | null;
     visaInformation?: string | null;
     visaProcessingTime?: string | null;
+    visaType?: string | null;
+    visaFee?: string | null;
+    visaFeeCurrencyCode?: string | null;
     proofOfFundsSummary?: string | null;
     partTimeHoursPerWeek?: string | null;
     partTimeHoursDuringBreaks?: string | null;
@@ -276,23 +286,27 @@ export interface DirectoryResult {
   meta: PaginationMeta;
 }
 
-const baseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
+const baseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 async function api<T>(path: string): Promise<T> {
   const response = await fetch(new URL(`/api/v1${path}`, baseUrl), {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
+    cache: "no-store",
+    headers: { accept: "application/json" },
   });
   const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || body.error || body.data === null) throw new Error(body.error?.message ?? 'Country service unavailable');
+  if (!response.ok || body.error || body.data === null)
+    throw new Error(body.error?.message ?? "Country service unavailable");
   return body.data;
 }
-async function apiResult<T>(path: string): Promise<{ data: T; meta: PaginationMeta }> {
+async function apiResult<T>(
+  path: string,
+): Promise<{ data: T; meta: PaginationMeta }> {
   const response = await fetch(new URL(`/api/v1${path}`, baseUrl), {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
+    cache: "no-store",
+    headers: { accept: "application/json" },
   });
   const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || body.error || body.data === null) throw new Error(body.error?.message ?? 'Country service unavailable');
+  if (!response.ok || body.error || body.data === null)
+    throw new Error(body.error?.message ?? "Country service unavailable");
   return {
     data: body.data,
     meta: (body.meta ?? {
@@ -305,18 +319,24 @@ async function apiResult<T>(path: string): Promise<{ data: T; meta: PaginationMe
 }
 export function getCountries(params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
-  return apiResult<Country[]>(`/countries${query ? `?${query}` : ''}`);
+  return apiResult<Country[]>(`/countries${query ? `?${query}` : ""}`);
 }
 export function getDirectory(params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
-  return apiResult<DirectoryRecord[]>(`/countries/directory${query ? `?${query}` : ''}`);
+  return apiResult<DirectoryRecord[]>(
+    `/countries/directory${query ? `?${query}` : ""}`,
+  );
 }
 export function getContinents() {
-  return api<Array<{ id: string; name: string; slug: string; status: string }>>('/continents?limit=100');
+  return api<Array<{ id: string; name: string; slug: string; status: string }>>(
+    "/continents?limit=100",
+  );
 }
 export function getCountryPage(slug: string) {
   return api<CountryPage>(`/countries/${encodeURIComponent(slug)}/page`);
 }
 export function getSuggestions(query: string) {
-  return api<Country[]>(`/countries/suggestions?q=${encodeURIComponent(query)}&limit=5`);
+  return api<Country[]>(
+    `/countries/suggestions?q=${encodeURIComponent(query)}&limit=5`,
+  );
 }

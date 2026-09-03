@@ -19,6 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "db:migrate:recover-country-derived": "tsx prisma/recover-country-derived-migration.ts",
+    "db:backfill:country-subjects": "tsx prisma/backfill-country-subjects.ts",
     "db:seed:demo": "tsx prisma/demo-seed.ts",
     "db:qa-dataset": "tsx prisma/qa-dataset.ts"
   },

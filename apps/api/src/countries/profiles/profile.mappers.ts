@@ -50,6 +50,9 @@ export interface ProfileWorkRecord {
   visaSuccessBand: string;
   visaSuccessPercentage: unknown;
   visaInformation: string | null;
+  visaType: string | null;
+  visaFee: unknown;
+  visaFeeCurrencyCode: string | null;
   visaProcessingTime: string | null;
   proofOfFundsSummary: string | null;
   sourceReference: string | null;
@@ -200,6 +203,7 @@ export function serializeWork(
     partTimeHoursPerWeek: decimal(record.partTimeHoursPerWeek),
     partTimeHoursDuringBreaks: decimal(record.partTimeHoursDuringBreaks),
     visaSuccessPercentage: decimal(record.visaSuccessPercentage),
+    visaFee: decimal(record.visaFee),
     verifiedAt: date(record.verifiedAt),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
@@ -272,6 +276,15 @@ export function publicProfileSummary(bundle: ProfileBundle) {
           visaSuccessPercentage: decimal(
             bundle.workProfile.visaSuccessPercentage,
           ),
+          visaType: bundle.workProfile.visaType,
+          visaFee: decimal(bundle.workProfile.visaFee),
+          visaFeeCurrencyCode: bundle.workProfile.visaFeeCurrencyCode,
+          visaProcessingTime: bundle.workProfile.visaProcessingTime,
+          visaInformation: bundle.workProfile.visaInformation,
+          partTimeHoursPerWeek: decimal(
+            bundle.workProfile.partTimeHoursPerWeek,
+          ),
+          postStudyWorkSummary: bundle.workProfile.postStudyWorkSummary,
         }
       : null;
   const language =

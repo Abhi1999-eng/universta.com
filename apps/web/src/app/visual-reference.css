@@ -1434,6 +1434,10 @@ header.stuck{border-bottom-color:var(--line)}
 .h-flag{width:56px;height:56px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:var(--sh-sm);margin-bottom:20px}
 .h-flag img{width:36px;height:26px;object-fit:cover;border-radius:4px}
 .hero h1{font-size:clamp(32px,4.6vw,52px);font-weight:800}
+.ccard-media{margin:0 0 16px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.ccard-media img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
+.hero-media{margin:22px 0 0;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-sm)}
+.hero-media img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
 .hero .lede{font-size:18px;color:var(--ink-2);margin-top:18px;max-width:560px}
 .updated{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-3);margin-top:18px;font-weight:500}
 .updated svg{width:14px;height:14px}

@@ -456,6 +456,18 @@ export function CountriesReference(props: CountriesReferenceProps) {
               return (
                 <article className="ccard" key={country.id}>
                   {prFriendly(country) ? <span className="pr-badge">PR friendly</span> : null}
+                  {/* The client's featured_image. Countries without one keep
+                      exactly the card they had before. */}
+                  {country.listingImage?.url ? (
+                    <div className="ccard-media">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={country.listingImage.url}
+                        alt={country.listingImage.alt || country.name}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
                   <div className={`card-head${prFriendly(country) ? ' with-badge' : ''}`}>
                     <span className="flag" aria-hidden="true">
                       {country.flag?.url ? (
