@@ -7,11 +7,13 @@ import {
   IsObject,
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   Max,
   MaxLength,
   Min,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
 } from 'class-validator';
 import {
   COUNTRY_SECTION_KEYS,
@@ -27,8 +29,27 @@ const integer = ({ value }: { value: unknown }) =>
  * (every input in SeoEditor.tsx starts from '', never undefined), and `''`
  * is not a valid URL. Every save of a Country's SEO metadata without a
  * canonical URL failed with a 400 the admin UI never surfaced clearly. */
-const emptyToUndefined = ({ value }: { value: unknown }) =>
-  value === '' ? undefined : value;
+const emptyToNull = ({ value }: { value: unknown }) =>
+  value === '' ? null : value;
+
+@ValidatorConstraint({ name: 'safeCanonicalUrl', async: false })
+export class SafeCanonicalUrlConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value !== 'string' || /\s/.test(value)) return false;
+    if (/^\/(?!\/)/.test(value)) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' || url.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
+  defaultMessage() {
+    return 'canonicalUrl must be a site path beginning with / or an absolute HTTP(S) URL';
+  }
+}
 
 export class EditorialVersionDto {
   @IsOptional()
@@ -82,11 +103,11 @@ export class FaqDto extends EditorialVersionDto {
 export class SeoMetadataDto extends EditorialVersionDto {
   @IsString() @MaxLength(255) seoTitle!: string;
   @IsString() @MaxLength(500) metaDescription!: string;
-  @Transform(emptyToUndefined)
+  @Transform(emptyToNull)
   @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @Validate(SafeCanonicalUrlConstraint)
   @MaxLength(2048)
-  canonicalUrl?: string;
+  canonicalUrl?: string | null;
   @IsOptional() @IsString() @MaxLength(255) focusKeyword?: string;
   @IsOptional() @IsString() @MaxLength(255) ogTitle?: string;
   @IsOptional() @IsString() @MaxLength(500) ogDescription?: string;

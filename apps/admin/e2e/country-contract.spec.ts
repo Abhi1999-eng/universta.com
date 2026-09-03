@@ -98,6 +98,20 @@ async function storedProfiles(countryId: string) {
   });
 }
 
+/** The form's own validation summary. The SEO card renders separate alerts,
+ * so this must be addressed by its heading rather than by role alone. */
+function formIssues(page: Page) {
+  return page.getByRole('alert').filter({ hasText: 'Fix these fields:' });
+}
+
+async function storedSeo(countryId: string): Promise<Row | null> {
+  return withAdminApi(async (api, headers) => {
+    const response = await api.get(`/api/v1/admin/countries/${countryId}/seo`, { headers });
+    expect(response.ok(), `SEO GET: ${await response.text()}`).toBeTruthy();
+    return ((await response.json()) as { data: Row | null }).data;
+  });
+}
+
 async function putProfile(countryId: string, profile: string, data: Row) {
   return withAdminApi(async (api, headers) => {
     const response = await api.put(
@@ -292,6 +306,94 @@ test.describe.serial('country client contract, end to end', () => {
     expect(stored.status).toBe('PUBLISHED');
   });
 
+  test('saves Country SEO repeatedly and clears a canonical override', async ({ page }) => {
+    await loginAsAdmin(page);
+    const countryId = String((await openCountry(page)).id);
+    const seoTitle = `Study in ${COUNTRY_NAME}`;
+    const description = 'Acceptance Country SEO description for browser persistence.';
+    const uid = `${acceptanceSlugPrefix(runId)}uid`;
+
+    await field(page, 'UID').fill(uid);
+    await field(page, 'Tagline').fill(TAGLINE);
+    await field(page, 'SEO title').fill(seoTitle);
+    await field(page, 'Meta description').fill(description);
+    await field(page, 'Canonical URL').fill(`/countries/${COUNTRY_SLUG}`);
+    await saveCountry(page);
+    expect((await storedSeo(countryId))?.canonicalUrl).toBe(`/countries/${COUNTRY_SLUG}`);
+
+    // Three saves in a row without reloading. Each response carries a new
+    // concurrency token, and a form that keeps the token it loaded with has
+    // its second save rejected as stale -- which is what silently dropped an
+    // operator's SEO edits.
+    await field(page, 'Canonical URL').fill('https://example.invalid/acceptance-country');
+    await saveCountry(page);
+    await field(page, 'Tagline').fill(TAGLINE_2);
+    await saveCountry(page);
+
+    const afterThree = await storedSeo(countryId);
+    expect(afterThree?.canonicalUrl).toBe('https://example.invalid/acceptance-country');
+    expect(afterThree?.seoTitle).toBe(seoTitle);
+    expect(afterThree?.metaDescription).toBe(description);
+    const identity = await storedCountry();
+    expect(identity.externalUid).toBe(uid);
+    expect(identity.tagline).toBe(TAGLINE_2);
+
+    // A canonical is free text, so nothing but the form itself stands between
+    // these values and the database.
+    for (const rejected of ['abc xyz', 'javascript:alert(1)']) {
+      await field(page, 'Canonical URL').fill(rejected);
+      await saveCountry(page);
+      await expect(formIssues(page)).toContainText('Canonical URL');
+      expect((await storedSeo(countryId))?.canonicalUrl).toBe(
+        'https://example.invalid/acceptance-country',
+      );
+    }
+
+    // A deliberate blank clears the override rather than being ignored.
+    await field(page, 'Canonical URL').fill('');
+    await saveCountry(page);
+    await expect(formIssues(page)).toHaveCount(0);
+    expect((await storedSeo(countryId))?.canonicalUrl).toBeNull();
+
+    // With no override the page falls back to its own path, and metadata must
+    // still publish it as an absolute URL on the configured site origin.
+    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      `${webBaseUrl}/countries/${COUNTRY_SLUG}`,
+    );
+  });
+
+  test('rejects out-of-range Country identity values in the browser', async ({ page }) => {
+    await loginAsAdmin(page);
+    const before = await openCountry(page);
+    const iso2 = String(before.iso2Code);
+
+    // What an operator actually meets is the browser's own constraint check,
+    // so assert that -- and, because a bubble is easy to mistake for a save,
+    // assert the stored row is untouched as well.
+    const order = field(page, 'Display order').first();
+    await order.fill('-1');
+    await saveCountry(page);
+    expect(await order.evaluate((el: HTMLInputElement) => el.validity.rangeUnderflow)).toBe(true);
+    expect((await storedCountry()).displayOrder).toBe(before.displayOrder);
+
+    await order.fill('37');
+    const isoField = field(page, 'ISO2');
+    await isoField.fill('A1');
+    await saveCountry(page);
+    expect(await isoField.evaluate((el: HTMLInputElement) => el.validity.patternMismatch)).toBe(
+      true,
+    );
+    expect((await storedCountry()).iso2Code).toBe(iso2);
+
+    await isoField.fill(iso2);
+    await saveCountry(page);
+    const saved = await storedCountry();
+    expect(saved.displayOrder).toBe(37);
+    expect(saved.iso2Code).toBe(iso2);
+  });
+
   test('persists a subject selection and replaces it exactly on a second edit', async ({ page }) => {
     await loginAsAdmin(page);
     await openCountry(page);
@@ -426,6 +528,14 @@ test.describe.serial('country client contract, end to end', () => {
 
     const language = card(page, 'English requirements');
     await choice(language, 'IELTS requirement').selectOption('REQUIRED');
+    // Out of range: the profiles editor reports this once, above the cards,
+    // and must not write the value.
+    await field(language, 'IELTS minimum score').fill('10');
+    await language.getByRole('button', { name: 'Save english requirements' }).click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'IELTS score must be between 0 and 9' }),
+    ).toBeVisible();
+    expect((await storedProfiles(countryId)).language?.ieltsMinScore ?? null).not.toBe('10');
     await field(language, 'IELTS minimum score').fill('6.5');
     await field(language, 'IELTS notes').fill('No band below 6.0.');
     await field(language, 'PTE minimum score').fill('59');

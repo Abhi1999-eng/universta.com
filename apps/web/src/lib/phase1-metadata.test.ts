@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { phaseOneMetadata } from "./phase1-metadata";
+import { siteOrigin } from "./site-origin";
 
 describe("phaseOneMetadata", () => {
   it("makes a published Phase 1 detail URL canonical and shareable", () => {
@@ -12,11 +13,13 @@ describe("phaseOneMetadata", () => {
     ).toMatchObject({
       title: "Fictional demo scholarship | Universta",
       description: "Local demo content.",
-      alternates: { canonical: "/scholarships/fictional-demo-scholarship" },
+      alternates: {
+        canonical: new URL("/scholarships/fictional-demo-scholarship", siteOrigin).toString(),
+      },
       robots: { index: true, follow: true },
       openGraph: {
         title: "Fictional demo scholarship",
-        url: "/scholarships/fictional-demo-scholarship",
+        url: new URL("/scholarships/fictional-demo-scholarship", siteOrigin).toString(),
       },
     });
   });
@@ -41,11 +44,13 @@ describe("phaseOneMetadata", () => {
     ).toMatchObject({
       title: "Custom SEO title | Universta",
       description: "Custom SEO description.",
-      alternates: { canonical: "/scholarships/custom-canonical" },
+      alternates: {
+        canonical: new URL("/scholarships/custom-canonical", siteOrigin).toString(),
+      },
       robots: { index: false, follow: false },
       openGraph: {
         title: "Custom SEO title",
-        url: "/scholarships/custom-canonical",
+        url: new URL("/scholarships/custom-canonical", siteOrigin).toString(),
       },
     });
   });

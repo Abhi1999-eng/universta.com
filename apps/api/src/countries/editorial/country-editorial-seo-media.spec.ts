@@ -107,4 +107,16 @@ describe('CountryEditorialService.saveSeo — empty-string media pickers', () =>
     expect(data?.create.ogMediaId).toBe('media-1');
     expect(data?.create.twitterMediaId).toBeNull();
   });
+
+  it('clears a prior canonical override when the DTO carries an explicit blank', async () => {
+    const { svc, getCapturedUpsertData } = service();
+    await svc.saveSeo(
+      'country-1',
+      { ...baseDto, canonicalUrl: null },
+      fakeRequest(),
+    );
+    const data = getCapturedUpsertData();
+    expect(data?.create.canonicalUrl).toBeNull();
+    expect(data?.update.canonicalUrl).toBeNull();
+  });
 });

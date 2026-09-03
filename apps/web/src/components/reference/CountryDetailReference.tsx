@@ -4,7 +4,7 @@ import type { CitySummary } from "@/lib/locations";
 import { counsellingHref } from "@/lib/counselling-link";
 import { intakeRange } from "@/lib/intake-range";
 import { formatDate, formatNumber } from "@/lib/format";
-import { RichText } from "../phase1/RichText";
+import { RichText, richTextToPlainText } from "../phase1/RichText";
 
 /** The client-approved destination detail page.
  *
@@ -458,7 +458,7 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             </figure>
           ) : null}
           {country.tagline ? <p className="eyebrow">{country.tagline}</p> : null}
-          <p className="lede">{country.shortDescription}</p>
+          <p className="lede">{richTextToPlainText(country.shortDescription)}</p>
           {verifiedAt ? (
             <div className="updated">
               Figures verified {formatDate(verifiedAt)}
