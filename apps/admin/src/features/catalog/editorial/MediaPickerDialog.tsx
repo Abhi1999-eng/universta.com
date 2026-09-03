@@ -213,13 +213,11 @@ export function MediaPickerDialog({
                 />
               ) : (
                 <>
-                  <form
-                    className="flex gap-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void loadLibrary(query);
-                    }}
-                  >
+                  {/* Deliberately a div, not a form: this picker opens inside
+                      the Country form, and a nested form's submit reached the
+                      outer one -- searching the library saved the country and
+                      closed the dialog. */}
+                  <div className="flex gap-2">
                     <label className="sr-only" htmlFor="media-search">
                       Search media
                     </label>
@@ -227,16 +225,23 @@ export function MediaPickerDialog({
                       id="media-search"
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter') return;
+                        // Enter inside the outer form would submit the country.
+                        event.preventDefault();
+                        void loadLibrary(query);
+                      }}
                       placeholder="Search title, alt text or filename"
                       className="w-full rounded-xl border border-[#D9E0EA] px-3 py-2"
                     />
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={() => void loadLibrary(query)}
                       className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
                     >
                       Search
                     </button>
-                  </form>
+                  </div>
 
                   {loading ? (
                     <p role="status" className="mt-5 text-sm text-[#667085]">

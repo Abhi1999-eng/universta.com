@@ -170,6 +170,13 @@ export interface FlagDto {
   alt: string;
 }
 
+/** What the public site is told about an image: where to fetch it and what to
+ * call it. Nothing about who uploaded it or how it is stored. */
+export interface PublicMediaDto {
+  url: string;
+  alt: string;
+}
+
 export interface CountryPublicDto {
   id: string;
   name: string;
@@ -182,6 +189,8 @@ export interface CountryPublicDto {
   officialLanguage: string | null;
   continent: { id: string; name: string; slug: string };
   flag: FlagDto | null;
+  listingImage: PublicMediaDto | null;
+  heroImage: PublicMediaDto | null;
   featured: boolean;
   displayOrder: number;
   statistics: { universitiesCount: number | null } | null;
@@ -1171,6 +1180,16 @@ export class CountriesService {
     };
   }
 
+  /** Same active/not-deleted gate the flag uses, so an archived asset stops
+   * being published everywhere at once. */
+  private publicMedia(
+    media: CountryRecord['flagMedia'],
+    countryName: string,
+  ): PublicMediaDto | null {
+    if (!media || media.status !== 'ACTIVE' || media.deletedAt) return null;
+    return { url: media.publicUrl, alt: media.altText || countryName };
+  }
+
   private flag(record: CountryRecord): FlagDto | null {
     if (
       !record.flagMedia ||
@@ -1198,6 +1217,8 @@ export class CountriesService {
       officialLanguage: record.officialLanguage,
       continent: this.continent(record),
       flag: this.flag(record),
+      listingImage: this.publicMedia(record.listingMedia, record.name),
+      heroImage: this.publicMedia(record.heroMedia, record.name),
       featured: record.isFeatured,
       displayOrder: record.displayOrder,
       statistics: record.statistics

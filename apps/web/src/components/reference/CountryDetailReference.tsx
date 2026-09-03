@@ -365,9 +365,21 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
     statistics?.verifiedAt ??
     null;
 
-  const overview = page.sections.find(
+  /* The client's `content` column. Country.overview is canonical; the legacy
+   * editorial "overview" section supplies the body only when it is absent, so
+   * the page never shows two overviews. */
+  const overviewSection = page.sections.find(
     (section) => section.sectionKey === "overview",
   );
+  const overviewParagraphs = (country.overview ?? "")
+    .split(/\n{2,}/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const overviewBody = overviewParagraphs.length
+    ? overviewParagraphs
+    : overviewSection?.subheading
+      ? [overviewSection.subheading]
+      : [];
   const universityTotal = derivedUniversityCount ?? props.universityTotal;
   const universityHighlightsAvailable =
     topRankedUniversities.length > 0 ||
@@ -440,6 +452,16 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             )}
           </span>
           <h1>{country.pageHeading}</h1>
+          {country.heroImage?.url ? (
+            <figure className="hero-media">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={country.heroImage.url}
+                alt={country.heroImage.alt || country.name}
+                loading="eager"
+              />
+            </figure>
+          ) : null}
           {country.tagline ? <p className="eyebrow">{country.tagline}</p> : null}
           <p className="lede">{country.shortDescription}</p>
           {verifiedAt ? (
@@ -517,16 +539,21 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
         ) : null}
       </section>
 
-      {/* OVERVIEW (admin-managed) */}
-      {overview?.subheading ? (
-        <section className="sec sec-alt">
+      {/* OVERVIEW (the client's `content`) */}
+      {overviewBody.length ? (
+        <section className="sec sec-alt" id="overview">
           <div className="wrap narrow">
             <div className="head">
-              {overview.eyebrow ? (
-                <span className="eyebrow">{overview.eyebrow}</span>
+              {overviewSection?.eyebrow ? (
+                <span className="eyebrow">{overviewSection.eyebrow}</span>
               ) : null}
-              <h2>{overview.heading ?? `About studying in ${country.name}`}</h2>
-              <p>{overview.subheading}</p>
+              <h2>
+                {overviewSection?.heading ??
+                  `About studying in ${country.name}`}
+              </h2>
+              {overviewBody.map((paragraph, index) => (
+                <p key={`overview-${index}`}>{paragraph}</p>
+              ))}
             </div>
           </div>
         </section>

@@ -64,6 +64,8 @@ function build(
         currency: { code: 'AUD', symbol: '$' },
         continent: { id: 'e1', name: 'Oceania', slug: 'oceania' },
         flag: null,
+        listingImage: null,
+        heroImage: null,
         featured: false,
         displayOrder: 0,
         subjects: [
@@ -243,6 +245,75 @@ describe('country detail — client contract', () => {
   it('renders canonical intake records', () => {
     expect(html).toContain('February');
     expect(html).toContain('Main intake.');
+  });
+
+  it('renders Country.overview as the country content', () => {
+    const html = render(
+      build({ country: { overview: 'The client supplied this overview.' } }),
+    );
+    expect(html).toContain('The client supplied this overview.');
+  });
+
+  it('splits a multi-paragraph overview into paragraphs', () => {
+    const html = render(
+      build({ country: { overview: 'First para.\n\nSecond para.' } }),
+    );
+    expect(html).toContain('<p>First para.</p>');
+    expect(html).toContain('<p>Second para.</p>');
+  });
+
+  it('falls back to a legacy overview section only when the column is empty', () => {
+    // The legacy block carried its body in `subheading`, not in bodyJson.
+    const legacy = {
+      ...section('overview', 'About Australia', ''),
+      subheading: 'Legacy body.',
+    };
+    const withColumn = render(
+      build({
+        country: { overview: 'Canonical body.' },
+        sections: [legacy],
+      }),
+    );
+    expect(withColumn).toContain('Canonical body.');
+    // One overview, not two.
+    expect(withColumn).not.toContain('Legacy body.');
+
+    const withoutColumn = render(
+      build({ country: { overview: null }, sections: [legacy] }),
+    );
+    expect(withoutColumn).toContain('Legacy body.');
+  });
+
+  it('renders the hero image when the country has one', () => {
+    const html = render(
+      build({
+        country: {
+          heroImage: { url: '/api/v1/media/hero.png', alt: 'Sydney harbour' },
+        },
+      }),
+    );
+    expect(html).toContain('hero-media');
+    expect(html).toContain('/api/v1/media/hero.png');
+    expect(html).toContain('Sydney harbour');
+  });
+
+  it('omits the hero figure entirely when there is no hero image', () => {
+    expect(render(build())).not.toContain('hero-media');
+  });
+
+  it('keeps the flag rendering and its empty alt when a hero is also present', () => {
+    const html = render(
+      build({
+        country: {
+          flag: { url: '/api/v1/media/flag.png', alt: 'Flag of Australia' },
+          heroImage: { url: '/api/v1/media/hero.png', alt: 'Sydney harbour' },
+        },
+      }),
+    );
+    expect(html).toContain('/api/v1/media/flag.png');
+    // The flag chip stays decorative; the hero carries the real alt text.
+    expect(html).toContain('alt=""');
+    expect(html).toContain('Sydney harbour');
   });
 
   it('renders all four long-form client sections', () => {

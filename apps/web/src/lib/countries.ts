@@ -27,6 +27,8 @@ export interface Country {
   officialLanguage?: string | null;
   continent: { id: string; name: string; slug: string };
   flag: Flag | null;
+  listingImage: Flag | null;
+  heroImage: Flag | null;
   featured: boolean;
   displayOrder: number;
   statistics: { universitiesCount: number | null } | null;

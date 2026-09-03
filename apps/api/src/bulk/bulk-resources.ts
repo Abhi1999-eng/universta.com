@@ -250,6 +250,7 @@ const countries: BulkResourceDefinition = {
       label: 'application_fee',
       required: false,
       type: 'text',
+      description: 'A single fee ("60") or a range ("60-120").',
     },
     {
       key: 'intakes',
@@ -259,7 +260,14 @@ const countries: BulkResourceDefinition = {
       description: 'Pipe-separated intake names.',
     },
     { key: 'visa_type', label: 'visa_type', required: false, type: 'text' },
-    { key: 'visa_fee', label: 'visa_fee', required: false, type: 'number' },
+    {
+      key: 'visa_fee',
+      label: 'visa_fee',
+      required: false,
+      // Text, because the cell carries a currency as well: "185" or "USD 185".
+      type: 'text',
+      description: 'Amount, optionally prefixed with a currency: "USD 185".',
+    },
     {
       key: 'visa_processing',
       label: 'visa_processing',
@@ -354,10 +362,10 @@ const countries: BulkResourceDefinition = {
     tuition_currency: 'EUR',
     living_min: '700',
     living_max: '1100',
-    application_fee: '60',
+    application_fee: '60-120',
     intakes: 'September | January',
     visa_type: 'Student residence permit',
-    visa_fee: '85',
+    visa_fee: 'USD 85',
     visa_processing: '4 to 6 weeks',
     post_study_work: '24',
     work_hours: '20',
@@ -456,6 +464,15 @@ const countries: BulkResourceDefinition = {
 };
 
 /** Reads the section body back out of the stored typed-body shape. */
+/** The canonical `visa_fee` representation: currency and amount when both are
+ * stored, the amount alone otherwise. `parseVisaFee` reads both back. */
+function visaFeeText(fee: unknown, currency: unknown): string {
+  const amount = decimalText(fee);
+  if (!amount) return '';
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  return code ? `${code} ${amount}` : amount;
+}
+
 function sectionText(
   record: Record<string, unknown>,
   column: SectionColumn,
@@ -547,7 +564,9 @@ export function exportCountryRow(
       .filter(Boolean)
       .join(' | '),
     visa_type: work.visaType ?? '',
-    visa_fee: decimalText(work.visaFee),
+    // One client column carries both stored values: "USD 185" when a currency
+    // is known, the bare amount when none is, rather than inventing one.
+    visa_fee: visaFeeText(work.visaFee, work.visaFeeCurrencyCode),
     visa_processing: work.visaProcessingTime ?? '',
     post_study_work: decimalText(work.postStudyWorkMaxMonths),
     work_hours: decimalText(work.partTimeHoursPerWeek),

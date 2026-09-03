@@ -9,7 +9,9 @@ describe('CountryStructuredSections', () => {
         country={{
           id: 'country-1', name: 'Canada', slug: 'canada', pageHeading: 'Study in Canada',
           shortDescription: '', continent: { id: 'continent-1', name: 'North America', slug: 'north-america' },
-          flag: null, featured: false, displayOrder: 0, statistics: null,
+          flag: null,
+    listingImage: null,
+    heroImage: null, featured: false, displayOrder: 0, statistics: null,
           configuration: { features: [{ code: 'PART_TIME_ALLOWED', label: 'Part-time allowed' }], acceptedTests: ['IELTS'], intakeMonths: [1, 9], postStudyWorkPermitMonths: 24 },
           derived: { averageTuition: null, statistics: { universitiesCount: 1, publicUniversitiesCount: 1, coursesCount: 2 }, topRankedUniversities: [], popularUniversities: [], popularCourses: [] },
         }}

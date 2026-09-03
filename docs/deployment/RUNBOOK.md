@@ -40,6 +40,67 @@ sudo -u universta bash -lc '
 Do not add `SEED_DEMO_CATALOG` to the persistent runtime environment and do not
 run this command as part of an automatic deployment.
 
+## One-time CountrySubject backfill
+
+Countries carry their Subjects directly, in `country_subjects`. Existing
+countries have no rows there until this backfill seeds them from the published
+catalogue, so the public "Subjects" block on a country page stays empty until it
+has run.
+
+Run it **once**, in this order, after the release that contains migration
+`20260901090000_country_client_contract`:
+
+1. Deploy the schema migration. The automatic deployment already runs
+   `npm run db:migrate:deploy`; confirm it reported the migration as applied.
+2. Deploy the application (API, Admin and Web) and confirm the services are
+   healthy — see **Release verification** below.
+3. Run the backfill once, from an authorized SSM session:
+
+   ```bash
+   sudo -u universta bash -lc '
+     set -a
+     source /opt/universta/shared/env/api.env
+     set +a
+     cd /opt/universta/current
+     npm --workspace apps/api run db:backfill:country-subjects
+   '
+   ```
+
+4. Optionally run the same command a second time purely to confirm
+   idempotency: the row count in step 5 must not change. The statement is
+   `INSERT IGNORE` against a unique `(country_id, subject_id)`, so a repeat
+   inserts nothing new.
+5. Verify the rows landed:
+
+   ```bash
+   sudo -u universta bash -lc '
+     set -a
+     source /opt/universta/shared/env/api.env
+     set +a
+     mysql --protocol=TCP -h "$DATABASE_HOST" -P "$DATABASE_PORT" \
+       -u "$DATABASE_USER" -p"$DATABASE_PASSWORD" "$DATABASE_NAME" -e "
+       SELECT COUNT(*) AS country_subject_rows FROM country_subjects;
+       SELECT c.name, COUNT(cs.id) AS subjects
+       FROM countries c
+       LEFT JOIN country_subjects cs ON cs.country_id = c.id
+       WHERE c.deleted_at IS NULL AND c.status = \"PUBLISHED\"
+       GROUP BY c.id ORDER BY subjects DESC LIMIT 10;"
+   '
+   ```
+
+6. Open two or three of those countries on the public site
+   (`/countries/<slug>`) and confirm the Subjects section lists them.
+
+**Never automate this.** It must not run at API startup, on every deployment,
+or on a schedule. It only ever adds rows, so re-running it restores a Subject an
+editor has deliberately removed from a country. Once editors own the taxonomy,
+removals must stay removed.
+
+**Rollback.** `country_subjects` is additive data that no earlier release
+reads. Rolling the application back does **not** require deleting those rows and
+you should not delete them — a forward redeploy would only have to backfill
+again. Roll back the application by release as usual; leave the table alone.
+
 ## Manual operations
 
 Open the `CI` workflow in GitHub Actions and choose **Run workflow**.

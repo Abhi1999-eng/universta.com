@@ -445,6 +445,12 @@ describe('country taxonomy admin (e2e)', () => {
     // Tags stay an Admin, import and filter taxonomy: the country carries one,
     // and the public payload still must not mention it.
     expect(detail.tags).toBeUndefined();
+    // The client's featured_image and hero_image belong to the public contract,
+    // as url/alt only -- never the stored ids or upload metadata.
+    for (const key of ['flag', 'listingImage', 'heroImage'])
+      expect(Object.prototype.hasOwnProperty.call(detail, key)).toBe(true);
+    for (const key of ['listingMediaId', 'heroMediaId', 'flagMediaId'])
+      expect(detail[key]).toBeUndefined();
 
     for (const key of [
       'tagline',

@@ -129,6 +129,11 @@ export async function countAcceptanceRecords(
     const browserCountryTags = await prisma.countryTag.count({
       where: { name: { startsWith: own.countryName } },
     });
+    // The Country contract spec uploads its own image rather than assuming the
+    // Media Library already holds one.
+    const browserMedia = await prisma.mediaAsset.count({
+      where: { title: { startsWith: own.countryName } },
+    });
     const testInquiries = await prisma.contactInquiry.count({
       where: { email },
     });
@@ -144,6 +149,7 @@ export async function countAcceptanceRecords(
       browserCountries,
       browserSubjects,
       browserCountryTags,
+      browserMedia,
       universities,
       offerings,
       scholarships,
@@ -275,6 +281,12 @@ export async function purgeAcceptanceRecords(
     removed.browserCountryTags = (
       await prisma.countryTag.deleteMany({
         where: { name: { startsWith: own.countryName } },
+      })
+    ).count;
+    // After the countries, whose media columns reference these rows.
+    removed.browserMedia = (
+      await prisma.mediaAsset.deleteMany({
+        where: { title: { startsWith: own.countryName } },
       })
     ).count;
 

@@ -93,6 +93,85 @@ export function cellState<T>(
   return { kind: 'value', value: parse(value) };
 }
 
+/** A non-negative decimal, or a reason it is not one. */
+function decimalPart(text: string): Prisma.Decimal | null {
+  if (!/^\d+(?:\.\d+)?$/.test(text)) return null;
+  return text as unknown as Prisma.Decimal;
+}
+
+/**
+ * The client sends one `application_fee` cell for what the schema stores as a
+ * minimum and a maximum: `60` sets both, `60-120` sets a range, and spaces
+ * around the dash are tolerated. Anything else is a row error — a malformed
+ * fee used to parse as NaN and vanish, taking the range with it.
+ */
+export function parseApplicationFee(
+  raw: string | undefined,
+  errors: string[],
+): { min?: Prisma.Decimal | null; max?: Prisma.Decimal | null } {
+  const value = trim(raw);
+  if (raw === undefined || value === '') return {};
+  if (value === CLEAR_TOKEN) return { min: null, max: null };
+
+  const shape = `application_fee "${value}" must be a number like "60" or a range like "60-120"`;
+  const parts = value.split('-').map((part) => part.trim());
+  if (parts.length > 2 || parts.some((part) => part === '')) {
+    errors.push(shape);
+    return {};
+  }
+  const bounds = parts.map(decimalPart);
+  if (bounds.some((bound) => bound === null)) {
+    errors.push(shape);
+    return {};
+  }
+  const [min, max] = bounds.length === 2 ? bounds : [bounds[0], bounds[0]];
+  if (Number(String(min)) > Number(String(max))) {
+    errors.push(
+      `application_fee "${value}" has a minimum greater than its maximum`,
+    );
+    return {};
+  }
+  return { min, max };
+}
+
+/**
+ * The client contract has a single `visa_fee` column, but the schema stores an
+ * amount and its currency. `185` carries the amount alone and leaves whatever
+ * currency is already stored untouched; `USD 185` carries both. The country's
+ * own currency is the fallback when a new record has none — never the tuition
+ * currency, which is a different figure.
+ */
+export function parseVisaFee(
+  raw: string | undefined,
+  errors: string[],
+): { fee?: Prisma.Decimal | null; currency?: string | null } {
+  const value = trim(raw);
+  if (raw === undefined || value === '') return {};
+  if (value === CLEAR_TOKEN) return { fee: null, currency: null };
+
+  const qualified = /^([A-Za-z]{3})\s+(.+)$/.exec(value);
+  if (qualified) {
+    const amount = decimalPart(qualified[2].trim());
+    if (!amount) {
+      errors.push(
+        `visa_fee "${value}" must name an amount after its currency, as in "USD 185"`,
+      );
+      return {};
+    }
+    return { fee: amount, currency: qualified[1].toUpperCase() };
+  }
+
+  const bare = decimalPart(value);
+  if (!bare) {
+    errors.push(
+      `visa_fee "${value}" must be a number like "185" or a currency and amount like "USD 185"`,
+    );
+    return {};
+  }
+  // Currency deliberately absent: the stored one stays as it is.
+  return { fee: bare };
+}
+
 function decimalOrNull(
   raw: string | undefined,
 ): Prisma.Decimal | null | undefined {
@@ -307,6 +386,11 @@ export async function parseCountryRelations(
     if (state.kind !== 'absent') sections[column] = state;
   }
 
+  // Both of these carry two stored values in one client column, so they parse
+  // once here and report their own row errors.
+  const applicationFee = parseApplicationFee(row.application_fee, errors);
+  const visaFee = parseVisaFee(row.visa_fee, errors);
+
   return {
     subjects:
       subjectCell.kind === 'value'
@@ -337,14 +421,13 @@ export async function parseCountryRelations(
       tuitionMax: decimalOrNull(row.tuition_max),
       livingCostMin: decimalOrNull(row.living_min),
       livingCostMax: decimalOrNull(row.living_max),
-      applicationFeeMin: decimalOrNull(row.application_fee),
-      applicationFeeMax: decimalOrNull(
-        row.application_fee_max ?? row.application_fee,
-      ),
+      applicationFeeMin: applicationFee.min,
+      applicationFeeMax: applicationFee.max,
     }),
     work: compact({
       visaType: textOrNull(row.visa_type),
-      visaFee: decimalOrNull(row.visa_fee),
+      visaFee: visaFee.fee,
+      visaFeeCurrencyCode: visaFee.currency,
       visaProcessingTime: textOrNull(row.visa_processing),
       postStudyWorkMaxMonths: intOrNull(row.post_study_work),
       partTimeHoursPerWeek: decimalOrNull(row.work_hours),
@@ -502,15 +585,32 @@ export async function reconcileCountry(
       },
     });
 
-  if (relations.work)
+  if (relations.work) {
+    // A bare `visa_fee` leaves the stored currency alone on update. A brand new
+    // profile has none to leave, so the country's own currency stands in --
+    // never the tuition currency, which answers a different question.
+    const needsCurrency =
+      relations.work.visaFee !== undefined &&
+      relations.work.visaFee !== null &&
+      relations.work.visaFeeCurrencyCode === undefined;
+    const fallback = needsCurrency
+      ? (
+          await tx.country.findUnique({
+            where: { id: countryId },
+            select: { currencyCode: true },
+          })
+        )?.currencyCode
+      : null;
     await tx.countryWorkProfile.upsert({
       where: { countryId },
       update: relations.work,
       create: {
         countryId,
+        ...(fallback ? { visaFeeCurrencyCode: fallback } : {}),
         ...relations.work,
       },
     });
+  }
 
   if (relations.language)
     await tx.countryLanguageRequirement.upsert({

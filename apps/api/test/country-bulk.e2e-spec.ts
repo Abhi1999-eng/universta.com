@@ -469,6 +469,114 @@ describe('country bulk contract (e2e)', () => {
     expect(after.name).toBe(before.name);
   });
 
+  it('carries an application fee range and a visa currency through a full round trip', async () => {
+    await importRows([
+      {
+        ...baseRow(),
+        application_fee: '60-120',
+        // A currency that is deliberately not the country's own, so a fallback
+        // could not accidentally produce the right answer.
+        visa_fee: 'GBP 490',
+      },
+    ]);
+
+    let row = await country();
+    expect(String(row.costProfile?.applicationFeeMin)).toBe('60');
+    expect(String(row.costProfile?.applicationFeeMax)).toBe('120');
+    expect(String(row.workProfile?.visaFee)).toBe('490');
+    expect(row.workProfile?.visaFeeCurrencyCode).toBe('GBP');
+
+    const cell = async (column: string) => {
+      const text = (await bulk.export('countries', 'csv')).buffer.toString(
+        'utf8',
+      );
+      const [header, ...lines] = text.split('\n');
+      const columns = header.split(',');
+      const line = lines.find((entry) => entry.includes(uid));
+      return line!.split(',')[columns.indexOf(column)];
+    };
+
+    // Export -> import -> export must say the same thing each time.
+    expect(await cell('application_fee')).toBe('60-120');
+    expect(await cell('visa_fee')).toBe('GBP 490');
+
+    const exported = await bulk.export('countries', 'csv');
+    await bulk.import(
+      'countries',
+      exported.buffer,
+      'countries.csv',
+      'upsert',
+      request,
+      actorId,
+    );
+
+    row = await country();
+    expect(String(row.costProfile?.applicationFeeMin)).toBe('60');
+    expect(String(row.costProfile?.applicationFeeMax)).toBe('120');
+    expect(String(row.workProfile?.visaFee)).toBe('490');
+    expect(row.workProfile?.visaFeeCurrencyCode).toBe('GBP');
+    expect(await cell('application_fee')).toBe('60-120');
+    expect(await cell('visa_fee')).toBe('GBP 490');
+  });
+
+  it('exports a single application fee as one number', async () => {
+    await importRows([{ ...baseRow(), application_fee: '75' }]);
+    const row = await country();
+    expect(String(row.costProfile?.applicationFeeMin)).toBe('75');
+    expect(String(row.costProfile?.applicationFeeMax)).toBe('75');
+    const text = (await bulk.export('countries', 'csv')).buffer.toString(
+      'utf8',
+    );
+    const [header, ...lines] = text.split('\n');
+    const columns = header.split(',');
+    const line = lines.find((entry) => entry.includes(uid));
+    expect(line!.split(',')[columns.indexOf('application_fee')]).toBe('75');
+  });
+
+  it('keeps the stored visa currency when a later import sends a bare amount', async () => {
+    await importRows([{ ...baseRow(), visa_fee: 'GBP 490' }]);
+    await importRows([{ ...baseRow(), visa_fee: '505' }]);
+    const row = await country();
+    expect(String(row.workProfile?.visaFee)).toBe('505');
+    // The second row said nothing about currency, so it must not have blanked it.
+    expect(row.workProfile?.visaFeeCurrencyCode).toBe('GBP');
+  });
+
+  it('falls back to the country currency for a new profile given a bare visa fee', async () => {
+    // Its own country: the shared fixture already has a work profile, and this
+    // is specifically about what a profile is created with.
+    const freshUid = `${uid}-fresh`;
+    await importRows([
+      {
+        ...baseRow(),
+        uid: freshUid,
+        slug: `${slug}-fresh`,
+        title: `Bulk Country Fresh ${stamp}`,
+        currency: 'EUR',
+        visa_fee: '185',
+      },
+    ]);
+    const row = await prisma.country.findFirstOrThrow({
+      where: { externalUid: freshUid, deletedAt: null },
+      include: { workProfile: true },
+    });
+    expect(String(row.workProfile?.visaFee)).toBe('185');
+    expect(row.workProfile?.visaFeeCurrencyCode).toBe('EUR');
+  });
+
+  it('rejects a malformed fee row instead of dropping the value', async () => {
+    for (const [column, value, expected] of [
+      ['application_fee', 'abc', 'application_fee'],
+      ['application_fee', '60-', 'application_fee'],
+      ['application_fee', '120-60', 'greater than its maximum'],
+      ['visa_fee', 'USD abc', 'visa_fee'],
+    ] as Array<[string, string, string]>) {
+      const summary = await importRows([{ ...baseRow(), [column]: value }]);
+      expect(summary.failed).toBe(1);
+      expect(JSON.stringify(summary.errors)).toContain(expected);
+    }
+  });
+
   it('exports the client contract and re-imports its own export idempotently', async () => {
     await importRows([baseRow()]);
     const exported = await bulk.export('countries', 'csv');

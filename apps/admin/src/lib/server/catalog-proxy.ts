@@ -382,7 +382,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: 'POST',
       path: '/api/v1/admin/countries',
       query: [],
-      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'tagIds', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'tagIds', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
     };
   const safeId = encodeURIComponent(id ?? '');
   if (action === 'curation-options')
@@ -404,7 +404,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: 'PATCH',
       path: `/api/v1/admin/countries/${safeId}`,
       query: [],
-      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'tagIds', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt'],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'tagIds', 'featureCodes', 'acceptedTests', 'intakeMonths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt'],
     };
   if (action === 'publish')
     return {
