@@ -233,11 +233,18 @@ export class MediaService {
     limit?: string;
     folder?: string;
     q?: string;
+    kind?: string;
   }) {
     const page = Math.max(1, Number(query.page ?? 1) || 1);
     const limit = Math.min(50, Math.max(1, Number(query.limit ?? 24) || 24));
     const where = {
       deletedAt: null,
+      /* Opt-in, so the Media Library itself still lists every asset. A picker
+       * filling an image slot asks for `kind=image` and is answered on the
+       * file's own mime type: `mediaType` defaults to 'IMAGE', so a PDF
+       * uploaded without an explicit type would otherwise be offered as one
+       * and saved as a broken thumbnail. */
+      ...(query.kind === 'image' ? { mimeType: { startsWith: 'image/' } } : {}),
       ...(query.folder ? { folder: query.folder } : {}),
       ...(query.q?.trim()
         ? {

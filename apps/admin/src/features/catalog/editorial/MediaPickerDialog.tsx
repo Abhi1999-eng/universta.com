@@ -61,7 +61,8 @@ export function MediaPickerDialog({
     setLoading(true);
     setError('');
     try {
-      const items = await listActiveMediaLibrary(searchQuery, 50);
+      // Every slot this dialog fills is an image slot.
+      const items = await listActiveMediaLibrary(searchQuery, 50, 'image');
       setResults(items);
     } catch (cause) {
       setError(

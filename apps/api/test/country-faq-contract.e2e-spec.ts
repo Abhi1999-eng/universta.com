@@ -167,6 +167,156 @@ describe('country FAQ answer contract (e2e)', () => {
     });
   });
 
+  it('stores a guidance card overview written in the editorial subset', async () => {
+    const overview = '<p>QA card <strong>overview</strong>.</p>';
+    const created = await auth(
+      request(app.getHttpServer()).post(
+        `/api/v1/admin/countries/${countryId}/consultant-cards`,
+      ),
+    )
+      .send({
+        title: `Card ${stamp}`,
+        slug: `card-${stamp}`,
+        shortDescription: 'Card short description.',
+        overview,
+        ctaUrl: '/counselling',
+      })
+      .expect(201);
+    expect(record(created).overview).toBe(overview);
+
+    // A second edit of the same rich text saves too.
+    const edited = await auth(
+      request(app.getHttpServer()).patch(
+        `/api/v1/admin/countries/${countryId}/consultant-cards/${String(record(created).id)}`,
+      ),
+    )
+      .send({
+        title: `Card ${stamp}`,
+        slug: `card-${stamp}`,
+        shortDescription: 'Card short description.',
+        overview: '<p>Edited <em>overview</em>.</p>',
+        ctaUrl: '/counselling',
+        expectedUpdatedAt: record(created).updatedAt,
+      })
+      .expect(200);
+    expect(record(edited).overview).toBe('<p>Edited <em>overview</em>.</p>');
+
+    await prisma.consultantLandingCard.delete({
+      where: { id: String(record(created).id) },
+    });
+  });
+
+  it('strips unsafe markup from a guidance card overview', async () => {
+    const created = await auth(
+      request(app.getHttpServer()).post(
+        `/api/v1/admin/countries/${countryId}/consultant-cards`,
+      ),
+    )
+      .send({
+        title: `Unsafe ${stamp}`,
+        slug: `unsafe-${stamp}`,
+        shortDescription: 'Card short description.',
+        overview:
+          '<p onclick="steal()">Safe</p><script>alert(1)</script><a href="javascript:alert(1)">x</a>',
+        ctaUrl: '/counselling',
+      })
+      .expect(201);
+    const overview = String(record(created).overview);
+    expect(overview).toContain('Safe');
+    expect(overview).not.toContain('onclick');
+    expect(overview).not.toContain('alert(1)');
+    expect(overview).not.toContain('javascript:');
+    await prisma.consultantLandingCard.delete({
+      where: { id: String(record(created).id) },
+    });
+  });
+
+  it('still refuses markup in a card title, which is a plain-text label', async () => {
+    await auth(
+      request(app.getHttpServer()).post(
+        `/api/v1/admin/countries/${countryId}/consultant-cards`,
+      ),
+    )
+      .send({
+        title: '<p>Not a label</p>',
+        slug: `label-${stamp}`,
+        shortDescription: 'Card short description.',
+        ctaUrl: '/counselling',
+      })
+      .expect(400);
+  });
+
+  it('refuses a malformed card CTA URL', async () => {
+    await auth(
+      request(app.getHttpServer()).post(
+        `/api/v1/admin/countries/${countryId}/consultant-cards`,
+      ),
+    )
+      .send({
+        title: `Cta ${stamp}`,
+        slug: `cta-${stamp}`,
+        shortDescription: 'Card short description.',
+        ctaUrl: 'not a url at all',
+      })
+      .expect(400);
+  });
+
+  it('offers only real images for an image slot', async () => {
+    /* `MediaAsset.mediaType` defaults to 'IMAGE', so a document uploaded
+     * without an explicit type reads as one. This is that exact row: it must
+     * not be offered to a picker filling an image slot, and it must still be
+     * visible in the Media Library itself. */
+    const document = await prisma.mediaAsset.create({
+      data: {
+        title: `QA document ${stamp}`,
+        objectKey: `qa-${stamp}.pdf`,
+        publicUrl: `/api/v1/media/qa-${stamp}.pdf`,
+        originalFileName: `qa-${stamp}.pdf`,
+        storedFileName: `qa-${stamp}.pdf`,
+        mimeType: 'application/pdf',
+        fileSizeBytes: BigInt(1024),
+        status: 'ACTIVE',
+      },
+    });
+    try {
+      expect(document.mediaType).toBe('IMAGE');
+
+      const options = await auth(
+        request(app.getHttpServer()).get(
+          '/api/v1/admin/media-options?limit=50',
+        ),
+      ).expect(200);
+      const ids = ((body(options).data ?? []) as Array<{ id: string }>).map(
+        (row) => row.id,
+      );
+      expect(ids).not.toContain(document.id);
+
+      // The same restriction on the Media Library path the picker searches.
+      const restricted = await auth(
+        request(app.getHttpServer()).get(
+          '/api/v1/admin/media?limit=50&kind=image',
+        ),
+      ).expect(200);
+      expect(
+        ((body(restricted).data ?? []) as Array<{ id: string }>).map(
+          (r) => r.id,
+        ),
+      ).not.toContain(document.id);
+
+      // ...and the general Media Library still lists it, unfiltered.
+      const unrestricted = await auth(
+        request(app.getHttpServer()).get('/api/v1/admin/media?limit=50'),
+      ).expect(200);
+      expect(
+        ((body(unrestricted).data ?? []) as Array<{ id: string }>).map(
+          (r) => r.id,
+        ),
+      ).toContain(document.id);
+    } finally {
+      await prisma.mediaAsset.delete({ where: { id: document.id } });
+    }
+  });
+
   it('still refuses markup in the question, which is a plain-text label', async () => {
     await auth(
       request(app.getHttpServer()).post(

@@ -113,6 +113,19 @@ export type FaqRow = {
   displayOrder: string;
 };
 
+/** The CTA contract the API enforces (`ConsultantCardDto.ctaUrl`): a site path
+ * beginning with a single `/`, an in-page `#anchor`, or an absolute https URL.
+ * Deliberately not an `<input type="url">` -- that rejects the relative paths
+ * this field is mostly used for, which is exactly how the canonical field
+ * became unusable. */
+export function ctaUrlInputError(value: string): string | null {
+  const cta = value.trim();
+  if (!cta) return null;
+  if (/\s/.test(cta) || !/^(?:\/(?!\/)|#[a-zA-Z0-9_-]+$|https:\/\/)/.test(cta))
+    return 'Use a site path like /counselling, an #anchor, or an https:// URL.';
+  return null;
+}
+
 /** Saving a Country used to re-send every FAQ it holds, edited or not, so one
  * FAQ the server would no longer accept blocked every unrelated edit to that
  * Country. A row is only worth sending when the operator actually changed it;
@@ -578,6 +591,15 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       next.push("Display order must be a whole number from 0 to 999999.");
     if (core.iso2Code && !/^[A-Za-z]{2}$/.test(core.iso2Code))
       next.push("ISO2 must be exactly two letters.");
+    // A malformed CTA used to pass the browser untouched and come back from the
+    // API as a bare "Invalid catalog request", naming no field at all.
+    for (const [index, row] of activeCards.entries()) {
+      const ctaError = ctaUrlInputError(row.ctaUrl);
+      if (ctaError)
+        next.push(
+          `Guidance card ${row.title.trim() || index + 1} — CTA URL: ${ctaError}`,
+        );
+    }
     setIssues(next);
     return next.length === 0;
   }
@@ -767,6 +789,15 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       let saved = record
         ? (await updateCountry(record.id, payload)).data
         : (await createCountry(payload)).data;
+      /* The country row is written now, and everything after this can still
+       * fail -- an editorial record the server rejects, say. When that happens
+       * the operator corrects that field and saves again, so the version token
+       * has to advance with the server at the moment it advances, not once the
+       * whole sequence succeeds. Holding the pre-write token made that retry
+       * fail as "changed in another session" when nothing else had touched it.
+       * It also pins a newly created country's id, so a retry updates it
+       * instead of trying to create the same slug twice. */
+      setRecord(saved);
       await syncEditorial(saved.id);
       const refreshed = (await getCountry(saved.id)).data;
       saved =

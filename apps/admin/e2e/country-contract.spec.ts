@@ -259,6 +259,10 @@ async function labelOf(box: ReturnType<Page['getByRole']>) {
 
 test.describe.serial('country client contract, end to end', () => {
   const health = { console: [] as string[], failed: [] as string[] };
+  /** Rejections a test provokes on purpose. Registered case by case so the
+   * guard below still fails on anything unplanned -- blanket-allowing a status
+   * would hide the next real one. */
+  const intended: Array<{ status: number; match: RegExp }> = [];
 
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
@@ -277,7 +281,10 @@ test.describe.serial('country client contract, end to end', () => {
         (response.status() === 401 && path.endsWith('/auth/refresh')) ||
         // Local media rows point at files that were never written to this
         // machine's disk; that is fixture data, not a fault in the app.
-        (response.status() === 404 && /\/media\/[^/]+$/.test(path));
+        (response.status() === 404 && /\/media\/[^/]+$/.test(path)) ||
+        intended.some(
+          (item) => item.status === response.status() && item.match.test(path),
+        );
       if (response.status() >= 400 && !expected)
         health.failed.push(`${response.status()} ${path}`);
     });
@@ -855,6 +862,81 @@ test.describe.serial('country client contract, end to end', () => {
     expect(faqLd, 'the page should publish FAQ structured data').toBeTruthy();
     expect(faqLd ?? '').not.toContain('<p>');
     expect(faqLd ?? '').toContain('Budget for housing.');
+  });
+
+  test('recovers from a rejected sub-save without a false stale-version error', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const countryId = String((await openCountry(page)).id);
+
+    // Both rejections below are the point of this test.
+    intended.push(
+      { status: 400, match: /\/consultant-cards$/ },
+      { status: 409, match: /\/countries\/[0-9a-f-]+$/ },
+    );
+
+    await page.getByRole('button', { name: '+ Add guidance card' }).click();
+    // Markup in a card title is refused by the server and not by the browser,
+    // so the country write lands first and the card write is what fails.
+    await field(page, 'Title').last().fill('<p>Rejected title</p>');
+    await field(page, 'Slug').last().fill(`${acceptanceSlugPrefix(runId)}card`);
+    await field(page, 'Short description').last().fill('Card short description.');
+    await field(page, 'CTA URL').last().fill('/counselling');
+    await saveCountry(page);
+    await expect(page.getByText('Editorial section content is invalid')).toBeVisible();
+
+    // Correct the offending field only -- no reload. The country row was
+    // already written, so the form must be holding that newer version token.
+    await field(page, 'Title').last().fill('Recovered card');
+    await saveCountry(page);
+    await expect(
+      page.getByText('The country changed in another session. Reload before saving'),
+    ).toHaveCount(0);
+    await expect(page.getByText('Editorial section content is invalid')).toHaveCount(0);
+
+    const cards = await withAdminApi(async (api, headers) => {
+      const response = await api.get(
+        `/api/v1/admin/countries/${countryId}/consultant-cards`,
+        { headers },
+      );
+      return ((await response.json()) as { data: Row[] }).data;
+    });
+    expect(cards.some((row) => row.title === 'Recovered card')).toBeTruthy();
+
+    // Genuine concurrency is still refused: another session writes, then this
+    // form -- now holding a superseded token -- must be rejected.
+    const current = await storedCountry();
+    await withAdminApi(async (api, headers) => {
+      const response = await api.patch(
+        `/api/v1/admin/countries/${countryId}`,
+        {
+          headers,
+          data: {
+            continentId: (current.continent as { id: string }).id,
+            name: current.name,
+            slug: current.slug,
+            pageHeading: current.pageHeading,
+            shortDescription: current.shortDescription,
+            tagline: 'Edited by a second session.',
+            expectedUpdatedAt: current.updatedAt,
+          },
+        },
+      );
+      expect(response.ok(), `second-session write: ${await response.text()}`).toBeTruthy();
+      return null;
+    });
+    await field(page, 'Capital').fill('Stale City');
+    await saveCountry(page);
+    await expect(
+      page.getByText('The country changed in another session. Reload before saving'),
+    ).toBeVisible();
+
+    // Leave the fixture as the rest of this serial chain expects it.
+    await openCountry(page);
+    await field(page, 'Tagline').fill(TAGLINE);
+    await field(page, 'Capital').fill(CAPITAL);
+    await saveCountry(page);
   });
 
   test('shows the fixture in the countries list and filters by subject and tag', async ({ page }) => {

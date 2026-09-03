@@ -755,13 +755,10 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     await this.country(countryId);
-    assertSafeCopy([
-      dto.title,
-      dto.slug,
-      dto.shortDescription,
-      dto.overview,
-      dto.ctaLabel,
-    ]);
+    /* The overview is the card's prose and is rendered through the shared
+     * sanitised rich-text policy, exactly like a FAQ answer. Title, slug,
+     * short description and CTA label are short labels and stay plain text. */
+    assertSafeCopy([dto.title, dto.slug, dto.shortDescription, dto.ctaLabel]);
     await this.mediaIds([dto.iconMediaId, dto.featuredMediaId]);
     const row = await this.prisma.consultantLandingCard.create({
       data: {
@@ -769,7 +766,7 @@ export class CountryEditorialService {
         title: dto.title.trim(),
         slug: dto.slug.trim(),
         shortDescription: dto.shortDescription.trim(),
-        overview: trim(dto.overview),
+        overview: sanitizeRichText(trim(dto.overview)) as string | undefined,
         iconMediaId: dto.iconMediaId,
         featuredMediaId: dto.featuredMediaId,
         isFreeConsultation: dto.isFreeConsultation ?? true,
@@ -803,13 +800,10 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     const current = await this.cardRecord(countryId, id);
-    assertSafeCopy([
-      dto.title,
-      dto.slug,
-      dto.shortDescription,
-      dto.overview,
-      dto.ctaLabel,
-    ]);
+    /* The overview is the card's prose and is rendered through the shared
+     * sanitised rich-text policy, exactly like a FAQ answer. Title, slug,
+     * short description and CTA label are short labels and stay plain text. */
+    assertSafeCopy([dto.title, dto.slug, dto.shortDescription, dto.ctaLabel]);
     this.version(
       current.updatedAt,
       dto.expectedUpdatedAt,
@@ -822,7 +816,7 @@ export class CountryEditorialService {
         title: dto.title.trim(),
         slug: dto.slug.trim(),
         shortDescription: dto.shortDescription.trim(),
-        overview: trim(dto.overview),
+        overview: sanitizeRichText(trim(dto.overview)) as string | undefined,
         iconMediaId: dto.iconMediaId,
         featuredMediaId: dto.featuredMediaId,
         isFreeConsultation: dto.isFreeConsultation ?? true,
@@ -887,7 +881,13 @@ export class CountryEditorialService {
       where: {
         status: 'ACTIVE',
         deletedAt: null,
+        /* These options fill image slots -- a flag, a hero, a card icon -- so
+         * they are chosen on the file's own type. `mediaType` cannot carry
+         * that decision alone: the column defaults to 'IMAGE', so anything
+         * uploaded without an explicit type reads as an image, which is how a
+         * PDF came to be offered here and saved as a broken thumbnail. */
         mediaType: 'IMAGE',
+        mimeType: { startsWith: 'image/' },
         ...(query.q
           ? {
               OR: [
