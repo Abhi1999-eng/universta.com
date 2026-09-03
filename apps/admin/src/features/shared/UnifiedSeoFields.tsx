@@ -35,6 +35,26 @@ export const blankUnifiedSeo: UnifiedSeoDraft = {
   robotsFollow: true,
 };
 
+const CANONICAL_MESSAGE =
+  'Use a site path beginning with / or an absolute HTTP(S) URL.';
+
+export function canonicalInputError(value: string): string | null {
+  const canonical = value.trim();
+  if (!canonical) return null;
+  // The API rejects any interior whitespace outright, and URL parsing would
+  // quietly percent-encode it here, so the two layers would disagree.
+  if (/\s/.test(canonical)) return CANONICAL_MESSAGE;
+  if (/^\/(?!\/)[^\s]*$/.test(canonical)) return null;
+  try {
+    const url = new URL(canonical);
+    if (url.protocol === 'https:' || url.protocol === 'http:') return null;
+  } catch {
+    // The message below is intentionally actionable without exposing parser
+    // implementation details.
+  }
+  return CANONICAL_MESSAGE;
+}
+
 type Props = {
   value: UnifiedSeoDraft;
   onChange: (value: UnifiedSeoDraft) => void;
@@ -58,6 +78,8 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
     value.twitterDescription.trim() ||
     value.twitterMediaId,
   );
+  const canonicalError = canonicalInputError(value.canonicalUrl);
+  const requiredError = configured && (!value.seoTitle.trim() || !value.metaDescription.trim());
 
   return (
     <fieldset id="editor-seo" className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8">
@@ -66,6 +88,7 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
       <h3 className="mt-2 text-xl font-semibold text-[#101828]">SEO</h3>
       <p className="mt-2 text-sm leading-6 text-[#667085]">SEO is part of this record. There is no separate SEO save button.</p>
       <p className="mt-2 text-xs font-medium text-[#667085]">Leave this whole section blank to use defaults. Once any SEO value is entered, <span className="font-bold text-[#D92D20]">*</span> SEO title and Meta description become required.</p>
+      {requiredError ? <p role="alert" className="mt-2 text-sm font-semibold text-[#B42318]">SEO title and Meta description are required before this Country can be saved.</p> : null}
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <div className="text-sm font-semibold">
@@ -82,7 +105,8 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
         </div>
         <div className="text-sm font-semibold sm:col-span-2">
           <FieldLabel label="Canonical URL" htmlFor="seo-canonical" help={commonFieldHelp.canonicalUrl} />
-          <input id="seo-canonical" type="url" className={input} value={value.canonicalUrl} onChange={(e) => set('canonicalUrl', e.target.value)} />
+          <input id="seo-canonical" type="text" inputMode="url" aria-invalid={Boolean(canonicalError)} aria-describedby={canonicalError ? 'seo-canonical-error' : undefined} className={input} value={value.canonicalUrl} onChange={(e) => set('canonicalUrl', e.target.value)} />
+          {canonicalError ? <p id="seo-canonical-error" role="alert" className="mt-1 text-sm font-medium text-[#B42318]">{canonicalError}</p> : <p className="mt-1 text-xs font-normal text-[#667085]">Use /countries/example for this site, or an absolute HTTP(S) URL.</p>}
         </div>
         <div className="text-sm font-semibold">
           <FieldLabel label="Open Graph title" htmlFor="seo-og-title" />

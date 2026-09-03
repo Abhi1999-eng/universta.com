@@ -192,6 +192,21 @@ describe('country detail — client contract', () => {
     expect(html).toContain('Explore universities across Australia.');
   });
 
+  it('keeps the short excerpt plain text when pasted markup is supplied', () => {
+    const hero = render(
+      build({ country: { shortDescription: '<p>Hello <strong>students</strong></p><script>alert(1)</script>' } }),
+    );
+    expect(hero).toContain('Hello students');
+    expect(hero).not.toContain('&lt;p&gt;');
+    expect(hero).not.toContain('alert(1)');
+  });
+
+  it('omits an empty work and visa section rather than rendering only its disclaimer', () => {
+    const html = render(build({ profiles: { work: {} } }));
+    expect(html).not.toContain('id="visa"');
+    expect(html).not.toContain('Immigration rules change frequently');
+  });
+
   it('falls back to initials rather than a broken image when no flag exists', () => {
     expect(html).not.toContain('<img src=""');
     expect(html).toContain('AU');

@@ -63,6 +63,7 @@ import { variablesForContext } from "@/features/shared/variable-autocomplete";
 import { nextAutoSlug, slugFromText } from "@/lib/slug";
 import {
   blankUnifiedSeo,
+  canonicalInputError,
   seoPayload,
   UnifiedSeoFields,
   type UnifiedSeoDraft,
@@ -543,6 +544,12 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       next.push(
         "SEO title and meta description are required when SEO is configured.",
       );
+    const canonicalError = canonicalInputError(seo.canonicalUrl);
+    if (canonicalError) next.push(`Canonical URL: ${canonicalError}`);
+    if (!/^\d+$/.test(core.displayOrder) || Number(core.displayOrder) > 999999)
+      next.push("Display order must be a whole number from 0 to 999999.");
+    if (core.iso2Code && !/^[A-Za-z]{2}$/.test(core.iso2Code))
+      next.push("ISO2 must be exactly two letters.");
     setIssues(next);
     return next.length === 0;
   }
@@ -555,7 +562,6 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     // in whatever order the database chose.
     for (const [index, row] of activeSections.entries()) {
       const payload = {
-        externalUid: optional(core.externalUid),
         sectionKey: row.sectionKey,
         sectionType: row.sectionType,
         eyebrow: optional(row.eyebrow),
@@ -655,6 +661,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     if (hasSeo(seo)) {
       const result = await saveCountrySeo(id, {
         ...seoPayload(seo),
+        // The Country editorial contract distinguishes an omitted legacy
+        // field from an intentional clear. The shared draft uses an empty
+        // string for an empty input, so send null only on this endpoint.
+        canonicalUrl: seo.canonicalUrl.trim() || null,
+        ...(existingSeo ? { expectedUpdatedAt: existingSeo.updatedAt } : {}),
         ...(existingSeo?.schemaJson
           ? { schemaJson: existingSeo.schemaJson }
           : {}),
@@ -663,6 +674,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           : {}),
       });
       setExistingSeo(result.data);
+      setSeo(seoFromRecord(result.data));
     } else if (existingSeo) {
       await deleteCountrySeo(id, existingSeo.updatedAt);
       setExistingSeo(null);
@@ -686,6 +698,10 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         slug: core.slug.trim() || slugify(core.name),
         pageHeading: core.pageHeading.trim(),
         shortDescription: core.shortDescription.trim(),
+        // The client's own import identity. It belongs to the Country row --
+        // it used to be sent on each editorial section instead, where there is
+        // no such column, so a UID typed here was silently never stored.
+        externalUid: optional(core.externalUid),
         overview: optional(core.overview),
         tagline: optional(core.tagline),
         iso2Code: optional(core.iso2Code),
@@ -753,7 +769,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
 
   return (
     <section
-      className="mx-auto max-w-[1180px]"
+      className="mx-auto w-full min-w-0 max-w-[1180px] px-4 sm:px-6 lg:px-0"
       aria-labelledby="country-form-heading"
     >
       <Link href="/countries" className="text-sm font-semibold text-[#1657CF]">
@@ -834,6 +850,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               value={core.displayOrder}
               onChange={(value) => setCoreField("displayOrder", value)}
               type="number"
+              min={0}
+              max={999999}
+              step={1}
             />
             <Input
               label="Page heading"
@@ -871,6 +890,8 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               onChange={(value) =>
                 setCoreField("iso2Code", value.toUpperCase())
               }
+              maxLength={2}
+              pattern="[A-Za-z]{2}"
             />
             <Input
               label="ISO3"
@@ -1347,6 +1368,11 @@ function Input({
   textarea = false,
   span = false,
   rows = 3,
+  min,
+  max,
+  step,
+  maxLength,
+  pattern,
 }: {
   label: string;
   value: string;
@@ -1355,6 +1381,11 @@ function Input({
   textarea?: boolean;
   span?: boolean;
   rows?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  maxLength?: number;
+  pattern?: string;
 }) {
   // A label-derived id alone collides wherever a field repeats: every content
   // section renders a "Section key", so the sections shared one id, both labels
@@ -1362,7 +1393,7 @@ function Input({
   const unique = useId();
   const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${unique}`;
   return (
-    <div className={`text-sm font-semibold ${span ? "sm:col-span-2" : ""}`}>
+    <div className={`min-w-0 text-sm font-semibold ${span ? "sm:col-span-2" : ""}`}>
       <FieldLabel label={label} htmlFor={id} />
       {textarea ? (
         <textarea
@@ -1370,6 +1401,7 @@ function Input({
           rows={rows}
           className={input}
           value={value}
+          maxLength={maxLength}
           onChange={(event) => onChange(event.target.value)}
         />
       ) : (
@@ -1378,6 +1410,11 @@ function Input({
           type={type}
           className={input}
           value={value}
+          min={min}
+          max={max}
+          step={step}
+          maxLength={maxLength}
+          pattern={pattern}
           onChange={(event) => onChange(event.target.value)}
         />
       )}

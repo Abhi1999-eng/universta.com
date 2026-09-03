@@ -655,7 +655,7 @@ export class CountryEditorialService {
         ownerId: countryId,
         seoTitle: dto.seoTitle.trim(),
         metaDescription: dto.metaDescription.trim(),
-        canonicalUrl: trim(dto.canonicalUrl),
+        canonicalUrl: dto.canonicalUrl === null ? null : trim(dto.canonicalUrl),
         focusKeyword: trim(dto.focusKeyword),
         ogTitle: trim(dto.ogTitle),
         ogDescription: trim(dto.ogDescription),
@@ -671,7 +671,9 @@ export class CountryEditorialService {
       update: {
         seoTitle: dto.seoTitle.trim(),
         metaDescription: dto.metaDescription.trim(),
-        canonicalUrl: trim(dto.canonicalUrl),
+        // A deliberate blank from the Admin clears an old override. Omitted
+        // remains "leave unchanged" for compatible API callers.
+        canonicalUrl: dto.canonicalUrl === null ? null : trim(dto.canonicalUrl),
         focusKeyword: trim(dto.focusKeyword),
         ogTitle: trim(dto.ogTitle),
         ogDescription: trim(dto.ogDescription),

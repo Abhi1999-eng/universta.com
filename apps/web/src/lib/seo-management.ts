@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { siteOrigin } from "./site-origin";
 
 const baseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
@@ -35,6 +36,16 @@ export function titleWithSuffix(title: string, seo?: ResolvedSeo | null) {
   return title.endsWith(suffix) ? title : `${title} ${suffix}`.trim();
 }
 
+/** Stored site paths are portable between environments; metadata must still
+ * publish an absolute canonical URL to crawlers. */
+export function absoluteCanonical(value: string, origin = siteOrigin) {
+  try {
+    return new URL(value, origin).toString();
+  } catch {
+    return new URL("/", origin).toString();
+  }
+}
+
 export function resolvedMetadata(
   seo: ResolvedSeo | null | undefined,
   fallbackTitle: string,
@@ -43,7 +54,7 @@ export function resolvedMetadata(
 ): Metadata {
   const title = seo?.seoTitle ?? fallbackTitle;
   const description = seo?.metaDescription ?? fallbackDescription;
-  const resolvedCanonical = seo?.canonicalUrl ?? canonical;
+  const resolvedCanonical = absoluteCanonical(seo?.canonicalUrl ?? canonical);
   const image = seo?.ogMedia;
   const imageUrl = image?.url ?? image?.publicUrl;
   const imageAlt = image?.alt ?? image?.altText ?? title;

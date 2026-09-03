@@ -31,13 +31,30 @@ describe('SeoMetadataDto — canonicalUrl left blank', () => {
     );
   });
 
-  it('still accepts a valid canonicalUrl', async () => {
+  it('accepts portable relative site paths and absolute HTTP(S) canonicals', async () => {
+    const relative = plainToInstance(SeoMetadataDto, {
+      ...base,
+      canonicalUrl: '/countries/qa-country',
+    });
+    expect(await validate(relative)).toHaveLength(0);
     const dto = plainToInstance(SeoMetadataDto, {
       ...base,
       canonicalUrl: 'https://universta.com/study-in-canada',
     });
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
+  });
+
+  it.each([
+    'abc xyz',
+    'javascript:alert(1)',
+    'data:text/plain,test',
+    '//evil.example/path',
+  ])('rejects unsafe or malformed canonical %s', async (canonicalUrl) => {
+    const dto = plainToInstance(SeoMetadataDto, { ...base, canonicalUrl });
+    expect(
+      (await validate(dto)).some((error) => error.property === 'canonicalUrl'),
+    ).toBe(true);
   });
 
   it('rejects when canonicalUrl is omitted entirely (same as blank)', async () => {

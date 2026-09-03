@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolvedMetadata, siteVerificationMetadata } from "./seo-management";
+import { absoluteCanonical, resolvedMetadata, siteVerificationMetadata } from "./seo-management";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,9 +23,19 @@ describe("resolvedMetadata", () => {
     ).toMatchObject({
       title: "Study at Demo University | Universta",
       description: "Resolved from bulk SEO.",
-      alternates: { canonical: "/universities/demo-university" },
+      alternates: { canonical: "http://localhost:3000/universities/demo-university" },
       openGraph: { title: "Demo University" },
     });
+  });
+});
+
+describe('absoluteCanonical', () => {
+  it('resolves a stored site path against the configured public origin', () => {
+    expect(absoluteCanonical('/countries/poland', 'https://example.test')).toBe('https://example.test/countries/poland');
+  });
+
+  it('keeps an intentional absolute canonical unchanged', () => {
+    expect(absoluteCanonical('https://example.com/countries/poland', 'https://example.test')).toBe('https://example.com/countries/poland');
   });
 });
 

@@ -57,6 +57,9 @@ type FieldSpec = {
   options?: string[];
   hint?: string;
   wide?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
 };
 
 type IntakeDraft = {
@@ -139,6 +142,14 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
     setError("");
     setSaving(section);
     try {
+      if (section === "language") {
+        const raw = text(language.ieltsMinScore).trim();
+        const score = Number(raw);
+        if (raw && (!Number.isFinite(score) || score < 0 || score > 9)) {
+          setError("IELTS score must be between 0 and 9.");
+          return;
+        }
+      }
       const drafts: Record<Section, Draft> = {
         cost,
         work,
@@ -201,7 +212,7 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
     Boolean(statistics.verifiedAt);
 
   return (
-    <section className="mt-8 space-y-6" aria-labelledby="country-profiles-heading">
+    <section className="mt-8 min-w-0 space-y-6" aria-labelledby="country-profiles-heading">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
           Country profiles
@@ -294,7 +305,7 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
           set={setLanguage}
           fields={[
             { key: "ieltsRequirement", label: "IELTS requirement", kind: "select", options: LANGUAGE_REQUIREMENTS },
-            { key: "ieltsMinScore", label: "IELTS minimum score", kind: "number" },
+            { key: "ieltsMinScore", label: "IELTS minimum score", kind: "number", min: 0, max: 9, step: 0.5 },
             { key: "ieltsNotes", label: "IELTS notes", kind: "textarea", wide: true },
             { key: "pteRequirement", label: "PTE requirement", kind: "select", options: LANGUAGE_REQUIREMENTS },
             { key: "pteMinScore", label: "PTE minimum score", kind: "number" },
@@ -556,7 +567,7 @@ function ProfileCard({
   full?: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
+    <section className="min-w-0 rounded-2xl border border-[#E8ECF3] bg-white p-4 sm:p-6">
       <h3 className="text-lg font-semibold">{title}</h3>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">
         {description}
@@ -644,6 +655,9 @@ function Fields({
                     : text(draft[field.key])
                 }
                 onChange={(event) => patch(event.target.value)}
+                min={field.min}
+                max={field.max}
+                step={field.step}
               />
             )}
             {field.hint ? (
