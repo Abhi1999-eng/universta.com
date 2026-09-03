@@ -112,6 +112,14 @@ async function storedSeo(countryId: string): Promise<Row | null> {
   });
 }
 
+async function storedFaqs(countryId: string): Promise<Row[]> {
+  return withAdminApi(async (api, headers) => {
+    const response = await api.get(`/api/v1/admin/countries/${countryId}/faqs`, { headers });
+    expect(response.ok(), `FAQ GET: ${await response.text()}`).toBeTruthy();
+    return ((await response.json()) as { data: Row[] }).data;
+  });
+}
+
 async function putProfile(countryId: string, profile: string, data: Row) {
   return withAdminApi(async (api, headers) => {
     const response = await api.put(
@@ -784,6 +792,69 @@ test.describe.serial('country client contract, end to end', () => {
     await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
     await expect(page.locator('body')).toContainText(FAQ_ANSWER_2);
     await expect(page.locator('body')).not.toContainText(FAQ_ANSWER);
+  });
+
+  test('saves a Country whose FAQ holds editorial markup, without rewriting it', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const countryId = String((await openCountry(page)).id);
+
+    // The shape ten published Countries already hold, and that a Country save
+    // used to re-send and be rejected for.
+    const RICH_ANSWER =
+      '<p>Plan for <strong>tuition</strong> and living costs.</p>';
+    await box(page, 'Answer').first().fill(RICH_ANSWER);
+    await saveCountry(page);
+    await expect(formIssues(page)).toHaveCount(0);
+    expect((await storedFaqs(countryId))[0]?.answer).toBe(RICH_ANSWER);
+
+    // A: an unrelated edit to the same Country, with that answer untouched.
+    await openCountry(page);
+    const before = (await storedFaqs(countryId))[0];
+    await field(page, 'Tagline').fill('Tagline edited beside a rich FAQ.');
+    await saveCountry(page);
+    await expect(formIssues(page)).toHaveCount(0);
+    expect((await storedCountry()).tagline).toBe(
+      'Tagline edited beside a rich FAQ.',
+    );
+
+    // The untouched FAQ was left alone rather than re-sent: a write would have
+    // moved its version token even when the stored value came back identical.
+    const after = (await storedFaqs(countryId))[0];
+    expect(after.answer).toBe(RICH_ANSWER);
+    expect(after.updatedAt).toBe(before.updatedAt);
+
+    // C: and again, because a stale token would only surface on a second pass.
+    await openCountry(page);
+    await field(page, 'Tagline').fill('Tagline edited a second time.');
+    await saveCountry(page);
+    await expect(formIssues(page)).toHaveCount(0);
+    expect((await storedFaqs(countryId))[0].updatedAt).toBe(before.updatedAt);
+
+    // B: editing the rich text itself still saves, and reaches the public page
+    // as markup rather than as literal tags. The tagline goes back to what the
+    // rest of this serial chain expects to find.
+    await openCountry(page);
+    await field(page, 'Tagline').fill(TAGLINE);
+    await box(page, 'Answer').first().fill('<p>Budget for <em>housing</em>.</p>');
+    await saveCountry(page);
+    await expect(formIssues(page)).toHaveCount(0);
+    expect((await storedFaqs(countryId))[0].answer).toBe(
+      '<p>Budget for <em>housing</em>.</p>',
+    );
+
+    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await expect(page.locator('body')).toContainText('Budget for housing.');
+    await expect(page.locator('body')).not.toContainText('<p>Budget for');
+    // The FAQ structured data stays plain text, never markup. Script contents
+    // are not visible text, so read them rather than matching on them.
+    const faqLd = (
+      await page.locator('script[type="application/ld+json"]').allTextContents()
+    ).find((block) => block.includes('FAQPage'));
+    expect(faqLd, 'the page should publish FAQ structured data').toBeTruthy();
+    expect(faqLd ?? '').not.toContain('<p>');
+    expect(faqLd ?? '').toContain('Budget for housing.');
   });
 
   test('shows the fixture in the countries list and filters by subject and tag', async ({ page }) => {

@@ -240,6 +240,7 @@ describe('public country discovery filters (e2e)', () => {
         tuitionMin: '9000',
         livingCostMin: '700',
         applicationFeeMin: '0',
+        budgetBand: 'BUDGET_FRIENDLY',
       },
       work: {
         postStudyWorkAvailable: true,
@@ -279,6 +280,30 @@ describe('public country discovery filters (e2e)', () => {
     });
     // Publishes nothing structured: it must never satisfy a threshold filter.
     await build('bare', { ielts: null, universities: 2 });
+
+    /* Real, complete profiles that simply carry no verified source. The plain
+     * facts on them (fee, work permissions, currency, amounts) must still be
+     * filterable; only the editorial ratings on them must not be. Every other
+     * fixture here is verified by construction, which is exactly why an
+     * over-broad verification requirement went unnoticed. */
+    await build('unverified', {
+      cost: {
+        sourceReference: null,
+        verifiedAt: null,
+        currencyCode: 'EUR',
+        tuitionMin: '5000',
+        livingCostMin: '400',
+        applicationFeeMin: null,
+        budgetBand: 'BUDGET_FRIENDLY',
+      },
+      work: {
+        sourceReference: null,
+        verifiedAt: null,
+        postStudyWorkAvailable: false,
+        partTimeAllowed: false,
+        visaSuccessBand: 'HIGH',
+      },
+    });
 
     // A course-derived subject the country was never editorially assigned.
     const courseLevel = await prisma.courseLevel.findFirstOrThrow({});
@@ -334,6 +359,7 @@ describe('public country discovery filters (e2e)', () => {
         `${tag}-second`,
         `${tag}-other-region`,
         `${tag}-bare`,
+        `${tag}-unverified`,
       ].sort(),
     );
   });
@@ -401,7 +427,12 @@ describe('public country discovery filters (e2e)', () => {
     expect((await names('postStudyWork=true')).sort()).toEqual(
       [`${tag}-base`, `${tag}-other-region`].sort(),
     );
-    expect(await names('postStudyWork=false')).toEqual([`${tag}-second`]);
+    // Whether work is permitted is a recorded fact, not an editorial rating:
+    // an unverified profile answers this question just as well as a verified
+    // one, and must not be dropped from the answer.
+    expect((await names('postStudyWork=false')).sort()).toEqual(
+      [`${tag}-second`, `${tag}-unverified`].sort(),
+    );
   });
 
   it('narrows by a post-study work duration threshold', async () => {
@@ -414,6 +445,9 @@ describe('public country discovery filters (e2e)', () => {
     expect((await names('partTimeWork=true')).sort()).toEqual(
       [`${tag}-base`, `${tag}-other-region`].sort(),
     );
+    expect((await names('partTimeWork=false')).sort()).toEqual(
+      [`${tag}-second`, `${tag}-unverified`].sort(),
+    );
   });
 
   it('narrows by a weekly work-hours threshold', async () => {
@@ -425,10 +459,51 @@ describe('public country discovery filters (e2e)', () => {
     // `other-region` publishes a verified cost profile with no fee recorded,
     // which is a genuine "no application fee", not an absent answer.
     expect((await names('applicationFee=none')).sort()).toEqual(
-      [`${tag}-base`, `${tag}-other-region`].sort(),
+      [`${tag}-base`, `${tag}-other-region`, `${tag}-unverified`].sort(),
     );
     // The destination that publishes no cost profile at all stays out of both.
     expect(await names('applicationFee=none')).not.toContain(`${tag}-bare`);
+    // ...but one that publishes a cost profile with no fee on it belongs in
+    // "no application fee" whether or not that profile carries a source.
+    expect(await names('applicationFee=none')).toContain(`${tag}-unverified`);
+  });
+
+  /* Verification is a property of the specific field being asked about, not of
+   * the profile row it happens to live on. An editorial rating someone would
+   * act on has to be sourced; a plain recorded fact speaks for itself. Getting
+   * this wrong is invisible in a result set -- destinations simply go missing
+   * -- so each side is pinned separately. */
+  it('requires a verified source for an editorial rating', async () => {
+    // `unverified` publishes BUDGET_FRIENDLY with no source behind it.
+    expect(await names('budgetBand=BUDGET_FRIENDLY')).toEqual([`${tag}-base`]);
+    expect(await names('budgetBand=BUDGET_FRIENDLY')).not.toContain(
+      `${tag}-unverified`,
+    );
+    // Same for the visa-success rating it also publishes unsourced.
+    expect(await names('visaSuccessBand=HIGH')).not.toContain(
+      `${tag}-unverified`,
+    );
+  });
+
+  it('does not let one filter impose its verification rule on another', async () => {
+    // Currency and amounts are facts. Asking for them must not start demanding
+    // a verified source just because a rating filter on the same request does.
+    expect((await names('currency=EUR')).sort()).toEqual(
+      [`${tag}-base`, `${tag}-second`, `${tag}-unverified`].sort(),
+    );
+    // Combined with a rating, only the rating leg narrows on verification.
+    expect(await names('currency=EUR&budgetBand=BUDGET_FRIENDLY')).toEqual([
+      `${tag}-base`,
+    ]);
+    // And an unrelated fact filter still sees the unverified destination.
+    expect(await names('currency=EUR&applicationFee=none')).toContain(
+      `${tag}-unverified`,
+    );
+  });
+
+  it('keeps pagination totals honest for an unverified destination', async () => {
+    const response = await list('applicationFee=none&limit=2').expect(200);
+    expect(meta(response).total).toBe(3);
   });
 
   it('narrows by a minimum resolved university count', async () => {
@@ -485,15 +560,20 @@ describe('public country discovery filters (e2e)', () => {
         `${tag}-second`,
         `${tag}-other-region`,
         `${tag}-bare`,
+        `${tag}-unverified`,
       ].sort(),
     );
+    // Scoped, the bound applies to the stored amount itself -- an unverified
+    // cost profile still publishes a real number in a real currency.
     const scoped = await names('currency=EUR&tuitionMax=10000');
-    expect(scoped).toEqual([`${tag}-base`]);
+    expect(scoped.sort()).toEqual([`${tag}-base`, `${tag}-unverified`].sort());
   });
 
   it('ignores living-cost bounds until a currency scopes them', async () => {
     expect((await names('livingMax=800')).length).toBeGreaterThan(1);
-    expect(await names('currency=EUR&livingMax=800')).toEqual([`${tag}-base`]);
+    expect((await names('currency=EUR&livingMax=800')).sort()).toEqual(
+      [`${tag}-base`, `${tag}-unverified`].sort(),
+    );
   });
 
   it('scopes a currency filter to that currency alone', async () => {
@@ -502,6 +582,7 @@ describe('public country discovery filters (e2e)', () => {
 
   it('sorts by tuition only within a currency, and falls back otherwise', async () => {
     expect(await names('currency=EUR&sort=tuition')).toEqual([
+      `${tag}-unverified`,
       `${tag}-base`,
       `${tag}-second`,
     ]);

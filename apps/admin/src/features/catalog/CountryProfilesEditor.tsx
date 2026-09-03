@@ -32,6 +32,9 @@ const inputClass =
   "mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm outline-none focus:border-[#1657CF]";
 
 const COST_PERIODS = ["PER_YEAR", "PER_MONTH", "PER_TERM", "ONE_TIME"];
+/** Must stay identical to BUDGET_BANDS in the API's profile.constants.ts: the
+ * public Budget filter matches on these stored values exactly. */
+const BUDGET_BANDS = ["BUDGET_FRIENDLY", "MID_RANGE", "PREMIUM"];
 const LANGUAGE_REQUIREMENTS = [
   "REQUIRED",
   "OPTIONAL",
@@ -255,6 +258,7 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
             { key: "livingCostMin", label: "Living cost minimum", kind: "number" },
             { key: "livingCostMax", label: "Living cost maximum", kind: "number" },
             { key: "livingCostPeriod", label: "Living cost period", kind: "select", options: COST_PERIODS },
+            { key: "budgetBand", label: "Budget band", kind: "select", options: BUDGET_BANDS, hint: "Drives the public Budget filter." },
             { key: "applicationFeeMin", label: "Application fee minimum", kind: "number" },
             { key: "applicationFeeMax", label: "Application fee maximum", kind: "number" },
             { key: "tuitionNotes", label: "Tuition notes", kind: "textarea", wide: true },

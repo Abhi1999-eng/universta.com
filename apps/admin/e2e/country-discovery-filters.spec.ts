@@ -102,7 +102,12 @@ test.describe.serial('public country discovery filters', () => {
         ?.id;
 
       /* Two destinations that differ on exactly the things being filtered. */
-      const build = async (key: string, subjects: string[], withIntake: boolean) => {
+      const build = async (
+        key: string,
+        subjects: string[],
+        withIntake: boolean,
+        profiles?: { cost?: Record<string, unknown>; work?: Record<string, unknown> },
+      ) => {
         const iso = await freeIso(api, headers);
         const response = await api.post('/api/v1/admin/countries', {
           headers,
@@ -133,6 +138,11 @@ test.describe.serial('public country discovery filters', () => {
               },
             },
           );
+        for (const [profile, data] of Object.entries(profiles ?? {}))
+          await api.put(
+            `/api/v1/admin/countries/${country.data.id}/profiles/${profile}`,
+            { headers, data },
+          );
         const current = await api.get(
           `/api/v1/admin/countries/${country.data.id}`,
           { headers },
@@ -144,8 +154,27 @@ test.describe.serial('public country discovery filters', () => {
         });
       };
 
-      await build('Alphaland', [subjectIds[0]], true);
-      await build('Betaland', [subjectIds[1]], false);
+      /* Alphaland carries a sourced budget band; Betaland carries the same
+       * plain facts with no source behind them, which is what used to remove
+       * it from filters that have nothing to do with verification. */
+      await build('Alphaland', [subjectIds[0]], true, {
+        cost: {
+          currencyCode: 'EUR',
+          budgetBand: 'BUDGET_FRIENDLY',
+          applicationFeeMin: '0',
+          sourceReference: 'https://discovery.example.invalid/source',
+          verifiedAt: '2026-01-02',
+        },
+        work: {
+          postStudyWorkAvailable: false,
+          sourceReference: 'https://discovery.example.invalid/source',
+          verifiedAt: '2026-01-02',
+        },
+      });
+      await build('Betaland', [subjectIds[1]], false, {
+        cost: { currencyCode: 'EUR', budgetBand: 'PREMIUM' },
+        work: { postStudyWorkAvailable: false },
+      });
     });
   });
 
@@ -287,6 +316,34 @@ test.describe.serial('public country discovery filters', () => {
       expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
     }
     await page.setViewportSize({ width: 1440, height: 900 });
+  });
+
+  test('matches destinations on the canonical budget band', async ({ page }) => {
+    // The stored vocabulary and the filter's vocabulary are the same one, so
+    // a visible Budget option returns the destination that carries it.
+    await page.goto(`${webBaseUrl}/countries?budgetBand=BUDGET_FRIENDLY&limit=100`);
+    expect(ours(await names(page))).toEqual([`${MARK} Alphaland`]);
+    await page.goto(`${webBaseUrl}/countries?budgetBand=PREMIUM&limit=100`);
+    // Betaland publishes PREMIUM with no source, and a band is a rating.
+    expect(ours(await names(page))).toEqual([]);
+  });
+
+  test('keeps unverified destinations in filters that ask about plain facts', async ({
+    page,
+  }) => {
+    // Neither destination charges an application fee, and neither offers
+    // post-study work. Both answers are recorded facts, so a missing source
+    // must not remove Betaland from either result.
+    await page.goto(`${webBaseUrl}/countries?applicationFee=none&limit=100`);
+    expect(ours(await names(page))).toEqual([
+      `${MARK} Alphaland`,
+      `${MARK} Betaland`,
+    ]);
+    await page.goto(`${webBaseUrl}/countries?postStudyWork=false&limit=100`);
+    expect(ours(await names(page))).toEqual([
+      `${MARK} Alphaland`,
+      `${MARK} Betaland`,
+    ]);
   });
 
   test('closes the drawer on Escape', async ({ page }) => {

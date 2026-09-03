@@ -101,6 +101,50 @@ reads. Rolling the application back does **not** require deleting those rows and
 you should not delete them — a forward redeploy would only have to backfill
 again. Roll back the application by release as usual; leave the table alone.
 
+## One-time budget band canonicalisation
+
+`country_cost_profiles.budget_band` is a plain `VARCHAR` with no vocabulary
+enforced by the database. Every application contract — the API DTO
+(`BUDGET_BANDS`), this repository's demo seed, the Admin field and both public
+filter implementations — uses `BUDGET_FRIENDLY` / `MID_RANGE` / `PREMIUM`. The
+deployed rows instead hold `LOW` / `MEDIUM` / `HIGH`, written by a separate
+seeding script that goes straight to Prisma and never meets the validator, so
+the public Budget filter matches nothing at all.
+
+Run this **once**, after deploying the release that contains it:
+
+```bash
+sudo -u universta bash -lc '
+  set -a
+  source /opt/universta/shared/env/api.env
+  set +a
+  cd /opt/universta/current
+  npm --workspace apps/api run db:backfill:country-budget-bands
+'
+```
+
+The script prints the band distribution before and after, the row count for
+each mapping, and fails loudly if any legacy value survives. `LOW` becomes
+`BUDGET_FRIENDLY`, `MEDIUM` becomes `MID_RANGE`, `HIGH` becomes `PREMIUM`, and
+a `NULL` band stays `NULL` — "no band recorded" is a real state and is not the
+same as "budget friendly". Re-running is a no-op: the second pass finds no
+legacy values left, so it is safe to run again to confirm.
+
+Verify from the public site rather than the database, because the filter is
+what was broken:
+
+```bash
+curl -s 'https://<web-origin>/countries?budgetBand=BUDGET_FRIENDLY' | grep -c 'destination'
+```
+
+**Rollback.** The mapping is order-preserving and the values it writes are the
+only ones the API DTO has ever accepted, so an application rollback needs no
+data change. Do not reverse the mapping.
+
+**If the data is ever re-seeded.** The drift came from a seeding script outside
+this repository that computes the band itself. Any such script must emit the
+canonical vocabulary, or this backfill has to run again after it.
+
 ## Manual operations
 
 Open the `CI` workflow in GitHub Actions and choose **Run workflow**.
