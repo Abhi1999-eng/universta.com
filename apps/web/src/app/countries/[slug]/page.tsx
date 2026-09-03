@@ -13,6 +13,7 @@ import { phaseList } from "@/lib/phase1";
 import { jsonLdString } from "@/lib/json-ld";
 import { formatNumber } from "@/lib/format";
 import { resolvedMetadata } from "@/lib/seo-management";
+import { richTextToPlainText } from "@/components/phase1/RichText";
 
 export const dynamic = "force-dynamic";
 
@@ -79,17 +80,7 @@ export default async function CountryDetailPage({ params }: Props) {
     description: page.country.shortDescription,
     url: `/countries/${page.country.slug}`,
   };
-  const faqJsonLd = page.faqs.length
-    ? {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: page.faqs.map((faq) => ({
-          "@type": "Question",
-          name: faq.question,
-          acceptedAnswer: { "@type": "Answer", text: faq.answer },
-        })),
-      }
-    : null;
+  const faqJsonLd = countryFaqJsonLd(page.faqs);
   return (
     <>
       <CountryDetailReference
@@ -139,4 +130,23 @@ export default async function CountryDetailPage({ params }: Props) {
       ) : null}
     </>
   );
+}
+
+export function countryFaqJsonLd(
+  faqs: Array<{ question: string; answer: string }>,
+) {
+  return faqs.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map((faq) => ({
+          "@type": "Question",
+          name: faq.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: richTextToPlainText(faq.answer),
+          },
+        })),
+      }
+    : null;
 }

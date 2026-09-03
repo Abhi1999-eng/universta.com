@@ -229,6 +229,36 @@ describe('country detail — client contract', () => {
     expect(html).toContain('3 years');
   });
 
+  it('renders rich visa information as safe content, while preserving plain text', () => {
+    const rich = render(build());
+    expect(rich).toContain('<p>Apply after the offer is accepted.</p>');
+    expect(rich).not.toContain('&lt;p&gt;Apply after the offer is accepted.');
+
+    const plain = render(
+      build({ profiles: { work: { ...VERIFIED, visaInformation: 'Apply online.' } } }),
+    );
+    expect(plain).toContain('Apply online.');
+    expect(plain).toContain('white-space:pre-line');
+  });
+
+  it('sanitizes unsafe visa information through the shared rich text renderer', () => {
+    const html = render(
+      build({
+        profiles: {
+          work: {
+            ...VERIFIED,
+            visaInformation:
+              '<p>Safe guidance.</p><script>alert(1)</script><a href="javascript:bad()">Bad</a>',
+          },
+        },
+      }),
+    );
+    expect(html).toContain('Safe guidance.');
+    expect(html).not.toContain('<script');
+    expect(html).not.toContain('alert(1)');
+    expect(html).not.toContain('javascript:');
+  });
+
   it('humanises stored enums rather than showing raw values', () => {
     expect(html).not.toContain('NOT_PUBLISHED');
     expect(html).not.toContain('PER_YEAR');
@@ -421,7 +451,28 @@ describe('country detail — client contract', () => {
     expect(blank).not.toContain('id="country-why-study"');
   });
 
-  it('keeps FAQs rendering', () => {
+  it('renders FAQ rich text once without literal markup and preserves the accordion', () => {
+    const faqHtml = render(
+      build({
+        faqs: [
+          {
+            id: 'f1',
+            question: 'Can I work while studying?',
+            answer: '<p>Yes, within the <strong>permitted hours</strong>.</p>',
+            category: null,
+            isFeatured: false,
+            displayOrder: 0,
+          },
+        ],
+      }),
+    );
+    expect(faqHtml).toContain('<details class="qa"');
+    expect(faqHtml).toContain('<strong>permitted hours</strong>');
+    expect(faqHtml).not.toContain('&lt;p&gt;Yes, within');
+    expect(faqHtml.split('permitted hours').length - 1).toBe(1);
+  });
+
+  it('keeps plain-text FAQ answers working', () => {
     expect(html).toContain('Can I work while studying?');
     expect(html).toContain('Yes, within the permitted hours.');
   });

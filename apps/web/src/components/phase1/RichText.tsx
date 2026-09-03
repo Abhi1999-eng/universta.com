@@ -27,6 +27,21 @@ export function safeRichText(value: string) {
   });
 }
 
+/**
+ * Schema.org text fields must stay text even when the corresponding visible
+ * page field is authored as rich text. Sanitise first so dropped unsafe nodes
+ * cannot contribute their content, then remove the remaining presentation
+ * markup without maintaining a second HTML allowlist.
+ */
+export function richTextToPlainText(value: string) {
+  return safeRichText(value)
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(?:p|h2|h3|h4|li|blockquote)>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function safeAlignment(tag: string) {
   const style = tag.match(/\sstyle\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
   const alignment = style.match(/(?:^|;)\s*text-align\s*:\s*(left|center|right)\s*(?:;|$)/i)?.[1]?.toLowerCase();
