@@ -515,12 +515,18 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     await this.country(countryId);
-    assertSafeCopy([dto.question, dto.answer, dto.category]);
+    /* Question and category are short labels and stay plain text, same as
+     * every other "copy" field. The answer is public-facing prose, rendered
+     * through the same sanitised rich-text policy as an Editorial Section
+     * paragraph (RichText.tsx / sanitizeRichText) -- so it is sanitised and
+     * stored the same way rather than blanket-rejecting any markup, which
+     * used to make an existing HTML answer impossible to ever save again. */
+    assertSafeCopy([dto.question, dto.category]);
     const row = await this.prisma.countryFaq.create({
       data: {
         countryId,
         question: dto.question.trim(),
-        answer: dto.answer.trim(),
+        answer: sanitizeRichText(dto.answer.trim()) as string,
         category: trim(dto.category),
         isFeatured: dto.isFeatured ?? false,
         status: dto.status ?? 'ACTIVE',
@@ -551,7 +557,7 @@ export class CountryEditorialService {
   ) {
     const userId = actorId(request);
     const current = await this.faqRecord(countryId, id);
-    assertSafeCopy([dto.question, dto.answer, dto.category]);
+    assertSafeCopy([dto.question, dto.category]);
     this.version(
       current.updatedAt,
       dto.expectedUpdatedAt,
@@ -561,7 +567,7 @@ export class CountryEditorialService {
       where: { id },
       data: {
         question: dto.question.trim(),
-        answer: dto.answer.trim(),
+        answer: sanitizeRichText(dto.answer.trim()) as string,
         category: trim(dto.category),
         isFeatured: dto.isFeatured ?? false,
         status: dto.status ?? current.status,

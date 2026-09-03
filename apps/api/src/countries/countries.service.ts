@@ -1031,28 +1031,41 @@ export class CountriesService {
   }
 
   private publicWhere(query: PublicCountryFilters): Prisma.CountryWhereInput {
-    /* Every predicate that lands on the same to-one relation has to be merged
-     * into a single object: spreading two `costProfile` keys would silently
-     * keep only the last one, quietly widening the result set. */
-    const work: Prisma.CountryWorkProfileWhereInput = {};
-    const cost: Prisma.CountryCostProfileWhereInput = {};
+    /* Predicates on the same to-one relation are collected and ANDed rather
+     * than merged into one object: a single object loses a repeated key, and
+     * -- worse -- makes every filter inherit its neighbours' requirements, so
+     * asking for a currency started demanding a verified source purely because
+     * some other filter on the same request needed one.
+     *
+     * Verification is therefore per field, not per relation:
+     *
+     *   requires a verified source -- an editorial rating someone would act on
+     *     budgetBand, visaSuccessBand, immigrationPathwayStrength
+     *   evaluated on the stored data itself -- a plain recorded fact
+     *     currencyCode, tuitionMin, livingCostMin, applicationFeeMin,
+     *     postStudyWorkAvailable/MaxMonths, partTimeAllowed/HoursPerWeek
+     *
+     * This mirrors what universitiesAtLeast() above already does for the
+     * university count: an unverified figure falls back to the real catalogue
+     * instead of removing the destination from the answer entirely. */
+    const work: Prisma.CountryWorkProfileWhereInput[] = [];
+    const cost: Prisma.CountryCostProfileWhereInput[] = [];
     const verified = {
       sourceReference: { not: null },
       verifiedAt: { not: null },
     };
 
     if (query.visaSuccessBand)
-      Object.assign(work, verified, { visaSuccessBand: query.visaSuccessBand });
+      work.push({ ...verified, visaSuccessBand: query.visaSuccessBand });
     if (query.pathwayStrength)
-      Object.assign(work, verified, {
+      work.push({
+        ...verified,
         immigrationPathwayStrength: query.pathwayStrength,
       });
     if (query.postStudyWork !== undefined)
-      Object.assign(work, verified, {
-        postStudyWorkAvailable: query.postStudyWork,
-      });
+      work.push({ postStudyWorkAvailable: query.postStudyWork });
     if (query.postStudyWorkMonthsMin !== undefined)
-      Object.assign(work, verified, {
+      work.push({
         postStudyWorkAvailable: true,
         postStudyWorkMaxMonths: {
           not: null,
@@ -1060,36 +1073,32 @@ export class CountriesService {
         },
       });
     if (query.partTimeWork !== undefined)
-      Object.assign(work, verified, { partTimeAllowed: query.partTimeWork });
+      work.push({ partTimeAllowed: query.partTimeWork });
     if (query.workHoursMin !== undefined)
-      Object.assign(work, verified, {
+      work.push({
         partTimeAllowed: true,
         partTimeHoursPerWeek: { not: null, gte: query.workHoursMin },
       });
 
     if (query.budgetBand)
-      Object.assign(cost, verified, { budgetBand: query.budgetBand });
+      cost.push({ ...verified, budgetBand: query.budgetBand });
     /* Money bounds only ever apply inside one currency. Destinations publish in
      * their own currency and there is no conversion layer, so comparing 20,000
      * SEK with 20,000 SGD would be meaningless; without `currency` the amount
      * bounds are ignored rather than silently answering the wrong question. */
     if (query.currency) {
-      Object.assign(cost, verified, { currencyCode: query.currency });
+      cost.push({ currencyCode: query.currency });
       if (query.tuitionMax !== undefined)
-        Object.assign(cost, {
-          tuitionMin: { not: null, lte: query.tuitionMax },
-        });
+        cost.push({ tuitionMin: { not: null, lte: query.tuitionMax } });
       if (query.livingMax !== undefined)
-        Object.assign(cost, {
-          livingCostMin: { not: null, lte: query.livingMax },
-        });
+        cost.push({ livingCostMin: { not: null, lte: query.livingMax } });
     }
     if (query.applicationFee === 'none')
-      Object.assign(cost, verified, {
+      cost.push({
         OR: [{ applicationFeeMin: null }, { applicationFeeMin: 0 }],
       });
     if (query.applicationFee === 'any')
-      Object.assign(cost, verified, { applicationFeeMin: { gt: 0 } });
+      cost.push({ applicationFeeMin: { gt: 0 } });
 
     return {
       status: 'PUBLISHED',
@@ -1177,8 +1186,8 @@ export class CountriesService {
             },
           }
         : {}),
-      ...(Object.keys(work).length ? { workProfile: { is: work } } : {}),
-      ...(Object.keys(cost).length ? { costProfile: { is: cost } } : {}),
+      ...(work.length ? { workProfile: { is: { AND: work } } } : {}),
+      ...(cost.length ? { costProfile: { is: { AND: cost } } } : {}),
       ...(query.universityIds ? { id: { in: query.universityIds } } : {}),
       ...(query.hasTopRankedUniversities !== undefined
         ? {

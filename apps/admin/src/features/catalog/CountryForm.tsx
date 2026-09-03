@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createConsultantCard,
@@ -102,7 +102,7 @@ type CountryConfiguration = {
   popularCourseIds: string[];
 };
 type SectionRow = SectionDraft & { id?: string; updatedAt?: string };
-type FaqRow = {
+export type FaqRow = {
   id?: string;
   updatedAt?: string;
   question: string;
@@ -112,6 +112,22 @@ type FaqRow = {
   status: string;
   displayOrder: string;
 };
+
+/** Saving a Country used to re-send every FAQ it holds, edited or not, so one
+ * FAQ the server would no longer accept blocked every unrelated edit to that
+ * Country. A row is only worth sending when the operator actually changed it;
+ * a row with no id is new and always is. */
+export function faqRowChanged(row: FaqRow, pristine: FaqRow | undefined) {
+  if (!row.id || !pristine) return true;
+  return (
+    row.question !== pristine.question ||
+    row.answer !== pristine.answer ||
+    row.category !== pristine.category ||
+    row.isFeatured !== pristine.isFeatured ||
+    row.status !== pristine.status ||
+    row.displayOrder !== pristine.displayOrder
+  );
+}
 type CardRow = {
   id?: string;
   updatedAt?: string;
@@ -264,6 +280,16 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [faqs, setFaqs] = useState<FaqRow[]>([]);
+  /** The server's copy of each saved FAQ, so a save can tell an edited row
+   * from an untouched one. Refreshed from every server response, never from
+   * local edits. */
+  const pristineFaqs = useRef<Map<string, FaqRow>>(new Map());
+  const rememberFaqs = (rows: FaqRow[]) => {
+    pristineFaqs.current = new Map(
+      rows.filter((row) => row.id).map((row) => [row.id as string, { ...row }]),
+    );
+    return rows;
+  };
   const [cards, setCards] = useState<CardRow[]>([]);
   const [removedSections, setRemovedSections] = useState<SectionRow[]>([]);
   const [removedFaqs, setRemovedFaqs] = useState<FaqRow[]>([]);
@@ -357,16 +383,18 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           })),
         );
         setFaqs(
-          editorialBundle.faqs.map((row) => ({
-            id: row.id,
-            updatedAt: row.updatedAt,
-            question: row.question,
-            answer: row.answer,
-            category: row.category ?? "",
-            isFeatured: row.isFeatured,
-            status: row.status,
-            displayOrder: String(row.displayOrder),
-          })),
+          rememberFaqs(
+            editorialBundle.faqs.map((row) => ({
+              id: row.id,
+              updatedAt: row.updatedAt,
+              question: row.question,
+              answer: row.answer,
+              category: row.category ?? "",
+              isFeatured: row.isFeatured,
+              status: row.status,
+              displayOrder: String(row.displayOrder),
+            })),
+          ),
         );
         setCards(
           editorialBundle.consultantCards.map((row) => ({
@@ -591,6 +619,13 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       if (row.id) await deleteCountryFaq(id, row.id, row.updatedAt);
     const nextFaqs: FaqRow[] = [];
     for (const row of activeFaqs) {
+      // An untouched FAQ is left exactly as the server holds it. Re-sending it
+      // gains nothing and, when its stored answer predates a validation rule,
+      // fails the whole Country save over content nobody was editing.
+      if (!faqRowChanged(row, row.id ? pristineFaqs.current.get(row.id) : undefined)) {
+        nextFaqs.push(row);
+        continue;
+      }
       const payload = {
         question: row.question.trim(),
         answer: row.answer.trim(),
@@ -614,7 +649,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         displayOrder: String(result.data.displayOrder),
       });
     }
-    setFaqs(nextFaqs);
+    setFaqs(rememberFaqs(nextFaqs));
     setRemovedFaqs([]);
     for (const row of removedCards)
       if (row.id) await deleteConsultantCard(id, row.id, row.updatedAt);
