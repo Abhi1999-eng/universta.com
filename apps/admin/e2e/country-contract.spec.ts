@@ -358,7 +358,12 @@ test.describe.serial('country client contract, end to end', () => {
     for (const rejected of ['abc xyz', 'javascript:alert(1)']) {
       await field(page, 'Canonical URL').fill(rejected);
       await saveCountry(page);
-      await expect(formIssues(page)).toContainText('Canonical URL');
+      /* The reason now lives under the canonical field itself; the banner only
+       * says how many fields need attention. */
+      await expect(page.locator('#seo-canonical-error')).toContainText(
+        'site path',
+      );
+      await expect(formIssues(page)).toContainText('needs attention');
       expect((await storedSeo(countryId))?.canonicalUrl).toBe(
         'https://example.invalid/acceptance-country',
       );
@@ -1004,6 +1009,61 @@ test.describe.serial('country client contract, end to end', () => {
     expect(
       publicCards.some((row) => row.title === 'Published guidance card'),
     ).toBeTruthy();
+  });
+
+  test('explains a bad value under the field, and clears it once corrected', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await openCountry(page);
+
+    /* The complaint has to arrive when the operator leaves the field, next to
+     * the field -- not as a banner at the top of a long form after Save. */
+    const iso3 = field(page, 'ISO3');
+    const original = String(await iso3.inputValue());
+    await iso3.fill('ML');
+    await field(page, 'Capital').click();
+    const message = page.getByText('ISO3 must be exactly 3 letters, like MLT.');
+    await expect(message).toBeVisible();
+
+    // Correcting it clears the message without needing a save.
+    await iso3.fill('MLT');
+    await field(page, 'Capital').click();
+    await expect(message).toHaveCount(0);
+
+    await iso3.fill(original);
+    await field(page, 'Capital').click();
+  });
+
+  test('blocks the save and focuses the first field that needs attention', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const before = await openCountry(page);
+
+    await field(page, 'Country name').fill('');
+    let sent = false;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'PATCH' &&
+        /\/api\/v1\/admin\/countries\/[0-9a-f-]+$/.test(
+          new URL(request.url()).pathname,
+        )
+      )
+        sent = true;
+    });
+    await saveCountry(page);
+
+    await expect(page.getByText('Country name is required.')).toBeVisible();
+    // Nothing should reach the server while the form knows it is invalid.
+    expect(sent).toBeFalsy();
+    // ...and the operator is put on the field to fix.
+    await expect(page.locator('[data-field="name"]')).toBeFocused();
+    // The record is untouched.
+    expect((await storedCountry()).name).toBe(before.name);
+
+    await field(page, 'Country name').fill(String(before.name));
+    await saveCountry(page);
   });
 
   test('shows the fixture in the countries list and filters by subject and tag', async ({ page }) => {
