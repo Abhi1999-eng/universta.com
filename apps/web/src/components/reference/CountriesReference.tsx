@@ -105,12 +105,13 @@ function tuitionLabel(country: Country | DirectoryRecord) {
   if (!cost || (!cost.tuitionMin && !cost.tuitionMax)) return null;
   // ISO code only. Pairing it with the symbol produced "AED د.إ55,000" and, for
   // right-to-left symbols, reordered the whole range on screen.
-  const code = cost.currencyCode ? `${cost.currencyCode} ` : '';
+  const code = cost.currencyCode ? `${cost.currencyCode}` : '';
   const min = cost.tuitionMin ? formatNumber(cost.tuitionMin) : null;
   const max = cost.tuitionMax ? formatNumber(cost.tuitionMax) : null;
   const range = min && max && min !== max ? `${min}–${max}` : (min ?? max);
   const period = cost.tuitionPeriod === 'PER_YEAR' ? '/yr' : '';
-  return `${code}${range}${period}`;
+  const rate = code && period ? `(${code}${period})` : '';
+  return {rate, range};
 }
 
 function workLabel(country: Country | DirectoryRecord) {
@@ -884,8 +885,8 @@ export function CountriesReference(props: CountriesReferenceProps) {
                     <div className="facts">
                       {tuition ? (
                         <div className="f">
-                          <span>Tuition</span>
-                          <b>{tuition}</b>
+                          <span>Tuition {tuition.rate || ''}</span>
+                          <b>{tuition.range || ''}</b>
                         </div>
                       ) : null}
                       {work ? (
