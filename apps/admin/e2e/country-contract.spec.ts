@@ -939,6 +939,59 @@ test.describe.serial('country client contract, end to end', () => {
     await saveCountry(page);
   });
 
+  test('clears an optional value instead of silently keeping the old one', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const countryId = String((await openCountry(page)).id);
+
+    await field(page, 'Capital').fill('Clearable City');
+    await saveCountry(page);
+    expect((await storedCountry()).capitalCity).toBe('Clearable City');
+
+    // Emptying the field used to report success and change nothing: the blank
+    // was dropped from the payload and the API read the missing key as
+    // "leave unchanged".
+    await field(page, 'Capital').fill('');
+    await saveCountry(page);
+    expect((await storedCountry()).capitalCity ?? null).toBeNull();
+    await openCountry(page);
+    await expect(field(page, 'Capital')).toHaveValue('');
+
+    // Leave the fixture as the rest of this serial chain expects it.
+    await field(page, 'Capital').fill(CAPITAL);
+    await saveCountry(page);
+    expect((await storedCountry()).capitalCity).toBe(CAPITAL);
+    expect(countryId).toBeTruthy();
+  });
+
+  test('publishes a guidance card so it can reach the public page', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const countryId = String((await openCountry(page)).id);
+
+    await page.getByRole('button', { name: '+ Add guidance card' }).click();
+    await field(page, 'Title').last().fill('Published guidance card');
+    await field(page, 'Slug').last().fill(`${acceptanceSlugPrefix(runId)}published-card`);
+    await field(page, 'Short description').last().fill('Card short description.');
+    await field(page, 'CTA URL').last().fill('/counselling');
+    // Cards are staged as drafts; without a status control there was no way to
+    // ever publish one, so every card built here stayed invisible.
+    await choice(page, 'Status').last().selectOption('ACTIVE');
+    await saveCountry(page);
+
+    const cards = await withAdminApi(async (api, headers) => {
+      const response = await api.get(
+        `/api/v1/admin/countries/${countryId}/consultant-cards`,
+        { headers },
+      );
+      return ((await response.json()) as { data: Row[] }).data;
+    });
+    const published = cards.find((row) => row.title === 'Published guidance card');
+    expect(published?.status).toBe('ACTIVE');
+  });
+
   test('shows the fixture in the countries list and filters by subject and tag', async ({ page }) => {
     await loginAsAdmin(page);
     const stored = await storedCountry();

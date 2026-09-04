@@ -78,10 +78,13 @@ function decimal(
   scale: number,
   field: string,
   maxIntegerDigits: number,
-): Prisma.Decimal | undefined {
-  // null is what the serializer reports for an unset column, so a round-tripped
-  // payload carries it back; it means "not provided", the same as '' does.
-  if (value === undefined || value === null || value === '') return undefined;
+): Prisma.Decimal | null | undefined {
+  /* An omitted or round-tripped-null value means "not provided", so it is left
+   * alone. An empty string is different: it is what the Admin sends for a field
+   * the operator emptied, and it used to be treated as "not provided" too --
+   * so clearing a figure reported success and changed nothing. */
+  if (value === undefined || value === null) return undefined;
+  if (value === '') return null;
   if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value))
     throw bad(
       'PROFILE_DECIMAL_INVALID',
