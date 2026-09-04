@@ -198,6 +198,12 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-");
 const optional = (value: string) => (value.trim() ? value.trim() : undefined);
+/** An emptied optional field. `undefined` is dropped from the JSON body and the
+ * API reads a missing key as "leave this alone", so clearing a value used to
+ * report success and change nothing. `null` is the explicit clear the API
+ * already understands, so send that instead and keep omission meaning
+ * unchanged for other callers. */
+const clearable = (value: string) => (value.trim() ? value.trim() : null);
 const hasSeo = (value: UnifiedSeoDraft) =>
   Boolean(
     value.seoTitle.trim() ||
@@ -622,7 +628,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         secondaryMediaId: row.secondaryMediaId || undefined,
         ctaLabel: optional(row.ctaLabel),
         ctaUrl: optional(row.ctaUrl),
-        displayOrder: index,
+        /* An explicit Display order wins; otherwise the position in the list
+         * supplies it, which is what a row left at the default 0 wants. It
+         * used to always be the index, so a number typed into the visible
+         * Display order field was accepted and then silently discarded. */
+        displayOrder: row.displayOrder > 0 ? row.displayOrder : index,
         status: row.status,
         ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
       };
@@ -758,19 +768,19 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         // The client's own import identity. It belongs to the Country row --
         // it used to be sent on each editorial section instead, where there is
         // no such column, so a UID typed here was silently never stored.
-        externalUid: optional(core.externalUid),
-        overview: optional(core.overview),
-        tagline: optional(core.tagline),
+        externalUid: clearable(core.externalUid),
+        overview: clearable(core.overview),
+        tagline: clearable(core.tagline),
         iso2Code: optional(core.iso2Code),
         iso3Code: optional(core.iso3Code),
-        capitalCity: optional(core.capitalCity),
-        officialLanguage: optional(core.officialLanguage),
-        currencyName: optional(core.currencyName),
-        currencyCode: optional(core.currencyCode),
-        currencySymbol: optional(core.currencySymbol),
-        flagMediaId: optional(core.flagMediaId),
-        listingMediaId: optional(core.listingMediaId),
-        heroMediaId: optional(core.heroMediaId),
+        capitalCity: clearable(core.capitalCity),
+        officialLanguage: clearable(core.officialLanguage),
+        currencyName: clearable(core.currencyName),
+        currencyCode: clearable(core.currencyCode),
+        currencySymbol: clearable(core.currencySymbol),
+        flagMediaId: clearable(core.flagMediaId),
+        listingMediaId: clearable(core.listingMediaId),
+        heroMediaId: clearable(core.heroMediaId),
         subjectIds,
         tagIds,
         isFeatured: core.isFeatured,
@@ -1356,6 +1366,19 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                         updateCard(index, { displayOrder: value })
                       }
                       type="number"
+                    />
+                    {/* Cards are staged as drafts, and without this there was
+                      * no way to ever publish one: the public page shows only
+                      * ACTIVE cards, so every card built here stayed invisible. */}
+                    <Select
+                      label="Status"
+                      value={row.status}
+                      onChange={(value) => updateCard(index, { status: value })}
+                      options={[
+                        { id: "DRAFT", label: "Draft — not shown publicly" },
+                        { id: "ACTIVE", label: "Active — shown on the country page" },
+                        { id: "INACTIVE", label: "Inactive — retired" },
+                      ]}
                     />
                     <BooleanField
                       label="Free consultation"

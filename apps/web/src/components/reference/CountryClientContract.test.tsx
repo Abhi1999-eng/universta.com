@@ -207,6 +207,28 @@ describe('country detail — client contract', () => {
     expect(html).not.toContain('Immigration rules change frequently');
   });
 
+  it('shows the living-cost note alongside the tuition note, not instead of it', () => {
+    const html = render(
+      build({
+        profiles: {
+          cost: {
+            currencyCode: 'EUR',
+            tuitionMin: '1000',
+            tuitionMax: '2000',
+            tuitionNotes: 'Tuition note text',
+            livingCostMin: '100',
+            livingCostMax: '200',
+            livingCostNotes: 'Living note text',
+          },
+        },
+      }),
+    );
+    // `??` between them meant the living note was unreachable whenever a
+    // tuition note existed, which is the common case.
+    expect(html).toContain('Tuition note text');
+    expect(html).toContain('Living note text');
+  });
+
   it('falls back to initials rather than a broken image when no flag exists', () => {
     expect(html).not.toContain('<img src=""');
     expect(html).toContain('AU');

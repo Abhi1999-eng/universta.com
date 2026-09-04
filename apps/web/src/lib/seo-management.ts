@@ -58,6 +58,9 @@ export function resolvedMetadata(
   const image = seo?.ogMedia;
   const imageUrl = image?.url ?? image?.publicUrl;
   const imageAlt = image?.alt ?? image?.altText ?? title;
+  const twitterImage = seo?.twitterMedia;
+  const twitterImageUrl = twitterImage?.url ?? twitterImage?.publicUrl;
+  const twitterImageAlt = twitterImage?.alt ?? twitterImage?.altText ?? title;
   return {
     title: titleWithSuffix(title, seo),
     description,
@@ -71,6 +74,19 @@ export function resolvedMetadata(
       description: seo?.ogDescription ?? description,
       url: resolvedCanonical,
       images: imageUrl ? [{ url: imageUrl, alt: imageAlt }] : undefined,
+    },
+    /* Without a Twitter block Next.js derives the card from Open Graph, so the
+     * dedicated Twitter fields an editor fills in never reached the page. An
+     * explicit Twitter value wins; Open Graph, then the page title, fill the
+     * gap so a card is still produced when only OG is set. */
+    twitter: {
+      title: seo?.twitterTitle ?? seo?.ogTitle ?? title,
+      description: seo?.twitterDescription ?? seo?.ogDescription ?? description,
+      images: twitterImageUrl
+        ? [{ url: twitterImageUrl, alt: twitterImageAlt }]
+        : imageUrl
+          ? [{ url: imageUrl, alt: imageAlt }]
+          : undefined,
     },
   };
 }

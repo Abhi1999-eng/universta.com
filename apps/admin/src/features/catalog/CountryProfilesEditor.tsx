@@ -102,6 +102,38 @@ function intakeFromRecord(row: Record<string, unknown>): IntakeDraft {
   };
 }
 
+/** Every select on these cards offers a "Not set" option whose value is the
+ * empty string, which the API validates against a fixed list that has no
+ * member for "" -- so unsetting one was a 400 naming no field.
+ *
+ * What "not set" means is per column, and the schema is the authority. A
+ * nullable column clears to null. A NOT NULL column has a default that already
+ * means "nothing is being asserted here" -- `VARIES` for a test requirement,
+ * `NOT_PUBLISHED` for the visa band -- so it goes back to that. Sending null to
+ * one of those is a 500, not a clear. Text and number fields are untouched:
+ * they clear correctly on their own.
+ */
+const CHOICE_RESET: Record<string, string | null> = {
+  // Nullable columns.
+  budgetBand: null,
+  immigrationPathwayStrength: null,
+  // NOT NULL columns, reset to the default that means "nothing asserted".
+  ieltsRequirement: 'VARIES',
+  pteRequirement: 'VARIES',
+  toeflRequirement: 'VARIES',
+  duolingoRequirement: 'VARIES',
+  visaSuccessBand: 'NOT_PUBLISHED',
+  tuitionPeriod: 'PER_YEAR',
+  livingCostPeriod: 'PER_MONTH',
+};
+
+function clearedChoices(draft: Draft): Draft {
+  const next: Draft = { ...draft };
+  for (const [field, reset] of Object.entries(CHOICE_RESET))
+    if (next[field] === '') next[field] = reset;
+  return next;
+}
+
 export function CountryProfilesEditor({ countryId }: { countryId: string }) {
   const [bundle, setBundle] = useState<CountryProfileBundle | null>(null);
   const [intakeOptions, setIntakeOptions] = useState<IntakeOption[]>([]);
@@ -146,11 +178,35 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
     setSaving(section);
     try {
       if (section === "language") {
-        const raw = text(language.ieltsMinScore).trim();
-        const score = Number(raw);
-        if (raw && (!Number.isFinite(score) || score < 0 || score > 9)) {
-          setError("IELTS score must be between 0 and 9.");
-          return;
+        /* A score only means something when the test is actually asked for.
+         * The API refuses that pair, and its answer used to arrive as a bare
+         * "Catalog request failed" naming neither the test nor the reason --
+         * so name both here, before anything is sent. */
+        const tests: Array<[string, string, string, number]> = [
+          ["ieltsRequirement", "ieltsMinScore", "IELTS", 9],
+          ["pteRequirement", "pteMinScore", "PTE", 90],
+          ["toeflRequirement", "toeflMinScore", "TOEFL", 120],
+          ["duolingoRequirement", "duolingoMinScore", "Duolingo", 160],
+        ];
+        for (const [requirementKey, scoreKey, label, max] of tests) {
+          const value = text(language[scoreKey]).trim();
+          if (!value) continue;
+          const parsed = Number(value);
+          if (!Number.isFinite(parsed) || parsed < 0 || parsed > max) {
+            setError(`${label} score must be between 0 and ${max}.`);
+            return;
+          }
+          /* Mirror the API rule exactly: it refuses a score only when the
+           * requirement explicitly says the test is not asked for. An unset
+           * requirement is left to the API, so this guard never blocks a save
+           * the server would have accepted. */
+          const requirement = text(language[requirementKey]).trim();
+          if (requirement === "NOT_REQUIRED" || requirement === "VARIES") {
+            setError(
+              `Set the ${label} requirement to Required or Optional before entering a ${label} score.`,
+            );
+            return;
+          }
         }
       }
       const drafts: Record<Section, Draft> = {
@@ -181,7 +237,7 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
               })),
             }
           : {
-              ...drafts[section],
+              ...clearedChoices(drafts[section]),
               expectedUpdatedAt: drafts[section].updatedAt as string | undefined,
             };
       await putCountryProfile(
@@ -196,6 +252,26 @@ export function CountryProfilesEditor({ countryId }: { countryId: string }) {
       setMessage(`${LABELS[section]} saved.`);
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : "Unable to save");
+      /* A rejected save can still leave this card holding a version token the
+       * server has moved past, and every later save then fails as stale until
+       * the page is reloaded -- including the corrected one. Refresh just the
+       * tokens, never the values, so the operator keeps the edit they are in
+       * the middle of fixing. Genuine concurrency is unaffected: the token
+       * still comes from the server, so another session's write is still
+       * refused. */
+      await getCountryProfiles(countryId)
+        .then((latest) => {
+          const version = (row: Draft, next: unknown) =>
+            next && typeof next === "object"
+              ? { ...row, updatedAt: (next as Draft).updatedAt }
+              : row;
+          setBundle(latest.data);
+          setCost((row) => version(row, latest.data.cost));
+          setWork((row) => version(row, latest.data.work));
+          setLanguage((row) => version(row, latest.data.language));
+          setStatistics((row) => version(row, latest.data.statistics));
+        })
+        .catch(() => undefined);
     } finally {
       setSaving("");
     }

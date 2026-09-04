@@ -875,10 +875,14 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
                 </div>
               ))}
             </div>
-            {cost?.tuitionNotes || cost?.livingCostNotes ? (
-              <p className="disclaimer">
-                {cost.tuitionNotes ?? cost.livingCostNotes}
-              </p>
+            {/* Each note is its own field describing a different row of the
+              * table above. `??` between them meant a country that filled in
+              * tuition notes could never show its living-cost notes. */}
+            {cost?.tuitionNotes ? (
+              <p className="disclaimer">{cost.tuitionNotes}</p>
+            ) : null}
+            {cost?.livingCostNotes ? (
+              <p className="disclaimer">{cost.livingCostNotes}</p>
             ) : null}
             {cost?.disclaimer ? (
               <p className="disclaimer">{cost.disclaimer}</p>

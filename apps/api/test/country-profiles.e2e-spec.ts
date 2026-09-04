@@ -278,4 +278,139 @@ describe('country structured profiles (e2e)', () => {
     });
     expect(audits).toBeGreaterThanOrEqual(4);
   });
+  it('clears a numeric profile figure when the field is emptied', async () => {
+    const verifiedAt = '2026-01-01T00:00:00.000Z';
+    const current = await admin(
+      'get',
+      `/api/v1/admin/countries/${countryId}/profiles`,
+    ).expect(200);
+    const existing = (data(current) as { cost?: { updatedAt?: string } }).cost;
+    const set = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/cost`,
+      {
+        currencyCode: 'CAD',
+        tuitionMin: '10000.00',
+        applicationFeeMin: '75.00',
+        sourceReference: 'https://example.com/clear-cost',
+        verifiedAt,
+        ...(existing?.updatedAt
+          ? { expectedUpdatedAt: existing.updatedAt }
+          : {}),
+      },
+    ).expect(200);
+    expect(String(record(set).applicationFeeMin)).toBe('75');
+
+    /* An emptied field is the Admin's explicit clear. It used to be read as
+     * "not provided", so the save reported success and kept the old figure. */
+    const cleared = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/cost`,
+      {
+        currencyCode: 'CAD',
+        tuitionMin: '10000.00',
+        applicationFeeMin: '',
+        sourceReference: 'https://example.com/clear-cost',
+        verifiedAt,
+        expectedUpdatedAt: record(set).updatedAt,
+      },
+    ).expect(200);
+    expect(record(cleared).applicationFeeMin).toBeNull();
+
+    // An omitted key still means "leave unchanged" for other API callers.
+    const untouched = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/cost`,
+      {
+        currencyCode: 'CAD',
+        tuitionMin: '12000.00',
+        sourceReference: 'https://example.com/clear-cost',
+        verifiedAt,
+        expectedUpdatedAt: record(cleared).updatedAt,
+      },
+    ).expect(200);
+    expect(String(record(untouched).tuitionMin)).toBe('12000');
+  });
+
+  it('unsets a language requirement back to its "nothing asserted" default', async () => {
+    const current = await admin(
+      'get',
+      `/api/v1/admin/countries/${countryId}/profiles`,
+    ).expect(200);
+    const existing = (data(current) as { language?: { updatedAt?: string } })
+      .language;
+    const set = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/language`,
+      {
+        ieltsRequirement: 'REQUIRED',
+        ieltsMinScore: '6.5',
+        ...(existing?.updatedAt
+          ? { expectedUpdatedAt: existing.updatedAt }
+          : {}),
+      },
+    ).expect(200);
+    expect(record(set).ieltsRequirement).toBe('REQUIRED');
+
+    /* `ielts_requirement` is NOT NULL and defaults to VARIES, so "not set" is
+     * VARIES -- which is exactly what the public page prints. The Admin used to
+     * send '' here and take a 400 naming no field. */
+    const cleared = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/language`,
+      {
+        ieltsRequirement: 'VARIES',
+        ieltsMinScore: '',
+        expectedUpdatedAt: record(set).updatedAt,
+      },
+    ).expect(200);
+    expect(record(cleared).ieltsRequirement).toBe('VARIES');
+    expect(record(cleared).ieltsMinScore).toBeNull();
+  });
+
+  it('refuses a test score whose requirement says the test is not asked for', async () => {
+    const current = await admin(
+      'get',
+      `/api/v1/admin/countries/${countryId}/profiles`,
+    ).expect(200);
+    const existing = (data(current) as { language?: { updatedAt?: string } })
+      .language;
+    const response = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/language`,
+      {
+        toeflRequirement: 'VARIES',
+        toeflMinScore: '90',
+        ...(existing?.updatedAt
+          ? { expectedUpdatedAt: existing.updatedAt }
+          : {}),
+      },
+    );
+    expect(response.status).toBe(400);
+    expect(code(response)).toBe('PROFILE_LANGUAGE_SCORE_INVALID');
+  });
+
+  it('accepts a TOEFL and Duolingo score once the requirement asks for the test', async () => {
+    const current = await admin(
+      'get',
+      `/api/v1/admin/countries/${countryId}/profiles`,
+    ).expect(200);
+    const existing = (data(current) as { language?: { updatedAt?: string } })
+      .language;
+    const saved = await admin(
+      'put',
+      `/api/v1/admin/countries/${countryId}/profiles/language`,
+      {
+        toeflRequirement: 'REQUIRED',
+        toeflMinScore: '90',
+        duolingoRequirement: 'OPTIONAL',
+        duolingoMinScore: '110',
+        ...(existing?.updatedAt
+          ? { expectedUpdatedAt: existing.updatedAt }
+          : {}),
+      },
+    ).expect(200);
+    expect(String(record(saved).toeflMinScore)).toBe('90');
+    expect(String(record(saved).duolingoMinScore)).toBe('110');
+  });
 });

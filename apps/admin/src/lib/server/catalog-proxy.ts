@@ -34,6 +34,14 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_INTAKES_STALE_VERSION: 'The country intakes changed in another session. Reload before saving',
   COUNTRY_STATISTICS_STALE_VERSION: 'The statistics changed in another session. Reload before saving',
   PROFILE_DECIMAL_INVALID: 'Profile decimal values are invalid',
+  /* Unmapped codes fall through to the generic "Catalog request failed", which
+   * names no field and gives the operator nothing to act on -- these are all
+   * ordinary things to get wrong while filling a profile in. */
+  PROFILE_LANGUAGE_SCORE_INVALID: 'Check the language test score against its requirement',
+  PROFILE_CURRENCY_INVALID: 'Currency must be a three-letter code',
+  PROFILE_CURRENCY_REQUIRED: 'A currency is required alongside these amounts',
+  PROFILE_HOURS_INVALID: 'Working hours are invalid',
+  PROFILE_PERCENTAGE_INVALID: 'Percentage values must be between 0 and 100',
   PROFILE_DECIMAL_PRECISION: 'Profile decimal precision is invalid',
   PROFILE_RANGE_INVALID: 'Profile minimum and maximum values are invalid',
   PROFILE_SOURCE_REQUIRED: 'A published profile value requires a source and verification timestamp',
