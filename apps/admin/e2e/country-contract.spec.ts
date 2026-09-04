@@ -978,7 +978,7 @@ test.describe.serial('country client contract, end to end', () => {
     await field(page, 'CTA URL').last().fill('/counselling');
     // Cards are staged as drafts; without a status control there was no way to
     // ever publish one, so every card built here stayed invisible.
-    await choice(page, 'Status').last().selectOption('ACTIVE');
+    await choice(page, 'Status').last().selectOption('PUBLISHED');
     await saveCountry(page);
 
     const cards = await withAdminApi(async (api, headers) => {
@@ -989,7 +989,21 @@ test.describe.serial('country client contract, end to end', () => {
       return ((await response.json()) as { data: Row[] }).data;
     });
     const published = cards.find((row) => row.title === 'Published guidance card');
-    expect(published?.status).toBe('ACTIVE');
+    expect(published?.status).toBe('PUBLISHED');
+
+    /* The status only matters if it actually opens the public gate: cards are
+     * filtered on PUBLISHED there, while sections and FAQs use ACTIVE, so a
+     * plausible-looking ACTIVE left the card invisible. */
+    const publicCards = await withAdminApi(async (api) => {
+      const response = await api.get(`/api/v1/countries/${COUNTRY_SLUG}/page`);
+      const payload = (await response.json()) as {
+        data?: { consultantCards?: Row[] };
+      };
+      return payload.data?.consultantCards ?? [];
+    });
+    expect(
+      publicCards.some((row) => row.title === 'Published guidance card'),
+    ).toBeTruthy();
   });
 
   test('shows the fixture in the countries list and filters by subject and tag', async ({ page }) => {
