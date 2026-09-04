@@ -63,12 +63,16 @@ import { variablesForContext } from "@/features/shared/variable-autocomplete";
 import { nextAutoSlug, slugFromText } from "@/lib/slug";
 import {
   blankUnifiedSeo,
-  canonicalInputError,
   seoPayload,
   UnifiedSeoFields,
   type UnifiedSeoDraft,
 } from "@/features/shared/UnifiedSeoFields";
 import { CountryProfilesEditor } from "./CountryProfilesEditor";
+import {
+  countryFieldRules,
+  fieldErrorsFromServer,
+  seoFieldRules,
+} from "./country-field-rules";
 
 type Intent = "draft" | "publish";
 type Core = {
@@ -320,6 +324,50 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const [savingIntent, setSavingIntent] = useState<Intent | null>(null);
   const [error, setError] = useState("");
   const [issues, setIssues] = useState<string[]>([]);
+  /** One message per field, shown under that field. The banner stays for
+   * whole-record problems; anything a single control can explain belongs on
+   * that control. */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  /** Runs when the operator leaves a field, and again on every save. */
+  const checkField = (field: string, value: string) => {
+    const rule = countryFieldRules[field] ?? seoFieldRules[field];
+    const error = rule ? rule(value) : null;
+    setFieldErrors((current) => {
+      if (error) return { ...current, [field]: error };
+      if (!(field in current)) return current;
+      // Correcting a field clears its message immediately -- the operator
+      // should not have to save again to find out they fixed it.
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+    return error;
+  };
+
+  /** Every rule at once, for the moment Save is pressed. */
+  const validateAllFields = () => {
+    const found: Record<string, string> = {};
+    for (const [field, rule] of Object.entries(countryFieldRules)) {
+      const error = rule(String(core[field as keyof Core] ?? ""));
+      if (error) found[field] = error;
+    }
+    if (hasSeo(seo))
+      for (const [field, rule] of Object.entries(seoFieldRules)) {
+        const error = rule(String(seo[field as keyof UnifiedSeoDraft] ?? ""));
+        if (error) found[field] = error;
+      }
+    setFieldErrors(found);
+    return found;
+  };
+
+  /** Put the operator on the first thing they have to fix. */
+  const focusField = (field: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-field="${field}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.focus({ preventScroll: true });
+  };
   const [dirty, setDirty] = useState(false);
   const [slugEdited, setSlugEdited] = useState(false);
 
@@ -562,12 +610,19 @@ export function CountryForm({ countryId }: { countryId?: string }) {
 
   function validate() {
     const next: string[] = [];
-    if (!core.continentId) next.push("Continent is required.");
-    if (!core.name.trim()) next.push("Country name is required.");
-    if (!core.slug.trim()) next.push("Slug is required.");
-    if (!core.pageHeading.trim()) next.push("Page heading is required.");
-    if (!core.shortDescription.trim())
-      next.push("Short description is required.");
+    /* Per-field rules are the primary signal and render under their own
+     * control; the list below stays for the things no single field can
+     * explain, and for repeatable rows that have no control of their own. */
+    const perField = validateAllFields();
+    const firstInvalid = Object.keys(perField)[0];
+    if (firstInvalid) {
+      next.push(
+        Object.keys(perField).length === 1
+          ? "One field needs attention — see the message under it."
+          : `${Object.keys(perField).length} fields need attention — see the messages under them.`,
+      );
+      focusField(firstInvalid);
+    }
     activeSections.forEach((row, index) => {
       if (!row.heading.trim())
         next.push(`Content section ${index + 1}: heading is required.`);
@@ -591,12 +646,6 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       next.push(
         "SEO title and meta description are required when SEO is configured.",
       );
-    const canonicalError = canonicalInputError(seo.canonicalUrl);
-    if (canonicalError) next.push(`Canonical URL: ${canonicalError}`);
-    if (!/^\d+$/.test(core.displayOrder) || Number(core.displayOrder) > 999999)
-      next.push("Display order must be a whole number from 0 to 999999.");
-    if (core.iso2Code && !/^[A-Za-z]{2}$/.test(core.iso2Code))
-      next.push("ISO2 must be exactly two letters.");
     // A malformed CTA used to pass the browser untouched and come back from the
     // API as a bare "Invalid catalog request", naming no field at all.
     for (const [index, row] of activeCards.entries()) {
@@ -824,10 +873,25 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       router.refresh();
     } catch (cause: unknown) {
       const typed = cause as Partial<CatalogMutationError>;
-      setError(
-        typed.message ??
-          (cause instanceof Error ? cause.message : "Unable to save country"),
-      );
+      /* The API names the offending field -- in `details` for a readiness
+       * failure, in the code for a conflict. Routing it back to that field is
+       * the difference between "Invalid catalog request" and a message the
+       * operator can act on without leaving the control they are editing. */
+      const serverFields = fieldErrorsFromServer(cause);
+      if (Object.keys(serverFields).length) {
+        setFieldErrors((current) => ({ ...current, ...serverFields }));
+        focusField(Object.keys(serverFields)[0]);
+        setError(
+          Object.keys(serverFields).length === 1
+            ? "One field needs attention — see the message under it."
+            : `${Object.keys(serverFields).length} fields need attention — see the messages under them.`,
+        );
+      } else {
+        setError(
+          typed.message ??
+            (cause instanceof Error ? cause.message : "Unable to save country"),
+        );
+      }
     } finally {
       setSaving(false);
       setSavingIntent(null);
@@ -900,6 +964,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="UID"
               value={core.externalUid}
+              name="externalUid"
+              error={fieldErrors.externalUid}
+              onBlur={() => checkField("externalUid", core.externalUid)}
               onChange={(value) => setCoreField("externalUid", value)}
             />
             <ContinentField
@@ -914,16 +981,25 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="Country name"
               value={core.name}
+              name="name"
+              error={fieldErrors.name}
+              onBlur={() => checkField("name", core.name)}
               onChange={(value) => setCoreField("name", value)}
             />
             <Input
               label="Slug"
               value={core.slug}
+              name="slug"
+              error={fieldErrors.slug}
+              onBlur={() => checkField("slug", core.slug)}
               onChange={(value) => setCoreField("slug", value)}
             />
             <Input
               label="Display order"
               value={core.displayOrder}
+              name="displayOrder"
+              error={fieldErrors.displayOrder}
+              onBlur={() => checkField("displayOrder", core.displayOrder)}
               onChange={(value) => setCoreField("displayOrder", value)}
               type="number"
               min={0}
@@ -933,12 +1009,18 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="Page heading"
               value={core.pageHeading}
+              name="pageHeading"
+              error={fieldErrors.pageHeading}
+              onBlur={() => checkField("pageHeading", core.pageHeading)}
               onChange={(value) => setCoreField("pageHeading", value)}
               span
             />
             <Input
               label="Short description"
               value={core.shortDescription}
+              name="shortDescription"
+              error={fieldErrors.shortDescription}
+              onBlur={() => checkField("shortDescription", core.shortDescription)}
               onChange={(value) => setCoreField("shortDescription", value)}
               textarea
               span
@@ -955,6 +1037,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="Tagline"
               value={core.tagline}
+              name="tagline"
+              error={fieldErrors.tagline}
+              onBlur={() => checkField("tagline", core.tagline)}
               onChange={(value) => setCoreField("tagline", value)}
               span
             />
@@ -963,6 +1048,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="ISO2"
               value={core.iso2Code}
+              name="iso2Code"
+              error={fieldErrors.iso2Code}
+              onBlur={() => checkField("iso2Code", core.iso2Code)}
               onChange={(value) =>
                 setCoreField("iso2Code", value.toUpperCase())
               }
@@ -972,6 +1060,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="ISO3"
               value={core.iso3Code}
+              name="iso3Code"
+              error={fieldErrors.iso3Code}
+              onBlur={() => checkField("iso3Code", core.iso3Code)}
               onChange={(value) =>
                 setCoreField("iso3Code", value.toUpperCase())
               }
@@ -979,21 +1070,33 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="Capital"
               value={core.capitalCity}
+              name="capitalCity"
+              error={fieldErrors.capitalCity}
+              onBlur={() => checkField("capitalCity", core.capitalCity)}
               onChange={(value) => setCoreField("capitalCity", value)}
             />
             <Input
               label="Official language"
               value={core.officialLanguage}
+              name="officialLanguage"
+              error={fieldErrors.officialLanguage}
+              onBlur={() => checkField("officialLanguage", core.officialLanguage)}
               onChange={(value) => setCoreField("officialLanguage", value)}
             />
             <Input
               label="Currency name"
               value={core.currencyName}
+              name="currencyName"
+              error={fieldErrors.currencyName}
+              onBlur={() => checkField("currencyName", core.currencyName)}
               onChange={(value) => setCoreField("currencyName", value)}
             />
             <Input
               label="Currency code"
               value={core.currencyCode}
+              name="currencyCode"
+              error={fieldErrors.currencyCode}
+              onBlur={() => checkField("currencyCode", core.currencyCode)}
               onChange={(value) =>
                 setCoreField("currencyCode", value.toUpperCase())
               }
@@ -1001,6 +1104,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <Input
               label="Currency symbol"
               value={core.currencySymbol}
+              name="currencySymbol"
+              error={fieldErrors.currencySymbol}
+              onBlur={() => checkField("currencySymbol", core.currencySymbol)}
               onChange={(value) => setCoreField("currencySymbol", value)}
             />
             <BooleanField
@@ -1466,6 +1572,9 @@ function Input({
   step,
   maxLength,
   pattern,
+  error,
+  onBlur,
+  name,
 }: {
   label: string;
   value: string;
@@ -1479,38 +1588,58 @@ function Input({
   step?: number;
   maxLength?: number;
   pattern?: string;
+  /** Shown under this field. The operator should never have to hunt up the
+   * page to find out which control the complaint is about. */
+  error?: string;
+  onBlur?: () => void;
+  /** Lets Save focus the first field the operator still has to fix. */
+  name?: string;
 }) {
   // A label-derived id alone collides wherever a field repeats: every content
   // section renders a "Section key", so the sections shared one id, both labels
   // pointed at the first control, and the rest were left with none.
   const unique = useId();
   const id = `country-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${unique}`;
+  const errorId = `${id}-error`;
+  const shared = {
+    id,
+    className: `${input} ${error ? "border-[#D92D20] focus:border-[#D92D20]" : ""}`,
+    value,
+    maxLength,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": error ? errorId : undefined,
+    "data-field": name,
+    onBlur,
+  } as const;
   return (
     <div className={`min-w-0 text-sm font-semibold ${span ? "sm:col-span-2" : ""}`}>
       <FieldLabel label={label} htmlFor={id} />
       {textarea ? (
         <textarea
-          id={id}
+          {...shared}
           rows={rows}
-          className={input}
-          value={value}
-          maxLength={maxLength}
           onChange={(event) => onChange(event.target.value)}
         />
       ) : (
         <input
-          id={id}
+          {...shared}
           type={type}
-          className={input}
-          value={value}
           min={min}
           max={max}
           step={step}
-          maxLength={maxLength}
           pattern={pattern}
           onChange={(event) => onChange(event.target.value)}
         />
       )}
+      {error ? (
+        <p
+          id={errorId}
+          role="alert"
+          className="mt-1 text-sm font-medium text-[#B42318]"
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

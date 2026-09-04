@@ -413,4 +413,84 @@ describe('country structured profiles (e2e)', () => {
     expect(String(record(saved).toeflMinScore)).toBe('90');
     expect(String(record(saved).duolingoMinScore)).toBe('110');
   });
+
+  it('creates and publishes Malta from its name alone', async () => {
+    /* The client could not publish Malta: it was missing from the offline
+     * identity metadata, so the Country was created with no ISO codes and
+     * publish failed COUNTRY_NOT_READY on iso2Code and iso3Code. Nothing here
+     * supplies those codes -- the name has to be enough. */
+    const slug = `malta-${Date.now()}`;
+    const continent = await prisma.continent.findFirstOrThrow({
+      where: { status: 'ACTIVE', deletedAt: null },
+    });
+    const created = await admin('post', '/api/v1/admin/countries', {
+      continentId: continent.id,
+      name: 'Malta',
+      slug,
+      pageHeading: 'Study in Malta',
+      shortDescription: 'Malta acceptance fixture.',
+    }).expect(201);
+    const maltaId = String(record(created).id);
+    try {
+      expect(record(created).iso2Code).toBe('MT');
+      expect(record(created).iso3Code).toBe('MLT');
+      expect(record(created).currency).toMatchObject({
+        code: 'EUR',
+        symbol: '\u20ac',
+      });
+
+      const published = await admin(
+        'post',
+        `/api/v1/admin/countries/${maltaId}/publish`,
+        { expectedUpdatedAt: record(created).updatedAt },
+      ).expect(201);
+      expect(record(published).status).toBe('PUBLISHED');
+
+      // ...and it is actually reachable on the public detail route.
+      const publicRow = await request(app.getHttpServer())
+        .get(`/api/v1/countries/${slug}`)
+        .expect(200);
+      expect(record(publicRow).name).toBe('Malta');
+      expect(record(publicRow).currency).toMatchObject({ code: 'EUR' });
+    } finally {
+      await prisma.country
+        .deleteMany({ where: { id: maltaId } })
+        .catch(() => undefined);
+    }
+  });
+
+  it('names the fields a publish is still missing rather than failing blankly', async () => {
+    const slug = `unknown-${Date.now()}`;
+    const continent = await prisma.continent.findFirstOrThrow({
+      where: { status: 'ACTIVE', deletedAt: null },
+    });
+    const created = await admin('post', '/api/v1/admin/countries', {
+      continentId: continent.id,
+      name: `Not A Real Country ${Date.now()}`,
+      slug,
+      pageHeading: 'Study somewhere',
+      shortDescription: 'Fixture for the readiness message.',
+    }).expect(201);
+    const id = String(record(created).id);
+    try {
+      const response = await admin(
+        'post',
+        `/api/v1/admin/countries/${id}/publish`,
+        { expectedUpdatedAt: record(created).updatedAt },
+      );
+      expect(response.status).toBe(422);
+      expect(code(response)).toBe('COUNTRY_NOT_READY');
+      /* The Admin routes these back to the individual fields, so they have to
+       * keep naming them. */
+      const envelope = response.body as {
+        error?: { details?: Array<{ field?: string }> };
+      };
+      const details = envelope.error?.details;
+      expect(details?.map((row) => row.field)).toEqual(
+        expect.arrayContaining(['iso2Code', 'iso3Code']),
+      );
+    } finally {
+      await prisma.country.deleteMany({ where: { id } }).catch(() => undefined);
+    }
+  });
 });
