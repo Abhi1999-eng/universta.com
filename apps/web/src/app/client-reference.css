@@ -5014,7 +5014,7 @@
 .cref-dest .filtpanel .fld select {
   border: 1px solid var(--line-2);
   border-radius: 10px;
-  padding: 9px 11px;
+  padding: 9px 38px 9px 11px;
   font: inherit;
   font-weight: 500;
   font-size: 14.5px;
@@ -5029,8 +5029,10 @@
   background-position: right 12px center;
   cursor: pointer;
 }
-.cref-dest .filtpanel .fld select:focus {
-  outline: none;
+.cref-dest .filtpanel .fld select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-color: var(--brand);
 }
 .cref-dest .filtpanel-actions {
   display: flex;
@@ -5149,7 +5151,7 @@
 .cref-dest .sortby select {
   border: 1px solid var(--line-2);
   border-radius: 999px;
-  padding: 7px 12px;
+  padding: 7px 36px 7px 12px;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -5164,8 +5166,10 @@
   background-position: right 12px center;
   cursor: pointer;
 }
-.cref-dest .sortby select:focus {
-  outline: none;
+.cref-dest .sortby select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-color: var(--brand);
 }
 @media (max-width: 720px) {
   /* a sheet rather than a panel: full width, and its own scroll */

@@ -100,17 +100,27 @@ function initials(value: string) {
     .join('');
 }
 
-function tuitionLabel(country: Country | DirectoryRecord) {
+const TUITION_PERIOD_SUFFIX: Record<string, string> = {
+  PER_YEAR: '/yr',
+  PER_MONTH: '/month',
+  PER_TERM: '/term',
+  ONE_TIME: ' one-time',
+};
+
+export function tuitionLabel(country: Country | DirectoryRecord) {
   const cost = country.profiles?.cost;
   if (!cost || (!cost.tuitionMin && !cost.tuitionMax)) return null;
   // ISO code only. Pairing it with the symbol produced "AED د.إ55,000" and, for
   // right-to-left symbols, reordered the whole range on screen.
-  const code = cost.currencyCode ? `${cost.currencyCode}` : '';
+  const code = cost.currencyCode?.trim();
+  // Amounts without a currency are ambiguous. Hide this fact rather than
+  // publishing a bare number that a prospective student could misread.
+  if (!code) return null;
   const min = cost.tuitionMin ? formatNumber(cost.tuitionMin) : null;
   const max = cost.tuitionMax ? formatNumber(cost.tuitionMax) : null;
   const range = min && max && min !== max ? `${min}–${max}` : (min ?? max);
-  const period = cost.tuitionPeriod === 'PER_YEAR' ? '/yr' : '';
-  const rate = code && period ? `(${code}${period})` : '';
+  const period = TUITION_PERIOD_SUFFIX[cost.tuitionPeriod ?? ''] ?? '';
+  const rate = `(${code}${period})`;
   return {rate, range};
 }
 

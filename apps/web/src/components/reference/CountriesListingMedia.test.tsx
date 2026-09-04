@@ -8,7 +8,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/countries',
   useSearchParams: () => new URLSearchParams(),
 }));
-import { CountriesReference, type CountriesReferenceProps } from './CountriesReference';
+import {
+  CountriesReference,
+  tuitionLabel,
+  type CountriesReferenceProps,
+} from './CountriesReference';
 import type { Country } from '@/lib/countries';
 
 /**
@@ -52,6 +56,30 @@ const render = (props: CountriesReferenceProps) =>
   renderToStaticMarkup(<CountriesReference {...props} />);
 
 describe('countries listing media', () => {
+  it.each([
+    ['PER_YEAR', 'EUR', '12000', 'EUR/yr', '12,000'],
+    ['PER_MONTH', 'EUR', '1000', 'EUR/month', '1,000'],
+    ['PER_TERM', 'EUR', '4500', 'EUR/term', '4,500'],
+    ['ONE_TIME', 'EUR', '500', 'EUR one-time', '500'],
+  ])('formats %s tuition with its currency and period', (tuitionPeriod, currencyCode, tuitionMin, rate, range) => {
+    expect(
+      tuitionLabel(
+        country({
+          profiles: { cost: { tuitionPeriod, currencyCode, tuitionMin } },
+        }),
+      ),
+    ).toEqual({ rate: `(${rate})`, range });
+  });
+
+  it('does not render an ambiguous tuition number without both amount and currency', () => {
+    expect(
+      tuitionLabel(country({ profiles: { cost: { tuitionMin: '12000', currencyCode: null } } })),
+    ).toBeNull();
+    expect(
+      tuitionLabel(country({ profiles: { cost: { currencyCode: 'EUR' } } })),
+    ).toBeNull();
+  });
+
   it('renders the listing image on the card, with its alt text', () => {
     const html = render(
       build([
