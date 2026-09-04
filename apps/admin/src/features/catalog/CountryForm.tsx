@@ -1374,9 +1374,13 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                       label="Status"
                       value={row.status}
                       onChange={(value) => updateCard(index, { status: value })}
+                      /* A card goes public on PUBLISHED -- that is the status
+                       * the public page filters cards on. Sections and FAQs
+                       * publish on ACTIVE instead, so offering ACTIVE here
+                       * looked right and still left the card invisible. */
                       options={[
                         { id: "DRAFT", label: "Draft — not shown publicly" },
-                        { id: "ACTIVE", label: "Active — shown on the country page" },
+                        { id: "PUBLISHED", label: "Published — shown on the country page" },
                         { id: "INACTIVE", label: "Inactive — retired" },
                       ]}
                     />
