@@ -107,9 +107,38 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
   const derived = country.derived;
   const derivedTuition = derived?.averageTuition ?? null;
   const derivedStatistics = derived?.statistics ?? null;
-  const topRankedUniversities = derived?.topRankedUniversities ?? [];
-  const popularUniversities = derived?.popularUniversities ?? [];
+  const rankedUniversitySource = derived?.topRankedUniversities ?? [];
+  const popularUniversitySource = derived?.popularUniversities ?? [];
   const popularCourses = derived?.popularCourses ?? [];
+  /* The three university blocks are independent queries over the same
+   * published set: the listing takes the first few, the ranked block takes
+   * everything holding a QS position, and the popular block takes the curated
+   * picks. Across a large catalogue those are different institutions. Across a
+   * small one they are not -- Malta publishes a single university, which
+   * satisfied all three and printed three identical cards. Each block now
+   * shows only what the blocks above it have not, and disappears when that
+   * leaves it empty. */
+  const listedUniversitySlugs = new Set(universities.map((row) => row.slug));
+  const topRankedUniversities = rankedUniversitySource.filter(
+    (row) => !listedUniversitySlugs.has(row.slug),
+  );
+  const shownUniversitySlugs = new Set([
+    ...listedUniversitySlugs,
+    ...topRankedUniversities.map((row) => row.slug),
+  ]);
+  const popularUniversities = popularUniversitySource.filter(
+    (row) => !shownUniversitySlugs.has(row.slug),
+  );
+  /* The QS position is the one fact the listing card does not already carry,
+   * so it moves onto that card rather than vanishing with the suppressed
+   * ranked duplicate. */
+  const qsRankingBySlug = new Map<string, number>(
+    rankedUniversitySource.flatMap((row) =>
+      typeof row.qsRanking === "number" && row.qsRanking > 0
+        ? [[row.slug, row.qsRanking] as [string, number]]
+        : [],
+    ),
+  );
   const derivedUniversityCount = derivedStatistics?.universitiesCount ?? null;
   const derivedPublicUniversityCount =
     derivedStatistics?.publicUniversitiesCount ?? null;
@@ -330,9 +359,11 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
       formatNumber(statistics.privateUniversitiesCount),
     ],
     derivedCourseCount && ["Courses", formatNumber(derivedCourseCount)],
-    topRankedUniversities.length > 0 && [
+    /* A count of how many ranked universities the country has, not of how many
+     * cards survived deduplication -- so it reads the unfiltered set. */
+    rankedUniversitySource.length > 0 && [
       "Top-ranked universities",
-      formatNumber(topRankedUniversities.length),
+      formatNumber(rankedUniversitySource.length),
     ],
     statistics?.scholarshipsCount && [
       "Scholarships",
@@ -596,44 +627,55 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             </div>
             {universities.length ? (
               <div className="partners">
-                {universities.map((university) => (
-                  <article className="partner" key={university.slug}>
-                    {university.verified ? (
-                      <span className="p-badge">Verified</span>
-                    ) : null}
-                    <span className="p-logo" aria-hidden="true">
-                      {initials(university.name)}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3>{university.name}</h3>
-                      {university.city ? (
-                        <div className="loc">{university.city}</div>
+                {universities.map((university) => {
+                  const qsRanking = qsRankingBySlug.get(university.slug);
+                  return (
+                    <article className="partner" key={university.slug}>
+                      {university.verified ? (
+                        <span className="p-badge">Verified</span>
                       ) : null}
-                      {university.institutionType ? (
-                        <div className="p-meta">
-                          <div>
-                            <span>Type</span>
-                            <b>{humanise(university.institutionType)}</b>
+                      <span className="p-logo" aria-hidden="true">
+                        {initials(university.name)}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3>{university.name}</h3>
+                        {university.city ? (
+                          <div className="loc">{university.city}</div>
+                        ) : null}
+                        {university.institutionType || qsRanking ? (
+                          <div className="p-meta">
+                            {university.institutionType ? (
+                              <div>
+                                <span>Type</span>
+                                <b>{humanise(university.institutionType)}</b>
+                              </div>
+                            ) : null}
+                            {qsRanking ? (
+                              <div>
+                                <span>QS ranking</span>
+                                <b>#{formatNumber(qsRanking)}</b>
+                              </div>
+                            ) : null}
                           </div>
+                        ) : null}
+                        <div className="p-act">
+                          <Link
+                            className="mini fill"
+                            href={`/universities/${university.slug}/courses`}
+                          >
+                            View courses
+                          </Link>
+                          <Link
+                            className="mini"
+                            href={`/universities/${university.slug}`}
+                          >
+                            View profile
+                          </Link>
                         </div>
-                      ) : null}
-                      <div className="p-act">
-                        <Link
-                          className="mini fill"
-                          href={`/universities/${university.slug}/courses`}
-                        >
-                          View courses
-                        </Link>
-                        <Link
-                          className="mini"
-                          href={`/universities/${university.slug}`}
-                        >
-                          View profile
-                        </Link>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             ) : null}
             {universityTotal > universities.length ? (
