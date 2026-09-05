@@ -290,15 +290,18 @@ describe('countries list taxonomy columns', () => {
     mocks.listCountries.mockResolvedValue({ data: [countryRow], meta });
   });
 
-  it('renders assigned subjects, tags and linked record counts', async () => {
+  it('renders assigned subjects, without the columns that crowded out the actions', async () => {
     render(<CountriesPage />);
     await waitFor(() => expect(screen.getByText('Australia')).toBeInTheDocument());
     // Two labels plus an overflow marker keeps the row scannable.
     const row = screen.getByText('Australia').closest('tr') as HTMLElement;
     expect(row).toBeTruthy();
     expect(row.textContent).toContain('Computer Science, Engineering +1');
-    expect(row.textContent).toContain('Popular');
-    expect(row.textContent).toContain(
+    /* Tags and linked counts left the list: eleven columns held the table to a
+     * 1180px floor and pushed Actions past the right edge. Both are still
+     * filterable above the table, and still edited one level in. */
+    expect(row.textContent).not.toContain('Popular');
+    expect(row.textContent).not.toContain(
       '2 universities · 18 courses · 3 scholarships',
     );
   });

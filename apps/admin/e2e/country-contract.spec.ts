@@ -183,11 +183,31 @@ async function publicCountry(page: Page): Promise<Row> {
   return ((await response.json()) as { data?: Row }).data ?? {};
 }
 
+/**
+ * Publishing ends the editing session: it returns to the list and confirms
+ * there. These tests keep editing the same record across several saves, so
+ * this checks the confirmation actually arrived and then steps back into the
+ * editor. A save that failed stays put and is left alone here, so the tests
+ * that assert a rejection still see the editor they expect.
+ */
 async function saveCountry(page: Page) {
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Publishing…' })).toHaveCount(0, {
     timeout: 30_000,
   });
+  /* The redirect is a client-side push, so it can land after the click has
+   * settled. Waiting for the URL rather than reading it once is the difference
+   * between stepping back into the editor and stranding the next locator on a
+   * list page that arrived a moment too late. */
+  const published = await page
+    .waitForURL(/\/countries$/, { timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!published) return;
+  await expect(
+    page.getByText(`${COUNTRY_NAME} published successfully.`, { exact: true }),
+  ).toBeVisible();
+  await openCountry(page);
 }
 
 async function openCountry(page: Page): Promise<Row> {
@@ -258,6 +278,10 @@ async function labelOf(box: ReturnType<Page['getByRole']>) {
 }
 
 test.describe.serial('country client contract, end to end', () => {
+  /* Publishing now returns to the list, so every save in this chain carries a
+   * confirmation check and a navigation back into the editor. The longer tests
+   * here save four or five times and no longer fit the 30s default. */
+  test.describe.configure({ timeout: 90_000 });
   const health = { console: [] as string[], failed: [] as string[] };
   /** Rejections a test provokes on purpose. Registered case by case so the
    * guard below still fails on anything unplanned -- blanket-allowing a status
@@ -1074,7 +1098,11 @@ test.describe.serial('country client contract, end to end', () => {
     const row = page.getByRole('row').filter({ hasText: COUNTRY_NAME });
     await expect(row).toBeVisible({ timeout: 30_000 });
     await expect(row).toContainText('PUBLISHED');
-    await expect(row).toContainText(TAG_NAME);
+    /* Tags left the list so the row actions fit on screen without a sideways
+     * scroll; the tag filter below still proves the assignment, and the row's
+     * own actions are reachable where they belong. */
+    await expect(row).not.toContainText(TAG_NAME);
+    await expect(row.getByRole('link', { name: 'Edit' })).toBeVisible();
     await expect(row).not.toContainText('No subjects');
 
     const assigned = (stored.subjects as Array<{ id: string }>)[0];
