@@ -195,7 +195,15 @@ async function saveCountry(page: Page) {
   await expect(page.getByRole('button', { name: 'Publishing…' })).toHaveCount(0, {
     timeout: 30_000,
   });
-  if (!/^\/countries\/?$/.test(new URL(page.url()).pathname)) return;
+  /* The redirect is a client-side push, so it can land after the click has
+   * settled. Waiting for the URL rather than reading it once is the difference
+   * between stepping back into the editor and stranding the next locator on a
+   * list page that arrived a moment too late. */
+  const published = await page
+    .waitForURL(/\/countries$/, { timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!published) return;
   await expect(
     page.getByText(`${COUNTRY_NAME} published successfully.`, { exact: true }),
   ).toBeVisible();
@@ -1090,7 +1098,11 @@ test.describe.serial('country client contract, end to end', () => {
     const row = page.getByRole('row').filter({ hasText: COUNTRY_NAME });
     await expect(row).toBeVisible({ timeout: 30_000 });
     await expect(row).toContainText('PUBLISHED');
-    await expect(row).toContainText(TAG_NAME);
+    /* Tags left the list so the row actions fit on screen without a sideways
+     * scroll; the tag filter below still proves the assignment, and the row's
+     * own actions are reachable where they belong. */
+    await expect(row).not.toContainText(TAG_NAME);
+    await expect(row.getByRole('link', { name: 'Edit' })).toBeVisible();
     await expect(row).not.toContainText('No subjects');
 
     const assigned = (stored.subjects as Array<{ id: string }>)[0];
