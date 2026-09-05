@@ -70,16 +70,27 @@ test.describe.serial('catalog management', () => {
     await expect(page).toHaveURL(/\/countries\/[a-f0-9-]+$/);
 
     await expect(page.getByRole('heading', { name: 'Edit country' })).toBeVisible();
+    const countryEditorUrl = page.url();
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
     const publicDraft = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicDraft.status()).toBe(404);
 
+    // Publishing ends the editing session: it returns to the list and confirms
+    // there, rather than leaving the operator on a page they are done with.
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
-    await expect(page.getByText('PUBLISHED', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/countries$/);
+    await expect(
+      page.getByText(`${countryName} published successfully.`, { exact: true }),
+    ).toBeVisible();
     const publicPublished = await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`);
     expect(publicPublished.status()).toBe(200);
 
+    // Moving back to draft is mid-session, so it stays put and says so.
+    await page.goto(countryEditorUrl);
+    await expect(page.getByText('PUBLISHED', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Move to draft', exact: true }).click();
+    await expect(page.getByText('Country moved to draft.', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(countryEditorUrl);
     await expect(page.getByText('DRAFT', { exact: true })).toBeVisible();
     expect((await request.get(`${apiBaseUrl}/api/v1/countries/${countrySlug}`)).status()).toBe(404);
 

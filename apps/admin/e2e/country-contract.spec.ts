@@ -183,11 +183,23 @@ async function publicCountry(page: Page): Promise<Row> {
   return ((await response.json()) as { data?: Row }).data ?? {};
 }
 
+/**
+ * Publishing ends the editing session: it returns to the list and confirms
+ * there. These tests keep editing the same record across several saves, so
+ * this checks the confirmation actually arrived and then steps back into the
+ * editor. A save that failed stays put and is left alone here, so the tests
+ * that assert a rejection still see the editor they expect.
+ */
 async function saveCountry(page: Page) {
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Publishing…' })).toHaveCount(0, {
     timeout: 30_000,
   });
+  if (!/^\/countries\/?$/.test(new URL(page.url()).pathname)) return;
+  await expect(
+    page.getByText(`${COUNTRY_NAME} published successfully.`, { exact: true }),
+  ).toBeVisible();
+  await openCountry(page);
 }
 
 async function openCountry(page: Page): Promise<Row> {
