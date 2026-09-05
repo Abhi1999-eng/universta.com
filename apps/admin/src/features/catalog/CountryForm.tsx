@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createConsultantCard,
@@ -67,6 +67,11 @@ import {
   UnifiedSeoFields,
   type UnifiedSeoDraft,
 } from "@/features/shared/UnifiedSeoFields";
+import {
+  FlashBanner,
+  queueFlash,
+  type Flash,
+} from "@/features/shared/Flash";
 import { CountryProfilesEditor } from "./CountryProfilesEditor";
 import {
   countryFieldRules,
@@ -322,6 +327,10 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingIntent, setSavingIntent] = useState<Intent | null>(null);
+  /* Draft confirmations stay on this page; a publish confirmation is handed
+   * to the list instead, because publishing navigates there. */
+  const [notice, setNotice] = useState<Flash | null>(null);
+  const dismissNotice = useCallback(() => setNotice(null), []);
   const [error, setError] = useState("");
   const [issues, setIssues] = useState<string[]>([]);
   /** One message per field, shown under that field. The banner stays for
@@ -804,9 +813,13 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       .submitter as HTMLButtonElement | null;
     const intent: Intent = submitter?.value === "publish" ? "publish" : "draft";
     if (!validate()) return;
+    /* Read before the writes below move it, so "moved to draft" is only said
+     * when this save is what unpublished the country. */
+    const wasPublished = record?.status === "PUBLISHED";
     setSaving(true);
     setSavingIntent(intent);
     setError("");
+    setNotice(null);
     try {
       const payload = {
         continentId: core.continentId,
@@ -869,6 +882,26 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             : refreshed;
       setRecord(saved);
       setDirty(false);
+      /* Publishing is the end of the editing session, so it hands the
+       * confirmation to the list and goes there. Saving a draft is the middle
+       * of one, so it confirms in place and leaves the operator where they
+       * were typing. Both only run past the awaits above, so a rejected save
+       * never reaches either. */
+      if (intent === "publish") {
+        queueFlash({
+          tone: "success",
+          message: `${saved.name} published successfully.`,
+        });
+        router.push("/countries");
+        return;
+      }
+      setNotice({
+        tone: "neutral",
+        message:
+          wasPublished && saved.status !== "PUBLISHED"
+            ? "Country moved to draft."
+            : "Draft saved.",
+      });
       if (!countryId) router.replace(`/countries/${saved.id}`);
       router.refresh();
     } catch (cause: unknown) {
@@ -933,6 +966,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           {record?.status ?? "DRAFT"}
         </span>
       </div>
+      <FlashBanner flash={notice} onDismiss={dismissNotice} />
       {error ? (
         <p
           role="alert"
