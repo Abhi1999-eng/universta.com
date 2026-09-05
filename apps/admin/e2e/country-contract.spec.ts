@@ -270,6 +270,10 @@ async function labelOf(box: ReturnType<Page['getByRole']>) {
 }
 
 test.describe.serial('country client contract, end to end', () => {
+  /* Publishing now returns to the list, so every save in this chain carries a
+   * confirmation check and a navigation back into the editor. The longer tests
+   * here save four or five times and no longer fit the 30s default. */
+  test.describe.configure({ timeout: 90_000 });
   const health = { console: [] as string[], failed: [] as string[] };
   /** Rejections a test provokes on purpose. Registered case by case so the
    * guard below still fails on anything unplanned -- blanket-allowing a status
