@@ -337,6 +337,10 @@ function conflict(code: string, message: string): ConflictException {
   return new ConflictException({ code, message, details: null });
 }
 
+function badRequest(code: string, message: string): UnprocessableEntityException {
+  return new UnprocessableEntityException({ code, message, details: null });
+}
+
 function notFound(): NotFoundException {
   return new NotFoundException({
     code: 'COUNTRY_NOT_FOUND',
@@ -1608,6 +1612,7 @@ export class CountriesService {
       | 'acceptedTests'
       | 'intakeMonths'
       | 'postStudyWorkPermitMonths'
+      | 'calculatorConfig'
     >,
     known: TaxonomySnapshot,
   ): Pick<
@@ -1616,6 +1621,7 @@ export class CountriesService {
     | 'acceptedTests'
     | 'intakeMonths'
     | 'postStudyWorkPermitMonths'
+    | 'calculatorConfig'
   > {
     /* Both lists are filtered to codes the taxonomy actually knows, which is
      * what stops a typed or stale code being stored and then rendering as a
@@ -1641,7 +1647,28 @@ export class CountriesService {
       ...(dto.postStudyWorkPermitMonths !== undefined
         ? { postStudyWorkPermitMonths: dto.postStudyWorkPermitMonths }
         : {}),
+      ...(dto.calculatorConfig !== undefined
+        ? { calculatorConfig: this.calculatorData(dto.calculatorConfig) }
+        : {}),
     };
+  }
+
+  /**
+   * A calculator document is stored only if it would actually render. Saving
+   * something the public parser rejects would leave an editor believing they
+   * had configured a calculator that never appears.
+   */
+  private calculatorData(
+    value: Record<string, unknown> | null | undefined,
+  ): Prisma.InputJsonValue | typeof Prisma.DbNull {
+    if (value === null) return Prisma.DbNull;
+    const parsed = parseCalculatorConfig(value);
+    if (!parsed)
+      throw badRequest(
+        'COUNTRY_CALCULATOR_INVALID',
+        'The calculator configuration is not in a shape the guide can render',
+      );
+    return parsed as unknown as Prisma.InputJsonValue;
   }
 
   private throwUniqueConflict(error: unknown): void {

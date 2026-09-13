@@ -8,6 +8,7 @@ import {
   IsISO8601,
   IsIn,
   IsInt,
+  IsObject,
   IsNumber,
   IsOptional,
   IsString,
@@ -281,6 +282,16 @@ export class CreateCountryDto {
   @Min(0)
   @Max(120)
   postStudyWorkPermitMonths?: number;
+
+  /**
+   * The budget calculator's factors for this country. The shape is checked by
+   * the same parser the public page reads through, so a document that would not
+   * render is refused at the point of saving rather than stored and silently
+   * ignored. Null clears it, which removes the calculator from the guide.
+   */
+  @IsOptional()
+  @IsObject()
+  calculatorConfig?: Record<string, unknown> | null;
 
   @Transform(arrayValue)
   @IsOptional()
