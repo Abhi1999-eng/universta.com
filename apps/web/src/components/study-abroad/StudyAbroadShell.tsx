@@ -241,7 +241,11 @@ export function StudyAbroadShell({
       <StudyAbroadFooter />
 
       {assessment ? (
-        <AssessmentDialog context={assessment} onClose={() => setAssessment(null)} />
+        <AssessmentDialog
+          context={assessment}
+          destinations={destinations?.available}
+          onClose={() => setAssessment(null)}
+        />
       ) : null}
     </ShellContext.Provider>
   );
