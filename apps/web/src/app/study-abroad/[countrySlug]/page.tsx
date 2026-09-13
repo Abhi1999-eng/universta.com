@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
+import { EditorialSection } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
@@ -209,15 +210,17 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--paper" id="why">
           <div className="wrap">
             <p className="eyebrow">The case for {country.name}</p>
-            <h2 className="sec__h">Why study in {country.name}</h2>
-            <ul className="feat">
-              {country.configuration.features.map((feature) => (
-                <li className="feat__i" key={feature.code}>
-                  <span className="feat__d" aria-hidden="true" />
-                  {feature.label}
-                </li>
+            <h2 className="sec-title">Why study in {country.name}</h2>
+            <div className="rulegrid rulegrid--3">
+              {country.configuration.features.map((feature, index) => (
+                <div className="rulegrid__item" key={feature.code}>
+                  <span className="rulegrid__n" aria-hidden="true">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="rulegrid__t">{feature.label}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         </section>
       ) : null}
@@ -227,7 +230,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--white" id="overview">
           <div className="wrap wrap--narrow">
             <p className="eyebrow">Overview</p>
-            <h2 className="sec__h">About studying in {country.name}</h2>
+            <h2 className="sec-title">About studying in {country.name}</h2>
             <div className="prose">
               <RichText value={country.overview} />
             </div>
@@ -242,24 +245,28 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--white" id="documents">
           <div className="wrap">
             <p className="eyebrow">Admissions</p>
-            <h2 className="sec__h">Documents you will need</h2>
-            <ul className="docs">
-              {country.documents.map((document) => (
-                <li className="docs__i" key={document.id}>
-                  <div className="docs__h">
-                    <span className="docs__n">{document.name}</span>
-                    <span className={`docs__t${document.isRequired ? ' is-req' : ''}`}>
-                      {document.isRequired ? 'Required' : 'Optional'}
-                    </span>
+            <h2 className="sec-title">Documents you will need</h2>
+            <div className="docs">
+              {country.documents.map((document, index) => (
+                <article className="doc" key={document.id}>
+                  <span className="doc__box" aria-hidden="true" />
+                  <span className="doc__n">{String(index + 1).padStart(2, '0')}</span>
+                  <div>
+                    <h3 className="doc__name">
+                      {document.name}
+                      <span className={`doc__badge badge${document.isRequired ? ' badge--req' : ''}`}>
+                        {document.isRequired ? 'Required' : 'Optional'}
+                      </span>
+                    </h3>
+                    {document.details ? (
+                      <div className="doc__desc">
+                        <RichText value={document.details} />
+                      </div>
+                    ) : null}
                   </div>
-                  {document.details ? (
-                    <div className="docs__d">
-                      <RichText value={document.details} />
-                    </div>
-                  ) : null}
-                </li>
+                </article>
               ))}
-            </ul>
+            </div>
           </div>
         </section>
       ) : null}
@@ -269,16 +276,29 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--paper" id="intakes">
           <div className="wrap">
             <p className="eyebrow">Timing</p>
-            <h2 className="sec__h">Intakes in {country.name}</h2>
-            <p className="sec__s">
+            <h2 className="sec-title">Intakes in {country.name}</h2>
+            <p className="sec-lead">
               {intakes.length} {intakes.length === 1 ? 'intake' : 'intakes'} a year. Applications
               open well ahead of the month teaching begins.
             </p>
-            <ul className="chips">
-              {intakes.map((month) => (
-                <li key={month}>{month}</li>
-              ))}
-            </ul>
+            <div className="timeline">
+              <div className="timeline__scroll">
+                <div className="timeline__months">
+                  {monthNames([1,2,3,4,5,6,7,8,9,10,11,12]).map((month) => {
+                    const open = intakes.includes(month);
+                    return (
+                      <div className={`tm${open ? ' tm--on' : ''}`} key={month}>
+                        <span className="tm__m">{month.slice(0, 3)}</span>
+                        <span className="tm__bar" aria-hidden="true" />
+                        <span className="sr-only">
+                          {month}: {open ? 'intake available' : 'no intake'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       ) : null}
@@ -288,7 +308,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--white" id="cost">
           <div className="wrap">
             <p className="eyebrow">Money</p>
-            <h2 className="sec__h">What it costs</h2>
+            <h2 className="sec-title">What it costs</h2>
             {profiles.cost?.tuitionNotes ? (
               <div className="prose">
                 <RichText value={profiles.cost.tuitionNotes} />
@@ -317,8 +337,8 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--paper" id="language">
           <div className="wrap">
             <p className="eyebrow">English</p>
-            <h2 className="sec__h">Language requirements</h2>
-            <ul className="tests">
+            <h2 className="sec-title">Language requirements</h2>
+            <div className="tracks">
               {(
                 [
                   ['IELTS', profiles.language.ieltsRequirement, profiles.language.ieltsMinScore],
@@ -333,12 +353,14 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
               )
                 .filter(([, requirement]) => requirement && requirement !== 'NOT_REQUIRED')
                 .map(([name, requirement, score]) => (
-                  <li className="tests__i" key={name}>
-                    <span className="tests__n">{name}</span>
-                    <span className="tests__v">{score ?? String(requirement).toLowerCase()}</span>
-                  </li>
+                  <div className="track" key={name}>
+                    <span className="track__n">{name}</span>
+                    <span className="track__d">
+                      {score ?? String(requirement).toLowerCase()}
+                    </span>
+                  </div>
                 ))}
-            </ul>
+            </div>
             {profiles.language.generalNotes ? (
               <div className="prose">
                 <RichText value={profiles.language.generalNotes} />
@@ -358,14 +380,16 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--navy" id="work-visa">
           <div className="wrap">
             <p className="eyebrow eyebrow--plain">Work and visa</p>
-            <h2 className="sec__h">After you arrive, and after you graduate</h2>
-            <div className="wv">
-              {work.map((item) => (
-                <article className="wv__c" key={item.title}>
-                  <h3>{item.title}</h3>
-                  {item.value ? <p className="wv__v">{item.value}</p> : null}
+            <h2 className="sec-title">After you arrive, and after you graduate</h2>
+            <div className="journey">
+              {work.map((item, index) => (
+                <article className="jstep" key={item.title}>
+                  <span className="jstep__dot" aria-hidden="true" />
+                  <span className="jstep__n">{String(index + 1).padStart(2, '0')}</span>
+                  <h3 className="jstep__t">{item.title}</h3>
+                  {item.value ? <p className="jstep__m">{item.value}</p> : null}
                   {item.body ? (
-                    <div className="wv__b">
+                    <div className="jstep__b">
                       <RichText value={item.body} />
                     </div>
                   ) : null}
@@ -376,15 +400,10 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </section>
       ) : null}
 
-      {/* EDITORIAL SECTIONS — whatever an editor has published, in their order */}
-      {sections.map((section) => (
-        <section className="sec sec--white" id={`country-${section.sectionKey}`} key={section.id}>
-          <div className="wrap wrap--narrow">
-            {section.eyebrow ? <p className="eyebrow">{section.eyebrow}</p> : null}
-            {section.heading ? <h2 className="sec__h">{section.heading}</h2> : null}
-            {section.subheading ? <p className="sec__s">{section.subheading}</p> : null}
-          </div>
-        </section>
+      {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
+          and in the shape each one declares. */}
+      {sections.map((section, index) => (
+        <EditorialSection key={section.id} section={section} alt={index % 2 === 1} />
       ))}
 
       {/* GUIDANCE */}
@@ -392,12 +411,15 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--paper" id="guidance">
           <div className="wrap">
             <p className="eyebrow">Guidance</p>
-            <h2 className="sec__h">Talk it through</h2>
-            <div className="guide">
-              {consultantCards.map((card) => (
-                <article className="guide__c" key={card.id}>
-                  <h3>{card.title}</h3>
-                  {card.shortDescription ? <p>{card.shortDescription}</p> : null}
+            <h2 className="sec-title">Talk it through</h2>
+            <div className="routes">
+              {consultantCards.map((card, index) => (
+                <article className="route" key={card.id}>
+                  <span className="route__n">{String(index + 1).padStart(2, '0')}</span>
+                  <h3 className="route__l">{card.title}</h3>
+                  {card.shortDescription ? (
+                    <p className="route__d">{card.shortDescription}</p>
+                  ) : null}
                   {card.ctaUrl ? (
                     <a className="linkcta" href={card.ctaUrl}>
                       {card.ctaLabel ?? 'Find out more'}{' '}
@@ -431,17 +453,19 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         <section className="sec sec--white sec--tight" id="other-destinations">
           <div className="wrap">
             <p className="eyebrow">Compare</p>
-            <h2 className="sec__h">Other destinations</h2>
-            <div className="dir__grid">
+            <h2 className="sec-title">Other destinations</h2>
+            <div className="switcher">
               {others.map((entry) => (
                 <Link
-                  className="dir__card"
+                  className="switcher__item"
                   key={entry.name}
                   href={`/study-abroad/${entry.slug}`}
                 >
                   <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
                   <span className="cchip__name">{entry.name}</span>
-                  <span className="dir__meta">Guide</span>
+                  <span className="switcher__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
                 </Link>
               ))}
             </div>

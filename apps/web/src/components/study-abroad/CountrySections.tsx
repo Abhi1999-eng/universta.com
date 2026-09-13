@@ -39,12 +39,12 @@ export function StudyPaths({ paths, countryName }: { paths: StudyPath[]; country
     <section className="sec sec--paper" id="study-paths">
       <div className="wrap">
         <p className="eyebrow">Study paths</p>
-        <h2 className="sec__h">What you can study in {countryName}</h2>
+        <h2 className="sec-title">What you can study in {countryName}</h2>
 
-        <div className="tabs" role="tablist" aria-label="Study levels" onKeyDown={onKey}>
+        <div className="tabs__list" role="tablist" aria-label="Study levels" onKeyDown={onKey}>
           {paths.map((path, index) => (
             <button
-              className="tabs__t"
+              className="tabs__btn"
               type="button"
               role="tab"
               key={path.id}
@@ -61,34 +61,36 @@ export function StudyPaths({ paths, countryName }: { paths: StudyPath[]; country
 
         {paths.map((path, index) => (
           <div
-            className="tabs__p"
+            className="tabs__panel"
             role="tabpanel"
             key={path.id}
             id={`${base}-panel-${path.id}`}
             aria-labelledby={`${base}-tab-${path.id}`}
             hidden={index !== active}
           >
-            <dl className="paths__facts">
+            <div className="path">
+            <div className="path__stats">
               {path.duration ? (
-                <div>
-                  <dt>Typical duration</dt>
-                  <dd>{path.duration}</dd>
+                <div className="path__stat">
+                  <span>Typical duration</span>
+                  <b>{path.duration}</b>
                 </div>
               ) : null}
               {path.entry ? (
-                <div>
-                  <dt>Usual entry point</dt>
-                  <dd>{path.entry}</dd>
+                <div className="path__stat">
+                  <span>Usual entry point</span>
+                  <b>{path.entry}</b>
                 </div>
               ) : null}
               {path.courseCount !== null ? (
-                <div>
-                  <dt>Published courses</dt>
-                  <dd>{path.courseCount}</dd>
+                <div className="path__stat">
+                  <span>Published courses</span>
+                  <b>{path.courseCount}</b>
                 </div>
               ) : null}
-            </dl>
-            {path.note ? <p className="paths__note">{path.note}</p> : null}
+            </div>
+            {path.note ? <p className="path__summary">{path.note}</p> : null}
+            </div>
           </div>
         ))}
       </div>
@@ -111,16 +113,16 @@ export function FaqAccordion({
     <section className="sec sec--paper" id="faq">
       <div className="wrap wrap--narrow">
         <p className="eyebrow">Questions</p>
-        <h2 className="sec__h">Studying in {countryName}</h2>
+        <h2 className="sec-title">Studying in {countryName}</h2>
 
-        <div className="acc">
+        <div className="faq">
           {faqs.map((faq) => {
             const expanded = open === faq.id;
             return (
-              <div className="acc__i" key={faq.id} data-open={String(expanded)}>
-                <h3 className="acc__h">
+              <div className="faq__item" key={faq.id} data-open={String(expanded)}>
+                <h3>
                   <button
-                    className="acc__q"
+                    className="faq__q"
                     type="button"
                     aria-expanded={expanded}
                     aria-controls={`${base}-a-${faq.id}`}
@@ -128,11 +130,11 @@ export function FaqAccordion({
                     onClick={() => setOpen(expanded ? null : faq.id)}
                   >
                     <span>{faq.question}</span>
-                    <span className="acc__ic" aria-hidden="true" />
+                    <span className="faq__plus" aria-hidden="true" />
                   </button>
                 </h3>
                 <div
-                  className="acc__a"
+                  className="faq__a"
                   id={`${base}-a-${faq.id}`}
                   role="region"
                   aria-labelledby={`${base}-q-${faq.id}`}
