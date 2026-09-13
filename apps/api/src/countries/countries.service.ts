@@ -30,6 +30,12 @@ import {
 } from './profiles/profile.mappers';
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
 import { CountryDerivedService } from './country-derived.service';
+import {
+  DIRECTORY_REGIONS,
+  comingSoonDestinations,
+  regionForContinent,
+  regionForName,
+} from './directory-world';
 import { flagEmojiFromIso, resolveCountryMetadata } from './country-metadata';
 import { sanitizeRichText } from '../common/rich-text';
 import {
@@ -619,6 +625,82 @@ export class CountriesService {
         };
       }),
       meta: paginationMeta(query.page, query.limit, total),
+    };
+  }
+
+  /**
+   * The Study Abroad directory: everything a student might ask about, in two
+   * tiers.
+   *
+   * The first tier is the real catalogue -- published Country records, each
+   * navigable. The second is every other destination in the world, by name and
+   * region only, so the page can say a guide is coming without a Country
+   * record existing for it. A DRAFT country is in neither tier: unpublished
+   * editorial work stays unpublished, and a destination an editor has started
+   * but not finished simply appears as "coming" like any other.
+   */
+  async destinations() {
+    const countries = await this.prisma.country.findMany({
+      where: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        OR: [
+          { continentId: null },
+          { continent: { status: 'ACTIVE', deletedAt: null } },
+        ],
+      },
+      select: {
+        name: true,
+        slug: true,
+        iso2Code: true,
+        isFeatured: true,
+        displayOrder: true,
+        shortDescription: true,
+        continent: { select: { name: true, slug: true } },
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+
+    const available = countries.map((country) => ({
+      name: country.name,
+      slug: country.slug,
+      iso2Code: country.iso2Code,
+      /* The design's "Popular" tier is the catalogue's existing Featured flag.
+       * A second popularity system would only be something else to keep in
+       * step with it. */
+      isPopular: country.isFeatured,
+      isAvailable: true,
+      /* A published country grouped under its own region where an editor has
+       * filed it, and otherwise under the region the world list knows it by --
+       * so a country published before it was filed still appears somewhere. */
+      region:
+        regionForContinent(country.continent?.name) ??
+        regionForName(country.name) ??
+        null,
+      summary: country.shortDescription,
+    }));
+
+    const comingSoon = comingSoonDestinations(
+      countries.map((country) => country.name),
+    ).map((entry) => ({
+      name: entry.name,
+      slug: null,
+      iso2Code: null,
+      isPopular: false,
+      isAvailable: false,
+      region: entry.region,
+      summary: null,
+    }));
+
+    return {
+      available,
+      comingSoon,
+      regions: [...DIRECTORY_REGIONS],
+      counts: {
+        available: available.length,
+        popular: available.filter((entry) => entry.isPopular).length,
+        total: available.length + comingSoon.length,
+      },
     };
   }
 
