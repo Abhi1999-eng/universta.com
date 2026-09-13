@@ -31,6 +31,10 @@ import {
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
 import { CountryDerivedService } from './country-derived.service';
 import {
+  parseCalculatorConfig,
+  type CalculatorConfig,
+} from './calculator-config';
+import {
   DIRECTORY_REGIONS,
   bandsFor,
   comingSoonDestinations,
@@ -103,6 +107,7 @@ const COUNTRY_INCLUDE = {
 } satisfies Prisma.CountryInclude;
 
 type CountryRecord = {
+  calculatorConfig?: unknown;
   id: string;
   continentId: string | null;
   name: string;
@@ -235,6 +240,9 @@ export interface CountryPublicDto {
     acceptedTests: Array<{ code: string; label: string }>;
     intakeMonths: number[];
     postStudyWorkPermitMonths: number | null;
+    /* Null unless an editor has configured one and the document is sound; a
+     * half-valid configuration yields no calculator rather than a wrong one. */
+    calculator: CalculatorConfig | null;
   };
   currency: {
     code: string;
@@ -1772,6 +1780,7 @@ export class CountriesService {
           code,
           label: taxonomyLabel(taxonomy.featureLabels, code),
         })),
+        calculator: parseCalculatorConfig(record.calculatorConfig),
         acceptedTests: this.stringList(
           record.acceptedTests,
           taxonomy.testCodes,
