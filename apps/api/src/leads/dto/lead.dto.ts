@@ -114,7 +114,9 @@ export class CreateAssessmentLeadDto {
   @MaxLength(200)
   companyWebsite?: string;
 
-  @ApiPropertyOptional({ description: 'The guide the assessment was opened from' })
+  @ApiPropertyOptional({
+    description: 'The guide the assessment was opened from',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(255)

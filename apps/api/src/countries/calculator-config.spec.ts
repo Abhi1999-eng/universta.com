@@ -22,7 +22,9 @@ const valid = {
     {
       id: 'programme',
       label: 'Programme type',
-      options: [{ value: 'taught', label: 'Taught', tuitionMin: 0, tuitionMax: 3000 }],
+      options: [
+        { value: 'taught', label: 'Taught', tuitionMin: 0, tuitionMax: 3000 },
+      ],
     },
   ],
 };
@@ -63,7 +65,9 @@ describe('calculator configuration', () => {
           {
             id: 'programme',
             label: 'Programme',
-            options: [{ value: 'a', label: 'A', tuitionMin: 9000, tuitionMax: 1000 }],
+            options: [
+              { value: 'a', label: 'A', tuitionMin: 9000, tuitionMax: 1000 },
+            ],
           },
         ],
       }),
@@ -76,7 +80,11 @@ describe('calculator configuration', () => {
         parseCalculatorConfig({
           ...valid,
           factors: [
-            { id: 'x', label: 'X', options: [{ value: 'a', label: 'A', mult }] },
+            {
+              id: 'x',
+              label: 'X',
+              options: [{ value: 'a', label: 'A', mult }],
+            },
           ],
         }),
       ).toBeNull();

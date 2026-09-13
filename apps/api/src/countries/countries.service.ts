@@ -337,7 +337,10 @@ function conflict(code: string, message: string): ConflictException {
   return new ConflictException({ code, message, details: null });
 }
 
-function badRequest(code: string, message: string): UnprocessableEntityException {
+function badRequest(
+  code: string,
+  message: string,
+): UnprocessableEntityException {
   return new UnprocessableEntityException({ code, message, details: null });
 }
 
@@ -1668,7 +1671,7 @@ export class CountriesService {
         'COUNTRY_CALCULATOR_INVALID',
         'The calculator configuration is not in a shape the guide can render',
       );
-    return parsed as unknown as Prisma.InputJsonValue;
+    return parsed;
   }
 
   private throwUniqueConflict(error: unknown): void {

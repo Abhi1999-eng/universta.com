@@ -45,7 +45,13 @@ const SCORES: Partial<Record<AssessmentStepId, Record<string, number>>> = {
   language: { 'have-english': 2, 'have-local': 2, booked: 1 },
   experience: { '2-5': 1, 'over-5': 1 },
   intake: { next: 2, 'within-year': 1 },
-  budget: { 'under-10k': 1, '10-20k': 1, '20-35k': 2, 'over-35k': 2, unsure: -1 },
+  budget: {
+    'under-10k': 1,
+    '10-20k': 1,
+    '20-35k': 2,
+    'over-35k': 2,
+    unsure: -1,
+  },
   intent: { ready: 3, shortlisting: 2, researching: 1 },
 };
 
@@ -57,7 +63,9 @@ export const ASSESSMENT_BANDS = [
 
 export type AssessmentBandId = (typeof ASSESSMENT_BANDS)[number]['id'];
 
-export function scoreAssessment(answers: Partial<Record<AssessmentStepId, string>>) {
+export function scoreAssessment(
+  answers: Partial<Record<AssessmentStepId, string>>,
+) {
   let total = 0;
   for (const step of ASSESSMENT_STEP_IDS) {
     const chosen = answers[step];
@@ -67,7 +75,11 @@ export function scoreAssessment(answers: Partial<Record<AssessmentStepId, string
   const band =
     ASSESSMENT_BANDS.find((entry) => total >= entry.min) ??
     ASSESSMENT_BANDS[ASSESSMENT_BANDS.length - 1];
-  return { score: total, band: band.id as AssessmentBandId, bandLabel: band.label };
+  return {
+    score: total,
+    band: band.id,
+    bandLabel: band.label,
+  };
 }
 
 /** The catalogue's course level for an assessment level answer, where one maps. */
@@ -85,7 +97,10 @@ export const LEVEL_TO_COURSE_LEVEL: Record<string, string> = {
  * with the currency left unset because the question asks in "EUR equivalent"
  * terms rather than a real quoted currency.
  */
-export const BUDGET_TO_RANGE: Record<string, { min: number | null; max: number | null }> = {
+export const BUDGET_TO_RANGE: Record<
+  string,
+  { min: number | null; max: number | null }
+> = {
   'under-10k': { min: null, max: 10000 },
   '10-20k': { min: 10000, max: 20000 },
   '20-35k': { min: 20000, max: 35000 },

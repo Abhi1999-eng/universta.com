@@ -33,7 +33,9 @@ describe('Study Abroad (e2e)', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    const fixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const fixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = fixture.createNestApplication(new ExpressAdapter());
     configureApplication(app);
     await app.init();
@@ -53,11 +55,15 @@ describe('Study Abroad (e2e)', () => {
     });
     if (leads.length) {
       const ids = leads.map((row) => row.id);
-      await prisma.leadStatusHistory.deleteMany({ where: { leadId: { in: ids } } });
+      await prisma.leadStatusHistory.deleteMany({
+        where: { leadId: { in: ids } },
+      });
       await prisma.auditLog.deleteMany({ where: { entityId: { in: ids } } });
       await prisma.lead.deleteMany({ where: { id: { in: ids } } });
     }
-    await prisma.country.deleteMany({ where: { slug: { startsWith: `${TAG}-` } } });
+    await prisma.country.deleteMany({
+      where: { slug: { startsWith: `${TAG}-` } },
+    });
   }
 
   async function directory() {
@@ -77,7 +83,9 @@ describe('Study Abroad (e2e)', () => {
       const body = await directory();
       expect(body.available.length).toBeGreaterThan(0);
       expect(body.comingSoon.length).toBeGreaterThan(0);
-      expect(body.available.every((entry) => entry.slug && entry.isAvailable)).toBe(true);
+      expect(
+        body.available.every((entry) => entry.slug && entry.isAvailable),
+      ).toBe(true);
       /* A destination with no guide has nothing to navigate to, so it carries
          no slug at all rather than one that would 404. */
       expect(body.comingSoon.every((entry) => entry.slug === null)).toBe(true);
@@ -86,7 +94,9 @@ describe('Study Abroad (e2e)', () => {
 
     it('never lists the same destination in both tiers', async () => {
       const body = await directory();
-      const published = new Set(body.available.map((entry) => entry.name.toLowerCase()));
+      const published = new Set(
+        body.available.map((entry) => entry.name.toLowerCase()),
+      );
       const overlap = body.comingSoon.filter((entry) =>
         published.has(entry.name.toLowerCase()),
       );
@@ -114,9 +124,13 @@ describe('Study Abroad (e2e)', () => {
       try {
         const body = await directory();
         const everywhere = [...body.available, ...body.comingSoon];
-        expect(everywhere.find((entry) => entry.name === draft.name)).toBeUndefined();
+        expect(
+          everywhere.find((entry) => entry.name === draft.name),
+        ).toBeUndefined();
         /* And nothing of its content leaked into the payload either. */
-        expect(JSON.stringify(body)).not.toContain('Unpublished editorial work');
+        expect(JSON.stringify(body)).not.toContain(
+          'Unpublished editorial work',
+        );
       } finally {
         await prisma.country.delete({ where: { id: draft.id } });
       }
@@ -125,7 +139,9 @@ describe('Study Abroad (e2e)', () => {
     it('counts what it published, not what it listed', async () => {
       const body = await directory();
       expect(body.counts.available).toBe(body.available.length);
-      expect(body.counts.total).toBe(body.available.length + body.comingSoon.length);
+      expect(body.counts.total).toBe(
+        body.available.length + body.comingSoon.length,
+      );
       expect(body.counts.popular).toBe(
         body.available.filter((entry) => entry.isPopular).length,
       );
@@ -167,7 +183,10 @@ describe('Study Abroad (e2e)', () => {
         countrySlug: country?.slug,
         sourcePagePath: `/study-abroad/${country?.slug ?? ''}`,
       }).expect(201);
-      expect(response.body.data).toMatchObject({ received: true, band: 'high' });
+      expect(response.body.data).toMatchObject({
+        received: true,
+        band: 'high',
+      });
 
       const lead = await prisma.lead.findFirst({ where: { email } });
       expect(lead).toBeTruthy();
@@ -184,7 +203,10 @@ describe('Study Abroad (e2e)', () => {
       expect(lead?.englishTestType).toBe('HELD');
       expect(Number(lead?.budgetMin)).toBe(20000);
       expect(Number(lead?.budgetMax)).toBe(35000);
-      const stored = lead?.assessmentJson as { band?: string; answers?: unknown };
+      const stored = lead?.assessmentJson as {
+        band?: string;
+        answers?: unknown;
+      };
       expect(stored?.band).toBe('high');
       expect(stored?.answers).toMatchObject({ intent: 'ready' });
     });
@@ -198,7 +220,9 @@ describe('Study Abroad (e2e)', () => {
         prisma.leadStatusHistory.count({ where: { leadId: lead!.id } }),
       ).resolves.toBe(1);
       await expect(
-        prisma.auditLog.count({ where: { entityId: lead!.id, action: 'LEAD_CREATED' } }),
+        prisma.auditLog.count({
+          where: { entityId: lead!.id, action: 'LEAD_CREATED' },
+        }),
       ).resolves.toBe(1);
     });
 
@@ -267,10 +291,22 @@ describe('Study Abroad (e2e)', () => {
     });
 
     it('requires consent, a name and a reachable contact', async () => {
-      await submit({ ...base, email: 'x@sa-e2e.invalid', phoneNumber: '+15550100007', consent: false })
-        .expect(400);
-      await submit({ ...base, email: 'not-an-email', phoneNumber: '+15550100008' }).expect(400);
-      await submit({ ...base, email: 'y@sa-e2e.invalid', phoneNumber: 'nope' }).expect(400);
+      await submit({
+        ...base,
+        email: 'x@sa-e2e.invalid',
+        phoneNumber: '+15550100007',
+        consent: false,
+      }).expect(400);
+      await submit({
+        ...base,
+        email: 'not-an-email',
+        phoneNumber: '+15550100008',
+      }).expect(400);
+      await submit({
+        ...base,
+        email: 'y@sa-e2e.invalid',
+        phoneNumber: 'nope',
+      }).expect(400);
     });
 
     it('links no country when the destination is not a published one', async () => {

@@ -292,7 +292,6 @@ export class LeadsService {
     }
   }
 
-
   /**
    * The Study Abroad assessment, written as a Lead like any other.
    *
@@ -310,7 +309,8 @@ export class LeadsService {
     if (dto.companyWebsite) return { received: true as const };
 
     const answers: Record<string, string> = {};
-    const invalid: Array<{ property: string; code: string; message: string }> = [];
+    const invalid: Array<{ property: string; code: string; message: string }> =
+      [];
     for (const [key, value] of Object.entries(dto.answers ?? {})) {
       const step = key as AssessmentStepId;
       const allowed = ASSESSMENT_OPTIONS[step] as readonly string[] | undefined;
@@ -346,13 +346,18 @@ export class LeadsService {
       .update('\u0000')
       .update(dto.phoneNumber)
       .digest('hex');
-    if (this.pendingDuplicateKeys.has(duplicateKey)) return { received: true as const };
+    if (this.pendingDuplicateKeys.has(duplicateKey))
+      return { received: true as const };
     this.pendingDuplicateKeys.add(duplicateKey);
 
     try {
-      const scored = scoreAssessment(answers as Record<AssessmentStepId, string>);
-      const levelCode = answers.level ? LEVEL_TO_COURSE_LEVEL[answers.level] : undefined;
-      const budget = answers.budget ? BUDGET_TO_RANGE[answers.budget] : undefined;
+      const scored = scoreAssessment(answers);
+      const levelCode = answers.level
+        ? LEVEL_TO_COURSE_LEVEL[answers.level]
+        : undefined;
+      const budget = answers.budget
+        ? BUDGET_TO_RANGE[answers.budget]
+        : undefined;
 
       /* A destination is optional in this flow -- the student may not have
        * settled on one -- and is only linked when it names a published country,
@@ -360,7 +365,11 @@ export class LeadsService {
       const [country, courseLevel] = await Promise.all([
         dto.countrySlug
           ? this.prisma.country.findFirst({
-              where: { slug: dto.countrySlug, status: 'PUBLISHED', deletedAt: null },
+              where: {
+                slug: dto.countrySlug,
+                status: 'PUBLISHED',
+                deletedAt: null,
+              },
               select: { id: true },
             })
           : Promise.resolve(null),
@@ -446,7 +455,11 @@ export class LeadsService {
           },
         });
       });
-      return { received: true as const, band: scored.band, score: scored.score };
+      return {
+        received: true as const,
+        band: scored.band,
+        score: scored.score,
+      };
     } finally {
       this.pendingDuplicateKeys.delete(duplicateKey);
     }

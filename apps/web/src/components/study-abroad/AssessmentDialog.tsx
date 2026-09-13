@@ -31,7 +31,11 @@ export function AssessmentDialog({
 }) {
   const steps = ASSESSMENT.steps;
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  /* The dialog is mounted fresh each time it opens, so the country it was
+     opened from is an initial value rather than something to synchronise. */
+  const [answers, setAnswers] = useState<Record<string, string>>(() =>
+    context.countrySlug ? { destination: context.countrySlug } : ({} as Record<string, string>),
+  );
   const [phase, setPhase] = useState<Phase>('questions');
   const [form, setForm] = useState({ name: '', phone: '', email: '', companyWebsite: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -47,11 +51,6 @@ export function AssessmentDialog({
     () => (destinations ?? []).filter((entry) => entry.slug),
     [destinations],
   );
-
-  useEffect(() => {
-    if (context.countrySlug)
-      setAnswers((current) => ({ ...current, destination: context.countrySlug! }));
-  }, [context.countrySlug]);
 
   useEffect(() => {
     headingRef.current?.focus();

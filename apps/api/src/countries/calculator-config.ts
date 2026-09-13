@@ -47,7 +47,10 @@ const MAX_FACTORS = 8;
 const MAX_OPTIONS = 12;
 const MAX_MONEY = 1_000_000;
 
-function finiteNumber(value: unknown, { min = 0, max = MAX_MONEY } = {}): number | null {
+function finiteNumber(
+  value: unknown,
+  { min = 0, max = MAX_MONEY } = {},
+): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   if (value < min || value > max) return null;
   return value;
@@ -74,13 +77,19 @@ export function parseCalculatorConfig(value: unknown): CalculatorConfig | null {
   const input = value as Record<string, unknown>;
 
   const rawBase = input.base;
-  if (!rawBase || typeof rawBase !== 'object' || Array.isArray(rawBase)) return null;
+  if (!rawBase || typeof rawBase !== 'object' || Array.isArray(rawBase))
+    return null;
   const base = rawBase as Record<string, unknown>;
   const livingMin = finiteNumber(base.livingMin);
   const livingMax = finiteNumber(base.livingMax);
   const insurance = finiteNumber(base.insurance);
   const semesterFee = finiteNumber(base.semesterFee);
-  if (livingMin === null || livingMax === null || insurance === null || semesterFee === null)
+  if (
+    livingMin === null ||
+    livingMax === null ||
+    insurance === null ||
+    semesterFee === null
+  )
     return null;
   if (livingMax < livingMin) return null;
 
@@ -90,27 +99,38 @@ export function parseCalculatorConfig(value: unknown): CalculatorConfig | null {
   const factors: CalculatorFactor[] = [];
   const seenFactors = new Set<string>();
   for (const entry of input.factors) {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry))
+      return null;
     const factor = entry as Record<string, unknown>;
     const id = shortString(factor.id, 40);
     const label = shortString(factor.label);
     if (!id || !label || seenFactors.has(id)) return null;
     seenFactors.add(id);
 
-    if (!Array.isArray(factor.options) || factor.options.length === 0) return null;
+    if (!Array.isArray(factor.options) || factor.options.length === 0)
+      return null;
     if (factor.options.length > MAX_OPTIONS) return null;
 
     const options: CalculatorOption[] = [];
     const seenOptions = new Set<string>();
     for (const rawOption of factor.options) {
-      if (!rawOption || typeof rawOption !== 'object' || Array.isArray(rawOption)) return null;
+      if (
+        !rawOption ||
+        typeof rawOption !== 'object' ||
+        Array.isArray(rawOption)
+      )
+        return null;
       const option = rawOption as Record<string, unknown>;
       const optionValue = shortString(option.value, 40);
       const optionLabel = shortString(option.label);
-      if (!optionValue || !optionLabel || seenOptions.has(optionValue)) return null;
+      if (!optionValue || !optionLabel || seenOptions.has(optionValue))
+        return null;
       seenOptions.add(optionValue);
 
-      const parsed: CalculatorOption = { value: optionValue, label: optionLabel };
+      const parsed: CalculatorOption = {
+        value: optionValue,
+        label: optionLabel,
+      };
       if (option.mult !== undefined) {
         /* A multiplier outside this range is a typo, not a lifestyle. */
         const mult = finiteNumber(option.mult, { min: 0.1, max: 5 });
@@ -133,7 +153,8 @@ export function parseCalculatorConfig(value: unknown): CalculatorConfig | null {
         parsed.tuitionMax < parsed.tuitionMin
       )
         return null;
-      const note = option.note === undefined ? null : shortString(option.note, 120);
+      const note =
+        option.note === undefined ? null : shortString(option.note, 120);
       if (option.note !== undefined && note === null) return null;
       if (note) parsed.note = note;
       options.push(parsed);

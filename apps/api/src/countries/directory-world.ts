@@ -34,7 +34,12 @@ const WORLD: ReadonlyArray<
   ['Algeria', 'Africa', 'DZ', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Andorra', 'Europe', 'AD', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Angola', 'Africa', 'AO', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['Antigua and Barbuda', 'Latin America', 'AG', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'Antigua and Barbuda',
+    'Latin America',
+    'AG',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Argentina', 'Latin America', 'AR', ['#74ACDF', '#FFFFFF', '#74ACDF']],
   ['Armenia', 'Middle East', 'AM', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Aruba', 'Latin America', 'AW', ['#0C2038', '#1B3554', '#2A4A70']],
@@ -64,7 +69,12 @@ const WORLD: ReadonlyArray<
   ['Cameroon', 'Africa', 'CM', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Canada', 'North America', 'CA', ['#D80621', '#FFFFFF', '#D80621']],
   ['Cayman Islands', 'Latin America', 'KY', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['Central African Republic', 'Africa', 'CF', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'Central African Republic',
+    'Africa',
+    'CF',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Chad', 'Africa', 'TD', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Chile', 'Latin America', 'CL', ['#0C2038', '#1B3554', '#2A4A70']],
   ['China', 'Asia', 'CN', ['#DE2910', '#FFDE00', '#DE2910']],
@@ -81,7 +91,12 @@ const WORLD: ReadonlyArray<
   ['Denmark', 'Europe', 'DK', ['#C8102E', '#FFFFFF', '#C8102E']],
   ['Djibouti', 'Africa', 'DJ', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Dominica', 'Latin America', 'DM', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['Dominican Republic', 'Latin America', 'DO', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'Dominican Republic',
+    'Latin America',
+    'DO',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Ecuador', 'Latin America', 'EC', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Egypt', 'Africa', 'EG', ['#0C2038', '#1B3554', '#2A4A70']],
   ['El Salvador', 'Latin America', 'SV', ['#0C2038', '#1B3554', '#2A4A70']],
@@ -183,9 +198,19 @@ const WORLD: ReadonlyArray<
   ['Romania', 'Europe', 'RO', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Russia', 'Europe', 'RU', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Rwanda', 'Africa', 'RW', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['Saint Kitts and Nevis', 'Latin America', 'KN', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'Saint Kitts and Nevis',
+    'Latin America',
+    'KN',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Saint Lucia', 'Latin America', 'LC', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['Saint Vincent and the Grenadines', 'Latin America', 'VC', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'Saint Vincent and the Grenadines',
+    'Latin America',
+    'VC',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Samoa', 'Oceania', 'WS', ['#0C2038', '#1B3554', '#2A4A70']],
   ['San Marino', 'Europe', 'SM', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Sao Tome and Principe', 'Africa', 'ST', ['#0C2038', '#1B3554', '#2A4A70']],
@@ -216,7 +241,12 @@ const WORLD: ReadonlyArray<
   ['Timor-Leste', 'Asia', 'TL', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Togo', 'Africa', 'TG', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Tonga', 'Oceania', 'TO', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['Trinidad and Tobago', 'Latin America', 'TT', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'Trinidad and Tobago',
+    'Latin America',
+    'TT',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Tunisia', 'Africa', 'TN', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Turkey', 'Middle East', 'TR', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Turkmenistan', 'Asia', 'TM', ['#0C2038', '#1B3554', '#2A4A70']],
@@ -225,7 +255,12 @@ const WORLD: ReadonlyArray<
   ['USA', 'North America', 'US', ['#3C3B6E', '#B22234', '#FFFFFF']],
   ['Uganda', 'Africa', 'UG', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Ukraine', 'Europe', 'UA', ['#0C2038', '#1B3554', '#2A4A70']],
-  ['United Arab Emirates', 'Middle East', 'AE', ['#0C2038', '#1B3554', '#2A4A70']],
+  [
+    'United Arab Emirates',
+    'Middle East',
+    'AE',
+    ['#0C2038', '#1B3554', '#2A4A70'],
+  ],
   ['Uruguay', 'Latin America', 'UY', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Uzbekistan', 'Asia', 'UZ', ['#0C2038', '#1B3554', '#2A4A70']],
   ['Vanuatu', 'Oceania', 'VU', ['#0C2038', '#1B3554', '#2A4A70']],
@@ -280,7 +315,9 @@ const CONTINENT_TO_REGION: Record<string, DirectoryRegion> = {
   australasia: 'Oceania',
 };
 
-export function regionForContinent(name: string | null | undefined): DirectoryRegion | null {
+export function regionForContinent(
+  name: string | null | undefined,
+): DirectoryRegion | null {
   if (!name) return null;
   return CONTINENT_TO_REGION[name.trim().toLowerCase()] ?? null;
 }
