@@ -32,6 +32,7 @@ import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
 import { CountryDerivedService } from './country-derived.service';
 import {
   DIRECTORY_REGIONS,
+  bandsFor,
   comingSoonDestinations,
   regionForContinent,
   regionForName,
@@ -678,6 +679,7 @@ export class CountriesService {
         regionForName(country.name) ??
         null,
       summary: country.shortDescription,
+      bands: bandsFor(country.name, country.iso2Code),
     }));
 
     const comingSoon = comingSoonDestinations(
@@ -685,11 +687,12 @@ export class CountriesService {
     ).map((entry) => ({
       name: entry.name,
       slug: null,
-      iso2Code: null,
+      iso2Code: entry.iso2Code,
       isPopular: false,
       isAvailable: false,
       region: entry.region,
       summary: null,
+      bands: entry.bands,
     }));
 
     return {

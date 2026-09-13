@@ -9,7 +9,7 @@ import Link from 'next/link';
  * does not have yet are left out rather than pointed at a 404.
  */
 
-const PRIMARY = [
+export const PRIMARY = [
   { label: 'Study Destinations', href: '/study-abroad' },
   { label: 'Courses', href: '/courses' },
   { label: 'Universities', href: '/universities' },
@@ -124,21 +124,6 @@ export function StudyAbroadHeader() {
         </div>
       </header>
 
-      <div className="drawer" data-drawer data-open="false">
-        {PRIMARY.map((item) => (
-          <Link key={item.href} href={item.href}>
-            {item.label}
-          </Link>
-        ))}
-        <div className="drawer__cta">
-          <button className="btn btn--block btn--lg" type="button" data-open-assessment>
-            Build My Study Plan{' '}
-            <span className="btn__arrow" aria-hidden="true">
-              &rarr;
-            </span>
-          </button>
-        </div>
-      </div>
     </>
   );
 }

@@ -57,8 +57,10 @@
   --info-soft: rgba(31, 95, 168, 0.10);
 
   /* --- Typography --------------------------------------------------- */
-  --font-display: "Sora", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Loaded by next/font in the layout, so there is no blocking stylesheet link
+     and no font request leaks to another route. */
+  --font-display: var(--sa-font-display), "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: var(--sa-font-body), "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --fs-display: clamp(44px, 8.2vw, 104px);

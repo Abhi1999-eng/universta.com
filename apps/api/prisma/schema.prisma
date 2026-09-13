@@ -923,6 +923,9 @@ model Country {
   featureCodes              Json? @map("feature_codes")
   acceptedTests             Json? @map("accepted_tests")
   intakeMonths              Json? @map("intake_months")
+  /// Budget calculator factors for the Study Abroad guide. The Cost Profile
+  /// stays canonical for the base living figures; this only varies them.
+  calculatorConfig          Json? @map("calculator_config")
   postStudyWorkPermitMonths Int?  @map("post_study_work_permit_months")
 
   studentNationalities    StudentProfile[]          @relation("StudentNationality")
@@ -1558,6 +1561,10 @@ model Lead {
   englishTestScore       Decimal?  @map("english_test_score") @db.Decimal(6, 2)
   highestQualification   String?   @map("highest_qualification") @db.VarChar(255)
   message                String?   @db.Text
+  /// The assessment answers and the intent band computed from them. Only the
+  /// four answers without a column of their own live here; the rest are
+  /// written to the canonical columns above so existing filters keep working.
+  assessmentJson         Json?     @map("assessment_json")
   status                 String    @default("NEW") @db.VarChar(30)
   priority               String    @default("NORMAL") @db.VarChar(30)
   assignedToUserId       String?   @map("assigned_to_user_id") @db.Char(36)
