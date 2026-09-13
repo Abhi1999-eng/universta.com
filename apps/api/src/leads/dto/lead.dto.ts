@@ -7,6 +7,7 @@ import {
   IsEmail,
   IsIn,
   IsInt,
+  IsObject,
   IsISO8601,
   IsOptional,
   IsString,
@@ -53,6 +54,91 @@ function normalizePhone({ value }: TransformFnParams): unknown {
 const SAFE_TEXT = /^(?!.*[<>])[\s\S]*$/;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SAFE_PATH = /^\/(?!\/)[A-Za-z0-9/_-]*$/;
+
+/**
+ * The Study Abroad assessment.
+ *
+ * It asks different questions from the counselling form -- ten answers, and a
+ * destination the student may not have settled on -- so it has its own shape
+ * rather than bending that one. It writes to the same Lead table through the
+ * same service, with the same honeypot, duplicate suppression and rate limit.
+ */
+export class CreateAssessmentLeadDto {
+  @ApiProperty({ example: 'Fictional Student' })
+  @Transform(trimValue)
+  @IsString()
+  @Length(2, 100)
+  @Matches(SAFE_TEXT)
+  fullName!: string;
+
+  @ApiProperty({ example: 'student@example.invalid' })
+  @Transform(lowercaseValue)
+  @IsEmail()
+  @MaxLength(254)
+  email!: string;
+
+  @ApiProperty({ example: '+15550102020' })
+  @Transform(normalizePhone)
+  @IsString()
+  @Matches(/^\+?[0-9]{7,15}$/)
+  phoneNumber!: string;
+
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  @Equals(true)
+  consent!: boolean;
+
+  /* Each answer is checked against the server's own option list before it is
+   * stored; an unknown value is rejected rather than written. */
+  @ApiProperty({
+    example: { field: 'engineering', level: 'masters', intent: 'ready' },
+    description: 'Answers keyed by step id',
+  })
+  @IsObject()
+  answers!: Record<string, string>;
+
+  @ApiPropertyOptional({
+    example: 'united-kingdom',
+    description: 'The destination the student chose, when they chose one',
+  })
+  @Transform(lowercaseValue)
+  @IsOptional()
+  @Matches(SLUG)
+  @MaxLength(255)
+  countrySlug?: string;
+
+  @ApiPropertyOptional({ description: 'Hidden bot-trap field' })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  companyWebsite?: string;
+
+  @ApiPropertyOptional({ description: 'The guide the assessment was opened from' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Matches(SAFE_PATH)
+  sourcePagePath?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmSource?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmMedium?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmCampaign?: string;
+}
 
 export class CreateCounsellingLeadDto {
   @ApiProperty({ example: 'Fictional Student' })

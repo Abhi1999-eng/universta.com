@@ -22,6 +22,7 @@ import { successEnvelope } from '../catalog/catalog.responses';
 import type { RequestWithId } from '../common/http.types';
 import { UpdateLeadConsultantAssignmentDto } from './dto/lead-consultant-assignment.dto';
 import {
+  CreateAssessmentLeadDto,
   CreateCounsellingLeadDto,
   CreateLeadNoteDto,
   LeadListQueryDto,
@@ -58,6 +59,22 @@ export class PublicLeadsController {
     this.protection.assertBodySize(request.get('content-length'), dto);
     this.protection.assertRateLimit(dto.email, dto.phoneNumber, response);
     return successEnvelope(request, await this.leads.createPublic(dto));
+  }
+
+  @Post('assessment')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: 'Submit a Study Abroad assessment' })
+  async createAssessment(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+    @Body() dto: CreateAssessmentLeadDto,
+  ) {
+    /* The same three gates the counselling form goes through. An assessment is
+     * a different set of questions, not a different level of trust. */
+    this.protection.assertOrigin(request.get('origin'));
+    this.protection.assertBodySize(request.get('content-length'), dto);
+    this.protection.assertRateLimit(dto.email, dto.phoneNumber, response);
+    return successEnvelope(request, await this.leads.createAssessment(dto));
   }
 }
 
