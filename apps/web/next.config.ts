@@ -21,6 +21,34 @@ const nextConfig: NextConfig = {
   // in this Next.js version). The actual pages live under the pure dynamic
   // segment `study-in/[countrySlug]`; these rewrites keep the public,
   // canonical URL as `/study-in-{countrySlug}` without redirecting.
+  /**
+   * The destination directory and country guides move to /study-abroad.
+   *
+   * These are the route family's own move, so they belong in routing rather
+   * than in the Admin's Redirects table: that table is for one-off paths an
+   * editor curates and matches an exact string, which cannot express "every
+   * country slug". Editor-managed redirects continue to work exactly as before
+   * through the middleware.
+   *
+   * Permanent, so the old address stops being indexed, and slug-preserving, so
+   * every shared /countries/<slug> link lands on the same country's guide.
+   */
+  async redirects() {
+    return [
+      { source: '/countries', destination: '/study-abroad', permanent: true },
+      {
+        source: '/countries/:countrySlug',
+        destination: '/study-abroad/:countrySlug',
+        permanent: true,
+      },
+      /* No alias for the design's short names (uk, usa, nz). The catalogue's
+         own slug is canonical and differs by environment -- the UK is `uk` in
+         one and `united-kingdom` in another -- so a fixed alias would redirect
+         a working page to a 404. Nothing links to the short forms yet, and an
+         editor who wants one can add it in the Admin's Redirects table, which
+         matches exact paths and is the right tool for a one-off. */
+    ];
+  },
   async rewrites() {
     return [
       { source: '/study-in-:countrySlug/cities', destination: '/study-in/:countrySlug/cities' },
