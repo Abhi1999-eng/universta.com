@@ -1,3 +1,4 @@
+import type { CalculatorConfig } from '@/components/study-abroad/CostCalculator';
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -28,6 +29,7 @@ export interface Country {
   tagline?: string | null;
   capitalCity?: string | null;
   officialLanguage?: string | null;
+  iso2Code?: string | null;
   /* A country can be published before anyone has assigned it a region. */
   continent: { id: string; name: string; slug: string } | null;
   flag: Flag | null;
@@ -55,6 +57,8 @@ export interface Country {
     acceptedTests: Array<{ code: string; label: string }>;
     intakeMonths: number[];
     postStudyWorkPermitMonths: number | null;
+    /** Null unless an editor has configured a sound calculator document. */
+    calculator: CalculatorConfig | null;
   };
   derived?: {
     averageTuition: {

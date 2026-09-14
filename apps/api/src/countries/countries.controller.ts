@@ -50,6 +50,14 @@ export class CountriesController {
     return successEnvelope(request, result.data, result.meta);
   }
 
+  @Get('destinations')
+  @ApiOperation({
+    summary: 'Study Abroad directory: published destinations and the rest',
+  })
+  async destinations(@Req() request: RequestWithId) {
+    return successEnvelope(request, await this.countries.destinations());
+  }
+
   @Get(':slug')
   @ApiOperation({ summary: 'Get a published country by slug' })
   async detail(@Req() request: RequestWithId, @Param('slug') slug: string) {

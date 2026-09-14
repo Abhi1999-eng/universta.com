@@ -20,10 +20,11 @@ const resources = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
-    // "/countries" now redirects to "/", which serves that same content as
-    // the homepage -- listing both here would put two canonical URLs for
-    // identical content in the sitemap.
+    // "/countries" redirects to "/study-abroad", which is now the canonical
+    // destination directory. Listing both would put two URLs for the same
+    // content in the sitemap.
     "/",
+    "/study-abroad",
     "/about",
     "/contact",
     "/faq",
@@ -70,7 +71,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...jobs.data.map((row) => `/careers/${row.slug}`),
       ...events.data.map((row) => `/events/${row.slug}`),
       ...successStories.data.map((row) => `/success-stories/${row.slug}`),
-      ...countries.data.map((row) => `/countries/${row.slug}`),
+      /* The canonical country guide lives under /study-abroad; /countries/<slug>
+         permanently redirects there, so only the target is listed. */
+      ...countries.data.map((row) => `/study-abroad/${row.slug}`),
       ...countries.data.flatMap((country, index) =>
         citiesByCountry[index].data.map(
           (city) => `/study-in-${country.slug}/${city.slug}`,

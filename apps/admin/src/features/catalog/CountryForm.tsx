@@ -113,6 +113,8 @@ type CountryConfiguration = {
   acceptedTests: string[];
   intakeMonths: number[];
   postStudyWorkPermitMonths: string;
+  /** The budget calculator document, edited as JSON. Empty means no calculator. */
+  calculatorConfig: string;
   popularUniversityIds: string[];
   popularCourseIds: string[];
 };
@@ -219,6 +221,7 @@ const blankConfiguration: CountryConfiguration = {
   acceptedTests: [],
   intakeMonths: [],
   postStudyWorkPermitMonths: "",
+  calculatorConfig: "",
   popularUniversityIds: [],
   popularCourseIds: [],
 };
@@ -516,6 +519,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           acceptedTests:
             country.configuration?.acceptedTests.map((test) => test.code) ?? [],
           intakeMonths: country.configuration?.intakeMonths ?? [],
+          calculatorConfig: country.configuration?.calculator
+            ? JSON.stringify(country.configuration.calculator, null, 2)
+            : "",
           postStudyWorkPermitMonths:
             country.configuration?.postStudyWorkPermitMonths === null ||
             country.configuration?.postStudyWorkPermitMonths === undefined
@@ -972,6 +978,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           configuration.postStudyWorkPermitMonths === ""
             ? undefined
             : Number(configuration.postStudyWorkPermitMonths),
+        /* An empty box clears the calculator; anything else is sent as the
+           parsed document so the API validates the real shape, not a string. */
+        calculatorConfig: configuration.calculatorConfig.trim()
+          ? (JSON.parse(configuration.calculatorConfig) as Record<string, unknown>)
+          : null,
         popularUniversityIds: configuration.popularUniversityIds,
         popularCourseIds: configuration.popularCourseIds,
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
@@ -1317,6 +1328,16 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               onToggle={(value) =>
                 toggleConfiguration("intakeMonths", Number(value))
               }
+            />
+            <CalculatorField
+              value={configuration.calculatorConfig}
+              onChange={(value) => {
+                setConfiguration((current) => ({
+                  ...current,
+                  calculatorConfig: value,
+                }));
+                setDirty(true);
+              }}
             />
             <Input
               label="Maximum post-study work permit (months)"
@@ -1766,6 +1787,64 @@ function Card({
     </fieldset>
   );
 }
+/**
+ * The budget calculator's configuration.
+ *
+ * It is one document -- base costs, then factor groups with their options --
+ * and it is edited as JSON rather than through a bespoke builder, because that
+ * is the honest shape of it and a builder would be a screen of its own for
+ * something a handful of destinations will ever use. The text is checked for
+ * being valid JSON as it is typed, and the API refuses anything the public
+ * guide could not render, so a mistake surfaces here rather than as a missing
+ * calculator nobody can explain.
+ *
+ * Empty means the destination has no calculator, which is a normal state.
+ */
+function CalculatorField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const problem = (() => {
+    if (!value.trim()) return null;
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        return "This should be a single JSON object.";
+      const record = parsed as Record<string, unknown>;
+      if (!record.base) return "Missing the `base` costs.";
+      if (!Array.isArray(record.factors) || record.factors.length === 0)
+        return "Missing the `factors` list.";
+      return null;
+    } catch {
+      return "This is not valid JSON yet.";
+    }
+  })();
+
+  return (
+    <label className="block text-sm font-semibold">
+      Budget calculator
+      <span className="mt-1 block text-xs font-normal text-[#667085]">
+        Factor groups for the Study Abroad guide. Leave empty for no calculator.
+        Base living costs come from the Cost and budget card; this only varies
+        them.
+      </span>
+      <textarea
+        className="mt-2 h-48 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 font-mono text-xs font-normal outline-none focus:border-[#1657CF]"
+        value={value}
+        spellCheck={false}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={'{\n  "base": { "livingMin": 850, "livingMax": 1200, "insurance": 130, "semesterFee": 275 },\n  "factors": [ ... ]\n}'}
+      />
+      {problem ? (
+        <span className="mt-1 block text-xs font-normal text-[#B42318]">{problem}</span>
+      ) : null}
+    </label>
+  );
+}
+
 function Empty({ text }: { text: string }) {
   return (
     <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">
