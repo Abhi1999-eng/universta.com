@@ -46,7 +46,10 @@ export default async function StudyAbroadLayout({
   const directory = await getDestinations().catch(() => null);
 
   return (
-    <div className={`sa ${sora.variable} ${manrope.variable}`}>
+    /* flex-1 because this now sits directly in the body's column, where the
+       root layout's <main> used to: without it a short page leaves the footer
+       floating above the fold. */
+    <div className={`sa flex-1 ${sora.variable} ${manrope.variable}`}>
       <StudyAbroadShell destinations={directory}>{children}</StudyAbroadShell>
     </div>
   );

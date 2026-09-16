@@ -921,7 +921,7 @@
 .sa .footer__brand .brand__mark{ background: #fff; color: var(--navy); }
 .sa .footer__note{ margin-top: 16px; font-size: 14.5px; max-width: 40ch; }
 .sa .footer__tagline{ margin-top: 16px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-on-navy); }
-.sa .footer__col h4{ font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #fff; font-weight: 500; margin-bottom: 16px; }
+.sa .footer__col h2{ font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #fff; font-weight: 500; margin-bottom: 16px; }
 .sa .footer__col ul{ list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
 .sa .footer__col a{ text-decoration: none; font-size: 14.5px; transition: color var(--dur) var(--ease); }
 .sa .footer__col a:hover{ color: #fff; }

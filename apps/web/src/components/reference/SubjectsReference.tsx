@@ -563,7 +563,7 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
             </div>
             <div className="explore-grid">
               {[
-                ['Study destinations', '/countries'],
+                ['Study destinations', '/study-abroad'],
                 ['Universities', '/universities'],
                 ['Courses', '/courses'],
                 ['Scholarships', '/scholarships'],

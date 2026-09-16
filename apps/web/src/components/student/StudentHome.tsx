@@ -142,7 +142,7 @@ export function StudentHome() {
           <Link className="stu-btn ghost" href="/courses">
             Explore courses
           </Link>
-          <Link className="stu-btn ghost" href="/countries">
+          <Link className="stu-btn ghost" href="/study-abroad">
             Explore countries
           </Link>
           <Link className="stu-btn ghost" href="/scholarships">

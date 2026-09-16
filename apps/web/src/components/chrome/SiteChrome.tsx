@@ -41,6 +41,18 @@ export async function SiteChromeHeader() {
   return <GlobalHeader chrome={chrome} />;
 }
 
+/** The page's own content landmark. Study Abroad renders its own, between its
+ * own header and footer, so wrapping it again here would nest one <main> in
+ * another and pull that route's header and footer inside the content. */
+export async function SiteChromeContent({ children }: { children: React.ReactNode }) {
+  if (ownsItsChrome(await currentPath())) return <>{children}</>;
+  return (
+    <main id="content" className="flex-1">
+      {children}
+    </main>
+  );
+}
+
 export async function SiteChromeFooter() {
   const path = await currentPath();
   if (ownsItsChrome(path)) return null;

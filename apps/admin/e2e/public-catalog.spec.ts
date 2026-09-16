@@ -34,8 +34,7 @@ function observePageHealth(page: Page) {
 
 test.describe('approved public subject and course discovery', () => {
   test('renders the Countries listing as the home route', async ({ page }) => {
-    // The Countries listing remains the site's homepage, and is also available
-    // at its canonical public route.
+    // The Countries listing remains the site's homepage.
     await page.goto(webBaseUrl);
 
     await expect(page).toHaveURL(webBaseUrl);
@@ -46,9 +45,13 @@ test.describe('approved public subject and course discovery', () => {
     const hero = page.locator('main');
     await expect(hero.getByRole('link', { name: /counsel/i }).first()).toHaveAttribute('href', /counselling/);
 
+    // /countries itself has moved: bare, to the Study Abroad directory; with a
+    // search, back to this listing with the search intact.
     await page.goto(`${webBaseUrl}/countries`);
-    await expect(page).toHaveURL(`${webBaseUrl}/countries`);
-    await expect(page.getByLabel('Search a country')).toBeVisible();
+    await expect(page).toHaveURL(`${webBaseUrl}/study-abroad`);
+    await page.goto(`${webBaseUrl}/countries?q=Canada`);
+    await expect(page).toHaveURL(`${webBaseUrl}/?q=Canada`);
+    await expect(page.getByLabel('Search a country')).toHaveValue('Canada');
   });
 
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {

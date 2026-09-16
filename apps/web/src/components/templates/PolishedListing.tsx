@@ -415,7 +415,7 @@ export function PolishedListing({
             <h2>{ctaHeading}</h2>
             <p>{ctaBody}</p>
             <div className="cta-row">
-              <Link href="/countries" className="btn btn-secondary">Explore destinations</Link>
+              <Link href="/study-abroad" className="btn btn-secondary">Explore destinations</Link>
               <Link
                 href={counsellingHref({ source: counsellingSource, from: basePath })}
                 className="btn btn-outline"

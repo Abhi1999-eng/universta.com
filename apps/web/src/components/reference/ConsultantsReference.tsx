@@ -534,7 +534,7 @@ export function ConsultantsReference(props: ConsultantsReferenceProps) {
             <Link href="/counselling" className="btn btn-w btn-lg">
               Book free counselling
             </Link>
-            <Link href="/countries" className="btn btn-o btn-lg">
+            <Link href="/study-abroad" className="btn btn-o btn-lg">
               Browse destinations
             </Link>
           </div>

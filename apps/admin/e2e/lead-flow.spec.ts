@@ -12,13 +12,11 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
   const phone = `+1555${String(unique).slice(-8)}`;
   const internalNote = `<script>alert("qa")</script> Fictional follow-up note ${unique}`;
 
-  await page.goto(`${webBaseUrl}/countries/canada`);
-  await page
-    .locator('.hero-btns')
-    .getByRole('link', { name: 'Get free counselling' })
-    .click();
-  await expect(page).toHaveURL(
-    /\/counselling\?source=country&country=canada/,
+  /* The country guide's own call to action is the assessment, covered in
+   * study-abroad.spec.ts. Counselling still arrives with country context from
+   * the rest of the site, and that context is what this flow is about. */
+  await page.goto(
+    `${webBaseUrl}/counselling?source=country&country=canada&from=%2Fstudy-abroad%2Fcanada`,
   );
   await expect(page.getByText(/Started from: Country · Canada/)).toBeVisible();
   await expect(page.getByLabel('Interested country')).toHaveValue('canada');
@@ -73,7 +71,7 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
   await expect(page.getByText('Lead Note Created', { exact: true })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${webBaseUrl}/counselling?source=country&country=canada&from=%2Fcountries%2Fcanada`);
+  await page.goto(`${webBaseUrl}/counselling?source=country&country=canada&from=%2Fstudy-abroad%2Fcanada`);
   expect(
     await page.evaluate(
       () =>

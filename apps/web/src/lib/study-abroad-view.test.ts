@@ -113,6 +113,18 @@ describe('work cards', () => {
     expect(workSummary(page({}).profiles)).toEqual([]);
   });
 
+  it('carries the visa processing time when one is published, and only then', () => {
+    const withTime = workSummary(
+      page({ work: { visaType: 'Student visa (subclass 500)', visaProcessingTime: '4 to 6 weeks' } })
+        .profiles,
+    );
+    expect(withTime.find((card) => card.title === 'Student visa')?.value).toBe(
+      'Student visa (subclass 500) · 4 to 6 weeks processing',
+    );
+    const withoutTime = workSummary(page({ work: { visaType: 'Study permit' } }).profiles);
+    expect(withoutTime.find((card) => card.title === 'Student visa')?.value).toBe('Study permit');
+  });
+
   it('states the weekly hours when they are published', () => {
     const cards = workSummary(
       page({ work: { partTimeAllowed: true, partTimeHoursPerWeek: '20', postStudyWorkAvailable: false } })

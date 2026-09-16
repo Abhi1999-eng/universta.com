@@ -257,7 +257,7 @@ export function ConsultantDetailReference(props: ConsultantDetailProps) {
                         <ul className="pd-chips">
                           {countries.map((country) => (
                             <li key={country.slug}>
-                              <Link className="pd-chip" href={`/countries/${country.slug}`}>
+                              <Link className="pd-chip" href={`/study-abroad/${country.slug}`}>
                                 <span className="pd-cc" aria-hidden="true">
                                   {initials(country.name)}
                                 </span>

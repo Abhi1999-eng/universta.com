@@ -76,7 +76,7 @@ async function fetchDirectoryItems(
         slug: item.slug,
         title: item.name,
         description: item.shortDescription ?? "",
-        href: `/countries/${item.slug}`,
+        href: `/study-abroad/${item.slug}`,
       }));
     } else if (sectionType === "COURSE_DIRECTORY") {
       const result = await getCourses(query);

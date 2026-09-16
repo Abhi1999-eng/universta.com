@@ -119,7 +119,9 @@ export function workSummary(profiles: ProfileSummary): WorkCard[] {
   if (work.visaType)
     cards.push({
       title: 'Student visa',
-      value: work.visaType,
+      value: work.visaProcessingTime
+        ? `${work.visaType} · ${work.visaProcessingTime} processing`
+        : work.visaType,
       body: work.visaInformation ?? null,
     });
 

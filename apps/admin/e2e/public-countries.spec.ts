@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { webBaseUrl } from './helpers/e2e-urls';
 
-const listing = `${webBaseUrl}/countries`;
+/* The filterable destination listing is the homepage; /countries redirects
+ * there when it carries filters and to the Study Abroad directory when it
+ * does not. A country's own page is its Study Abroad guide. */
+const listing = `${webBaseUrl}/`;
+const guide = `${webBaseUrl}/study-abroad/canada`;
 
 test.describe('approved public country experience', () => {
   test('renders the API-backed approved listing without browser auth persistence', async ({ page }) => {
@@ -79,8 +83,7 @@ test.describe('approved public country experience', () => {
   });
 
   test('clears result filters without removing the independent A–Z directory', async ({ page }) => {
-    // "/countries" is the listing's canonical public address, so clearing the
-    // filters keeps the visitor on that route.
+    // Clearing the filters keeps the visitor on the listing's own address.
     await page.goto(`${listing}?q=not-a-real-country&budgetBand=PREMIUM&page=2`);
     await page.getByRole('button', { name: 'Clear all filters' }).click();
 
@@ -156,37 +159,35 @@ test.describe('approved public country experience', () => {
     await expect(page.locator(href as string)).toBeVisible();
   });
 
-  test('renders source-aware structured country sections and safe in-page navigation', async ({ page }) => {
-    await page.goto(`${listing}/canada`);
+  test('renders the country guide sections with in-page links that resolve', async ({ page }) => {
+    await page.goto(guide);
 
-    await expect(page.getByRole('heading', { name: 'Cost of study' })).toBeVisible();
-    /* The heading follows the source: intakes are the Country's own month
-     * selection now, not the intake module's per-country records. */
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Canada');
+    await expect(page.getByRole('heading', { name: 'What it costs' })).toBeVisible();
+    /* Intakes are the Country's own month selection. */
     await expect(page.getByRole('heading', { name: /^Intakes in / })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Language requirements' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Work and visa pathways' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'What these figures mean' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'After you arrive, and after you graduate' }),
+    ).toBeVisible();
 
-    const links = await page.locator('.jump a').evaluateAll((elements) => (
-      elements.map((element) => element.getAttribute('href')).filter(Boolean)
+    const links = await page.locator('a[href^="#"]').evaluateAll((elements) => (
+      elements.map((element) => element.getAttribute('href')).filter((href) => href && href !== '#')
     ));
     for (const href of links) await expect(page.locator(href as string)).toHaveCount(1);
-
-    await expect(page.locator('#consultation')).toBeVisible();
-    await expect(page.locator('#consultants')).toHaveCount(0);
-    await expect(page.locator('#consultation a[href="#structured-trust"]')).toHaveCount(1);
   });
 
   test('links every city guide at an address the site actually serves', async ({ page }) => {
-    await page.goto(`${listing}/canada`);
+    await page.goto(`${webBaseUrl}/study-in-canada/cities`);
 
-    const cityLinks = await page.locator('#cities a[href]').evaluateAll((links) =>
-      links.map((link) => link.getAttribute('href')).filter(Boolean),
+    const cityLinks = await page.locator('a[href^="/study-in-canada/"]').evaluateAll((links) =>
+      links.map((link) => link.getAttribute('href')).filter((href): href is string => Boolean(href)),
     );
-    expect(cityLinks.length).toBeGreaterThan(0);
-    for (const href of cityLinks) {
+    const guides = [...new Set(cityLinks.filter((href) => href !== '/study-in-canada/cities'))];
+    expect(guides.length).toBeGreaterThan(0);
+    for (const href of guides) {
       // A city guide lives under its destination; /cities/<slug> is not a route.
-      expect(href).toMatch(/^\/study-in\/canada\/[a-z0-9-]+$/);
+      expect(href).toMatch(/^\/study-in-canada\/[a-z0-9-]+$/);
       const response = await page.request.get(`${webBaseUrl}${href}`);
       expect(response.status(), `${href} should not 404`).toBe(200);
     }
@@ -205,19 +206,17 @@ test.describe('approved public country experience', () => {
     }
   });
 
-  test('publishes JSON-LD and source-aware footer copy on country detail pages', async ({ page }) => {
-    await page.goto(`${listing}/canada`);
+  test('publishes breadcrumb, FAQ and organisation JSON-LD on a country guide', async ({ page }) => {
+    await page.goto(guide);
 
-    // Place (this page) + site-wide Organization (root layout) always render;
-    // FAQPage renders too whenever the country has at least one real FAQ.
+    // BreadcrumbList (this page) + site-wide Organization (root layout) always
+    // render; FAQPage renders whenever the country has at least one real FAQ.
     const scripts = page.locator('script[type="application/ld+json"]');
     await expect(scripts).toHaveCount(3);
     const types = await scripts.evaluateAll((nodes) =>
       nodes.map((node) => (JSON.parse(node.textContent ?? '{}') as { '@type'?: string })['@type']),
     );
-    expect(types.sort()).toEqual(['FAQPage', 'Organization', 'Place']);
-    await expect(page.getByText(/Information is editorial and may vary/)).toBeVisible();
-    await expect(page.getByText(/published sources? shown above/)).toBeVisible();
+    expect(types.sort()).toEqual(['BreadcrumbList', 'FAQPage', 'Organization']);
   });
 
   test('keeps country listing and detail layouts free of horizontal mobile overflow', async ({ page }) => {
@@ -226,7 +225,7 @@ test.describe('approved public country experience', () => {
     await page.goto(listing);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
-    await page.goto(`${listing}/canada`);
+    await page.goto(guide);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 });

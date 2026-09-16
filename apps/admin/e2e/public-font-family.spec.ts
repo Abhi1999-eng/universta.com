@@ -11,9 +11,13 @@ const viewports = [
 // These routes cover the shared chrome/footer, catalogue cards and filters,
 // rich editorial content, forms, and student authentication. The signed-in
 // dashboard below adds the final public authenticated surface.
+//
+// The /study-abroad family is deliberately absent: it renders the
+// client-approved design with that design's own typefaces (Sora and Manrope),
+// scoped to the route. study-abroad.spec.ts asserts those faces instead, and
+// that they do not reach any page here.
 const publicRoutes = [
   '/',
-  '/countries/united-kingdom',
   '/courses',
   '/subjects',
   '/scholarships',

@@ -168,7 +168,8 @@ describe('countries filter interface', () => {
     );
     expect(html).toContain('country-empty');
     expect(html).toContain('No destinations match these filters');
-    expect(html).toContain('href="/countries"');
+    // Back to the unfiltered listing, which is the homepage.
+    expect(html).toContain('<a class="btn btn-primary" href="/">Show every destination</a>');
   });
 
   it('labels the drawer and its controls for assistive technology', () => {

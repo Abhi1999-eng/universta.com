@@ -176,7 +176,7 @@ export function CountriesReference(props: CountriesReferenceProps) {
       if (value && key !== 'view' && key !== 'page') params.set(key, value);
     }
     params.set('view', 'all');
-    return `/countries?${params.toString()}`;
+    return `/?${params.toString()}`;
   })();
   const hasMoreThanLanding = !showingAll && meta.total > landingLimit;
   const options = props.filterOptions ?? {
@@ -342,7 +342,7 @@ export function CountriesReference(props: CountriesReferenceProps) {
       <div className="wrap">
         <nav className="crumb" aria-label="Breadcrumb">
           <Link href="/">Home</Link> ›{' '}
-          <Link href="/countries" aria-current="page">
+          <Link href="/" aria-current="page">
             Study destinations
           </Link>
         </nav>
@@ -872,7 +872,7 @@ export function CountriesReference(props: CountriesReferenceProps) {
           <div className="cref-empty" data-testid="country-empty">
             <h3>No destinations match these filters</h3>
             <p>Try a different region, or clear the filters to see every published destination.</p>
-            <Link className="btn btn-primary" href="/countries">
+            <Link className="btn btn-primary" href="/">
               Show every destination
             </Link>
           </div>
@@ -945,7 +945,7 @@ export function CountriesReference(props: CountriesReferenceProps) {
                       </div>
                     </div>
                   ) : null}
-                  <Link className="card-cta" href={`/countries/${country.slug}`}>
+                  <Link className="card-cta" href={`/study-abroad/${country.slug}`}>
                     Explore {country.name} <span aria-hidden="true">→</span>
                   </Link>
                 </article>
@@ -1126,7 +1126,7 @@ export function CountriesReference(props: CountriesReferenceProps) {
                           ))}
                         </div>
                       ) : null}
-                      <Link className="go" href={`/countries/${record.slug}`}>
+                      <Link className="go" href={`/study-abroad/${record.slug}`}>
                         Explore →
                       </Link>
                     </article>

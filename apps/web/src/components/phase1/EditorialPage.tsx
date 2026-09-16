@@ -28,7 +28,7 @@ export function EditorialPage({
           <p>{description}</p>
           {home ? (
             <div className="hero-actions">
-              <Link className="button" href="/countries">
+              <Link className="button" href="/study-abroad">
                 Explore countries
               </Link>
               <Link className="button secondary" href="/counselling">
@@ -56,7 +56,7 @@ export function EditorialPage({
             </article>
             {home ? (
               <div className="catalog-card-grid">
-                <Link className="catalog-card" href="/countries">
+                <Link className="catalog-card" href="/study-abroad">
                   <div className="catalog-card-body">
                     <h2>Countries</h2>
                     <p>Explore published destination information.</p>

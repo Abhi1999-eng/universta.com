@@ -143,7 +143,7 @@ export function StudyAbroadFooter() {
           </div>
           {FOOTER_COLUMNS.map((column) => (
             <div className="footer__col" key={column.title}>
-              <h4>{column.title}</h4>
+              <h2>{column.title}</h2>
               <ul>
                 {column.links.map((link) => (
                   <li key={link.href}>
