@@ -30,6 +30,17 @@ import {
 } from './profiles/profile.mappers';
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
 import { CountryDerivedService } from './country-derived.service';
+import {
+  parseCalculatorConfig,
+  type CalculatorConfig,
+} from './calculator-config';
+import {
+  DIRECTORY_REGIONS,
+  bandsFor,
+  comingSoonDestinations,
+  regionForContinent,
+  regionForName,
+} from './directory-world';
 import { flagEmojiFromIso, resolveCountryMetadata } from './country-metadata';
 import { sanitizeRichText } from '../common/rich-text';
 import {
@@ -96,6 +107,7 @@ const COUNTRY_INCLUDE = {
 } satisfies Prisma.CountryInclude;
 
 type CountryRecord = {
+  calculatorConfig?: unknown;
   id: string;
   continentId: string | null;
   name: string;
@@ -228,6 +240,9 @@ export interface CountryPublicDto {
     acceptedTests: Array<{ code: string; label: string }>;
     intakeMonths: number[];
     postStudyWorkPermitMonths: number | null;
+    /* Null unless an editor has configured one and the document is sound; a
+     * half-valid configuration yields no calculator rather than a wrong one. */
+    calculator: CalculatorConfig | null;
   };
   currency: {
     code: string;
@@ -320,6 +335,13 @@ function actorId(request: AuthenticatedRequest): string {
 
 function conflict(code: string, message: string): ConflictException {
   return new ConflictException({ code, message, details: null });
+}
+
+function badRequest(
+  code: string,
+  message: string,
+): UnprocessableEntityException {
+  return new UnprocessableEntityException({ code, message, details: null });
 }
 
 function notFound(): NotFoundException {
@@ -619,6 +641,84 @@ export class CountriesService {
         };
       }),
       meta: paginationMeta(query.page, query.limit, total),
+    };
+  }
+
+  /**
+   * The Study Abroad directory: everything a student might ask about, in two
+   * tiers.
+   *
+   * The first tier is the real catalogue -- published Country records, each
+   * navigable. The second is every other destination in the world, by name and
+   * region only, so the page can say a guide is coming without a Country
+   * record existing for it. A DRAFT country is in neither tier: unpublished
+   * editorial work stays unpublished, and a destination an editor has started
+   * but not finished simply appears as "coming" like any other.
+   */
+  async destinations() {
+    const countries = await this.prisma.country.findMany({
+      where: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        OR: [
+          { continentId: null },
+          { continent: { status: 'ACTIVE', deletedAt: null } },
+        ],
+      },
+      select: {
+        name: true,
+        slug: true,
+        iso2Code: true,
+        isFeatured: true,
+        displayOrder: true,
+        shortDescription: true,
+        continent: { select: { name: true, slug: true } },
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+
+    const available = countries.map((country) => ({
+      name: country.name,
+      slug: country.slug,
+      iso2Code: country.iso2Code,
+      /* The design's "Popular" tier is the catalogue's existing Featured flag.
+       * A second popularity system would only be something else to keep in
+       * step with it. */
+      isPopular: country.isFeatured,
+      isAvailable: true,
+      /* A published country grouped under its own region where an editor has
+       * filed it, and otherwise under the region the world list knows it by --
+       * so a country published before it was filed still appears somewhere. */
+      region:
+        regionForContinent(country.continent?.name) ??
+        regionForName(country.name) ??
+        null,
+      summary: country.shortDescription,
+      bands: bandsFor(country.name, country.iso2Code),
+    }));
+
+    const comingSoon = comingSoonDestinations(
+      countries.map((country) => country.name),
+    ).map((entry) => ({
+      name: entry.name,
+      slug: null,
+      iso2Code: entry.iso2Code,
+      isPopular: false,
+      isAvailable: false,
+      region: entry.region,
+      summary: null,
+      bands: entry.bands,
+    }));
+
+    return {
+      available,
+      comingSoon,
+      regions: [...DIRECTORY_REGIONS],
+      counts: {
+        available: available.length,
+        popular: available.filter((entry) => entry.isPopular).length,
+        total: available.length + comingSoon.length,
+      },
     };
   }
 
@@ -1515,6 +1615,7 @@ export class CountriesService {
       | 'acceptedTests'
       | 'intakeMonths'
       | 'postStudyWorkPermitMonths'
+      | 'calculatorConfig'
     >,
     known: TaxonomySnapshot,
   ): Pick<
@@ -1523,6 +1624,7 @@ export class CountriesService {
     | 'acceptedTests'
     | 'intakeMonths'
     | 'postStudyWorkPermitMonths'
+    | 'calculatorConfig'
   > {
     /* Both lists are filtered to codes the taxonomy actually knows, which is
      * what stops a typed or stale code being stored and then rendering as a
@@ -1548,7 +1650,28 @@ export class CountriesService {
       ...(dto.postStudyWorkPermitMonths !== undefined
         ? { postStudyWorkPermitMonths: dto.postStudyWorkPermitMonths }
         : {}),
+      ...(dto.calculatorConfig !== undefined
+        ? { calculatorConfig: this.calculatorData(dto.calculatorConfig) }
+        : {}),
     };
+  }
+
+  /**
+   * A calculator document is stored only if it would actually render. Saving
+   * something the public parser rejects would leave an editor believing they
+   * had configured a calculator that never appears.
+   */
+  private calculatorData(
+    value: Record<string, unknown> | null | undefined,
+  ): Prisma.InputJsonValue | typeof Prisma.DbNull {
+    if (value === null) return Prisma.DbNull;
+    const parsed = parseCalculatorConfig(value);
+    if (!parsed)
+      throw badRequest(
+        'COUNTRY_CALCULATOR_INVALID',
+        'The calculator configuration is not in a shape the guide can render',
+      );
+    return parsed;
   }
 
   private throwUniqueConflict(error: unknown): void {
@@ -1687,6 +1810,7 @@ export class CountriesService {
           code,
           label: taxonomyLabel(taxonomy.featureLabels, code),
         })),
+        calculator: parseCalculatorConfig(record.calculatorConfig),
         acceptedTests: this.stringList(
           record.acceptedTests,
           taxonomy.testCodes,

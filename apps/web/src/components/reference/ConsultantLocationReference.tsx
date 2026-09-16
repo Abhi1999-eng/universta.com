@@ -167,7 +167,7 @@ export function ConsultantLocationReference(props: ConsultantLocationProps) {
               <h2>Planning a move to {location.country.name}?</h2>
             </div>
             <div className="dest-flags">
-              <Link className="dest-flag" href={`/countries/${location.country.slug}`}>
+              <Link className="dest-flag" href={`/study-abroad/${location.country.slug}`}>
                 Study in {location.country.name}
               </Link>
               <Link className="dest-flag" href={`/courses?country=${location.country.slug}#discovery`}>

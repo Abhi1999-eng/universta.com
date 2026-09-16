@@ -105,7 +105,8 @@ describe('destinations shortlist', () => {
         {...build({ filters: { region: 'europe', sort: 'name', budgetBand: 'LOW', page: '2' } })}
       />,
     );
-    const href = html.match(/href="(\/countries\?[^"]*view=all[^"]*)"/)?.[1] ?? '';
+    /* The listing lives at the homepage; /countries only redirects now. */
+    const href = html.match(/href="(\/\?[^"]*view=all[^"]*)"/)?.[1] ?? '';
     expect(href).toContain('region=europe');
     expect(href).toContain('sort=name');
     expect(href).toContain('budgetBand=LOW');

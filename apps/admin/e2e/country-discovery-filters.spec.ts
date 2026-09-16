@@ -185,7 +185,7 @@ test.describe.serial('public country discovery filters', () => {
   });
 
   test('lists both fixture destinations before any filter', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/countries?limit=100`);
+    await page.goto(`${webBaseUrl}/?limit=100`);
     expect(ours(await names(page))).toEqual([
       `${MARK} Alphaland`,
       `${MARK} Betaland`,
@@ -193,7 +193,7 @@ test.describe.serial('public country discovery filters', () => {
   });
 
   test('narrows to one destination through the real filter drawer', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/countries`);
+    await page.goto(`${webBaseUrl}/`);
     await page.getByRole('button', { name: /^Filters/ }).click();
     const drawer = page.getByRole('dialog', { name: 'Destination filters' });
     await expect(drawer).toBeVisible();
@@ -209,7 +209,7 @@ test.describe.serial('public country discovery filters', () => {
   });
 
   test('keeps the filter across a reload, because it lives in the URL', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/countries`);
+    await page.goto(`${webBaseUrl}/`);
     await page.getByRole('button', { name: /^Filters/ }).click();
     await page
       .getByRole('dialog', { name: 'Destination filters' })
@@ -232,7 +232,7 @@ test.describe.serial('public country discovery filters', () => {
   test('Back and Forward move between the filtered and unfiltered listing', async ({
     page,
   }) => {
-    await page.goto(`${webBaseUrl}/countries?limit=100`);
+    await page.goto(`${webBaseUrl}/?limit=100`);
     expect(ours(await names(page)).length).toBe(2);
 
     await page.getByRole('button', { name: /^Filters/ }).click();
@@ -255,7 +255,7 @@ test.describe.serial('public country discovery filters', () => {
 
   test('removing the chip widens the results again', async ({ page }) => {
     await page.goto(
-      `${webBaseUrl}/countries?subjects=${SLUG}alpha&limit=100`,
+      `${webBaseUrl}/?subjects=${SLUG}alpha&limit=100`,
     );
     expect(ours(await names(page))).toEqual([`${MARK} Alphaland`]);
     await page
@@ -271,10 +271,10 @@ test.describe.serial('public country discovery filters', () => {
 
   test('clear all returns every destination', async ({ page }) => {
     await page.goto(
-      `${webBaseUrl}/countries?subjects=${SLUG}alpha&ieltsMax=6.0&limit=100`,
+      `${webBaseUrl}/?subjects=${SLUG}alpha&ieltsMax=6.0&limit=100`,
     );
     await page.getByTestId('country-chips').getByRole('button', { name: 'Clear all' }).click();
-    await expect(page).toHaveURL(/\/countries$/);
+    await expect(page).toHaveURL(`${webBaseUrl}/`);
     expect(ours(await names(page))).toEqual([
       `${MARK} Alphaland`,
       `${MARK} Betaland`,
@@ -283,7 +283,7 @@ test.describe.serial('public country discovery filters', () => {
 
   test('says so plainly when a combination matches nothing', async ({ page }) => {
     await page.goto(
-      `${webBaseUrl}/countries?subjects=${SLUG}alpha&universitiesMin=5`,
+      `${webBaseUrl}/?subjects=${SLUG}alpha&universitiesMin=5`,
     );
     await expect(page.getByTestId('country-empty')).toContainText(
       /No destinations match these filters/i,
@@ -292,7 +292,7 @@ test.describe.serial('public country discovery filters', () => {
   });
 
   test('sorting is deterministic and shareable', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/countries?limit=100`);
+    await page.goto(`${webBaseUrl}/?limit=100`);
     await page.getByTestId('country-sort').selectOption('universities');
     await expect(page).toHaveURL(/sort=universities/);
     await expect(page.getByTestId('country-count')).toBeVisible();
@@ -309,7 +309,7 @@ test.describe.serial('public country discovery filters', () => {
       [390, 844],
     ] as Array<[number, number]>) {
       await page.setViewportSize({ width, height });
-      await page.goto(`${webBaseUrl}/countries?subjects=${SLUG}alpha`);
+      await page.goto(`${webBaseUrl}/?subjects=${SLUG}alpha`);
       await expect(page.getByTestId('country-chips')).toBeVisible();
       await page.getByRole('button', { name: /^Filters/ }).click();
       await expect(
@@ -327,9 +327,9 @@ test.describe.serial('public country discovery filters', () => {
   test('matches destinations on the canonical budget band', async ({ page }) => {
     // The stored vocabulary and the filter's vocabulary are the same one, so
     // a visible Budget option returns the destination that carries it.
-    await page.goto(`${webBaseUrl}/countries?budgetBand=BUDGET_FRIENDLY&limit=100`);
+    await page.goto(`${webBaseUrl}/?budgetBand=BUDGET_FRIENDLY&limit=100`);
     expect(ours(await names(page))).toEqual([`${MARK} Alphaland`]);
-    await page.goto(`${webBaseUrl}/countries?budgetBand=PREMIUM&limit=100`);
+    await page.goto(`${webBaseUrl}/?budgetBand=PREMIUM&limit=100`);
     /* Betaland publishes PREMIUM without citing a source. That used to remove
      * it from this filter: a band was treated as a rating, and a rating needed
      * a source before it counted. A Country is a CMS record now -- what an
@@ -344,12 +344,12 @@ test.describe.serial('public country discovery filters', () => {
     // Neither destination charges an application fee, and neither offers
     // post-study work. Both answers are recorded facts, so a missing source
     // must not remove Betaland from either result.
-    await page.goto(`${webBaseUrl}/countries?applicationFee=none&limit=100`);
+    await page.goto(`${webBaseUrl}/?applicationFee=none&limit=100`);
     expect(ours(await names(page))).toEqual([
       `${MARK} Alphaland`,
       `${MARK} Betaland`,
     ]);
-    await page.goto(`${webBaseUrl}/countries?postStudyWork=false&limit=100`);
+    await page.goto(`${webBaseUrl}/?postStudyWork=false&limit=100`);
     expect(ours(await names(page))).toEqual([
       `${MARK} Alphaland`,
       `${MARK} Betaland`,
@@ -357,7 +357,7 @@ test.describe.serial('public country discovery filters', () => {
   });
 
   test('closes the drawer on Escape', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/countries`);
+    await page.goto(`${webBaseUrl}/`);
     const trigger = page.getByRole('button', { name: /^Filters/ });
     await trigger.click();
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');

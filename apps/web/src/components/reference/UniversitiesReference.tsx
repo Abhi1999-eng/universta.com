@@ -487,7 +487,7 @@ export function UniversitiesReference(props: UniversitiesReferenceProps) {
                 <Link
                   key={continent.slug}
                   className="dest-flag"
-                  href={`/countries?region=${continent.slug}#regions`}
+                  href={`/?region=${continent.slug}#regions`}
                 >
                   <span className="cc">{initials(continent.name)}</span>
                   {continent.name}

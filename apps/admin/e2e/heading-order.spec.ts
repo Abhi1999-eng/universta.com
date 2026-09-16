@@ -33,7 +33,8 @@ test('public pages never skip a heading level', async ({ page, request }) => {
     '/courses',
     '/scholarships',
     '/universities',
-    ...(country ? [`/countries/${country}`, `/study-in/${country}`] : []),
+    '/study-abroad',
+    ...(country ? [`/study-abroad/${country}`, `/study-in/${country}`] : []),
     ...(consultant ? [`/study-abroad-consultants/${consultant}`] : []),
     ...(scholarship ? [`/scholarships/${scholarship}`] : []),
   ];

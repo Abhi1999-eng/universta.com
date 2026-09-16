@@ -29,6 +29,20 @@ describe('same-origin catalog BFF', () => {
     expect(rejected.status).toBe(401);
   });
 
+  /* The country body allowlist is the one place an editor's field can vanish
+     without an error: anything missing from it is dropped here and the save
+     still reports success. The budget calculator was added to the editor and
+     to the API before it was added here, and silently saved nothing. */
+  it('forwards every field the country editor can write, including the calculator', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(upstream()); vi.stubGlobal('fetch', fetchMock);
+    const calculatorConfig = { base: { livingMin: 900, livingMax: 1100, insurance: 100, semesterFee: 200 }, factors: [{ id: 'city', label: 'City', options: [{ value: 'small', label: 'Small', mult: 1 }] }] };
+    await proxyCatalogRoute(request('/api/v1/admin/countries/id', { method: 'PATCH', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Canada', intakeMonths: [1, 9], calculatorConfig, expectedUpdatedAt: '2026-01-01T00:00:00.000Z', createdByUserId: 'secret' }) }), 'countries:update:id');
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+    expect(body.calculatorConfig).toEqual(calculatorConfig);
+    expect(body.intakeMonths).toEqual([1, 9]);
+    expect(body).not.toHaveProperty('createdByUserId');
+  });
+
   it('returns safe upstream failure and preserves publish readiness details', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('mysql://secret')));
     const failed = await proxyCatalogRoute(request('/api/v1/admin/countries', { headers: { authorization: 'Bearer access-token' } }), 'countries:list');

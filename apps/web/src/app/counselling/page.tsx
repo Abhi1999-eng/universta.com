@@ -129,7 +129,7 @@ export default async function CounsellingPage({
               </h3>
               <div className="dest-flags">
                 {options.countries!.slice(0, 12).map((country) => (
-                  <Link key={country.slug} className="dest-flag" href={`/countries/${country.slug}`}>
+                  <Link key={country.slug} className="dest-flag" href={`/study-abroad/${country.slug}`}>
                     {country.name}
                   </Link>
                 ))}

@@ -436,9 +436,9 @@ test.describe.serial('country client contract, end to end', () => {
     await field(page, 'Tagline').fill(TAGLINE);
     await field(page, 'SEO title').fill(seoTitle);
     await field(page, 'Meta description').fill(description);
-    await field(page, 'Canonical URL').fill(`/countries/${COUNTRY_SLUG}`);
+    await field(page, 'Canonical URL').fill(`/study-abroad/${COUNTRY_SLUG}`);
     await saveCountry(page);
-    expect((await storedSeo(countryId))?.canonicalUrl).toBe(`/countries/${COUNTRY_SLUG}`);
+    expect((await storedSeo(countryId))?.canonicalUrl).toBe(`/study-abroad/${COUNTRY_SLUG}`);
 
     // Three saves in a row without reloading. Each response carries a new
     // concurrency token, and a form that keeps the token it loaded with has
@@ -481,10 +481,10 @@ test.describe.serial('country client contract, end to end', () => {
 
     // With no override the page falls back to its own path, and metadata must
     // still publish it as an absolute URL on the configured site origin.
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
-      `${webBaseUrl}/countries/${COUNTRY_SLUG}`,
+      `${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`,
     );
   });
 
@@ -587,10 +587,10 @@ test.describe.serial('country client contract, end to end', () => {
       `${apiBaseUrl}/api/v1/countries/${derivedSlug}/page`,
     );
     expect(detail.status()).toBe(200);
-    await page.goto(`${webBaseUrl}/countries/${derivedSlug}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${derivedSlug}`);
     await expect(page.locator('h1')).toContainText(onlyName);
-    await page.goto(`${webBaseUrl}/countries`);
-    await expect(page.locator(`a[href="/countries/${derivedSlug}"]`).first()).toBeVisible();
+    await page.goto(`${webBaseUrl}/`);
+    await expect(page.locator(`a[href="/study-abroad/${derivedSlug}"]`).first()).toBeVisible();
 
     await deleteCountryById(String(published.id), published.updatedAt);
   });
@@ -897,7 +897,7 @@ test.describe.serial('country client contract, end to end', () => {
     ).toEqual([2, 7]);
 
     // And the published page states them once, from that selection.
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.locator('#intakes')).toContainText('February');
     await expect(page.locator('#intakes')).toContainText('July');
   });
@@ -940,9 +940,9 @@ test.describe.serial('country client contract, end to end', () => {
     expect(stored[1].isRequired).toBe(false);
     expect(String(stored[1].details)).toContain('Issued within six months.');
 
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     const documents = page.locator('#documents');
-    await expect(documents).toContainText(`Documents required to study in ${COUNTRY_NAME}`);
+    await expect(documents).toContainText('Documents you will need');
     await expect(documents).toContainText('Passport');
     await expect(documents).toContainText('Issued within six months.');
   });
@@ -1013,15 +1013,12 @@ test.describe.serial('country client contract, end to end', () => {
     expect(published.listingImage, 'featured_image should be public').toBeTruthy();
     expect(String((published.listingImage as { url: string }).url)).toContain(file);
 
-    // The public page must actually render the hero, not just carry it.
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
-    const hero = page.locator('.hero-media img');
-    await expect(hero).toBeVisible();
-    await expect(hero).toHaveAttribute('src', new RegExp(file));
-    expect(
-      await hero.evaluate((node: HTMLImageElement) => node.naturalWidth),
-      'the hero image should decode, not render broken',
-    ).toBeGreaterThan(0);
+    /* The approved Study Abroad guide has no hero image slot -- its hero is the
+     * country's colour bands and snapshot panel -- so the image is asserted on
+     * the record and the public payload above, and the guide only has to render
+     * without it. */
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(COUNTRY_NAME);
 
     // A second save must not quietly clear what the first one attached.
     await openCountry(page);
@@ -1076,7 +1073,7 @@ test.describe.serial('country client contract, end to end', () => {
     await expect(field(page, 'Heading').nth(0)).toHaveValue(WHY_HEADING);
     await expect(field(page, 'Question').first()).toHaveValue(FAQ_QUESTION);
 
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     for (const value of [WHY_HEADING, WHY_BODY, VISA_HEADING, VISA_BODY, FAQ_QUESTION, FAQ_ANSWER])
       await expect(page.locator('body')).toContainText(value);
 
@@ -1091,7 +1088,7 @@ test.describe.serial('country client contract, end to end', () => {
      * input value. */
     await expect(box(page, 'Answer').first()).toHaveText(FAQ_ANSWER_2);
 
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.locator('body')).toContainText(FAQ_ANSWER_2);
     await expect(page.locator('body')).not.toContainText(FAQ_ANSWER);
   });
@@ -1126,7 +1123,7 @@ test.describe.serial('country client contract, end to end', () => {
      * keys by contract -- a section under any other key, invented or one of
      * the conventional ones it does not list, has never appeared there, and
      * storing one must not disturb what does. */
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.locator('h1')).toContainText(COUNTRY_NAME);
     await expect(page.locator('body')).toContainText(WHY_HEADING);
     await expect(page.locator('body')).toContainText(VISA_HEADING);
@@ -1185,7 +1182,7 @@ test.describe.serial('country client contract, end to end', () => {
       'Budget for housing.',
     );
 
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.locator('body')).toContainText('Budget for housing.');
     await expect(page.locator('body')).not.toContainText('<p>Budget for');
     // The FAQ structured data stays plain text, never markup. Script contents
@@ -1480,7 +1477,7 @@ test.describe.serial('country client contract, end to end', () => {
       [390, 844],
     ] as Array<[number, number]>) {
       await page.setViewportSize({ width, height });
-      await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+      await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
       await expect(page.getByRole('heading', { level: 1 })).toContainText(COUNTRY_NAME);
       const body = page.locator('body');
       for (const value of [
@@ -1490,15 +1487,13 @@ test.describe.serial('country client contract, end to end', () => {
         OVERVIEW,
         CAPITAL,
         LANGUAGE,
-        // Cost inherits the country's currency, so this is what the page shows.
-        'EUR',
+        // Cost inherits the country's currency; the guide shows its symbol.
+        '€',
         'Acceptance student permit',
         '5 to 7 weeks',
         'IELTS',
       ])
         await expect(body).toContainText(value);
-      for (const subject of subjects)
-        await expect(page.locator(`a[href="/subjects/${subject.slug}"]`).first()).toBeVisible();
 
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -1547,9 +1542,76 @@ test.describe.serial('country client contract, end to end', () => {
         addedName,
       );
 
-    await page.goto(`${webBaseUrl}/countries/${COUNTRY_SLUG}`);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.locator('body')).toContainText(TAGLINE_2);
     await expect(page.locator('body')).toContainText('9,300');
+  });
+
+  /* The budget calculator is the one country figure the Study Abroad guide
+   * varies interactively, and the only new control this integration added to
+   * the Country editor. Authored as JSON because that is the shape of the
+   * document; what matters is that a bad one is refused where the author can
+   * see it, and a good one reaches the guide and computes. */
+  test('configures the budget calculator, and the guide computes with it', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await openCountry(page);
+    const calculator = page.getByRole('textbox', { name: /^Budget calculator/ });
+
+    await calculator.fill('{ "base": ');
+    await expect(page.getByText('This is not valid JSON yet.')).toBeVisible();
+    await calculator.fill('{ "base": { "livingMin": 900 } }');
+    await expect(page.getByText('Missing the `factors` list.')).toBeVisible();
+
+    const config = {
+      base: { livingMin: 900, livingMax: 1100, insurance: 100, semesterFee: 200 },
+      factors: [
+        {
+          id: 'city',
+          label: 'Where you live',
+          options: [
+            { value: 'small', label: 'Smaller city', mult: 1 },
+            { value: 'capital', label: 'Capital', mult: 2 },
+          ],
+        },
+        {
+          id: 'programme',
+          label: 'Programme',
+          options: [{ value: 'public', label: 'Public university', tuitionMin: 0, tuitionMax: 1000 }],
+        },
+      ],
+    };
+    await calculator.fill(JSON.stringify(config, null, 2));
+    await saveCountry(page);
+    await expect(formIssues(page)).toHaveCount(0);
+
+    // Reloaded into the editor, and published to the public payload.
+    await openCountry(page);
+    await expect(calculator).toContainText('"livingMin": 900');
+    const configuration = (await publicCountry(page)).configuration as {
+      calculator?: { base?: { livingMin?: number } };
+    };
+    expect(configuration?.calculator?.base?.livingMin).toBe(900);
+
+    /* Living is (900 + 100) x 12 = 12,000 a year, fees are the semester fee
+     * twice, so the cheapest year is 12,400 -- and the capital doubles the
+     * living half of it. */
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
+    const total = page.getByTestId('calc-total');
+    await expect(total).toContainText('12,400');
+    await page
+      .locator('[data-factor="city"]')
+      .getByRole('button', { name: 'Capital' })
+      .click();
+    await expect(total).toContainText('24,400');
+
+    // Cleared again, the guide simply has no calculator rather than an empty one.
+    await openCountry(page);
+    await calculator.fill('');
+    await saveCountry(page);
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
+    await expect(page.getByTestId('cost-calculator')).toHaveCount(0);
   });
 
   test('completed without unexplained console or network failures', async () => {

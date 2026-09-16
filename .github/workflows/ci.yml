@@ -280,8 +280,11 @@ jobs:
         run: |
           curl --fail --silent --show-error --max-time 30 "${DEPLOY_API_URL}/health" |
             jq -e '.status == "ok" and .database == "up"'
-          for path in / /countries /subjects /courses /counselling; do
-            curl --fail --silent --show-error --max-time 30 \
+          # --location, because /countries is now a permanent redirect to the
+          # Study Abroad directory: without it curl reports the 308 as a pass
+          # and never checks that anything renders at the other end.
+          for path in / /study-abroad /countries /subjects /courses /counselling; do
+            curl --fail --location --silent --show-error --max-time 30 \
               --output /dev/null "${DEPLOY_WEB_URL}${path}"
           done
           curl --fail --silent --show-error --max-time 30 \

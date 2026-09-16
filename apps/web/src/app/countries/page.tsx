@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { COUNTRY_LISTING_PARAMS } from '@/lib/country-listing-params';
 import { CountriesReference, type SectionCopy } from '@/components/reference/CountriesReference';
 import {
   getContinents,
@@ -56,35 +57,7 @@ export async function generateMetadata() {
 }
 
 type SearchParams = Record<string, string | string[] | undefined>;
-const allowed = [
-  'q',
-  'region',
-  'budgetBand',
-  'ieltsOptional',
-  'intake',
-  'visaSuccessBand',
-  'pathwayStrength',
-  'hasTopRankedUniversities',
-  // Discovery filters. Each one is shareable, so each one lives in the URL.
-  'subjects',
-  'intakes',
-  'ieltsMax',
-  'postStudyWork',
-  'postStudyWorkMonthsMin',
-  'partTimeWork',
-  'workHoursMin',
-  'applicationFee',
-  'universitiesMin',
-  'currency',
-  'tuitionMax',
-  'livingMax',
-  'sort',
-  'page',
-  // The listing is a shortlist by default. `view=all` opens the same page as
-  // the full catalogue, so every filter already in the URL carries straight
-  // over and there is no second destinations route to keep in step.
-  'view',
-] as const;
+const allowed = COUNTRY_LISTING_PARAMS;
 
 function one(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -168,7 +141,7 @@ export default async function CountriesPage({
         <p className="eyebrow">Study destinations</p>
         <h1>Destinations are temporarily unavailable</h1>
         <p>Please try again shortly.</p>
-        <Link className="button" href="/countries">
+        <Link className="button" href="/">
           Retry
         </Link>
       </main>

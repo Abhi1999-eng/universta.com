@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import {
+  SiteChromeContent,
   SiteChromeFooter,
   SiteChromeHeader,
 } from "@/components/chrome/SiteChrome";
@@ -61,9 +62,7 @@ export default function RootLayout({
           {/* The page's own content, as a landmark: the header and footer are
               site chrome, and a visitor skipping to the content needs somewhere
               for that to land. */}
-          <main id="content" className="flex-1">
-            {children}
-          </main>
+          <SiteChromeContent>{children}</SiteChromeContent>
           <SiteChromeFooter />
         </StudentSessionProvider>
         <script type="application/ld+json">

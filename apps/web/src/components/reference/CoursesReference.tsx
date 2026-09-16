@@ -888,7 +888,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               <h2>Browse courses by study destination</h2>
               <p>Every destination with published course offerings.</p>
             </div>
-            <Link href="/countries" className="link-more">
+            <Link href="/study-abroad" className="link-more">
               All destinations →
             </Link>
           </div>
@@ -1120,7 +1120,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 {topCountries.slice(0, 4).map((country, index) => (
                   <span key={country.value}>
                     {index > 0 ? ', ' : ''}
-                    <Link href={`/countries/${country.value}`}>{country.label}</Link>
+                    <Link href={`/study-abroad/${country.value}`}>{country.label}</Link>
                   </span>
                 ))}
                 {topSubjects.length || topCountries.length
@@ -1178,7 +1178,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                   <ul>
                     {topCountries.map((item) => (
                       <li key={item.value}>
-                        <Link href={`/countries/${item.value}`}>→ Study in {item.label}</Link>
+                        <Link href={`/study-abroad/${item.value}`}>→ Study in {item.label}</Link>
                       </li>
                     ))}
                   </ul>

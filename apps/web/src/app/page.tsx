@@ -1,10 +1,11 @@
 import CountriesPage from './countries/page';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
-/** The Study Destinations listing is also the site's homepage: `/` and
- * `/countries` are the same discovery entry point and must stay identical, so
- * the route lives once, in `/countries`, and this file only supplies the
- * homepage's own canonical metadata. */
+/** The Study Destinations listing is the site's homepage. Its implementation
+ * still lives in `/countries/page.tsx`, but `/countries` itself now redirects:
+ * bare to the /study-abroad directory, and with filters to this page, which
+ * honours the same query. This file only supplies the homepage's own
+ * canonical metadata. */
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata() {

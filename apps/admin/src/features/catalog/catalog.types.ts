@@ -74,6 +74,8 @@ export interface CountryRecord {
     acceptedTests: Array<{ code: string; label: string }>;
     intakeMonths: number[];
     postStudyWorkPermitMonths: number | null;
+    /** The budget calculator document, or null when none is configured. */
+    calculator: Record<string, unknown> | null;
   };
   /** What a student needs in hand to study here, in the order the Admin put
    * them. Empty when none are listed. */

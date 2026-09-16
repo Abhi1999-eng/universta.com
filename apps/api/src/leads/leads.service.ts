@@ -1,4 +1,12 @@
 import {
+  ASSESSMENT_OPTIONS,
+  BUDGET_TO_RANGE,
+  LANGUAGE_TO_TEST_STATUS,
+  LEVEL_TO_COURSE_LEVEL,
+  scoreAssessment,
+  type AssessmentStepId,
+} from './assessment.constants';
+import {
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -11,6 +19,7 @@ import type { AuthenticatedRequest } from '../auth/auth.types';
 import { paginationMeta } from '../catalog/catalog.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import type {
+  CreateAssessmentLeadDto,
   CreateCounsellingLeadDto,
   CreateLeadNoteDto,
   LeadListQueryDto,
@@ -278,6 +287,179 @@ export class LeadsService {
         });
       });
       return { received: true as const };
+    } finally {
+      this.pendingDuplicateKeys.delete(duplicateKey);
+    }
+  }
+
+  /**
+   * The Study Abroad assessment, written as a Lead like any other.
+   *
+   * Same table, same honeypot, same duplicate window, same status history and
+   * audit entry. What differs is the question set: answers are validated
+   * against the server's own option list and the intent band is recomputed
+   * here, so a browser cannot post a band it did not earn or put free text into
+   * a counsellor's queue.
+   *
+   * The six answers that already have columns are written to them, so existing
+   * Admin filters and reports keep working. The rest, and the band, go in
+   * `assessmentJson` for the counsellor to read.
+   */
+  async createAssessment(dto: CreateAssessmentLeadDto) {
+    if (dto.companyWebsite) return { received: true as const };
+
+    const answers: Record<string, string> = {};
+    const invalid: Array<{ property: string; code: string; message: string }> =
+      [];
+    for (const [key, value] of Object.entries(dto.answers ?? {})) {
+      const step = key as AssessmentStepId;
+      const allowed = ASSESSMENT_OPTIONS[step] as readonly string[] | undefined;
+      if (!allowed) {
+        invalid.push({
+          property: `answers.${key}`,
+          code: 'isUnknownStep',
+          message: 'Unknown assessment question',
+        });
+        continue;
+      }
+      if (typeof value !== 'string' || !allowed.includes(value)) {
+        invalid.push({
+          property: `answers.${key}`,
+          code: 'isAvailable',
+          message: 'Unknown answer for this question',
+        });
+        continue;
+      }
+      answers[step] = value;
+    }
+    if (invalid.length) {
+      throw new UnprocessableEntityException({
+        code: 'ASSESSMENT_ANSWERS_INVALID',
+        message: 'One or more assessment answers are not recognised',
+        details: invalid,
+      });
+    }
+
+    const duplicateKey = createHash('sha256')
+      .update(this.duplicateSalt)
+      .update(dto.email)
+      .update('\u0000')
+      .update(dto.phoneNumber)
+      .digest('hex');
+    if (this.pendingDuplicateKeys.has(duplicateKey))
+      return { received: true as const };
+    this.pendingDuplicateKeys.add(duplicateKey);
+
+    try {
+      const scored = scoreAssessment(answers);
+      const levelCode = answers.level
+        ? LEVEL_TO_COURSE_LEVEL[answers.level]
+        : undefined;
+      const budget = answers.budget
+        ? BUDGET_TO_RANGE[answers.budget]
+        : undefined;
+
+      /* A destination is optional in this flow -- the student may not have
+       * settled on one -- and is only linked when it names a published country,
+       * exactly as the counselling form requires. */
+      const [country, courseLevel] = await Promise.all([
+        dto.countrySlug
+          ? this.prisma.country.findFirst({
+              where: {
+                slug: dto.countrySlug,
+                status: 'PUBLISHED',
+                deletedAt: null,
+              },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+        levelCode
+          ? this.prisma.courseLevel.findFirst({
+              where: { code: levelCode, status: 'ACTIVE' },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      const duplicateSince = new Date(Date.now() - LEAD_DUPLICATE_WINDOW_MS);
+      const duplicate = await this.prisma.lead.findFirst({
+        where: {
+          email: dto.email,
+          phoneNumber: dto.phoneNumber,
+          createdAt: { gte: duplicateSince },
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      if (duplicate) return { received: true as const };
+
+      const name = splitName(dto.fullName);
+      await this.prisma.$transaction(async (transaction) => {
+        const lead = await transaction.lead.create({
+          data: {
+            leadNumber: nextLeadNumber(),
+            formType: 'ASSESSMENT',
+            /* The guide the assessment was opened from, so Admin can read
+             * "Study Abroad -> United Kingdom -> Assessment" off the record. */
+            sourceType: country ? 'COUNTRY' : 'GENERAL',
+            sourceEntityId: country?.id ?? null,
+            sourcePageUrl: dto.sourcePagePath ?? '/study-abroad',
+            firstName: name.firstName,
+            lastName: name.lastName,
+            email: dto.email,
+            phoneNumber: dto.phoneNumber,
+            preferredCountryId: country?.id ?? null,
+            preferredCourseLevelId: courseLevel?.id ?? null,
+            budgetMin: budget?.min ?? null,
+            budgetMax: budget?.max ?? null,
+            englishTestType: answers.language
+              ? LANGUAGE_TO_TEST_STATUS[answers.language]
+              : null,
+            highestQualification: answers.qualification ?? null,
+            assessmentJson: {
+              answers,
+              score: scored.score,
+              band: scored.band,
+              bandLabel: scored.bandLabel,
+              completedAt: new Date().toISOString(),
+            },
+            status: 'NEW',
+            /* An assessment that scores as ready to apply reaches a counsellor
+             * ahead of one that is still exploring. */
+            priority: scored.band === 'high' ? 'HIGH' : 'NORMAL',
+            privacyConsent: true,
+            marketingConsent: false,
+            utmSource: dto.utmSource || null,
+            utmMedium: dto.utmMedium || null,
+            utmCampaign: dto.utmCampaign || null,
+            landingPageUrl: dto.sourcePagePath ?? '/study-abroad',
+          },
+        });
+        await transaction.leadStatusHistory.create({
+          data: { leadId: lead.id, oldStatus: null, newStatus: 'NEW' },
+        });
+        await transaction.auditLog.create({
+          data: {
+            module: 'LEADS',
+            entityType: 'LEAD',
+            entityId: lead.id,
+            action: 'LEAD_CREATED',
+            newValues: {
+              formType: 'ASSESSMENT',
+              sourceType: country ? 'COUNTRY' : 'GENERAL',
+              band: scored.band,
+              status: 'NEW',
+              privacyConsent: true,
+            },
+            description: 'Study Abroad assessment received',
+          },
+        });
+      });
+      return {
+        received: true as const,
+        band: scored.band,
+        score: scored.score,
+      };
     } finally {
       this.pendingDuplicateKeys.delete(duplicateKey);
     }

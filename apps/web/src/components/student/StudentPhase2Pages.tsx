@@ -743,7 +743,7 @@ function RecommendationList({ data }: { data: Item | null }) {
             <Link
               className="stu-row"
               key={String(row.id)}
-              href={`/countries/${String(row.slug)}`}
+              href={`/study-abroad/${String(row.slug)}`}
             >
               {String(row.name)} <span>{String(row.reason)}</span>
             </Link>
