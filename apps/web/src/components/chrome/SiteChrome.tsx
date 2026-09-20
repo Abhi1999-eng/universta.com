@@ -17,9 +17,18 @@ import { GlobalFooter, GlobalHeader } from './GlobalNav';
 /** Study Abroad is the one route family that ships its own header and footer
  * as part of the client-approved design, so the site chrome stands down for it
  * rather than stacking a second navigation on top. Every other route is
- * untouched. */
+ * untouched.
+ *
+ * The homepage is part of that family: the destination listing the approved
+ * design published at `/study-abroad` and `/countries` is now the homepage
+ * itself, and it arrives wearing the same header and footer as the country
+ * guides it links to. */
 function ownsItsChrome(path: string | undefined) {
-  return path === '/study-abroad' || (path?.startsWith('/study-abroad/') ?? false);
+  return (
+    path === '/' ||
+    path === '/study-abroad' ||
+    (path?.startsWith('/study-abroad/') ?? false)
+  );
 }
 
 async function currentPath() {

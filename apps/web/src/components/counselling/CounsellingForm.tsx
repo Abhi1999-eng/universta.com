@@ -277,7 +277,7 @@ export function CounsellingForm({
           Your counselling request has been received. A Universta team member
           can contact you using the details you provided.
         </p>
-        <Link className="btn btn-primary" href="/study-abroad">
+        <Link className="btn btn-primary" href="/">
           Continue exploring
         </Link>
       </div>

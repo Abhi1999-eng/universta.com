@@ -258,7 +258,7 @@ export function ContactReference(props: ContactReferenceProps) {
           <h2>Ready to take the next step?</h2>
           <p>Browse destinations and courses while you wait for a reply.</p>
           <div className="hero-ctas">
-            <Link href="/study-abroad" className="btn btn-secondary btn-lg">
+            <Link href="/" className="btn btn-secondary btn-lg">
               Browse destinations
             </Link>
             <Link href="/courses" className="btn btn-outline btn-lg">

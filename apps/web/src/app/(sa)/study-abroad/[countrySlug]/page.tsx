@@ -104,12 +104,11 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       {/* HERO */}
       <section className="hero">
         <div className="wrap">
+          {/* Two crumbs, not three: the destination listing that used to sit
+              between home and a country guide is the homepage now, so a
+              "Study Abroad" crumb would point at the same page as "Home". */}
           <nav className="crumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>
-            <span className="crumbs__sep" aria-hidden="true">
-              /
-            </span>
-            <Link href="/study-abroad">Study Abroad</Link>
             <span className="crumbs__sep" aria-hidden="true">
               /
             </span>

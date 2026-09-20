@@ -51,7 +51,7 @@ const FOOTER_COLUMNS = [
 
 function Brand() {
   return (
-    <Link className="brand" href="/study-abroad">
+    <Link className="brand" href="/">
       <span className="brand__mark" aria-hidden="true">
         U
       </span>

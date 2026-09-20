@@ -11,21 +11,32 @@ export async function generateMetadata(): Promise<Metadata> {
   const directory = await getDestinations().catch(() => null);
   const total = directory?.counts.total ?? 0;
   return {
-    title: 'Study Abroad — every destination we cover',
+    title: 'Universta — study abroad destinations, universities and scholarships',
     description:
       'Browse every study destination. Published guides carry full costs, intakes, entry requirements and visa pathways.',
-    alternates: { canonical: `${siteOrigin}/study-abroad` },
+    /* The listing is the homepage now, so `/` is where it is canonically.
+       `/study-abroad` and `/countries`, the two addresses the approved design
+       published it at, redirect here rather than serving it a second time. */
+    alternates: { canonical: siteOrigin },
     openGraph: {
-      title: 'Study Abroad — every destination we cover',
+      title: 'Universta — study abroad destinations, universities and scholarships',
       description: total
         ? `${total} destinations, with published guides for ${directory?.counts.available}.`
         : 'Browse every study destination.',
-      url: `${siteOrigin}/study-abroad`,
+      url: siteOrigin,
     },
   };
 }
 
-export default async function StudyAbroadDirectoryPage() {
+/**
+ * The homepage: every destination Universta covers.
+ *
+ * The approved design published this listing twice -- an exhaustive directory
+ * at `/study-abroad` and a data-rich listing at `/countries`. They are one page
+ * now, and that page is the homepage, so both of those addresses redirect here.
+ * There is no breadcrumb: this is where a breadcrumb would point.
+ */
+export default async function HomePage() {
   const directory = await getDestinations().catch(() => null);
 
   if (!directory) {
@@ -34,7 +45,7 @@ export default async function StudyAbroadDirectoryPage() {
         <div className="wrap">
           <h1 className="hero__h1">Destinations are temporarily unavailable</h1>
           <p className="hero__sub">Please try again shortly.</p>
-          <Link className="btn" href="/study-abroad">
+          <Link className="btn" href="/">
             Retry
           </Link>
         </div>
@@ -46,14 +57,7 @@ export default async function StudyAbroadDirectoryPage() {
     <>
       <section className="hero">
         <div className="wrap">
-          <nav className="crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link>
-            <span className="crumbs__sep" aria-hidden="true">
-              /
-            </span>
-            <span aria-current="page">Study Abroad</span>
-          </nav>
-          <div style={{ marginTop: 'clamp(22px,3vw,38px)', maxWidth: '820px' }}>
+          <div style={{ maxWidth: '820px' }}>
             <p className="hero__eyebrow">
               Destination directory<b>·</b>
               {directory.counts.total} countries

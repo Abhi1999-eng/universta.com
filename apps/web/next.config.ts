@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { COUNTRY_LISTING_PARAMS } from "./src/lib/country-listing-params";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['localhost', '127.0.0.1'],
@@ -17,7 +16,14 @@ const nextConfig: NextConfig = {
     ];
   },
   /**
-   * The destination directory and country guides move to /study-abroad.
+   * The two country listings become one, and that one is the homepage.
+   *
+   * The approved design published the same set of destinations twice: an
+   * exhaustive directory at /study-abroad and a data-rich listing at
+   * /countries. One merged listing now answers both, and it lives at `/`, so
+   * both old addresses redirect there. Country guides keep their own address
+   * under /study-abroad/<slug>, which is where the approved design canonicals
+   * them and where every shared link already points.
    *
    * These are the route family's own move, so they belong in routing rather
    * than in the Admin's Redirects table: that table is for one-off paths an
@@ -25,25 +31,21 @@ const nextConfig: NextConfig = {
    * country slug". Editor-managed redirects continue to work exactly as before
    * through the middleware.
    *
-   * Permanent, so the old address stops being indexed, and slug-preserving, so
+   * Permanent, so the old addresses stop being indexed, and slug-preserving, so
    * every shared /countries/<slug> link lands on the same country's guide.
    *
-   * The /countries listing splits. A URL carrying a listing filter is someone's
-   * shared search, and the directory has no budget, IELTS or subject filters to
-   * honour it; the homepage renders that same filterable listing, so it goes
-   * there, query intact. Any other /countries URL goes to the directory. These
-   * stay config redirects rather than middleware, because a config redirect
-   * carries the router's own `_rsc` parameter through a client navigation.
+   * A /countries URL carrying a listing filter used to go to a homepage that
+   * honoured it. The merged listing filters by region, guide status and what a
+   * destination has -- not by budget, IELTS or subject -- so carrying those
+   * parameters on would promise a filter that no longer exists. Every
+   * /countries URL now lands on the listing itself. These stay config
+   * redirects rather than middleware, because a config redirect carries the
+   * router's own `_rsc` parameter through a client navigation.
    */
   async redirects() {
     return [
-      ...COUNTRY_LISTING_PARAMS.map((key) => ({
-        source: '/countries',
-        has: [{ type: 'query' as const, key }],
-        destination: '/',
-        permanent: true,
-      })),
-      { source: '/countries', destination: '/study-abroad', permanent: true },
+      { source: '/countries', destination: '/', permanent: true },
+      { source: '/study-abroad', destination: '/', permanent: true },
       {
         source: '/countries/:countrySlug',
         destination: '/study-abroad/:countrySlug',

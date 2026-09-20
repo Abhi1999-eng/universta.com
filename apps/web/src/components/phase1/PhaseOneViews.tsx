@@ -326,7 +326,7 @@ export function PhaseListing({
               >
                 Book free counselling
               </Link>
-              <Link className="button secondary" href="/study-abroad">
+              <Link className="button secondary" href="/">
                 Browse study destinations
               </Link>
             </div>

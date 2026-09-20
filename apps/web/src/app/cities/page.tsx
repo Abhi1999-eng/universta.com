@@ -115,7 +115,7 @@ export default async function CitiesPage() {
                 can browse destinations by country.
               </p>
             </div>
-            <Link className="btn btn-primary" href="/study-abroad">
+            <Link className="btn btn-primary" href="/">
               Explore countries
             </Link>
           </section>
