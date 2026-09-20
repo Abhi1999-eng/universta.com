@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { CountryPage } from './countries';
-import { countrySnapshot, monthNames, workSummary } from './study-abroad-view';
+import {
+  alternatingBands,
+  countrySnapshot,
+  monthNames,
+  workSummary,
+} from './study-abroad-view';
 
 /**
  * The snapshot panel and the work cards are built from published figures only.
@@ -160,5 +165,32 @@ describe('work cards', () => {
       }).profiles,
     );
     expect(cards.find((card) => card.title === 'Post-study work')?.value).toBe('Available');
+  });
+});
+
+describe('alternatingBands', () => {
+  it('alternates from paper down the run', () => {
+    const band = alternatingBands(['a', 'b', 'c', 'd']);
+    expect([band('a'), band('b'), band('c'), band('d')]).toEqual([true, false, true, false]);
+  });
+
+  /* The point of computing it: a section that stands down must not leave its
+     band behind, or the two sections that close up around it end up matching. */
+  it('closes the gap when a section stands down', () => {
+    const withAll = alternatingBands(['a', 'b', 'c']);
+    const without = alternatingBands(['a', 'c']);
+    expect(withAll('c')).toBe(true);
+    expect(without('c')).toBe(false);
+  });
+
+  it('never gives two neighbours the same band', () => {
+    const ids = Array.from({ length: 25 }, (_, i) => `s${i}`);
+    const band = alternatingBands(ids);
+    const clashes = ids.filter((id, i) => i > 0 && band(id) === band(ids[i - 1]));
+    expect(clashes).toEqual([]);
+  });
+
+  it('gives an id it was never told about the same band as an absent one', () => {
+    expect(alternatingBands(['a'])('unknown')).toBe(false);
   });
 });

@@ -20,7 +20,15 @@ export type StudyPath = {
   courseCount: number | null;
 };
 
-export function StudyPaths({ paths, countryName }: { paths: StudyPath[]; countryName: string }) {
+export function StudyPaths({
+  paths,
+  countryName,
+  alt,
+}: {
+  paths: StudyPath[];
+  countryName: string;
+  alt: boolean;
+}) {
   const [active, setActive] = useState(0);
   const base = useId().replace(/:/g, '');
   if (paths.length === 0) return null;
@@ -36,7 +44,7 @@ export function StudyPaths({ paths, countryName }: { paths: StudyPath[]; country
   };
 
   return (
-    <section className="sec sec--paper" id="study-paths">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="study-paths">
       <div className="wrap">
         <p className="eyebrow">Study paths</p>
         <h2 className="sec-title">What you can study in {countryName}</h2>
@@ -101,16 +109,18 @@ export function StudyPaths({ paths, countryName }: { paths: StudyPath[]; country
 export function FaqAccordion({
   faqs,
   countryName,
+  alt,
 }: {
   faqs: Array<{ id: string; question: string; answer: string }>;
   countryName: string;
+  alt: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(faqs[0]?.id ?? null);
   const base = useId().replace(/:/g, '');
   if (faqs.length === 0) return null;
 
   return (
-    <section className="sec sec--paper" id="faq">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="faq">
       <div className="wrap wrap--narrow">
         <p className="eyebrow">Questions</p>
         <h2 className="sec-title">Studying in {countryName}</h2>

@@ -6,6 +6,8 @@ import {
   CountryConnect,
   CountryCourses,
   CountryNumbers,
+  countryUniversities,
+  hasCountryFigures,
   CountryScholarships,
   CountrySubjects,
   CountryTestimonials,
@@ -24,6 +26,7 @@ import { getDestinations, getStudyAbroadCountry, otherDestinations } from '@/lib
 import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
 import {
+  alternatingBands,
   countrySnapshot,
   monthNames,
   studyPathsFor,
@@ -86,6 +89,43 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const bands = directory?.available.find((entry) => entry.slug === country.slug)?.bands ?? null;
   const work = workSummary(profiles);
   const intakes = monthNames(country.configuration?.intakeMonths ?? []);
+
+  /**
+   * Which band each section gets.
+   *
+   * The guide alternates paper and white, and it cannot be assigned section by
+   * section: the editorial run alternates by its own index and differs in
+   * length per country, and most of the sections around it stand down when the
+   * country has nothing to put in them. Any fixed choice reads correctly on
+   * one country and puts two identical bands side by side on the next, where
+   * they merge into a single block and the boundary between them disappears.
+   *
+   * So the page lists what will actually render, in order, and hands each one
+   * its band. The navy sections are left out: they separate whatever sits
+   * either side of them, so the two neighbours may share a colour.
+   */
+  const rendered = [
+    country.configuration?.features?.length ? 'why' : null,
+    country.overview ? 'overview' : null,
+    paths.length ? 'study-paths' : null,
+    countryUniversities(country).length ? 'universities' : null,
+    country.subjects?.length ? 'subjects' : null,
+    countryCourses.length ? 'courses' : null,
+    country.documents?.length ? 'documents' : null,
+    intakes.length ? 'intakes' : null,
+    profiles.cost || calculator ? 'cost' : null,
+    profiles.language ? 'language' : null,
+    hasCountryFigures(country, profiles) ? 'numbers' : null,
+    ...sections.map((section) => `editorial:${section.id}`),
+    countryScholarships.length ? 'scholarship-funding' : null,
+    consultantCards.length ? 'guidance' : null,
+    testimonials.length ? 'testimonials' : null,
+    faqs.length ? 'faq' : null,
+    'connect',
+    others.length ? 'other-destinations' : null,
+  ].filter((id): id is string => Boolean(id));
+
+  const band = alternatingBands(rendered);
 
   const breadcrumbs = {
     '@context': 'https://schema.org',
@@ -232,7 +272,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* WHY — the features an editor ticked for this country */}
       {country.configuration?.features?.length ? (
-        <section className="sec sec--paper" id="why">
+        <section className={`sec ${band('why') ? 'sec--paper' : 'sec--white'}`} id="why">
           <div className="wrap">
             <p className="eyebrow">The case for {country.name}</p>
             <h2 className="sec-title">Why study in {country.name}</h2>
@@ -252,7 +292,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* OVERVIEW */}
       {country.overview ? (
-        <section className="sec sec--white" id="overview">
+        <section className={`sec ${band('overview') ? 'sec--paper' : 'sec--white'}`} id="overview">
           <div className="wrap wrap--narrow">
             <p className="eyebrow">Overview</p>
             <h2 className="sec-title">About studying in {country.name}</h2>
@@ -263,18 +303,18 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </section>
       ) : null}
 
-      <StudyPaths paths={paths} countryName={country.name} />
+      <StudyPaths paths={paths} countryName={country.name} alt={band('study-paths')} />
 
       {/* WHAT THIS DESTINATION HAS: universities, the fields they teach and the
           courses themselves. Each stands down when there is nothing published
           for this country rather than showing an empty shelf. */}
-      <CountryUniversities country={country} />
-      <CountrySubjects country={country} />
-      <CountryCourses country={country} courses={countryCourses} />
+      <CountryUniversities country={country} alt={band('universities')} />
+      <CountrySubjects country={country} alt={band('subjects')} />
+      <CountryCourses country={country} courses={countryCourses} alt={band('courses')} />
 
       {/* DOCUMENTS */}
       {country.documents?.length ? (
-        <section className="sec sec--white" id="documents">
+        <section className={`sec ${band('documents') ? 'sec--paper' : 'sec--white'}`} id="documents">
           <div className="wrap">
             <p className="eyebrow">Admissions</p>
             <h2 className="sec-title">Documents you will need</h2>
@@ -305,7 +345,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* INTAKES */}
       {intakes.length ? (
-        <section className="sec sec--paper" id="intakes">
+        <section className={`sec ${band('intakes') ? 'sec--paper' : 'sec--white'}`} id="intakes">
           <div className="wrap">
             <p className="eyebrow">Timing</p>
             <h2 className="sec-title">Intakes in {country.name}</h2>
@@ -337,7 +377,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* COST */}
       {profiles.cost || calculator ? (
-        <section className="sec sec--white" id="cost">
+        <section className={`sec ${band('cost') ? 'sec--paper' : 'sec--white'}`} id="cost">
           <div className="wrap">
             <p className="eyebrow">Money</p>
             <h2 className="sec-title">What it costs</h2>
@@ -366,7 +406,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* LANGUAGE */}
       {profiles.language ? (
-        <section className="sec sec--paper" id="language">
+        <section className={`sec ${band('language') ? 'sec--paper' : 'sec--white'}`} id="language">
           <div className="wrap">
             <p className="eyebrow">English</p>
             <h2 className="sec-title">Language requirements</h2>
@@ -433,20 +473,24 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       ) : null}
 
       {/* BY THE NUMBERS — every figure already published for this country. */}
-      <CountryNumbers country={country} profiles={profiles} />
+      <CountryNumbers country={country} profiles={profiles} alt={band('numbers')} />
 
       {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
           and in the shape each one declares. */}
       {sections.map((section, index) => (
-        <EditorialSection key={section.id} section={section} alt={index % 2 === 1} />
+        <EditorialSection key={section.id} section={section} alt={band(`editorial:${section.id}`)} />
       ))}
 
       {/* FUNDING */}
-      <CountryScholarships country={country} scholarships={countryScholarships} />
+      <CountryScholarships
+        country={country}
+        scholarships={countryScholarships}
+        alt={band('scholarship-funding')}
+      />
 
       {/* GUIDANCE */}
       {consultantCards.length ? (
-        <section className="sec sec--paper" id="guidance">
+        <section className={`sec ${band('guidance') ? 'sec--paper' : 'sec--white'}`} id="guidance">
           <div className="wrap">
             <p className="eyebrow">Guidance</p>
             <h2 className="sec-title">Talk it through</h2>
@@ -474,11 +518,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       ) : null}
 
       {/* STUDENT VOICES */}
-      <CountryTestimonials country={country} testimonials={testimonials} />
+      <CountryTestimonials country={country} testimonials={testimonials} alt={band('testimonials')} />
 
       <FaqAccordion
         faqs={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))}
         countryName={country.name}
+        alt={band('faq')}
       />
 
       <PlanBand
@@ -490,11 +535,14 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       />
 
       {/* EXPLORE NEXT */}
-      <CountryConnect country={country} />
+      <CountryConnect country={country} alt={band('connect')} />
 
       {/* OTHER DESTINATIONS */}
       {others.length ? (
-        <section className="sec sec--white sec--tight" id="other-destinations">
+        <section
+          className={`sec ${band('other-destinations') ? 'sec--paper' : 'sec--white'} sec--tight`}
+          id="other-destinations"
+        >
           <div className="wrap">
             <p className="eyebrow">Compare</p>
             <h2 className="sec-title">Other destinations</h2>

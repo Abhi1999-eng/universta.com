@@ -56,18 +56,18 @@ function SplitHead({
 }
 
 /**
- * "By the numbers".
+ * "By the numbers": the figures a country actually has, in the order the
+ * section shows them. A figure with nothing behind it is left out rather than
+ * shown as a zero or a dash., in the order the section shows them.
  *
- * Every figure is one the catalogue already holds, and a figure with nothing
- * behind it is left out rather than shown as a zero or a dash.
+ * Exported because the page has to know whether this section will render
+ * before it renders: the bands alternate by position, so a section that
+ * stands down has to stand down in the page's count too.
  */
-export function CountryNumbers({
-  country,
-  profiles,
-}: {
-  country: Country;
-  profiles: ProfileSummary;
-}) {
+export function countryFigures(
+  country: Country,
+  profiles: ProfileSummary,
+): Array<{ value: string; label: string }> {
   const stats = country.derived?.statistics;
   const intakeCount = country.configuration?.intakeMonths?.length ?? 0;
   const workMonths = country.configuration?.postStudyWorkPermitMonths ?? null;
@@ -97,10 +97,27 @@ export function CountryNumbers({
   if (workMonths)
     figures.push({ value: String(workMonths), label: 'Months of post-study work' });
 
+  return figures;
+}
+
+/** Two figures is the floor: one number on its own is a statistic, not a section. */
+export const hasCountryFigures = (country: Country, profiles: ProfileSummary) =>
+  countryFigures(country, profiles).length >= 2;
+
+export function CountryNumbers({
+  country,
+  profiles,
+  alt,
+}: {
+  country: Country;
+  profiles: ProfileSummary;
+  alt: boolean;
+}) {
+  const figures = countryFigures(country, profiles);
   if (figures.length < 2) return null;
 
   return (
-    <section className="sec sec--paper" id="numbers">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="numbers">
       <div className="wrap">
         <SplitHead
           index="09"
@@ -121,24 +138,31 @@ export function CountryNumbers({
   );
 }
 
-/** "Explore universities in <country>". */
-export function CountryUniversities({ country }: { country: Country }) {
-  /* Ranked first when an editor has curated them, then whatever else is
-     published, so the section is never empty while universities exist. */
-  const universities = [
+/**
+ * The universities to show for a country: ranked first when an editor has
+ * curated them, then whatever else is published, so the section is never empty
+ * while universities exist.
+ */
+export function countryUniversities(country: Country) {
+  return [
     ...(country.derived?.topRankedUniversities ?? []),
     ...(country.derived?.popularUniversities ?? []),
   ].filter(
     (university, index, all) =>
       all.findIndex((other) => other.id === university.id) === index,
   );
+}
+
+/** "Explore universities in <country>". */
+export function CountryUniversities({ country, alt }: { country: Country; alt: boolean }) {
+  const universities = countryUniversities(country);
   if (!universities.length) return null;
 
   const count = country.derived?.statistics?.universitiesCount ?? universities.length;
   const courses = country.derived?.statistics?.coursesCount ?? 0;
 
   return (
-    <section className="sec sec--white" id="universities">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="universities">
       <div className="wrap">
         <SplitHead
           index="04"
@@ -170,12 +194,12 @@ export function CountryUniversities({ country }: { country: Country }) {
 }
 
 /** "Popular subjects to study in <country>". */
-export function CountrySubjects({ country }: { country: Country }) {
+export function CountrySubjects({ country, alt }: { country: Country; alt: boolean }) {
   const subjects = country.subjects ?? [];
   if (!subjects.length) return null;
 
   return (
-    <section className="sec sec--paper" id="subjects">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="subjects">
       <div className="wrap">
         <SplitHead
           index="05"
@@ -208,14 +232,16 @@ export type CountryCourseCard = {
 export function CountryCourses({
   country,
   courses,
+  alt,
 }: {
   country: Country;
   courses: CountryCourseCard[];
+  alt: boolean;
 }) {
   if (!courses.length) return null;
 
   return (
-    <section className="sec sec--white" id="courses">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="courses">
       <div className="wrap">
         <SplitHead
           index="06"
@@ -261,14 +287,16 @@ function initials(name: string) {
 export function CountryTestimonials({
   country,
   testimonials,
+  alt,
 }: {
   country: Country;
   testimonials: CountryTestimonial[];
+  alt: boolean;
 }) {
   if (!testimonials.length) return null;
 
   return (
-    <section className="sec sec--white" id="testimonials">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="testimonials">
       <div className="wrap">
         <SplitHead
           index="08"
@@ -314,9 +342,9 @@ export function CountryTestimonials({
  * listing already narrowed to the destination they were reading about rather
  * than at the top of an unfiltered catalogue.
  */
-export function CountryConnect({ country }: { country: Country }) {
+export function CountryConnect({ country, alt }: { country: Country; alt: boolean }) {
   return (
-    <section className="sec sec--paper sec--tight h-connect" id="connect">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-connect`} id="connect">
       <div className="wrap">
         <div className="h-next">
           <p className="eyebrow eyebrow--plain">Explore next</p>
@@ -356,14 +384,16 @@ export type CountryScholarshipCard = {
 export function CountryScholarships({
   country,
   scholarships,
+  alt,
 }: {
   country: Country;
   scholarships: CountryScholarshipCard[];
+  alt: boolean;
 }) {
   if (!scholarships.length) return null;
 
   return (
-    <section className="sec sec--paper" id="scholarship-funding">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="scholarship-funding">
       <div className="wrap">
         <SplitHead
           index="07"
