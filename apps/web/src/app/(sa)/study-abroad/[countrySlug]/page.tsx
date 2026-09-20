@@ -8,6 +8,7 @@ import {
   CountryNumbers,
   CountryScholarships,
   CountrySubjects,
+  CountryTestimonials,
   CountryUniversities,
   type CountryCourseCard,
   type CountryScholarshipCard,
@@ -76,6 +77,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const countryScholarships = scholarshipList?.data ?? [];
 
   const { country, profiles, sections, faqs, consultantCards } = page;
+  const testimonials = page.testimonials ?? [];
   const snapshot = countrySnapshot(page);
   const paths = studyPathsFor(page);
   const calculator = country.configuration?.calculator ?? null;
@@ -470,6 +472,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
           </div>
         </section>
       ) : null}
+
+      {/* STUDENT VOICES */}
+      <CountryTestimonials country={country} testimonials={testimonials} />
 
       <FaqAccordion
         faqs={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Country, ProfileSummary } from '@/lib/countries';
+import type { Country, CountryTestimonial, ProfileSummary } from '@/lib/countries';
 
 /**
  * The country guide's sections that link out to the rest of the catalogue:
@@ -233,6 +233,73 @@ export function CountryCourses({
                 <span className="h-card__m">{course.courseLevel.name}</span>
               ) : null}
             </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** The initials shown beside a quote, from whatever attribution it carries. */
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+/**
+ * "What students say" -- testimonials attached to this destination.
+ *
+ * Only testimonials an editor has filed against the country appear here. A
+ * university's own testimonials belong on that university's page, so nothing
+ * is borrowed from one to fill the other, and the section stands down rather
+ * than showing placeholder quotes.
+ */
+export function CountryTestimonials({
+  country,
+  testimonials,
+}: {
+  country: Country;
+  testimonials: CountryTestimonial[];
+}) {
+  if (!testimonials.length) return null;
+
+  return (
+    <section className="sec sec--white" id="testimonials">
+      <div className="wrap">
+        <SplitHead
+          index="08"
+          eyebrow="Student voices"
+          title={`What students say about studying in ${country.name}`}
+          lead="Published as given, with the attribution each student agreed to."
+        />
+        <div className="quotes">
+          {testimonials.slice(0, 6).map((testimonial) => (
+            <figure className="quote" key={testimonial.id}>
+              <span className="quote__mark" aria-hidden="true">
+                “
+              </span>
+              <blockquote className="quote__t">{testimonial.quote}</blockquote>
+              {testimonial.attribution ? (
+                <figcaption className="quote__by">
+                  <span className="quote__init" aria-hidden="true">
+                    {initials(testimonial.attribution)}
+                  </span>
+                  <span>
+                    <span className="quote__n">{testimonial.attribution}</span>
+                    {testimonial.attributionNote ? (
+                      <>
+                        <br />
+                        <span className="quote__r">{testimonial.attributionNote}</span>
+                      </>
+                    ) : null}
+                  </span>
+                </figcaption>
+              ) : null}
+            </figure>
           ))}
         </div>
       </div>

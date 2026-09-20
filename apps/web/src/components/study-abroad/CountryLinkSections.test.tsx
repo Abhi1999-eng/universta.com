@@ -6,6 +6,7 @@ import {
   CountryNumbers,
   CountryScholarships,
   CountrySubjects,
+  CountryTestimonials,
   CountryUniversities,
 } from './CountryLinkSections';
 
@@ -150,6 +151,35 @@ describe('country guide catalogue sections', () => {
     );
     expect(html).toContain('href="/scholarships/daad"');
     expect(html).toContain('Scholarships for Germany');
+  });
+
+  it('quotes the testimonials filed against the country', () => {
+    const html = renderToStaticMarkup(
+      <CountryTestimonials
+        country={country()}
+        testimonials={[
+          {
+            id: 't1',
+            quote: 'Seeing tuition and language rules side by side made the shortlist obvious.',
+            attribution: 'Aarti Nair',
+            attributionNote: 'Master’s applicant',
+          },
+        ]}
+      />,
+    );
+    expect(html).toContain('What students say about studying in Germany');
+    expect(html).toContain('Aarti Nair');
+    /* Initials come from the attribution rather than being stored twice. */
+    expect(html).toContain('>AN<');
+    expect(html).toContain('Master’s applicant');
+  });
+
+  /* Nothing is borrowed from a university to fill a country guide, and no
+     placeholder quote is invented, so the section simply is not there. */
+  it('stands down when no testimonial is filed against the country', () => {
+    expect(
+      renderToStaticMarkup(<CountryTestimonials country={country()} testimonials={[]} />),
+    ).toBe('');
   });
 
   /* Only figures the catalogue actually holds. A zero is an absence the
