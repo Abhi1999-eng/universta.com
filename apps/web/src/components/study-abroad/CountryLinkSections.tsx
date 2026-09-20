@@ -240,6 +240,39 @@ export function CountryCourses({
   );
 }
 
+/**
+ * "Explore next" -- the closing band of country-filtered ways on.
+ *
+ * Every link carries the country, so a student leaves the guide with the
+ * listing already narrowed to the destination they were reading about rather
+ * than at the top of an unfiltered catalogue.
+ */
+export function CountryConnect({ country }: { country: Country }) {
+  return (
+    <section className="sec sec--paper sec--tight h-connect" id="connect">
+      <div className="wrap">
+        <div className="h-next">
+          <p className="eyebrow eyebrow--plain">Explore next</p>
+          <div className="btn-row">
+            <Link className="btn btn--sm" href={`/courses?country=${country.slug}`}>
+              Explore courses in {country.name}
+            </Link>
+            <Link
+              className="btn btn--sm btn--ghost"
+              href={`/scholarships?country=${country.slug}`}
+            >
+              Find scholarships
+            </Link>
+            <Link className="btn btn--sm btn--ghost" href="/counselling">
+              Talk to a Universta advisor
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export type CountryScholarshipCard = {
   id: string;
   title: string;

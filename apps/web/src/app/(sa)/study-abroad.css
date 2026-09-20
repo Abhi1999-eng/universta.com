@@ -1088,6 +1088,10 @@
 .sa .h-home .hero__h1{ font-size: clamp(38px, 6vw, 72px); letter-spacing: -0.035em; }
 .sa .h-stats{ list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); }
 .sa .h-stats b{ font-family: var(--font-display); color: var(--text); font-size: 18px; margin-right: 4px; }
+.sa .h-connect .wrap{ display: grid; gap: clamp(26px, 3vw, 40px); }
+.sa .h-next{ display: grid; gap: 10px; padding: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
+.sa .h-next .eyebrow{ margin: 0; }
+@media (max-width: 640px){ .sa .h-next .btn-row .btn{ flex: 1 1 auto; justify-content: center; } }
 /* ---------------------------------------------------------------------
    PRINT
    --------------------------------------------------------------------- */

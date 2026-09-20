@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
 import {
+  CountryConnect,
   CountryCourses,
   CountryNumbers,
   CountryScholarships,
@@ -482,6 +483,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         countryName={country.name}
         secondary={{ href: '/', label: 'Browse all destinations' }}
       />
+
+      {/* EXPLORE NEXT */}
+      <CountryConnect country={country} />
 
       {/* OTHER DESTINATIONS */}
       {others.length ? (
