@@ -852,7 +852,12 @@
    TESTIMONIALS
    --------------------------------------------------------------------- */
 .sa .quotes{ display: grid; gap: 16px; }
-@media (min-width: 900px){.sa .quotes{ grid-template-columns: repeat(3, 1fr); }}
+/* Fixed at three columns, a single published testimonial sat in the left
+   third with two empty cells beside it. Fitting to what is there keeps the
+   row honest; the quote itself stays inside a readable measure rather than
+   running the full width of the page. */
+@media (min-width: 900px){.sa .quotes{ grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }}
+.sa .quote__t{ max-width: 62ch; }
 .sa .quote{ display: flex; flex-direction: column; gap: 20px; padding: clamp(24px, 2.8vw, 34px); background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .sa .quote__mark{ font-family: var(--font-display); font-size: 40px; line-height: 0.6; color: var(--accent); opacity: .3; }
 .sa .quote__t{ font-size: 16.5px; flex: 1; text-wrap: pretty; }
@@ -1091,10 +1096,16 @@
 .sa .h-head .sec-lead{ margin: 0; }
 .sa .h-sec .sec-title{ font-size: clamp(24px, 2.8vw, 36px); }
 .sa .h-more{ display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 22px; }
-.sa .h-grid{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
-.sa .h-grid--4{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
-.sa .h-grid--wide{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
-.sa .h-grid--paths{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+/* `auto-fit`, not the design's `auto-fill`. Both lay out the same when a grid
+   is full; they differ when it is not, and on a country guide it often is not
+   -- a destination with two scholarships was leaving a third column standing
+   empty beside them, which reads as a card that failed to load rather than as
+   a country with two scholarships. `auto-fit` collapses the empty tracks and
+   the cards take the row. */
+.sa .h-grid{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.sa .h-grid--4{ grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.sa .h-grid--wide{ grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.sa .h-grid--paths{ grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
 .sa .h-card, .sa .h-path{ display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; min-width: 0; background: var(--white); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--text); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
 .sa .sec--white .h-card, .sa .sec--white .h-path{ background: var(--paper); }
 .sa a.h-card:hover, .sa .h-path:hover{ border-color: var(--line-strong); box-shadow: 0 8px 24px rgba(7, 20, 38, 0.07); }
