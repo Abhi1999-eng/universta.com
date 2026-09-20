@@ -1091,6 +1091,10 @@
 .sa .h-connect .wrap{ display: grid; gap: clamp(26px, 3vw, 40px); }
 .sa .h-next{ display: grid; gap: 10px; padding: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
 .sa .h-next .eyebrow{ margin: 0; }
+/* Buttons are nowrap everywhere else, which is right for short labels and
+   wrong for a band whose labels are editorial. Let these wrap rather than
+   let one long label give the whole page horizontal scroll. */
+.sa .h-next .btn-row .btn{ white-space: normal; text-align: center; }
 @media (max-width: 640px){ .sa .h-next .btn-row .btn{ flex: 1 1 auto; justify-content: center; } }
 /* ---------------------------------------------------------------------
    PRINT
