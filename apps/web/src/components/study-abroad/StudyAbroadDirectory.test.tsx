@@ -66,11 +66,35 @@ describe('destination directory', () => {
   });
 
   /* The merged listing carries what the approved countries page showed under a
-     name. A card states only what the destination actually has: a zero is an
-     absence the student cannot act on, so it is left out rather than printed. */
+     name, cut to what a 276px chip can hold on one line. A card states only
+     what the destination actually has: a zero is an absence the student cannot
+     act on, so it is left out rather than printed. */
   it('reports what a destination has linked to it', () => {
     const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
-    expect(html).toContain('4 universities · 10 courses · 5 scholarships · 3 consultants');
+    expect(html).toContain('4 universities · 10 courses');
+  });
+
+  it('stops at two facts, so the line never wraps the card taller', () => {
+    const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
+    expect(html).not.toContain('5 scholarships');
+    expect(html).not.toContain('3 consultants');
+  });
+
+  /* A destination with no universities or courses still says what it does
+     have, rather than saying nothing at all. */
+  it('falls back to whatever the destination does have', () => {
+    const html = renderToStaticMarkup(
+      <DirectoryView
+        directory={directory({
+          available: [
+            destination({
+              counts: { universities: 0, courses: 0, scholarships: 3, consultants: 2 },
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(html).toContain('3 scholarships · 2 consultants');
   });
 
   it('leaves a count out of the line when there is nothing to report', () => {
@@ -88,6 +112,7 @@ describe('destination directory', () => {
     expect(html).toContain('1 university · 2 consultants');
     expect(html).not.toContain('0 courses');
     expect(html).not.toContain('0 scholarships');
+    expect(html).not.toContain('· 0 ');
   });
 
   it('says nothing at all when a destination has nothing linked to it', () => {

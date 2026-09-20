@@ -1054,8 +1054,31 @@
    is that listing's own rule, taken from the approved app.css unchanged, so the
    two listings that became one still read alike. The card wraps so the line
    sits under the name rather than competing with it for the row. */
-.sa .dir__card{ flex-wrap: wrap; }
-.sa .dir__card .h-card__m{ flex-basis: 100%; margin-top: 0; font-size: 12.5px; font-family: var(--font-mono); color: var(--muted); padding-top: 4px; }
+/* Every card is the same height, whether it carries counts or only "Soon".
+   The grid equalises within a row but not between them, so a row of published
+   destinations stood 140px tall next to a row of 56px chips and the wall
+   lurched. One height makes the rhythm even down the page. */
+/* `start`, not the grid's default stretch: a row is as tall as its tallest
+   card, and stretching every other card to match is what made a row of chips
+   balloon next to one carrying counts. Each card keeps its own size. */
+.sa .dir__grid{ align-items: start; }
+/* Wider than the 215px the chip alone needed. The card now carries a flag, a
+   name, a badge and a line of counts; at five across, "Saint Vincent and the
+   Grenadines" had 99px to say itself in and lost more than half. */
+.sa .dir__grid{ grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.sa .dir__card{ flex-wrap: wrap; align-content: center; min-height: 86px; }
+/* The name yields before the badge does, and it has to start from zero to do
+   it: flex wraps before it shrinks, so with an `auto` basis a name like
+   "Bosnia and Herzegovina" took a line of its own rather than narrowing, and
+   that card stood taller than every neighbour. */
+.sa .dir__card .cchip__name{ flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The meta line never wraps: wrapping is what made a card two or three lines
+   taller than its neighbours in the first place. */
+.sa .dir__card .h-card__m{
+  flex-basis: 100%; margin-top: 0; padding-top: 2px;
+  font-size: 11px; font-family: var(--font-mono); color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 /* ---------------------------------------------------------------------
    HOME SECTIONS
    The funnel sections the approved design shipped on its home page, taken
