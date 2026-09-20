@@ -123,19 +123,35 @@ set +a
 npm --workspace apps/api run test:e2e -- --runInBand
 ```
 
-Run the admin unit tests and real Chromium browser E2E tests with:
+Run the admin unit tests, then the real Chromium browser acceptance suite:
 
 ```bash
 npm --workspace apps/admin run test
-set -a
-. apps/api/.env
-set +a
-E2E_ADMIN_EMAIL="$SEED_ADMIN_EMAIL" E2E_ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD" npm --workspace apps/admin run test:e2e
+scripts/run-e2e.sh
 ```
 
+`scripts/run-e2e.sh` takes the same arguments as `playwright test`, so
+`scripts/run-e2e.sh study-abroad.spec.ts` runs one file and
+`scripts/run-e2e.sh --list` shows what would run.
+
+Use the script rather than exporting the environment by hand. Sourcing
+`apps/api/.env` wholesale — which is the obvious way to reach the seeded admin
+credentials — also exports `NODE_ENV=development`, and Playwright's own
+`next build` for the admin and web apps then fails prerendering
+`/_global-error` with "Cannot read properties of null (reading 'useContext')".
+That reads like broken application code and is only a broken shell. The script
+lifts out the three values it needs and leaves the rest alone. It also keeps
+the Playwright browser binaries in step with `@playwright/test`; a cache from
+an older version fails every test at launch, which reads like the whole suite
+regressing.
+
 The browser test variables are local-only and are never sent to the browser
-bundle or committed. Playwright starts the API on port 4000 and admin app on
-port 3001 through readiness checks.
+bundle or committed. Playwright starts the API on port 4000, the admin app on
+port 3001 and the web app on port 3000 through readiness checks. When one of
+those ports is already taken, set `E2E_WEB_BASE_URL`, `E2E_ADMIN_BASE_URL` or
+`E2E_API_BASE_URL`; the specs, the servers and the API's allowed origins all
+follow from those, so a moved port does not turn into a 403 on the assessment
+POST.
 
 Run the backend locally for an auth check:
 
