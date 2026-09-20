@@ -1,6 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DirectoryView } from '@/components/study-abroad/DirectoryView';
+import {
+  HomeGuides,
+  HomeHero,
+  HomeInstitutions,
+  HomeSupport,
+  HomeTools,
+  HomeTrust,
+  StartPaths,
+} from '@/components/study-abroad/HomeSections';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { getDestinations } from '@/lib/study-abroad';
 import { siteOrigin } from '@/lib/site-origin';
@@ -55,32 +64,34 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="hero">
+      <HomeHero directory={directory} />
+      <StartPaths />
+
+      {/* The listing itself, where the design's own "countries" section sat.
+          It keeps its heading, because the hero above now speaks for the
+          platform rather than for the directory. */}
+      <section className="sec sec--paper sec--tight h-sec">
         <div className="wrap">
-          <div style={{ maxWidth: '820px' }}>
-            <p className="hero__eyebrow">
-              Destination directory<b>·</b>
+          <div className="h-head">
+            <p className="eyebrow eyebrow--plain">
+              Destinations<b>·</b>
               {directory.counts.total} countries
             </p>
-            <h1
-              className="hero__h1"
-              style={{
-                fontSize: 'var(--fs-display)',
-                letterSpacing: '-0.045em',
-                lineHeight: 1.02,
-              }}
-            >
-              Where do you want to study?
-            </h1>
-            <p className="hero__sub" style={{ marginTop: 18 }}>
+            <h2 className="sec-title">Where do you want to study?</h2>
+            <p className="sec-lead">
               Browse every destination we cover. Published guides carry full costs, intakes,
               entry requirements and visa pathways.
             </p>
           </div>
         </div>
       </section>
-
       <DirectoryView directory={directory} />
+
+      <HomeTools />
+      <HomeSupport />
+      <HomeGuides />
+      <HomeInstitutions />
+      <HomeTrust />
       <PlanBand />
     </>
   );

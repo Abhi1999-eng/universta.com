@@ -65,12 +65,13 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const breadcrumbs = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
+    /* Two items, matching the crumbs on the page: the destination listing is
+       the homepage now, so a third "Study Abroad" item would name `/` twice. */
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteOrigin}/` },
-      { '@type': 'ListItem', position: 2, name: 'Study Abroad', item: `${siteOrigin}/study-abroad` },
       {
         '@type': 'ListItem',
-        position: 3,
+        position: 2,
         name: country.name,
         item: `${siteOrigin}/study-abroad/${country.slug}`,
       },
@@ -444,7 +445,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         body="Tell us about your academic profile, goals and budget, and a counsellor will match it against live programmes."
         countrySlug={country.slug}
         countryName={country.name}
-        secondary={{ href: '/study-abroad', label: 'Browse all destinations' }}
+        secondary={{ href: '/', label: 'Browse all destinations' }}
       />
 
       {/* OTHER DESTINATIONS */}
