@@ -16,8 +16,12 @@ const viewports = [
 // client-approved design with that design's own typefaces (Sora and Manrope),
 // scoped to the route. study-abroad.spec.ts asserts those faces instead, and
 // that they do not reach any page here.
+/* The Study Abroad family is not audited here and never was: the approved
+ * design brings its own typefaces (Sora and Manrope), scoped to `.sa`, rather
+ * than the site's Inter. `/` left this list when the destination listing
+ * became the homepage and joined that family -- the same reason
+ * `/study-abroad/...` was never in it. */
 const publicRoutes = [
-  '/',
   '/courses',
   '/subjects',
   '/scholarships',

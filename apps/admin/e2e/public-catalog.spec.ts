@@ -33,25 +33,25 @@ function observePageHealth(page: Page) {
 }
 
 test.describe('approved public subject and course discovery', () => {
-  test('renders the Countries listing as the home route', async ({ page }) => {
-    // The Countries listing remains the site's homepage.
+  test('renders the destination listing as the home route', async ({ page }) => {
+    // The approved destination listing is the site's homepage. It replaced the
+    // Phase 1 countries listing, and it answers the two addresses that listing
+    // and the directory used to hold.
     await page.goto(webBaseUrl);
 
     await expect(page).toHaveURL(webBaseUrl);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByLabel('Search a country')).toBeVisible();
-    // Scope to the page body: the shared header/footer also expose their own
-    // counselling CTA, which is intended.
-    const hero = page.locator('main');
-    await expect(hero.getByRole('link', { name: /counsel/i }).first()).toHaveAttribute('href', /counselling/);
+    await expect(page.getByPlaceholder('Search a country')).toBeVisible();
+    // The listing's own controls, which render whether or not any destination
+    // is published in this run's fixture data.
+    await expect(page.getByTestId('directory-count')).toBeVisible();
+    await expect(page.locator('[data-filter-group="has"]')).toBeVisible();
 
-    // /countries itself has moved: bare, to the Study Abroad directory; with a
-    // search, back to this listing with the search intact.
+    // Both old addresses now land here, permanently.
     await page.goto(`${webBaseUrl}/countries`);
-    await expect(page).toHaveURL(`${webBaseUrl}/study-abroad`);
-    await page.goto(`${webBaseUrl}/countries?q=Canada`);
-    await expect(page).toHaveURL(`${webBaseUrl}/?q=Canada`);
-    await expect(page.getByLabel('Search a country')).toHaveValue('Canada');
+    await expect(page).toHaveURL(`${webBaseUrl}/`);
+    await page.goto(`${webBaseUrl}/study-abroad`);
+    await expect(page).toHaveURL(`${webBaseUrl}/`);
   });
 
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {
