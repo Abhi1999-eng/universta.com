@@ -124,8 +124,23 @@ export function DirectoryView({ directory }: { directory: DestinationDirectory }
   ];
 
   return (
-    <section className="sec sec--white" id="directory">
+    /* `sec--tight h-sec`, like every funnel section around it: the listing
+       used to sit on a 64px rhythm between neighbours on 44px, so the page
+       breathed unevenly exactly where its main content began. */
+    <section className="sec sec--paper sec--tight h-sec" id="directory">
       <div className="wrap">
+        <div className="h-head">
+          <p className="eyebrow eyebrow--plain">
+            Destinations<b>·</b>
+            {directory.counts.total} countries
+          </p>
+          <h2 className="sec-title">Where do you want to study?</h2>
+          <p className="sec-lead">
+            Browse every destination we cover. Published guides carry full costs, intakes,
+            entry requirements and visa pathways.
+          </p>
+        </div>
+
         <div className="dir__search">
           <input
             className="dir__input"

@@ -67,24 +67,11 @@ export default async function HomePage() {
       <HomeHero directory={directory} />
       <StartPaths />
 
-      {/* The listing itself, where the design's own "countries" section sat.
-          It keeps its heading, because the hero above now speaks for the
-          platform rather than for the directory. */}
-      <section className="sec sec--paper sec--tight h-sec">
-        <div className="wrap">
-          <div className="h-head">
-            <p className="eyebrow eyebrow--plain">
-              Destinations<b>·</b>
-              {directory.counts.total} countries
-            </p>
-            <h2 className="sec-title">Where do you want to study?</h2>
-            <p className="sec-lead">
-              Browse every destination we cover. Published guides carry full costs, intakes,
-              entry requirements and visa pathways.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* The listing, where the design's own "countries" section sat. Its
+          heading lives inside it rather than in a section of its own: split
+          across two, the heading sat on paper while its cards sat on white,
+          with a colour seam and 108px of nothing between a title and the
+          thing it titles. */}
       <DirectoryView directory={directory} />
 
       <HomeTools />

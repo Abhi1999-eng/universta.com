@@ -5,6 +5,13 @@ import { AssessmentCta } from './AssessmentCta';
 /**
  * The homepage's funnel sections, from the approved design's home page.
  *
+ * The bands alternate paper and white the whole way down, which is how the
+ * design separates one section from the next. That alternation is positional,
+ * not per-section, so it had to be re-struck here: the design ran thirteen
+ * sections and this page runs eight, and keeping each one's original colour
+ * left two paper bands touching, merging them into a single block with no
+ * boundary between them.
+ *
  * The design published a funnel home page and a destination listing as two
  * pages. They are one page now: these sections wrap the listing, which keeps
  * its own search and filters and sits where the design's "countries" section
@@ -296,7 +303,7 @@ export function HomeSupport() {
 /** "Guides for every stage". */
 export function HomeGuides() {
   return (
-    <section className="sec sec--paper sec--tight h-sec" id="resources">
+    <section className="sec sec--white sec--tight h-sec" id="resources">
       <div className="wrap">
         <SectionHead
           eyebrow="Resources"
@@ -333,7 +340,7 @@ export function HomeGuides() {
 /** "Universities, providers, coaching institutes and consultants". */
 export function HomeInstitutions() {
   return (
-    <section className="sec sec--white sec--tight h-sec" id="institutions">
+    <section className="sec sec--paper sec--tight h-sec" id="institutions">
       <div className="wrap">
         <SectionHead
           eyebrow="For institutions"
@@ -371,7 +378,7 @@ export function HomeInstitutions() {
  */
 export function HomeTrust() {
   return (
-    <section className="sec sec--paper sec--tight h-sec" id="trust">
+    <section className="sec sec--white sec--tight h-sec" id="trust">
       <div className="wrap">
         <SectionHead eyebrow="Trust" title="How Universta keeps information honest" />
         <div className="h-grid h-grid--4">
