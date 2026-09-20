@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { webBaseUrl } from './helpers/e2e-urls';
+import { chromeBaseUrl } from './helpers/e2e-urls';
 
 async function openDesktopHeader(page: import('@playwright/test').Page) {
   // Resources is part of the desktop primary menu. The responsive drawer is
   // the intended control at the default 1280px CI viewport.
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(webBaseUrl);
+  await page.goto(chromeBaseUrl);
 }
 
 /** Direct regression coverage for the header's Resources dropdown.

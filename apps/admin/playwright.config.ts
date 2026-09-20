@@ -75,7 +75,7 @@ export default defineConfig({
     },
     {
       command: `cd ../web && npm run build && npm run start -- --port ${webPort}`,
-      url: `${webBaseUrl}/countries`,
+      url: `${webBaseUrl}/`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       env: {

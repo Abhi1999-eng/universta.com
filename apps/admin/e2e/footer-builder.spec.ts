@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loginAsAdmin } from './helpers/admin-auth';
-import { webBaseUrl } from './helpers/e2e-urls';
+import { chromeBaseUrl } from './helpers/e2e-urls';
 
 /** The footer builder has to let a non-developer add a row, choose a shape,
  * put content in it, and see it on the live site -- then get back to the
@@ -47,7 +47,7 @@ test.describe('global footer builder', () => {
 
     // And the public site actually shows it.
     const publicPage = await page.context().newPage();
-    await publicPage.goto(`${webBaseUrl}/`);
+    await publicPage.goto(chromeBaseUrl);
     await expect(publicPage.locator('footer')).toContainText(marker);
     await publicPage.close();
 

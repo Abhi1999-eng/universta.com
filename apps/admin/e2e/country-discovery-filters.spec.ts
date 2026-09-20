@@ -74,7 +74,18 @@ async function names(page: Page): Promise<string[]> {
 const FIXTURES = [`${MARK} Alphaland`, `${MARK} Betaland`];
 const ours = (all: string[]) => all.filter((name) => FIXTURES.includes(name)).sort();
 
-test.describe.serial('public country discovery filters', () => {
+/* Skipped, not deleted: every test below drives the Phase 1 listing's filter
+ * drawer -- the "Destination filters" dialog, its subject and budget controls,
+ * `country-count` and `country-apply`. That listing is retired. The approved
+ * destination listing is the homepage now and filters by region, guide status
+ * and what a destination has, so none of these controls exist at any address.
+ *
+ * The fixtures below build countries with subjects, cost and work profiles,
+ * which is the expensive part and still correct. If a filtered destination
+ * listing returns, revive this by rewriting the assertions against its
+ * controls rather than rebuilding the setup, and restore `.serial` with it:
+ * these shared one fixture set in order. */
+test.describe.skip('public country discovery filters', () => {
   const created: Record<string, string> = {};
 
   test.beforeAll(async () => {

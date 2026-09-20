@@ -12,7 +12,8 @@ import { acceptanceEmail } from './helpers/acceptance-run';
  * listing and counselling specs rely on.
  */
 
-const directory = `${webBaseUrl}/study-abroad`;
+/* The destination listing is the homepage: /study-abroad now redirects here. */
+const directory = `${webBaseUrl}/`;
 const guide = `${webBaseUrl}/study-abroad/canada`;
 
 function watchHealth(page: Page) {
@@ -37,7 +38,12 @@ test.describe('study abroad', () => {
     const healthy = watchHealth(page);
     await page.goto(directory);
 
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Where do you want to study?');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Your Study Abroad Journey, Connected.',
+    );
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Where do you want to study?' }),
+    ).toBeVisible();
     await expect(page.locator('a.dir__card[href="/study-abroad/canada"]')).toBeVisible();
     /* A destination without a guide has nowhere to go, so it is not a link. */
     await expect(page.locator('.dir__card--soon').first()).toBeVisible();
@@ -80,7 +86,9 @@ test.describe('study abroad', () => {
   });
 
   test('keeps the approved design scoped to its own routes', async ({ page }) => {
-    await page.goto(webBaseUrl);
+    /* `/` is inside the family now, so the proof has to come from a route
+       outside it: the scoped stylesheet and its typefaces must not leak. */
+    await page.goto(`${webBaseUrl}/courses`);
     await expect(page.locator('.sa')).toHaveCount(0);
     await expect(page.locator('footer.usta-footer')).toBeVisible();
     const fonts = await page.evaluate(() =>
@@ -155,10 +163,13 @@ test.describe('study abroad', () => {
 
   test('redirects the addresses it replaced, permanently', async ({ page }) => {
     const cases: Array<[string, string]> = [
-      ['/countries', '/study-abroad'],
+      ['/countries', '/'],
+      ['/study-abroad', '/'],
       ['/countries/canada', '/study-abroad/canada'],
       ['/study-in/canada', '/study-abroad/canada'],
-      /* A filtered listing is a shared search; it keeps its filters. */
+      /* The merged listing has no budget, IELTS or subject filters to
+         honour, so a filtered /countries URL lands on the listing itself
+         rather than carrying a promise the page can no longer keep. */
       ['/countries?q=Canada', '/?q=Canada'],
     ];
     for (const [from, to] of cases) {

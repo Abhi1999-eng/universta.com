@@ -590,19 +590,23 @@ test.describe.serial('country client contract, end to end', () => {
     await page.goto(`${webBaseUrl}/study-abroad/${derivedSlug}`);
     await expect(page.locator('h1')).toContainText(onlyName);
     await page.goto(`${webBaseUrl}/`);
-    await expect(page.locator(`a[href="/study-abroad/${derivedSlug}"]`).first()).toBeVisible();
+    /* Scoped to the listing. The route family's header carries a country
+       selector that links every destination, and its rows are hidden until it
+       is opened -- `.first()` used to resolve to one of those. */
+    await expect(
+      page.locator(`#directory a[href="/study-abroad/${derivedSlug}"]`),
+    ).toBeVisible();
 
     await deleteCountryById(String(published.id), published.updatedAt);
   });
 
   /**
-   * Subjects and Tags left the Country editor by decision; the mappings did
-   * not. What matters is that a save from a form which no longer shows them
-   * does not clear them -- the API replaces those sets on every write, so a
-   * form that stopped sending them would silently empty every country an
-   * operator touched.
+   * Subjects are edited here again; Tags still are not. The API replaces both
+   * sets on every write, so what matters either way is that a save preserves
+   * what is already mapped -- a form that stopped sending them would silently
+   * empty every country an operator touched.
    */
-  test('no longer edits subjects or tags, and does not clear the ones already mapped', async ({
+  test('edits subjects, leaves tags alone, and clears neither on save', async ({
     page,
   }) => {
     await loginAsAdmin(page);
@@ -661,16 +665,18 @@ test.describe.serial('country client contract, end to end', () => {
     await page.reload();
     await expect(field(page, 'Country name')).toHaveValue(COUNTRY_NAME, { timeout: 30_000 });
 
-    // The editor does not offer either taxonomy any more.
-    await expect(picker(page, 'country-subjects')).toHaveCount(0);
+    // Subjects are curated here; the country guide publishes them.
+    await expect(picker(page, 'country-subjects')).toBeVisible();
+    // Tags are not, and nothing was added to put them back.
     await expect(picker(page, 'country-tags')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: '+ Add New Subject' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: '+ Add New Tag' })).toHaveCount(0);
 
     await field(page, 'Tagline').fill(TAGLINE);
     await saveCountry(page);
 
     const after = await storedCountry();
+    /* The picker was not touched, so it sends back what it loaded. Tags were
+       never on the form and round-trip untouched, as they always did. */
     expect([...(after.subjectIds as string[])].sort()).toEqual([...subjectIds].sort());
     expect(after.tagIds as string[]).toEqual(tagIds);
   });

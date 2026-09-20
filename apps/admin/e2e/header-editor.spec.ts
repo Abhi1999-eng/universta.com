@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loginAsAdmin } from './helpers/admin-auth';
-import { webBaseUrl } from './helpers/e2e-urls';
+import { chromeBaseUrl } from './helpers/e2e-urls';
 
 /** The header editor must speak plainly and only offer controls the public
  * header genuinely honours. */
@@ -37,7 +37,7 @@ test.describe('global header editor', () => {
 
     // The change reaches the live header, not just the admin form.
     const publicPage = await page.context().newPage();
-    await publicPage.goto(`${webBaseUrl}/`);
+    await publicPage.goto(chromeBaseUrl);
     await expect(publicPage.locator('header')).toContainText(label);
     await publicPage.close();
   });
