@@ -321,8 +321,12 @@ export function CountryConnect({ country }: { country: Country }) {
         <div className="h-next">
           <p className="eyebrow eyebrow--plain">Explore next</p>
           <div className="btn-row">
+            {/* The label does not name the country. The band sits on that
+                country's own page, so "in <name>" says nothing extra -- and a
+                button cannot wrap, so a long destination name pushed the whole
+                page sideways at 390px. */}
             <Link className="btn btn--sm" href={`/courses?country=${country.slug}`}>
-              Explore courses in {country.name}
+              Explore courses
             </Link>
             <Link
               className="btn btn--sm btn--ghost"
