@@ -2,11 +2,22 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
+import {
+  CountryCourses,
+  CountryNumbers,
+  CountryScholarships,
+  CountrySubjects,
+  CountryUniversities,
+  type CountryCourseCard,
+  type CountryScholarshipCard,
+} from '@/components/study-abroad/CountryLinkSections';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
 import { EditorialSection } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
+import { getCourses } from '@/lib/catalog';
+import { phaseList } from '@/lib/phase1';
 import { getDestinations, getStudyAbroadCountry, otherDestinations } from '@/lib/study-abroad';
 import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
@@ -46,11 +57,22 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function StudyAbroadCountryPage({ params }: Params) {
   const { countrySlug } = await params;
-  const [page, directory] = await Promise.all([
+  /* The catalogue slices -- courses and scholarships for this destination --
+     are read alongside the guide rather than after it, and a failure in either
+     leaves its section out rather than taking the guide down with it. */
+  const [page, directory, courseList, scholarshipList] = await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getDestinations().catch(() => null),
+    getCourses({ country: countrySlug, limit: '6' }).catch(() => null),
+    phaseList<CountryScholarshipCard>('scholarships', {
+      country: countrySlug,
+      limit: '6',
+    }).catch(() => null),
   ]);
   if (!page) notFound();
+
+  const countryCourses = (courseList?.data ?? []) as CountryCourseCard[];
+  const countryScholarships = scholarshipList?.data ?? [];
 
   const { country, profiles, sections, faqs, consultantCards } = page;
   const snapshot = countrySnapshot(page);
@@ -240,6 +262,13 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       <StudyPaths paths={paths} countryName={country.name} />
 
+      {/* WHAT THIS DESTINATION HAS: universities, the fields they teach and the
+          courses themselves. Each stands down when there is nothing published
+          for this country rather than showing an empty shelf. */}
+      <CountryUniversities country={country} />
+      <CountrySubjects country={country} />
+      <CountryCourses country={country} courses={countryCourses} />
+
       {/* DOCUMENTS */}
       {country.documents?.length ? (
         <section className="sec sec--white" id="documents">
@@ -400,11 +429,17 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </section>
       ) : null}
 
+      {/* BY THE NUMBERS — every figure already published for this country. */}
+      <CountryNumbers country={country} profiles={profiles} />
+
       {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
           and in the shape each one declares. */}
       {sections.map((section, index) => (
         <EditorialSection key={section.id} section={section} alt={index % 2 === 1} />
       ))}
+
+      {/* FUNDING */}
+      <CountryScholarships country={country} scholarships={countryScholarships} />
 
       {/* GUIDANCE */}
       {consultantCards.length ? (
