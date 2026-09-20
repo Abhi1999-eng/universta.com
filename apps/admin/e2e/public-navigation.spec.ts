@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { webBaseUrl } from './helpers/e2e-urls';
+import { chromeBaseUrl, webBaseUrl } from './helpers/e2e-urls';
 
 /** Guards the client-visible promise that every required Phase 1 public page
  * is reachable from visible navigation, not only by typing a URL. The header
@@ -34,7 +34,7 @@ test.describe('public navigation discoverability', () => {
   test('links every required Phase 1 listing and static page from the site chrome', async ({
     page,
   }) => {
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     const chromeHrefs = await page.evaluate(() => {
       const anchors = [
         ...document.querySelectorAll('header a[href], footer a[href]'),
@@ -60,7 +60,7 @@ test.describe('public navigation discoverability', () => {
   });
 
   test('has no placeholder or dead navigation links', async ({ page }) => {
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     const dead = await page.evaluate(() =>
       [...document.querySelectorAll('header a[href], footer a[href]')]
         .map((a) => a.getAttribute('href') ?? '')
@@ -84,7 +84,7 @@ test.describe('public navigation discoverability', () => {
     // its desktop capacity breakpoint. Exercise the hover-only desktop menu
     // at a viewport where it is actually rendered.
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     // The dropdown opens on hover, which is how a mouse user actually reaches
     // it. Its trigger button also has its own onClick toggle for touch and
     // keyboard use -- clicking it here would fire that toggle right after the
@@ -99,7 +99,7 @@ test.describe('public navigation discoverability', () => {
 
   test('keeps desktop header controls distinct and collapses before they can overlap', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     await expect(page.locator('header nav.usta-nav')).toBeVisible();
 
     const overlaps = await page.evaluate(() => {
@@ -127,7 +127,7 @@ test.describe('public navigation discoverability', () => {
     expect(overlaps, 'desktop header controls must not overlap').toEqual([]);
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     await expect(page.locator('header nav.usta-nav')).toBeHidden();
     await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
   });
@@ -136,12 +136,12 @@ test.describe('public navigation discoverability', () => {
     // Count the desktop groups first: the desktop nav is hidden below the
     // breakpoint, so it cannot be measured once the viewport is mobile.
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     const desktopGroups = await page.locator('header .usta-nav-item').count();
     expect(desktopGroups, 'desktop header rendered no groups').toBeGreaterThan(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(webBaseUrl);
+    await page.goto(chromeBaseUrl);
     await expect(page.locator('header nav.usta-nav')).toBeHidden();
     await page.getByRole('button', { name: 'Open menu' }).click();
     const drawer = page.locator('.usta-drawer');
