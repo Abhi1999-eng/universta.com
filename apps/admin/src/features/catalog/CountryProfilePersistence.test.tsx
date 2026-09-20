@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   listEditorialMedia: vi.fn(),
   listCountryFeatures: vi.fn(),
   listCountryEnglishTests: vi.fn(),
+  listAllSubjects: vi.fn(),
   createCountryFeature: vi.fn(),
   createCountryEnglishTest: vi.fn(),
   getCountry: vi.fn(),
@@ -104,6 +105,7 @@ beforeEach(() => {
   mocks.listEditorialMedia.mockResolvedValue({ data: [], meta });
   mocks.listCountryFeatures.mockResolvedValue({ data: [], meta: null });
   mocks.listCountryEnglishTests.mockResolvedValue({ data: [], meta: null });
+  mocks.listAllSubjects.mockResolvedValue([]);
   mocks.listIntakeOptions.mockResolvedValue({ data: [] });
   mocks.getCountryCurationOptions.mockResolvedValue({
     data: { universities: [], courses: [] },

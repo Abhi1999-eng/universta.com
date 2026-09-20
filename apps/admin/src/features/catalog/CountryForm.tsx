@@ -18,6 +18,8 @@ import {
   getCountry,
   getCountryCurationOptions,
   getCountryEditorial,
+  createSubject,
+  listAllSubjects,
   listContinents,
   listCountryEnglishTests,
   listCountryFeatures,
@@ -39,7 +41,12 @@ import type {
   CountryRecord,
   EditorialMedia,
   EditorialSeo,
+  SubjectRecord,
 } from "./catalog.types";
+import {
+  CountryTaxonomyPicker,
+  type CreateOutcome,
+} from "./CountryTaxonomyPicker";
 import { MediaPickerDialog } from "./editorial/MediaPickerDialog";
 import { TypedBodyEditor } from "./editorial/TypedBodyEditor";
 import {
@@ -318,6 +325,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const [record, setRecord] = useState<CountryRecord | null>(null);
   const [continents, setContinents] = useState<ContinentRecord[]>([]);
   const [subjectIds, setSubjectIds] = useState<string[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [core, setCore] = useState<Core>(blankCore);
   const [configuration, setConfiguration] =
@@ -445,21 +453,28 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     let active = true;
     const load = async () => {
       try {
-        /* Subject and Tag option lists are no longer fetched: the form does
-         * not offer those pickers any more. The country's own mappings still
-         * load below and are sent back untouched. */
-        const [continentResult, mediaResult, featureResult, testResult] =
-          await Promise.all([
-            listContinents({ limit: 100 }),
-            listEditorialMedia({ limit: 50 }),
-            listCountryFeatures(),
-            listCountryEnglishTests(),
-          ]);
+        /* Tag options are still not fetched: the form does not offer that
+         * picker. A country's tag mappings load below and are sent back
+         * untouched, as they were before. */
+        const [
+          continentResult,
+          mediaResult,
+          featureResult,
+          testResult,
+          subjectRows,
+        ] = await Promise.all([
+          listContinents({ limit: 100 }),
+          listEditorialMedia({ limit: 50 }),
+          listCountryFeatures(),
+          listCountryEnglishTests(),
+          listAllSubjects(),
+        ]);
         if (!active) return;
         setContinents(continentResult.data);
         setMedia(mediaResult.data);
         setFeatureOptions(featureResult.data ?? []);
         setTestOptions(testResult.data ?? []);
+        setSubjects(subjectRows);
         if (!countryId) return;
         const [countryResult, editorialResult, curationResult] =
           await Promise.all([
@@ -1281,12 +1296,39 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               onChange={(value) => setCoreField("heroMediaId", value)}
             />
           </div>
-          {/* Subjects and Tags are no longer managed from the Country editor.
-            * The mappings themselves are untouched: they are still loaded into
-            * `subjectIds` / `tagIds` and sent back unchanged on every save, so
-            * existing relations, importers and the public country page keep
-            * working exactly as before -- this form simply stopped being the
-            * place they are edited. */}
+          {/* Subjects are edited here again. The country guide publishes them
+            * as its "Popular subjects" section, so an editor needs somewhere
+            * to say which fields a destination is known for; until this came
+            * back, the only way in was a bulk import.
+            *
+            * Tags stay out of this editor. They are still loaded into `tagIds`
+            * and sent back unchanged on every save, so existing relations, the
+            * list filters and importers keep working exactly as before. */}
+          <div className="mt-6">
+            <CountryTaxonomyPicker
+              title="Subjects"
+              singular="Subject"
+              testId="country-subjects"
+              rows={subjects.map((row) => ({
+                id: row.id,
+                label: row.name,
+                usage: row.courseCount ?? 0,
+                children: (row.subSubjects ?? []).map((child) => ({
+                  id: child.id,
+                  label: child.name,
+                })),
+              }))}
+              selected={subjectIds}
+              onChange={setSubjectIds}
+              onCreate={async (name): Promise<CreateOutcome> => {
+                const created = (
+                  await createSubject({ name, slug: slugFromText(name) })
+                ).data;
+                setSubjects((rows) => [...rows, created]);
+                return { kind: "created", id: created.id, label: created.name };
+              }}
+            />
+          </div>
         </Card>
         <Card
           eyebrow="Configuration"
