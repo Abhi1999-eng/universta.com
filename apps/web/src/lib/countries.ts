@@ -280,6 +280,14 @@ export interface CountryPage {
   faqs: Faq[];
   seo: Seo | null;
   consultantCards: ConsultantCard[];
+  /** Attached to the destination rather than to one of its universities. */
+  testimonials?: CountryTestimonial[];
+}
+export interface CountryTestimonial {
+  id: string;
+  quote: string;
+  attribution: string | null;
+  attributionNote: string | null;
 }
 export interface DirectoryRecord {
   name: string;

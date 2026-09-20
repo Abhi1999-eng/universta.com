@@ -1049,6 +1049,49 @@
 .sa .dir__card--soon .cchip__name{ color: var(--muted); }
 .sa .dir__meta{ margin-inline-start: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; }
 .sa .dir__none{ padding: 40px 0; color: var(--muted); text-align: center; }
+/* The merged card also carries what the approved countries listing showed
+   under a name: what the catalogue has linked to that destination. `h-card__m`
+   is that listing's own rule, taken from the approved app.css unchanged, so the
+   two listings that became one still read alike. The card wraps so the line
+   sits under the name rather than competing with it for the row. */
+.sa .dir__card{ flex-wrap: wrap; }
+.sa .dir__card .h-card__m{ flex-basis: 100%; margin-top: 0; font-size: 12.5px; font-family: var(--font-mono); color: var(--muted); padding-top: 4px; }
+/* ---------------------------------------------------------------------
+   HOME SECTIONS
+   The funnel sections the approved design shipped on its home page, taken
+   from assets/css/hub.css and scoped the same way as everything above. The
+   merged homepage is the first page in this route family to use them; the
+   directory and the country guides never did, which is why they were not in
+   the first pass of this file.
+   --------------------------------------------------------------------- */
+.sa .h-head{ display: grid; gap: 10px; margin-bottom: clamp(22px, 2.6vw, 34px); max-width: 780px; }
+.sa .h-head .sec-lead{ margin: 0; }
+.sa .h-sec .sec-title{ font-size: clamp(24px, 2.8vw, 36px); }
+.sa .h-more{ display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 22px; }
+.sa .h-grid{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.sa .h-grid--4{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.sa .h-grid--wide{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.sa .h-grid--paths{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.sa .h-card, .sa .h-path{ display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; min-width: 0; background: var(--white); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--text); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.sa .sec--white .h-card, .sa .sec--white .h-path{ background: var(--paper); }
+.sa a.h-card:hover, .sa .h-path:hover{ border-color: var(--line-strong); box-shadow: 0 8px 24px rgba(7, 20, 38, 0.07); }
+.sa .h-card--plain{ background: transparent; }
+.sa .h-card__t{ font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: var(--text); text-decoration: none; }
+.sa a.h-card__t:hover{ color: var(--accent); }
+.sa .h-card__d{ font-size: 14px; color: var(--muted); line-height: 1.5; }
+.sa .h-card__m{ font-size: 12.5px; font-family: var(--font-mono); color: var(--muted); margin-top: auto; padding-top: 4px; }
+.sa .h-card .badge{ align-self: flex-start; }
+.sa .h-card .btn, .sa .h-path .linkcta, .sa .h-card .linkcta{ align-self: flex-start; margin-top: 6px; }
+.sa .h-path{ padding: 20px; }
+.sa .h-home{ padding-block: clamp(56px, 8vw, 110px) clamp(40px, 5vw, 70px); }
+.sa .h-home__lead{ max-width: 900px; }
+.sa .h-home .hero__h1{ font-size: clamp(38px, 6vw, 72px); letter-spacing: -0.035em; }
+.sa .h-stats{ list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); }
+.sa .h-stats b{ font-family: var(--font-display); color: var(--text); font-size: 18px; margin-right: 4px; }
+.sa .h-connect .wrap{ display: grid; gap: clamp(26px, 3vw, 40px); }
+.sa .h-next{ display: grid; gap: 10px; padding: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
+.sa .h-next .eyebrow{ margin: 0; }
+@media (max-width: 640px){ .sa .h-next .btn-row .btn{ flex: 1 1 auto; justify-content: center; } }
 /* ---------------------------------------------------------------------
    PRINT
    --------------------------------------------------------------------- */

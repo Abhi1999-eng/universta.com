@@ -385,6 +385,20 @@ export class CountryEditorialService {
             },
             orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
           },
+          /* Testimonials an editor has attached to this destination rather
+             than to one of its universities. A university's own testimonials
+             belong on that university's page, not on the country guide. */
+          testimonials: {
+            where: { deletedAt: null, status: 'PUBLISHED' },
+            select: {
+              id: true,
+              quote: true,
+              attribution: true,
+              attributionNote: true,
+              displayOrder: true,
+            },
+            orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+          },
         },
       }),
       this.prisma.seoMetadata.findUnique({
@@ -416,6 +430,12 @@ export class CountryEditorialService {
       consultantCards: record.consultantCards.map((item) =>
         this.card(item, true),
       ),
+      testimonials: record.testimonials.map((item) => ({
+        id: item.id,
+        quote: item.quote,
+        attribution: item.attribution,
+        attributionNote: item.attributionNote,
+      })),
     };
   }
 

@@ -913,6 +913,7 @@ model Country {
   consultantCountries  ConsultantCountry[]
   consultantLocations  ConsultantLocation[]
   successStories       SuccessStory[]
+  testimonials         Testimonial[]
   preferredByLeads     Lead[]                      @relation("LeadPreferredCountry")
   jobs                 Job[]                       @relation("JobCountry")
   events               Event[]                     @relation("EventCountry")
@@ -2281,6 +2282,10 @@ model Testimonial {
   id              String                    @id @default(uuid()) @db.Char(36)
   universityId    String?                   @map("university_id") @db.Char(36)
   offeringId      String?                   @map("offering_id") @db.Char(36)
+  /// The destination a testimonial speaks for, when it speaks for one rather
+  /// than for a single university. A country guide reads this; it stays null
+  /// for a testimonial attached only to a university or an offering.
+  countryId       String?                   @map("country_id") @db.Char(36)
   quote           String                    @db.Text
   attribution     String?                   @db.VarChar(255)
   attributionNote String?                   @map("attribution_note") @db.VarChar(500)
@@ -2295,8 +2300,10 @@ model Testimonial {
   deletedAt       DateTime?                 @map("deleted_at") @db.DateTime(3)
   university      University?               @relation(fields: [universityId], references: [id], onDelete: SetNull)
   offering        UniversityCourseOffering? @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  country         Country?                  @relation(fields: [countryId], references: [id], onDelete: SetNull)
 
   @@index([status, displayOrder])
+  @@index([countryId, status, displayOrder])
   @@map("testimonials")
 }
 

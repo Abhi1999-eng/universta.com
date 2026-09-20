@@ -2,11 +2,24 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
+import {
+  CountryConnect,
+  CountryCourses,
+  CountryNumbers,
+  CountryScholarships,
+  CountrySubjects,
+  CountryTestimonials,
+  CountryUniversities,
+  type CountryCourseCard,
+  type CountryScholarshipCard,
+} from '@/components/study-abroad/CountryLinkSections';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
 import { EditorialSection } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
+import { getCourses } from '@/lib/catalog';
+import { phaseList } from '@/lib/phase1';
 import { getDestinations, getStudyAbroadCountry, otherDestinations } from '@/lib/study-abroad';
 import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
@@ -46,13 +59,25 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function StudyAbroadCountryPage({ params }: Params) {
   const { countrySlug } = await params;
-  const [page, directory] = await Promise.all([
+  /* The catalogue slices -- courses and scholarships for this destination --
+     are read alongside the guide rather than after it, and a failure in either
+     leaves its section out rather than taking the guide down with it. */
+  const [page, directory, courseList, scholarshipList] = await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getDestinations().catch(() => null),
+    getCourses({ country: countrySlug, limit: '6' }).catch(() => null),
+    phaseList<CountryScholarshipCard>('scholarships', {
+      country: countrySlug,
+      limit: '6',
+    }).catch(() => null),
   ]);
   if (!page) notFound();
 
+  const countryCourses = (courseList?.data ?? []) as CountryCourseCard[];
+  const countryScholarships = scholarshipList?.data ?? [];
+
   const { country, profiles, sections, faqs, consultantCards } = page;
+  const testimonials = page.testimonials ?? [];
   const snapshot = countrySnapshot(page);
   const paths = studyPathsFor(page);
   const calculator = country.configuration?.calculator ?? null;
@@ -65,12 +90,13 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const breadcrumbs = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
+    /* Two items, matching the crumbs on the page: the destination listing is
+       the homepage now, so a third "Study Abroad" item would name `/` twice. */
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteOrigin}/` },
-      { '@type': 'ListItem', position: 2, name: 'Study Abroad', item: `${siteOrigin}/study-abroad` },
       {
         '@type': 'ListItem',
-        position: 3,
+        position: 2,
         name: country.name,
         item: `${siteOrigin}/study-abroad/${country.slug}`,
       },
@@ -104,12 +130,11 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       {/* HERO */}
       <section className="hero">
         <div className="wrap">
+          {/* Two crumbs, not three: the destination listing that used to sit
+              between home and a country guide is the homepage now, so a
+              "Study Abroad" crumb would point at the same page as "Home". */}
           <nav className="crumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>
-            <span className="crumbs__sep" aria-hidden="true">
-              /
-            </span>
-            <Link href="/study-abroad">Study Abroad</Link>
             <span className="crumbs__sep" aria-hidden="true">
               /
             </span>
@@ -239,6 +264,13 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       ) : null}
 
       <StudyPaths paths={paths} countryName={country.name} />
+
+      {/* WHAT THIS DESTINATION HAS: universities, the fields they teach and the
+          courses themselves. Each stands down when there is nothing published
+          for this country rather than showing an empty shelf. */}
+      <CountryUniversities country={country} />
+      <CountrySubjects country={country} />
+      <CountryCourses country={country} courses={countryCourses} />
 
       {/* DOCUMENTS */}
       {country.documents?.length ? (
@@ -400,11 +432,17 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </section>
       ) : null}
 
+      {/* BY THE NUMBERS — every figure already published for this country. */}
+      <CountryNumbers country={country} profiles={profiles} />
+
       {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
           and in the shape each one declares. */}
       {sections.map((section, index) => (
         <EditorialSection key={section.id} section={section} alt={index % 2 === 1} />
       ))}
+
+      {/* FUNDING */}
+      <CountryScholarships country={country} scholarships={countryScholarships} />
 
       {/* GUIDANCE */}
       {consultantCards.length ? (
@@ -435,6 +473,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </section>
       ) : null}
 
+      {/* STUDENT VOICES */}
+      <CountryTestimonials country={country} testimonials={testimonials} />
+
       <FaqAccordion
         faqs={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))}
         countryName={country.name}
@@ -445,8 +486,11 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         body="Tell us about your academic profile, goals and budget, and a counsellor will match it against live programmes."
         countrySlug={country.slug}
         countryName={country.name}
-        secondary={{ href: '/study-abroad', label: 'Browse all destinations' }}
+        secondary={{ href: '/', label: 'Browse all destinations' }}
       />
+
+      {/* EXPLORE NEXT */}
+      <CountryConnect country={country} />
 
       {/* OTHER DESTINATIONS */}
       {others.length ? (

@@ -6,21 +6,59 @@ import type { DestinationDirectory, Destination } from '@/lib/study-abroad';
 import { FlagMark } from './FlagMark';
 
 /**
- * The destination directory: search, region and guide filters, grouped by
- * region.
+ * The destination directory: search, region, guide and "has" filters, grouped
+ * by region.
  *
  * Filtering is local because the whole list is already on the page -- it is 206
  * names, not a catalogue query, and a round trip per keystroke would be slower
  * and worse offline. The counts always describe the filtered set, so the group
  * headings and the total agree with what is on screen.
+ *
+ * This is the merge of the two listings the approved design shipped separately:
+ * the exhaustive directory (every destination, guide or not) and the data-rich
+ * countries listing (what each destination has linked to it). One page does
+ * both jobs, so a student never has to know which of the two to open.
  */
 
 type StatusFilter = 'all' | 'published' | 'popular';
+type HasFilter = 'any' | 'guide' | 'universities' | 'scholarships' | 'consultants';
+
+/** Whether a destination satisfies the "has" filter. */
+function satisfiesHas(entry: Destination, has: HasFilter): boolean {
+  switch (has) {
+    case 'any':
+      return true;
+    case 'guide':
+      return entry.isAvailable;
+    case 'universities':
+      return entry.counts.universities > 0;
+    case 'scholarships':
+      return entry.counts.scholarships > 0;
+    case 'consultants':
+      return entry.counts.consultants > 0;
+  }
+}
+
+/**
+ * The counts line under a card's name, in the design's order, leaving out
+ * whatever is zero -- a card that says "0 consultants" states an absence the
+ * student cannot act on.
+ */
+function countsLine(entry: Destination): string | null {
+  const parts: string[] = [];
+  const { universities, courses, scholarships, consultants } = entry.counts;
+  if (universities) parts.push(`${universities} ${universities === 1 ? 'university' : 'universities'}`);
+  if (courses) parts.push(`${courses} ${courses === 1 ? 'course' : 'courses'}`);
+  if (scholarships) parts.push(`${scholarships} ${scholarships === 1 ? 'scholarship' : 'scholarships'}`);
+  if (consultants) parts.push(`${consultants} ${consultants === 1 ? 'consultant' : 'consultants'}`);
+  return parts.length ? parts.join(' · ') : null;
+}
 
 export function DirectoryView({ directory }: { directory: DestinationDirectory }) {
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState<string>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [has, setHas] = useState<HasFilter>('any');
 
   const everything = useMemo<Destination[]>(
     () => [...directory.available, ...directory.comingSoon],
@@ -34,9 +72,10 @@ export function DirectoryView({ directory }: { directory: DestinationDirectory }
       if (region !== 'all' && entry.region !== region) return false;
       if (status === 'published' && !entry.isAvailable) return false;
       if (status === 'popular' && !entry.isPopular) return false;
+      if (!satisfiesHas(entry, has)) return false;
       return true;
     });
-  }, [everything, query, region, status]);
+  }, [everything, query, region, status, has]);
 
   /* Grouped in the order the design lists the regions, so the page reads the
    * same way every time rather than by whatever the data happened to contain. */
@@ -64,6 +103,13 @@ export function DirectoryView({ directory }: { directory: DestinationDirectory }
     { value: 'all', label: 'All' },
     { value: 'published', label: 'Published' },
     { value: 'popular', label: 'Popular' },
+  ];
+  const hasFilters: Array<{ value: HasFilter; label: string }> = [
+    { value: 'any', label: 'Anything' },
+    { value: 'guide', label: 'Country guide' },
+    { value: 'universities', label: 'Universities' },
+    { value: 'scholarships', label: 'Scholarships' },
+    { value: 'consultants', label: 'Consultants' },
   ];
 
   return (
@@ -115,6 +161,20 @@ export function DirectoryView({ directory }: { directory: DestinationDirectory }
               </button>
             ))}
           </div>
+          <div className="filters__group" data-filter-group="has">
+            <span className="filters__label">Has</span>
+            {hasFilters.map((filter) => (
+              <button
+                className="chipbtn"
+                type="button"
+                key={filter.value}
+                aria-pressed={has === filter.value}
+                onClick={() => setHas(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {groups.length === 0 ? (
@@ -149,6 +209,11 @@ export function DirectoryView({ directory }: { directory: DestinationDirectory }
                         />
                         <span className="cchip__name">{entry.name}</span>
                         <span className="dir__meta">Guide</span>
+                        {countsLine(entry) ? (
+                          <span className="h-card__m" data-testid="destination-counts">
+                            {countsLine(entry)}
+                          </span>
+                        ) : null}
                       </Link>
                     ) : (
                       /* No guide yet, so nothing to navigate to. A link here

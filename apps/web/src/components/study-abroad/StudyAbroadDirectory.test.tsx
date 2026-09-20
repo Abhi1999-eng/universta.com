@@ -24,6 +24,7 @@ const destination = (over: Partial<Destination> = {}): Destination => ({
   region: 'Europe',
   summary: null,
   bands: ['#000000', '#DD0000', '#FFCE00'],
+  counts: { universities: 4, courses: 10, scholarships: 5, consultants: 3 },
   ...over,
 });
 
@@ -62,6 +63,59 @@ describe('destination directory', () => {
   it('counts what is on screen', () => {
     const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
     expect(html).toContain('2 countries');
+  });
+
+  /* The merged listing carries what the approved countries page showed under a
+     name. A card states only what the destination actually has: a zero is an
+     absence the student cannot act on, so it is left out rather than printed. */
+  it('reports what a destination has linked to it', () => {
+    const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
+    expect(html).toContain('4 universities · 10 courses · 5 scholarships · 3 consultants');
+  });
+
+  it('leaves a count out of the line when there is nothing to report', () => {
+    const html = renderToStaticMarkup(
+      <DirectoryView
+        directory={directory({
+          available: [
+            destination({
+              counts: { universities: 1, courses: 0, scholarships: 0, consultants: 2 },
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(html).toContain('1 university · 2 consultants');
+    expect(html).not.toContain('0 courses');
+    expect(html).not.toContain('0 scholarships');
+  });
+
+  it('says nothing at all when a destination has nothing linked to it', () => {
+    const html = renderToStaticMarkup(
+      <DirectoryView
+        directory={directory({
+          available: [
+            destination({
+              counts: { universities: 0, courses: 0, scholarships: 0, consultants: 0 },
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(html).not.toContain('h-card__m');
+  });
+
+  it('offers the "has" filters the merged listing needs', () => {
+    const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
+    expect(html).toContain('data-filter-group="has"');
+    for (const label of [
+      'Anything',
+      'Country guide',
+      'Universities',
+      'Scholarships',
+      'Consultants',
+    ])
+      expect(html).toContain(label);
   });
 
   it('groups by region, in the order the design lists them', () => {

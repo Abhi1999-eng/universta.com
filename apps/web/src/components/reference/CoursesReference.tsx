@@ -888,7 +888,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               <h2>Browse courses by study destination</h2>
               <p>Every destination with published course offerings.</p>
             </div>
-            <Link href="/study-abroad" className="link-more">
+            <Link href="/" className="link-more">
               All destinations →
             </Link>
           </div>

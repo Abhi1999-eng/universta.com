@@ -106,6 +106,21 @@ const COUNTRY_INCLUDE = {
   ...PROFILE_INCLUDE,
 } satisfies Prisma.CountryInclude;
 
+/** What a directory card reports as linked to a destination. */
+type DestinationCounts = {
+  universities: number;
+  courses: number;
+  scholarships: number;
+  consultants: number;
+};
+
+const emptyDestinationCounts = (): DestinationCounts => ({
+  universities: 0,
+  courses: 0,
+  scholarships: 0,
+  consultants: 0,
+});
+
 type CountryRecord = {
   calculatorConfig?: unknown;
   id: string;
@@ -666,6 +681,7 @@ export class CountriesService {
         ],
       },
       select: {
+        id: true,
         name: true,
         slug: true,
         iso2Code: true,
@@ -676,6 +692,10 @@ export class CountriesService {
       },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
+
+    const counts = await this.destinationCounts(
+      countries.map((country) => country.id),
+    );
 
     const available = countries.map((country) => ({
       name: country.name,
@@ -695,6 +715,7 @@ export class CountriesService {
         null,
       summary: country.shortDescription,
       bands: bandsFor(country.name, country.iso2Code),
+      counts: counts.get(country.id) ?? emptyDestinationCounts(),
     }));
 
     const comingSoon = comingSoonDestinations(
@@ -708,6 +729,10 @@ export class CountriesService {
       region: entry.region,
       summary: null,
       bands: entry.bands,
+      /* A destination with no Country record has nothing linked to it. The
+         zeroes are stated rather than left undefined so every card reads the
+         same shape. */
+      counts: emptyDestinationCounts(),
     }));
 
     return {
@@ -720,6 +745,86 @@ export class CountriesService {
         total: available.length + comingSoon.length,
       },
     };
+  }
+
+  /**
+   * What each published destination has linked to it, for the directory cards.
+   *
+   * Four reads for the whole directory rather than four per country. Courses
+   * are counted as published offerings at published universities -- the same
+   * definition the country guide's own numbers use, so a card can never
+   * disagree with the guide it links to.
+   */
+  private async destinationCounts(countryIds: string[]) {
+    const byCountry = new Map<string, DestinationCounts>();
+    if (countryIds.length === 0) return byCountry;
+
+    const universities = await this.prisma.university.findMany({
+      where: {
+        countryId: { in: countryIds },
+        status: 'PUBLISHED',
+        deletedAt: null,
+      },
+      select: { id: true, countryId: true },
+    });
+    const countryOfUniversity = new Map(
+      universities.map((university) => [university.id, university.countryId]),
+    );
+
+    const [offerings, scholarships, consultants] = await Promise.all([
+      universities.length
+        ? this.prisma.universityCourseOffering.groupBy({
+            by: ['universityId'],
+            where: {
+              universityId: {
+                in: universities.map((university) => university.id),
+              },
+              status: 'PUBLISHED',
+              deletedAt: null,
+            },
+            _count: { _all: true },
+          })
+        : Promise.resolve([]),
+      this.prisma.scholarshipCountry.groupBy({
+        by: ['countryId'],
+        where: {
+          countryId: { in: countryIds },
+          scholarship: { status: 'PUBLISHED', deletedAt: null },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.consultantCountry.groupBy({
+        by: ['countryId'],
+        where: {
+          countryId: { in: countryIds },
+          consultant: { status: 'PUBLISHED', deletedAt: null },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    for (const countryId of countryIds)
+      byCountry.set(countryId, emptyDestinationCounts());
+
+    for (const university of universities) {
+      const row = byCountry.get(university.countryId);
+      if (row) row.universities += 1;
+    }
+    for (const group of offerings) {
+      const countryId = countryOfUniversity.get(group.universityId);
+      const row = countryId ? byCountry.get(countryId) : undefined;
+      if (row) row.courses += group._count._all;
+    }
+    for (const group of scholarships) {
+      const row = byCountry.get(group.countryId);
+      if (row) row.scholarships = group._count._all;
+    }
+    for (const group of consultants) {
+      const row = byCountry.get(group.countryId);
+      if (row) row.consultants = group._count._all;
+    }
+
+    return byCountry;
   }
 
   async publicDetail(slug: string): Promise<CountryPublicDto> {

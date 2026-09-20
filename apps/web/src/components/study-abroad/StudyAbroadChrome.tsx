@@ -10,7 +10,7 @@ import Link from 'next/link';
  */
 
 export const PRIMARY = [
-  { label: 'Study Destinations', href: '/study-abroad' },
+  { label: 'Study Destinations', href: '/' },
   { label: 'Courses', href: '/courses' },
   { label: 'Universities', href: '/universities' },
   { label: 'Scholarships', href: '/scholarships' },
@@ -22,7 +22,7 @@ const FOOTER_COLUMNS = [
   {
     title: 'Platform',
     links: [
-      { label: 'All destinations', href: '/study-abroad' },
+      { label: 'All destinations', href: '/' },
       { label: 'Courses', href: '/courses' },
       { label: 'Universities', href: '/universities' },
       { label: 'Cities', href: '/cities' },
@@ -51,7 +51,7 @@ const FOOTER_COLUMNS = [
 
 function Brand() {
   return (
-    <Link className="brand" href="/study-abroad">
+    <Link className="brand" href="/">
       <span className="brand__mark" aria-hidden="true">
         U
       </span>

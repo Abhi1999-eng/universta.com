@@ -380,19 +380,34 @@ describe('country editor reusable taxonomies', () => {
 });
 
 /**
- * Subjects and Tags left this form; the mappings did not. The editor is no
- * longer where they are curated, but a save from it must not clear what is
- * already related -- importers and the public country page both depend on
- * those rows.
+ * Subjects are curated here again -- the country guide publishes them as its
+ * "Popular subjects" section, so an editor needs somewhere to say which fields
+ * a destination is known for. Tags stayed out, and a save must still not clear
+ * what is already related: importers and the public country page both depend
+ * on those rows.
  */
-describe('country editor subject and tag removal', () => {
-  it('does not offer Subject or Tag pickers', async () => {
+describe('country editor subject and tag pickers', () => {
+  it('offers a Subject picker and still no Tag picker', async () => {
     await openEditor();
 
-    expect(screen.queryByRole('group', { name: /^Subjects$/ })).toBeNull();
+    expect(await screen.findByTestId('country-subjects')).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /^Tags$/ })).toBeNull();
-    expect(screen.queryByText('+ Add subject')).toBeNull();
     expect(screen.queryByText('+ Add tag')).toBeNull();
+  });
+
+  /* The point of bringing the picker back: a change an editor makes has to
+     reach the payload, not just survive the round trip. */
+  it('saves a subject the editor assigns', async () => {
+    mocks.listAllSubjects.mockResolvedValue([
+      { id: 'subject-1', name: 'Engineering', slug: 'engineering', status: 'ACTIVE' },
+    ]);
+    await openEditor();
+
+    await userEvent.click(await screen.findByRole('checkbox', { name: /Engineering/ }));
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    await waitFor(() => expect(mocks.updateCountry).toHaveBeenCalled());
+    expect(mocks.updateCountry.mock.calls[0][1].subjectIds).toEqual(['subject-1']);
   });
 
   it('sends the existing mappings back untouched when the country is saved', async () => {

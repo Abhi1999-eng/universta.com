@@ -239,7 +239,7 @@ export function AboutReference(props: AboutReferenceProps) {
             one published catalogue.
           </p>
           <div className="hero-ctas">
-            <Link href="/study-abroad" className="btn btn-secondary btn-lg">
+            <Link href="/" className="btn btn-secondary btn-lg">
               Browse destinations
             </Link>
             <Link href="/counselling" className="btn btn-outline btn-lg">

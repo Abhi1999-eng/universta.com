@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   listEditorialMedia: vi.fn(),
   listCountryFeatures: vi.fn(),
   listCountryEnglishTests: vi.fn(),
+  listAllSubjects: vi.fn(),
   createCountryFeature: vi.fn(),
   createCountryEnglishTest: vi.fn(),
   getCountry: vi.fn(),
@@ -97,6 +98,7 @@ beforeEach(() => {
     data: [{ code: 'IELTS', name: 'IELTS', status: 'ACTIVE', displayOrder: 1, isSystem: true }],
     meta: null,
   });
+  mocks.listAllSubjects.mockResolvedValue([]);
   mocks.listIntakeOptions.mockResolvedValue({
     data: [{ id: 'intake-fall', name: 'Fall', slug: 'fall' }],
   });

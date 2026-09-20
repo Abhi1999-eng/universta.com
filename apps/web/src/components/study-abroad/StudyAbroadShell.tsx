@@ -227,7 +227,7 @@ export function StudyAbroadShell({
                 ? `${destinations.counts.available} guides · ${destinations.counts.total} destinations`
                 : ''}
             </span>
-            <Link className="linkcta" href="/study-abroad" onClick={closeSelector}>
+            <Link className="linkcta" href="/" onClick={closeSelector}>
               All countries{' '}
               <span className="linkcta__arrow" aria-hidden="true">
                 &rarr;

@@ -24,6 +24,12 @@ type Destination = {
   isPopular: boolean;
   region: string | null;
   bands: string[] | null;
+  counts: {
+    universities: number;
+    courses: number;
+    scholarships: number;
+    consultants: number;
+  };
 };
 
 const TAG = 'sa-e2e';
@@ -90,6 +96,31 @@ describe('Study Abroad (e2e)', () => {
          no slug at all rather than one that would 404. */
       expect(body.comingSoon.every((entry) => entry.slug === null)).toBe(true);
       expect(body.comingSoon.every((entry) => !entry.isAvailable)).toBe(true);
+    });
+
+    /* The merged listing reports what the catalogue has linked to a
+       destination. A destination with no Country record has nothing linked to
+       it, so it reports zeroes rather than leaving the caller to guess. */
+    it('reports what each destination has linked to it', async () => {
+      const body = await directory();
+      for (const entry of [...body.available, ...body.comingSoon]) {
+        expect(entry.counts).toEqual({
+          universities: expect.any(Number),
+          courses: expect.any(Number),
+          scholarships: expect.any(Number),
+          consultants: expect.any(Number),
+        });
+        expect(entry.counts.universities).toBeGreaterThanOrEqual(0);
+      }
+      expect(
+        body.comingSoon.every(
+          (entry) =>
+            entry.counts.universities === 0 &&
+            entry.counts.courses === 0 &&
+            entry.counts.scholarships === 0 &&
+            entry.counts.consultants === 0,
+        ),
+      ).toBe(true);
     });
 
     it('never lists the same destination in both tiers', async () => {

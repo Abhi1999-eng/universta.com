@@ -14,6 +14,20 @@ const baseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
 
 export type DirectoryRegion = string;
 
+/**
+ * What the catalogue has linked to a destination.
+ *
+ * The merged directory card reports these, and the "has" filter reads them.
+ * A destination with no Country record carries zeroes rather than nothing, so
+ * every card reads the same shape.
+ */
+export interface DestinationCounts {
+  universities: number;
+  courses: number;
+  scholarships: number;
+  consultants: number;
+}
+
 export interface Destination {
   name: string;
   /** Null for a destination with no guide yet; such a card does not navigate. */
@@ -25,6 +39,7 @@ export interface Destination {
   summary: string | null;
   /** The three-band flag accent, or null for a record outside the world list. */
   bands: readonly [string, string, string] | null;
+  counts: DestinationCounts;
 }
 
 export interface DestinationDirectory {

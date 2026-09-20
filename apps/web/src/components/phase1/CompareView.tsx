@@ -150,7 +150,7 @@ export function CompareView({
               Use up to three comma-separated slugs. Invalid or unpublished
               records are omitted safely.
             </p>
-            <Link className="button secondary" href="/study-abroad">
+            <Link className="button secondary" href="/">
               Browse countries
             </Link>
           </div>
