@@ -1049,6 +1049,13 @@
 .sa .dir__card--soon .cchip__name{ color: var(--muted); }
 .sa .dir__meta{ margin-inline-start: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; }
 .sa .dir__none{ padding: 40px 0; color: var(--muted); text-align: center; }
+/* The merged card also carries what the approved countries listing showed
+   under a name: what the catalogue has linked to that destination. `h-card__m`
+   is that listing's own rule, taken from the approved app.css unchanged, so the
+   two listings that became one still read alike. The card wraps so the line
+   sits under the name rather than competing with it for the row. */
+.sa .dir__card{ flex-wrap: wrap; }
+.sa .dir__card .h-card__m{ flex-basis: 100%; font-size: 12.5px; font-family: var(--font-mono); color: var(--muted); padding-top: 4px; }
 /* ---------------------------------------------------------------------
    PRINT
    --------------------------------------------------------------------- */
