@@ -1121,6 +1121,18 @@
 .sa .h-home__lead{ max-width: 900px; }
 .sa .h-home .hero__h1{ font-size: clamp(38px, 6vw, 72px); letter-spacing: -0.035em; }
 .sa .h-stats{ list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); }
+/* A card that goes nowhere has to look like it.
+   `h-card--plain` sets a transparent background, but `.sec--white .h-card`
+   repaints it at equal specificity and later in the file, so a Soon card came
+   out identical to a live one -- same fill, same solid border, same title
+   colour -- and the only tell was the cursor, which you have to already be
+   hovering to find. Half the funnel's cards are in that state.
+
+   This is the directory's own idiom for the same thing: dashed edge, no fill,
+   the title stepped back. It says "not yet" before anyone tries to click. */
+.sa .h-card[data-soon="true"]{ background: transparent; border-style: dashed; }
+.sa .h-card[data-soon="true"] .h-card__t{ color: var(--muted); }
+.sa .h-card[data-soon="true"] .h-card__m{ color: var(--muted); }
 .sa .h-stats b{ font-family: var(--font-display); color: var(--text); font-size: 18px; margin-right: 4px; }
 .sa .h-connect .wrap{ display: grid; gap: clamp(26px, 3vw, 40px); }
 .sa .h-next{ display: grid; gap: 10px; padding: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
