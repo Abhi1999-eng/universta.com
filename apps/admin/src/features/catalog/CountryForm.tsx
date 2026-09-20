@@ -456,32 +456,28 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         /* Tag options are still not fetched: the form does not offer that
          * picker. A country's tag mappings load below and are sent back
          * untouched, as they were before. */
-        const [continentResult, mediaResult, featureResult, testResult] =
+        const [continentResult, mediaResult, featureResult, testResult, subjectRows] =
           await Promise.all([
             listContinents({ limit: 100 }),
             listEditorialMedia({ limit: 50 }),
             listCountryFeatures(),
             listCountryEnglishTests(),
+            /* Caught on its own, and only on its own. This pages through the
+             * whole taxonomy to fill one picker, and the editor is not worth
+             * risking for it -- a rejection here once took the whole Country
+             * form down, leaving it with no continents. Catching it inside the
+             * batch keeps the load a single awaited step, so every option list
+             * still lands together, while a failure costs nothing more than an
+             * empty picker. The country's own `subjectIds` round-trip
+             * untouched either way. */
+            Promise.resolve(listAllSubjects()).catch(() => []),
           ]);
         if (!active) return;
         setContinents(continentResult.data);
         setMedia(mediaResult.data);
         setFeatureOptions(featureResult.data ?? []);
         setTestOptions(testResult.data ?? []);
-
-        /* The subject list is read on its own and is allowed to fail. It pages
-         * through the whole taxonomy to fill one picker, and it is not worth
-         * the editor for it: a failure here once took the whole Country form
-         * down, which is the accident this separation prevents. With no
-         * options the picker is empty and the country's own `subjectIds` still
-         * round-trip untouched. */
-        void listAllSubjects()
-          .then((rows) => {
-            if (active) setSubjects(rows);
-          })
-          .catch(() => {
-            if (active) setSubjects([]);
-          });
+        setSubjects(subjectRows ?? []);
         if (!countryId) return;
         const [countryResult, editorialResult, curationResult] =
           await Promise.all([
