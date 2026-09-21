@@ -6,6 +6,7 @@ import type { DestinationDirectory } from '@/lib/study-abroad';
 import { PRIMARY, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChrome';
 import { AssessmentDialog } from './AssessmentDialog';
 import { FlagMark } from './FlagMark';
+import { searchDestinations } from '@/lib/study-abroad-view';
 
 /**
  * The interactive frame every Study Abroad page sits inside: the mobile drawer,
@@ -126,13 +127,7 @@ export function StudyAbroadShell({
     () => [...(destinations?.available ?? []), ...(destinations?.comingSoon ?? [])],
     [destinations],
   );
-  const matches = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const pool = needle
-      ? all.filter((entry) => entry.name.toLowerCase().includes(needle))
-      : all.filter((entry) => entry.isAvailable);
-    return pool.slice(0, 40);
-  }, [all, query]);
+  const matches = useMemo(() => searchDestinations(all, query).slice(0, 40), [all, query]);
   /* The approved selector heads its grid the same way: what the list is before
    * a search, and how much matched after one. */
   const matchesTitle = query.trim()
