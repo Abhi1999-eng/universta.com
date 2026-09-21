@@ -1,4 +1,5 @@
 import type { CountryPage, ProfileSummary } from './countries';
+import type { Destination } from './study-abroad';
 import type { StudyPath } from '@/components/study-abroad/CountrySections';
 
 /**
@@ -214,4 +215,39 @@ export function studyPathsFor(page: CountryPage): StudyPath[] {
 export function alternatingBands(renderedIds: string[]): (id: string) => boolean {
   const bands = new Map(renderedIds.map((id, index) => [id, index % 2 === 0]));
   return (id: string) => bands.get(id) ?? false;
+}
+
+/** Lower-cased with accents dropped, so "cote" finds Côte d'Ivoire. */
+function normalise(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * The header selector's search, matched the way the approved design matches.
+ *
+ * A name matches from the start of any of its words, so "zea" finds New
+ * Zealand and "bissau" finds Guinea-Bissau; the ISO code matches exactly, and
+ * the slug from its start. Matching anywhere inside a name made "ger" return
+ * Algeria, Niger and Nigeria beside Germany. Destinations with a guide come
+ * first because those are the ones the student can open.
+ *
+ * With no query the list is the guides, in the order the directory gives them.
+ */
+export function searchDestinations<
+  T extends Pick<Destination, 'name' | 'slug' | 'iso2Code' | 'isAvailable'>,
+>(entries: T[], query: string): T[] {
+  const needle = normalise(query.trim());
+  if (!needle) return entries.filter((entry) => entry.isAvailable);
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const wordStart = new RegExp(`(^|[^a-z0-9])${escaped}`);
+  return entries
+    .filter(
+      (entry) =>
+        wordStart.test(normalise(entry.name)) ||
+        normalise(entry.iso2Code ?? '') === needle ||
+        normalise(entry.slug ?? '').startsWith(needle),
+    )
+    .sort(
+      (a, b) => Number(b.isAvailable) - Number(a.isAvailable) || a.name.localeCompare(b.name),
+    );
 }

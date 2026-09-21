@@ -1,11 +1,12 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { DestinationDirectory } from '@/lib/study-abroad';
 import { PRIMARY, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChrome';
 import { AssessmentDialog } from './AssessmentDialog';
 import { FlagMark } from './FlagMark';
+import { searchDestinations } from '@/lib/study-abroad-view';
 
 /**
  * The interactive frame every Study Abroad page sits inside: the mobile drawer,
@@ -84,10 +85,21 @@ export function StudyAbroadShell({
     setSelectorOpen(true);
   }, []);
   const closeSelector = useCallback(() => setSelectorOpen(false), []);
+  const selectorInput = useRef<HTMLInputElement>(null);
 
   useBodyScrollLock(selectorOpen || assessment !== null || drawerOpen);
   useEscape(selectorOpen, closeSelector);
   useEscape(drawerOpen, () => setDrawerOpen(false));
+
+  /* The header opens this from a search icon, so typing is the next thing the
+   * student does. Focus goes back to whatever opened it on close, rather than
+   * being dropped on the body when the dialog hides. */
+  useEffect(() => {
+    if (!selectorOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    selectorInput.current?.focus();
+    return () => opener?.focus();
+  }, [selectorOpen]);
 
   /* The header ships as static markup so it is in the first response. The few
    * controls that need behaviour are found by the attribute the design already
@@ -115,13 +127,12 @@ export function StudyAbroadShell({
     () => [...(destinations?.available ?? []), ...(destinations?.comingSoon ?? [])],
     [destinations],
   );
-  const matches = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const pool = needle
-      ? all.filter((entry) => entry.name.toLowerCase().includes(needle))
-      : all.filter((entry) => entry.isAvailable);
-    return pool.slice(0, 40);
-  }, [all, query]);
+  const matches = useMemo(() => searchDestinations(all, query).slice(0, 40), [all, query]);
+  /* The approved selector heads its grid the same way: what the list is before
+   * a search, and how much matched after one. */
+  const matchesTitle = query.trim()
+    ? `${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`
+    : 'Country guides';
 
   const api = useMemo<ShellApi>(() => ({ openAssessment, openSelector }), [
     openAssessment,
@@ -180,6 +191,7 @@ export function StudyAbroadShell({
               <path d="m20 20-3.5-3.5" />
             </svg>
             <input
+              ref={selectorInput}
               className="cs__input"
               type="search"
               placeholder="Where do you want to study?"
@@ -198,26 +210,31 @@ export function StudyAbroadShell({
             {matches.length === 0 ? (
               <p className="cs__empty">No destination matches that name.</p>
             ) : (
-              matches.map((entry) =>
-                entry.slug ? (
-                  <Link
-                    className="cs__row"
-                    key={entry.name}
-                    href={`/study-abroad/${entry.slug}`}
-                    onClick={closeSelector}
-                  >
-                    <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
-                    <span className="cchip__name">{entry.name}</span>
-                    <span className="cs__meta">Guide</span>
-                  </Link>
-                ) : (
-                  <span className="cs__row cs__row--soon" key={entry.name} aria-disabled="true">
-                    <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
-                    <span className="cchip__name">{entry.name}</span>
-                    <span className="cs__meta">Soon</span>
-                  </span>
-                ),
-              )
+              <>
+                <p className="cs__grouptitle">{matchesTitle}</p>
+                <div className="cs__grid">
+                  {matches.map((entry) =>
+                    entry.slug ? (
+                      <Link
+                        className="cs__item"
+                        key={entry.name}
+                        href={`/study-abroad/${entry.slug}`}
+                        onClick={closeSelector}
+                      >
+                        <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+                        <span className="cs__item-name">{entry.name}</span>
+                        <span className="cs__item-meta">Guide</span>
+                      </Link>
+                    ) : (
+                      <span className="cs__item cs__item--soon" key={entry.name} aria-disabled="true">
+                        <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+                        <span className="cs__item-name">{entry.name}</span>
+                        <span className="cs__item-meta">Soon</span>
+                      </span>
+                    ),
+                  )}
+                </div>
+              </>
             )}
           </div>
 

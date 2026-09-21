@@ -4,6 +4,7 @@ import {
   alternatingBands,
   countrySnapshot,
   monthNames,
+  searchDestinations,
   workSummary,
 } from './study-abroad-view';
 
@@ -192,5 +193,53 @@ describe('alternatingBands', () => {
 
   it('gives an id it was never told about the same band as an absent one', () => {
     expect(alternatingBands(['a'])('unknown')).toBe(false);
+  });
+});
+
+describe('searchDestinations', () => {
+  const entry = (name: string, iso2Code: string | null, slug: string | null = null) => ({
+    name,
+    iso2Code,
+    slug,
+    isAvailable: slug !== null,
+  });
+  const all = [
+    entry('Algeria', 'DZ'),
+    entry('Germany', 'DE', 'germany'),
+    entry('Guinea-Bissau', 'GW'),
+    entry('New Zealand', 'NZ', 'new-zealand'),
+    entry('Niger', 'NE'),
+    entry('Nigeria', 'NG'),
+    entry("Côte d'Ivoire", 'CI'),
+    entry('United Kingdom', 'GB', 'united-kingdom'),
+  ];
+  const names = (query: string) => searchDestinations(all, query).map((item) => item.name);
+
+  it('lists the guides, in directory order, before anything is typed', () => {
+    expect(names('  ')).toEqual(['Germany', 'New Zealand', 'United Kingdom']);
+  });
+
+  it('matches from the start of a word, not from anywhere in the name', () => {
+    expect(names('ger')).toEqual(['Germany']);
+    expect(names('zea')).toEqual(['New Zealand']);
+    expect(names('bissau')).toEqual(['Guinea-Bissau']);
+  });
+
+  it('matches an ISO code exactly', () => {
+    expect(names('de')).toEqual(['Germany']);
+    expect(names('GB')).toEqual(['United Kingdom']);
+  });
+
+  it('ignores case and accents', () => {
+    expect(names('COTE')).toEqual(["Côte d'Ivoire"]);
+  });
+
+  it('puts destinations with a guide ahead of the rest', () => {
+    expect(names('n')).toEqual(['New Zealand', 'Niger', 'Nigeria']);
+  });
+
+  it('treats the query as text, not a pattern', () => {
+    expect(names('(')).toEqual([]);
+    expect(names('.*')).toEqual([]);
   });
 });
