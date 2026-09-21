@@ -169,7 +169,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   ].filter((id): id is string => Boolean(id));
 
   const NAVY = new Set(['work-visa']);
-  const band = alternatingBands([...run, ...closing].filter((id) => !NAVY.has(id)));
+  /* The hero is on paper, so it takes the first slot: counted from the first
+     section, "why" was paper too and merged into the hero above it. */
+  const band = alternatingBands(['hero', ...run, ...closing].filter((id) => !NAVY.has(id)));
   const number = sectionNumbers(run);
 
   const breadcrumbs = {

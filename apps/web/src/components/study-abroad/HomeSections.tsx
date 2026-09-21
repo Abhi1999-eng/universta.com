@@ -80,7 +80,16 @@ function SectionHead({
  * than counted again, so the headline and the cards below it can never
  * disagree, and the hero costs no extra read.
  */
-export function HomeHero({ directory }: { directory: DestinationDirectory }) {
+export type PopularLink = { label: string; href: string };
+
+export function HomeHero({
+  directory,
+  popular = [],
+}: {
+  directory: DestinationDirectory;
+  /** Destinations and subjects to offer as one-tap starting points. */
+  popular?: PopularLink[];
+}) {
   const totals = directory.available.reduce(
     (sum, entry) => ({
       universities: sum.universities + entry.counts.universities,
@@ -129,9 +138,46 @@ export function HomeHero({ directory }: { directory: DestinationDirectory }) {
             </Link>
           </div>
 
-          {/* The design's hero also carried a site-wide search box. The
-              destination search sits a screen below on this merged page, so a
-              second box here would search the same catalogue twice. */}
+          {/* The design's box searched everything through a /search page this
+              site does not have. It searches courses here, the largest part
+              of the catalogue, and says so; destinations have their own
+              search a screen below, and the chips reach both. */}
+          <form className="bigsearch h-bigsearch" action="/courses" method="get" role="search">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#667085"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              className="bigsearch__input"
+              type="search"
+              name="q"
+              placeholder="Search courses, e.g. Computer Science"
+              aria-label="Search courses"
+              autoComplete="off"
+            />
+            <button className="btn btn--sm" type="submit">
+              Search
+            </button>
+          </form>
+          {popular.length ? (
+            <p className="bigsearch__ex">
+              <span className="label">Popular</span>
+              {popular.map((link) => (
+                <Link className="chipbtn chipbtn--sm" href={link.href} key={link.href}>
+                  {link.label}
+                </Link>
+              ))}
+            </p>
+          ) : null}
+
           {stats.length ? (
             <ul className="h-stats" aria-label="On Universta">
               {stats.map((stat) => (
@@ -148,9 +194,9 @@ export function HomeHero({ directory }: { directory: DestinationDirectory }) {
 }
 
 /** "Where would you like to start?" -- one card per way in. */
-export function StartPaths() {
+export function StartPaths({ alt = false }: { alt?: boolean } = {}) {
   return (
-    <section className="sec sec--white sec--tight h-sec" id="paths">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="paths">
       <div className="wrap">
         <SectionHead
           eyebrow="Start anywhere"
@@ -211,9 +257,9 @@ export function StartPaths() {
 }
 
 /** "Plan with free tools". */
-export function HomeTools() {
+export function HomeTools({ alt = false }: { alt?: boolean } = {}) {
   return (
-    <section className="sec sec--white sec--tight h-sec" id="tools">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="tools">
       <div className="wrap">
         <SectionHead
           eyebrow="Tools"
@@ -266,9 +312,9 @@ export function HomeTools() {
 }
 
 /** "Coaching and consultants". */
-export function HomeSupport() {
+export function HomeSupport({ alt = false }: { alt?: boolean } = {}) {
   return (
-    <section className="sec sec--paper sec--tight h-sec" id="support">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="support">
       <div className="wrap">
         <SectionHead
           eyebrow="Guidance"
@@ -301,9 +347,9 @@ export function HomeSupport() {
 }
 
 /** "Guides for every stage". */
-export function HomeGuides() {
+export function HomeGuides({ alt = false }: { alt?: boolean } = {}) {
   return (
-    <section className="sec sec--white sec--tight h-sec" id="resources">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="resources">
       <div className="wrap">
         <SectionHead
           eyebrow="Resources"
@@ -338,9 +384,9 @@ export function HomeGuides() {
 }
 
 /** "Universities, providers, coaching institutes and consultants". */
-export function HomeInstitutions() {
+export function HomeInstitutions({ alt = false }: { alt?: boolean } = {}) {
   return (
-    <section className="sec sec--paper sec--tight h-sec" id="institutions">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="institutions">
       <div className="wrap">
         <SectionHead
           eyebrow="For institutions"
@@ -376,9 +422,9 @@ export function HomeInstitutions() {
  * Every card here is a statement rather than a link, so this section carries
  * the design's full copy with nothing left to build behind it.
  */
-export function HomeTrust() {
+export function HomeTrust({ alt = false }: { alt?: boolean } = {}) {
   return (
-    <section className="sec sec--white sec--tight h-sec" id="trust">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="trust">
       <div className="wrap">
         <SectionHead eyebrow="Trust" title="How Universta keeps information honest" />
         <div className="h-grid h-grid--4">
@@ -411,6 +457,211 @@ export function HomeTrust() {
             </span>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * The catalogue previews: six of each, from what is published, each handing
+ * on to the full listing. A section with nothing published stands down.
+ * ------------------------------------------------------------------------- */
+
+function plural(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+function MoreLinks({ links }: { links: Array<{ href: string; label: string }> }) {
+  return (
+    <p className="h-more">
+      {links.map((link) => (
+        <Link className="linkcta" href={link.href} key={link.href}>
+          {link.label}{' '}
+          <span className="linkcta__arrow" aria-hidden="true">
+            →
+          </span>
+        </Link>
+      ))}
+    </p>
+  );
+}
+
+export type HomeSubject = {
+  id: string;
+  name: string;
+  slug: string;
+  shortDescription?: string | null;
+  publishedCourseCount?: number | null;
+  publishedSubSubjectCount?: number | null;
+};
+
+export function HomeSubjects({ subjects, alt = false }: { subjects: HomeSubject[]; alt?: boolean }) {
+  if (!subjects.length) return null;
+  return (
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="subjects">
+      <div className="wrap">
+        <SectionHead
+          eyebrow="Subjects"
+          title="Explore by subject"
+          lead="Every subject connects to its specializations, courses, universities and scholarships."
+        />
+        <div className="h-grid h-grid--six">
+          {subjects.map((subject) => (
+            <HomeCard
+              key={subject.id}
+              title={subject.name}
+              body={
+                subject.publishedSubSubjectCount
+                  ? plural(subject.publishedSubSubjectCount, 'specialization', 'specializations')
+                  : (subject.shortDescription ?? '')
+              }
+              meta={
+                subject.publishedCourseCount
+                  ? plural(subject.publishedCourseCount, 'course', 'courses')
+                  : undefined
+              }
+              href={`/subjects/${subject.slug}`}
+            />
+          ))}
+        </div>
+        <MoreLinks links={[{ href: '/subjects', label: 'All subjects' }]} />
+      </div>
+    </section>
+  );
+}
+
+export type HomeUniversity = {
+  id: string;
+  name: string;
+  slug: string;
+  country?: { name: string } | null;
+  campuses?: Array<{ city?: { name?: string | null } | null }> | null;
+  _count?: { offerings?: number } | null;
+};
+
+export function HomeUniversities({
+  universities,
+  alt = false,
+}: {
+  universities: HomeUniversity[];
+  alt?: boolean;
+}) {
+  if (!universities.length) return null;
+  return (
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="universities">
+      <div className="wrap">
+        <SectionHead
+          eyebrow="Universities"
+          title="Universities on Universta"
+          lead="Profiles built from official sources. No paid rankings."
+        />
+        <div className="h-grid h-grid--six">
+          {universities.map((university) => {
+            const city = university.campuses?.find((campus) => campus.city?.name)?.city?.name;
+            const where = [city, university.country?.name].filter(Boolean).join(', ');
+            const offerings = university._count?.offerings ?? 0;
+            return (
+              <HomeCard
+                key={university.id}
+                title={university.name}
+                body={where}
+                meta={offerings ? `${plural(offerings, 'course', 'courses')} on Universta` : undefined}
+                href={`/universities/${university.slug}`}
+              />
+            );
+          })}
+        </div>
+        <MoreLinks
+          links={[
+            { href: '/universities', label: 'Explore Universities' },
+            { href: '/compare/universities', label: 'Compare universities' },
+          ]}
+        />
+      </div>
+    </section>
+  );
+}
+
+export type HomeCourse = {
+  id: string;
+  name: string;
+  slug: string;
+  subject?: { name: string } | null;
+  subSubject?: { name: string } | null;
+  courseLevel?: { name: string } | null;
+};
+
+export function HomeCourses({ courses, alt = false }: { courses: HomeCourse[]; alt?: boolean }) {
+  if (!courses.length) return null;
+  return (
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="courses">
+      <div className="wrap">
+        <SectionHead
+          eyebrow="Courses"
+          title="Courses to explore"
+          lead="Each course shows eligibility, documents, intakes and fees, or tells you to check the official website when a detail is not confirmed."
+        />
+        <div className="h-grid h-grid--six">
+          {courses.map((course) => (
+            <HomeCard
+              key={course.id}
+              title={course.name}
+              body={[course.subSubject?.name ?? course.subject?.name].filter(Boolean).join('')}
+              meta={course.courseLevel?.name}
+              href={`/courses/${course.slug}`}
+            />
+          ))}
+        </div>
+        <MoreLinks links={[{ href: '/courses', label: 'Find courses' }]} />
+      </div>
+    </section>
+  );
+}
+
+export type HomeScholarship = {
+  id: string;
+  title: string;
+  slug: string;
+  summary?: string | null;
+  benefitType?: string | null;
+  provider?: { name?: string | null } | null;
+};
+
+/** "PARTIAL_TUITION" -> "Partial tuition". The field is free text, not a list. */
+function benefitLabel(value: string | null | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  const words = value.trim().toLowerCase().replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+export function HomeScholarships({
+  scholarships,
+  alt = false,
+}: {
+  scholarships: HomeScholarship[];
+  alt?: boolean;
+}) {
+  if (!scholarships.length) return null;
+  return (
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="scholarships">
+      <div className="wrap">
+        <SectionHead
+          eyebrow="Scholarships"
+          title="Funding to look into"
+          lead="Eligibility is shown as published by the provider. A match is never a guarantee of an award."
+        />
+        <div className="h-grid h-grid--six">
+          {scholarships.map((scholarship) => (
+            <HomeCard
+              key={scholarship.id}
+              title={scholarship.title}
+              body={scholarship.summary ?? scholarship.provider?.name ?? ''}
+              meta={benefitLabel(scholarship.benefitType) ?? scholarship.provider?.name ?? undefined}
+              href={`/scholarships/${scholarship.slug}`}
+            />
+          ))}
+        </div>
+        <MoreLinks links={[{ href: '/scholarships', label: 'Find Scholarships' }]} />
       </div>
     </section>
   );

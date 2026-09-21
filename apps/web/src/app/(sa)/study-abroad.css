@@ -1193,3 +1193,33 @@
    and two columns divide the six evenly and leave every name room. */
 @media (min-width: 560px){.sa .switcher{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
 @media (min-width: 900px){.sa .switcher{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
+/* ---------------------------------------------------------------------
+   HOME SEARCH
+   The design's hero search and its popular chips, from its universities
+   and hub stylesheets, scoped like everything else here.
+   --------------------------------------------------------------------- */
+.sa .bigsearch{
+  display: flex; align-items: center; gap: 12px;
+  margin-top: clamp(20px, 2.6vw, 30px); padding: 8px 8px 8px 18px;
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+}
+.sa .bigsearch:focus-within{ border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7, 20, 38, 0.07); }
+.sa .bigsearch svg{ flex: none; }
+.sa .bigsearch__input{
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  font-family: var(--font-display); font-size: clamp(16px, 1.7vw, 20px);
+  font-weight: 600; letter-spacing: -0.02em; color: var(--text); padding: 10px 0;
+}
+.sa .bigsearch__input::placeholder{ color: #A6AFBD; }
+.sa .bigsearch__ex{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.sa .bigsearch__ex .label{ margin-inline-end: 4px; }
+.sa .chipbtn--sm{ padding: 5px 11px; font-size: 12.5px; }
+.sa a.chipbtn{ text-decoration: none; color: inherit; }
+.sa .h-bigsearch{ max-width: 760px; }
+/* The catalogue previews show six cards. Auto-fit put four on the first row
+   and two on the second at desktop width; three and two columns divide six
+   evenly. */
+.sa .h-grid--six{ grid-template-columns: 1fr; }
+@media (min-width: 600px){.sa .h-grid--six{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+@media (min-width: 960px){.sa .h-grid--six{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
