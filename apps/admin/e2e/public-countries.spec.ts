@@ -25,12 +25,14 @@ test.describe('approved public country experience', () => {
     await page.goto(guide);
 
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Canada');
-    await expect(page.getByRole('heading', { name: 'What it costs' })).toBeVisible();
-    /* Intakes are the Country's own month selection. */
-    await expect(page.getByRole('heading', { name: /^Intakes in / })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Language requirements' })).toBeVisible();
+    /* The design's headings, each naming the country. */
     await expect(
-      page.getByRole('heading', { name: 'After you arrive, and after you graduate' }),
+      page.getByRole('heading', { name: 'What does it cost to study in Canada?' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'When can you apply to Canada?' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Language requirements for Canada' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Study, work and stay in Canada' }),
     ).toBeVisible();
 
     const links = await page.locator('a[href^="#"]').evaluateAll((elements) => (
