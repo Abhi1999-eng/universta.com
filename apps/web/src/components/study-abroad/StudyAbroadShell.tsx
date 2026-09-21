@@ -75,10 +75,15 @@ export function StudyAbroadShell({
   const [assessment, setAssessment] = useState<AssessmentContext | null>(null);
   const [query, setQuery] = useState('');
 
+  /* Opened anywhere on a country guide, the assessment belongs to that country:
+   * its destination step arrives answered and the lead records the guide it
+   * came from. The page's own buttons are plain markup that only name their
+   * intent, so the country comes from the address at the moment of opening. */
   const openAssessment = useCallback((context?: AssessmentContext) => {
     setDrawerOpen(false);
     setSelectorOpen(false);
-    setAssessment(context ?? {});
+    const pageCountry = window.location.pathname.match(/^\/study-abroad\/([^/]+)\/?$/)?.[1];
+    setAssessment({ ...(pageCountry ? { countrySlug: pageCountry } : {}), ...context });
   }, []);
   const openSelector = useCallback(() => {
     setDrawerOpen(false);
