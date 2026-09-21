@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Country, CountryTestimonial, ProfileSummary } from '@/lib/countries';
+import { SectionHead } from './SectionHead';
 
 /**
  * The country guide's sections that link out to the rest of the catalogue:
@@ -24,34 +25,25 @@ function SplitHead({
   lead,
   cta,
 }: {
-  index: string;
+  index?: string | null;
   eyebrow: string;
   title: string;
   lead: string;
   cta?: { href: string; label: string };
 }) {
   return (
-    <div className="sec-head sec-head--split">
-      <div className="sec-head__aside">
-        <p className="eyebrow">
-          <span className="eyebrow__n">{index}</span> {eyebrow}
-        </p>
-        <h2 className="sec-title">{title}</h2>
-      </div>
-      <div>
-        <p className="sec-lead">{lead}</p>
-        {cta ? (
-          <div className="btn-row" style={{ marginTop: 20 }}>
-            <Link className="btn" href={cta.href}>
-              {cta.label}{' '}
-              <span className="btn__arrow" aria-hidden="true">
-                →
-              </span>
-            </Link>
-          </div>
-        ) : null}
-      </div>
-    </div>
+    <SectionHead n={index} eyebrow={eyebrow} title={title} lead={lead}>
+      {cta ? (
+        <div className="btn-row sec-head__cta">
+          <Link className="btn" href={cta.href}>
+            {cta.label}{' '}
+            <span className="btn__arrow" aria-hidden="true">
+              →
+            </span>
+          </Link>
+        </div>
+      ) : null}
+    </SectionHead>
   );
 }
 
@@ -107,10 +99,12 @@ export const hasCountryFigures = (country: Country, profiles: ProfileSummary) =>
 export function CountryNumbers({
   country,
   profiles,
+  n = null,
   alt,
 }: {
   country: Country;
   profiles: ProfileSummary;
+  n?: string | null;
   alt: boolean;
 }) {
   const figures = countryFigures(country, profiles);
@@ -120,7 +114,7 @@ export function CountryNumbers({
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="numbers">
       <div className="wrap">
         <SplitHead
-          index="09"
+          index={n}
           eyebrow="By the numbers"
           title={`Study in ${country.name} by the numbers`}
           lead="The figures that shape a decision, taken from what is published on Universta."
@@ -154,7 +148,15 @@ export function countryUniversities(country: Country) {
 }
 
 /** "Explore universities in <country>". */
-export function CountryUniversities({ country, alt }: { country: Country; alt: boolean }) {
+export function CountryUniversities({
+  country,
+  n = null,
+  alt,
+}: {
+  country: Country;
+  n?: string | null;
+  alt: boolean;
+}) {
   const universities = countryUniversities(country);
   if (!universities.length) return null;
 
@@ -165,7 +167,7 @@ export function CountryUniversities({ country, alt }: { country: Country; alt: b
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="universities">
       <div className="wrap">
         <SplitHead
-          index="04"
+          index={n}
           eyebrow="Universities"
           title={`Explore universities in ${country.name}`}
           lead={
@@ -194,7 +196,15 @@ export function CountryUniversities({ country, alt }: { country: Country; alt: b
 }
 
 /** "Popular subjects to study in <country>". */
-export function CountrySubjects({ country, alt }: { country: Country; alt: boolean }) {
+export function CountrySubjects({
+  country,
+  n = null,
+  alt,
+}: {
+  country: Country;
+  n?: string | null;
+  alt: boolean;
+}) {
   const subjects = country.subjects ?? [];
   if (!subjects.length) return null;
 
@@ -202,7 +212,7 @@ export function CountrySubjects({ country, alt }: { country: Country; alt: boole
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="subjects">
       <div className="wrap">
         <SplitHead
-          index="05"
+          index={n}
           eyebrow="Find your field"
           title={`Popular subjects to study in ${country.name}`}
           lead="Explore the fields taught here, then see the courses and specializations inside each one."
@@ -232,10 +242,12 @@ export type CountryCourseCard = {
 export function CountryCourses({
   country,
   courses,
+  n = null,
   alt,
 }: {
   country: Country;
   courses: CountryCourseCard[];
+  n?: string | null;
   alt: boolean;
 }) {
   if (!courses.length) return null;
@@ -244,9 +256,9 @@ export function CountryCourses({
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="courses">
       <div className="wrap">
         <SplitHead
-          index="06"
+          index={n}
           eyebrow="Courses"
-          title={`Courses to explore in ${country.name}`}
+          title={`Explore courses in ${country.name}`}
           lead="Each course page carries its tuition, entry requirements, intakes and deadlines."
           cta={{ href: '/courses', label: 'Search every course' }}
         />
@@ -287,10 +299,12 @@ function initials(name: string) {
 export function CountryTestimonials({
   country,
   testimonials,
+  n = null,
   alt,
 }: {
   country: Country;
   testimonials: CountryTestimonial[];
+  n?: string | null;
   alt: boolean;
 }) {
   if (!testimonials.length) return null;
@@ -299,7 +313,7 @@ export function CountryTestimonials({
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="testimonials">
       <div className="wrap">
         <SplitHead
-          index="08"
+          index={n}
           eyebrow="Student voices"
           title={`What students say about studying in ${country.name}`}
           lead="Published as given, with the attribution each student agreed to."
@@ -384,10 +398,12 @@ export type CountryScholarshipCard = {
 export function CountryScholarships({
   country,
   scholarships,
+  n = null,
   alt,
 }: {
   country: Country;
   scholarships: CountryScholarshipCard[];
+  n?: string | null;
   alt: boolean;
 }) {
   if (!scholarships.length) return null;
@@ -396,9 +412,9 @@ export function CountryScholarships({
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="scholarship-funding">
       <div className="wrap">
         <SplitHead
-          index="07"
+          index={n}
           eyebrow="Funding"
-          title={`Scholarships for ${country.name}`}
+          title={`Scholarships to study in ${country.name}`}
           lead="Funding open to international students here, with the eligibility each one publishes."
           cta={{ href: '/scholarships', label: 'Find scholarships' }}
         />

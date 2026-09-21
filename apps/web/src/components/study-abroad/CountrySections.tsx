@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import { SectionHead } from './SectionHead';
 
 /**
  * The two sections of a country guide that need behaviour: the study-path tabs
@@ -16,6 +17,7 @@ export type StudyPath = {
   label: string;
   duration: string | null;
   entry: string | null;
+  summary?: string | null;
   note: string | null;
   courseCount: number | null;
 };
@@ -23,10 +25,15 @@ export type StudyPath = {
 export function StudyPaths({
   paths,
   countryName,
+  fields = [],
+  n = null,
   alt,
 }: {
   paths: StudyPath[];
   countryName: string;
+  /** Subjects taught in the country, shown on every path as where it leads. */
+  fields?: string[];
+  n?: string | null;
   alt: boolean;
 }) {
   const [active, setActive] = useState(0);
@@ -46,8 +53,12 @@ export function StudyPaths({
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="study-paths">
       <div className="wrap">
-        <p className="eyebrow">Study paths</p>
-        <h2 className="sec-title">What you can study in {countryName}</h2>
+        <SectionHead
+          n={n}
+          eyebrow="Study paths"
+          title="Find your study path"
+          lead={`Pick the route closest to where you are today. Entry rules, timelines and costs in ${countryName} all change with it.`}
+        />
 
         <div className="tabs__list" role="tablist" aria-label="Study levels" onKeyDown={onKey}>
           {paths.map((path, index) => (
@@ -74,30 +85,58 @@ export function StudyPaths({
             key={path.id}
             id={`${base}-panel-${path.id}`}
             aria-labelledby={`${base}-tab-${path.id}`}
+            /* The design shows a panel by data-active; with only `hidden`
+               every panel, the selected one included, stayed display: none. */
+            data-active={String(index === active)}
             hidden={index !== active}
           >
             <div className="path">
-            <div className="path__stats">
-              {path.duration ? (
-                <div className="path__stat">
-                  <span>Typical duration</span>
-                  <b>{path.duration}</b>
+              <div>
+                {path.summary ? <p className="path__summary">{path.summary}</p> : null}
+                <dl className="path__stats">
+                  {path.duration ? (
+                    <div className="path__stat">
+                      <dt>Typical duration</dt>
+                      <dd>{path.duration}</dd>
+                    </div>
+                  ) : null}
+                  {path.courseCount !== null ? (
+                    <div className="path__stat">
+                      <dt>Courses on Universta</dt>
+                      <dd>{path.courseCount}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+                {fields.length ? (
+                  <div className="path__fields">
+                    {fields.map((field) => (
+                      <span className="pill" key={field}>
+                        {field}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <button className="btn" type="button" data-open-assessment data-intent={`path-${path.id}`}>
+                  Check My Eligibility{' '}
+                  <span className="btn__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </button>
+              </div>
+              {path.entry || path.note ? (
+                <div>
+                  <p className="path__h">What you need to enter</p>
+                  {path.entry ? (
+                    <ul className="path__list">
+                      <li>{path.entry}</li>
+                    </ul>
+                  ) : null}
+                  <p className="path__note">
+                    {path.note ??
+                      'Durations and entry rules are typical for the level. Each programme sets its own, so check before you shortlist.'}
+                  </p>
                 </div>
               ) : null}
-              {path.entry ? (
-                <div className="path__stat">
-                  <span>Usual entry point</span>
-                  <b>{path.entry}</b>
-                </div>
-              ) : null}
-              {path.courseCount !== null ? (
-                <div className="path__stat">
-                  <span>Published courses</span>
-                  <b>{path.courseCount}</b>
-                </div>
-              ) : null}
-            </div>
-            {path.note ? <p className="path__summary">{path.note}</p> : null}
             </div>
           </div>
         ))}
@@ -109,10 +148,12 @@ export function StudyPaths({
 export function FaqAccordion({
   faqs,
   countryName,
+  n = null,
   alt,
 }: {
   faqs: Array<{ id: string; question: string; answer: string }>;
   countryName: string;
+  n?: string | null;
   alt: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(faqs[0]?.id ?? null);
@@ -121,9 +162,13 @@ export function FaqAccordion({
 
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="faq">
-      <div className="wrap wrap--narrow">
-        <p className="eyebrow">Questions</p>
-        <h2 className="sec-title">Studying in {countryName}</h2>
+      <div className="wrap">
+        <SectionHead
+          n={n}
+          eyebrow="Questions"
+          title={`Straight answers about ${countryName}.`}
+          lead="The questions students ask before they commit. If yours is not here, the assessment is the fastest way to a specific answer."
+        />
 
         <div className="faq">
           {faqs.map((faq) => {
@@ -148,6 +193,9 @@ export function FaqAccordion({
                   id={`${base}-a-${faq.id}`}
                   role="region"
                   aria-labelledby={`${base}-q-${faq.id}`}
+                  /* The design shows an answer by data-open on the answer
+                     itself; set only on the item, every answer stayed hidden. */
+                  data-open={String(expanded)}
                   hidden={!expanded}
                   /* Authored in the Admin WYSIWYG and sanitised by the API
                      before it is stored and again before it is served. */

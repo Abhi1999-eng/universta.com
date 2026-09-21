@@ -1,5 +1,7 @@
 import { RichText } from '@/components/phase1/RichText';
 import type { Section } from '@/lib/countries';
+import { Longform } from './Longform';
+import { SectionHead } from './SectionHead';
 
 /**
  * An editorial section, in whichever shape its author chose.
@@ -15,6 +17,11 @@ import type { Section } from '@/lib/countries';
 
 type Item = Record<string, unknown>;
 
+/* A long prose section shows its opening and keeps the rest behind "read
+   more", as the overview does, so one editor's essay does not push the rest
+   of the guide several screens down. */
+const LEAD_PARAGRAPHS = 2;
+
 function itemsOf(body: Record<string, unknown> | null): Item[] {
   const items = body?.items;
   return Array.isArray(items) ? (items as Item[]) : [];
@@ -24,7 +31,26 @@ function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value : null;
 }
 
-export function EditorialSection({ section, alt }: { section: Section; alt: boolean }) {
+/** Whether a section has anything to render, so the page can count it. */
+export function editorialRenders(section: Section): boolean {
+  const body = section.bodyJson;
+  const paragraphs = Array.isArray(body?.paragraphs) ? (body.paragraphs as unknown[]) : [];
+  const hasContent =
+    paragraphs.some((entry) => typeof entry === 'string') ||
+    itemsOf(body).length > 0 ||
+    (section.sectionType === 'CTA' && Boolean(section.ctaUrl));
+  return hasContent || Boolean(section.heading);
+}
+
+export function EditorialSection({
+  section,
+  n = null,
+  alt,
+}: {
+  section: Section;
+  n?: string | null;
+  alt: boolean;
+}) {
   const body = section.bodyJson;
   const items = itemsOf(body);
   const paragraphs = Array.isArray(body?.paragraphs)
@@ -41,16 +67,38 @@ export function EditorialSection({ section, alt }: { section: Section; alt: bool
       className={`sec ${alt ? 'sec--paper' : 'sec--white'}`}
       id={`country-${section.sectionKey}`}
     >
-      <div className={type === 'RICH_TEXT' ? 'wrap wrap--narrow' : 'wrap'}>
-        {section.eyebrow ? <p className="eyebrow">{section.eyebrow}</p> : null}
-        {section.heading ? <h2 className="sec-title">{section.heading}</h2> : null}
-        {section.subheading ? <p className="sec-lead">{section.subheading}</p> : null}
-
-        {type === 'RICH_TEXT' && paragraphs.length
-          ? paragraphs.map((paragraph, index) => (
-              <RichText key={index} value={paragraph} className="sec-lead" />
-            ))
-          : null}
+      <div className="wrap">
+        {section.heading ? (
+          <SectionHead
+            n={n}
+            eyebrow={section.eyebrow}
+            title={section.heading}
+            lead={section.subheading}
+          >
+            {/* Prose sits in the head's right-hand column, as the design's
+                overview does, rather than under it at full width. */}
+            {type === 'RICH_TEXT' && paragraphs.length ? (
+              <div className="prose">
+                {paragraphs.slice(0, LEAD_PARAGRAPHS).map((paragraph, index) => (
+                  <RichText key={index} value={paragraph} />
+                ))}
+              </div>
+            ) : null}
+          </SectionHead>
+        ) : null}
+        {section.heading && type === 'RICH_TEXT' && paragraphs.length > LEAD_PARAGRAPHS ? (
+          <Longform label="Read the rest">
+            {paragraphs.slice(LEAD_PARAGRAPHS).map((paragraph, index) => (
+              <RichText key={index} value={paragraph} />
+            ))}
+          </Longform>
+        ) : !section.heading && type === 'RICH_TEXT' && paragraphs.length ? (
+          <div className="prose">
+            {paragraphs.map((paragraph, index) => (
+              <RichText key={index} value={paragraph} />
+            ))}
+          </div>
+        ) : null}
 
         {type === 'FACT_GRID' && items.length ? (
           <div className="rulegrid rulegrid--3">

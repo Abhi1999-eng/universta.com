@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { CountryPage } from './countries';
 import {
   alternatingBands,
+  costBreakdown,
   countrySnapshot,
+  intakeCards,
+  languageRows,
+  sectionNumbers,
   monthNames,
   searchDestinations,
   workSummary,
@@ -241,5 +245,109 @@ describe('searchDestinations', () => {
   it('treats the query as text, not a pattern', () => {
     expect(names('(')).toEqual([]);
     expect(names('.*')).toEqual([]);
+  });
+});
+
+describe('sectionNumbers', () => {
+  /* Numbered by position among what renders, so a section standing down never
+     leaves a gap in the run. */
+  it('numbers the rendered run from 01 without gaps', () => {
+    const number = sectionNumbers(['why', 'universities', 'faq']);
+    expect(number('why')).toBe('01');
+    expect(number('universities')).toBe('02');
+    expect(number('faq')).toBe('03');
+  });
+
+  it('gives an unnumbered section no number', () => {
+    expect(sectionNumbers(['why'])('scholarship-funding')).toBeNull();
+  });
+});
+
+describe('costBreakdown', () => {
+  const cost = (over: Record<string, unknown> = {}) =>
+    ({
+      currencyCode: 'EUR',
+      currencySymbol: '€',
+      tuitionMin: '0',
+      tuitionMax: '20000',
+      tuitionPeriod: 'PER_YEAR',
+      budgetBand: null,
+      livingCostMin: '850',
+      livingCostMax: '1300',
+      livingCostPeriod: 'PER_MONTH',
+      ...over,
+    }) as never;
+
+  it('lists each published range with its period', () => {
+    expect(costBreakdown(cost()).rows).toEqual([
+      { label: 'Tuition', value: '€0 – €20,000', unit: 'per year' },
+      { label: 'Living expenses', value: '€850 – €1,300', unit: 'per month' },
+    ]);
+  });
+
+  it('totals a year of tuition and living when both are published', () => {
+    expect(costBreakdown(cost()).total).toBe('€10,200 – €35,600');
+  });
+
+  /* A total from tuition alone would understate what a year costs. */
+  it('gives no total when half of it is missing', () => {
+    expect(costBreakdown(cost({ livingCostMin: null, livingCostMax: null })).total).toBeNull();
+  });
+
+  it('gives no total when a period does not convert to a year', () => {
+    expect(costBreakdown(cost({ tuitionPeriod: 'PER_TERM' })).total).toBeNull();
+  });
+
+  it('lists the application fee as a one-time cost', () => {
+    expect(costBreakdown(cost({ applicationFeeMin: '75' })).rows[2]).toEqual({
+      label: 'Application fee',
+      value: '€75',
+      unit: 'one time',
+    });
+  });
+
+  it('is empty without a cost profile', () => {
+    expect(costBreakdown(null)).toEqual({ total: null, rows: [] });
+  });
+});
+
+describe('languageRows', () => {
+  it('reads each test with its requirement and minimum', () => {
+    const rows = languageRows({
+      ieltsRequirement: 'REQUIRED',
+      ieltsMinScore: '6.50',
+      toeflRequirement: 'VARIES',
+      languageWaiverAvailable: false,
+    } as never);
+    expect(rows).toEqual([
+      { test: 'IELTS Academic', requirement: { label: 'Required', tone: 'req' }, minimum: '6.5', notes: null },
+      { test: 'TOEFL iBT', requirement: { label: 'Varies by programme', tone: 'cond' }, minimum: null, notes: null },
+    ]);
+  });
+});
+
+describe('intakeCards', () => {
+  it('names each intake from its catalogue entry and marks the major one', () => {
+    const cards = intakeCards([
+      {
+        id: 'ci1',
+        isMajor: true,
+        applicationOpeningMonth: 5,
+        applicationDeadlineNote: '15 July for most programmes',
+        intake: { id: 'i1', name: 'Winter intake', slug: 'winter', shortLabel: null, startMonth: 10 },
+      },
+    ] as never);
+    expect(cards).toEqual([
+      {
+        id: 'ci1',
+        name: 'Winter intake',
+        month: 10,
+        primary: true,
+        starts: 'October',
+        opening: 'May',
+        deadline: '15 July for most programmes',
+        notes: null,
+      },
+    ]);
   });
 });

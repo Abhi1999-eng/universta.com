@@ -165,11 +165,35 @@ export function workSummary(profiles: ProfileSummary): WorkCard[] {
  * postgraduate tab. Durations are the conventional ones for the level and are
  * labelled as typical, not as a promise about any particular programme.
  */
-const LEVELS: Array<{ id: string; label: string; duration: string; entry: string }> = [
-  { id: 'bachelors', label: "Bachelor's", duration: '3–4 years', entry: 'School leaving qualification' },
-  { id: 'masters', label: "Master's", duration: '1–2 years', entry: "Bachelor's degree" },
-  { id: 'mba', label: 'MBA', duration: '1–2 years', entry: "Bachelor's degree, often with experience" },
-  { id: 'phd', label: 'PhD', duration: '3–5 years', entry: "Master's degree or equivalent" },
+const LEVELS: Array<{ id: string; label: string; duration: string; entry: string; summary: string }> = [
+  {
+    id: 'bachelors',
+    label: "Bachelor's",
+    duration: '3–4 years',
+    entry: 'School leaving qualification',
+    summary: 'Undergraduate study, usually beginning straight after school.',
+  },
+  {
+    id: 'masters',
+    label: "Master's",
+    duration: '1–2 years',
+    entry: "Bachelor's degree",
+    summary: "Postgraduate study after a bachelor's degree, taught or research-led, often ending in a thesis.",
+  },
+  {
+    id: 'mba',
+    label: 'MBA',
+    duration: '1–2 years',
+    entry: "Bachelor's degree, often with experience",
+    summary: 'A postgraduate business degree, usually asking for work experience alongside a first degree.',
+  },
+  {
+    id: 'phd',
+    label: 'PhD',
+    duration: '3–5 years',
+    entry: "Master's degree or equivalent",
+    summary: 'Doctoral research under supervision, leading to a thesis.',
+  },
 ];
 
 export function studyPathsFor(page: CountryPage): StudyPath[] {
@@ -193,6 +217,7 @@ export function studyPathsFor(page: CountryPage): StudyPath[] {
     label: level.label,
     duration: level.duration,
     entry: level.entry,
+    summary: level.summary,
     note: null,
     courseCount: counts[level.id] ?? null,
   }));
@@ -250,4 +275,136 @@ export function searchDestinations<
     .sort(
       (a, b) => Number(b.isAvailable) - Number(a.isAvailable) || a.name.localeCompare(b.name),
     );
+}
+
+/**
+ * The guide's section numbers, by position: "01", "02" and so on.
+ *
+ * The design numbers its run of sections from 01. Like the bands, the numbers
+ * belong to the run rather than to any one section -- a number fixed to a
+ * section would skip wherever a section before it stands down -- so the page
+ * passes the numbered sections that will actually render, in order.
+ */
+export function sectionNumbers(ids: string[]): (id: string) => string | null {
+  const numbers = new Map(ids.map((id, index) => [id, String(index + 1).padStart(2, '0')]));
+  return (id: string) => numbers.get(id) ?? null;
+}
+
+const PERIOD_UNIT: Record<string, string> = {
+  PER_YEAR: 'per year',
+  PER_MONTH: 'per month',
+  PER_TERM: 'per term',
+  ONE_TIME: 'one time',
+};
+
+export type CostRow = { label: string; value: string; unit: string | null };
+export type CostBreakdown = { total: string | null; rows: CostRow[] };
+
+/**
+ * The cost dashboard: one row per published range, and a yearly total only
+ * when both halves of it are published in periods that convert to a year.
+ * A total built from one half would understate the cost, so it is left out.
+ */
+export function costBreakdown(cost: ProfileSummary['cost']): CostBreakdown {
+  if (!cost) return { total: null, rows: [] };
+  const symbol = cost.currencySymbol ?? '';
+  const livingPeriod = cost.livingCostPeriod ?? 'PER_MONTH';
+  const rows: CostRow[] = [];
+  const add = (label: string, min?: string | null, max?: string | null, period?: string) => {
+    const value = range(symbol, min, max);
+    if (value) rows.push({ label, value, unit: period ? (PERIOD_UNIT[period] ?? null) : null });
+  };
+  add('Tuition', cost.tuitionMin, cost.tuitionMax, cost.tuitionPeriod);
+  add('Living expenses', cost.livingCostMin, cost.livingCostMax, livingPeriod);
+  add('Application fee', cost.applicationFeeMin, cost.applicationFeeMax, 'ONE_TIME');
+
+  const yearly = { PER_YEAR: 1, PER_MONTH: 12 } as Record<string, number>;
+  const tuitionFactor = yearly[cost.tuitionPeriod];
+  const livingFactor = yearly[livingPeriod];
+  const bound = (value: string | null | undefined, factor: number) =>
+    value && Number.isFinite(Number(value)) ? Number(value) * factor : null;
+  let total: string | null = null;
+  if (tuitionFactor && livingFactor) {
+    const tuitionLow = bound(cost.tuitionMin ?? cost.tuitionMax, tuitionFactor);
+    const tuitionHigh = bound(cost.tuitionMax ?? cost.tuitionMin, tuitionFactor);
+    const livingLow = bound(cost.livingCostMin ?? cost.livingCostMax, livingFactor);
+    const livingHigh = bound(cost.livingCostMax ?? cost.livingCostMin, livingFactor);
+    if (tuitionLow !== null && tuitionHigh !== null && livingLow !== null && livingHigh !== null)
+      total = range(symbol, String(tuitionLow + livingLow), String(tuitionHigh + livingHigh));
+  }
+  return { total, rows };
+}
+
+export type LanguageRow = {
+  test: string;
+  requirement: { label: string; tone: 'req' | 'ok' | 'cond' | 'neutral' };
+  minimum: string | null;
+  notes: string | null;
+};
+
+const REQUIREMENT: Record<string, LanguageRow['requirement']> = {
+  REQUIRED: { label: 'Required', tone: 'req' },
+  OPTIONAL: { label: 'Accepted', tone: 'ok' },
+  VARIES: { label: 'Varies by programme', tone: 'cond' },
+  NOT_REQUIRED: { label: 'Not required', tone: 'neutral' },
+};
+
+/** The language table: one row per English test the profile says anything about. */
+export function languageRows(language: ProfileSummary['language']): LanguageRow[] {
+  if (!language) return [];
+  const tests: Array<[string, string | undefined, string | null | undefined, string | null | undefined]> = [
+    ['IELTS Academic', language.ieltsRequirement, language.ieltsMinScore, language.ieltsNotes],
+    ['TOEFL iBT', language.toeflRequirement, language.toeflMinScore, language.toeflNotes],
+    ['PTE Academic', language.pteRequirement, language.pteMinScore, language.pteNotes],
+    ['Duolingo English Test', language.duolingoRequirement, language.duolingoMinScore, language.duolingoNotes],
+  ];
+  return tests
+    .filter(([, requirement]) => requirement && REQUIREMENT[requirement])
+    .map(([test, requirement, minimum, notes]) => ({
+      test,
+      requirement: REQUIREMENT[requirement!],
+      minimum: minimum ? String(Number(minimum)) : null,
+      notes: notes ?? null,
+    }));
+}
+
+export type IntakeCard = {
+  id: string;
+  name: string;
+  /** The month teaching starts, 1-12, for placing the intake on the timeline. */
+  month: number | null;
+  primary: boolean;
+  starts: string | null;
+  opening: string | null;
+  deadline: string | null;
+  notes: string | null;
+};
+
+type IntakeEntry = ProfileSummary['intakes'][number] & {
+  isMajor?: boolean;
+  applicationOpeningMonth?: number | null;
+  applicationDeadlineMonth?: number | null;
+};
+
+/**
+ * The intake cards. The primary intake is the one the editor marked major;
+ * application timing prefers the editor's note and falls back to the month.
+ */
+export function intakeCards(intakes: ProfileSummary['intakes'] | undefined): IntakeCard[] {
+  return ((intakes ?? []) as IntakeEntry[]).map((entry) => {
+    const intake = entry.intake ?? entry;
+    const start = intake.startMonth ? monthNames([intake.startMonth])[0] : null;
+    const end = intake.endMonth ? monthNames([intake.endMonth])[0] : null;
+    const month = (value: number | null | undefined) => (value ? monthNames([value])[0] : null);
+    return {
+      id: entry.id,
+      name: intake.name,
+      month: intake.startMonth ?? null,
+      primary: Boolean(entry.isMajor),
+      starts: start ? (end && end !== start ? `${start} – ${end}` : start) : null,
+      opening: entry.applicationOpeningNote ?? month(entry.applicationOpeningMonth),
+      deadline: entry.applicationDeadlineNote ?? month(entry.applicationDeadlineMonth),
+      notes: entry.notes ?? null,
+    };
+  });
 }

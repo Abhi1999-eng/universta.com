@@ -107,14 +107,21 @@ test.describe('study abroad', () => {
       await tabs.first().focus();
       await page.keyboard.press('ArrowRight');
       await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+      /* The state has to reach the screen, not only the attributes: both the
+         panel and the answer were once selected in the markup and hidden by
+         the stylesheet. */
+      await expect(page.getByRole('tabpanel')).toBeVisible();
       await page.keyboard.press('Home');
       await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
     }
 
     const question = page.locator('.faq__q').first();
+    const answer = page.locator('.faq__a').first();
     await expect(question).toHaveAttribute('aria-expanded', 'true');
+    await expect(answer).toBeVisible();
     await question.click();
     await expect(question).toHaveAttribute('aria-expanded', 'false');
+    await expect(answer).toBeHidden();
   });
 
   test('turns an assessment into a lead that Admin can find', async ({ page }) => {
