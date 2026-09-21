@@ -138,11 +138,13 @@ test.describe('study abroad', () => {
     for (let step = 1; step <= 10; step += 1) {
       await expect(dialog.getByText(`Question ${step} of 10`)).toBeVisible();
       /* Opened from the Canada guide, the destination step arrives answered. */
-      const chosen = dialog.locator('.asm__opt[aria-pressed="true"]');
-      await ((await chosen.count()) ? chosen.first() : dialog.locator('.asm__opt').first()).click();
+      const chosen = dialog.locator('.opt[aria-pressed="true"]');
+      await ((await chosen.count()) ? chosen.first() : dialog.locator('.opt').first()).click();
     }
 
-    await dialog.getByRole('button', { name: 'Show My Recommendations' }).click();
+    /* The result reads the answers back, by label, beside the contact form. */
+    await expect(dialog.getByText('Your profile')).toBeVisible();
+    await expect(dialog.locator('.profile__row').filter({ hasText: 'Canada' })).toBeVisible();
     await dialog.getByLabel('Full name').fill(fullName);
     await dialog.getByLabel('WhatsApp number').fill(`+1555${String(unique).slice(-7)}`);
     await dialog.getByLabel('Email').fill(email);

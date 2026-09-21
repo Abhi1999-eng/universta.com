@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ASSESSMENT, bandFor, scoreFor } from '@/lib/study-abroad-assessment';
+import { ASSESSMENT, bandFor, profileFor, scoreFor } from '@/lib/study-abroad-assessment';
+import { searchDestinations } from '@/lib/study-abroad-view';
 import type { Destination } from '@/lib/study-abroad';
 import type { AssessmentContext } from './StudyAbroadShell';
+import { FlagMark } from './FlagMark';
 
 /**
  * The assessment from the approved design.
@@ -16,7 +18,7 @@ import type { AssessmentContext } from './StudyAbroadShell';
  * the record is trusted to say.
  */
 
-type Phase = 'questions' | 'result' | 'capture' | 'done';
+type Phase = 'questions' | 'result' | 'done';
 
 const ENDPOINT = '/api/study-abroad/assessment';
 
@@ -43,6 +45,7 @@ export function AssessmentDialog({
   const [failure, setFailure] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [countryQuery, setCountryQuery] = useState('');
 
   /* The country step offers the destinations that actually have a guide; the
    * design's own list is a mock-up. Pre-selected when the assessment was opened
@@ -51,6 +54,17 @@ export function AssessmentDialog({
     () => (destinations ?? []).filter((entry) => entry.slug),
     [destinations],
   );
+  const countryMatches = useMemo(
+    () => searchDestinations(countryOptions, countryQuery).slice(0, 40),
+    [countryOptions, countryQuery],
+  );
+
+  /* Focus goes back to whatever opened the dialog when it closes. It is mounted
+     fresh on every open, so the opener is whatever held focus at mount. */
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => opener?.focus();
+  }, []);
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -82,15 +96,17 @@ export function AssessmentDialog({
 
   const step = steps[index];
   const total = steps.length;
-  const answeredCount = Object.keys(answers).length;
   const score = scoreFor(answers);
   const band = bandFor(score);
+  const profile = profileFor(answers, countryOptions);
 
+  const advance = () => (index + 1 < total ? setIndex(index + 1) : setPhase('result'));
+
+  /* The pressed state shows for a beat before the next question replaces it,
+     as in the design, so a tap visibly lands before the list changes. */
   const choose = (value: string) => {
-    const next = { ...answers, [step.id]: value };
-    setAnswers(next);
-    if (index + 1 < total) setIndex(index + 1);
-    else setPhase('result');
+    setAnswers((current) => ({ ...current, [step.id]: value }));
+    window.setTimeout(advance, 160);
   };
 
   const validate = () => {
@@ -139,192 +155,270 @@ export function AssessmentDialog({
     }
   }
 
+  const progress = phase === 'questions' ? Math.round((index / total) * 100) : 100;
+  const optionsClass = (step.options?.length ?? 0) > 4 ? 'opts opts--2' : 'opts';
+
   return (
     <div
-      className="asm"
+      className="modal"
       data-open="true"
       role="dialog"
       aria-modal="true"
       aria-labelledby="assessment-title"
     >
-      <div className="asm__scrim" onClick={onClose} />
-      <div className="asm__panel" ref={panelRef}>
-        <div className="asm__head">
-          <div>
-            <p className="asm__eyebrow">{ASSESSMENT.title}</p>
-            <h2 className="asm__title" id="assessment-title" tabIndex={-1} ref={headingRef}>
-              {phase === 'questions'
-                ? step.question
-                : phase === 'done'
-                  ? ASSESSMENT.result.success.title
-                  : ASSESSMENT.result.title}
-            </h2>
-          </div>
-          <button className="asm__close" type="button" onClick={onClose} aria-label="Close">
+      <div className="modal__scrim" onClick={onClose} />
+      <div className="modal__panel" ref={panelRef}>
+        <div className="modal__head">
+          <span className="brand__mark" aria-hidden="true">
+            U
+          </span>
+          <span className="modal__title" id="assessment-title">
+            {ASSESSMENT.title}
+          </span>
+          <button className="cs__close" type="button" onClick={onClose} aria-label="Close assessment">
             &times;
           </button>
         </div>
 
-        {phase === 'questions' ? (
-          <>
-            <div className="asm__progress" aria-hidden="true">
-              <span style={{ width: `${((index + 1) / total) * 100}%` }} />
-            </div>
-            <p className="asm__step" aria-live="polite">
-              Question {index + 1} of {total}
-            </p>
-            <p className="asm__help">{step.help}</p>
+        <div
+          className="progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+          aria-label="Assessment progress"
+        >
+          <i style={{ width: `${progress}%` }} />
+        </div>
 
-            <div className="asm__options" role="group" aria-label={step.question}>
-              {step.type === 'country'
-                ? countryOptions.map((entry) => (
+        <div className="modal__body">
+          {phase === 'questions' ? (
+            <>
+              <p className="step__k">{step.id.replace(/-/g, ' ')}</p>
+              <h2 className="step__q" tabIndex={-1} ref={headingRef}>
+                {step.question}
+              </h2>
+              <p className="step__h">{step.help}</p>
+
+              {step.type === 'country' ? (
+                <>
+                  <input
+                    className="csearch"
+                    type="search"
+                    placeholder="Search a destination"
+                    aria-label="Search a destination"
+                    autoComplete="off"
+                    value={countryQuery}
+                    onChange={(event) => setCountryQuery(event.target.value)}
+                  />
+                  <div className="copts" role="group" aria-label={step.question}>
+                    {countryMatches.map((entry) => (
+                      <button
+                        className="opt"
+                        type="button"
+                        key={entry.slug}
+                        aria-pressed={answers.destination === entry.slug}
+                        onClick={() => choose(entry.slug!)}
+                      >
+                        <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+                        <span>{entry.name}</span>
+                      </button>
+                    ))}
+                    {countryOptions.length === 0 ? (
+                      <p className="cs__empty">
+                        No destinations are published yet. Skip this one and a counsellor will
+                        talk the options through with you.
+                      </p>
+                    ) : countryMatches.length === 0 ? (
+                      <p className="cs__empty">No destination matches that search.</p>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <div className={optionsClass} role="group" aria-label={step.question}>
+                  {(step.options ?? []).map((option) => (
                     <button
-                      className="asm__opt"
-                      type="button"
-                      key={entry.slug}
-                      aria-pressed={answers.destination === entry.slug}
-                      onClick={() => choose(entry.slug!)}
-                    >
-                      <span className="asm__opt-l">{entry.name}</span>
-                    </button>
-                  ))
-                : (step.options ?? []).map((option) => (
-                    <button
-                      className="asm__opt"
+                      className="opt"
                       type="button"
                       key={option.value}
                       aria-pressed={answers[step.id] === option.value}
                       onClick={() => choose(option.value)}
                     >
-                      <span className="asm__opt-l">{option.label}</span>
-                      {option.note ? <span className="asm__opt-n">{option.note}</span> : null}
+                      <span>{option.label}</span>
+                      {option.note ? <span className="opt__note">{option.note}</span> : null}
                     </button>
                   ))}
-              {step.type === 'country' && countryOptions.length === 0 ? (
-                <p className="asm__help">
-                  No destinations are published yet. You can still continue and a counsellor
-                  will talk the options through with you.
-                </p>
-              ) : null}
-            </div>
+                </div>
+              )}
+            </>
+          ) : null}
 
-            <div className="asm__foot">
+          {phase === 'result' ? (
+            <>
+              <h2 className="step__q" tabIndex={-1} ref={headingRef}>
+                {ASSESSMENT.result.title}
+              </h2>
+              <p className="step__h">{ASSESSMENT.result.lead}</p>
+
+              <div className="profile">
+                <div className="profile__head">
+                  <span className="profile__t">Your profile</span>
+                  <span className="profile__band">{band.label}</span>
+                </div>
+                {profile.length ? (
+                  <dl className="profile__rows">
+                    {profile.map((row) => (
+                      <div className="profile__row" key={row.id}>
+                        <dt>{row.question}</dt>
+                        <dd>{row.answer}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : null}
+                <div className="profile__locked">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    aria-hidden="true"
+                  >
+                    <rect x="4" y="10" width="16" height="10" rx="2" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  </svg>
+                  {/* The design says the matches are ready and waiting to be
+                      unlocked. Nothing is computed until a counsellor reads the
+                      profile, so this says what actually happens next. */}
+                  <span>
+                    A counsellor checks this profile against live programmes and sends your
+                    shortlist: matched universities, realistic admission odds and an intake plan.
+                  </span>
+                </div>
+              </div>
+
+              <form onSubmit={submit} noValidate>
+                {ASSESSMENT.result.capture.fields.map((field) => {
+                  const key = field.id as 'name' | 'phone' | 'email';
+                  return (
+                    <div
+                      className="field"
+                      key={field.id}
+                      data-invalid={errors[key] ? 'true' : undefined}
+                    >
+                      <label htmlFor={`asm-${field.id}`}>{field.label}</label>
+                      <input
+                        id={`asm-${field.id}`}
+                        type={field.type}
+                        value={form[key]}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, [key]: event.target.value }))
+                        }
+                        aria-invalid={Boolean(errors[key])}
+                        aria-describedby={errors[key] ? `asm-err-${field.id}` : undefined}
+                        autoComplete={
+                          field.id === 'name' ? 'name' : field.id === 'email' ? 'email' : 'tel'
+                        }
+                      />
+                      {errors[key] ? (
+                        <span className="field__err" id={`asm-err-${field.id}`} role="alert">
+                          {errors[key]}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+
+                {/* Bot trap. Hidden from sight, the tab order and screen readers. */}
+                <label className="sr-only" aria-hidden="true">
+                  Company website
+                  <input
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={form.companyWebsite}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, companyWebsite: event.target.value }))
+                    }
+                  />
+                </label>
+
+                {failure ? (
+                  <p className="formerr" role="alert">
+                    {failure}
+                  </p>
+                ) : null}
+
+                <button className="btn btn--block btn--lg" type="submit" disabled={submitting}>
+                  {submitting ? 'Sending…' : ASSESSMENT.result.capture.cta}{' '}
+                  <span className="btn__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </button>
+                <p className="formnote">{ASSESSMENT.result.capture.note}</p>
+              </form>
+            </>
+          ) : null}
+
+          {phase === 'done' ? (
+            <div className="done">
+              <div className="done__icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <path d="m5 13 4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="done__t" tabIndex={-1} ref={headingRef}>
+                {ASSESSMENT.result.success.title}
+              </h2>
+              <p className="done__b">{ASSESSMENT.result.success.body}</p>
+              <div className="btn-row done__actions">
+                <button className="btn btn--ghost" type="button" onClick={onClose}>
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {phase === 'questions' ? (
+          <div className="modal__foot">
+            {index > 0 ? (
               <button
                 className="btn btn--ghost btn--sm"
                 type="button"
-                onClick={() => (index === 0 ? onClose() : setIndex(index - 1))}
+                onClick={() => setIndex(index - 1)}
               >
-                {index === 0 ? 'Cancel' : 'Back'}
+                &larr; Back
               </button>
-              <button
-                className="btn btn--ghost btn--sm"
-                type="button"
-                onClick={() => (index + 1 < total ? setIndex(index + 1) : setPhase('result'))}
-              >
+            ) : (
+              <span />
+            )}
+            <div className="btn-row">
+              <span className="cs__count" aria-live="polite">
+                Question {index + 1} of {total}
+              </span>
+              <button className="btn btn--ghost btn--sm" type="button" onClick={advance}>
                 Skip
               </button>
             </div>
-          </>
+          </div>
         ) : null}
 
         {phase === 'result' ? (
-          <>
-            <p className="asm__lead">{ASSESSMENT.result.lead}</p>
-            <div className="asm__band" data-band={band.id}>
-              <span className="asm__band-l">{band.label}</span>
-              <span className="asm__band-n">{band.note}</span>
-            </div>
-            <p className="asm__help">
-              {answeredCount} of {total} questions answered.
-            </p>
-            <div className="asm__foot">
-              <button
-                className="btn btn--ghost btn--sm"
-                type="button"
-                onClick={() => setPhase('questions')}
-              >
-                Review answers
-              </button>
-              <button className="btn btn--sm" type="button" onClick={() => setPhase('capture')}>
-                {ASSESSMENT.result.capture.cta}
-              </button>
-            </div>
-          </>
-        ) : null}
-
-        {phase === 'capture' ? (
-          <form onSubmit={submit} noValidate>
-            <p className="asm__lead">{ASSESSMENT.result.capture.note}</p>
-            {ASSESSMENT.result.capture.fields.map((field) => {
-              const key = field.id as 'name' | 'phone' | 'email';
-              return (
-                <label className="asm__field" key={field.id}>
-                  <span>{field.label}</span>
-                  <input
-                    type={field.type}
-                    value={form[key]}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, [key]: event.target.value }))
-                    }
-                    aria-invalid={Boolean(errors[key])}
-                    aria-describedby={errors[key] ? `asm-err-${field.id}` : undefined}
-                    autoComplete={
-                      field.id === 'name' ? 'name' : field.id === 'email' ? 'email' : 'tel'
-                    }
-                  />
-                  {errors[key] ? (
-                    <span className="asm__err" id={`asm-err-${field.id}`} role="alert">
-                      {errors[key]}
-                    </span>
-                  ) : null}
-                </label>
-              );
-            })}
-
-            {/* Bot trap. Left in the tab order out of a screen reader's way. */}
-            <label className="asm__trap" aria-hidden="true">
-              Company website
-              <input
-                type="text"
-                tabIndex={-1}
-                autoComplete="off"
-                value={form.companyWebsite}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, companyWebsite: event.target.value }))
-                }
-              />
-            </label>
-
-            {failure ? (
-              <p className="asm__err" role="alert">
-                {failure}
-              </p>
-            ) : null}
-
-            <div className="asm__foot">
-              <button
-                className="btn btn--ghost btn--sm"
-                type="button"
-                onClick={() => setPhase('result')}
-              >
-                Back
-              </button>
-              <button className="btn btn--sm" type="submit" disabled={submitting}>
-                {submitting ? 'Sending…' : ASSESSMENT.result.capture.cta}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {phase === 'done' ? (
-          <>
-            <p className="asm__lead">{ASSESSMENT.result.success.body}</p>
-            <div className="asm__foot">
-              <button className="btn btn--sm" type="button" onClick={onClose}>
-                Close
-              </button>
-            </div>
-          </>
+          <div className="modal__foot">
+            <button
+              className="btn btn--ghost btn--sm"
+              type="button"
+              onClick={() => {
+                setIndex(total - 1);
+                setPhase('questions');
+              }}
+            >
+              &larr; Back
+            </button>
+            <span className="cs__count">Profile complete</span>
+          </div>
         ) : null}
       </div>
     </div>

@@ -379,7 +379,9 @@
   box-shadow: var(--shadow-lift); display: flex; flex-direction: column;
   overflow: hidden;
 }
-@media (max-width: 640px){.sa .cs__panel{ height: 100%; max-height: 100%; border-radius: 0; }}
+/* Full height on a phone, so the top margin has to go too: kept, it pushed the
+   panel's footer that far below the screen. */
+@media (max-width: 640px){.sa .cs__panel{ height: 100%; max-height: 100%; border-radius: 0; margin-top: 0; }}
 .sa .cs__head{ padding: 20px 22px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
 .sa .cs__input{
   flex: 1; border: 0; outline: 0; background: transparent;
@@ -967,7 +969,7 @@
   background: var(--white); border-radius: clamp(0px, 2vw, 14px);
   box-shadow: var(--shadow-lift); display: flex; flex-direction: column; overflow: hidden;
 }
-@media (max-width: 640px){.sa .modal__panel{ height: 100%; max-height: 100%; border-radius: 0; }}
+@media (max-width: 640px){.sa .modal__panel{ height: 100%; max-height: 100%; border-radius: 0; margin-top: 0; }}
 .sa .modal__head{ padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; }
 .sa .modal__title{ font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.02em; flex: 1; }
 .sa .modal__body{ padding: clamp(22px, 3vw, 34px) 22px; overflow-y: auto; flex: 1; }
@@ -1022,6 +1024,10 @@
 .sa .done__icon{ width: 56px; height: 56px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; margin: 0 auto 20px; }
 .sa .done__t{ font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 10px; }
 .sa .done__b{ color: var(--muted); max-width: 44ch; margin: 0 auto; }
+/* Not in the design: its export never sent anything, so it had no failed send
+   to report, and it placed the done screen's button with an inline style. */
+.sa .formerr{ color: var(--accent); font-size: 14px; margin-bottom: 14px; }
+.sa .done__actions{ justify-content: center; margin-top: 26px; }
 /* ---------------------------------------------------------------------
    DIRECTORY PAGE
    --------------------------------------------------------------------- */

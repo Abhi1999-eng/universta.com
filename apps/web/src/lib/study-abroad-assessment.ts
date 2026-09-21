@@ -405,3 +405,25 @@ export function scoreFor(answers: Record<string, string>): number {
   }
   return total;
 }
+
+export type ProfileRow = { id: string; question: string; answer: string };
+
+/**
+ * The answers as the result screen lists them: each question the student
+ * answered, with the label they picked rather than the value stored for it.
+ * The destination answer is a slug, so it is named from the guides on offer.
+ */
+export function profileFor(
+  answers: Record<string, string>,
+  destinations: ReadonlyArray<{ slug: string | null; name: string }>,
+): ProfileRow[] {
+  return ASSESSMENT.steps.flatMap((step) => {
+    const value = answers[step.id];
+    if (!value) return [];
+    const answer =
+      step.type === 'country'
+        ? (destinations.find((entry) => entry.slug === value)?.name ?? value)
+        : (step.options?.find((option) => option.value === value)?.label ?? value);
+    return [{ id: step.id, question: step.question.replace(/\?$/, ''), answer }];
+  });
+}
