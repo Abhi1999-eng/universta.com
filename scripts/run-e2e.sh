@@ -64,6 +64,18 @@ fi
 # and a 403 that looks like a broken lead funnel.
 export CORS_ORIGINS="${CORS_ORIGINS:-$E2E_WEB_BASE_URL,$E2E_ADMIN_BASE_URL}"
 
+# Playwright reuses a server that is already listening rather than starting its
+# own, so an API left running from a preview or another terminal keeps whatever
+# origins it booted with. On a non-default web port that shows up as a 403 on
+# the assessment POST, which looks like a broken lead funnel and is a stale
+# server.
+api_port="$(printf '%s' "$E2E_API_BASE_URL" | sed 's|.*:||')"
+if [ "$E2E_WEB_BASE_URL" != "http://localhost:3000" ] && lsof -ti:"$api_port" >/dev/null 2>&1; then
+  echo "note: an API is already listening on $api_port and will be reused." >&2
+  echo "      it will not know about $E2E_WEB_BASE_URL; stop it first if the" >&2
+  echo "      assessment test comes back 403." >&2
+fi
+
 cd "$ROOT/apps/admin"
 npx playwright install chromium >/dev/null 2>&1 || {
   echo "Could not install the Playwright browsers. Run: npx playwright install chromium" >&2

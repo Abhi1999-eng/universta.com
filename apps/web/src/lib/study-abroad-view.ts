@@ -196,3 +196,22 @@ export function studyPathsFor(page: CountryPage): StudyPath[] {
     courseCount: counts[level.id] ?? null,
   }));
 }
+
+/**
+ * Which sections get the paper band, by position.
+ *
+ * A guide alternates paper and white, and that alternation is positional: it
+ * belongs to the run of sections, not to any one of them. It cannot be
+ * assigned statically here because the editorial run differs in length per
+ * country and most sections stand down when the country has nothing to put in
+ * them, so any fixed choice reads correctly on one country and puts two
+ * identical bands side by side on the next.
+ *
+ * Callers pass the ids that will actually render, in order, leaving out the
+ * navy bands: those separate whatever sits either side of them, so the two
+ * neighbours may share a colour.
+ */
+export function alternatingBands(renderedIds: string[]): (id: string) => boolean {
+  const bands = new Map(renderedIds.map((id, index) => [id, index % 2 === 0]));
+  return (id: string) => bands.get(id) ?? false;
+}

@@ -47,7 +47,7 @@ const profiles = (over: Record<string, unknown> = {}) =>
 
 describe('country guide catalogue sections', () => {
   it('lists the universities published for the country', () => {
-    const html = renderToStaticMarkup(<CountryUniversities country={country()} />);
+    const html = renderToStaticMarkup(<CountryUniversities country={country()} alt />);
     expect(html).toContain('Explore universities in Germany');
     expect(html).toContain('href="/universities/tum"');
     expect(html).toContain('QS #28');
@@ -59,6 +59,7 @@ describe('country guide catalogue sections', () => {
   it('stands down when the country has no universities', () => {
     const html = renderToStaticMarkup(
       <CountryUniversities
+        alt
         country={country({
           derived: {
             averageTuition: null,
@@ -83,6 +84,7 @@ describe('country guide catalogue sections', () => {
     };
     const html = renderToStaticMarkup(
       <CountryUniversities
+        alt
         country={country({
           derived: {
             averageTuition: null,
@@ -98,20 +100,21 @@ describe('country guide catalogue sections', () => {
   });
 
   it('links each subject taught in the country', () => {
-    const html = renderToStaticMarkup(<CountrySubjects country={country()} />);
+    const html = renderToStaticMarkup(<CountrySubjects country={country()} alt />);
     expect(html).toContain('href="/subjects/engineering"');
     expect(html).toContain('Popular subjects to study in Germany');
   });
 
   it('stands down when no subject is mapped to the country', () => {
     expect(
-      renderToStaticMarkup(<CountrySubjects country={country({ subjects: [] })} />),
+      renderToStaticMarkup(<CountrySubjects country={country({ subjects: [] })} alt />),
     ).toBe('');
   });
 
   it('lists the courses read for the country', () => {
     const html = renderToStaticMarkup(
       <CountryCourses
+        alt
         country={country()}
         courses={[
           {
@@ -130,13 +133,14 @@ describe('country guide catalogue sections', () => {
 
   it('stands down when no course is published for the country', () => {
     expect(
-      renderToStaticMarkup(<CountryCourses country={country()} courses={[]} />),
+      renderToStaticMarkup(<CountryCourses country={country()} courses={[]} alt />),
     ).toBe('');
   });
 
   it('lists the funding open in the country', () => {
     const html = renderToStaticMarkup(
       <CountryScholarships
+        alt
         country={country()}
         scholarships={[
           {
@@ -156,6 +160,7 @@ describe('country guide catalogue sections', () => {
   it('quotes the testimonials filed against the country', () => {
     const html = renderToStaticMarkup(
       <CountryTestimonials
+        alt
         country={country()}
         testimonials={[
           {
@@ -178,7 +183,7 @@ describe('country guide catalogue sections', () => {
      placeholder quote is invented, so the section simply is not there. */
   it('stands down when no testimonial is filed against the country', () => {
     expect(
-      renderToStaticMarkup(<CountryTestimonials country={country()} testimonials={[]} />),
+      renderToStaticMarkup(<CountryTestimonials country={country()} testimonials={[]} alt />),
     ).toBe('');
   });
 
@@ -186,7 +191,7 @@ describe('country guide catalogue sections', () => {
      student cannot act on, so it never reaches the grid. */
   it('reports only the figures the catalogue holds', () => {
     const html = renderToStaticMarkup(
-      <CountryNumbers country={country()} profiles={profiles()} />,
+      <CountryNumbers country={country()} profiles={profiles()} alt />,
     );
     expect(html).toContain('Universities profiled');
     expect(html).toContain('Programmes listed');
@@ -197,6 +202,7 @@ describe('country guide catalogue sections', () => {
   it('stands down when there is barely anything to report', () => {
     const html = renderToStaticMarkup(
       <CountryNumbers
+        alt
         country={country({
           derived: {
             averageTuition: null,
