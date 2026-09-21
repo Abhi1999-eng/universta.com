@@ -154,7 +154,7 @@ describe('country guide catalogue sections', () => {
       />,
     );
     expect(html).toContain('href="/scholarships/daad"');
-    expect(html).toContain('Scholarships for Germany');
+    expect(html).toContain('Scholarships to study in Germany');
   });
 
   it('quotes the testimonials filed against the country', () => {

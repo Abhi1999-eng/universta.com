@@ -948,7 +948,7 @@ test.describe.serial('country client contract, end to end', () => {
 
     await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     const documents = page.locator('#documents');
-    await expect(documents).toContainText('Documents you will need');
+    await expect(documents).toContainText('Documents required to study in');
     await expect(documents).toContainText('Passport');
     await expect(documents).toContainText('Issued within six months.');
   });

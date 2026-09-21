@@ -2,10 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { DestinationDirectory, Destination } from '@/lib/study-abroad';
 import {
+  HomeCourses,
   HomeHero,
   HomeInstitutions,
+  HomeScholarships,
+  HomeSubjects,
   HomeTools,
   HomeTrust,
+  HomeUniversities,
 } from './HomeSections';
 
 /* The assessment entry point needs the route family's shell, which only exists
@@ -98,5 +102,74 @@ describe('homepage funnel sections', () => {
     expect(html).toContain('Official sources first');
     expect(html).toContain('No invented numbers');
     expect(html).not.toContain('<a ');
+  });
+});
+
+describe('homepage search and catalogue previews', () => {
+  /* The design's box searched a /search page this site does not have, so it
+     searches courses, and its placeholder says so rather than promising more. */
+  it('searches courses and offers the popular starting points', () => {
+    const html = renderToStaticMarkup(
+      <HomeHero
+        directory={directory()}
+        popular={[
+          { label: 'Germany', href: '/study-abroad/germany' },
+          { label: 'Computer Science', href: '/subjects/computer-science' },
+        ]}
+      />,
+    );
+    expect(html).toContain('action="/courses"');
+    expect(html).toContain('name="q"');
+    expect(html).toContain('placeholder="Search courses, e.g. Computer Science"');
+    expect(html).toContain('href="/study-abroad/germany"');
+    expect(html).toContain('href="/subjects/computer-science"');
+  });
+
+  it('leaves the popular row out when there is nothing to offer', () => {
+    expect(renderToStaticMarkup(<HomeHero directory={directory()} />)).not.toContain('bigsearch__ex');
+  });
+
+  it('links each preview card to its page and says what it holds', () => {
+    const subjects = renderToStaticMarkup(
+      <HomeSubjects
+        subjects={[{ id: 's', name: 'Engineering', slug: 'engineering', publishedCourseCount: 12, publishedSubSubjectCount: 1 }]}
+      />,
+    );
+    expect(subjects).toContain('href="/subjects/engineering"');
+    expect(subjects).toContain('1 specialization');
+    expect(subjects).toContain('12 courses');
+
+    const universities = renderToStaticMarkup(
+      <HomeUniversities
+        universities={[{ id: 'u', name: 'TUM', slug: 'tum', country: { name: 'Germany' }, campuses: [{ city: { name: 'Munich' } }], _count: { offerings: 1 } }]}
+      />,
+    );
+    expect(universities).toContain('href="/universities/tum"');
+    expect(universities).toContain('Munich, Germany');
+    expect(universities).toContain('1 course on Universta');
+
+    const courses = renderToStaticMarkup(
+      <HomeCourses courses={[{ id: 'c', name: 'MSc Robotics', slug: 'msc-robotics', courseLevel: { name: 'Postgraduate' } }]} />,
+    );
+    expect(courses).toContain('href="/courses/msc-robotics"');
+    expect(courses).toContain('Postgraduate');
+  });
+
+  it('reads a free-text benefit type as words', () => {
+    const html = renderToStaticMarkup(
+      <HomeScholarships
+        scholarships={[{ id: 'x', title: 'DAAD', slug: 'daad', summary: 'Germany’s exchange service.', benefitType: 'PARTIAL_TUITION' }]}
+      />,
+    );
+    expect(html).toContain('Partial tuition');
+    expect(html).toContain('href="/scholarships/daad"');
+  });
+
+  /* A preview with nothing published is left out, not shown as an empty shelf. */
+  it('stands a preview down when there is nothing published', () => {
+    expect(renderToStaticMarkup(<HomeSubjects subjects={[]} />)).toBe('');
+    expect(renderToStaticMarkup(<HomeUniversities universities={[]} />)).toBe('');
+    expect(renderToStaticMarkup(<HomeCourses courses={[]} />)).toBe('');
+    expect(renderToStaticMarkup(<HomeScholarships scholarships={[]} />)).toBe('');
   });
 });

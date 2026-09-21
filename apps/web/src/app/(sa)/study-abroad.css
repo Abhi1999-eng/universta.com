@@ -1158,3 +1158,68 @@
    PRINT
    --------------------------------------------------------------------- */
 @media print{.sa .nav, .sa .stickycta, .sa .modal, .sa .cs, .sa .magnet, .sa .final{ display: none !important; }.sa .sec{ padding-block: 20px; }.sa{ background: #fff; }}
+/* ---------------------------------------------------------------------
+   GUIDE SECTION ADDITIONS
+   Named rules for what the design's export set with inline styles, plus the
+   few pieces it never needed: a checklist or compare button that is a real
+   button, and a disclaimer under the cost rows.
+   --------------------------------------------------------------------- */
+.sa .sec-head__cta{ margin-top: 22px; }
+.sa button.linkcta{
+  background: none; border-width: 0 0 1px; border-style: solid; border-color: var(--line-strong);
+  padding: 0 0 3px; font-family: var(--font-body); cursor: pointer;
+}
+.sa button.linkcta:hover{ border-color: var(--accent); }
+.sa .sec-head--compact{ margin-bottom: 26px; }
+.sa .sec-title--sm{ font-size: clamp(23px, 2.6vw, 32px); }
+.sa .ov__more{ margin-top: 18px; color: var(--muted); font-size: 16px; max-width: 62ch; }
+.sa .path__stats{ margin-bottom: 22px; }
+.sa .path .btn{ margin-top: 4px; }
+.sa .cost__pof .label{ margin-bottom: 8px; }
+.sa .cost__disclaimer{ margin-top: 18px; }
+.sa .visa__info{ color: var(--on-navy-muted); font-size: 15px; }
+.sa .compare .snap__n{ margin-top: 6px; }
+.sa .doc__desc{ max-width: 72ch; }
+/* Authored rich text. Tailwind's reset zeroes paragraph margins for the whole
+   document and this stylesheet never put them back, so every block an editor
+   wrote as several paragraphs -- an overview, a document note, an editorial
+   section -- ran together into one. The longform body sets its own rhythm. */
+.sa .rich-text > * + *, .sa .rich-text + .rich-text{ margin-top: 0.75em; }
+.sa .longform__body .rich-text > * + *{ margin-top: 0; }
+.sa .prose{ max-width: 68ch; font-size: 16.5px; line-height: 1.65; }
+.sa .prose + .prose{ margin-top: 18px; }
+/* Six destinations in auto-fill 190px columns came out as five and one left
+   over at desktop width, with a long name wrapping inside its card. Three
+   and two columns divide the six evenly and leave every name room. */
+@media (min-width: 560px){.sa .switcher{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+@media (min-width: 900px){.sa .switcher{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
+/* ---------------------------------------------------------------------
+   HOME SEARCH
+   The design's hero search and its popular chips, from its universities
+   and hub stylesheets, scoped like everything else here.
+   --------------------------------------------------------------------- */
+.sa .bigsearch{
+  display: flex; align-items: center; gap: 12px;
+  margin-top: clamp(20px, 2.6vw, 30px); padding: 8px 8px 8px 18px;
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+}
+.sa .bigsearch:focus-within{ border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7, 20, 38, 0.07); }
+.sa .bigsearch svg{ flex: none; }
+.sa .bigsearch__input{
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  font-family: var(--font-display); font-size: clamp(16px, 1.7vw, 20px);
+  font-weight: 600; letter-spacing: -0.02em; color: var(--text); padding: 10px 0;
+}
+.sa .bigsearch__input::placeholder{ color: #A6AFBD; }
+.sa .bigsearch__ex{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.sa .bigsearch__ex .label{ margin-inline-end: 4px; }
+.sa .chipbtn--sm{ padding: 5px 11px; font-size: 12.5px; }
+.sa a.chipbtn{ text-decoration: none; color: inherit; }
+.sa .h-bigsearch{ max-width: 760px; }
+/* The catalogue previews show six cards. Auto-fit put four on the first row
+   and two on the second at desktop width; three and two columns divide six
+   evenly. */
+.sa .h-grid--six{ grid-template-columns: 1fr; }
+@media (min-width: 600px){.sa .h-grid--six{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+@media (min-width: 960px){.sa .h-grid--six{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}

@@ -3,6 +3,17 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
 import {
+  CountryCost,
+  CountryDocuments,
+  CountryGuidance,
+  CountryIntakes,
+  CountryLanguage,
+  CountryOtherDestinations,
+  CountryOverview,
+  CountryWhy,
+  CountryWorkVisa,
+} from '@/components/study-abroad/CountryGuideSections';
+import {
   CountryConnect,
   CountryCourses,
   CountryNumbers,
@@ -16,10 +27,10 @@ import {
   type CountryScholarshipCard,
 } from '@/components/study-abroad/CountryLinkSections';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
-import { EditorialSection } from '@/components/study-abroad/EditorialSection';
+import { EditorialSection, editorialRenders } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
-import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
+import { richTextToPlainText } from '@/components/phase1/RichText';
 import { getCourses } from '@/lib/catalog';
 import { phaseList } from '@/lib/phase1';
 import { getDestinations, getStudyAbroadCountry, otherDestinations } from '@/lib/study-abroad';
@@ -27,8 +38,12 @@ import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
 import {
   alternatingBands,
+  costBreakdown,
   countrySnapshot,
+  intakeCards,
+  languageRows,
   monthNames,
+  sectionNumbers,
   studyPathsFor,
   workSummary,
 } from '@/lib/study-abroad-view';
@@ -90,42 +105,74 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const work = workSummary(profiles);
   const intakes = monthNames(country.configuration?.intakeMonths ?? []);
 
+  /* The hero keeps its lead to a sentence or two, as the design does. A longer
+     short description would push the calls to action below the fold, so it
+     opens the overview instead and the hero uses the design's own line. */
+  const shortText = country.shortDescription ? richTextToPlainText(country.shortDescription) : '';
+  const heroSub =
+    shortText && shortText.length <= 240
+      ? shortText
+      : 'Explore universities, costs, admission requirements, intakes, language requirements and career pathways — all in one place.';
+  const overviewLead = shortText.length > 240 ? shortText : null;
+  const editorial = sections.filter(editorialRenders);
+  const language = profiles.language;
+  const languageRenders = Boolean(
+    language &&
+      (languageRows(language).length ||
+        language.generalNotes ||
+        (language.languageWaiverAvailable && language.waiverNotes)),
+  );
+  const costRenders = Boolean(
+    costBreakdown(profiles.cost).rows.length ||
+      calculator ||
+      profiles.cost?.tuitionNotes ||
+      profiles.cost?.livingCostNotes,
+  );
+
   /**
-   * Which band each section gets.
+   * What renders, in the design's order, and what each section gets from its
+   * place in that run.
    *
-   * The guide alternates paper and white, and it cannot be assigned section by
-   * section: the editorial run alternates by its own index and differs in
-   * length per country, and most of the sections around it stand down when the
-   * country has nothing to put in them. Any fixed choice reads correctly on
-   * one country and puts two identical bands side by side on the next, where
-   * they merge into a single block and the boundary between them disappears.
+   * The guide alternates paper and white, and numbers its sections from 01.
+   * Neither can be fixed section by section: the editorial run differs in
+   * length per country and most sections stand down when the country has
+   * nothing to put in them, so any fixed choice reads correctly on one country
+   * and, on the next, puts two identical bands side by side or skips a number.
    *
    * So the page lists what will actually render, in order, and hands each one
-   * its band. The navy sections are left out: they separate whatever sits
-   * either side of them, so the two neighbours may share a colour.
+   * its band and its number. The navy sections take no band -- they separate
+   * whatever sits either side of them -- and the closing sections after the
+   * questions take no number, as in the design.
    */
-  const rendered = [
+  const run = [
     country.configuration?.features?.length ? 'why' : null,
-    country.overview ? 'overview' : null,
+    country.overview || overviewLead ? 'overview' : null,
     paths.length ? 'study-paths' : null,
     countryUniversities(country).length ? 'universities' : null,
     country.subjects?.length ? 'subjects' : null,
     countryCourses.length ? 'courses' : null,
     country.documents?.length ? 'documents' : null,
-    intakes.length ? 'intakes' : null,
-    profiles.cost || calculator ? 'cost' : null,
-    profiles.language ? 'language' : null,
+    intakes.length || intakeCards(profiles.intakes).length ? 'intakes' : null,
+    costRenders ? 'cost' : null,
+    languageRenders ? 'language' : null,
+    work.length ? 'work-visa' : null,
     hasCountryFigures(country, profiles) ? 'numbers' : null,
-    ...sections.map((section) => `editorial:${section.id}`),
-    countryScholarships.length ? 'scholarship-funding' : null,
+    ...editorial.map((section) => `editorial:${section.id}`),
     consultantCards.length ? 'guidance' : null,
     testimonials.length ? 'testimonials' : null,
     faqs.length ? 'faq' : null,
-    'connect',
+  ].filter((id): id is string => Boolean(id));
+  const closing = [
+    countryScholarships.length ? 'scholarship-funding' : null,
     others.length ? 'other-destinations' : null,
+    'connect',
   ].filter((id): id is string => Boolean(id));
 
-  const band = alternatingBands(rendered);
+  const NAVY = new Set(['work-visa']);
+  /* The hero is on paper, so it takes the first slot: counted from the first
+     section, "why" was paper too and merged into the hero above it. */
+  const band = alternatingBands(['hero', ...run, ...closing].filter((id) => !NAVY.has(id)));
+  const number = sectionNumbers(run);
 
   const breadcrumbs = {
     '@context': 'https://schema.org',
@@ -186,8 +233,21 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
               <p className="hero__eyebrow">
                 Study abroad
                 {country.continent ? <> · {country.continent.name}</> : null}
-                {country.flag?.emoji ? <b>·</b> : null}
-                {country.flag?.emoji ?? ''}
+                {country.iso2Code ? (
+                  <>
+                    <b>·</b>
+                    {country.iso2Code}
+                  </>
+                ) : null}
+              </p>
+              {/* The design's display name. Decorative: the heading below
+                  already says it, so it is not announced twice. */}
+              <p
+                className="hero__display"
+                aria-hidden="true"
+                style={{ '--namelen': country.name.length } as React.CSSProperties}
+              >
+                {country.name}
               </p>
               {bands ? (
                 <div className="hero__bands" aria-hidden="true">
@@ -197,12 +257,8 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                 </div>
               ) : null}
               <h1 className="hero__h1">{country.pageHeading ?? `Study in ${country.name}`}</h1>
-              {country.tagline ? <p className="hero__promise">{country.tagline}</p> : null}
-              {country.shortDescription ? (
-                <div className="hero__sub">
-                  <RichText value={country.shortDescription} />
-                </div>
-              ) : null}
+              <p className="hero__sub">{heroSub}</p>
+              <p className="hero__promise">{country.tagline ?? 'Build your path with clarity.'}</p>
 
               <div className="btn-row hero__actions">
                 <button className="btn btn--lg" type="button" data-open-assessment>
@@ -270,260 +326,98 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </div>
       </section>
 
-      {/* WHY — the features an editor ticked for this country */}
-      {country.configuration?.features?.length ? (
-        <section className={`sec ${band('why') ? 'sec--paper' : 'sec--white'}`} id="why">
-          <div className="wrap">
-            <p className="eyebrow">The case for {country.name}</p>
-            <h2 className="sec-title">Why study in {country.name}</h2>
-            <div className="rulegrid rulegrid--3">
-              {country.configuration.features.map((feature, index) => (
-                <div className="rulegrid__item" key={feature.code}>
-                  <span className="rulegrid__n" aria-hidden="true">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <span className="rulegrid__t">{feature.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* OVERVIEW */}
-      {country.overview ? (
-        <section className={`sec ${band('overview') ? 'sec--paper' : 'sec--white'}`} id="overview">
-          <div className="wrap wrap--narrow">
-            <p className="eyebrow">Overview</p>
-            <h2 className="sec-title">About studying in {country.name}</h2>
-            <div className="prose">
-              <RichText value={country.overview} />
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <StudyPaths paths={paths} countryName={country.name} alt={band('study-paths')} />
+      <CountryWhy country={country} n={number('why')} alt={band('why')} />
+      <CountryOverview
+        country={country}
+        lead={overviewLead}
+        n={number('overview')}
+        alt={band('overview')}
+      />
+      <StudyPaths
+        paths={paths}
+        countryName={country.name}
+        fields={(country.subjects ?? []).slice(0, 6).map((subject) => subject.name)}
+        n={number('study-paths')}
+        alt={band('study-paths')}
+      />
 
       {/* WHAT THIS DESTINATION HAS: universities, the fields they teach and the
           courses themselves. Each stands down when there is nothing published
           for this country rather than showing an empty shelf. */}
-      <CountryUniversities country={country} alt={band('universities')} />
-      <CountrySubjects country={country} alt={band('subjects')} />
-      <CountryCourses country={country} courses={countryCourses} alt={band('courses')} />
+      <CountryUniversities country={country} n={number('universities')} alt={band('universities')} />
+      <CountrySubjects country={country} n={number('subjects')} alt={band('subjects')} />
+      <CountryCourses
+        country={country}
+        courses={countryCourses}
+        n={number('courses')}
+        alt={band('courses')}
+      />
 
-      {/* DOCUMENTS */}
-      {country.documents?.length ? (
-        <section className={`sec ${band('documents') ? 'sec--paper' : 'sec--white'}`} id="documents">
-          <div className="wrap">
-            <p className="eyebrow">Admissions</p>
-            <h2 className="sec-title">Documents you will need</h2>
-            <div className="docs">
-              {country.documents.map((document, index) => (
-                <article className="doc" key={document.id}>
-                  <span className="doc__box" aria-hidden="true" />
-                  <span className="doc__n">{String(index + 1).padStart(2, '0')}</span>
-                  <div>
-                    <h3 className="doc__name">
-                      {document.name}
-                      <span className={`doc__badge badge${document.isRequired ? ' badge--req' : ''}`}>
-                        {document.isRequired ? 'Required' : 'Optional'}
-                      </span>
-                    </h3>
-                    {document.details ? (
-                      <div className="doc__desc">
-                        <RichText value={document.details} />
-                      </div>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* INTAKES */}
-      {intakes.length ? (
-        <section className={`sec ${band('intakes') ? 'sec--paper' : 'sec--white'}`} id="intakes">
-          <div className="wrap">
-            <p className="eyebrow">Timing</p>
-            <h2 className="sec-title">Intakes in {country.name}</h2>
-            <p className="sec-lead">
-              {intakes.length} {intakes.length === 1 ? 'intake' : 'intakes'} a year. Applications
-              open well ahead of the month teaching begins.
-            </p>
-            <div className="timeline">
-              <div className="timeline__scroll">
-                <div className="timeline__months">
-                  {monthNames([1,2,3,4,5,6,7,8,9,10,11,12]).map((month) => {
-                    const open = intakes.includes(month);
-                    return (
-                      <div className={`tm${open ? ' tm--on' : ''}`} key={month}>
-                        <span className="tm__m">{month.slice(0, 3)}</span>
-                        <span className="tm__bar" aria-hidden="true" />
-                        <span className="sr-only">
-                          {month}: {open ? 'intake available' : 'no intake'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* COST */}
-      {profiles.cost || calculator ? (
-        <section className={`sec ${band('cost') ? 'sec--paper' : 'sec--white'}`} id="cost">
-          <div className="wrap">
-            <p className="eyebrow">Money</p>
-            <h2 className="sec-title">What it costs</h2>
-            {profiles.cost?.tuitionNotes ? (
-              <div className="prose">
-                <RichText value={profiles.cost.tuitionNotes} />
-              </div>
-            ) : null}
-            {calculator ? (
-              <CostCalculator
-                config={calculator}
-                currencySymbol={currencySymbol}
-                countryName={country.name}
-                countrySlug={country.slug}
-                disclaimer={profiles.cost?.disclaimer ?? null}
-              />
-            ) : null}
-            {profiles.cost?.livingCostNotes ? (
-              <div className="prose">
-                <RichText value={profiles.cost.livingCostNotes} />
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {/* LANGUAGE */}
-      {profiles.language ? (
-        <section className={`sec ${band('language') ? 'sec--paper' : 'sec--white'}`} id="language">
-          <div className="wrap">
-            <p className="eyebrow">English</p>
-            <h2 className="sec-title">Language requirements</h2>
-            <div className="tracks">
-              {(
-                [
-                  ['IELTS', profiles.language.ieltsRequirement, profiles.language.ieltsMinScore],
-                  ['TOEFL', profiles.language.toeflRequirement, profiles.language.toeflMinScore],
-                  ['PTE', profiles.language.pteRequirement, profiles.language.pteMinScore],
-                  [
-                    'Duolingo',
-                    profiles.language.duolingoRequirement,
-                    profiles.language.duolingoMinScore,
-                  ],
-                ] as const
-              )
-                .filter(([, requirement]) => requirement && requirement !== 'NOT_REQUIRED')
-                .map(([name, requirement, score]) => (
-                  <div className="track" key={name}>
-                    <span className="track__n">{name}</span>
-                    <span className="track__d">
-                      {score ?? String(requirement).toLowerCase()}
-                    </span>
-                  </div>
-                ))}
-            </div>
-            {profiles.language.generalNotes ? (
-              <div className="prose">
-                <RichText value={profiles.language.generalNotes} />
-              </div>
-            ) : null}
-            {profiles.language.languageWaiverAvailable && profiles.language.waiverNotes ? (
-              <div className="prose">
-                <RichText value={profiles.language.waiverNotes} />
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {/* WORK AND VISA */}
-      {work.length ? (
-        <section className="sec sec--navy" id="work-visa">
-          <div className="wrap">
-            <p className="eyebrow eyebrow--plain">Work and visa</p>
-            <h2 className="sec-title">After you arrive, and after you graduate</h2>
-            <div className="journey">
-              {work.map((item, index) => (
-                <article className="jstep" key={item.title}>
-                  <span className="jstep__dot" aria-hidden="true" />
-                  <span className="jstep__n">{String(index + 1).padStart(2, '0')}</span>
-                  <h3 className="jstep__t">{item.title}</h3>
-                  {item.value ? <p className="jstep__m">{item.value}</p> : null}
-                  {item.body ? (
-                    <div className="jstep__b">
-                      <RichText value={item.body} />
-                    </div>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <CountryDocuments country={country} n={number('documents')} alt={band('documents')} />
+      <CountryIntakes
+        country={country}
+        profiles={profiles}
+        n={number('intakes')}
+        alt={band('intakes')}
+      />
+      <CountryCost
+        country={country}
+        profiles={profiles}
+        calculator={
+          calculator ? (
+            <CostCalculator
+              config={calculator}
+              currencySymbol={currencySymbol}
+              countryName={country.name}
+              countrySlug={country.slug}
+              disclaimer={profiles.cost?.disclaimer ?? null}
+            />
+          ) : null
+        }
+        n={number('cost')}
+        alt={band('cost')}
+      />
+      <CountryLanguage
+        country={country}
+        profiles={profiles}
+        n={number('language')}
+        alt={band('language')}
+      />
+      <CountryWorkVisa country={country} profiles={profiles} work={work} n={number('work-visa')} />
 
       {/* BY THE NUMBERS — every figure already published for this country. */}
-      <CountryNumbers country={country} profiles={profiles} alt={band('numbers')} />
+      <CountryNumbers country={country} profiles={profiles} n={number('numbers')} alt={band('numbers')} />
 
       {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
           and in the shape each one declares. */}
-      {sections.map((section, index) => (
-        <EditorialSection key={section.id} section={section} alt={band(`editorial:${section.id}`)} />
+      {editorial.map((section) => (
+        <EditorialSection
+          key={section.id}
+          section={section}
+          n={number(`editorial:${section.id}`)}
+          alt={band(`editorial:${section.id}`)}
+        />
       ))}
 
-      {/* FUNDING */}
+      <CountryGuidance cards={consultantCards} n={number('guidance')} alt={band('guidance')} />
+      <CountryTestimonials
+        country={country}
+        testimonials={testimonials}
+        n={number('testimonials')}
+        alt={band('testimonials')}
+      />
+      <FaqAccordion
+        faqs={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))}
+        countryName={country.name}
+        n={number('faq')}
+        alt={band('faq')}
+      />
+
+      {/* FUNDING — after the questions, unnumbered, as in the design. */}
       <CountryScholarships
         country={country}
         scholarships={countryScholarships}
         alt={band('scholarship-funding')}
-      />
-
-      {/* GUIDANCE */}
-      {consultantCards.length ? (
-        <section className={`sec ${band('guidance') ? 'sec--paper' : 'sec--white'}`} id="guidance">
-          <div className="wrap">
-            <p className="eyebrow">Guidance</p>
-            <h2 className="sec-title">Talk it through</h2>
-            <div className="routes">
-              {consultantCards.map((card, index) => (
-                <article className="route" key={card.id}>
-                  <span className="route__n">{String(index + 1).padStart(2, '0')}</span>
-                  <h3 className="route__l">{card.title}</h3>
-                  {card.shortDescription ? (
-                    <p className="route__d">{card.shortDescription}</p>
-                  ) : null}
-                  {card.ctaUrl ? (
-                    <a className="linkcta" href={card.ctaUrl}>
-                      {card.ctaLabel ?? 'Find out more'}{' '}
-                      <span className="linkcta__arrow" aria-hidden="true">
-                        &rarr;
-                      </span>
-                    </a>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* STUDENT VOICES */}
-      <CountryTestimonials country={country} testimonials={testimonials} alt={band('testimonials')} />
-
-      <FaqAccordion
-        faqs={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))}
-        countryName={country.name}
-        alt={band('faq')}
       />
 
       <PlanBand
@@ -534,36 +428,14 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         secondary={{ href: '/', label: 'Browse all destinations' }}
       />
 
+      <CountryOtherDestinations
+        country={country}
+        others={others}
+        alt={band('other-destinations')}
+      />
+
       {/* EXPLORE NEXT */}
       <CountryConnect country={country} alt={band('connect')} />
-
-      {/* OTHER DESTINATIONS */}
-      {others.length ? (
-        <section
-          className={`sec ${band('other-destinations') ? 'sec--paper' : 'sec--white'} sec--tight`}
-          id="other-destinations"
-        >
-          <div className="wrap">
-            <p className="eyebrow">Compare</p>
-            <h2 className="sec-title">Other destinations</h2>
-            <div className="switcher">
-              {others.map((entry) => (
-                <Link
-                  className="switcher__item"
-                  key={entry.name}
-                  href={`/study-abroad/${entry.slug}`}
-                >
-                  <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
-                  <span className="cchip__name">{entry.name}</span>
-                  <span className="switcher__arrow" aria-hidden="true">
-                    &rarr;
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
     </>
   );
 }

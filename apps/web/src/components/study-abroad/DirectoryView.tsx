@@ -65,7 +65,13 @@ function countsLine(entry: Destination): string | null {
   return parts.length ? parts.slice(0, 2).join(' · ') : null;
 }
 
-export function DirectoryView({ directory }: { directory: DestinationDirectory }) {
+export function DirectoryView({
+  directory,
+  alt = true,
+}: {
+  directory: DestinationDirectory;
+  alt?: boolean;
+}) {
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState<string>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
@@ -127,7 +133,7 @@ export function DirectoryView({ directory }: { directory: DestinationDirectory }
     /* `sec--tight h-sec`, like every funnel section around it: the listing
        used to sit on a 64px rhythm between neighbours on 44px, so the page
        breathed unevenly exactly where its main content began. */
-    <section className="sec sec--paper sec--tight h-sec" id="directory">
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="directory">
       <div className="wrap">
         <div className="h-head">
           <p className="eyebrow eyebrow--plain">
