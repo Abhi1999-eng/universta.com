@@ -332,17 +332,19 @@
 }
 .sa .nav__links a:hover, .sa .nav__links a[aria-current="page"]{ color: var(--text); }
 .sa .nav__right{ margin-inline-start: auto; display: flex; align-items: center; gap: 10px; }
-.sa .nav__globe{
-  display: inline-flex; align-items: center; gap: 9px;
-  padding: 8px 14px 8px 11px; border-radius: var(--radius-pill);
+/* The destination search. It was a labelled pill beside the CTA, but with six
+   links, a pill and a button the bar had under 100px to spare at 1440 and the
+   label wrapped onto two lines. Since the homepage became the destination
+   listing the control is a shortcut rather than the way in, so it is an icon
+   the same size as the burger, and the one filled button is the only CTA. */
+.sa .nav__search{
+  display: inline-grid; place-items: center; flex: none;
+  width: 40px; height: 40px; border-radius: var(--radius-pill);
   border: 1px solid var(--line-strong); background: var(--white);
-  font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text);
-  font-family: var(--font-body);
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  color: var(--muted); cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.sa .nav__globe:hover{ border-color: var(--navy); box-shadow: var(--shadow-sm); }
-.sa .nav__globe svg{ flex: none; }
-.sa .nav__globe-label{ display: none; }
+.sa .nav__search:hover{ border-color: var(--navy); color: var(--text); box-shadow: var(--shadow-sm); }
 .sa .nav__burger{
   display: inline-grid; place-items: center; width: 40px; height: 40px;
   border: 1px solid var(--line-strong); border-radius: var(--radius);
@@ -350,7 +352,7 @@
 }
 .sa .nav__cta{ display: none; }
 @media (min-width: 1080px){.sa .nav__links{ display: flex; }.sa .nav__burger{ display: none; }}
-@media (min-width: 700px){.sa .nav__cta{ display: inline-flex; }.sa .nav__globe-label{ display: inline; }}
+@media (min-width: 700px){.sa .nav__cta{ display: inline-flex; }.sa .nav__search{ width: 36px; height: 36px; }}
 /* --- Mobile drawer ---------------------------------------------------- */
 .sa .drawer{
   position: fixed; inset: var(--nav-h) 0 0; z-index: 88;
@@ -408,6 +410,10 @@
 .sa .cs__item-name{ font-weight: 600; }
 .sa .cs__item-meta{ margin-inline-start: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
 .sa .cs__item--soon .cs__item-name{ color: var(--muted); font-weight: 500; }
+/* The design links a destination without a guide to a holding page this site
+   does not have, so here it is plain text and must not look pressable. */
+.sa .cs__item--soon{ cursor: default; }
+.sa .cs__item--soon:hover{ background: transparent; border-color: transparent; }
 .sa .cs__foot{
   border-top: 1px solid var(--line); padding: 14px 22px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

@@ -10,7 +10,7 @@ import Link from 'next/link';
  */
 
 export const PRIMARY = [
-  { label: 'Study Destinations', href: '/' },
+  { label: 'Destinations', href: '/' },
   { label: 'Courses', href: '/courses' },
   { label: 'Universities', href: '/universities' },
   { label: 'Scholarships', href: '/scholarships' },
@@ -75,25 +75,26 @@ export function StudyAbroadHeader() {
           </nav>
           <div className="nav__right">
             <button
-              className="nav__globe"
+              className="nav__search"
               type="button"
               data-open-selector
               aria-haspopup="dialog"
               aria-expanded="false"
+              aria-label="Search destinations"
+              title="Search destinations"
             >
               <svg
-                width="17"
-                height="17"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.6"
+                strokeWidth="1.8"
                 aria-hidden="true"
               >
-                <circle cx="12" cy="12" r="9" />
-                <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
               </svg>
-              <span className="nav__globe-label">Explore countries</span>
             </button>
             <button className="btn btn--sm nav__cta" type="button" data-open-assessment>
               Check My Options{' '}
