@@ -13,7 +13,8 @@ import { acceptanceEmail } from './helpers/acceptance-run';
  */
 
 /* The destination listing is the homepage: /study-abroad now redirects here. */
-const directory = `${webBaseUrl}/`;
+const home = `${webBaseUrl}/`;
+const directory = `${webBaseUrl}/study-abroad`;
 const guide = `${webBaseUrl}/study-abroad/canada`;
 
 function watchHealth(page: Page) {
@@ -34,16 +35,30 @@ async function noHorizontalOverflow(page: Page) {
 }
 
 test.describe('study abroad', () => {
+  test('leads the homepage with eight guides and the way to every destination', async ({ page }) => {
+    const healthy = watchHealth(page);
+    await page.goto(home);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Your Study Abroad Journey, Connected.',
+    );
+    const destinations = page.locator('#destinations');
+    await expect(
+      destinations.getByRole('heading', { level: 2, name: 'Where do you want to study?' }),
+    ).toBeVisible();
+    const cards = destinations.locator('a.dir__card');
+    expect(await cards.count()).toBeGreaterThan(0);
+    expect(await cards.count()).toBeLessThanOrEqual(8);
+    await expect(destinations.locator('.dir__card--soon')).toHaveCount(0);
+    await destinations.getByRole('link', { name: /Show all \d+ countries/ }).click();
+    await expect(page).toHaveURL(directory);
+    healthy();
+  });
+
   test('lists published guides as links and the rest as coming soon', async ({ page }) => {
     const healthy = watchHealth(page);
     await page.goto(directory);
 
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(
-      'Your Study Abroad Journey, Connected.',
-    );
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Where do you want to study?' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Every study destination' })).toBeVisible();
     await expect(page.locator('a.dir__card[href="/study-abroad/canada"]')).toBeVisible();
     /* A destination without a guide has nowhere to go, so it is not a link. */
     await expect(page.locator('.dir__card--soon').first()).toBeVisible();
@@ -188,14 +203,12 @@ test.describe('study abroad', () => {
 
   test('redirects the addresses it replaced, permanently', async ({ page }) => {
     const cases: Array<[string, string]> = [
-      ['/countries', '/'],
-      ['/study-abroad', '/'],
+      ['/countries', '/study-abroad'],
       ['/countries/canada', '/study-abroad/canada'],
       ['/study-in/canada', '/study-abroad/canada'],
-      /* The merged listing has no budget, IELTS or subject filters to
-         honour, so a filtered /countries URL lands on the listing itself
-         rather than carrying a promise the page can no longer keep. */
-      ['/countries?q=Canada', '/?q=Canada'],
+      /* The listing's own search carries through; it has no budget, IELTS or
+         subject filters, so nothing else in the old query promises more. */
+      ['/countries?q=Canada', '/study-abroad?q=Canada'],
     ];
     for (const [from, to] of cases) {
       const response = await page.request.get(`${webBaseUrl}${from}`, { maxRedirects: 0 });

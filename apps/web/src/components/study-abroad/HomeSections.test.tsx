@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { DestinationDirectory, Destination } from '@/lib/study-abroad';
 import {
   HomeCourses,
+  HomeDestinations,
   HomeHero,
   HomeInstitutions,
   HomeScholarships,
@@ -171,5 +172,43 @@ describe('homepage search and catalogue previews', () => {
     expect(renderToStaticMarkup(<HomeUniversities universities={[]} />)).toBe('');
     expect(renderToStaticMarkup(<HomeCourses courses={[]} />)).toBe('');
     expect(renderToStaticMarkup(<HomeScholarships scholarships={[]} />)).toBe('');
+  });
+});
+
+describe('HomeDestinations', () => {
+  const many = Array.from({ length: 12 }, (_, index) =>
+    destination({
+      name: `Country ${index}`,
+      slug: `country-${index}`,
+      isPopular: index >= 9,
+    }),
+  );
+
+  /* The whole directory ran several screens down the homepage; it has its own
+     page now, and the homepage shows eight guides. */
+  it('shows eight guides, popular ones first, and links to every destination', () => {
+    const html = renderToStaticMarkup(
+      <HomeDestinations
+        directory={directory({
+          available: many,
+          comingSoon: [destination({ name: 'Albania', slug: null, isAvailable: false })],
+          counts: { available: 12, popular: 3, total: 209 },
+        })}
+      />,
+    );
+    const cards = [...html.matchAll(/href="\/study-abroad\/(country-\d+)"/g)].map((m) => m[1]);
+    expect(cards).toHaveLength(8);
+    expect(cards.slice(0, 3)).toEqual(['country-9', 'country-10', 'country-11']);
+    expect(html).not.toContain('Albania');
+    expect(html).toContain('href="/study-abroad"');
+    expect(html).toContain('Show all 209 countries');
+  });
+
+  it('renders nothing without a published guide', () => {
+    expect(
+      renderToStaticMarkup(
+        <HomeDestinations directory={directory({ available: [], counts: { available: 0, popular: 0, total: 0 } })} />,
+      ),
+    ).toBe('');
   });
 });

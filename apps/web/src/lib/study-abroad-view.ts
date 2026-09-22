@@ -476,3 +476,43 @@ export function guideIntakes(selectedMonths: number[] | undefined, records: Inta
     };
   });
 }
+
+/**
+ * The counts line under a card's name, leaving out whatever is zero -- a card
+ * that says "0 consultants" states an absence the student cannot act on.
+ *
+ * Two facts, not four. This card is a chip: a flag, a name and a badge in
+ * roughly 220px. The approved countries listing could afford the full set
+ * because its card was a column with room to breathe; pouring the same string
+ * in here wrapped it to three lines and made the grid's rows lurch between
+ * 56px and 140px. Scholarships and consultants are a click away on the guide,
+ * which is where the student is going anyway.
+ */
+export function destinationCounts(entry: Destination): string | null {
+  const { universities, courses, scholarships, consultants } = entry.counts;
+  const parts: string[] = [];
+  if (universities)
+    parts.push(`${universities} ${universities === 1 ? 'university' : 'universities'}`);
+  if (courses) parts.push(`${courses} ${courses === 1 ? 'course' : 'courses'}`);
+  /* Only when there is room: a destination with no universities or courses
+     still deserves to say what it does have. */
+  if (parts.length < 2 && scholarships)
+    parts.push(`${scholarships} ${scholarships === 1 ? 'scholarship' : 'scholarships'}`);
+  if (parts.length < 2 && consultants)
+    parts.push(`${consultants} ${consultants === 1 ? 'consultant' : 'consultants'}`);
+  return parts.length ? parts.slice(0, 2).join(' · ') : null;
+}
+
+/**
+ * The guides the homepage leads with: popular ones first, then the rest in the
+ * directory's own order. The full list of destinations has a page of its own,
+ * so the homepage shows a short row of the ones a student is likeliest to
+ * want rather than all two hundred.
+ */
+export function featuredDestinations(available: Destination[], limit = 8): Destination[] {
+  const guides = available.filter((entry) => entry.slug);
+  return [...guides.filter((entry) => entry.isPopular), ...guides.filter((entry) => !entry.isPopular)].slice(
+    0,
+    limit,
+  );
+}

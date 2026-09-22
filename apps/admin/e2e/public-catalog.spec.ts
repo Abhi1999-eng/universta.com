@@ -33,13 +33,13 @@ function observePageHealth(page: Page) {
 }
 
 test.describe('approved public subject and course discovery', () => {
-  test('renders the destination listing as the home route', async ({ page }) => {
-    // The approved destination listing is the site's homepage. It replaced the
-    // Phase 1 countries listing, and it answers the two addresses that listing
-    // and the directory used to hold.
-    await page.goto(webBaseUrl);
+  test('renders the destination listing at /study-abroad', async ({ page }) => {
+    // The directory of every destination has its own page; the homepage shows
+    // eight guides and links to it. It replaced the Phase 1 countries listing,
+    // whose address now lands here.
+    await page.goto(`${webBaseUrl}/study-abroad`);
 
-    await expect(page).toHaveURL(webBaseUrl);
+    await expect(page).toHaveURL(`${webBaseUrl}/study-abroad`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByPlaceholder('Search a country')).toBeVisible();
     // The listing's own controls, which render whether or not any destination
@@ -47,11 +47,9 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.getByTestId('directory-count')).toBeVisible();
     await expect(page.locator('[data-filter-group="has"]')).toBeVisible();
 
-    // Both old addresses now land here, permanently.
+    // The old address lands here, permanently.
     await page.goto(`${webBaseUrl}/countries`);
-    await expect(page).toHaveURL(`${webBaseUrl}/`);
-    await page.goto(`${webBaseUrl}/study-abroad`);
-    await expect(page).toHaveURL(`${webBaseUrl}/`);
+    await expect(page).toHaveURL(`${webBaseUrl}/study-abroad`);
   });
 
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {
