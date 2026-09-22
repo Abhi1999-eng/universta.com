@@ -473,11 +473,19 @@ export function CountryWorkVisa({
   const journey = hasVisaCard
     ? work.filter((item) => item.title !== 'Student visa' && item.title !== 'Proof of funds')
     : work;
+  /* A fee in the country's own currency reads as the guide's other money
+     does, "€75"; a fee in another currency keeps its code, "USD 160". */
+  const feeAmount = visa?.visaFee ? Number(visa.visaFee).toLocaleString('en-US') : null;
+  const feeInLocalCurrency =
+    !visa?.visaFeeCurrencyCode || visa.visaFeeCurrencyCode === country.currency?.code;
+  const visaFee = feeAmount
+    ? feeInLocalCurrency && country.currency?.symbol
+      ? `${country.currency.symbol}${feeAmount}`
+      : `${visa?.visaFeeCurrencyCode ?? ''} ${feeAmount}`.trim()
+    : null;
   const visaFacts = [
     visa?.visaProcessingTime ? ['Processing time', visa.visaProcessingTime] : null,
-    visa?.visaFee
-      ? ['Visa fee', `${visa.visaFeeCurrencyCode ?? ''} ${Number(visa.visaFee).toLocaleString('en-US')}`.trim()]
-      : null,
+    visaFee ? ['Visa fee', visaFee] : null,
   ].filter((fact): fact is [string, string] => Boolean(fact));
   return (
     <Section id="work-visa" navy>
@@ -576,7 +584,13 @@ export function CountryGuidance({
           <article className="route" key={card.id}>
             <span className="route__n">{String(index + 1).padStart(2, '0')}</span>
             <h3 className="route__l">{card.title}</h3>
-            {card.shortDescription ? <p className="route__d">{card.shortDescription}</p> : null}
+            {/* Written in the admin's rich text editor, so it arrives as HTML;
+                printed as text it showed its <p> tags on the page. */}
+            {card.shortDescription ? (
+              <div className="route__d">
+                <RichText value={card.shortDescription} />
+              </div>
+            ) : null}
             {card.ctaUrl ? (
               <a className="linkcta route__c" href={card.ctaUrl}>
                 {card.ctaLabel ?? 'Find out more'}{' '}
