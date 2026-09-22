@@ -6,6 +6,7 @@ import {
   countrySnapshot,
   guideIntakes,
   intakeCards,
+  journeyColumns,
   languageRows,
   sectionNumbers,
   monthNames,
@@ -404,5 +405,13 @@ describe('guideIntakes', () => {
 
   it('falls back to the records when nothing is selected', () => {
     expect(guideIntakes([], [record(4)]).map((entry) => entry.id)).toEqual(['r4']);
+  });
+});
+
+describe('journeyColumns', () => {
+  /* Six fixed columns left three visa steps in half the row, and wrapped
+     eight application steps six and two. */
+  it('puts up to five steps on one row, and divides longer runs evenly', () => {
+    expect([1, 3, 5, 6, 8, 9, 7].map(journeyColumns)).toEqual([1, 3, 5, 3, 4, 3, 4]);
   });
 });
