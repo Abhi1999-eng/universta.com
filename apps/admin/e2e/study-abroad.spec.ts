@@ -175,12 +175,14 @@ test.describe('study abroad', () => {
        subject -- rather than "Not selected". */
     await row.getByRole('link', { name: 'View lead' }).click();
     await page.waitForURL(/\/leads\/[a-f0-9-]+$/);
-    const assessment = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Assessment' }) });
+    /* The panel is the heading's own section; filtering every section by the
+       heading also matched the page, whose lead is named "... Assessment". */
+    const assessment = page.getByRole('heading', { name: 'Assessment', exact: true }).locator('..');
     await expect(assessment).toBeVisible({ timeout: 15_000 });
     await expect(assessment.getByText('What do you want to study?')).toBeVisible();
     await expect(assessment.getByText('Engineering & Technology')).toBeVisible();
     await expect(assessment.getByText('The next intake')).toBeVisible();
-    const interests = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Counselling interests' }) });
+    const interests = page.getByRole('heading', { name: 'Counselling interests', exact: true }).locator('..');
     await expect(interests.getByText('Engineering', { exact: true })).toBeVisible();
   });
 
