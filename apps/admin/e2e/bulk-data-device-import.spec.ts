@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test } from '@playwright/test';
+import { expect, test, type APIRequestContext } from '@playwright/test';
 import { acceptanceCountryName } from './helpers/acceptance-run';
 import { loginAsAdmin } from './helpers/admin-auth';
+import { apiBaseUrl } from './helpers/e2e-urls';
 
 test('bulk data page exposes device upload and blocks import on row errors', async ({ page }) => {
   await loginAsAdmin(page);
@@ -47,10 +48,55 @@ test('bulk data page exposes device upload and blocks import on row errors', asy
  * The whole path an editor takes: download the template, fill it in, upload
  * it, import it, then upload the same file again to update what it created.
  * The subject is named with this run's country prefix, so the acceptance
- * teardown removes it with the run's other subjects.
+ * teardown removes it with the run's other subjects. It is archived as soon as
+ * the test ends as well: it is a draft, and a later spec that ticks the first
+ * free subject on a country and expects it on the public page must not find
+ * this one.
  */
-test('a downloaded template imports, and re-imports as an update', async ({ page }) => {
+async function archiveSubject(request: APIRequestContext, name: string) {
+  const login = await request.post(`${apiBaseUrl}/api/v1/admin/auth/login`, {
+    data: {
+      email: process.env.E2E_ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL,
+      password: process.env.E2E_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD,
+    },
+  });
+  const token = ((await login.json()) as { data: { accessToken: string } }).data
+    .accessToken;
+  const headers = { Authorization: `Bearer ${token}` };
+  const records = await request.get(
+    `${apiBaseUrl}/api/v1/admin/bulk/subjects/records`,
+    { headers },
+  );
+  const ids = ((await records.json()) as { data: Array<{ id: string; name: string }> }).data
+    .filter((row) => row.name === name)
+    .map((row) => row.id);
+  if (ids.length)
+    await request.post(`${apiBaseUrl}/api/v1/admin/bulk/subjects/bulk-archive`, {
+      headers,
+      data: { ids },
+    });
+  // What the country editor's subject picker reads.
+  const listed = await request.get(
+    `${apiBaseUrl}/api/v1/admin/subjects?q=${encodeURIComponent(name)}`,
+    { headers },
+  );
+  expect(((await listed.json()) as { data: unknown[] }).data).toEqual([]);
+}
+
+test('a downloaded template imports, and re-imports as an update', async ({
+  page,
+  request,
+}) => {
   const name = `${acceptanceCountryName()} Bulk Subject`;
+  test.info().setTimeout(90_000);
+  try {
+    await importTwice(page, name);
+  } finally {
+    await archiveSubject(request, name);
+  }
+});
+
+async function importTwice(page: import('@playwright/test').Page, name: string) {
   await loginAsAdmin(page);
   await page.goto('/bulk-data');
   await page.getByLabel('Resource').selectOption({ label: 'Subjects' });
@@ -84,4 +130,4 @@ test('a downloaded template imports, and re-imports as an update', async ({ page
   await expect(
     page.getByText('Import complete: 0 created and 1 updated in the database.'),
   ).toBeVisible();
-});
+}
