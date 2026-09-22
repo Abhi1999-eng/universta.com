@@ -18,7 +18,10 @@ const taxonomy: TaxonomySnapshot = {
 
 const toPublic = (record: Record<string, unknown>) => {
   const service = Object.create(CountriesService.prototype) as {
-    toPublic: (value: unknown, known: TaxonomySnapshot) => Record<string, unknown>;
+    toPublic: (
+      value: unknown,
+      known: TaxonomySnapshot,
+    ) => Record<string, unknown>;
   };
   return service.toPublic(record, taxonomy);
 };

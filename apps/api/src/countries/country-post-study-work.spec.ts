@@ -30,6 +30,8 @@ describe('post-study work permit months', () => {
 
   it('still refuses a figure out of range', async () => {
     const issues = await validate(parse({ postStudyWorkPermitMonths: 500 }));
-    expect(issues.map((issue) => issue.property)).toContain('postStudyWorkPermitMonths');
+    expect(issues.map((issue) => issue.property)).toContain(
+      'postStudyWorkPermitMonths',
+    );
   });
 });

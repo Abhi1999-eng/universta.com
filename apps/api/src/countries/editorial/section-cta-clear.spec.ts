@@ -10,7 +10,11 @@ import { ContentSectionDto } from './editorial.dto';
 const issues = async (ctaUrl: string) =>
   (
     await validate(
-      plainToInstance(ContentSectionDto, { sectionType: 'RICH_TEXT', heading: 'Why', ctaUrl }),
+      plainToInstance(ContentSectionDto, {
+        sectionType: 'RICH_TEXT',
+        heading: 'Why',
+        ctaUrl,
+      }),
     )
   ).map((issue) => issue.property);
 
