@@ -4,7 +4,7 @@ import {
   ConsultantsReference,
   type ConsultantRow,
 } from '@/components/reference/ConsultantsReference';
-import { phaseList } from '@/lib/phase1';
+import { phaseList, phaseListAll } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
@@ -100,7 +100,7 @@ export default async function ConsultantsPage({
       // Unfiltered, so the facets are derived from the whole directory and can
       // never offer a value that returns nothing. Facets are decoration: if
       // only this call fails the directory itself is still trustworthy.
-      phaseList<AnyRecord>('consultants', { limit: '100' })
+      phaseListAll<AnyRecord>('consultants')
         .then((r) => r.data)
         .catch(() => []),
     ]);

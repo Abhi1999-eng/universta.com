@@ -5,7 +5,7 @@ import { ScholarshipsReference } from "@/components/reference/ScholarshipsRefere
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { getCountries } from "@/lib/countries";
 import { getCourseLevels, getSubjects } from "@/lib/catalog";
-import { phaseList } from "@/lib/phase1";
+import { phaseList, phaseListAll } from "@/lib/phase1";
 import { staticPageMetadata } from "@/lib/static-page-seo";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +49,7 @@ export default async function ScholarshipsPage({
       getCountries({ limit: "100" }).then((r) => r.data).catch(() => []),
       getSubjects({ limit: "100" }).then((r) => r.data).catch(() => []),
       getCourseLevels().catch(() => []),
-      phaseList<AnyRecord>("universities", { limit: "100" }).then((r) => r.data).catch(() => []),
+      phaseListAll<AnyRecord>("universities").then((r) => r.data).catch(() => []),
     ]);
     rows = result.data as unknown as ScholarshipRow[];
     meta = result.meta as ListingMeta;

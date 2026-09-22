@@ -26,6 +26,44 @@ export function phaseList<T>(
   const q = new URLSearchParams(params).toString();
   return request<T[]>(`/${resource}${q ? `?${q}` : ""}`);
 }
+/* The phase-1 list endpoints cap a page at 50 rows. */
+const PHASE_PAGE_SIZE = 50;
+const PHASE_MAX_PAGES = 40;
+
+/**
+ * Every record a phase-1 list holds, read page by page.
+ *
+ * For the callers that mean "all" -- an A-Z index, a filter's options, the
+ * sitemap. They asked for `limit: 100`, the API capped it at 50, and once the
+ * catalogue held more than fifty universities the index, the per-destination
+ * counts and the sitemap all silently stopped at the fiftieth.
+ */
+export async function phaseListAll<T>(
+  resource: string,
+  params: Record<string, string> = {},
+) {
+  const page = (n: number) =>
+    phaseList<T>(resource, {
+      ...params,
+      limit: String(PHASE_PAGE_SIZE),
+      page: String(n),
+    });
+  const first = await page(1);
+  const totalPages = Number(
+    (first.meta as { totalPages?: unknown } | null)?.totalPages,
+  );
+  const pages = Math.min(
+    Number.isFinite(totalPages) && totalPages > 1 ? totalPages : 1,
+    PHASE_MAX_PAGES,
+  );
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, index) => page(index + 2)),
+  );
+  return {
+    data: [...first.data, ...rest.flatMap((result) => result.data)],
+    meta: first.meta,
+  };
+}
 export function phaseDetail<T>(resource: string, slug: string) {
   return request<T>(`/${resource}/${encodeURIComponent(slug)}`).then(
     (result) => result.data,
