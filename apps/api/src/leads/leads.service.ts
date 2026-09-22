@@ -1,8 +1,11 @@
 import {
   ASSESSMENT_OPTIONS,
   BUDGET_TO_RANGE,
+  FIELD_TO_SUBJECT_SLUGS,
   LANGUAGE_TO_TEST_STATUS,
   LEVEL_TO_COURSE_LEVEL,
+  assessmentSummary,
+  nextIntake,
   scoreAssessment,
   type AssessmentStepId,
 } from './assessment.constants';
@@ -362,7 +365,10 @@ export class LeadsService {
       /* A destination is optional in this flow -- the student may not have
        * settled on one -- and is only linked when it names a published country,
        * exactly as the counselling form requires. */
-      const [country, courseLevel] = await Promise.all([
+      const subjectSlugs = answers.field
+        ? (FIELD_TO_SUBJECT_SLUGS[answers.field] ?? [])
+        : [];
+      const [country, courseLevel, subjects] = await Promise.all([
         dto.countrySlug
           ? this.prisma.country.findFirst({
               where: {
@@ -370,7 +376,15 @@ export class LeadsService {
                 status: 'PUBLISHED',
                 deletedAt: null,
               },
-              select: { id: true },
+              select: {
+                id: true,
+                intakes: {
+                  where: { intake: { status: 'ACTIVE' } },
+                  select: {
+                    intake: { select: { id: true, startMonth: true } },
+                  },
+                },
+              },
             })
           : Promise.resolve(null),
         levelCode
@@ -379,7 +393,28 @@ export class LeadsService {
               select: { id: true },
             })
           : Promise.resolve(null),
+        subjectSlugs.length
+          ? this.prisma.subject.findMany({
+              where: {
+                slug: { in: [...subjectSlugs] },
+                status: 'PUBLISHED',
+                deletedAt: null,
+              },
+              select: { id: true, slug: true },
+            })
+          : Promise.resolve([] as Array<{ id: string; slug: string }>),
       ]);
+      /* The subject the field answer names, and the intake "The next intake"
+       * means for this destination -- set on the lead so its interests read
+       * as the student gave them, not "Not selected". */
+      const subject =
+        subjectSlugs
+          .map((slug) => subjects.find((row) => row.slug === slug))
+          .find(Boolean) ?? null;
+      const intake =
+        answers.intake === 'next' && country
+          ? nextIntake(country.intakes.map((row) => row.intake))
+          : null;
 
       const duplicateSince = new Date(Date.now() - LEAD_DUPLICATE_WINDOW_MS);
       const duplicate = await this.prisma.lead.findFirst({
@@ -410,6 +445,8 @@ export class LeadsService {
             phoneNumber: dto.phoneNumber,
             preferredCountryId: country?.id ?? null,
             preferredCourseLevelId: courseLevel?.id ?? null,
+            preferredSubjectId: subject?.id ?? null,
+            preferredIntakeId: intake?.id ?? null,
             budgetMin: budget?.min ?? null,
             budgetMax: budget?.max ?? null,
             englishTestType: answers.language
@@ -533,7 +570,14 @@ export class LeadsService {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
-    return { ...lead, audit };
+    /* The assessment's answers with the questions they answer, so the lead
+     * page shows what the student said rather than only the few answers that
+     * have columns of their own. */
+    return {
+      ...lead,
+      assessment: assessmentSummary(lead.assessmentJson),
+      audit,
+    };
   }
 
   async updateStatus(

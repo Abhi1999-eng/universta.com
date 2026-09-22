@@ -1339,3 +1339,9 @@
 .sa .h-more--center{ justify-content: center; margin-top: clamp(24px, 3vw, 34px); }
 /* The destinations page: its breadcrumb sits above the section's head. */
 .sa .dir__crumbs{ padding-top: 0; margin-bottom: clamp(18px, 2.4vw, 28px); }
+
+/* Two <span>s drawn as shapes. The FAQ toggle was an empty circle, where the
+   design puts a "+" that turns to "x" when open; and the intake strip's bars
+   were inline, so their 6px height was ignored and no bar showed at all. */
+.sa .faq__plus{ font-size: 17px; line-height: 1; color: var(--text); }
+.sa .tm__bar{ display: block; }

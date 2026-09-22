@@ -90,7 +90,18 @@ export interface LeadAudit {
   user: LeadActor | null;
 }
 
+/** The Study Abroad assessment a lead came from, read back with the questions
+ * the student answered. Absent on leads from other forms. */
+export interface LeadAssessment {
+  band: string | null;
+  bandLabel: string | null;
+  score: number | null;
+  completedAt: string | null;
+  answers: Array<{ id: string; question: string; answer: string }>;
+}
+
 export interface LeadDetail extends LeadRecord {
+  assessment?: LeadAssessment | null;
   notes: LeadNote[];
   statusHistory: LeadStatusHistory[];
   audit: LeadAudit[];

@@ -182,7 +182,23 @@ test.describe('study abroad', () => {
     await page.goto(`${adminBaseUrl}/leads`);
     await page.getByLabel('Search').fill(email);
     await page.getByRole('button', { name: 'Apply filters' }).click();
-    await expect(page.getByRole('row').filter({ hasText: fullName })).toBeVisible();
+    const row = page.getByRole('row').filter({ hasText: fullName });
+    await expect(row).toBeVisible();
+
+    /* The lead reads the assessment back: the answers, by question, and the
+       interests they name -- "Engineering & Technology" is the Engineering
+       subject -- rather than "Not selected". */
+    await row.getByRole('link', { name: 'View lead' }).click();
+    await page.waitForURL(/\/leads\/[a-f0-9-]+$/);
+    /* The panel is the heading's own section; filtering every section by the
+       heading also matched the page, whose lead is named "... Assessment". */
+    const assessment = page.getByRole('heading', { name: 'Assessment', exact: true }).locator('..');
+    await expect(assessment).toBeVisible({ timeout: 15_000 });
+    await expect(assessment.getByText('What do you want to study?')).toBeVisible();
+    await expect(assessment.getByText('Engineering & Technology')).toBeVisible();
+    await expect(assessment.getByText('The next intake')).toBeVisible();
+    const interests = page.getByRole('heading', { name: 'Counselling interests', exact: true }).locator('..');
+    await expect(interests.getByText('Engineering', { exact: true })).toBeVisible();
   });
 
   test('redirects the addresses it replaced, permanently', async ({ page }) => {
