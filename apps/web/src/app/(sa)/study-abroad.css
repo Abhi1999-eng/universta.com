@@ -1332,3 +1332,9 @@
 .sa .bignum::before{ content: ""; position: absolute; top: -1px; left: 0; width: 36px; height: 2px; background: var(--accent); }
 .sa .bignum__v{ font-size: clamp(30px, 2.8vw, 42px); white-space: nowrap; }
 .sa .sec--navy .bignum{ border-top-color: var(--on-navy-line); }
+
+/* Two <span>s drawn as shapes. The FAQ toggle was an empty circle, where the
+   design puts a "+" that turns to "x" when open; and the intake strip's bars
+   were inline, so their 6px height was ignored and no bar showed at all. */
+.sa .faq__plus{ font-size: 17px; line-height: 1; color: var(--text); }
+.sa .tm__bar{ display: block; }
