@@ -10,7 +10,7 @@ import Link from 'next/link';
  */
 
 export const PRIMARY = [
-  { label: 'Destinations', href: '/' },
+  { label: 'Destinations', href: '/study-abroad' },
   { label: 'Courses', href: '/courses' },
   { label: 'Universities', href: '/universities' },
   { label: 'Scholarships', href: '/scholarships' },
@@ -22,7 +22,7 @@ const FOOTER_COLUMNS = [
   {
     title: 'Platform',
     links: [
-      { label: 'All destinations', href: '/' },
+      { label: 'All destinations', href: '/study-abroad' },
       { label: 'Courses', href: '/courses' },
       { label: 'Universities', href: '/universities' },
       { label: 'Cities', href: '/cities' },

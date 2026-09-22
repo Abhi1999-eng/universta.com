@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { webBaseUrl } from './helpers/e2e-urls';
 
-/* The filterable destination listing is the homepage; /countries redirects
- * there when it carries filters and to the Study Abroad directory when it
- * does not. A country's own page is its Study Abroad guide. */
-const listing = `${webBaseUrl}/`;
+/* The filterable destination listing is /study-abroad, which /countries
+ * redirects to. A country's own page is its Study Abroad guide. */
+const listing = `${webBaseUrl}/study-abroad`;
 const guide = `${webBaseUrl}/study-abroad/canada`;
 
 test.describe('approved public country experience', () => {

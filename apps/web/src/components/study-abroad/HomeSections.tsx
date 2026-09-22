@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { DestinationDirectory } from '@/lib/study-abroad';
+import { destinationCounts, featuredDestinations } from '@/lib/study-abroad-view';
 import { AssessmentCta } from './AssessmentCta';
+import { FlagMark } from './FlagMark';
 
 /**
  * The homepage's funnel sections, from the approved design's home page.
@@ -666,6 +668,68 @@ export function HomeScholarships({
           ))}
         </div>
         <MoreLinks links={[{ href: '/scholarships', label: 'Find Scholarships' }]} />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The homepage's destinations: eight country guides, four to a row, and the
+ * way to every other destination. The whole directory -- two hundred names,
+ * most of them "coming soon" -- ran several screens down the homepage, so it
+ * has a page of its own at /study-abroad.
+ */
+export function HomeDestinations({
+  directory,
+  alt = false,
+}: {
+  directory: DestinationDirectory;
+  alt?: boolean;
+}) {
+  const featured = featuredDestinations(directory.available, 8);
+  if (!featured.length) return null;
+  return (
+    <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="destinations">
+      <div className="wrap">
+        <div className="h-head">
+          <p className="eyebrow eyebrow--plain">
+            Destinations<b>·</b>
+            {directory.counts.available} country guides
+          </p>
+          <h2 className="sec-title">Where do you want to study?</h2>
+          <p className="sec-lead">
+            Start with a country guide: costs, intakes, entry requirements and visa routes in one
+            place.
+          </p>
+        </div>
+        <div className="dir__grid dir__grid--four">
+          {featured.map((entry) => (
+            <Link
+              className="dir__card"
+              key={entry.slug}
+              href={`/study-abroad/${entry.slug}`}
+              data-country
+              data-status={entry.isPopular ? 'popular' : 'published'}
+            >
+              <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+              <span className="cchip__name" title={entry.name}>
+                {entry.name}
+              </span>
+              <span className="dir__meta">Guide</span>
+              {destinationCounts(entry) ? (
+                <span className="h-card__m">{destinationCounts(entry)}</span>
+              ) : null}
+            </Link>
+          ))}
+        </div>
+        <p className="h-more h-more--center">
+          <Link className="btn btn--ghost" href="/study-abroad">
+            Show all {directory.counts.total} countries{' '}
+            <span className="btn__arrow" aria-hidden="true">
+              &rarr;
+            </span>
+          </Link>
+        </p>
       </div>
     </section>
   );

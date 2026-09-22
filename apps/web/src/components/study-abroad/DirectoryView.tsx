@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { DestinationDirectory, Destination } from '@/lib/study-abroad';
+import { destinationCounts as countsLine } from '@/lib/study-abroad-view';
 import { FlagMark } from './FlagMark';
 
 /**
@@ -39,40 +40,20 @@ function satisfiesHas(entry: Destination, has: HasFilter): boolean {
   }
 }
 
-/**
- * The counts line under a card's name, leaving out whatever is zero -- a card
- * that says "0 consultants" states an absence the student cannot act on.
- *
- * Two facts, not four. This card is a chip: a flag, a name and a badge in
- * roughly 220px. The approved countries listing could afford the full set
- * because its card was a column with room to breathe; pouring the same string
- * in here wrapped it to three lines and made the grid's rows lurch between
- * 56px and 140px. Scholarships and consultants are a click away on the guide,
- * which is where the student is going anyway.
- */
-function countsLine(entry: Destination): string | null {
-  const { universities, courses, scholarships, consultants } = entry.counts;
-  const parts: string[] = [];
-  if (universities)
-    parts.push(`${universities} ${universities === 1 ? 'university' : 'universities'}`);
-  if (courses) parts.push(`${courses} ${courses === 1 ? 'course' : 'courses'}`);
-  /* Only when there is room: a destination with no universities or courses
-     still deserves to say what it does have. */
-  if (parts.length < 2 && scholarships)
-    parts.push(`${scholarships} ${scholarships === 1 ? 'scholarship' : 'scholarships'}`);
-  if (parts.length < 2 && consultants)
-    parts.push(`${consultants} ${consultants === 1 ? 'consultant' : 'consultants'}`);
-  return parts.length ? parts.slice(0, 2).join(' · ') : null;
-}
-
 export function DirectoryView({
   directory,
   alt = true,
+  asPage = false,
+  initialQuery = '',
 }: {
   directory: DestinationDirectory;
   alt?: boolean;
+  /** As the destinations page itself: a breadcrumb and the page's heading. */
+  asPage?: boolean;
+  /** A search carried in the address, as `/study-abroad?q=Canada`. */
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [region, setRegion] = useState<string>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [has, setHas] = useState<HasFilter>('any');
@@ -135,12 +116,25 @@ export function DirectoryView({
        breathed unevenly exactly where its main content began. */
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-sec`} id="directory">
       <div className="wrap">
+        {asPage ? (
+          <nav className="crumbs dir__crumbs" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
+            </span>
+            <span aria-current="page">Destinations</span>
+          </nav>
+        ) : null}
         <div className="h-head">
           <p className="eyebrow eyebrow--plain">
             Destinations<b>·</b>
             {directory.counts.total} countries
           </p>
-          <h2 className="sec-title">Where do you want to study?</h2>
+          {asPage ? (
+            <h1 className="sec-title">Every study destination</h1>
+          ) : (
+            <h2 className="sec-title">Where do you want to study?</h2>
+          )}
           <p className="sec-lead">
             Browse every destination we cover. Published guides carry full costs, intakes,
             entry requirements and visa pathways.

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DirectoryView } from '@/components/study-abroad/DirectoryView';
 import {
   HomeCourses,
+  HomeDestinations,
   HomeGuides,
   HomeHero,
   HomeInstitutions,
@@ -35,9 +35,6 @@ export async function generateMetadata(): Promise<Metadata> {
     title: 'Universta — study abroad destinations, universities and scholarships',
     description:
       'Browse every study destination. Published guides carry full costs, intakes, entry requirements and visa pathways.',
-    /* The listing is the homepage now, so `/` is where it is canonically.
-       `/study-abroad` and `/countries`, the two addresses the approved design
-       published it at, redirect here rather than serving it a second time. */
     alternates: { canonical: siteOrigin },
     openGraph: {
       title: 'Universta — study abroad destinations, universities and scholarships',
@@ -50,12 +47,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * The homepage: every destination Universta covers.
- *
- * The approved design published this listing twice -- an exhaustive directory
- * at `/study-abroad` and a data-rich listing at `/countries`. They are one page
- * now, and that page is the homepage, so both of those addresses redirect here.
- * There is no breadcrumb: this is where a breadcrumb would point.
+ * The homepage. It leads with eight country guides; the directory of every
+ * destination has its own page at `/study-abroad`, which `/countries` also
+ * redirects to. There is no breadcrumb: this is where a breadcrumb would point.
  */
 export default async function HomePage() {
   /* The catalogue previews are read alongside the directory, and a failure in
@@ -110,7 +104,7 @@ export default async function HomePage() {
      stands down never leaves two paper bands touching. */
   const rendered = [
     'paths',
-    'directory',
+    'destinations',
     subjects.length ? 'subjects' : null,
     universities.length ? 'universities' : null,
     courses.length ? 'courses' : null,
@@ -135,12 +129,9 @@ export default async function HomePage() {
       />
       <StartPaths alt={band('paths')} />
 
-      {/* The listing, where the design's own "countries" section sat. Its
-          heading lives inside it rather than in a section of its own: split
-          across two, the heading sat on paper while its cards sat on white,
-          with a colour seam and 108px of nothing between a title and the
-          thing it titles. */}
-      <DirectoryView directory={directory} alt={band('directory')} />
+      {/* Where the design's own "countries" section sat: eight guides and
+          the way to every destination, which has a page of its own. */}
+      <HomeDestinations directory={directory} alt={band('destinations')} />
 
       <HomeSubjects subjects={subjects} alt={band('subjects')} />
       <HomeUniversities universities={universities} alt={band('universities')} />

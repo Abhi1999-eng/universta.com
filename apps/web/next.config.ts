@@ -20,8 +20,8 @@ const nextConfig: NextConfig = {
    *
    * The approved design published the same set of destinations twice: an
    * exhaustive directory at /study-abroad and a data-rich listing at
-   * /countries. One merged listing now answers both, and it lives at `/`, so
-   * both old addresses redirect there. Country guides keep their own address
+   * /countries. One merged listing now answers both at /study-abroad, so
+   * /countries redirects there. Country guides keep their own address
    * under /study-abroad/<slug>, which is where the approved design canonicals
    * them and where every shared link already points.
    *
@@ -44,8 +44,7 @@ const nextConfig: NextConfig = {
    */
   async redirects() {
     return [
-      { source: '/countries', destination: '/', permanent: true },
-      { source: '/study-abroad', destination: '/', permanent: true },
+      { source: '/countries', destination: '/study-abroad', permanent: true },
       {
         source: '/countries/:countrySlug',
         destination: '/study-abroad/:countrySlug',
