@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { richTextToPlainText } from '@/components/phase1/RichText';
 import type { ScholarshipRow } from '@/components/templates/ListingCards';
 
 /** The client-approved Scholarships page.
@@ -414,10 +415,12 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
                         <b className="dl">{deadline}</b>
                       </div>
                     ) : null}
-                    {row.eligibility ? (
+                    {row.eligibility && richTextToPlainText(row.eligibility) ? (
                       <div className="f">
                         <small>Eligibility</small>
-                        <b>{row.eligibility}</b>
+                        {/* Eligibility is authored as rich text; a card field
+                            shows its words, not its markup. */}
+                        <b>{richTextToPlainText(row.eligibility)}</b>
                       </div>
                     ) : null}
                   </div>

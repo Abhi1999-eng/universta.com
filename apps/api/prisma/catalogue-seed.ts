@@ -697,7 +697,10 @@ async function seedAcademics() {
   for (const [order, subject] of SUBJECTS.entries()) {
     const data = {
       name: subject.name,
-      shortDescription: `<p>${subject.blurb}</p>`,
+      // Short descriptions and the career summary are plain text: the admin
+      // edits them in plain fields and the public pages print them as text,
+      // where markup showed as "<p>". Overviews stay rich text.
+      shortDescription: subject.blurb,
       overview: subjectOverview(subject),
       status: PUBLISHED,
       publishedAt: new Date(),
@@ -742,7 +745,7 @@ async function seedAcademics() {
     const data = {
       subjectId,
       name: spec.name,
-      shortDescription: `<p>${spec.blurb}</p>`,
+      shortDescription: spec.blurb,
       overview: html([spec.blurb, spec.detail]),
       status: PUBLISHED,
       publishedAt: new Date(),
@@ -787,12 +790,12 @@ async function seedCourses(
       name: course.name,
       shortName: course.shortName ?? null,
       qualificationName: course.qualification,
-      shortDescription: `<p>${course.covers}</p>`.slice(0, 1000),
+      shortDescription: course.covers.slice(0, 1000),
       overview: courseOverview(course),
       durationMin: course.durationMin,
       durationMax: course.durationMax,
       durationUnit: 'YEARS',
-      careerSummary: html([course.careers]),
+      careerSummary: course.careers,
       status: PUBLISHED,
       publishedAt: new Date(),
       isFeatured: Boolean(course.featured),

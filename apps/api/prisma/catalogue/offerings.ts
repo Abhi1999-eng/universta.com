@@ -78,8 +78,9 @@ export function offeringOverview(u: UniversityFacts, c: CourseFacts): string {
   ]);
 }
 
+/** Plain text, like every short summary: see `universityShortDescription`. */
 export function offeringShortDescription(u: UniversityFacts, c: CourseFacts): string {
-  return `<p>${c.qualification} in ${c.name.replace(/^(BSc|MSc|BA|MA|BEng|BTech|BDes|LLB|LLM|MArch|BArch|MPharm|PhD)\s+/, '')} at ${u.name}, ${u.city}.</p>`;
+  return `${c.qualification} in ${c.name.replace(/^(BSc|MSc|BA|MA|BEng|BTech|BDes|LLB|LLM|MArch|BArch|MPharm|PhD)\s+/, '')} at ${u.name}, ${u.city}.`;
 }
 
 export const OFFERINGS: Record<string, string[]> = { ...BASE_OFFERINGS, ...MORE_OFFERINGS };

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { richTextToPlainText } from '@/components/phase1/RichText';
 
 /** Result cards for the three polished listing pages.
  *
@@ -115,9 +116,10 @@ export function ScholarshipCard({ row }: { row: ScholarshipRow }) {
           </span>
         ) : null}
       </div>
-      {row.eligibility ? (
+      {row.eligibility && richTextToPlainText(row.eligibility) ? (
         <div className="lc-facts">
-          <span>Eligibility: {row.eligibility}</span>
+          {/* Authored as rich text; the card shows its words. */}
+          <span>Eligibility: {richTextToPlainText(row.eligibility)}</span>
         </div>
       ) : null}
       <div className="lc-actions">
