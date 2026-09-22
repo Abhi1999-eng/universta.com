@@ -408,3 +408,36 @@ export function intakeCards(intakes: ProfileSummary['intakes'] | undefined): Int
     };
   });
 }
+
+/**
+ * The intakes a guide shows: the months the editor selected for the country,
+ * each with its intake record's details where one exists.
+ *
+ * The month selection is what the country editor edits, so it decides which
+ * intakes appear. The intake records are not edited there; they only enrich a
+ * selected month with a name, a primary flag and application timing. A record
+ * for a month the editor did not select is left out, and a selected month with
+ * no record still gets its card. With no selection at all, the records stand
+ * on their own.
+ */
+export function guideIntakes(selectedMonths: number[] | undefined, records: IntakeCard[]): IntakeCard[] {
+  const selected = [...new Set((selectedMonths ?? []).filter((month) => month >= 1 && month <= 12))].sort(
+    (a, b) => a - b,
+  );
+  if (!selected.length) return records;
+  return selected.map((month) => {
+    const record = records.find((entry) => entry.month === month);
+    if (record) return record;
+    const name = monthNames([month])[0];
+    return {
+      id: `month-${month}`,
+      name: `${name} intake`,
+      month,
+      primary: false,
+      starts: name,
+      opening: null,
+      deadline: null,
+      notes: null,
+    };
+  });
+}

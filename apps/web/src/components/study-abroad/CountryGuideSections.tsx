@@ -5,6 +5,7 @@ import type { CountryPage } from '@/lib/countries';
 import type { Destination } from '@/lib/study-abroad';
 import {
   costBreakdown,
+  guideIntakes,
   intakeCards,
   languageRows,
   monthNames,
@@ -188,20 +189,16 @@ export function CountryIntakes({
   n: string | null;
   alt: boolean;
 }) {
-  const cards = intakeCards(profiles.intakes);
-  /* The timeline shows the same intakes as the cards under it. The country's
-     own month list is only the fallback for a guide with no intake records,
-     since the two can disagree and a month on the bar with no card below it
-     (or a card with no month on the bar) reads as a mistake. */
-  const cardMonths = cards.flatMap((card) => (card.month ? [card] : []));
-  const months = cardMonths.length
-    ? [...new Set(cardMonths.map((card) => card.month as number))]
-    : (country.configuration?.intakeMonths ?? []);
-  if (!months.length && !cards.length) return null;
+  /* The editor's month selection decides which intakes appear; the intake
+     records only add detail to a selected month. The timeline and the cards
+     are built from the same list so they can never disagree. */
+  const cards = guideIntakes(country.configuration?.intakeMonths, intakeCards(profiles.intakes));
+  if (!cards.length) return null;
+  const months = cards.flatMap((card) => (card.month ? [card.month] : []));
   const primaryMonths = new Set(
-    cardMonths.filter((card) => card.primary).map((card) => card.month as number),
+    cards.filter((card) => card.primary && card.month).map((card) => card.month as number),
   );
-  const count = cards.length || months.length;
+  const count = cards.length;
   const primaries = cards.filter((card) => card.primary);
   const primaryName = primaries.length === 1 ? primaries[0].name : null;
   return (
