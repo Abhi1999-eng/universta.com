@@ -238,6 +238,10 @@ export interface CountryPublicDto {
   overview: string | null;
   capitalCity: string | null;
   officialLanguage: string | null;
+  /* The code the guide shows in its eyebrow and on its flag mark. The flag
+     emoji was already derived from it, but the code itself never left the
+     server, so every guide fell back to the first two letters of its name. */
+  iso2Code: string | null;
   continent: { id: string; name: string; slug: string } | null;
   flag: FlagDto | null;
   listingImage: PublicMediaDto | null;
@@ -1896,6 +1900,7 @@ export class CountriesService {
       overview: record.overview,
       capitalCity: record.capitalCity,
       officialLanguage: record.officialLanguage,
+      iso2Code: record.iso2Code,
       continent: this.continent(record),
       flag: this.flag(record),
       listingImage: this.publicMedia(record.listingMedia, record.name),
