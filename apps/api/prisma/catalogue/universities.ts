@@ -1,4 +1,5 @@
 import { html } from './content';
+import { MORE_UNIVERSITIES } from './universities-more';
 
 export type UniversityFacts = {
   name: string;
@@ -48,7 +49,7 @@ export function universityOverview(u: UniversityFacts): string {
   ]);
 }
 
-export const UNIVERSITIES: UniversityFacts[] = [
+const BASE_UNIVERSITIES: UniversityFacts[] = [
   // ---------------------------------------------------------------- United Kingdom
   {
     name: 'University of Oxford', slug: 'university-of-oxford', countrySlug: 'united-kingdom',
@@ -609,3 +610,5 @@ export const UNIVERSITIES: UniversityFacts[] = [
       'A well-established route into clinical practice, pharmacy and allied health, with a large professional alumni network in healthcare.',
   },
 ];
+
+export const UNIVERSITIES: UniversityFacts[] = [...BASE_UNIVERSITIES, ...MORE_UNIVERSITIES];

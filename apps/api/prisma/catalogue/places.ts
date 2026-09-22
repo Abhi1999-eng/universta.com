@@ -1,4 +1,5 @@
 import { html, slugify } from './content';
+import { MORE_CITIES } from './places-more';
 
 export type CityFacts = {
   name: string;
@@ -15,7 +16,7 @@ export type CityFacts = {
   featured?: boolean;
 };
 
-export const CITIES: Record<string, CityFacts[]> = {
+const BASE_CITIES: Record<string, CityFacts[]> = {
   'united-kingdom': [
     {
       name: 'Oxford',
@@ -643,3 +644,5 @@ export function statesFor(countrySlug: string): { name: string; slug: string }[]
   }
   return [...seen].map(([name, slug]) => ({ name, slug }));
 }
+
+export const CITIES: Record<string, CityFacts[]> = { ...BASE_CITIES, ...MORE_CITIES };

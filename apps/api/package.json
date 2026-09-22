@@ -23,7 +23,8 @@
     "db:backfill:country-budget-bands": "tsx prisma/backfill-country-budget-bands.ts",
     "db:seed:demo": "tsx prisma/demo-seed.ts",
     "db:qa-dataset": "tsx prisma/qa-dataset.ts",
-    "db:seed:catalogue": "tsx prisma/catalogue-seed.ts"
+    "db:seed:catalogue": "tsx prisma/catalogue-seed.ts",
+    "db:reset:except-admin": "tsx prisma/reset-except-admin.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

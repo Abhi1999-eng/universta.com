@@ -1,4 +1,5 @@
 import type { CountryFacts } from './content';
+import { MORE_COUNTRIES } from './countries-more';
 
 /**
  * The eight destinations, each described from what is actually true of it.
@@ -9,7 +10,7 @@ import type { CountryFacts } from './content';
  * labelled indicative, because a student planning a budget needs an order of
  * magnitude and is poorly served by a blank.
  */
-export const COUNTRIES: CountryFacts[] = [
+const BASE_COUNTRIES: CountryFacts[] = [
   {
     // Authored by hand in the Admin. The seed adds cities, universities,
     // subjects, intakes and any genuinely missing FAQ, and leaves every word of
@@ -516,3 +517,6 @@ export const COUNTRIES: CountryFacts[] = [
       'Because there are so few institutions, apply early and apply realistically. And if you are offered a tuition grant, read the service obligation attached to it carefully — it is a substantial saving and a substantial commitment at the same time.',
   },
 ];
+
+/** The first eight destinations, then the twelve in `countries-more.ts`. */
+export const COUNTRIES: CountryFacts[] = [...BASE_COUNTRIES, ...MORE_COUNTRIES];
