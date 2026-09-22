@@ -34,6 +34,19 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+/** A visa's name inside a sentence. A common noun loses its capital ("the
+ * study permit"); a code or proper name keeps it ("the F-1 student visa", "the
+ * Student's Pass"); and a bracketed designation is never touched ("the
+ * national (Type D) study visa"). Lowercasing the whole name, as this did,
+ * printed "the f-1 student visa" and "(vls-ts)". */
+export function visaInSentence(name: string): string {
+  const words = name.replace(/\([^)]*\)/g, ' ').trim().split(/\s+/);
+  const proper =
+    !/^[A-Z][a-z]/.test(words[0] ?? '') ||
+    words.slice(1).some((word) => /^[A-Z]/.test(word));
+  return proper ? name : name.charAt(0).toLowerCase() + name.slice(1);
+}
+
 /** The regional indicator pair for an ISO code, matching the Admin editor. */
 export function flagEmoji(iso2: string): string {
   return String.fromCodePoint(
@@ -312,7 +325,7 @@ export function countryFaqs(f: CountryFacts) {
       question: `How does the student visa work?`,
       category: 'Visa',
       answer: html([
-        `You apply for a ${f.visaType} once you hold an offer from a recognised institution. It is the only appropriate category for a full-time programme, and arriving on a visitor visa intending to convert it is not a workable route.`,
+        `You apply for the ${visaInSentence(f.visaType)} once you hold an offer from a recognised institution. It is the only appropriate category for a full-time programme, and arriving on a visitor visa intending to convert it is not a workable route.`,
         `Take the document checklist from the mission responsible for your area rather than from a general guide — requirements genuinely differ by nationality and location. When the visa is issued, check every printed detail against your passport and your offer letter before booking a flight.`,
       ]),
     },
@@ -376,7 +389,7 @@ export function countrySections(f: CountryFacts) {
           { step: '4', title: 'Apply and track what each institution asks next', description: `<p>Several programmes add a test, a portfolio or an interview. Keep a simple record of what each application needs and what stage it is at — follow-ups arrive on different timetables.</p>` },
           { step: '5', title: 'Accept an offer and read the conditions', description: `<p>A conditional offer lists exactly what still has to be satisfied. Check that your name, programme, level, duration and start date are printed correctly, because the visa is issued against this document.</p>` },
           { step: '6', title: 'Prepare your finances', description: `<p>Stamped statements covering several months, a loan sanction letter, or a sponsor's documents with proof of relationship. Pay whatever admission instalment your institution requires and keep every receipt.</p>` },
-          { step: '7', title: `Apply for the ${f.visaType.toLowerCase()}`, description: `<p>Apply from your home country using the checklist published by the mission responsible for your area. Bring the originals, and check every printed detail on the visa before you travel.</p>` },
+          { step: '7', title: `Apply for the ${visaInSentence(f.visaType)}`, description: `<p>Apply from your home country using the checklist published by the mission responsible for your area. Bring the originals, and check every printed detail on the visa before you travel.</p>` },
           { step: '8', title: 'Arrange accommodation and arrival', description: `<p>Apply for university accommodation as early as you are allowed — allocation usually runs on its own deadline. Confirm arrival dates with the international office.</p>` },
         ],
       },
@@ -401,10 +414,10 @@ export function countrySections(f: CountryFacts) {
       key: 'visa-process',
       type: 'RICH_TEXT',
       eyebrow: 'Visa',
-      heading: `The ${f.visaType.toLowerCase()}, start to finish`,
+      heading: `The ${visaInSentence(f.visaType)}, start to finish`,
       body: {
         paragraphs: [
-          `<p>The ${f.visaType.toLowerCase()} is applied for after you hold an offer from a recognised institution, and it is the only appropriate category for a full-time programme. Arriving on a visitor visa intending to convert it is not a workable plan.</p>`,
+          `<p>The ${visaInSentence(f.visaType)} is applied for after you hold an offer from a recognised institution, and it is the only appropriate category for a full-time programme. Arriving on a visitor visa intending to convert it is not a workable plan.</p>`,
           `<p>The application begins online and is completed at an appointment with the mission responsible for your area. Take the document checklist from that mission rather than from a general description — requirements genuinely differ by nationality and by location.</p>`,
           `<p>Bring the originals of everything you uploaded, expect to give biometrics, and expect a short set of questions about your course, your institution and how your studies are funded. They are answered from knowledge of your own plans, which is the point of asking.</p>`,
           `<p>When the visa is issued, check every printed detail against your passport and your offer letter before you book a flight: name, date of birth, passport number, the institution named, the validity dates and any conditions. An error found now is corrected easily; one found at an airport is not.</p>`,
