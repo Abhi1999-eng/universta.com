@@ -7,6 +7,7 @@ import {
   costBreakdown,
   guideIntakes,
   intakeCards,
+  journeyColumns,
   languageRows,
   monthNames,
   type WorkCard,
@@ -302,7 +303,7 @@ export function CountryCost({
   alt: boolean;
 }) {
   const cost = profiles.cost;
-  const { total, rows } = costBreakdown(cost);
+  const { total, rows, parts } = costBreakdown(cost);
   const proofOfFunds = profiles.work?.proofOfFundsSummary ?? null;
   if (!rows.length && !calculator && !cost?.tuitionNotes && !cost?.livingCostNotes) return null;
   const currency = country.currency?.name ?? cost?.currencyCode ?? null;
@@ -326,8 +327,25 @@ export function CountryCost({
               <div className="cost__total-body">
                 {total ? (
                   <>
-                    <div className="cost__big">{total}</div>
+                    <div className="cost__big">
+                      {total.split(' – ').map((part, index) => (
+                        <span key={index}>
+                          {index ? ' – ' : null}
+                          <span className="nowrap">{part}</span>
+                        </span>
+                      ))}
+                    </div>
                     <div className="cost__unit">per year, tuition and living</div>
+                    {parts.length ? (
+                      <dl className="cost__parts">
+                        {parts.map((part) => (
+                          <div key={part.label}>
+                            <dt>{part.label}</dt>
+                            <dd>{part.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
                   </>
                 ) : null}
                 {proofOfFunds ? (
@@ -496,9 +514,20 @@ export function CountryWorkVisa({
         lead="The pathway from your first semester to work after graduation, and the visa conditions attached to each stage."
       />
       {journey.length ? (
-      <div className="journey">
+      <div
+        className="journey"
+        style={{ '--cols': journeyColumns(journey.length) } as React.CSSProperties}
+      >
         {journey.map((item, index) => (
-          <article className="jstep" key={item.title}>
+          <article
+            className="jstep"
+            key={item.title}
+            data-row-end={
+              (index + 1) % journeyColumns(journey.length) === 0 || index === journey.length - 1
+                ? ''
+                : undefined
+            }
+          >
             <span className="jstep__dot" aria-hidden="true" />
             <span className="jstep__n">{String(index + 1).padStart(2, '0')}</span>
             <h3 className="jstep__t">{item.title}</h3>

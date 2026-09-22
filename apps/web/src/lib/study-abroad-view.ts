@@ -298,7 +298,13 @@ const PERIOD_UNIT: Record<string, string> = {
 };
 
 export type CostRow = { label: string; value: string; unit: string | null };
-export type CostBreakdown = { total: string | null; rows: CostRow[] };
+export type CostBreakdown = {
+  total: string | null;
+  rows: CostRow[];
+  /** What the yearly total is made of, each part a yearly range; empty when
+   * there is no total. */
+  parts: Array<{ label: string; value: string }>;
+};
 
 /**
  * The cost dashboard: one row per published range, and a yearly total only
@@ -306,7 +312,7 @@ export type CostBreakdown = { total: string | null; rows: CostRow[] };
  * A total built from one half would understate the cost, so it is left out.
  */
 export function costBreakdown(cost: ProfileSummary['cost']): CostBreakdown {
-  if (!cost) return { total: null, rows: [] };
+  if (!cost) return { total: null, rows: [], parts: [] };
   const symbol = cost.currencySymbol ?? '';
   const livingPeriod = cost.livingCostPeriod ?? 'PER_MONTH';
   const rows: CostRow[] = [];
@@ -324,15 +330,21 @@ export function costBreakdown(cost: ProfileSummary['cost']): CostBreakdown {
   const bound = (value: string | null | undefined, factor: number) =>
     value && Number.isFinite(Number(value)) ? Number(value) * factor : null;
   let total: string | null = null;
+  const parts: CostBreakdown['parts'] = [];
   if (tuitionFactor && livingFactor) {
     const tuitionLow = bound(cost.tuitionMin ?? cost.tuitionMax, tuitionFactor);
     const tuitionHigh = bound(cost.tuitionMax ?? cost.tuitionMin, tuitionFactor);
     const livingLow = bound(cost.livingCostMin ?? cost.livingCostMax, livingFactor);
     const livingHigh = bound(cost.livingCostMax ?? cost.livingCostMin, livingFactor);
-    if (tuitionLow !== null && tuitionHigh !== null && livingLow !== null && livingHigh !== null)
+    if (tuitionLow !== null && tuitionHigh !== null && livingLow !== null && livingHigh !== null) {
       total = range(symbol, String(tuitionLow + livingLow), String(tuitionHigh + livingHigh));
+      parts.push(
+        { label: 'Tuition', value: range(symbol, String(tuitionLow), String(tuitionHigh))! },
+        { label: 'Living', value: range(symbol, String(livingLow), String(livingHigh))! },
+      );
+    }
   }
-  return { total, rows };
+  return { total, rows, parts };
 }
 
 export type LanguageRow = {
@@ -407,6 +419,19 @@ export function intakeCards(intakes: ProfileSummary['intakes'] | undefined): Int
       notes: entry.notes ?? null,
     };
   });
+}
+
+/**
+ * How many columns a row of steps takes on a wide screen. The layout used to
+ * be six columns whatever the count, so three visa steps left half the width
+ * empty and eight application steps wrapped six and two. Up to five sit on
+ * one row; beyond that, rows of four or three, whichever divides evenly.
+ */
+export function journeyColumns(count: number): number {
+  if (count <= 5) return Math.max(count, 1);
+  if (count % 4 === 0) return 4;
+  if (count % 3 === 0) return 3;
+  return 4;
 }
 
 /* An intake record named for its month alone ("September") is titled the way

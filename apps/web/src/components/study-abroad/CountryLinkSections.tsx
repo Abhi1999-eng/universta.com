@@ -119,7 +119,10 @@ export function CountryNumbers({
           title={`Study in ${country.name} by the numbers`}
           lead="The figures that shape a decision, taken from what is published on Universta."
         />
-        <div className="bignums">
+        <div
+          className="bignums"
+          style={{ '--cols': Math.min(figures.length, 5) } as React.CSSProperties}
+        >
           {figures.map((figure) => (
             <div className="bignum" key={figure.label}>
               <div className="bignum__v">{figure.value}</div>

@@ -473,7 +473,7 @@
    Grenadines" both sit inside the column. --namelen is set per country. */
 .sa .hero__display{
   font-family: var(--font-display);
-  font-size: clamp(32px, calc(81vw / var(--namelen, 8)), 104px);
+  font-size: clamp(32px, calc(62vw / var(--namelen, 8)), 76px);
   font-weight: 700; line-height: var(--lh-tight); letter-spacing: -0.045em;
   text-transform: uppercase; color: var(--navy);
   margin: 0 0 6px; overflow-wrap: break-word; hyphens: none;
@@ -1242,3 +1242,93 @@
 .sa .h-grid--six{ grid-template-columns: 1fr; }
 @media (min-width: 600px){.sa .h-grid--six{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
 @media (min-width: 960px){.sa .h-grid--six{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
+
+/* ---------------------------------------------------------------------
+   GUIDE POLISH -- review of the Denmark guide at desktop width
+   --------------------------------------------------------------------- */
+.sa .nowrap{ white-space: nowrap; }
+
+/* Rule grids ("Why study here", editorial fact grids). The cells padded only
+   their right side, so every second and third column's text sat against the
+   divider, and the boxed borders read as form fields. Columns now keep a gap
+   and each item is marked by a rule above it, the way the list sections are. */
+.sa .rulegrid{ border-top: 0; column-gap: clamp(28px, 3.4vw, 56px); }
+.sa .rulegrid__item,
+.sa .rulegrid--2 .rulegrid__item:nth-child(2n),
+.sa .rulegrid--3 .rulegrid__item:nth-child(3n){
+  padding: clamp(20px, 2.2vw, 26px) 0 clamp(24px, 2.6vw, 32px);
+  border-inline-end: 0; border-bottom: 0; border-top: 1px solid var(--line);
+}
+.sa .rulegrid__item:hover{ background: none; }
+/* A fact grid's value is a phrase, not a title. */
+.sa .rulegrid--facts .rulegrid__t{ font-size: clamp(17px, 1.45vw, 20px); line-height: 1.4; letter-spacing: -0.012em; }
+
+/* Long-form "read more". The toggle stretched the full width with its icon at
+   the far end, and the opened text ran down one narrow column beside empty
+   space. The toggle sits with its label; the text takes two columns. */
+.sa .longform__toggle{ width: auto; justify-content: flex-start; gap: 12px; font-size: 16px; }
+@media (min-width: 1000px){
+  .sa .longform__body[data-open="true"]{ max-width: none; column-count: 2; column-gap: clamp(40px, 4.4vw, 72px); }
+  .sa .longform__body h3{ break-after: avoid; }
+  .sa .longform__body p{ break-inside: avoid; }
+}
+
+/* Documents: two columns of compact rows on a wide screen, without the
+   running number the checkbox already stands in for. */
+.sa .doc{ grid-template-columns: auto 1fr auto; }
+.sa .doc__n{ display: none; }
+.sa .doc__more{ padding-left: calc(22px + 14px); }
+@media (min-width: 900px){
+  .sa .docs{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(28px, 3vw, 48px); border-top: 0; }
+  .sa .docitem{ border-top: 1px solid var(--line); border-bottom: 0; }
+}
+@media (max-width: 640px){.sa .doc{ grid-template-columns: auto 1fr; }.sa .doc__badge{ grid-column: 2; }}
+
+/* Cost: the total box stretched to the height of the list beside it, and its
+   range broke across two lines. It keeps its own height and each amount
+   stays whole. */
+.sa .cost__total{ align-self: start; }
+@media (min-width: 1000px){.sa .cost{ grid-template-columns: minmax(320px, 1fr) minmax(0, 1.45fr); }}
+.sa .cost__big{ font-size: clamp(24px, 2vw, 30px); }
+.sa .cost__parts{ margin: 18px 0 0; display: grid; gap: 0; }
+.sa .cost__parts div{ display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
+.sa .cost__parts dt{ color: var(--muted); }
+.sa .cost__parts dd{ margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Steps. The layout was built for the navy work-and-visa band -- white
+   titles, a fixed six columns -- so on a light band the titles vanished, and
+   three steps left half the row empty. Colours now follow the band, and the
+   column count follows the number of steps (--cols, set by the page). */
+/* The dot is a <span>: inline, its size was ignored and it drew as a thin
+   sliver of shadow beside the step number. */
+.sa .jstep__dot{ display: block; }
+.sa .jstep__t{ color: var(--text); }
+.sa .jstep__b, .sa .jstep__m{ color: var(--muted); }
+.sa .jstep__n{ color: var(--accent); }
+.sa .jstep__dot{ background: var(--accent); box-shadow: 0 0 0 4px rgba(214, 40, 40, 0.12); }
+.sa .jstep::before{ background: var(--line); }
+.sa .sec--navy .jstep__t{ color: #fff; }
+.sa .sec--navy .jstep__b, .sa .sec--navy .jstep__m{ color: var(--on-navy-muted); }
+.sa .sec--navy .jstep__n{ color: var(--accent-on-navy); }
+.sa .sec--navy .jstep__dot{ background: var(--accent-on-navy); box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.18); }
+.sa .sec--navy .jstep::before{ background: var(--on-navy-line); }
+@media (min-width: 900px){
+  .sa .journey{ grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); row-gap: clamp(30px, 3vw, 44px); }
+  .sa .jstep{ padding-right: clamp(20px, 2.2vw, 36px); }
+  .sa .jstep[data-row-end]::before{ display: none; }
+}
+
+/* By the numbers: one row with a column per figure (--cols, set by the
+   page) rather than a three-column table with an empty cell; smaller
+   figures, and a short accent rule in place of the boxed borders. */
+.sa .bignums{ border-top: 0; column-gap: clamp(24px, 3vw, 44px); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1040px){.sa .bignums{ grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }}
+.sa .bignum,
+.sa .bignum:nth-child(2n),
+.sa .bignum:nth-child(3n){
+  position: relative; padding: clamp(22px, 2.4vw, 30px) 0 clamp(24px, 2.6vw, 32px);
+  border: 0; border-top: 1px solid var(--line);
+}
+.sa .bignum::before{ content: ""; position: absolute; top: -1px; left: 0; width: 36px; height: 2px; background: var(--accent); }
+.sa .bignum__v{ font-size: clamp(30px, 2.8vw, 42px); white-space: nowrap; }
+.sa .sec--navy .bignum{ border-top-color: var(--on-navy-line); }
