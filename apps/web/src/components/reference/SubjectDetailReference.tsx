@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { RichText } from '@/components/phase1/RichText';
 import type { Course, SubjectDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
@@ -157,9 +158,16 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
                 <h2>About {subject.name}</h2>
               </div>
               <div className="prose">
-                {subject.overview.split(/\n{2,}/).map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
+                {/* An overview may be written as plain paragraphs or carry
+                    markup (headings, lists); markup is rendered, sanitised,
+                    rather than printed as tags. */}
+                {/<\/?[a-z][^>]*>/i.test(subject.overview) ? (
+                  <RichText value={subject.overview} />
+                ) : (
+                  subject.overview
+                    .split(/\n{2,}/)
+                    .map((paragraph, index) => <p key={index}>{paragraph}</p>)
+                )}
               </div>
             </section>
           ) : null}

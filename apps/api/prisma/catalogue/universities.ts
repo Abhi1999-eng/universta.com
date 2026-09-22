@@ -28,8 +28,10 @@ export type UniversityFacts = {
 const F = (list: string[]) =>
   list.length <= 1 ? list[0] : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 
+/** Plain text: the admin edits a university's short summary in a plain input,
+ * and the public pages print it as text, so markup here showed as "<p>". */
 export function universityShortDescription(u: UniversityFacts): string {
-  return `<p>${u.character}</p>`;
+  return u.character;
 }
 
 /** Five to seven paragraphs, composed from what is true of this institution. */
