@@ -230,17 +230,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
           <div className="hero__grid">
             <div className="hero__main">
-              <p className="hero__eyebrow">
-                Study abroad
-                {country.continent ? <> · {country.continent.name}</> : null}
-                {country.iso2Code ? (
-                  <>
-                    <b>·</b>
-                    {country.iso2Code}
-                  </>
-                ) : null}
-              </p>
-              {/* The design's display name. Decorative: the heading below
+              {/* No eyebrow here: "Study abroad · Europe · DK" under the
+                  breadcrumb read as a second breadcrumb. The snapshot's chip
+                  carries the ISO code. The design's display name. Decorative: the heading below
                   already says it, so it is not announced twice. */}
               <p
                 className="hero__display"

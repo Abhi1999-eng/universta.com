@@ -1,5 +1,6 @@
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import type { Section } from '@/lib/countries';
+import { journeyColumns } from '@/lib/study-abroad-view';
 import { Longform } from './Longform';
 import { SectionHead } from './SectionHead';
 
@@ -106,7 +107,7 @@ export function EditorialSection({
         ) : null}
 
         {type === 'FACT_GRID' && items.length ? (
-          <div className="rulegrid rulegrid--3">
+          <div className="rulegrid rulegrid--3 rulegrid--facts">
             {items.map((item, index) => (
               <div className="rulegrid__item" key={index}>
                 <span className="rulegrid__n">{text(item.label) ?? ''}</span>
@@ -117,9 +118,20 @@ export function EditorialSection({
         ) : null}
 
         {type === 'STEPS' && items.length ? (
-          <div className="journey">
+          <div
+            className="journey"
+            style={{ '--cols': journeyColumns(items.length) } as React.CSSProperties}
+          >
             {items.map((item, index) => (
-              <article className="jstep" key={index}>
+              <article
+                className="jstep"
+                key={index}
+                data-row-end={
+                  (index + 1) % journeyColumns(items.length) === 0 || index === items.length - 1
+                    ? ''
+                    : undefined
+                }
+              >
                 <span className="jstep__dot" aria-hidden="true" />
                 <span className="jstep__n">{text(item.step) ?? String(index + 1)}</span>
                 {text(item.title) ? (

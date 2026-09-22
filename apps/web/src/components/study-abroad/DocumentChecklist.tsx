@@ -18,17 +18,34 @@ export type ChecklistDocument = {
   details: string | null;
 };
 
+/* The first sentence of a passage, when it has a sensible one. */
+function firstSentence(text: string): { first: string; rest: string | null } {
+  const match = text.match(/^(.{20,240}?[.!?])\s+(?=[A-Z0-9"“‘(])/);
+  if (!match) return { first: text, rest: null };
+  return { first: match[1], rest: text.slice(match[0].length).trim() || null };
+}
+
 /**
- * A document's first paragraph, which says what it is, and the advice after
- * it. Ten documents at three paragraphs each ran to nearly six screens on a
- * phone, so the advice waits behind a disclosure after the row -- not inside
- * it, because the row is itself the checkbox and cannot hold another control.
+ * The sentence that says what a document is, and everything after it. Ten
+ * documents at three paragraphs each ran to nearly six screens on a phone and
+ * a long column on a desktop, so each row carries one sentence and the rest
+ * waits behind a disclosure after the row -- not inside it, because the row is
+ * itself the checkbox and cannot hold another control.
+ *
+ * Both halves come back as markup. The plain text is taken from sanitised
+ * markup with its entities intact, so it is already safe to wrap in a
+ * paragraph -- and rendered as markup, "&amp;" reads as "&".
  */
 export function leadAndRest(html: string): { lead: string; rest: string | null } {
-  const match = html.match(/^\s*<p[^>]*>[\s\S]*?<\/p>/i);
-  if (!match) return { lead: html, rest: null };
-  const rest = html.slice(match[0].length).trim();
-  return { lead: match[0], rest: rest && richTextToPlainText(rest) ? rest : null };
+  const paragraph = html.match(/^\s*<p[^>]*>[\s\S]*?<\/p>/i);
+  const opening = richTextToPlainText(paragraph ? paragraph[0] : html);
+  const after = paragraph ? html.slice(paragraph[0].length).trim() : '';
+  const { first, rest } = firstSentence(opening);
+  const remainder = [rest ? `<p>${rest}</p>` : '', after].join('');
+  return {
+    lead: `<p>${first}</p>`,
+    rest: remainder && richTextToPlainText(remainder) ? remainder : null,
+  };
 }
 
 export function DocumentChecklist({ documents }: { documents: ChecklistDocument[] }) {

@@ -290,6 +290,15 @@ describe('costBreakdown', () => {
     expect(costBreakdown(cost()).total).toBe('€10,200 – €35,600');
   });
 
+  /* The total box shows what its figure is made of, each part per year. */
+  it('breaks the total into yearly tuition and living', () => {
+    expect(costBreakdown(cost()).parts).toEqual([
+      { label: 'Tuition', value: '€0 – €20,000' },
+      { label: 'Living', value: '€10,200 – €15,600' },
+    ]);
+    expect(costBreakdown(cost({ livingCostMin: null, livingCostMax: null })).parts).toEqual([]);
+  });
+
   /* A total from tuition alone would understate what a year costs. */
   it('gives no total when half of it is missing', () => {
     expect(costBreakdown(cost({ livingCostMin: null, livingCostMax: null })).total).toBeNull();
@@ -308,7 +317,7 @@ describe('costBreakdown', () => {
   });
 
   it('is empty without a cost profile', () => {
-    expect(costBreakdown(null)).toEqual({ total: null, rows: [] });
+    expect(costBreakdown(null)).toEqual({ total: null, rows: [], parts: [] });
   });
 });
 

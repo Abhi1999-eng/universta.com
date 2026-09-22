@@ -158,8 +158,12 @@ export function countryOverview(f: CountryFacts): Paragraphs {
   ];
 }
 
+/** The first sentence of a passage, without its full stop -- a passage of one
+ * sentence keeps its own, and appending another printed "offer..". */
+const clause = (text: string) => text.split('. ')[0].replace(/\.+$/, '');
+
 export function countryShortDescription(f: CountryFacts): string {
-  return `<p>${f.positioning} ${f.teaching.split('. ')[0]}. ${f.costShape.split('. ')[0]}.</p>`;
+  return `<p>${f.positioning} ${clause(f.teaching)}. ${clause(f.costShape)}.</p>`;
 }
 
 /** Eight or more documents, with the country's own specifics woven in. */
