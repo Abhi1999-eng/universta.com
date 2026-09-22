@@ -853,9 +853,27 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         displayOrder: Number(row.displayOrder) || 0,
         ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
       };
-      const result = row.id
-        ? await updateCountryFaq(id, row.id, payload)
-        : await createCountryFaq(id, payload);
+      /* A FAQ's validation error names a property, not a form field, so the
+         page could only say "Invalid catalog request". Say which FAQ, and
+         what the API said about it. */
+      let result: Awaited<ReturnType<typeof updateCountryFaq>>;
+      try {
+        result = row.id
+          ? await updateCountryFaq(id, row.id, payload)
+          : await createCountryFaq(id, payload);
+      } catch (cause: unknown) {
+        const details = (cause as { details?: unknown }).details;
+        const reasons = Array.isArray(details)
+          ? details
+              .map((entry) => (entry as { message?: unknown }).message)
+              .filter((message): message is string => typeof message === "string")
+          : [];
+        throw new Error(
+          `The FAQ “${payload.question}” could not be saved${
+            reasons.length ? `: ${reasons.join("; ")}.` : "."
+          }`,
+        );
+      }
       nextFaqs.push({
         id: result.data.id,
         updatedAt: result.data.updatedAt,
