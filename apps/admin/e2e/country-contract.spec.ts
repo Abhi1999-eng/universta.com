@@ -589,7 +589,7 @@ test.describe.serial('country client contract, end to end', () => {
     expect(detail.status()).toBe(200);
     await page.goto(`${webBaseUrl}/study-abroad/${derivedSlug}`);
     await expect(page.locator('h1')).toContainText(onlyName);
-    await page.goto(`${webBaseUrl}/`);
+    await page.goto(`${webBaseUrl}/study-abroad`);
     /* Scoped to the listing. The route family's header carries a country
        selector that links every destination, and its rows are hidden until it
        is opened -- `.first()` used to resolve to one of those. */
