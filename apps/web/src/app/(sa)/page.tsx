@@ -60,7 +60,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   /* The catalogue previews are read alongside the directory, and a failure in
      any one of them leaves its section out rather than taking the page down. */
-  const [directory, subjects, universities, courses, scholarships] = await Promise.all([
+  const [directory, subjects, universities, courses, scholarshipList] = await Promise.all([
     getDestinations().catch(() => null),
     getSubjects({ limit: '6' })
       .then((result) => result.data as unknown as HomeSubject[])
@@ -71,10 +71,15 @@ export default async function HomePage() {
     getCourses({ limit: '6' })
       .then((result) => result.data as unknown as HomeCourse[])
       .catch(() => []),
-    phaseList<HomeScholarship>('scholarships', { limit: '6' })
-      .then((result) => result.data)
-      .catch(() => []),
+    phaseList<HomeScholarship>('scholarships', { limit: '6' }).catch(() => ({
+      data: [] as HomeScholarship[],
+      meta: null,
+    })),
   ]);
+  const scholarships = scholarshipList.data;
+  /* A scholarship open to several destinations is counted once per destination
+     in the directory, so the hero takes the distinct total from the list. */
+  const scholarshipTotal = Number((scholarshipList.meta as { total?: unknown } | null)?.total);
 
   if (!directory) {
     return (
@@ -123,7 +128,11 @@ export default async function HomePage() {
 
   return (
     <>
-      <HomeHero directory={directory} popular={popular} />
+      <HomeHero
+        directory={directory}
+        popular={popular}
+        scholarshipTotal={Number.isFinite(scholarshipTotal) ? scholarshipTotal : undefined}
+      />
       <StartPaths alt={band('paths')} />
 
       {/* The listing, where the design's own "countries" section sat. Its
