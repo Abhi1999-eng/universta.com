@@ -185,7 +185,9 @@ export function FaqAccordion({
                     onClick={() => setOpen(expanded ? null : faq.id)}
                   >
                     <span>{faq.question}</span>
-                    <span className="faq__plus" aria-hidden="true" />
+                    <span className="faq__plus" aria-hidden="true">
+                      +
+                    </span>
                   </button>
                 </h3>
                 <div
