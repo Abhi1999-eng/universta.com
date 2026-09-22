@@ -1,4 +1,4 @@
-import { RichText } from '@/components/phase1/RichText';
+import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import type { Section } from '@/lib/countries';
 import { Longform } from './Longform';
 import { SectionHead } from './SectionHead';
@@ -57,6 +57,8 @@ export function EditorialSection({
     ? (body.paragraphs as unknown[]).filter((entry): entry is string => typeof entry === 'string')
     : [];
 
+  const subheading =
+    section.subheading && richTextToPlainText(section.subheading) ? section.subheading : null;
   const type = section.sectionType;
   const hasContent =
     paragraphs.length > 0 || items.length > 0 || (type === 'CTA' && section.ctaUrl);
@@ -69,12 +71,15 @@ export function EditorialSection({
     >
       <div className="wrap">
         {section.heading ? (
-          <SectionHead
-            n={n}
-            eyebrow={section.eyebrow}
-            title={section.heading}
-            lead={section.subheading}
-          >
+          <SectionHead n={n} eyebrow={section.eyebrow} title={section.heading}>
+            {/* The subheading is written in the admin's rich text editor, so
+                it is HTML: printed as text it showed its tags on the page, and
+                an emptied editor saves "<p><br></p>", which is not a lead. */}
+            {subheading ? (
+              <div className="sec-lead">
+                <RichText value={subheading} />
+              </div>
+            ) : null}
             {/* Prose sits in the head's right-hand column, as the design's
                 overview does, rather than under it at full width. */}
             {type === 'RICH_TEXT' && paragraphs.length ? (

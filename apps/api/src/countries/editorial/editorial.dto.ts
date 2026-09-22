@@ -12,6 +12,7 @@ import {
   MaxLength,
   Min,
   Validate,
+  ValidateIf,
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
@@ -75,8 +76,11 @@ export class ContentSectionDto extends EditorialVersionDto {
   @IsOptional() @IsString() @MaxLength(36) primaryMediaId?: string;
   @IsOptional() @IsString() @MaxLength(36) secondaryMediaId?: string;
   @IsOptional() @IsString() @MaxLength(100) ctaLabel?: string;
+  /* An empty string clears the link: omitting the key leaves it as it was,
+     so without this a section's call to action could never be removed. */
   @IsOptional()
   @IsString()
+  @ValidateIf((_, value) => value !== '')
   @Matches(/^(?:\/(?!\/)|#[a-zA-Z0-9_-]+|https:\/\/)/)
   @MaxLength(1000)
   ctaUrl?: string;
