@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { RichText } from '@/components/phase1/RichText';
+import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 
 /**
  * The documents list as the design builds it: a checklist the student ticks
@@ -17,6 +17,19 @@ export type ChecklistDocument = {
   isRequired: boolean;
   details: string | null;
 };
+
+/**
+ * A document's first paragraph, which says what it is, and the advice after
+ * it. Ten documents at three paragraphs each ran to nearly six screens on a
+ * phone, so the advice waits behind a disclosure after the row -- not inside
+ * it, because the row is itself the checkbox and cannot hold another control.
+ */
+export function leadAndRest(html: string): { lead: string; rest: string | null } {
+  const match = html.match(/^\s*<p[^>]*>[\s\S]*?<\/p>/i);
+  if (!match) return { lead: html, rest: null };
+  const rest = html.slice(match[0].length).trim();
+  return { lead: match[0], rest: rest && richTextToPlainText(rest) ? rest : null };
+}
 
 export function DocumentChecklist({ documents }: { documents: ChecklistDocument[] }) {
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
@@ -36,10 +49,13 @@ export function DocumentChecklist({ documents }: { documents: ChecklistDocument[
       <div className="docs">
         {documents.map((document, index) => {
           const on = checked.has(document.id);
+          const { lead, rest } = document.details
+            ? leadAndRest(document.details)
+            : { lead: null, rest: null };
           return (
+            <div className="docitem" key={document.id}>
             <div
               className="doc"
-              key={document.id}
               role="checkbox"
               aria-checked={on}
               aria-labelledby={`${base}-${document.id}-n`}
@@ -66,9 +82,9 @@ export function DocumentChecklist({ documents }: { documents: ChecklistDocument[
                 <div className="doc__name" id={`${base}-${document.id}-n`}>
                   {document.name}
                 </div>
-                {document.details ? (
+                {lead ? (
                   <div className="doc__desc" id={`${base}-${document.id}-d`}>
-                    <RichText value={document.details} />
+                    <RichText value={lead} />
                   </div>
                 ) : null}
               </div>
@@ -77,6 +93,15 @@ export function DocumentChecklist({ documents }: { documents: ChecklistDocument[
                   {document.isRequired ? 'Required' : 'Optional'}
                 </span>
               </span>
+            </div>
+            {rest ? (
+              <details className="doc__more">
+                <summary>More about {document.name}</summary>
+                <div className="doc__desc">
+                  <RichText value={rest} />
+                </div>
+              </details>
+            ) : null}
             </div>
           );
         })}

@@ -96,6 +96,20 @@ export function StudyAbroadShell({
   useEscape(selectorOpen, closeSelector);
   useEscape(drawerOpen, () => setDrawerOpen(false));
 
+  /* The header is static markup, so the state its buttons announce is kept in
+   * step here. Without this the menu button said "Open menu", collapsed, with
+   * the drawer open, and showed no way to close it. */
+  useEffect(() => {
+    const burger = document.querySelector<HTMLElement>('.sa [data-toggle-drawer]');
+    burger?.setAttribute('aria-expanded', String(drawerOpen));
+    burger?.setAttribute('aria-label', drawerOpen ? 'Close menu' : 'Open menu');
+  }, [drawerOpen]);
+  useEffect(() => {
+    document
+      .querySelectorAll<HTMLElement>('.sa [data-open-selector][aria-expanded]')
+      .forEach((button) => button.setAttribute('aria-expanded', String(selectorOpen)));
+  }, [selectorOpen]);
+
   /* The header opens this from a search icon, so typing is the next thing the
    * student does. Focus goes back to whatever opened it on close, rather than
    * being dropped on the body when the dialog hides. */
@@ -151,7 +165,13 @@ export function StudyAbroadShell({
       </a>
       <StudyAbroadHeader />
 
-      <div className="drawer" data-drawer data-open={String(drawerOpen)} aria-hidden={!drawerOpen}>
+      <div
+        className="drawer"
+        id="sa-drawer"
+        data-drawer
+        data-open={String(drawerOpen)}
+        aria-hidden={!drawerOpen}
+      >
         {PRIMARY.map((item) => (
           <Link key={item.href} href={item.href} onClick={() => setDrawerOpen(false)}>
             {item.label}
