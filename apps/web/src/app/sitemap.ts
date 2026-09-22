@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { phaseList } from "@/lib/phase1";
+import { phaseListAll } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
 import { getCourses, getSubjects } from "@/lib/catalog";
@@ -51,9 +51,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       courses,
     ] = await Promise.all([
       Promise.all(
-        resources.map((resource) => phaseList<AnyRecord>(resource, { limit: "50" })),
+        resources.map((resource) => phaseListAll<AnyRecord>(resource)),
       ),
-      getCountries({ limit: "50" }),
+      getCountries({ limit: "100" }),
       getSubjects({ limit: "100" }),
       getCourses({ limit: "100" }),
     ]);

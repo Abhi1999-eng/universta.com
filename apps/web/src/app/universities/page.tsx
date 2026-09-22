@@ -6,7 +6,7 @@ import {
 } from '@/components/reference/UniversitiesReference';
 import { getContinents, getCountries } from '@/lib/countries';
 import { getCourseLevels, getSubjects } from '@/lib/catalog';
-import { phaseList } from '@/lib/phase1';
+import { phaseList, phaseListAll } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
@@ -83,7 +83,7 @@ export default async function UniversitiesPage({
       getContinents().catch(() => []),
       getCourseLevels().catch(() => []),
       // Unfiltered, for the A–Z index and the per-destination counts.
-      phaseList<AnyRecord>('universities', { limit: '100' })
+      phaseListAll<AnyRecord>('universities')
         .then((r) => r.data)
         .catch(() => []),
     ]);
