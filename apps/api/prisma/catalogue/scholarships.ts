@@ -1,4 +1,5 @@
 import { html } from './content';
+import { MORE_SCHOLARSHIPS, MORE_SCHOLARSHIP_PROVIDERS } from './scholarships-more';
 
 /**
  * Long-standing, named scholarship programmes run by governments and national
@@ -25,7 +26,7 @@ export type ScholarshipFacts = {
   featured?: boolean;
 };
 
-export const SCHOLARSHIP_PROVIDERS: Record<string, { name: string; url: string | null }> = {
+const BASE_SCHOLARSHIP_PROVIDERS: Record<string, { name: string; url: string | null }> = {
   'uk-government-chevening': { name: 'Chevening (UK Government)', url: 'https://www.chevening.org' },
   'commonwealth-scholarship-commission': { name: 'Commonwealth Scholarship Commission in the UK', url: 'https://cscuk.fcdo.gov.uk' },
   'daad': { name: 'German Academic Exchange Service (DAAD)', url: 'https://www.daad.de' },
@@ -38,7 +39,7 @@ export const SCHOLARSHIP_PROVIDERS: Record<string, { name: string; url: string |
   'erasmus-mundus': { name: 'European Commission', url: null },
 };
 
-export const SCHOLARSHIPS: ScholarshipFacts[] = [
+const BASE_SCHOLARSHIPS: ScholarshipFacts[] = [
   {
     title: 'Chevening Scholarships', slug: 'chevening-scholarships',
     provider: 'Chevening (UK Government)', providerSlug: 'uk-government-chevening',
@@ -165,3 +166,9 @@ export function scholarshipDescription(s: ScholarshipFacts): string {
 export function scholarshipEligibility(s: ScholarshipFacts): string {
   return html([s.who]);
 }
+
+export const SCHOLARSHIP_PROVIDERS: Record<string, { name: string; url: string | null }> = {
+  ...BASE_SCHOLARSHIP_PROVIDERS,
+  ...MORE_SCHOLARSHIP_PROVIDERS,
+};
+export const SCHOLARSHIPS: ScholarshipFacts[] = [...BASE_SCHOLARSHIPS, ...MORE_SCHOLARSHIPS];

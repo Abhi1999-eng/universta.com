@@ -1,6 +1,7 @@
 import { html } from './content';
 import type { CourseFacts } from './academics';
 import type { UniversityFacts } from './universities';
+import { MORE_OFFERINGS } from './offerings-more';
 
 /**
  * Which generic courses each institution actually offers.
@@ -11,7 +12,7 @@ import type { UniversityFacts } from './universities';
  * named university is the most fragile claim on the site, and the indicative
  * range on the destination's cost profile carries the honest version instead.
  */
-export const OFFERINGS: Record<string, string[]> = {
+const BASE_OFFERINGS: Record<string, string[]> = {
   // United Kingdom
   'university-of-oxford': ['msc-computer-science', 'ba-economics'],
   'university-of-cambridge': ['bsc-mathematics', 'msc-machine-learning'],
@@ -80,3 +81,5 @@ export function offeringOverview(u: UniversityFacts, c: CourseFacts): string {
 export function offeringShortDescription(u: UniversityFacts, c: CourseFacts): string {
   return `<p>${c.qualification} in ${c.name.replace(/^(BSc|MSc|BA|MA|BEng|BTech|BDes|LLB|LLM|MArch|BArch|MPharm|PhD)\s+/, '')} at ${u.name}, ${u.city}.</p>`;
 }
+
+export const OFFERINGS: Record<string, string[]> = { ...BASE_OFFERINGS, ...MORE_OFFERINGS };
