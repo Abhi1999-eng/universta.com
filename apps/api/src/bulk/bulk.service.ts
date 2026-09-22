@@ -116,6 +116,9 @@ export class BulkOperationsService {
     const normalized = rows.map((row) => {
       const values: BulkRow = { __line: String(row.line) };
       for (const [header, value] of Object.entries(row.values)) {
+        // `__`-prefixed keys carry ids this service resolved itself; a column
+        // of that name in an upload would skip the lookup, so it is ignored.
+        if (header.trim().startsWith('__')) continue;
         const normalizedHeader = header
           .trim()
           .replace(/\s*\*$/, '')

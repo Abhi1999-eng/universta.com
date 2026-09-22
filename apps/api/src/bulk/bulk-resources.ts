@@ -142,6 +142,51 @@ function slugOrFallback(row: BulkRow, fallbackSource: string) {
   return row.slug?.trim() || slugify(fallbackSource);
 }
 
+type RefRecord = { id: string; slug: string };
+type RefTable = {
+  findFirst(args: { where: Record<string, unknown> }): Promise<unknown>;
+  findMany(args: {
+    where: Record<string, unknown>;
+    take: number;
+  }): Promise<unknown[]>;
+};
+
+/** Resolves a relation cell that may carry the record's slug (or code) or its
+ * display name. Export writes names -- it is what an editor reads -- and a
+ * hand-written file usually carries slugs, so both have to import, or an
+ * exported file cannot be edited and uploaded again.
+ *
+ * The slug is tried first because it is unique. A name is accepted only when
+ * it names exactly one record: course names repeat, and so do university
+ * names across countries, and guessing between them would attach the row to
+ * the wrong parent without a word. Returns `null` when nothing matches, and
+ * `false` when the name is ambiguous, having said so in `errors`. */
+async function findRef(
+  table: unknown,
+  term: string,
+  column: string,
+  errors: string[],
+  scope: Record<string, unknown> = { deletedAt: null },
+  key: 'slug' | 'code' = 'slug',
+): Promise<RefRecord | null | false> {
+  const lookup = table as RefTable;
+  const value = term.trim();
+  const exact = await lookup.findFirst({ where: { ...scope, [key]: value } });
+  if (exact) return exact as RefRecord;
+  const named = (await lookup.findMany({
+    where: { ...scope, name: value },
+    take: 2,
+  })) as RefRecord[];
+  if (named.length === 1) return named[0];
+  if (named.length > 1) {
+    errors.push(
+      `${column} "${value}" matches more than one record; use its ${key} instead`,
+    );
+    return false;
+  }
+  return null;
+}
+
 const countries: BulkResourceDefinition = {
   key: 'countries',
   label: 'Countries',
@@ -382,8 +427,8 @@ const countries: BulkResourceDefinition = {
     rank_order: '0',
     faqs: '[{"question":"Can I work while studying?","answer":"Yes, within the permitted hours."}]',
     continent: 'asia',
-    subject: 'Engineering | Nursing',
-    tag: 'featured | english-speaking',
+    subject: 'Engineering | Computer Science',
+    tag: '',
   },
   updatableColumns: [
     'title',
@@ -618,7 +663,7 @@ const states: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Demo Province',
-    countrySlug: 'demo-country',
+    countrySlug: 'Demo Country',
     status: 'DRAFT',
     displayOrder: '0',
   },
@@ -627,17 +672,16 @@ const states: BulkResourceDefinition = {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
     const country = row.countrySlug?.trim()
-      ? await prisma.country.findFirst({
-          where: { slug: row.countrySlug.trim(), deletedAt: null },
-        })
+      ? await findRef(prisma.country, row.countrySlug, 'countrySlug', errors)
       : null;
-    if (!country) errors.push(`countrySlug "${row.countrySlug}" was not found`);
+    if (country === null)
+      errors.push(`countrySlug "${row.countrySlug}" was not found`);
     if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
-        countryId: country!.id,
+        countryId: (country as RefRecord).id,
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
@@ -683,7 +727,7 @@ const cities: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Demo City',
-    countrySlug: 'demo-country',
+    countrySlug: 'Demo Country',
     stateSlug: '',
     shortDescription:
       'A fictional demo city used only to show the expected import shape.',
@@ -702,32 +746,34 @@ const cities: BulkResourceDefinition = {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
     const country = row.countrySlug?.trim()
-      ? await prisma.country.findFirst({
-          where: { slug: row.countrySlug.trim(), deletedAt: null },
-        })
+      ? await findRef(prisma.country, row.countrySlug, 'countrySlug', errors)
       : null;
-    if (!country) errors.push(`countrySlug "${row.countrySlug}" was not found`);
+    if (country === null)
+      errors.push(`countrySlug "${row.countrySlug}" was not found`);
     let stateId: string | null = null;
     if (row.stateSlug?.trim() && country) {
-      const state = await prisma.state.findFirst({
-        where: {
-          slug: row.stateSlug.trim(),
+      const state = await findRef(
+        prisma.state,
+        row.stateSlug,
+        'stateSlug',
+        errors,
+        {
           countryId: country.id,
           deletedAt: null,
         },
-      });
-      if (!state)
+      );
+      if (state === null)
         errors.push(
           `stateSlug "${row.stateSlug}" was not found for this country`,
         );
-      else stateId = state.id;
+      else if (state) stateId = state.id;
     }
     if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
-        countryId: country!.id,
+        countryId: (country as { id: string }).id,
         stateId,
         shortDescription: row.shortDescription?.trim() || null,
         isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
@@ -845,7 +891,7 @@ const courses: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Demo Course',
-    subjectSlug: 'demo-subject',
+    subjectSlug: 'Demo Subject',
     courseLevelCode: 'UG',
     shortDescription:
       'A fictional demo course used only to show the expected import shape.',
@@ -859,27 +905,31 @@ const courses: BulkResourceDefinition = {
     const subject = row.__subjectId
       ? { id: row.__subjectId }
       : row.subjectSlug?.trim()
-        ? await prisma.subject.findFirst({
-            where: { slug: row.subjectSlug.trim(), deletedAt: null },
-          })
+        ? await findRef(prisma.subject, row.subjectSlug, 'subjectSlug', errors)
         : null;
-    if (!subject) errors.push(`subjectSlug "${row.subjectSlug}" was not found`);
+    if (subject === null)
+      errors.push(`subjectSlug "${row.subjectSlug}" was not found`);
     const courseLevel = row.__courseLevelId
       ? { id: row.__courseLevelId }
       : row.courseLevelCode?.trim()
-        ? await prisma.courseLevel.findFirst({
-            where: { code: row.courseLevelCode.trim() },
-          })
+        ? await findRef(
+            prisma.courseLevel,
+            row.courseLevelCode,
+            'courseLevelCode',
+            errors,
+            {},
+            'code',
+          )
         : null;
-    if (!courseLevel)
+    if (courseLevel === null)
       errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);
     if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
-        subjectId: subject!.id,
-        courseLevelId: courseLevel!.id,
+        subjectId: (subject as { id: string }).id,
+        courseLevelId: (courseLevel as { id: string }).id,
         shortDescription: row.shortDescription?.trim() || null,
         isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
         status: row.status?.trim() || 'DRAFT',
@@ -1082,7 +1132,7 @@ const universities: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Demo University',
-    countrySlug: 'canada',
+    countrySlug: 'Demo Country',
     institutionType: 'PUBLIC',
     shortDescription:
       'A fictional demo university used only to show the expected import shape.',
@@ -1097,17 +1147,16 @@ const universities: BulkResourceDefinition = {
     const country = row.__countryId
       ? { id: row.__countryId }
       : row.countrySlug?.trim()
-        ? await prisma.country.findFirst({
-            where: { slug: row.countrySlug.trim(), deletedAt: null },
-          })
+        ? await findRef(prisma.country, row.countrySlug, 'countrySlug', errors)
         : null;
-    if (!country) errors.push(`countrySlug "${row.countrySlug}" was not found`);
+    if (country === null)
+      errors.push(`countrySlug "${row.countrySlug}" was not found`);
     if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
-        countryId: country!.id,
+        countryId: (country as { id: string }).id,
         institutionType: row.institutionType?.trim() || null,
         shortDescription: row.shortDescription.trim(),
         status: row.status?.trim() || 'DRAFT',
@@ -1166,9 +1215,9 @@ const campuses: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Main Campus',
-    universitySlug: 'demo-university',
-    city: 'Toronto',
-    state: 'Ontario',
+    universitySlug: 'Demo University',
+    city: 'Demo City',
+    state: 'Demo Province',
     address: '',
     status: 'ACTIVE',
   },
@@ -1178,19 +1227,24 @@ const campuses: BulkResourceDefinition = {
     if (!row.name?.trim()) errors.push('name is required');
     if (!row.city?.trim()) errors.push('city is required');
     const university = row.universitySlug?.trim()
-      ? await prisma.university.findFirst({
-          where: { slug: row.universitySlug.trim(), deletedAt: null },
-        })
+      ? await findRef(
+          prisma.university,
+          row.universitySlug,
+          'universitySlug',
+          errors,
+        )
       : null;
-    if (!university)
+    if (university === null)
       errors.push(`universitySlug "${row.universitySlug}" was not found`);
     if (errors.length) return { errors };
-    const slug = row.slug?.trim() || `${university!.slug}-${slugify(row.name)}`;
+    const slug =
+      row.slug?.trim() ||
+      `${(university as RefRecord).slug}-${slugify(row.name)}`;
     return {
       data: {
         slug,
         name: row.name.trim(),
-        universityId: university!.id,
+        universityId: (university as RefRecord).id,
         city: row.city.trim(),
         state: row.state?.trim() || null,
         address: row.address?.trim() || null,
@@ -1243,8 +1297,8 @@ const offerings: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Bachelor of Demo Studies',
-    universitySlug: 'demo-university',
-    genericCourseSlug: 'demo-subject-course',
+    universitySlug: 'Demo University',
+    genericCourseSlug: 'Demo Course',
     campusSlug: '',
     courseLevelCode: 'UG',
     studyMode: 'FULL_TIME',
@@ -1265,42 +1319,53 @@ const offerings: BulkResourceDefinition = {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
     const university = row.universitySlug?.trim()
-      ? await prisma.university.findFirst({
-          where: { slug: row.universitySlug.trim(), deletedAt: null },
-        })
+      ? await findRef(
+          prisma.university,
+          row.universitySlug,
+          'universitySlug',
+          errors,
+        )
       : null;
-    if (!university)
+    if (university === null)
       errors.push(`universitySlug "${row.universitySlug}" was not found`);
     const genericCourse = row.genericCourseSlug?.trim()
-      ? await prisma.course.findFirst({
-          where: { slug: row.genericCourseSlug.trim(), deletedAt: null },
-        })
+      ? await findRef(
+          prisma.course,
+          row.genericCourseSlug,
+          'genericCourseSlug',
+          errors,
+        )
       : null;
-    if (!genericCourse)
+    if (genericCourse === null)
       errors.push(`genericCourseSlug "${row.genericCourseSlug}" was not found`);
     let campusId: string | null = null;
     if (row.campusSlug?.trim() && university) {
-      const campus = await prisma.universityCampus.findFirst({
-        where: {
-          slug: row.campusSlug.trim(),
-          universityId: university.id,
-          deletedAt: null,
-        },
-      });
-      if (!campus)
+      const campus = await findRef(
+        prisma.universityCampus,
+        row.campusSlug,
+        'campusSlug',
+        errors,
+        { universityId: university.id, deletedAt: null },
+      );
+      if (campus === null)
         errors.push(
           `campusSlug "${row.campusSlug}" was not found for this university`,
         );
-      else campusId = campus.id;
+      else if (campus) campusId = campus.id;
     }
     let courseLevelId: string | null = null;
     if (row.courseLevelCode?.trim()) {
-      const courseLevel = await prisma.courseLevel.findFirst({
-        where: { code: row.courseLevelCode.trim() },
-      });
-      if (!courseLevel)
+      const courseLevel = await findRef(
+        prisma.courseLevel,
+        row.courseLevelCode,
+        'courseLevelCode',
+        errors,
+        {},
+        'code',
+      );
+      if (courseLevel === null)
         errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);
-      else courseLevelId = courseLevel.id;
+      else if (courseLevel) courseLevelId = courseLevel.id;
     }
     const tuitionMin = row.tuitionMin?.trim() ? Number(row.tuitionMin) : null;
     if (row.tuitionMin?.trim() && Number.isNaN(tuitionMin))
@@ -1313,8 +1378,8 @@ const offerings: BulkResourceDefinition = {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
-        universityId: university!.id,
-        genericCourseId: genericCourse!.id,
+        universityId: (university as RefRecord).id,
+        genericCourseId: (genericCourse as { id: string }).id,
         campusId,
         courseLevelId,
         studyMode: row.studyMode?.trim() || null,
@@ -1390,12 +1455,15 @@ const scholarships: BulkResourceDefinition = {
     if (!row.title?.trim()) errors.push('title is required');
     let providerId: string | null = null;
     if (row.providerSlug?.trim()) {
-      const provider = await prisma.scholarshipProvider.findFirst({
-        where: { slug: row.providerSlug.trim(), deletedAt: null },
-      });
-      if (!provider)
+      const provider = await findRef(
+        prisma.scholarshipProvider,
+        row.providerSlug,
+        'providerSlug',
+        errors,
+      );
+      if (provider === null)
         errors.push(`providerSlug "${row.providerSlug}" was not found`);
-      else providerId = provider.id;
+      else if (provider) providerId = provider.id;
     }
     const amount = row.amount?.trim() ? Number(row.amount) : null;
     if (row.amount?.trim() && Number.isNaN(amount))
@@ -1521,9 +1589,9 @@ const consultantLocations: BulkResourceDefinition = {
   exampleRow: {
     slug: '',
     name: 'Demo City Branch',
-    city: 'Toronto',
-    state: 'Ontario',
-    countrySlug: 'canada',
+    city: 'Demo City',
+    state: 'Demo Province',
+    countrySlug: 'Demo Country',
     overview: '',
     status: 'ACTIVE',
   },
@@ -1534,12 +1602,15 @@ const consultantLocations: BulkResourceDefinition = {
     if (!row.city?.trim()) errors.push('city is required');
     let countryId: string | null = null;
     if (row.countrySlug?.trim()) {
-      const country = await prisma.country.findFirst({
-        where: { slug: row.countrySlug.trim(), deletedAt: null },
-      });
-      if (!country)
+      const country = await findRef(
+        prisma.country,
+        row.countrySlug,
+        'countrySlug',
+        errors,
+      );
+      if (country === null)
         errors.push(`countrySlug "${row.countrySlug}" was not found`);
-      else countryId = country.id;
+      else if (country) countryId = country.id;
     }
     if (errors.length) return { errors };
     return {
