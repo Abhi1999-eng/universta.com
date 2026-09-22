@@ -15,6 +15,7 @@ import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApplication } from '../src/bootstrap';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { nextIntake } from '../src/leads/assessment.constants';
 
 type Destination = {
   name: string;
@@ -205,7 +206,18 @@ describe('Study Abroad (e2e)', () => {
       const email = `created@sa-e2e.invalid`;
       const country = await prisma.country.findFirst({
         where: { status: 'PUBLISHED', deletedAt: null },
-        select: { id: true, slug: true },
+        select: {
+          id: true,
+          slug: true,
+          intakes: {
+            where: { intake: { status: 'ACTIVE' } },
+            select: { intake: { select: { id: true, startMonth: true } } },
+          },
+        },
+      });
+      const engineering = await prisma.subject.findFirst({
+        where: { slug: 'engineering', status: 'PUBLISHED', deletedAt: null },
+        select: { id: true },
       });
       const response = await submit({
         ...base,
@@ -227,7 +239,13 @@ describe('Study Abroad (e2e)', () => {
       if (country) {
         expect(lead?.sourceType).toBe('COUNTRY');
         expect(lead?.preferredCountryId).toBe(country.id);
+        /* "The next intake" is that destination's next intake. */
+        expect(lead?.preferredIntakeId).toBe(
+          nextIntake(country.intakes.map((row) => row.intake))?.id ?? null,
+        );
       }
+      /* "Engineering & Technology" names the Engineering subject. */
+      expect(lead?.preferredSubjectId).toBe(engineering?.id ?? null);
       /* The answers that have canonical columns are written to them, so the
          existing Admin filters keep working on an assessment lead. */
       expect(lead?.highestQualification).toBe('bachelors');
@@ -240,6 +258,39 @@ describe('Study Abroad (e2e)', () => {
       };
       expect(stored?.band).toBe('high');
       expect(stored?.answers).toMatchObject({ intent: 'ready' });
+
+      /* Admin reads the answers back with their questions. */
+      const login = await request(app.getHttpServer())
+        .post('/api/v1/admin/auth/login')
+        .send({
+          email: process.env.SEED_ADMIN_EMAIL,
+          password: process.env.SEED_ADMIN_PASSWORD,
+        })
+        .expect(200);
+      const token = String(
+        (login.body as { data: { accessToken: string } }).data.accessToken,
+      );
+      const detail = await request(app.getHttpServer())
+        .get(`/api/v1/admin/leads/${lead!.id}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(detail.status).toBe(200);
+      const assessment = (
+        detail.body as {
+          data: {
+            assessment: {
+              bandLabel: string;
+              answers: Array<{ id: string; answer: string }>;
+            };
+          };
+        }
+      ).data.assessment;
+      expect(assessment.bandLabel).toBe('High intent');
+      expect(assessment.answers).toContainEqual(
+        expect.objectContaining({
+          id: 'field',
+          answer: 'Engineering & Technology',
+        }),
+      );
     });
 
     it('records the status history and audit entry every lead gets', async () => {
