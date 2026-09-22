@@ -1010,9 +1010,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         featureCodes: configuration.featureCodes,
         acceptedTests: configuration.acceptedTests,
         intakeMonths: configuration.intakeMonths,
+        /* An emptied box clears the figure. Sending nothing left it as it
+           was, so once saved it could never be removed from the guide. */
         postStudyWorkPermitMonths:
-          configuration.postStudyWorkPermitMonths === ""
-            ? undefined
+          configuration.postStudyWorkPermitMonths.trim() === ""
+            ? null
             : Number(configuration.postStudyWorkPermitMonths),
         /* An empty box clears the calculator; anything else is sent as the
            parsed document so the API validates the real shape, not a string. */

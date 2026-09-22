@@ -49,6 +49,11 @@ function numberValue({ value }: TransformFnParams): unknown {
   return value === undefined || value === '' ? value : Number(value);
 }
 
+/** As `numberValue`, but null survives, so a clearable field can be cleared. */
+function nullableNumberValue({ value }: TransformFnParams): unknown {
+  return value === null ? null : numberValue({ value } as TransformFnParams);
+}
+
 function countryCodeValue({ value }: TransformFnParams): unknown {
   return typeof value === 'string' ? value.trim().toUpperCase() : value;
 }
@@ -276,12 +281,14 @@ export class CreateCountryDto {
   @Max(12, { each: true })
   intakeMonths?: number[];
 
-  @Transform(numberValue)
+  /* Null clears it. Omitted leaves it alone, which is all an emptied box used
+     to send, so once a figure was saved it could never be removed. */
+  @Transform(nullableNumberValue)
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(120)
-  postStudyWorkPermitMonths?: number;
+  postStudyWorkPermitMonths?: number | null;
 
   /**
    * The budget calculator's factors for this country. The shape is checked by
