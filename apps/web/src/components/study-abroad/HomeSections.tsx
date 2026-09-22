@@ -85,10 +85,14 @@ export type PopularLink = { label: string; href: string };
 export function HomeHero({
   directory,
   popular = [],
+  scholarshipTotal,
 }: {
   directory: DestinationDirectory;
   /** Destinations and subjects to offer as one-tap starting points. */
   popular?: PopularLink[];
+  /** Distinct scholarships. Summing the directory counts one open to several
+   * destinations once per destination, so the page passes the real total. */
+  scholarshipTotal?: number;
 }) {
   const totals = directory.available.reduce(
     (sum, entry) => ({
@@ -103,7 +107,7 @@ export function HomeHero({
     { value: directory.counts.available, label: 'countries' },
     { value: totals.universities, label: 'universities' },
     { value: totals.courses, label: 'courses' },
-    { value: totals.scholarships, label: 'scholarships' },
+    { value: scholarshipTotal ?? totals.scholarships, label: 'scholarships' },
   ].filter((stat) => stat.value > 0);
 
   return (
