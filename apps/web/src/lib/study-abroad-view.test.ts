@@ -4,6 +4,7 @@ import {
   alternatingBands,
   costBreakdown,
   countrySnapshot,
+  guideIntakes,
   intakeCards,
   languageRows,
   sectionNumbers,
@@ -349,5 +350,37 @@ describe('intakeCards', () => {
         notes: null,
       },
     ]);
+  });
+});
+
+describe('guideIntakes', () => {
+  const record = (month: number, primary = false) => ({
+    id: `r${month}`,
+    name: month === 10 ? 'Winter intake' : 'Summer intake',
+    month,
+    primary,
+    starts: null,
+    opening: null,
+    deadline: null,
+    notes: null,
+  });
+
+  /* The editor's month selection decides what appears; a record only adds
+     detail to a month that was selected. */
+  it('shows the selected months, with a record where one exists', () => {
+    const intakes = guideIntakes([10, 1, 4], [record(10, true), record(4)]);
+    expect(intakes.map((entry) => [entry.month, entry.name, entry.primary])).toEqual([
+      [1, 'January intake', false],
+      [4, 'Summer intake', false],
+      [10, 'Winter intake', true],
+    ]);
+  });
+
+  it('leaves out a record for a month the editor did not select', () => {
+    expect(guideIntakes([10], [record(10, true), record(4)]).map((entry) => entry.month)).toEqual([10]);
+  });
+
+  it('falls back to the records when nothing is selected', () => {
+    expect(guideIntakes([], [record(4)]).map((entry) => entry.id)).toEqual(['r4']);
   });
 });

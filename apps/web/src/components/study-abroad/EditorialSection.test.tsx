@@ -49,3 +49,25 @@ describe('editorial prose', () => {
     expect(html).toContain('<span class="eyebrow__n">13</span> The case for Germany');
   });
 });
+
+describe('editorial subheading', () => {
+  const withSubheading = (subheading: string) =>
+    ({ ...prose(['<p>One.</p>']), subheading }) as unknown as Section;
+
+  /* Written in the admin's rich text editor, so it is HTML, not text. */
+  it('renders the subheading as the rich text it was written in', () => {
+    const html = renderToStaticMarkup(
+      <EditorialSection section={withSubheading('<p>A lead worth reading.</p>')} n="13" alt={false} />,
+    );
+    expect(html).toContain('<div class="sec-lead"><div class="rich-text"><p>A lead worth reading.</p>');
+    expect(html).not.toContain('&lt;p&gt;');
+  });
+
+  /* An emptied editor saves "<p><br></p>", which printed as text on the page. */
+  it('treats an emptied editor as no subheading', () => {
+    const html = renderToStaticMarkup(
+      <EditorialSection section={withSubheading('<p><br></p>')} n="13" alt={false} />,
+    );
+    expect(html).not.toContain('sec-lead');
+  });
+});

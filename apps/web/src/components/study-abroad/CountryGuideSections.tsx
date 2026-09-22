@@ -5,6 +5,7 @@ import type { CountryPage } from '@/lib/countries';
 import type { Destination } from '@/lib/study-abroad';
 import {
   costBreakdown,
+  guideIntakes,
   intakeCards,
   languageRows,
   monthNames,
@@ -188,20 +189,16 @@ export function CountryIntakes({
   n: string | null;
   alt: boolean;
 }) {
-  const cards = intakeCards(profiles.intakes);
-  /* The timeline shows the same intakes as the cards under it. The country's
-     own month list is only the fallback for a guide with no intake records,
-     since the two can disagree and a month on the bar with no card below it
-     (or a card with no month on the bar) reads as a mistake. */
-  const cardMonths = cards.flatMap((card) => (card.month ? [card] : []));
-  const months = cardMonths.length
-    ? [...new Set(cardMonths.map((card) => card.month as number))]
-    : (country.configuration?.intakeMonths ?? []);
-  if (!months.length && !cards.length) return null;
+  /* The editor's month selection decides which intakes appear; the intake
+     records only add detail to a selected month. The timeline and the cards
+     are built from the same list so they can never disagree. */
+  const cards = guideIntakes(country.configuration?.intakeMonths, intakeCards(profiles.intakes));
+  if (!cards.length) return null;
+  const months = cards.flatMap((card) => (card.month ? [card.month] : []));
   const primaryMonths = new Set(
-    cardMonths.filter((card) => card.primary).map((card) => card.month as number),
+    cards.filter((card) => card.primary && card.month).map((card) => card.month as number),
   );
-  const count = cards.length || months.length;
+  const count = cards.length;
   const primaries = cards.filter((card) => card.primary);
   const primaryName = primaries.length === 1 ? primaries[0].name : null;
   return (
@@ -476,11 +473,19 @@ export function CountryWorkVisa({
   const journey = hasVisaCard
     ? work.filter((item) => item.title !== 'Student visa' && item.title !== 'Proof of funds')
     : work;
+  /* A fee in the country's own currency reads as the guide's other money
+     does, "€75"; a fee in another currency keeps its code, "USD 160". */
+  const feeAmount = visa?.visaFee ? Number(visa.visaFee).toLocaleString('en-US') : null;
+  const feeInLocalCurrency =
+    !visa?.visaFeeCurrencyCode || visa.visaFeeCurrencyCode === country.currency?.code;
+  const visaFee = feeAmount
+    ? feeInLocalCurrency && country.currency?.symbol
+      ? `${country.currency.symbol}${feeAmount}`
+      : `${visa?.visaFeeCurrencyCode ?? ''} ${feeAmount}`.trim()
+    : null;
   const visaFacts = [
     visa?.visaProcessingTime ? ['Processing time', visa.visaProcessingTime] : null,
-    visa?.visaFee
-      ? ['Visa fee', `${visa.visaFeeCurrencyCode ?? ''} ${Number(visa.visaFee).toLocaleString('en-US')}`.trim()]
-      : null,
+    visaFee ? ['Visa fee', visaFee] : null,
   ].filter((fact): fact is [string, string] => Boolean(fact));
   return (
     <Section id="work-visa" navy>
@@ -579,7 +584,13 @@ export function CountryGuidance({
           <article className="route" key={card.id}>
             <span className="route__n">{String(index + 1).padStart(2, '0')}</span>
             <h3 className="route__l">{card.title}</h3>
-            {card.shortDescription ? <p className="route__d">{card.shortDescription}</p> : null}
+            {/* Written in the admin's rich text editor, so it arrives as HTML;
+                printed as text it showed its <p> tags on the page. */}
+            {card.shortDescription ? (
+              <div className="route__d">
+                <RichText value={card.shortDescription} />
+              </div>
+            ) : null}
             {card.ctaUrl ? (
               <a className="linkcta route__c" href={card.ctaUrl}>
                 {card.ctaLabel ?? 'Find out more'}{' '}

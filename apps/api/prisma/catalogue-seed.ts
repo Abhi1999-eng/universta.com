@@ -571,7 +571,7 @@ async function seedCountryEditorial(
   });
   const faqByQuestion = new Map(existingFaqs.map((f) => [f.question.toLowerCase().trim(), f.id]));
   let order = existingFaqs.length;
-  for (const faq of countryFaqs(facts)) {
+  for (const [index, faq] of countryFaqs(facts).entries()) {
     const key = faq.question.toLowerCase().trim();
     const hit = faqByQuestion.get(key);
     if (hit) {
@@ -593,7 +593,10 @@ async function seedCountryEditorial(
         answer: faq.answer,
         category: faq.category,
         status: 'ACTIVE',
-        displayOrder: preserve ? order++ : countryFaqs(facts).indexOf(faq),
+        /* The position in the list. Looking the FAQ up with indexOf in a list
+           built again for the purpose never matched, so every seeded FAQ was
+           stored at -1 -- an order the API refuses, which failed any edit. */
+        displayOrder: preserve ? order++ : index,
       },
     });
     note('CountryFaq', 'created');

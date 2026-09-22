@@ -248,6 +248,10 @@ const optional = (value: string) => (value.trim() ? value.trim() : undefined);
  * already understands, so send that instead and keep omission meaning
  * unchanged for other callers. */
 const clearable = (value: string) => (value.trim() ? value.trim() : null);
+/** Rich text with no words in it -- an emptied editor keeps "<p><br></p>" --
+ * is sent as "", which the API stores as nothing. */
+export const richTextOrEmpty = (value: string) =>
+  value.replace(/<[^>]*>|&nbsp;/gi, "").trim() ? value.trim() : "";
 const hasSeo = (value: UnifiedSeoDraft) =>
   Boolean(
     value.seoTitle.trim() ||
@@ -806,14 +810,18 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       const payload = {
         sectionKey: row.sectionKey,
         sectionType: row.sectionType,
-        eyebrow: optional(row.eyebrow),
+        /* Sent as written, "" included: an emptied field sent as nothing
+           was read as "leave it alone", so none of these could be cleared.
+           An emptied rich text editor still holds "<p><br></p>", which is
+           no subheading at all. */
+        eyebrow: row.eyebrow.trim(),
         heading: row.heading.trim(),
-        subheading: optional(row.subheading),
+        subheading: richTextOrEmpty(row.subheading),
         bodyJson: bodyForApi(row),
         primaryMediaId: row.primaryMediaId || undefined,
         secondaryMediaId: row.secondaryMediaId || undefined,
-        ctaLabel: optional(row.ctaLabel),
-        ctaUrl: optional(row.ctaUrl),
+        ctaLabel: row.ctaLabel.trim(),
+        ctaUrl: row.ctaUrl.trim(),
         /* An explicit Display order wins; otherwise the position in the list
          * supplies it, which is what a row left at the default 0 wants. It
          * used to always be the index, so a number typed into the visible
@@ -853,9 +861,27 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         displayOrder: Number(row.displayOrder) || 0,
         ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
       };
-      const result = row.id
-        ? await updateCountryFaq(id, row.id, payload)
-        : await createCountryFaq(id, payload);
+      /* A FAQ's validation error names a property, not a form field, so the
+         page could only say "Invalid catalog request". Say which FAQ, and
+         what the API said about it. */
+      let result: Awaited<ReturnType<typeof updateCountryFaq>>;
+      try {
+        result = row.id
+          ? await updateCountryFaq(id, row.id, payload)
+          : await createCountryFaq(id, payload);
+      } catch (cause: unknown) {
+        const details = (cause as { details?: unknown }).details;
+        const reasons = Array.isArray(details)
+          ? details
+              .map((entry) => (entry as { message?: unknown }).message)
+              .filter((message): message is string => typeof message === "string")
+          : [];
+        throw new Error(
+          `The FAQ “${payload.question}” could not be saved${
+            reasons.length ? `: ${reasons.join("; ")}.` : "."
+          }`,
+        );
+      }
       nextFaqs.push({
         id: result.data.id,
         updatedAt: result.data.updatedAt,
@@ -992,9 +1018,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         featureCodes: configuration.featureCodes,
         acceptedTests: configuration.acceptedTests,
         intakeMonths: configuration.intakeMonths,
+        /* An emptied box clears the figure. Sending nothing left it as it
+           was, so once saved it could never be removed from the guide. */
         postStudyWorkPermitMonths:
-          configuration.postStudyWorkPermitMonths === ""
-            ? undefined
+          configuration.postStudyWorkPermitMonths.trim() === ""
+            ? null
             : Number(configuration.postStudyWorkPermitMonths),
         /* An empty box clears the calculator; anything else is sent as the
            parsed document so the API validates the real shape, not a string. */
