@@ -310,8 +310,10 @@
 .sa .nav{
   position: sticky; top: 0; z-index: 90;
   background: rgba(247, 248, 250, 0.86);
+  /* Unprefixed only: the build adds the -webkit- form itself, and listing both
+     left production with the prefixed one alone, which Chrome ignores -- the
+     header had no blur and page headings showed through it. */
   backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--line-soft);
 }
 .sa .nav__inner{
@@ -350,6 +352,9 @@
   border: 1px solid var(--line-strong); border-radius: var(--radius);
   background: var(--white); cursor: pointer;
 }
+.sa .nav__burger-close,
+.sa .nav__burger[aria-expanded="true"] .nav__burger-open{ display: none; }
+.sa .nav__burger[aria-expanded="true"] .nav__burger-close{ display: block; }
 .sa .nav__cta{ display: none; }
 @media (min-width: 1080px){.sa .nav__links{ display: flex; }.sa .nav__burger{ display: none; }}
 @media (min-width: 700px){.sa .nav__cta{ display: inline-flex; }.sa .nav__search{ width: 36px; height: 36px; }}
@@ -627,6 +632,20 @@
 .sa .doc__desc{ color: var(--muted); font-size: 14.8px; margin-top: 3px; }
 .sa .doc__badge{ padding-top: 2px; }
 @media (max-width: 640px){.sa .doc{ grid-template-columns: auto 1fr; }.sa .doc__n{ display: none; }.sa .doc__badge{ grid-column: 2; }}
+.sa .docitem{ border-bottom: 1px solid var(--line); }
+.sa .docitem > .doc{ border-bottom: 0; }
+/* Under the text column: past the box (22px) and the number (44px), with the
+   row's two 14px gaps. */
+.sa .doc__more{ margin: -6px 0 18px; padding-left: calc(22px + 44px + 28px); }
+.sa .doc__more summary{
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
+  font-size: 14px; font-weight: 600; color: var(--navy);
+}
+.sa .doc__more summary::-webkit-details-marker{ display: none; }
+.sa .doc__more summary::after{ content: '+'; font-family: var(--font-mono); color: var(--muted); }
+.sa .doc__more[open] summary::after{ content: '\2212'; }
+.sa .doc__more .doc__desc{ margin-top: 10px; }
+@media (max-width: 640px){.sa .doc__more{ padding-left: calc(22px + 14px); }}
 .sa .docs__foot{ display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; }
 .sa .docs__progress{ display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
 .sa .docs__bar{ width: 120px; height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; }

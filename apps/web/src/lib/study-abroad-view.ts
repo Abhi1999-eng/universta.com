@@ -398,7 +398,7 @@ export function intakeCards(intakes: ProfileSummary['intakes'] | undefined): Int
     const month = (value: number | null | undefined) => (value ? monthNames([value])[0] : null);
     return {
       id: entry.id,
-      name: intake.name,
+      name: intakeTitle(intake.name),
       month: intake.startMonth ?? null,
       primary: Boolean(entry.isMajor),
       starts: start ? (end && end !== start ? `${start} – ${end}` : start) : null,
@@ -407,6 +407,16 @@ export function intakeCards(intakes: ProfileSummary['intakes'] | undefined): Int
       notes: entry.notes ?? null,
     };
   });
+}
+
+/* An intake record named for its month alone ("September") is titled the way
+   the cards for selected months without a record are ("February intake"), so
+   one guide never shows both styles side by side. */
+const MONTH_ONLY =
+  /^(january|february|march|april|may|june|july|august|september|october|november|december)$/i;
+function intakeTitle(name: string): string {
+  const trimmed = name.trim();
+  return MONTH_ONLY.test(trimmed) ? `${trimmed} intake` : name;
 }
 
 /**

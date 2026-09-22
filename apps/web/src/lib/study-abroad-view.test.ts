@@ -351,6 +351,19 @@ describe('intakeCards', () => {
       },
     ]);
   });
+
+  /* The catalogue names its intakes by month alone; beside a selected month
+     with no record ("February intake") that read as two different styles. */
+  it('titles an intake named by its month alone the way the fallback cards are', () => {
+    const cards = intakeCards([
+      {
+        id: 'ci2',
+        isMajor: true,
+        intake: { id: 'i2', name: 'September', slug: 'september', shortLabel: 'Sep', startMonth: 9 },
+      },
+    ] as never);
+    expect(cards[0].name).toBe('September intake');
+  });
 });
 
 describe('guideIntakes', () => {

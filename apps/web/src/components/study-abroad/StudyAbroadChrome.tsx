@@ -106,10 +106,14 @@ export function StudyAbroadHeader() {
               className="nav__burger"
               type="button"
               data-toggle-drawer
+              aria-controls="sa-drawer"
               aria-expanded="false"
               aria-label="Open menu"
             >
+              {/* Both icons ship; the stylesheet shows the one that matches
+                  `aria-expanded`, which the shell keeps in step. */}
               <svg
+                className="nav__burger-open"
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
@@ -119,6 +123,18 @@ export function StudyAbroadHeader() {
                 aria-hidden="true"
               >
                 <path d="M3 6h18M3 12h18M3 18h18" />
+              </svg>
+              <svg
+                className="nav__burger-close"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6 6 18" />
               </svg>
             </button>
           </div>

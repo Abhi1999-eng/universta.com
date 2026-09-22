@@ -830,9 +830,14 @@
     border-radius: 0;
     transform: translateX(-100%);
     transition: 0.25s;
+    /* Off-screen is not hidden: the closed drawer's controls were still
+       reachable by Tab and read by screen readers. The 0.25s transition keeps
+       it visible until the slide-out ends. */
+    visibility: hidden;
   }
   .cref .filters.open {
     transform: none;
+    visibility: visible;
   }
 }
 @media (max-width: 900px) {
@@ -4226,9 +4231,11 @@
     display: flex;
     flex-direction: column;
     padding-bottom: 0;
+    visibility: hidden;
   }
   .cref-dest .market > .filters.open {
     transform: none;
+    visibility: visible;
   }
   .cref-dest .market .filter-toggle {
     display: inline-flex;
