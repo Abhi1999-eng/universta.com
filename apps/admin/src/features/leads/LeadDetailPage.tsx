@@ -189,6 +189,26 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
             </dl>
             {lead.message ? <div className="mt-6 border-t border-[#EEF1F5] pt-5"><p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">Student message</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#48505F]">{lead.message}</p></div> : null}
           </Panel>
+          {lead.assessment?.answers.length ? (
+            <Panel title="Assessment">
+              {lead.assessment.bandLabel ? (
+                <p className="mb-5 text-sm text-[#48505F]">
+                  <span className={`mr-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${lead.assessment.band === 'high' ? 'bg-[#E9F8F0] text-[#18794E]' : lead.assessment.band === 'medium' ? 'bg-[#FFF6E5] text-[#8A5A00]' : 'bg-[#F2F4F7] text-[#475467]'}`}>
+                    {lead.assessment.bandLabel}
+                  </span>
+                  {lead.assessment.completedAt ? `Completed ${dateTime(lead.assessment.completedAt)}` : null}
+                </p>
+              ) : null}
+              <dl className="grid gap-5 sm:grid-cols-2">
+                {lead.assessment.answers.map((entry) => (
+                  <div className="min-w-0" key={entry.id}>
+                    <dt className="text-xs font-medium text-[#828B9B]">{entry.question}</dt>
+                    <dd className="mt-1 break-words text-sm font-semibold leading-6 text-[#334155]">{entry.answer}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Panel>
+          ) : null}
           <Panel title="Source context">
             <dl className="grid gap-5 sm:grid-cols-2">
               <Fact label="Source type" value={label(lead.sourceType ?? 'GENERAL')} />
