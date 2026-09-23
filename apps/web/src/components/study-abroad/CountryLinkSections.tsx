@@ -65,6 +65,7 @@ export function countryFigures(
   const workMonths = country.configuration?.postStudyWorkPermitMonths ?? null;
   const symbol = country.currency?.symbol ?? '';
   const tuitionMin = profiles?.cost?.tuitionMin ?? null;
+  const internationalStudents = country.statistics?.internationalStudentsCount ?? null;
 
   const figures: Array<{ value: string; label: string }> = [];
   if (stats?.universitiesCount)
@@ -76,6 +77,13 @@ export function countryFigures(
     });
   if (stats?.coursesCount)
     figures.push({ value: String(stats.coursesCount), label: 'Programmes listed' });
+  /* The one figure on the band that Universta cannot count for itself: it is
+     published only because an editor recorded it. */
+  if (internationalStudents)
+    figures.push({
+      value: internationalStudents.toLocaleString('en-US'),
+      label: 'International students',
+    });
   if (tuitionMin !== null && tuitionMin !== undefined)
     figures.push({
       value: `${symbol}${Number(tuitionMin).toLocaleString('en-US')}`,
@@ -239,7 +247,58 @@ export type CountryCourseCard = {
   slug: string;
   courseLevel: { name: string } | null;
   subject: { name: string } | null;
+  /** The fee for this destination, which is the one the card can quote. */
+  selectedTuition?: {
+    min: string | null;
+    max: string | null;
+    currencyCode: string | null;
+    period: string;
+  } | null;
 };
+
+/**
+ * The courses to show for a country: the ones an editor curated as popular,
+ * in the order they curated them, then whatever else the catalogue publishes
+ * for the destination.
+ *
+ * Curation reaches the guide as names and ids only, so each curated course is
+ * matched against the catalogue rows, which carry the subject, level and fee
+ * the card prints. A curated course the catalogue page did not return still
+ * leads -- it is shown from the curation itself, with the meta it lacks left
+ * off rather than the whole card dropped.
+ */
+export function countryCourses(
+  country: Country,
+  published: CountryCourseCard[],
+): CountryCourseCard[] {
+  const curated = country.derived?.popularCourses ?? [];
+  if (!curated.length) return published;
+  const order = new Map(curated.map((course, index) => [course.id, index]));
+  const known = new Set(published.map((course) => course.id));
+  const missing: CountryCourseCard[] = curated
+    .filter((course) => !known.has(course.id))
+    .map((course) => ({
+      id: course.id,
+      name: course.name,
+      slug: course.slug,
+      courseLevel: null,
+      subject: null,
+    }));
+  return [...missing, ...published].sort(
+    (left, right) =>
+      (order.get(left.id) ?? order.size) - (order.get(right.id) ?? order.size),
+  );
+}
+
+/** A course's fee for this destination, per the period it is published for. */
+function courseFee(course: CountryCourseCard, symbol: string): string | null {
+  const tuition = course.selectedTuition;
+  const amount = Number(tuition?.min ?? NaN);
+  if (!Number.isFinite(amount)) return null;
+  const unit = symbol || (tuition?.currencyCode ? `${tuition.currencyCode} ` : '');
+  const period = tuition?.period?.toLowerCase() === 'year' ? ' a year' : '';
+  return `From ${unit}${Math.round(amount).toLocaleString('en-US')}${period}`;
+}
 
 /** "Courses to explore". */
 export function CountryCourses({
@@ -266,15 +325,19 @@ export function CountryCourses({
           cta={{ href: '/courses', label: 'Search every course' }}
         />
         <div className="h-grid h-grid--wide">
-          {courses.slice(0, 6).map((course) => (
-            <Link className="h-card" href={`/courses/${course.slug}`} key={course.id}>
-              <strong className="h-card__t">{course.name}</strong>
-              {course.subject ? <span className="h-card__d">{course.subject.name}</span> : null}
-              {course.courseLevel ? (
-                <span className="h-card__m">{course.courseLevel.name}</span>
-              ) : null}
-            </Link>
-          ))}
+          {courses.slice(0, 6).map((course) => {
+            /* The fee is published in the country's own currency, so the
+               country's symbol is the one to print it with. */
+            const fee = courseFee(course, country.currency?.symbol ?? '');
+            const meta = [course.courseLevel?.name, fee].filter(Boolean).join(' · ');
+            return (
+              <Link className="h-card" href={`/courses/${course.slug}`} key={course.id}>
+                <strong className="h-card__t">{course.name}</strong>
+                {course.subject ? <span className="h-card__d">{course.subject.name}</span> : null}
+                {meta ? <span className="h-card__m">{meta}</span> : null}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

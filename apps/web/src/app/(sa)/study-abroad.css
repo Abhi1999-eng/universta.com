@@ -1345,3 +1345,6 @@
    were inline, so their 6px height was ignored and no bar showed at all. */
 .sa .faq__plus{ font-size: 17px; line-height: 1; color: var(--text); }
 .sa .tm__bar{ display: block; }
+
+/* The editor's work-and-visa disclaimer, on the navy band. */
+.sa .visa__note{ margin-top: clamp(26px, 3vw, 38px); padding-top: 18px; border-top: 1px solid var(--on-navy-line); color: var(--on-navy-muted); font-size: 13px; }

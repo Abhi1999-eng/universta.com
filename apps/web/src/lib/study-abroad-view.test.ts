@@ -147,6 +147,25 @@ describe('work cards', () => {
     );
   });
 
+  /* Holiday hours are a second figure an editor records, and a student plans
+     against both: term-time work is what pays the rent, breaks are what pays
+     for the flight home. */
+  it('states the holiday hours alongside the term-time ones', () => {
+    const cards = workSummary(
+      page({
+        work: {
+          partTimeAllowed: true,
+          partTimeHoursPerWeek: '20',
+          partTimeHoursDuringBreaks: '40',
+          postStudyWorkAvailable: false,
+        },
+      }).profiles,
+    );
+    expect(cards.find((card) => card.title === 'Work while you study')?.value).toBe(
+      '20 hours a week · 40 in breaks',
+    );
+  });
+
   it('says permitted, not a number, when the hours are not published', () => {
     const cards = workSummary(
       page({ work: { partTimeAllowed: true, postStudyWorkAvailable: false } }).profiles,

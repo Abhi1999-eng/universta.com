@@ -849,6 +849,14 @@ test.describe.serial('country client contract, end to end', () => {
       (published.statistics as { universitiesCount: number | null } | null)?.universitiesCount ??
         null,
     ).toBeNull();
+    /* The source mode is about the universities count, which the catalogue can
+     * count for itself. Nothing counts international students, so that figure
+     * is published as authored whichever mode is chosen -- withholding it left
+     * the author's number reaching nobody. */
+    expect(
+      (published.statistics as { internationalStudentsCount: number | null } | null)
+        ?.internationalStudentsCount ?? null,
+    ).toBe(4321);
 
     await putProfile(countryId, 'statistics', {
       sourceMode: 'MANUAL',
@@ -1618,6 +1626,138 @@ test.describe.serial('country client contract, end to end', () => {
     await saveCountry(page);
     await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.getByTestId('cost-calculator')).toHaveCount(0);
+  });
+
+  /**
+   * Every figure the profile editor asks for, on the published guide.
+   *
+   * The cards above prove a value is stored. This proves it is *shown*: each
+   * profile is authored through the same endpoint the editor posts to, then the
+   * public page is read and every one of those values looked for in the section
+   * that is supposed to carry it. Four of them reached nowhere before this --
+   * the holiday work hours, the work disclaimer, the language disclaimer and
+   * the international students count -- and an author had no way to tell.
+   */
+  test('shows every authored cost, work and language figure on the guide', async ({
+    page,
+  }) => {
+    const countryId = String((await storedCountry()).id);
+    const version = async (profile: 'cost' | 'work' | 'language' | 'statistics') =>
+      (await storedProfiles(countryId))[profile]?.updatedAt;
+
+    await putProfile(countryId, 'cost', {
+      tuitionMin: 9200,
+      tuitionMax: 15100,
+      livingCostMin: 710,
+      livingCostMax: 1110,
+      livingCostPeriod: 'PER_MONTH',
+      applicationFeeMin: 61,
+      applicationFeeMax: 61,
+      tuitionNotes: '<p>Acceptance tuition is charged per year.</p>',
+      livingCostNotes: '<p>Acceptance rent is the larger half.</p>',
+      disclaimer: '<p>Acceptance costs are indicative only.</p>',
+      expectedUpdatedAt: await version('cost'),
+    });
+
+    await putProfile(countryId, 'work', {
+      visaType: 'Acceptance student permit',
+      visaProcessingTime: '5 to 7 weeks',
+      visaFee: 86,
+      partTimeAllowed: true,
+      partTimeHoursPerWeek: 21,
+      partTimeHoursDuringBreaks: 40,
+      partTimeSummary: '<p>Acceptance term-time work needs no separate permit.</p>',
+      postStudyWorkAvailable: true,
+      postStudyWorkMinMonths: 12,
+      postStudyWorkMaxMonths: 25,
+      postStudyWorkSummary: '<p>Acceptance graduates apply before the visa lapses.</p>',
+      immigrationPathwayStrength: 'STRONG',
+      immigrationPathwaySummary: '<p>Acceptance residency follows two years of work.</p>',
+      visaInformation: '<p>Acceptance visa guidance in full.</p>',
+      proofOfFundsSummary: '<p>Acceptance funds are shown in a blocked account.</p>',
+      disclaimer: '<p>Acceptance visa rules change; check with the embassy.</p>',
+      expectedUpdatedAt: await version('work'),
+    });
+
+    await putProfile(countryId, 'language', {
+      ieltsRequirement: 'REQUIRED',
+      ieltsMinScore: 6.5,
+      ieltsNotes: '<p>Acceptance IELTS bands stay above six.</p>',
+      toeflRequirement: 'OPTIONAL',
+      toeflMinScore: 88,
+      toeflNotes: '<p>Acceptance TOEFL is accepted in place of IELTS.</p>',
+      pteRequirement: 'OPTIONAL',
+      pteMinScore: 59,
+      pteNotes: '<p>Acceptance PTE suits a later application.</p>',
+      duolingoRequirement: 'VARIES',
+      duolingoMinScore: 115,
+      duolingoNotes: '<p>Acceptance Duolingo depends on the programme.</p>',
+      languageWaiverAvailable: true,
+      waiverNotes: '<p>Acceptance waivers follow an English-taught degree.</p>',
+      generalNotes: '<p>Acceptance scores are no older than two years.</p>',
+      disclaimer: '<p>Acceptance language rules are set by each university.</p>',
+      expectedUpdatedAt: await version('language'),
+    });
+
+    /* DERIVED, deliberately: the universities count then follows the catalogue,
+     * and the international students figure -- which nothing derives -- has to
+     * be published anyway or the author's number reaches no one. */
+    await putProfile(countryId, 'statistics', {
+      sourceMode: 'DERIVED',
+      internationalStudentsCount: 416000,
+      expectedUpdatedAt: await version('statistics'),
+    });
+
+    await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
+
+    const cost = page.locator('#cost');
+    await expect(cost).toContainText('€9,200 – €15,100');
+    await expect(cost).toContainText('€710 – €1,110');
+    await expect(cost).toContainText('€61');
+    // Tuition a year plus living twelve times over, as the total the box states.
+    await expect(cost).toContainText('€17,720 – €28,420');
+    await expect(cost).toContainText('Acceptance tuition is charged per year.');
+    await expect(cost).toContainText('Acceptance rent is the larger half.');
+    await expect(cost).toContainText('Acceptance costs are indicative only.');
+    await expect(cost).toContainText('Acceptance funds are shown in a blocked account.');
+
+    const language = page.locator('#language');
+    for (const line of [
+      'IELTS Academic',
+      '6.5',
+      'Acceptance IELTS bands stay above six.',
+      'TOEFL iBT',
+      '88',
+      'Acceptance TOEFL is accepted in place of IELTS.',
+      'PTE Academic',
+      '59',
+      'Acceptance PTE suits a later application.',
+      'Duolingo English Test',
+      '115',
+      'Acceptance Duolingo depends on the programme.',
+      'Acceptance waivers follow an English-taught degree.',
+      'Acceptance scores are no older than two years.',
+      'Acceptance language rules are set by each university.',
+    ])
+      await expect(language).toContainText(line);
+
+    const visa = page.locator('#work-visa');
+    for (const line of [
+      'Acceptance student permit · 5 to 7 weeks processing',
+      'Acceptance visa guidance in full.',
+      '21 hours a week · 40 in breaks',
+      'Acceptance term-time work needs no separate permit.',
+      '25 months',
+      'Acceptance graduates apply before the visa lapses.',
+      'strong pathway',
+      'Acceptance residency follows two years of work.',
+      '€86',
+      'Acceptance visa rules change; check with the embassy.',
+    ])
+      await expect(visa).toContainText(line);
+
+    await expect(page.locator('#numbers')).toContainText('416,000');
+    await expect(page.locator('#numbers')).toContainText('International students');
   });
 
   test('completed without unexplained console or network failures', async () => {

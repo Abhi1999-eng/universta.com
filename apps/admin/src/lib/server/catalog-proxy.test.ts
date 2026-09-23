@@ -54,6 +54,36 @@ describe('same-origin catalog BFF', () => {
     expect((await ready.json()).error.details).toEqual([{ field: 'iso2Code', message: 'required' }]);
   });
 
+  /* The banner used to read "Catalog request failed" for every failure the
+     allow-list did not know -- the operator was told nothing, not even which
+     failure it was. The wording still comes from here rather than from
+     upstream, but it now names the answer or carries the code. */
+  it('names an operational failure, and carries an unknown code rather than swallowing it', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('mysql://secret')));
+    const unreachable = await proxyCatalogRoute(request('/api/v1/admin/countries', { headers: { authorization: 'Bearer access-token' } }), 'countries:list');
+    expect((await unreachable.json()).error.message).toContain('did not answer in time');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(503, { data: null, meta: null, error: { code: 'DATABASE_UNAVAILABLE', message: 'mysql://secret', details: null }, requestId: 'db-1' })));
+    const database = await proxyCatalogRoute(request('/api/v1/admin/countries', { method: 'POST', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Luxembourg' }) }), 'countries:create');
+    const databaseBody = await database.json();
+    expect(databaseBody.error.message).toContain('could not be reached');
+    expect(JSON.stringify(databaseBody)).not.toContain('mysql');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(422, { data: null, meta: null, error: { code: 'COUNTRY_SOMETHING_NEW', message: 'mysql://secret', details: { secret: 1 } }, requestId: 'new-1' })));
+    const unknown = await proxyCatalogRoute(request('/api/v1/admin/countries', { method: 'POST', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Luxembourg' }) }), 'countries:create');
+    const unknownBody = await unknown.json();
+    expect(unknownBody.error.code).toBe('COUNTRY_SOMETHING_NEW');
+    expect(unknownBody.error.message).toBe('Catalog request failed (COUNTRY_SOMETHING_NEW)');
+    // Upstream wording and details still stop here.
+    expect(JSON.stringify(unknownBody)).not.toContain('mysql');
+    expect(unknownBody.error.details).toBeNull();
+
+    // A code that is not one is not printed back either.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(500, { data: null, meta: null, error: { code: '<img src=x>', message: 'raw', details: null }, requestId: 'bad-1' })));
+    const malformed = await proxyCatalogRoute(request('/api/v1/admin/countries', { headers: { authorization: 'Bearer access-token' } }), 'countries:list');
+    expect((await malformed.json()).error.code).toBe('CATALOG_REQUEST_FAILED');
+  });
+
   it('rebuilds continent dependency details and drops everything else upstream sends', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'CONTINENT_IN_USE', message: 'raw', details: { countriesCount: 2.9, secret: 'mysql://secret', countries: [{ id: 'c1', name: 'Canada', slug: 'canada', status: 'PUBLISHED', internalNote: 'leak' }] } }, requestId: 'dep-1' })));
     const blocked = await proxyCatalogRoute(request('/api/v1/admin/continents/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'continents:delete:id');

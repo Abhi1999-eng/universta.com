@@ -126,14 +126,21 @@ export function workSummary(profiles: ProfileSummary): WorkCard[] {
       body: work.visaInformation ?? null,
     });
 
-  if (work.partTimeAllowed)
+  if (work.partTimeAllowed) {
+    /* Both hour figures the editor enters, not just the term-time one: a
+       destination that allows full-time work in the holidays says so. */
+    const term = work.partTimeHoursPerWeek
+      ? `${Number(work.partTimeHoursPerWeek)} hours a week`
+      : null;
+    const breaks = work.partTimeHoursDuringBreaks
+      ? `${Number(work.partTimeHoursDuringBreaks)} in breaks`
+      : null;
     cards.push({
       title: 'Work while you study',
-      value: work.partTimeHoursPerWeek
-        ? `${Number(work.partTimeHoursPerWeek)} hours a week`
-        : 'Permitted',
+      value: [term, breaks].filter(Boolean).join(' · ') || 'Permitted',
       body: work.partTimeSummary ?? null,
     });
+  }
 
   if (work.postStudyWorkAvailable) {
     const months = work.postStudyWorkMaxMonths ?? work.postStudyWorkMinMonths;

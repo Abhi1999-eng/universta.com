@@ -7,6 +7,13 @@ export type CatalogProxyOperation = 'country-tags:list' | 'country-tags:create' 
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
+/* A write is given longer than a read. Five seconds is a fair ceiling for a
+ * list that should come back instantly, but a Country create or publish writes
+ * across a dozen tables in one transaction, and on a busy box that crossed the
+ * ceiling -- the proxy then reported the catalogue unreachable for a save that
+ * was still running and, moments later, succeeded. An operator who retries
+ * such a save is the worst outcome of the two. */
+const UPSTREAM_WRITE_TIMEOUT_MS = 20_000;
 const SAFE_ERROR_MESSAGES: Record<string, string> = {
   VALIDATION_ERROR: 'Invalid catalog request',
   UNAUTHORIZED: 'Your admin session is invalid',
@@ -110,7 +117,35 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
   SEO_URL_INVALID: 'SEO canonical URL must use HTTPS',
   MEDIA_INVALID: 'Selected media is not an active image',
+  /* What goes wrong around the request rather than inside it. Every one of
+   * these reached the operator as the bare "Catalog request failed" -- a
+   * banner that names no field, no reason and nothing to try next, which is
+   * the same as saying nothing at all. They are ordinary operational answers
+   * and each one has an action behind it. */
+  CATALOG_SERVICE_UNAVAILABLE: 'The catalogue service did not answer in time. Wait a moment and try again',
+  SERVICE_UNAVAILABLE: 'The catalogue service is unavailable. Wait a moment and try again',
+  DATABASE_UNAVAILABLE: 'The catalogue database could not be reached. Nothing was saved; try again shortly',
+  INTERNAL_ERROR: 'The catalogue service failed on this request. Nothing was saved; try again, and report the code below if it repeats',
+  RATE_LIMITED: 'Too many requests in a row. Wait a moment and try again',
+  REQUEST_TOO_LARGE: 'This record is too large to send. Shorten the longest text fields and save again',
+  BAD_REQUEST: 'The catalogue rejected this request as malformed',
+  CONFLICT: 'This conflicts with a record that already exists',
+  COUNTRY_SUBJECT_INVALID: 'One or more selected subjects are unavailable. Reload and choose them again',
+  COUNTRY_TAG_INVALID: 'One or more of this country\u2019s tags are unavailable. Reload before saving',
+  COUNTRY_TAG_INACTIVE_CONFLICT: 'That tag is retired. Pick an active one',
+  COUNTRY_CALCULATOR_INVALID: 'The budget calculator configuration is not valid',
+  COUNTRY_CONSULTANT_CARD_NOT_FOUND: 'Guidance card not found',
+  EDITORIAL_SECTION_TYPE_INVALID: 'That section type is not supported',
+  NO_RECORDS_ARCHIVABLE: 'None of the selected records can be archived',
 };
+
+/** An upstream code the allow-list above does not recognise.
+ *
+ * The message stays generic -- the allow-list is what keeps upstream wording
+ * out of the operator's browser -- but the code itself is carried through so
+ * the banner says which failure it was and a report names something. Shape is
+ * checked rather than trusted: an application error code, and nothing longer. */
+const UPSTREAM_CODE = /^[A-Z][A-Z0-9_]{2,60}$/;
 
 interface SafeEnvelope {
   data: unknown;
@@ -528,10 +563,14 @@ function normalizeBody(value: unknown, requestId: string, status: number): SafeE
   const upstreamRequestId = typeof candidate.requestId === 'string' && candidate.requestId.length <= 100 ? candidate.requestId : requestId;
   if (status >= 400 || candidate.error) {
     const rawError = candidate.error && typeof candidate.error === 'object' ? (candidate.error as { code?: unknown; details?: unknown }) : {};
-    const code = typeof rawError.code === 'string' && SAFE_ERROR_MESSAGES[rawError.code] ? rawError.code : 'CATALOG_REQUEST_FAILED';
+    const raw = typeof rawError.code === 'string' ? rawError.code : '';
+    const known = Boolean(SAFE_ERROR_MESSAGES[raw]);
+    const code = known ? raw : UPSTREAM_CODE.test(raw) ? raw : 'CATALOG_REQUEST_FAILED';
     return envelope(upstreamRequestId, null, {
       code,
-      message: SAFE_ERROR_MESSAGES[code] ?? 'Catalog request failed',
+      message: known
+        ? SAFE_ERROR_MESSAGES[raw]
+        : `Catalog request failed (${code})`,
       details: safeDetails(code, rawError.details),
     });
   }
@@ -581,7 +620,9 @@ export async function proxyCatalogRoute(request: NextRequest, operation: Catalog
       headers,
       body,
       cache: 'no-store',
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      signal: AbortSignal.timeout(
+        details.method === 'GET' ? UPSTREAM_TIMEOUT_MS : UPSTREAM_WRITE_TIMEOUT_MS,
+      ),
     });
   } catch {
     return errorResponse(502, requestId, 'CATALOG_SERVICE_UNAVAILABLE');
