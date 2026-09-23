@@ -42,17 +42,17 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_LANGUAGE_PROFILE_STALE_VERSION: 'The language profile changed in another session. Reload before saving',
   COUNTRY_INTAKES_STALE_VERSION: 'The country intakes changed in another session. Reload before saving',
   COUNTRY_STATISTICS_STALE_VERSION: 'The statistics changed in another session. Reload before saving',
-  PROFILE_DECIMAL_INVALID: 'Profile decimal values are invalid',
+  PROFILE_DECIMAL_INVALID: 'One of the amounts on this card is not a number. Use digits only, like 1200',
   /* Unmapped codes fall through to the generic "Catalog request failed", which
    * names no field and gives the operator nothing to act on -- these are all
    * ordinary things to get wrong while filling a profile in. */
-  PROFILE_LANGUAGE_SCORE_INVALID: 'Check the language test score against its requirement',
-  PROFILE_CURRENCY_INVALID: 'Currency must be a three-letter code',
+  PROFILE_LANGUAGE_SCORE_INVALID: 'A test score is set on a test the country does not ask for. Set that test to Required or Optional, or clear its score',
+  PROFILE_CURRENCY_INVALID: 'The currency must be a three-letter code such as EUR',
   PROFILE_CURRENCY_REQUIRED: 'Set the country currency in Identity & listing before saving this card',
-  PROFILE_HOURS_INVALID: 'Working hours are invalid',
-  PROFILE_PERCENTAGE_INVALID: 'Percentage values must be between 0 and 100',
-  PROFILE_DECIMAL_PRECISION: 'Profile decimal precision is invalid',
-  PROFILE_RANGE_INVALID: 'Profile minimum and maximum values are invalid',
+  PROFILE_HOURS_INVALID: 'Working hours must be between 0 and 168 a week',
+  PROFILE_PERCENTAGE_INVALID: 'A percentage on this card must be between 0 and 100',
+  PROFILE_DECIMAL_PRECISION: 'An amount has too many digits. Use a whole number, or two decimal places at most',
+  PROFILE_RANGE_INVALID: 'A minimum is higher than its maximum. Check the tuition, living cost and application fee pairs on this card',
   PROFILE_SOURCE_REQUIRED: 'A published profile value requires a source and verification timestamp',
   PROFILE_SOURCE_INVALID: 'Profile source reference is invalid',
   PROFILE_VERIFICATION_INVALID: 'Profile verification timestamp is invalid',
@@ -117,6 +117,10 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
   SEO_URL_INVALID: 'SEO canonical URL must use HTTPS',
   MEDIA_INVALID: 'Selected media is not an active image',
+  /* An operator reads these, not a developer. They name the card's own words
+   * -- "tuition", "working hours" -- rather than the column, and say what to
+   * do next rather than that something "is invalid".
+   */
   /* What goes wrong around the request rather than inside it. Every one of
    * these reached the operator as the bare "Catalog request failed" -- a
    * banner that names no field, no reason and nothing to try next, which is
