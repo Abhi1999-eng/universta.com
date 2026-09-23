@@ -48,6 +48,7 @@ import {
   type CreateOutcome,
 } from "./CountryTaxonomyPicker";
 import { MediaPickerDialog } from "./editorial/MediaPickerDialog";
+import { CalculatorBuilder } from "./CalculatorBuilder";
 import { TypedBodyEditor } from "./editorial/TypedBodyEditor";
 import {
   SECTION_TYPES,
@@ -1405,7 +1406,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 toggleConfiguration("intakeMonths", Number(value))
               }
             />
-            <CalculatorField
+            <CalculatorBuilder
               value={configuration.calculatorConfig}
               onChange={(value) => {
                 setConfiguration((current) => ({
@@ -1890,51 +1891,6 @@ function Card({
  *
  * Empty means the destination has no calculator, which is a normal state.
  */
-function CalculatorField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const problem = (() => {
-    if (!value.trim()) return null;
-    try {
-      const parsed: unknown = JSON.parse(value);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-        return "This should be a single JSON object.";
-      const record = parsed as Record<string, unknown>;
-      if (!record.base) return "Missing the `base` costs.";
-      if (!Array.isArray(record.factors) || record.factors.length === 0)
-        return "Missing the `factors` list.";
-      return null;
-    } catch {
-      return "This is not valid JSON yet.";
-    }
-  })();
-
-  return (
-    <label className="block text-sm font-semibold">
-      Budget calculator
-      <span className="mt-1 block text-xs font-normal text-[#667085]">
-        Factor groups for the Study Abroad guide. Leave empty for no calculator.
-        Base living costs come from the Cost and budget card; this only varies
-        them.
-      </span>
-      <textarea
-        className="mt-2 h-48 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 font-mono text-xs font-normal outline-none focus:border-[#1657CF]"
-        value={value}
-        spellCheck={false}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={'{\n  "base": { "livingMin": 850, "livingMax": 1200, "insurance": 130, "semesterFee": 275 },\n  "factors": [ ... ]\n}'}
-      />
-      {problem ? (
-        <span className="mt-1 block text-xs font-normal text-[#B42318]">{problem}</span>
-      ) : null}
-    </label>
-  );
-}
-
 function Empty({ text }: { text: string }) {
   return (
     <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">
