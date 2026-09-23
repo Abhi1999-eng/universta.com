@@ -189,6 +189,9 @@ type CardRow = {
   updatedAt?: string;
   title: string;
   slug: string;
+  /* Client-only, and never sent: whether the operator typed the slug
+     themselves. Until they do, the slug follows the title. */
+  slugEdited?: boolean;
   shortDescription: string;
   overview: string;
   iconMediaId: string;
@@ -1709,14 +1712,28 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                       onChange={(value) =>
                         updateCard(index, {
                           title: value,
-                          slug: row.slug || slugify(value),
+                          /* `row.slug || slugify(value)` looked right and was
+                             not: the first keystroke filled the slug, and from
+                             the second onwards the slug was truthy and kept.
+                             Every card titled by typing ended up with a
+                             one-letter slug. This follows the same rule the
+                             country's own slug does -- derive until the
+                             operator takes it over. */
+                          slug: nextAutoSlug({
+                            sourceValue: value,
+                            currentSlug: row.slug,
+                            existingRecord: Boolean(row.id),
+                            manuallyOverridden: Boolean(row.slugEdited),
+                          }),
                         })
                       }
                     />
                     <Input
                       label="Slug"
                       value={row.slug}
-                      onChange={(value) => updateCard(index, { slug: value })}
+                      onChange={(value) =>
+                        updateCard(index, { slug: value, slugEdited: true })
+                      }
                     />
                     <div className="sm:col-span-2">
                       <RichTextEditor

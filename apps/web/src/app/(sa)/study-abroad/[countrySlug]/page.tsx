@@ -16,6 +16,7 @@ import {
 import {
   CountryConnect,
   CountryCourses,
+  countryCourses,
   CountryNumbers,
   countryUniversities,
   hasCountryFigures,
@@ -83,7 +84,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const [page, directory, courseList, scholarshipList] = await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getDestinations().catch(() => null),
-    getCourses({ country: countrySlug, limit: '6' }).catch(() => null),
+    /* More than the six the section shows: an editor's curated courses lead
+       it, and they have to be in hand to be put first. */
+    getCourses({ country: countrySlug, limit: '24' }).catch(() => null),
     phaseList<CountryScholarshipCard>('scholarships', {
       country: countrySlug,
       limit: '6',
@@ -91,7 +94,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   ]);
   if (!page) notFound();
 
-  const countryCourses = (courseList?.data ?? []) as CountryCourseCard[];
+  const publishedCourses = (courseList?.data ?? []) as CountryCourseCard[];
   const countryScholarships = scholarshipList?.data ?? [];
 
   const { country, profiles, sections, faqs, consultantCards } = page;
@@ -104,6 +107,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const bands = directory?.available.find((entry) => entry.slug === country.slug)?.bands ?? null;
   const work = workSummary(profiles);
   const intakes = monthNames(country.configuration?.intakeMonths ?? []);
+  /* The courses section follows the editor's curation, not the catalogue's
+     own order, so what an Admin marked popular for this destination leads. */
+  const courses = countryCourses(country, publishedCourses);
 
   /* The hero keeps its lead to a sentence or two, as the design does. A longer
      short description would push the calls to action below the fold, so it
@@ -150,7 +156,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     paths.length ? 'study-paths' : null,
     countryUniversities(country).length ? 'universities' : null,
     country.subjects?.length ? 'subjects' : null,
-    countryCourses.length ? 'courses' : null,
+    courses.length ? 'courses' : null,
     country.documents?.length ? 'documents' : null,
     intakes.length || intakeCards(profiles.intakes).length ? 'intakes' : null,
     costRenders ? 'cost' : null,
@@ -340,7 +346,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       <CountrySubjects country={country} n={number('subjects')} alt={band('subjects')} />
       <CountryCourses
         country={country}
-        courses={countryCourses}
+        courses={courses}
         n={number('courses')}
         alt={band('courses')}
       />

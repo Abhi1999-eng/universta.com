@@ -248,7 +248,13 @@ export interface CountryPublicDto {
   heroImage: PublicMediaDto | null;
   featured: boolean;
   displayOrder: number;
-  statistics: { universitiesCount: number | null } | null;
+  statistics: {
+    universitiesCount: number | null;
+    /* Nobody derives this one: there is no live count of international
+       students to fall back on, so an authored figure is the only figure
+       there will ever be and `sourceMode` has no say over it. */
+    internationalStudentsCount: number | null;
+  } | null;
   profiles: ReturnType<typeof publicProfileSummary>;
   configuration: {
     features: Array<{ code: string; label: string }>;
@@ -1912,6 +1918,8 @@ export class CountriesService {
             universitiesCount: authored
               ? record.statistics.universitiesCount
               : null,
+            internationalStudentsCount:
+              record.statistics.internationalStudentsCount ?? null,
           }
         : null,
       profiles: publicProfileSummary(record),

@@ -137,6 +137,17 @@ describe('work cards', () => {
     expect(withoutTime.find((card) => card.title === 'Student visa')?.value).toBe('Study permit');
   });
 
+  /* Nothing marks a primary intake -- a country states its intakes as months
+     and nothing more -- so naming the earliest month the primary one asserted
+     an order as a fact, and the cards below it badged that same month
+     "Secondary". */
+  it('names no primary intake, because nothing marks one', () => {
+    const rows = countrySnapshot(page({ country: { configuration: { features: [], acceptedTests: [], intakeMonths: [2, 9], postStudyWorkPermitMonths: null, calculator: null } } }));
+    const intakes = rows.find((row) => row.label === 'Main intakes');
+    expect(intakes?.value).toBe('February · September');
+    expect(intakes?.note).toBeUndefined();
+  });
+
   it('states the weekly hours when they are published', () => {
     const cards = workSummary(
       page({ work: { partTimeAllowed: true, partTimeHoursPerWeek: '20', postStudyWorkAvailable: false } })
@@ -144,6 +155,25 @@ describe('work cards', () => {
     );
     expect(cards.find((card) => card.title === 'Work while you study')?.value).toBe(
       '20 hours a week',
+    );
+  });
+
+  /* Holiday hours are a second figure an editor records, and a student plans
+     against both: term-time work is what pays the rent, breaks are what pays
+     for the flight home. */
+  it('states the holiday hours alongside the term-time ones', () => {
+    const cards = workSummary(
+      page({
+        work: {
+          partTimeAllowed: true,
+          partTimeHoursPerWeek: '20',
+          partTimeHoursDuringBreaks: '40',
+          postStudyWorkAvailable: false,
+        },
+      }).profiles,
+    );
+    expect(cards.find((card) => card.title === 'Work while you study')?.value).toBe(
+      '20 hours a week · 40 in breaks',
     );
   });
 

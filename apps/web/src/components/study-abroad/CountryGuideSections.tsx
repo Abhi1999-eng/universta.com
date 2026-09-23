@@ -258,9 +258,15 @@ export function CountryIntakes({
             <article className={`intake${card.primary ? ' intake--primary' : ''}`} key={card.id}>
               <div className="intake__head">
                 <h3 className="intake__name">{card.name}</h3>
-                <span className={`badge ${card.primary ? 'badge--req' : 'badge--neutral'}`}>
-                  {card.primary ? 'Primary' : 'Secondary'}
-                </span>
+                {/* Only where an intake is actually marked major. With none
+                    marked, every card carried the same "Secondary" badge --
+                    a label that distinguishes nothing and contradicted the
+                    snapshot panel, which was naming a primary of its own. */}
+                {primaryMonths.size ? (
+                  <span className={`badge ${card.primary ? 'badge--req' : 'badge--neutral'}`}>
+                    {card.primary ? 'Primary' : 'Secondary'}
+                  </span>
+                ) : null}
               </div>
               {card.starts ? <p className="intake__starts">Classes begin {card.starts}</p> : null}
               {card.opening || card.deadline ? (
@@ -452,7 +458,12 @@ export function CountryLanguage({
                     <span className={`badge badge--${row.requirement.tone}`}>{row.requirement.label}</span>
                   </td>
                   <td className="data__typical">{row.minimum ?? 'Set by programme'}</td>
-                  {hasNotes ? <td>{row.notes ?? ''}</td> : null}
+                  {/* Authored in the admin's rich text editor, so it arrives
+                      as markup: printed as text the cell read "<p>...</p>".
+                      Every other note on this page already renders. */}
+                  {hasNotes ? (
+                    <td>{row.notes ? <RichText value={row.notes} /> : null}</td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -467,6 +478,11 @@ export function CountryLanguage({
             </li>
           ))}
         </ul>
+      ) : null}
+      {language.disclaimer ? (
+        <div className="snap__n cost__disclaimer">
+          <RichText value={language.disclaimer} />
+        </div>
       ) : null}
     </Section>
   );
@@ -576,6 +592,11 @@ export function CountryWorkVisa({
               ) : null}
             </div>
           ) : null}
+        </div>
+      ) : null}
+      {visa?.disclaimer ? (
+        <div className="visa__note">
+          <RichText value={visa.disclaimer} />
         </div>
       ) : null}
     </Section>

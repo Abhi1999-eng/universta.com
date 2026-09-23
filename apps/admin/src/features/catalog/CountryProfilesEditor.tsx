@@ -605,16 +605,19 @@ export const CountryProfilesEditor = forwardRef<
         <p className="sm:col-span-2 rounded-xl bg-[#F8FAFC] p-3 text-sm leading-6 text-[#475467]">
           {usingManualCount ? (
             <>
-              The number above is shown on the country page instead of the live
-              count{derivedCount === null ? "" : ` of ${derivedCount}`}.
+              The universities count above is shown on the country page instead
+              of the live count{derivedCount === null ? "" : ` of ${derivedCount}`}.
             </>
           ) : (
             <>
               The country page counts published universities itself
-              {derivedCount === null ? "" : ` — currently ${derivedCount}`}. Any
-              number typed above is stored but not shown.
+              {derivedCount === null ? "" : ` — currently ${derivedCount}`}, so a
+              universities count typed above is stored but not shown.
             </>
-          )}
+          )}{" "}
+          International students is nobody&apos;s to count: it appears in the
+          country page&apos;s numbers band exactly as typed, whichever setting is
+          chosen above.
         </p>
       </ProfileCard>
 

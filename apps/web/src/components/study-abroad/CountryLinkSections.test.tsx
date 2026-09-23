@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { Country, ProfileSummary } from '@/lib/countries';
 import {
   CountryCourses,
+  countryCourses,
   CountryNumbers,
   CountryScholarships,
   CountrySubjects,
@@ -137,6 +138,67 @@ describe('country guide catalogue sections', () => {
     ).toBe('');
   });
 
+  /* The fee is the figure a student compares courses on, and it is published
+     against the destination, so the country's own card can quote it. */
+  it('quotes the course fee for this destination', () => {
+    const html = renderToStaticMarkup(
+      <CountryCourses
+        alt
+        country={country()}
+        courses={[
+          {
+            id: 'x1',
+            name: 'MSc Robotics',
+            slug: 'msc-robotics',
+            courseLevel: { name: 'Postgraduate' },
+            subject: { name: 'Engineering' },
+            selectedTuition: {
+              min: '18000',
+              max: null,
+              currencyCode: 'EUR',
+              period: 'YEAR',
+            },
+          },
+        ]}
+      />,
+    );
+    expect(html).toContain('Postgraduate · From €18,000 a year');
+  });
+
+  /* What an editor marked popular for the destination leads the section; the
+     catalogue's own order fills in behind it. */
+  it('puts the editor-curated courses first, in their order', () => {
+    const curated = country({
+      derived: {
+        averageTuition: null,
+        statistics: { universitiesCount: 5, publicUniversitiesCount: 5, coursesCount: 10 },
+        topRankedUniversities: [],
+        popularUniversities: [],
+        popularCourses: [
+          { id: 'x2', name: 'MSc Data Science', slug: 'msc-data', shortDescription: null },
+          { id: 'x9', name: 'MA Design', slug: 'ma-design', shortDescription: null },
+        ],
+      },
+    });
+    const published = [
+      { id: 'x1', name: 'MSc Robotics', slug: 'msc-robotics', courseLevel: null, subject: null },
+      { id: 'x2', name: 'MSc Data Science', slug: 'msc-data', courseLevel: null, subject: null },
+    ];
+    expect(countryCourses(curated, published).map((course) => course.slug)).toEqual([
+      'msc-data',
+      'ma-design',
+      'msc-robotics',
+    ]);
+  });
+
+  it('leaves the catalogue order alone when nothing is curated', () => {
+    const published = [
+      { id: 'x1', name: 'MSc Robotics', slug: 'msc-robotics', courseLevel: null, subject: null },
+      { id: 'x2', name: 'MSc Data Science', slug: 'msc-data', courseLevel: null, subject: null },
+    ];
+    expect(countryCourses(country(), published)).toBe(published);
+  });
+
   it('lists the funding open in the country', () => {
     const html = renderToStaticMarkup(
       <CountryScholarships
@@ -197,6 +259,21 @@ describe('country guide catalogue sections', () => {
     expect(html).toContain('Programmes listed');
     expect(html).toContain('2</div><div class="bignum__l">Intakes per year');
     expect(html).toContain('18</div><div class="bignum__l">Months of post-study work');
+  });
+
+  /* Nothing derives this one -- it is on the band only because an editor
+     recorded it, whatever the statistics source setting says. */
+  it('shows the international students an editor recorded', () => {
+    const html = renderToStaticMarkup(
+      <CountryNumbers
+        alt
+        country={country({
+          statistics: { universitiesCount: null, internationalStudentsCount: 416000 },
+        })}
+        profiles={profiles()}
+      />,
+    );
+    expect(html).toContain('416,000</div><div class="bignum__l">International students');
   });
 
   it('stands down when there is barely anything to report', () => {

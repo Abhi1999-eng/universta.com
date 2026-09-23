@@ -72,12 +72,12 @@ export function countrySnapshot(page: CountryPage): SnapshotRow[] {
     rows.push({ label: 'Typical living cost', value: living, note: 'Per year, indicative' });
 
   const intakes = monthNames(country.configuration?.intakeMonths ?? []);
+  /* No note naming a primary. Nothing marks one -- the editor states intakes
+     as months and nothing more -- so this called the earliest month in the
+     year the primary intake, which is an order, not a fact, and the cards
+     below it badged that same month "Secondary". */
   if (intakes.length)
-    rows.push({
-      label: 'Main intakes',
-      value: intakes.join(' · '),
-      note: intakes.length > 1 ? `${intakes[0]} is the primary intake` : undefined,
-    });
+    rows.push({ label: 'Main intakes', value: intakes.join(' · ') });
 
   if (country.officialLanguage)
     rows.push({
@@ -126,14 +126,21 @@ export function workSummary(profiles: ProfileSummary): WorkCard[] {
       body: work.visaInformation ?? null,
     });
 
-  if (work.partTimeAllowed)
+  if (work.partTimeAllowed) {
+    /* Both hour figures the editor enters, not just the term-time one: a
+       destination that allows full-time work in the holidays says so. */
+    const term = work.partTimeHoursPerWeek
+      ? `${Number(work.partTimeHoursPerWeek)} hours a week`
+      : null;
+    const breaks = work.partTimeHoursDuringBreaks
+      ? `${Number(work.partTimeHoursDuringBreaks)} in breaks`
+      : null;
     cards.push({
       title: 'Work while you study',
-      value: work.partTimeHoursPerWeek
-        ? `${Number(work.partTimeHoursPerWeek)} hours a week`
-        : 'Permitted',
+      value: [term, breaks].filter(Boolean).join(' · ') || 'Permitted',
       body: work.partTimeSummary ?? null,
     });
+  }
 
   if (work.postStudyWorkAvailable) {
     const months = work.postStudyWorkMaxMonths ?? work.postStudyWorkMinMonths;

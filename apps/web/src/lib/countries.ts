@@ -37,7 +37,12 @@ export interface Country {
   heroImage: Flag | null;
   featured: boolean;
   displayOrder: number;
-  statistics: { universitiesCount: number | null } | null;
+  statistics: {
+    universitiesCount: number | null;
+    /** What an editor typed under "International students"; there is nothing
+     * to derive it from, so it is published whenever it is recorded. */
+    internationalStudentsCount: number | null;
+  } | null;
   profiles?: ProfileSummary;
   currency?: {
     code: string;
