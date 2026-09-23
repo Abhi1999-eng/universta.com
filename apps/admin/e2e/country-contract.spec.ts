@@ -1692,7 +1692,9 @@ test.describe.serial('country client contract, end to end', () => {
       pteRequirement: 'OPTIONAL',
       pteMinScore: '59',
       pteNotes: '<p>Acceptance PTE suits a later application.</p>',
-      duolingoRequirement: 'VARIES',
+      /* OPTIONAL, not VARIES: a score is only allowed alongside a requirement
+         that can carry one, and the API refuses the pair outright. */
+      duolingoRequirement: 'OPTIONAL',
       duolingoMinScore: '115',
       duolingoNotes: '<p>Acceptance Duolingo depends on the programme.</p>',
       languageWaiverAvailable: true,
