@@ -1746,9 +1746,12 @@ test.describe.serial('country client contract, end to end', () => {
     ])
       await expect(language).toContainText(line);
 
+    /* The visa itself and the proof of funds sit in the panel rather than the
+       numbered journey, so the section never states either twice. */
     const visa = page.locator('#work-visa');
     for (const line of [
-      'Acceptance student permit · 5 to 7 weeks processing',
+      'Acceptance student permit',
+      'Processing time: 5 to 7 weeks',
       'Acceptance visa guidance in full.',
       '21 hours a week · 40 in breaks',
       'Acceptance term-time work needs no separate permit.',

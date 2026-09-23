@@ -48,7 +48,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
    * ordinary things to get wrong while filling a profile in. */
   PROFILE_LANGUAGE_SCORE_INVALID: 'Check the language test score against its requirement',
   PROFILE_CURRENCY_INVALID: 'Currency must be a three-letter code',
-  PROFILE_CURRENCY_REQUIRED: 'A currency is required alongside these amounts',
+  PROFILE_CURRENCY_REQUIRED: 'Set the country currency in Identity & listing before saving this card',
   PROFILE_HOURS_INVALID: 'Working hours are invalid',
   PROFILE_PERCENTAGE_INVALID: 'Percentage values must be between 0 and 100',
   PROFILE_DECIMAL_PRECISION: 'Profile decimal precision is invalid',
