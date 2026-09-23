@@ -1645,14 +1645,17 @@ test.describe.serial('country client contract, end to end', () => {
     const version = async (profile: 'cost' | 'work' | 'language' | 'statistics') =>
       (await storedProfiles(countryId))[profile]?.updatedAt;
 
+    /* Decimal columns cross the wire as strings -- the editor posts what was
+       typed and the API parses it -- while whole-month counts are integers.
+       A number sent for a decimal is refused outright. */
     await putProfile(countryId, 'cost', {
-      tuitionMin: 9200,
-      tuitionMax: 15100,
-      livingCostMin: 710,
-      livingCostMax: 1110,
+      tuitionMin: '9200',
+      tuitionMax: '15100',
+      livingCostMin: '710',
+      livingCostMax: '1110',
       livingCostPeriod: 'PER_MONTH',
-      applicationFeeMin: 61,
-      applicationFeeMax: 61,
+      applicationFeeMin: '61',
+      applicationFeeMax: '61',
       tuitionNotes: '<p>Acceptance tuition is charged per year.</p>',
       livingCostNotes: '<p>Acceptance rent is the larger half.</p>',
       disclaimer: '<p>Acceptance costs are indicative only.</p>',
@@ -1662,10 +1665,10 @@ test.describe.serial('country client contract, end to end', () => {
     await putProfile(countryId, 'work', {
       visaType: 'Acceptance student permit',
       visaProcessingTime: '5 to 7 weeks',
-      visaFee: 86,
+      visaFee: '86',
       partTimeAllowed: true,
-      partTimeHoursPerWeek: 21,
-      partTimeHoursDuringBreaks: 40,
+      partTimeHoursPerWeek: '21',
+      partTimeHoursDuringBreaks: '40',
       partTimeSummary: '<p>Acceptance term-time work needs no separate permit.</p>',
       postStudyWorkAvailable: true,
       postStudyWorkMinMonths: 12,
@@ -1681,16 +1684,16 @@ test.describe.serial('country client contract, end to end', () => {
 
     await putProfile(countryId, 'language', {
       ieltsRequirement: 'REQUIRED',
-      ieltsMinScore: 6.5,
+      ieltsMinScore: '6.5',
       ieltsNotes: '<p>Acceptance IELTS bands stay above six.</p>',
       toeflRequirement: 'OPTIONAL',
-      toeflMinScore: 88,
+      toeflMinScore: '88',
       toeflNotes: '<p>Acceptance TOEFL is accepted in place of IELTS.</p>',
       pteRequirement: 'OPTIONAL',
-      pteMinScore: 59,
+      pteMinScore: '59',
       pteNotes: '<p>Acceptance PTE suits a later application.</p>',
       duolingoRequirement: 'VARIES',
-      duolingoMinScore: 115,
+      duolingoMinScore: '115',
       duolingoNotes: '<p>Acceptance Duolingo depends on the programme.</p>',
       languageWaiverAvailable: true,
       waiverNotes: '<p>Acceptance waivers follow an English-taught degree.</p>',
