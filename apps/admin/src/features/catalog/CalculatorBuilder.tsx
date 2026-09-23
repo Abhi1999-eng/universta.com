@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { slugFromText } from "@/lib/slug";
 
 /**
@@ -314,20 +314,30 @@ export function CalculatorBuilder({
      other than what was typed. The parent's JSON is re-read only when the
      parent genuinely changes it -- a record loading, or a reset -- and never
      when what arrives is this form's own last output coming back. */
-  const seen = useRef(value);
-  const emitted = useRef(value);
-  useEffect(() => {
-    if (value === seen.current) return;
-    seen.current = value;
-    if (value === emitted.current) return;
-    const next = toDraft(value);
-    if (next) setDraft(next);
-  }, [value]);
+  /* `prev` is the JSON the parent last handed down; `mine` is the JSON this
+     form last handed up. Both are adjusted while rendering rather than in an
+     effect, which would paint the stale draft first and then cascade a second
+     render over it.
+     
+     Two questions have to be answered separately. Did the parent change the
+     document at all -- if not there is nothing to read. And is what arrived
+     merely this form's own output coming back -- if so, re-reading it would
+     overwrite half-typed input, because an emptied box and "1." both
+     serialise to something other than what was typed. */
+  const [sync, setSync] = useState({ prev: value, mine: value });
+  if (value !== sync.prev) {
+    const ours = value === sync.mine;
+    setSync({ prev: value, mine: sync.mine });
+    if (!ours) {
+      const next = toDraft(value);
+      if (next) setDraft(next);
+    }
+  }
 
   const update = (next: Draft) => {
     setDraft(next);
     const json = toJson(next);
-    emitted.current = json;
+    setSync((current) => ({ prev: current.prev, mine: json }));
     onChange(json);
   };
 
