@@ -1566,47 +1566,64 @@ test.describe.serial('country client contract, end to end', () => {
    * the Country editor. Authored as JSON because that is the shape of the
    * document; what matters is that a bad one is refused where the author can
    * see it, and a good one reaches the guide and computes. */
-  test('configures the budget calculator, and the guide computes with it', async ({
+  /**
+   * The calculator, built by filling boxes.
+   *
+   * It used to be authored as raw JSON in a textarea. The document is still
+   * what is stored and what the API validates, so this drives the form the way
+   * an operator does and then checks the same published figures as before.
+   */
+  test('builds the budget calculator from the form, and the guide computes with it', async ({
     page,
   }) => {
     await loginAsAdmin(page);
     await openCountry(page);
-    const calculator = page.getByRole('textbox', { name: /^Budget calculator/ });
 
-    await calculator.fill('{ "base": ');
-    await expect(page.getByText('This is not valid JSON yet.')).toBeVisible();
-    await calculator.fill('{ "base": { "livingMin": 900 } }');
-    await expect(page.getByText('Missing the `factors` list.')).toBeVisible();
+    /* The form says what is still missing in its own words, rather than
+     * reporting a JSON parse failure. */
+    await page.getByPlaceholder('Where will you live?').fill('Where you live');
+    await expect(
+      page.getByText(/Fill all four monthly cost boxes, or clear the whole calculator/),
+    ).toBeVisible();
+    await expect(page.getByText(/needs at least one answer/)).toBeVisible();
 
-    const config = {
-      base: { livingMin: 900, livingMax: 1100, insurance: 100, semesterFee: 200 },
-      factors: [
-        {
-          id: 'city',
-          label: 'Where you live',
-          options: [
-            { value: 'small', label: 'Smaller city', mult: 1 },
-            { value: 'capital', label: 'Capital', mult: 2 },
-          ],
-        },
-        {
-          id: 'programme',
-          label: 'Programme',
-          options: [{ value: 'public', label: 'Public university', tuitionMin: 0, tuitionMax: 1000 }],
-        },
-      ],
-    };
-    await calculator.fill(JSON.stringify(config, null, 2));
+    await page.getByLabel('Living cost, lowest').fill('900');
+    await page.getByLabel('Living cost, highest').fill('1100');
+    await page.getByLabel('Health insurance').fill('100');
+    await page.getByLabel('Semester fee').fill('200');
+
+    const answer = page.getByPlaceholder('In the capital', { exact: true });
+    const mult = page.getByLabel('Living cost changes by');
+    await answer.first().fill('Smaller city');
+    await mult.first().fill('1');
+    await page.getByRole('button', { name: '+ Add answer' }).first().click();
+    await answer.last().fill('Capital');
+    await mult.last().fill('2');
+
+    await page.getByRole('button', { name: '+ Add question' }).click();
+    await page.getByPlaceholder('Where will you live?').last().fill('Programme');
+    await page.getByPlaceholder('In the capital', { exact: true }).last().fill('Public university');
+    await page.getByLabel('Tuition it adds, lowest').last().fill('0');
+    await page.getByLabel('Tuition it adds, highest').last().fill('1000');
+
     await saveCountry(page);
     await expect(formIssues(page)).toHaveCount(0);
 
-    // Reloaded into the editor, and published to the public payload.
+    // Reloaded into the form as boxes, and published to the public payload.
     await openCountry(page);
-    await expect(calculator).toContainText('"livingMin": 900');
+    await expect(page.getByLabel('Living cost, lowest')).toHaveValue('900');
+    await expect(page.getByPlaceholder('Where will you live?').first()).toHaveValue(
+      'Where you live',
+    );
     const configuration = (await publicCountry(page)).configuration as {
-      calculator?: { base?: { livingMin?: number } };
+      calculator?: { base?: { livingMin?: number }; factors?: Array<{ id: string }> };
     };
     expect(configuration?.calculator?.base?.livingMin).toBe(900);
+    /* The ids nobody typed, derived from the questions themselves. */
+    expect(configuration?.calculator?.factors?.map((factor) => factor.id)).toEqual([
+      'where-you-live',
+      'programme',
+    ]);
 
     /* Living is (900 + 100) x 12 = 12,000 a year, fees are the semester fee
      * twice, so the cheapest year is 12,400 -- and the capital doubles the
@@ -1615,14 +1632,30 @@ test.describe.serial('country client contract, end to end', () => {
     const total = page.getByTestId('calc-total');
     await expect(total).toContainText('12,400');
     await page
-      .locator('[data-factor="city"]')
+      .locator('[data-factor="where-you-live"]')
       .getByRole('button', { name: 'Capital' })
       .click();
     await expect(total).toContainText('24,400');
 
-    // Cleared again, the guide simply has no calculator rather than an empty one.
+    // Emptied again, the guide simply has no calculator rather than an empty one.
     await openCountry(page);
-    await calculator.fill('');
+    for (const label of [
+      'Living cost, lowest',
+      'Living cost, highest',
+      'Health insurance',
+      'Semester fee',
+    ])
+      await page.getByLabel(label).fill('');
+    for (const box of await page.getByPlaceholder('Where will you live?').all())
+      await box.fill('');
+    for (const box of await page.getByPlaceholder('In the capital', { exact: true }).all())
+      await box.fill('');
+    for (const box of await page.getByLabel('Living cost changes by').all())
+      await box.fill('');
+    for (const box of await page.getByLabel('Tuition it adds, lowest').all())
+      await box.fill('');
+    for (const box of await page.getByLabel('Tuition it adds, highest').all())
+      await box.fill('');
     await saveCountry(page);
     await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.getByTestId('cost-calculator')).toHaveCount(0);
