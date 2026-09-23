@@ -72,12 +72,12 @@ export function countrySnapshot(page: CountryPage): SnapshotRow[] {
     rows.push({ label: 'Typical living cost', value: living, note: 'Per year, indicative' });
 
   const intakes = monthNames(country.configuration?.intakeMonths ?? []);
+  /* No note naming a primary. Nothing marks one -- the editor states intakes
+     as months and nothing more -- so this called the earliest month in the
+     year the primary intake, which is an order, not a fact, and the cards
+     below it badged that same month "Secondary". */
   if (intakes.length)
-    rows.push({
-      label: 'Main intakes',
-      value: intakes.join(' · '),
-      note: intakes.length > 1 ? `${intakes[0]} is the primary intake` : undefined,
-    });
+    rows.push({ label: 'Main intakes', value: intakes.join(' · ') });
 
   if (country.officialLanguage)
     rows.push({
