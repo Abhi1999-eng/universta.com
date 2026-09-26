@@ -1314,23 +1314,17 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               setCoreField("currencySymbol", next.symbol);
             }}
           />
-          {/* The flag is derived from the ISO code rather than uploaded -- see
-            * FlagPreview above. Any flag media a country already has stays on
-            * the record and is sent back untouched. */}
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <MediaPickerDialog
-              label="Listing image"
-              value={core.listingMediaId}
-              media={media}
-              onChange={(value) => setCoreField("listingMediaId", value)}
-            />
-            <MediaPickerDialog
-              label="Hero image"
-              value={core.heroMediaId}
-              media={media}
-              onChange={(value) => setCoreField("heroMediaId", value)}
-            />
-          </div>
+          {/* No image pickers here. The flag is derived from the ISO code --
+            * see FlagPreview above -- and the listing and hero images asked an
+            * operator to choose artwork that no reader ever sees: the approved
+            * design draws every mark in CSS and the country experience loads
+            * not one image. The only pages that read them, the old
+            * `/countries` listing and detail, have redirected to
+            * `/study-abroad` since that design shipped.
+            *
+            * All three ids stay on the record and are sent back untouched, so
+            * an import that sets them keeps working and nothing is lost if a
+            * later design wants them. */}
           {/* Subjects are edited here again. The country guide publishes them
             * as its "Popular subjects" section, so an editor needs somewhere
             * to say which fields a destination is known for; until this came

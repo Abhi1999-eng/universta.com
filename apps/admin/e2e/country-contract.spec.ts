@@ -32,14 +32,6 @@ const runId = acceptanceRunId();
 const COUNTRY_NAME = `${acceptanceCountryName(runId)} Contract`;
 const COUNTRY_SLUG = `${acceptanceSlugPrefix(runId)}contract-country`;
 const TAG_NAME = `${acceptanceCountryName(runId)} Tag`;
-const MEDIA_TITLE = `${acceptanceCountryName(runId)} Image`;
-
-/** A 1x1 PNG. Small enough to inline, real enough that the browser renders it
- * rather than reporting a broken image. */
-const PNG_BYTES = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  'base64',
-);
 
 const TAGLINE = 'Study smarter with Browser Contract.';
 const TAGLINE_2 = 'Study smarter, second pass.';
@@ -166,37 +158,6 @@ async function freeIso(): Promise<{ two: string; three: string }> {
         return { two, three: `${two}Z` };
     }
     throw new Error('No private-use ISO code is free locally');
-  });
-}
-
-/**
- * The Media Library is not seeded in CI, and a test that assumes someone else
- * left an image behind is a test that fails on a clean database. This uploads
- * one through the same endpoint the Admin uploader uses, so the picker then
- * lists a genuine, servable asset.
- */
-async function ensureMediaFixture(): Promise<void> {
-  await withAdminApi(async (api, headers) => {
-    const existing = await api.get(
-      `/api/v1/admin/media?limit=5&q=${encodeURIComponent(MEDIA_TITLE)}`,
-      { headers },
-    );
-    const rows = ((await existing.json()) as { data?: Array<{ title?: string }> }).data ?? [];
-    if (rows.some((row) => row.title === MEDIA_TITLE)) return;
-
-    const created = await api.post('/api/v1/admin/media', {
-      headers,
-      multipart: {
-        file: {
-          name: `${acceptanceSlugPrefix(runId)}image.png`,
-          mimeType: 'image/png',
-          buffer: PNG_BYTES,
-        },
-        title: MEDIA_TITLE,
-        altText: `${MEDIA_TITLE} alt text`,
-      },
-    });
-    expect(created.ok(), `media upload: ${await created.text()}`).toBeTruthy();
   });
 }
 
@@ -961,93 +922,28 @@ test.describe.serial('country client contract, end to end', () => {
     await expect(documents).toContainText('Issued within six months.');
   });
 
-  test('attaches hero and flag images through the real picker and publishes them', async ({
+  /**
+   * The editor no longer asks for artwork no reader sees.
+   *
+   * The listing and hero pickers are gone: the approved design draws every
+   * mark in CSS and the country experience loads not one image, and the only
+   * pages that rendered them -- the old `/countries` listing and detail --
+   * redirect to `/study-abroad`. That the ids still round-trip is proved where
+   * the payload can be read directly, in CountryProfilePersistence; here it is
+   * enough that nothing offers to set them and the guide still renders.
+   */
+  test('offers no image picker, and publishes a country without one', async ({
     page,
   }) => {
-    await ensureMediaFixture();
     await loginAsAdmin(page);
     await openCountry(page);
 
-    /* The picker's caption is a plain span, not a bound label, so scope to the
-     * innermost div that carries it. */
-    const mediaField = (caption: string) =>
-      page
-        .locator('div')
-        .filter({ has: page.getByText(caption, { exact: true }) })
-        .last();
+    for (const caption of ['Listing image', 'Hero image', 'Flag image'])
+      await expect(page.getByText(caption, { exact: true })).toHaveCount(0);
 
-    /* Through the dialog every time — searching for this run's own asset rather
-     * than trusting whatever happens to sit at the top of the library. */
-    async function attach(caption: string): Promise<string> {
-      const target = mediaField(caption);
-      await target
-        .getByRole('button', { name: /Choose media|Change media/ })
-        .click();
-      const dialog = page.getByRole('dialog');
-      await dialog.getByLabel('Search media').fill(MEDIA_TITLE);
-      await dialog.getByRole('button', { name: 'Search', exact: true }).click();
-      const match = dialog
-        .locator('div.grid > button')
-        .filter({ hasText: MEDIA_TITLE })
-        .first();
-      await expect(match).toBeVisible({ timeout: 30_000 });
-      const src = await match.locator('img').getAttribute('src');
-      expect(src, 'the fixture asset should have a URL').toBeTruthy();
-      await match.click();
-      await expect(dialog).toHaveCount(0);
-      await expect(target.locator('img')).toHaveAttribute('src', src!);
-      return src!;
-    }
-
-    /* The flag is derived from the ISO code now, so there is no flag uploader
-     * to attach to -- hero and listing are the remaining media fields. */
-    await expect(page.getByText('Flag image')).toHaveCount(0);
-    const heroSrc = await attach('Hero image');
-    const listingSrc = await attach('Listing image');
     await saveCountry(page);
-
-    await openCountry(page);
-    for (const [caption, src] of [
-      ['Hero image', heroSrc],
-      ['Listing image', listingSrc],
-    ] as Array<[string, string]>)
-      await expect(mediaField(caption).locator('img')).toHaveAttribute('src', src, {
-        timeout: 30_000,
-      });
-
-    const published = await publicCountry(page);
-    const file = heroSrc.split('/').pop()!;
-    /* Flag media is no longer attached from this editor. Any flag a country
-     * already carries stays on the record and still reaches the public
-     * payload -- it is simply not set here any more. */
-    // The client's featured_image and hero_image, both public and both named.
-    expect(published.heroImage, 'hero_image should be public').toBeTruthy();
-    expect(String((published.heroImage as { url: string }).url)).toContain(file);
-    expect(String((published.heroImage as { alt: string }).alt)).toContain(MEDIA_TITLE);
-    expect(published.listingImage, 'featured_image should be public').toBeTruthy();
-    expect(String((published.listingImage as { url: string }).url)).toContain(file);
-
-    /* The approved Study Abroad guide has no hero image slot -- its hero is the
-     * country's colour bands and snapshot panel -- so the image is asserted on
-     * the record and the public payload above, and the guide only has to render
-     * without it. */
     await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(COUNTRY_NAME);
-
-    // A second save must not quietly clear what the first one attached.
-    await openCountry(page);
-    await saveCountry(page);
-    await openCountry(page);
-    for (const [caption, src] of [
-      ['Hero image', heroSrc],
-      ['Listing image', listingSrc],
-    ] as Array<[string, string]>)
-      await expect(mediaField(caption).locator('img')).toHaveAttribute('src', src, {
-        timeout: 30_000,
-      });
-    const again = await publicCountry(page);
-    expect(again.heroImage, 'hero must survive a second save').toBeTruthy();
-    expect(again.listingImage, 'featured must survive a second save').toBeTruthy();
   });
 
   test('persists long-form sections and FAQs, and edits an FAQ a second time', async ({

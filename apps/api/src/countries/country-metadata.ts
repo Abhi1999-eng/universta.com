@@ -13,7 +13,9 @@ export type CountryMetadata = {
   aliases?: string[];
 };
 
-const records: CountryMetadata[] = [
+/** Every destination the editor can identify, and so every one it can
+ * publish. Exported so a test can hold the flag bands to the same list. */
+export const COUNTRY_METADATA: readonly CountryMetadata[] = [
   {
     name: 'Malta',
     iso2Code: 'MT',
@@ -619,7 +621,7 @@ export function normalizeCountryName(value: string): string {
 }
 
 const byName = new Map(
-  records.flatMap((record) =>
+  COUNTRY_METADATA.flatMap((record) =>
     [record.name, ...(record.aliases ?? [])].map(
       (name) => [normalizeCountryName(name), record] as const,
     ),
