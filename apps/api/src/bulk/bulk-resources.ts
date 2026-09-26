@@ -458,9 +458,14 @@ const countries: BulkResourceDefinition = {
           },
         })
       : null;
+    /* A continent is optional, as it is on the record and in the editor: a
+       country saved with nothing but a name has none. Requiring one here
+       meant a country's own export could not be fed back in -- every row
+       without a continent was rejected, which is what an operator does the
+       moment they edit one column of an export and re-upload it. A term that
+       is given and does not resolve is still a typo worth reporting. */
     if (continentTerm && !continent)
       errors.push(`continent "${continentTerm}" was not found`);
-    if (!continentTerm) errors.push('continent is required');
 
     const relations = await parseCountryRelations(row, prisma, errors);
     const media = await resolveCountryMedia(row, prisma, errors);
@@ -472,7 +477,7 @@ const countries: BulkResourceDefinition = {
       data: {
         slug,
         name: title,
-        continentId: continent!.id,
+        continentId: continent?.id ?? null,
         // The public page heading is not part of the client contract, so it
         // is derived once on create rather than blanked on every import.
         pageHeading: (row.pageHeading ?? '').trim() || `Study in ${title}`,

@@ -577,6 +577,72 @@ describe('country bulk contract (e2e)', () => {
     }
   });
 
+  /* A country saved with nothing but a name has no continent -- the editor
+     allows it and the column is nullable -- so requiring one on import meant
+     such a country's own export could not be fed back in. That is what an
+     operator does the moment they edit one column of an export. */
+  it('imports a country with no continent, as the editor saves one', async () => {
+    const freshUid = `${uid}-no-continent`;
+    const summary = await importRows([
+      {
+        ...baseRow(),
+        uid: freshUid,
+        title: `${uid} Continentless`,
+        slug: `${freshUid}-slug`,
+        continent: '',
+      },
+    ]);
+    expect(summary.errors).toEqual([]);
+    expect(summary.failed).toBe(0);
+
+    const row = await prisma.country.findFirstOrThrow({
+      where: { externalUid: freshUid, deletedAt: null },
+    });
+    expect(row.continentId).toBeNull();
+  });
+
+  it('still reports a continent that was named but does not exist', async () => {
+    const summary = await importRows([
+      {
+        ...baseRow(),
+        uid: `${uid}-bad-continent`,
+        slug: `${uid}-bad-continent-slug`,
+        continent: 'Atlantis',
+      },
+    ]);
+    expect(summary.failed).toBe(1);
+    expect(JSON.stringify(summary.errors)).toContain('Atlantis');
+  });
+
+  /* A duplicate slug is the commonest thing to get wrong in a spreadsheet, and
+     the report is the whole explanation the operator gets. It used to be the
+     driver's own stack, naming this service's file and line. */
+  it('names a duplicate slug plainly instead of printing a driver stack', async () => {
+    const taken = `${uid}-dupe-slug`;
+    await importRows([
+      {
+        ...baseRow(),
+        uid: `${uid}-dupe-a`,
+        slug: taken,
+        title: `${uid} Dupe A`,
+      },
+    ]);
+    const summary = await importRows([
+      {
+        ...baseRow(),
+        uid: `${uid}-dupe-b`,
+        slug: taken,
+        title: `${uid} Dupe B`,
+      },
+    ]);
+
+    expect(summary.failed).toBe(1);
+    const reported = JSON.stringify(summary.errors);
+    expect(reported).toContain('Another country already uses this slug');
+    for (const leak of ['bulk.service.ts', 'invocation', 'countries_slug'])
+      expect(reported).not.toContain(leak);
+  });
+
   it('exports the client contract and re-imports its own export idempotently', async () => {
     await importRows([baseRow()]);
     const exported = await bulk.export('countries', 'csv');
@@ -646,6 +712,9 @@ describe('country bulk contract (e2e)', () => {
       request,
       actorId,
     );
+    /* Named rather than counted: a bare count tells whoever hits this next
+       that three rows failed and nothing about why. */
+    expect(summary.errors).toEqual([]);
     expect(summary.failed).toBe(0);
 
     const after = await country();
