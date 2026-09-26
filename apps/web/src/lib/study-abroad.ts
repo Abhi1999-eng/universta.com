@@ -37,8 +37,12 @@ export interface Destination {
   isAvailable: boolean;
   region: DirectoryRegion | null;
   summary: string | null;
-  /** The three-band flag accent, or null for a record outside the world list. */
+  /** The flag accent as a fixed three, for a mark too small to show more. */
   bands: readonly [string, string, string] | null;
+  /** The same colours with the share of the flag each one covers, so a rule
+   * with room for it can draw the flag's own proportions. Optional: an API
+   * that predates it simply leaves the rule to the fixed three. */
+  flag?: ReadonlyArray<{ colour: string; share: number }> | null;
   counts: DestinationCounts;
 }
 
