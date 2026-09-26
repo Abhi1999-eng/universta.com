@@ -17,7 +17,9 @@ describe('world directory flag bands', () => {
   it('gives every destination the editor can publish its own colours', () => {
     const anonymous = COUNTRY_METADATA.filter((record) => {
       const bands = bandsFor(record.name, record.iso2Code);
-      return !bands || PLACEHOLDER.every((colour, index) => bands[index] === colour);
+      return (
+        !bands || PLACEHOLDER.every((colour, index) => bands[index] === colour)
+      );
     }).map((record) => `${record.name} (${record.iso2Code})`);
 
     expect(anonymous).toEqual([]);
@@ -25,13 +27,29 @@ describe('world directory flag bands', () => {
 
   it('resolves a destination the world list spells differently, by its code', () => {
     // "United Kingdom" in the metadata, "UK" in the world list.
-    expect(bandsFor('United Kingdom', 'GB')).toEqual(['#012169', '#C8102E', '#FFFFFF']);
-    expect(bandsFor('United States', 'US')).toEqual(['#3C3B6E', '#B22234', '#FFFFFF']);
-    expect(bandsFor('Türkiye', 'TR')).toEqual(['#E30A17', '#FFFFFF', '#E30A17']);
+    expect(bandsFor('United Kingdom', 'GB')).toEqual([
+      '#012169',
+      '#C8102E',
+      '#FFFFFF',
+    ]);
+    expect(bandsFor('United States', 'US')).toEqual([
+      '#3C3B6E',
+      '#B22234',
+      '#FFFFFF',
+    ]);
+    expect(bandsFor('Türkiye', 'TR')).toEqual([
+      '#E30A17',
+      '#FFFFFF',
+      '#E30A17',
+    ]);
   });
 
   it('knows Luxembourg by its red, white and light blue', () => {
-    expect(bandsFor('Luxembourg', 'LU')).toEqual(['#ED2939', '#FFFFFF', '#00A1DE']);
+    expect(bandsFor('Luxembourg', 'LU')).toEqual([
+      '#ED2939',
+      '#FFFFFF',
+      '#00A1DE',
+    ]);
   });
 
   it('has nothing to say about a country it does not carry', () => {
