@@ -81,6 +81,60 @@ function isFile(filename: string, ext: string) {
   return filename.toLowerCase().endsWith(ext);
 }
 
+/**
+ * What a failed row says to the operator who uploaded the file.
+ *
+ * A write that the database refuses arrives here as a driver error, and its
+ * message is a stack with the service's own file path and line numbers in it.
+ * Printed into an import report that is the whole explanation someone gets --
+ * a duplicate slug read as `Invalid scoped.create() invocation ... Unique
+ * constraint failed on the constraint: countries_slug_deleted_key`, which
+ * names neither the row's problem nor what to do about it.
+ */
+function importRowError(error: unknown): string {
+  const known = error as { code?: unknown; meta?: { target?: unknown } };
+  const message = error instanceof Error ? error.message : '';
+  /* The driver adapter leaves `meta.target` empty on MySQL and names the
+     constraint in the message instead, so both are read. */
+  const named = /constraint: `([^`]+)`/.exec(message)?.[1];
+  const target = Array.isArray(known?.meta?.target)
+    ? known.meta.target.map(String)
+    : typeof known?.meta?.target === 'string'
+      ? [known.meta.target]
+      : named
+        ? [named]
+        : [];
+  /* `countries_slug_deleted_key` is the constraint's name, not a column an
+     operator can see. The column is the part in the middle. */
+  const columns = target
+    .map((name) =>
+      name
+        .replace(/^[a-z]+_/, '')
+        .replace(/_(deleted_)?key$/, '')
+        .replace(/_/g, ' ')
+        .trim(),
+    )
+    .filter(Boolean);
+
+  if (known?.code === 'P2002')
+    return columns.length
+      ? `Another country already uses this ${columns.join(' and ')}`
+      : 'Another record already uses one of the values in this row';
+  if (known?.code === 'P2003')
+    return 'This row points at a record that does not exist';
+  if (known?.code === 'P2025')
+    return 'The record this row updates no longer exists';
+
+  /* Anything else keeps its first line only: the rest is a stack trace, and
+     the report has one line per row. */
+  return (
+    message
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean) ?? 'Unexpected error'
+  );
+}
+
 @Injectable()
 export class BulkOperationsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -495,10 +549,7 @@ export class BulkOperationsService {
         }
       } catch (error) {
         summary.failed += 1;
-        summary.errors.push({
-          line,
-          errors: [error instanceof Error ? error.message : 'Unexpected error'],
-        });
+        summary.errors.push({ line, errors: [importRowError(error)] });
       }
     }
     await writeAudit(
