@@ -37,6 +37,7 @@ import {
 import {
   DIRECTORY_REGIONS,
   bandsFor,
+  flagBandsFor,
   comingSoonDestinations,
   regionForContinent,
   regionForName,
@@ -725,6 +726,10 @@ export class CountriesService {
         null,
       summary: country.shortDescription,
       bands: bandsFor(country.name, country.iso2Code),
+      /* The same colours with the share of the flag each one covers, for the
+         one place big enough to show them honestly: the country page's own
+         rule. A chip cannot, so it keeps the fixed three above. */
+      flag: flagBandsFor(country.name, country.iso2Code),
       counts: counts.get(country.id) ?? emptyDestinationCounts(),
     }));
 
@@ -739,6 +744,7 @@ export class CountriesService {
       region: entry.region,
       summary: null,
       bands: entry.bands,
+      flag: entry.flag,
       /* A destination with no Country record has nothing linked to it. The
          zeroes are stated rather than left undefined so every card reads the
          same shape. */

@@ -104,7 +104,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const calculator = country.configuration?.calculator ?? null;
   const currencySymbol = country.currency?.symbol ?? '';
   const others = directory ? otherDestinations(directory, country.slug) : [];
-  const bands = directory?.available.find((entry) => entry.slug === country.slug)?.bands ?? null;
+  const listing = directory?.available.find((entry) => entry.slug === country.slug) ?? null;
+  const bands = listing?.bands ?? null;
+  /* The hero's rule is wide enough to show a flag's own proportions, so it
+     does: Denmark is three quarters red with a white cross, and three equal
+     stripes of red, white and red is Austria. */
+  const flag = listing?.flag ?? null;
   const work = workSummary(profiles);
   const intakes = monthNames(country.configuration?.intakeMonths ?? []);
   /* The courses section follows the editor's curation, not the catalogue's
@@ -247,10 +252,13 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
               >
                 {country.name}
               </p>
-              {bands ? (
+              {flag?.length ? (
                 <div className="hero__bands" aria-hidden="true">
-                  {bands.map((colour, index) => (
-                    <span key={`${colour}-${index}`} style={{ background: colour }} />
+                  {flag.map((band, index) => (
+                    <span
+                      key={`${band.colour}-${index}`}
+                      style={{ background: band.colour, flexGrow: band.share }}
+                    />
                   ))}
                 </div>
               ) : null}

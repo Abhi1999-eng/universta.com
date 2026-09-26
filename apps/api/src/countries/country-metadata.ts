@@ -4,6 +4,8 @@
  * not editorial content. Names and aliases are normalized before lookup so
  * normal Admin spelling such as "UK" resolves to the same canonical record.
  */
+import { COUNTRY_TABLE } from './country-table';
+
 export type CountryMetadata = {
   name: string;
   iso2Code: string;
@@ -620,13 +622,30 @@ export function normalizeCountryName(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
-const byName = new Map(
-  COUNTRY_METADATA.flatMap((record) =>
-    [record.name, ...(record.aliases ?? [])].map(
-      (name) => [normalizeCountryName(name), record] as const,
-    ),
-  ),
-);
+/**
+ * Every country, not only the curated ones.
+ *
+ * The list above is what an editor's judgement has been applied to -- the
+ * aliases an operator actually types, and currency symbols worth more than
+ * the reference data's ("KSh", not the "Sh" it gives Kenya, Tanzania and
+ * Uganda alike). The generated table fills in the rest of the world behind
+ * it, so a destination outside the curated set still resolves its ISO codes
+ * and its currency instead of leaving an operator to type them and a cost
+ * card that can never save.
+ */
+const byName = new Map<string, CountryMetadata>();
+for (const row of COUNTRY_TABLE)
+  byName.set(normalizeCountryName(row.name), {
+    name: row.name,
+    iso2Code: row.iso2,
+    iso3Code: row.iso3,
+    currencyCode: row.currencyCode,
+    currencySymbol: row.currencySymbol,
+  });
+/* Curated last, so it wins where the two disagree. */
+for (const record of COUNTRY_METADATA)
+  for (const name of [record.name, ...(record.aliases ?? [])])
+    byName.set(normalizeCountryName(name), record);
 
 export function resolveCountryMetadata(name: string): CountryMetadata | null {
   return byName.get(normalizeCountryName(name)) ?? null;

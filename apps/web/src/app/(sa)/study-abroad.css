@@ -479,7 +479,8 @@
   margin: 0 0 6px; overflow-wrap: break-word; hyphens: none;
 }
 .sa .hero__bands{ display: flex; width: min(280px, 62%); height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 26px; }
-.sa .hero__bands span{ flex: 1; }
+/* Each band grows by the share of the flag it covers, set inline. */
+.sa .hero__bands span{ flex: 1 1 0; min-width: 0; }
 .sa .hero__h1{ font-size: var(--fs-h1); margin-bottom: 16px; }
 .sa .hero__sub{ font-size: var(--fs-lead); color: var(--muted); max-width: 56ch; margin-bottom: 12px; text-wrap: pretty; }
 .sa .hero__promise{ font-family: var(--font-display); font-size: clamp(17px, 1.5vw, 21px); font-weight: 600; margin-bottom: 28px; }
