@@ -32,14 +32,6 @@ const runId = acceptanceRunId();
 const COUNTRY_NAME = `${acceptanceCountryName(runId)} Contract`;
 const COUNTRY_SLUG = `${acceptanceSlugPrefix(runId)}contract-country`;
 const TAG_NAME = `${acceptanceCountryName(runId)} Tag`;
-const MEDIA_TITLE = `${acceptanceCountryName(runId)} Image`;
-
-/** A 1x1 PNG. Small enough to inline, real enough that the browser renders it
- * rather than reporting a broken image. */
-const PNG_BYTES = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  'base64',
-);
 
 const TAGLINE = 'Study smarter with Browser Contract.';
 const TAGLINE_2 = 'Study smarter, second pass.';
@@ -166,37 +158,6 @@ async function freeIso(): Promise<{ two: string; three: string }> {
         return { two, three: `${two}Z` };
     }
     throw new Error('No private-use ISO code is free locally');
-  });
-}
-
-/**
- * The Media Library is not seeded in CI, and a test that assumes someone else
- * left an image behind is a test that fails on a clean database. This uploads
- * one through the same endpoint the Admin uploader uses, so the picker then
- * lists a genuine, servable asset.
- */
-async function ensureMediaFixture(): Promise<void> {
-  await withAdminApi(async (api, headers) => {
-    const existing = await api.get(
-      `/api/v1/admin/media?limit=5&q=${encodeURIComponent(MEDIA_TITLE)}`,
-      { headers },
-    );
-    const rows = ((await existing.json()) as { data?: Array<{ title?: string }> }).data ?? [];
-    if (rows.some((row) => row.title === MEDIA_TITLE)) return;
-
-    const created = await api.post('/api/v1/admin/media', {
-      headers,
-      multipart: {
-        file: {
-          name: `${acceptanceSlugPrefix(runId)}image.png`,
-          mimeType: 'image/png',
-          buffer: PNG_BYTES,
-        },
-        title: MEDIA_TITLE,
-        altText: `${MEDIA_TITLE} alt text`,
-      },
-    });
-    expect(created.ok(), `media upload: ${await created.text()}`).toBeTruthy();
   });
 }
 
@@ -962,63 +923,25 @@ test.describe.serial('country client contract, end to end', () => {
   });
 
   /**
-   * The media ids survive, although nothing asks for them any more.
+   * The editor no longer asks for artwork no reader sees.
    *
-   * The listing and hero pickers have left the editor: they asked an operator
-   * to choose artwork no reader sees, because the approved design draws every
-   * mark in CSS and the only pages that rendered those images, the old
-   * `/countries` listing and detail, redirect to `/study-abroad`. What must
-   * not happen is the ids being dropped -- an import still sets them, and a
-   * later design may want them -- so they are set through the API here and
-   * then put through two browser saves.
+   * The listing and hero pickers are gone: the approved design draws every
+   * mark in CSS and the country experience loads not one image, and the only
+   * pages that rendered them -- the old `/countries` listing and detail --
+   * redirect to `/study-abroad`. That the ids still round-trip is proved where
+   * the payload can be read directly, in CountryProfilePersistence; here it is
+   * enough that nothing offers to set them and the guide still renders.
    */
-  test('keeps media ids an importer set, with no picker left to set them', async ({
+  test('offers no image picker, and publishes a country without one', async ({
     page,
   }) => {
-    await ensureMediaFixture();
-    const mediaId = await withAdminApi(async (api, headers) => {
-      const response = await api.get(
-        `/api/v1/admin/media?limit=5&q=${encodeURIComponent(MEDIA_TITLE)}`,
-        { headers },
-      );
-      const rows = ((await response.json()) as { data?: Array<{ id: string; title?: string }> })
-        .data ?? [];
-      const row = rows.find((entry) => entry.title === MEDIA_TITLE);
-      expect(row, 'the media fixture should exist').toBeTruthy();
-      return row!.id;
-    });
-
-    const countryId = String((await storedCountry()).id);
-    await withAdminApi(async (api, headers) => {
-      const current = await storedCountry();
-      const response = await api.patch(`/api/v1/admin/countries/${countryId}`, {
-        headers,
-        data: {
-          listingMediaId: mediaId,
-          heroMediaId: mediaId,
-          expectedUpdatedAt: current.updatedAt,
-        },
-      });
-      expect(response.ok(), `media PATCH: ${await response.text()}`).toBeTruthy();
-    });
-
     await loginAsAdmin(page);
     await openCountry(page);
-    // Nothing in the editor offers to change them any more.
+
     for (const caption of ['Listing image', 'Hero image', 'Flag image'])
       await expect(page.getByText(caption, { exact: true })).toHaveCount(0);
 
-    // Two saves through the browser, neither of which may drop them.
     await saveCountry(page);
-    await openCountry(page);
-    await saveCountry(page);
-
-    const published = await publicCountry(page);
-    expect(published.heroImage, 'hero must survive a save with no picker').toBeTruthy();
-    expect(published.listingImage, 'listing must survive a save with no picker').toBeTruthy();
-    expect(String((published.heroImage as { alt: string }).alt)).toContain(MEDIA_TITLE);
-
-    /* The guide never had a slot for them, and still renders without one. */
     await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(COUNTRY_NAME);
   });

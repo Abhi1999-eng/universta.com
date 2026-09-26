@@ -73,9 +73,11 @@ const record = {
   officialLanguage: null,
   currencyName: 'Indian Rupee',
   currency: { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  flagMediaId: null,
-  listingMediaId: null,
-  heroMediaId: null,
+  /* Set the way an importer sets them. No picker offers to change them any
+     more, and a save must still hand them back. */
+  flagMediaId: 'media-flag',
+  listingMediaId: 'media-listing',
+  heroMediaId: 'media-hero',
   featured: false,
   displayOrder: 0,
   subjectIds: [],
@@ -275,6 +277,27 @@ describe('the other profile cards behave the same way', () => {
     expect(stored.cost).toBeNull();
     expect(stored.language).toBeNull();
     expect(stored.statistics).toBeNull();
+  });
+
+  /* The listing and hero pickers have left the editor: they asked for artwork
+     no reader sees, because the approved design draws every mark in CSS and
+     the only pages that rendered them redirect to the study-abroad guide. The
+     ids must survive that removal, or an import would quietly lose them on the
+     next save anyone made. */
+  it('hands back media ids it no longer offers to change', async () => {
+    await openCountry();
+
+    for (const caption of ['Listing image', 'Hero image', 'Flag image'])
+      expect(screen.queryByText(caption)).toBeNull();
+
+    await userEvent.type(screen.getByLabelText(/^Capital/), '!');
+    await userEvent.click(screen.getByRole('button', { name: /^Save draft$/i }));
+    await waitFor(() => expect(mocks.updateCountry).toHaveBeenCalled());
+
+    const payload = mocks.updateCountry.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+    expect(payload.listingMediaId).toBe('media-listing');
+    expect(payload.heroMediaId).toBe('media-hero');
+    expect(payload.flagMediaId).toBe('media-flag');
   });
 
   it('marks the form dirty when only a profile field changed', async () => {
