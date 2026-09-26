@@ -478,7 +478,14 @@
   text-transform: uppercase; color: var(--navy);
   margin: 0 0 6px; overflow-wrap: break-word; hyphens: none;
 }
-.sa .hero__bands{ display: flex; width: min(280px, 62%); height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 26px; }
+/* The ring is what makes a white band read as white rather than as a gap in
+   the rule: Denmark's cross and Ivory Coast's middle stripe are the page's own
+   background colour, and without an edge the bar looks broken in half. */
+.sa .hero__bands{
+  display: flex; width: min(280px, 62%); height: 5px;
+  border-radius: 3px; overflow: hidden; margin-bottom: 26px;
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.16);
+}
 /* Each band grows by the share of the flag it covers, set inline. */
 .sa .hero__bands span{ flex: 1 1 0; min-width: 0; }
 .sa .hero__h1{ font-size: var(--fs-h1); margin-bottom: 16px; }

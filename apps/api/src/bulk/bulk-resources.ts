@@ -370,7 +370,12 @@ const countries: BulkResourceDefinition = {
       description:
         'JSON array of {question, answer, category, isFeatured, displayOrder}.',
     },
-    { key: 'continent', label: 'continent', required: true, type: 'relation' },
+    /* Optional, as it is on the record and in the editor: a country saved
+       with nothing but a name has none. This field's own flag is what stars
+       the column in a downloaded template -- `requiredColumns` is not read
+       once a resource lists its fields -- so leaving it true told every
+       operator a country cannot be imported without one. */
+    { key: 'continent', label: 'continent', required: false, type: 'relation' },
     {
       key: 'subject',
       label: 'subject',
@@ -387,7 +392,11 @@ const countries: BulkResourceDefinition = {
     },
   ],
   statusAllowedValues: COUNTRY_STATUSES,
-  requiredColumns: ['title', 'continent'],
+  /* Title alone. A continent is optional on the record and in the editor, and
+     saying otherwise here marked the column with a star in every template an
+     operator downloads -- telling them a country cannot be imported without
+     one, which stopped being true when the importer stopped demanding it. */
+  requiredColumns: ['title'],
   exampleRow: {
     uid: 'demo-country-001',
     slug: '',
