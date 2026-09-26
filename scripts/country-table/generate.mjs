@@ -96,9 +96,16 @@ function listedCountries() {
   const source = read('apps/api/src/countries/directory-world.ts');
   const found = new Map();
   for (const match of source.matchAll(
-    /\[\s*'([^']+)',\s*'([^']+)',\s*'([^']*)',\s*\[/g,
+    /\[\s*'([^']+)',\s*'([^']+)',\s*'([^']{2})'\s*\]/g,
   ))
     found.set(match[3], { name: match[1], region: match[2] });
+  /* Nothing to write is never the right answer, and an empty table type-checks
+     and lints perfectly happily -- it only fails much later, where it is read.
+     This is the shape of the world list changing under the regex above. */
+  if (found.size < 150)
+    throw new Error(
+      `read only ${found.size} countries from the world list; the file's shape has changed`,
+    );
   return found;
 }
 
@@ -351,6 +358,19 @@ export function flagEmojiFromIso(iso2: string | null | undefined) {
 }
 `,
 );
+
+/* The repo's lint rewrites quotes and trailing commas, and CI fails a build
+   whose tree is not clean afterwards. Formatting the output here means
+   generating and then linting leaves nothing to commit twice. */
+for (const [workspace, file] of [
+  ['apps/api', 'src/countries/country-table.ts'],
+  ['apps/admin', 'src/features/catalog/currency-options.ts'],
+])
+  execFileSync(
+    'npx',
+    ['eslint', '--fix', '--no-ignore', file],
+    { cwd: join(ROOT, workspace), stdio: 'ignore' },
+  );
 
 console.log(`countries   : ${rows.length}`);
 console.log(`currencies  : ${currencies.size}`);
