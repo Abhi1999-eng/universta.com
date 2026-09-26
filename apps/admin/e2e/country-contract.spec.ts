@@ -961,93 +961,66 @@ test.describe.serial('country client contract, end to end', () => {
     await expect(documents).toContainText('Issued within six months.');
   });
 
-  test('attaches hero and flag images through the real picker and publishes them', async ({
+  /**
+   * The media ids survive, although nothing asks for them any more.
+   *
+   * The listing and hero pickers have left the editor: they asked an operator
+   * to choose artwork no reader sees, because the approved design draws every
+   * mark in CSS and the only pages that rendered those images, the old
+   * `/countries` listing and detail, redirect to `/study-abroad`. What must
+   * not happen is the ids being dropped -- an import still sets them, and a
+   * later design may want them -- so they are set through the API here and
+   * then put through two browser saves.
+   */
+  test('keeps media ids an importer set, with no picker left to set them', async ({
     page,
   }) => {
     await ensureMediaFixture();
+    const mediaId = await withAdminApi(async (api, headers) => {
+      const response = await api.get(
+        `/api/v1/admin/media?limit=5&q=${encodeURIComponent(MEDIA_TITLE)}`,
+        { headers },
+      );
+      const rows = ((await response.json()) as { data?: Array<{ id: string; title?: string }> })
+        .data ?? [];
+      const row = rows.find((entry) => entry.title === MEDIA_TITLE);
+      expect(row, 'the media fixture should exist').toBeTruthy();
+      return row!.id;
+    });
+
+    const countryId = String((await storedCountry()).id);
+    await withAdminApi(async (api, headers) => {
+      const current = await storedCountry();
+      const response = await api.patch(`/api/v1/admin/countries/${countryId}`, {
+        headers,
+        data: {
+          listingMediaId: mediaId,
+          heroMediaId: mediaId,
+          expectedUpdatedAt: current.updatedAt,
+        },
+      });
+      expect(response.ok(), `media PATCH: ${await response.text()}`).toBeTruthy();
+    });
+
     await loginAsAdmin(page);
     await openCountry(page);
+    // Nothing in the editor offers to change them any more.
+    for (const caption of ['Listing image', 'Hero image', 'Flag image'])
+      await expect(page.getByText(caption, { exact: true })).toHaveCount(0);
 
-    /* The picker's caption is a plain span, not a bound label, so scope to the
-     * innermost div that carries it. */
-    const mediaField = (caption: string) =>
-      page
-        .locator('div')
-        .filter({ has: page.getByText(caption, { exact: true }) })
-        .last();
-
-    /* Through the dialog every time — searching for this run's own asset rather
-     * than trusting whatever happens to sit at the top of the library. */
-    async function attach(caption: string): Promise<string> {
-      const target = mediaField(caption);
-      await target
-        .getByRole('button', { name: /Choose media|Change media/ })
-        .click();
-      const dialog = page.getByRole('dialog');
-      await dialog.getByLabel('Search media').fill(MEDIA_TITLE);
-      await dialog.getByRole('button', { name: 'Search', exact: true }).click();
-      const match = dialog
-        .locator('div.grid > button')
-        .filter({ hasText: MEDIA_TITLE })
-        .first();
-      await expect(match).toBeVisible({ timeout: 30_000 });
-      const src = await match.locator('img').getAttribute('src');
-      expect(src, 'the fixture asset should have a URL').toBeTruthy();
-      await match.click();
-      await expect(dialog).toHaveCount(0);
-      await expect(target.locator('img')).toHaveAttribute('src', src!);
-      return src!;
-    }
-
-    /* The flag is derived from the ISO code now, so there is no flag uploader
-     * to attach to -- hero and listing are the remaining media fields. */
-    await expect(page.getByText('Flag image')).toHaveCount(0);
-    const heroSrc = await attach('Hero image');
-    const listingSrc = await attach('Listing image');
+    // Two saves through the browser, neither of which may drop them.
     await saveCountry(page);
-
     await openCountry(page);
-    for (const [caption, src] of [
-      ['Hero image', heroSrc],
-      ['Listing image', listingSrc],
-    ] as Array<[string, string]>)
-      await expect(mediaField(caption).locator('img')).toHaveAttribute('src', src, {
-        timeout: 30_000,
-      });
+    await saveCountry(page);
 
     const published = await publicCountry(page);
-    const file = heroSrc.split('/').pop()!;
-    /* Flag media is no longer attached from this editor. Any flag a country
-     * already carries stays on the record and still reaches the public
-     * payload -- it is simply not set here any more. */
-    // The client's featured_image and hero_image, both public and both named.
-    expect(published.heroImage, 'hero_image should be public').toBeTruthy();
-    expect(String((published.heroImage as { url: string }).url)).toContain(file);
+    expect(published.heroImage, 'hero must survive a save with no picker').toBeTruthy();
+    expect(published.listingImage, 'listing must survive a save with no picker').toBeTruthy();
     expect(String((published.heroImage as { alt: string }).alt)).toContain(MEDIA_TITLE);
-    expect(published.listingImage, 'featured_image should be public').toBeTruthy();
-    expect(String((published.listingImage as { url: string }).url)).toContain(file);
 
-    /* The approved Study Abroad guide has no hero image slot -- its hero is the
-     * country's colour bands and snapshot panel -- so the image is asserted on
-     * the record and the public payload above, and the guide only has to render
-     * without it. */
+    /* The guide never had a slot for them, and still renders without one. */
     await page.goto(`${webBaseUrl}/study-abroad/${COUNTRY_SLUG}`);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(COUNTRY_NAME);
-
-    // A second save must not quietly clear what the first one attached.
-    await openCountry(page);
-    await saveCountry(page);
-    await openCountry(page);
-    for (const [caption, src] of [
-      ['Hero image', heroSrc],
-      ['Listing image', listingSrc],
-    ] as Array<[string, string]>)
-      await expect(mediaField(caption).locator('img')).toHaveAttribute('src', src, {
-        timeout: 30_000,
-      });
-    const again = await publicCountry(page);
-    expect(again.heroImage, 'hero must survive a second save').toBeTruthy();
-    expect(again.listingImage, 'featured must survive a second save').toBeTruthy();
   });
 
   test('persists long-form sections and FAQs, and edits an FAQ a second time', async ({
