@@ -344,7 +344,9 @@ const COLUMNS = [
 ];
 const HEADER = COLUMNS.map((c) => c[0]);
 
-const SUBJECTS = ['architecture-and-built-environment', 'business-and-management', 'computer-science', 'data-science-and-analytics', 'design-and-creative-arts', 'engineering', 'health-and-medicine', 'law', 'natural-sciences', 'social-sciences'].join(' | ');
+/* The full subject taxonomy, so an imported country starts linked to all of
+   it. Narrowing that down is what the country editor is for. */
+const SUBJECTS = "agriculture-and-environmental-sciences | architecture-and-built-environment | arts-humanities-and-social-sciences | business-and-management | computing-and-information-technology | education-pgce-and-teaching | engineering | science | creative-arts-design-and-communication | communication-media-and-journalism | health-medicine-and-veterinary-studies | law | hospitality-tourism-and-events | sports-and-exercise | psychology-and-behavioural-sciences | fashion-and-textiles | hospitality-culinary-and-food | aviation-and-aerospace | maritime-and-shipping | media-entertainment-and-gaming | public-policy-government-and-international-studies | economics-and-finance | mathematics-and-statistics | biological-and-life-sciences | pharmaceutical-and-pharmaceutical-sciences | social-work-and-community-services | transport-and-logistics | energy-oil-and-gas | security-defence-and-emergency-management | emerging-and-interdisciplinary-subjects";
 
 const source = readFileSync(
   new URL('./src/countries/country-table.ts', import.meta.url),
