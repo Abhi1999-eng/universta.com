@@ -280,11 +280,14 @@ export function BulkDataManager() {
       setImportResult(result);
       if (result.errors.length === 0) {
         setNotice(
-          `Import complete: ${result.created} created, ${result.updated} updated${
-            result.unchanged
-              ? ` and ${result.unchanged} already up to date`
-              : ""
-          }.`,
+          `Import complete: ${[
+            `${result.created} created`,
+            `${result.updated} updated`,
+            // Only worth a mention when a row was actually left alone.
+            ...(result.unchanged
+              ? [`${result.unchanged} already up to date`]
+              : []),
+          ].join(", ")}.`,
         );
       }
       await loadRecords(selectedKey);

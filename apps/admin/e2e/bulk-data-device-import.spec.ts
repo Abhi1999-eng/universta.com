@@ -117,7 +117,7 @@ async function importTwice(page: import('@playwright/test').Page, name: string) 
 
   await page.getByRole('button', { name: 'Import new records' }).click();
   await expect(
-    page.getByText('Import complete: 1 created and 0 updated in the database.'),
+    page.getByText('Import complete: 1 created, 0 updated.'),
   ).toBeVisible();
 
   await fileInput.setInputFiles({
@@ -126,8 +126,9 @@ async function importTwice(page: import('@playwright/test').Page, name: string) 
     buffer: Buffer.from(csv),
   });
   await expect(page.getByText(/1 row\(s\) validated successfully/)).toBeVisible();
+  // The same file again: the row already says this, so nothing is written.
   await page.getByRole('button', { name: 'Import & update existing' }).click();
   await expect(
-    page.getByText('Import complete: 0 created and 1 updated in the database.'),
+    page.getByText('Import complete: 0 created, 0 updated, 1 already up to date.'),
   ).toBeVisible();
 }

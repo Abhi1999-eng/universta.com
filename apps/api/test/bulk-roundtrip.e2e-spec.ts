@@ -127,8 +127,14 @@ describe('Bulk templates and exports round-trip (e2e)', () => {
     },
   );
 
+  /**
+   * Re-importing an untouched export writes nothing, and that is the point:
+   * `unchanged: 1` says the round trip is genuinely lossless for this
+   * resource. The old assertion of `updated: 1` was satisfied by a rewrite
+   * whether or not a single value survived the trip.
+   */
   it.each(ORDER)(
-    're-imports its own %s export in upsert mode',
+    'writes nothing when re-importing its own %s export unaltered',
     async (resource) => {
       const exported = await admin('get', `${resource}/export?format=csv`)
         .buffer(true)
@@ -146,7 +152,12 @@ describe('Bulk templates and exports round-trip (e2e)', () => {
         await upload(resource, 'import', toCsv(header, mine), 'upsert'),
       );
       expect(summary.errors as RowError[]).toEqual([]);
-      expect(summary).toMatchObject({ created: 0, updated: 1, failed: 0 });
+      expect(summary).toMatchObject({
+        created: 0,
+        updated: 0,
+        unchanged: 1,
+        failed: 0,
+      });
     },
   );
 
