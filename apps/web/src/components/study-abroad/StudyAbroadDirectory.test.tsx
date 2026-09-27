@@ -174,9 +174,30 @@ describe('destination directory', () => {
         })}
       />,
     );
-    /* No crash, and the card keeps its shape with a readable stand-in code. */
+    /* No crash, and the card keeps its shape: the neutral navy bands fill the
+       mark rather than leaving an empty box beside the name. */
     expect(html).toContain('cchip__bands');
-    expect(html).toContain('>TE<');
+    expect(html).toContain('background:#0C2038');
+  });
+
+  /* The mark carried the ISO code across the bands, which meant dimming them
+     to a third of their opacity to keep two letters readable -- letters the
+     country's own name already said, right beside them. */
+  it('writes nothing across the mark', () => {
+    const html = renderToStaticMarkup(
+      <DirectoryView
+        directory={directory({
+          available: [
+            destination({ name: 'Denmark', slug: 'denmark', iso2Code: 'DK', bands: ['#c8102e', '#ffffff', '#c8102e'] }),
+          ],
+          comingSoon: [],
+          counts: { available: 1, popular: 1, total: 1 },
+        })}
+      />,
+    );
+    expect(html).toContain('background:#c8102e');
+    expect(html).not.toContain('cchip__code');
+    expect(html).not.toContain('>DK<');
   });
 
   it('says so plainly when a filter matches nothing', () => {

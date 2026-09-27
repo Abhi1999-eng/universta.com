@@ -246,13 +246,13 @@ export function StudyAbroadShell({
                         href={`/study-abroad/${entry.slug}`}
                         onClick={closeSelector}
                       >
-                        <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+                        <FlagMark bands={entry.bands} />
                         <span className="cs__item-name">{entry.name}</span>
                         <span className="cs__item-meta">Guide</span>
                       </Link>
                     ) : (
                       <span className="cs__item cs__item--soon" key={entry.name} aria-disabled="true">
-                        <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+                        <FlagMark bands={entry.bands} />
                         <span className="cs__item-name">{entry.name}</span>
                         <span className="cs__item-meta">Soon</span>
                       </span>

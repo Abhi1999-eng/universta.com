@@ -50,6 +50,42 @@ describe('flag bands', () => {
     expect(bands[0].share).toBeGreaterThan(bands[1].share);
   });
 
+  /* The bands are read left to right, so their order is part of the flag.
+     Ordering them by area instead put India's green in the middle, because
+     its white stripe carries the Ashoka Chakra and so covers less of the
+     flag than the green does -- and the mark under the country's own name
+     was a tricolour nobody flies. */
+  it('reads India in the order the flag is flown, not by area', () => {
+    expect(flagBandsFor('India', 'IN')?.map((band) => band.colour)).toEqual([
+      '#ff9933',
+      '#ffffff',
+      '#128807',
+    ]);
+  });
+
+  /* Canada's leaf red and its bar red differ by a few points of ink and were
+     taking two of the three places, so the mark was two reds and no white. */
+  it('counts two shades of one red as one band', () => {
+    expect(flagBandsFor('Canada', 'CA')?.map((band) => band.colour)).toEqual([
+      '#d52b1e',
+      '#ffffff',
+    ]);
+  });
+
+  /* Which colour covers most does not say which comes first. Singapore's
+     white half is the larger one and its red is on top; Portugal's red is
+     the larger part and its green is at the hoist. Both read backwards while
+     the widest colour was put first. */
+  it('does not open a two-part flag with its larger part', () => {
+    expect(flagBandsFor('Singapore', 'SG')?.map((band) => band.colour)).toEqual(
+      ['#df0000', '#ffffff'],
+    );
+    expect(flagBandsFor('Portugal', 'PT')?.map((band) => band.colour)).toEqual([
+      '#006600',
+      '#ff0000',
+    ]);
+  });
+
   /* A chip is twenty-odd pixels wide: proportions do not read at that size and
      a missing band would leave a gap, so two colours become three. */
   it('pads a two-colour flag for a mark too small to show proportions', () => {

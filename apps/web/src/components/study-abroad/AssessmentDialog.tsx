@@ -220,7 +220,7 @@ export function AssessmentDialog({
                         aria-pressed={answers.destination === entry.slug}
                         onClick={() => choose(entry.slug!)}
                       >
-                        <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+                        <FlagMark bands={entry.bands} />
                         <span>{entry.name}</span>
                       </button>
                     ))}

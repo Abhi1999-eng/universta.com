@@ -290,20 +290,15 @@
   overflow: hidden;
   display: grid; place-items: center;
 }
-.sa .cchip__code{
-  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
-  letter-spacing: 0.06em; color: var(--text); position: relative; z-index: 2;
-  text-shadow: 0 0 6px rgba(255,255,255,.85), 0 0 2px rgba(255,255,255,.95);
-}
-.sa .cchip__bands{ position: absolute; inset: 0; display: flex; opacity: 0.34; }
+/* Full strength: the bands were held at a third of their opacity only so the
+   ISO code printed over them stayed readable. Nothing is printed over them
+   now, so the mark can be the flag's own colours. */
+.sa .cchip__bands{ position: absolute; inset: 0; display: flex; }
 .sa .cchip__bands span{ flex: 1; }
 .sa .cchip__name{ font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
 .sa .cchip--lg .cchip__mark{ width: 52px; height: 38px; border-radius: 5px; }
-.sa .cchip--lg .cchip__code{ font-size: 14px; }
 .sa .cchip--lg .cchip__name{ font-size: 18px; }
 .sa .sec--navy .cchip__mark{ background: var(--on-navy-raised); border-color: var(--on-navy-line); }
-.sa .sec--navy .cchip__code{ color: #fff; text-shadow: 0 0 6px rgba(0,0,0,.6); }
-.sa .sec--navy .cchip__bands{ opacity: 0.5; }
 /* ---------------------------------------------------------------------
    NAVIGATION
    --------------------------------------------------------------------- */
