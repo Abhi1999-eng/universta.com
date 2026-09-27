@@ -53,6 +53,7 @@ describe('country taxonomy admin (e2e)', () => {
   let countrySlug = '';
   let otherCountryId = '';
   const subjectIds: string[] = [];
+  const subSubjectIds: string[] = [];
   const tagIds: string[] = [];
   const universityIds: string[] = [];
   const scholarshipIds: string[] = [];
@@ -131,6 +132,18 @@ describe('country taxonomy admin (e2e)', () => {
         },
       });
       subjectIds.push(subject.id);
+    }
+    for (const label of ['One', 'Two']) {
+      const specialization = await prisma.subSubject.create({
+        data: {
+          subjectId: subjectIds[0],
+          name: `Taxonomy Spec ${label} ${stamp}`,
+          slug: `taxonomy-spec-${label.toLowerCase()}-${stamp}`,
+          status: 'PUBLISHED',
+          publishedAt: new Date(),
+        },
+      });
+      subSubjectIds.push(specialization.id);
     }
     for (const label of ['Popular', 'Affordable']) {
       const tag = await prisma.countryTag.create({
@@ -240,6 +253,9 @@ describe('country taxonomy admin (e2e)', () => {
         where: { id: { in: [countryId, otherCountryId].filter(Boolean) } },
       })
       .catch(() => undefined);
+    await prisma.subSubject
+      .deleteMany({ where: { id: { in: subSubjectIds } } })
+      .catch(() => undefined);
     await prisma.subject
       .deleteMany({ where: { id: { in: subjectIds } } })
       .catch(() => undefined);
@@ -342,6 +358,67 @@ describe('country taxonomy admin (e2e)', () => {
       where: { countryId },
     });
     expect(joins).toHaveLength(1);
+  });
+
+  /**
+   * A specialization is assigned the same way a subject is, and on its own:
+   * a destination teaches some branches of a field and not others, so
+   * picking one must not drag its subject in behind it.
+   */
+  it('assigns and replaces specializations independently of subjects', async () => {
+    const before = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+      ...corePayload(before),
+      subSubjectIds: [subSubjectIds[0], subSubjectIds[1]],
+      expectedUpdatedAt: before.updatedAt,
+    }).expect(200);
+
+    const withBoth = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    expect((withBoth.subSubjectIds as string[]).sort()).toEqual(
+      [subSubjectIds[0], subSubjectIds[1]].sort(),
+    );
+    // Untouched by a payload that only named specializations.
+    expect(withBoth.subjectIds).toEqual(before.subjectIds);
+
+    await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+      ...corePayload(withBoth),
+      subSubjectIds: [subSubjectIds[1]],
+      expectedUpdatedAt: withBoth.updatedAt,
+    }).expect(200);
+
+    const after = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    expect(after.subSubjectIds).toEqual([subSubjectIds[1]]);
+    expect(await prisma.countrySubSubject.count({ where: { countryId } })).toBe(
+      1,
+    );
+  });
+
+  it('refuses a specialization that does not exist', async () => {
+    const before = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    const response = await admin(
+      'patch',
+      `/api/v1/admin/countries/${countryId}`,
+      {
+        ...corePayload(before),
+        subSubjectIds: [randomUUID()],
+        expectedUpdatedAt: before.updatedAt,
+      },
+    ).expect(422);
+    const errorBody = body(response).error as { code?: string };
+    expect(errorBody.code).toBe('COUNTRY_SUB_SUBJECT_INVALID');
+
+    // The rejected payload left the stored set alone.
+    expect(await prisma.countrySubSubject.count({ where: { countryId } })).toBe(
+      1,
+    );
   });
 
   it('clears the sets when given empty arrays', async () => {

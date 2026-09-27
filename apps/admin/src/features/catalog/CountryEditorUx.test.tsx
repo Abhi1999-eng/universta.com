@@ -410,6 +410,86 @@ describe('country editor subject and tag pickers', () => {
     expect(mocks.updateCountry.mock.calls[0][1].subjectIds).toEqual(['subject-1']);
   });
 
+  /**
+   * A subject has hundreds of specializations under it and a destination is
+   * offered for some of them, not all. Until this the picker printed the
+   * children as grey text -- you could read them and not pick them -- so the
+   * only way to record one was a bulk import.
+   */
+  it('saves a specialization picked under its subject', async () => {
+    mocks.listAllSubjects.mockResolvedValue([
+      {
+        id: 'subject-1',
+        name: 'Engineering',
+        slug: 'engineering',
+        status: 'ACTIVE',
+        subSubjects: [
+          { id: 'spec-1', name: 'Aerospace Engineering' },
+          { id: 'spec-2', name: 'Civil Engineering' },
+        ],
+      },
+    ]);
+    await openEditor();
+
+    // Children stay folded away until asked for: a subject can carry
+    // hundreds, and all of them at once is not a list anyone can read.
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Show 2 specializations/ }),
+    );
+    await userEvent.click(
+      screen.getByRole('checkbox', { name: /Aerospace Engineering/ }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    await waitFor(() => expect(mocks.updateCountry).toHaveBeenCalled());
+    const payload = mocks.updateCountry.mock.calls[0][1];
+    expect(payload.subSubjectIds).toEqual(['spec-1']);
+    // Picking a specialization is not picking its subject.
+    expect(payload.subjectIds).toEqual([]);
+  });
+
+  it('takes every specialization under a subject in one go', async () => {
+    mocks.listAllSubjects.mockResolvedValue([
+      {
+        id: 'subject-1',
+        name: 'Engineering',
+        slug: 'engineering',
+        status: 'ACTIVE',
+        subSubjects: [
+          { id: 'spec-1', name: 'Aerospace Engineering' },
+          { id: 'spec-2', name: 'Civil Engineering' },
+        ],
+      },
+    ]);
+    await openEditor();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Show 2 specializations/ }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Select all/ }));
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    await waitFor(() => expect(mocks.updateCountry).toHaveBeenCalled());
+    expect(mocks.updateCountry.mock.calls[0][1].subSubjectIds).toEqual([
+      'spec-1',
+      'spec-2',
+    ]);
+  });
+
+  it('sends the specializations it loaded back untouched', async () => {
+    mocks.getCountry.mockResolvedValue({
+      data: { ...country, subSubjectIds: ['spec-7'] },
+    });
+    await openEditor();
+
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    await waitFor(() => expect(mocks.updateCountry).toHaveBeenCalled());
+    expect(mocks.updateCountry.mock.calls[0][1].subSubjectIds).toEqual([
+      'spec-7',
+    ]);
+  });
+
   it('sends the existing mappings back untouched when the country is saved', async () => {
     mocks.getCountry.mockResolvedValue({
       data: { ...country, subjectIds: ['subject-1', 'subject-2'], tagIds: ['tag-1'] },

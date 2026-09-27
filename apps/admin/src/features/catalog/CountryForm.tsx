@@ -333,6 +333,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const [record, setRecord] = useState<CountryRecord | null>(null);
   const [continents, setContinents] = useState<ContinentRecord[]>([]);
   const [subjectIds, setSubjectIds] = useState<string[]>([]);
+  const [subSubjectIds, setSubSubjectIds] = useState<string[]>([]);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [core, setCore] = useState<Core>(blankCore);
@@ -537,6 +538,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           })),
         );
         setSubjectIds(country.subjectIds ?? []);
+        setSubSubjectIds(country.subSubjectIds ?? []);
         setTagIds(country.tagIds ?? []);
         setConfiguration({
           featureCodes:
@@ -1007,6 +1009,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         listingMediaId: clearable(core.listingMediaId),
         heroMediaId: clearable(core.heroMediaId),
         subjectIds,
+        subSubjectIds,
         tagIds,
         isFeatured: core.isFeatured,
         displayOrder: Number(core.displayOrder) || 0,
@@ -1349,6 +1352,9 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               }))}
               selected={subjectIds}
               onChange={setSubjectIds}
+              childTitle="specializations"
+              selectedChildren={subSubjectIds}
+              onChildrenChange={setSubSubjectIds}
               onCreate={async (name): Promise<CreateOutcome> => {
                 const created = (
                   await createSubject({ name, slug: slugFromText(name) })

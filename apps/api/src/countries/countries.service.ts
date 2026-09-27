@@ -87,6 +87,10 @@ const COUNTRY_INCLUDE = {
     },
     orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
   },
+  subSubjectMaps: {
+    select: { subSubjectId: true, displayOrder: true },
+    orderBy: [{ displayOrder: 'asc' }, { subSubjectId: 'asc' }],
+  },
   tagMaps: {
     include: {
       tag: { select: { id: true, name: true, slug: true, status: true } },
@@ -196,6 +200,10 @@ type CountryRecord = {
       status: string;
       deletedAt: Date | null;
     };
+  }>;
+  subSubjectMaps: Array<{
+    subSubjectId: string;
+    displayOrder: number;
   }>;
   tagMaps: Array<{
     tagId: string;
@@ -341,6 +349,7 @@ export interface CountryAdminDto extends CountryPublicDto {
   popularUniversityIds: string[];
   popularCourseIds: string[];
   subjectIds: string[];
+  subSubjectIds: string[];
   tagIds: string[];
   subjects: Array<{ id: string; name: string; slug: string }>;
   tags: Array<{ id: string; name: string; slug: string }>;
@@ -977,6 +986,7 @@ export class CountriesService {
     try {
       const country = await this.prisma.$transaction(async (tx) => {
         await this.ensureSubjects(dto.subjectIds, tx);
+        await this.ensureSubSubjects(dto.subSubjectIds, tx);
         await this.ensureTags(dto.tagIds, tx);
         return tx.country.create({
           data: {
@@ -1011,6 +1021,16 @@ export class CountriesService {
                     subjectId,
                     displayOrder,
                   })),
+                }
+              : undefined,
+            subSubjectMaps: dto.subSubjectIds
+              ? {
+                  create: dto.subSubjectIds.map(
+                    (subSubjectId, displayOrder) => ({
+                      subSubjectId,
+                      displayOrder,
+                    }),
+                  ),
                 }
               : undefined,
             documents: dto.documents
@@ -1146,6 +1166,19 @@ export class CountriesService {
               data: dto.subjectIds.map((subjectId, displayOrder) => ({
                 countryId: id,
                 subjectId,
+                displayOrder,
+              })),
+            });
+        }
+        /* Same contract as subjects: a supplied array replaces the set, an
+         * omitted key leaves it alone. */
+        if (dto.subSubjectIds !== undefined) {
+          await tx.countrySubSubject.deleteMany({ where: { countryId: id } });
+          if (dto.subSubjectIds.length)
+            await tx.countrySubSubject.createMany({
+              data: dto.subSubjectIds.map((subSubjectId, displayOrder) => ({
+                countryId: id,
+                subSubjectId,
                 displayOrder,
               })),
             });
@@ -1655,6 +1688,23 @@ export class CountriesService {
       });
   }
 
+  private async ensureSubSubjects(
+    ids: string[] | undefined,
+    prisma: Pick<PrismaService, 'subSubject'>,
+  ): Promise<void> {
+    if (ids === undefined || ids.length === 0) return;
+    const found = await prisma.subSubject.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      select: { id: true },
+    });
+    if (found.length !== ids.length)
+      throw new UnprocessableEntityException({
+        code: 'COUNTRY_SUB_SUBJECT_INVALID',
+        message: 'One or more selected specializations are unavailable',
+        details: null,
+      });
+  }
+
   private async ensureTags(
     ids: string[] | undefined,
     prisma: Pick<PrismaService, 'countryTag'>,
@@ -2000,6 +2050,9 @@ export class CountriesService {
         (relation) => relation.courseId,
       ),
       subjectIds: record.subjectMaps.map((relation) => relation.subjectId),
+      subSubjectIds: record.subSubjectMaps.map(
+        (relation) => relation.subSubjectId,
+      ),
       tagIds: record.tagMaps.map((relation) => relation.tagId),
       /* Labels as well as ids: the Countries list renders assigned taxonomy
        * per row, and both relations are already loaded by COUNTRY_INCLUDE, so
