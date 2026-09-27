@@ -33,6 +33,10 @@ export interface CourseFilterOptions {
 }
 export function getSubjects(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<Subject[]>(`/subjects${query ? `?${query}` : ''}`); }
 export function getSubject(slug: string) { return request<SubjectDetail>(`/subjects/${encodeURIComponent(slug)}`).then((result) => result.data); }
+export interface SpecializationDetail extends SubSubject { subject: { id: string; name: string; slug: string; shortDescription: string | null }; siblings: Array<{ id: string; name: string; slug: string }>; countries: Array<{ id: string; name: string; slug: string }>; }
+export interface SpecializationRow extends SubSubject { subject: { id: string; name: string; slug: string }; }
+export function getSpecialization(subjectSlug: string, slug: string) { return request<SpecializationDetail>(`/subjects/${encodeURIComponent(subjectSlug)}/specializations/${encodeURIComponent(slug)}`).then((result) => result.data); }
+export function getSpecializations(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<SpecializationRow[]>(`/specializations${query ? `?${query}` : ''}`); }
 export function getCourseLevels() { return request<Array<{ id: string; code: string; name: string; description: string | null }>>('/course-levels').then((result) => result.data); }
 export function getStudyModes() { return request<Array<{ id: string; code: string; name: string; description: string | null }>>('/study-modes').then((result) => result.data); }
 export function getCourses(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<Course[]>(`/courses${query ? `?${query}` : ''}`); }

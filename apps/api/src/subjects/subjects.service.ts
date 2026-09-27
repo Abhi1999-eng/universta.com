@@ -154,6 +154,125 @@ export class SubjectsService {
     };
   }
 
+  /**
+   * One specialization, addressed the way its page is: inside its subject.
+   * A slug is unique within a subject and not across the table -- "Animal
+   * Science" is taught under three of them -- so the subject is part of the
+   * lookup, not decoration on the URL.
+   */
+  async publicSpecialization(subjectSlug: string, slug: string) {
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        slug: subjectSlug.trim().toLowerCase(),
+        status: 'PUBLISHED',
+        deletedAt: null,
+      },
+      select: { id: true, name: true, slug: true, shortDescription: true },
+    });
+    if (!subject)
+      throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
+
+    const specialization = await this.prisma.subSubject.findFirst({
+      where: {
+        subjectId: subject.id,
+        slug: slug.trim().toLowerCase(),
+        status: 'PUBLISHED',
+        deletedAt: null,
+      },
+      include: SUB_SUBJECT_INCLUDE,
+    });
+    if (!specialization)
+      throw catalogNotFound(
+        'SPECIALIZATION_NOT_FOUND',
+        'Specialization not found',
+      );
+
+    const [siblings, countries] = await Promise.all([
+      this.prisma.subSubject.findMany({
+        where: {
+          subjectId: subject.id,
+          status: 'PUBLISHED',
+          deletedAt: null,
+          id: { not: specialization.id },
+        },
+        select: { id: true, name: true, slug: true },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: 12,
+      }),
+      this.prisma.countrySubSubject.findMany({
+        where: {
+          subSubjectId: specialization.id,
+          country: { status: 'PUBLISHED', deletedAt: null },
+        },
+        select: {
+          country: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: { displayOrder: 'asc' },
+      }),
+    ]);
+
+    return {
+      ...this.toSubSubjectPublic(specialization),
+      subject,
+      siblings,
+      countries: countries.map((row) => row.country),
+    };
+  }
+
+  /**
+   * Every specialization, across subjects. The flat list exists because
+   * students search for the branch rather than the field it sits in; each row
+   * still carries its subject, because that is what its address is built from.
+   */
+  async publicSpecializationList(query: {
+    search?: string;
+    subject?: string;
+    slug?: string;
+    limit?: string;
+    page?: string;
+  }) {
+    const take = Math.min(Math.max(Number(query.limit) || 60, 1), 200);
+    const page = Math.max(Number(query.page) || 1, 1);
+    const search = query.search?.trim();
+    const where = {
+      status: 'PUBLISHED',
+      deletedAt: null,
+      subject: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        ...(query.subject?.trim()
+          ? { slug: query.subject.trim().toLowerCase() }
+          : {}),
+      },
+      ...(search ? { name: { contains: search } } : {}),
+      /* An exact slug can match more than one row: the same branch is taught
+         under several subjects. Callers that resolve a bare slug take the
+         first and say so. */
+      ...(query.slug?.trim() ? { slug: query.slug.trim().toLowerCase() } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.subSubject.findMany({
+        where,
+        include: SUB_SUBJECT_INCLUDE,
+        orderBy: [{ name: 'asc' }],
+        skip: (page - 1) * take,
+        take,
+      }),
+      this.prisma.subSubject.count({ where }),
+    ]);
+    return {
+      data: rows.map((row) => ({
+        ...this.toSubSubjectPublic(row),
+        subject: {
+          id: row.subject.id,
+          name: row.subject.name,
+          slug: row.subject.slug,
+        },
+      })),
+      meta: { total, page, limit: take },
+    };
+  }
+
   async publicDetail(slug: string) {
     const subject = await this.prisma.subject.findFirst({
       where: {
