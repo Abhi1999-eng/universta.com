@@ -846,8 +846,13 @@
   padding: 22px 0; background: none; border: 0; cursor: pointer; text-align: left; color: var(--text);
 }
 .sa .meaning__v{ font-family: var(--font-display); font-size: clamp(24px, 2.6vw, 34px); font-weight: 700; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; min-width: 3.5ch; }
-.sa .meaning__l{ font-size: 16px; font-weight: 600; }
-.sa .meaning__q{ font-size: 13.5px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+/* Block, so the question sits under the label rather than running on from
+   it: "International studentsWhat does this mean?" is what two inline spans
+   give. The reference sheet sets a margin-top on the question, which only
+   means anything once it is a block, so this finishes a rule that sheet
+   started rather than departing from it. */
+.sa .meaning__l{ display: block; font-size: 16px; font-weight: 600; }
+.sa .meaning__q{ display: block; font-size: 13.5px; color: var(--muted); font-weight: 500; margin-top: 2px; }
 .sa .meaning__plus{ flex: none; width: 30px; height: 30px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; transition: transform var(--dur) var(--ease); }
 .sa .meaning__btn[aria-expanded="true"] .meaning__plus{ transform: rotate(45deg); background: var(--navy); color: #fff; border-color: var(--navy); }
 .sa .meaning__body{ display: none; padding: 0 0 26px; }
