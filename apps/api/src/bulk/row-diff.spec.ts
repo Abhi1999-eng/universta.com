@@ -186,4 +186,97 @@ describe('changedColumns', () => {
 
     expect(changedColumns(bulkFields(definition), row, stored)).toEqual([]);
   });
+
+  /**
+   * An export download does not write a relation's slug or code -- it writes
+   * the display name, so `courseLevelCode` reads "Undergraduate" where
+   * `toExportRow` says "UG". Comparing against the projection alone made a
+   * re-uploaded offerings export look edited in a column nobody touched.
+   * Found by the round-trip e2e, which caught offerings and nothing else.
+   */
+  it('accepts the display name an export download writes for a relation', () => {
+    const definition = bulkResource('offerings');
+    const fields = bulkFields(definition);
+    const record = {
+      slug: 'demo-offering',
+      name: 'Bachelor of Demo Studies',
+      university: { slug: 'demo-university', name: 'Demo University' },
+      genericCourse: { slug: 'demo-course', name: 'Demo Course' },
+      campus: null,
+      courseLevel: { code: 'UG', name: 'Undergraduate' },
+      studyMode: 'FULL_TIME',
+      currencyCode: 'CAD',
+      tuitionMin: '18000',
+      tuitionMax: '22000',
+      status: 'DRAFT',
+    };
+    const exported = definition.toExportRow(record);
+    const asDownloaded = Object.fromEntries(
+      fields.map((field) => [
+        field.key,
+        (record as Record<string, { name?: string } | undefined>)[
+          field.key.replace(/(?:Slug|Code)$/, '')
+        ]?.name ??
+          exported[field.key] ??
+          '',
+      ]),
+    );
+    const row = { ...asDownloaded, __line: '2' };
+
+    expect(changedColumns(fields, row, exported, asDownloaded)).toEqual([]);
+  });
+
+  it('still accepts the slug or code a hand-written sheet uses', () => {
+    const definition = bulkResource('offerings');
+    const fields = bulkFields(definition);
+    const record = {
+      slug: 'demo-offering',
+      name: 'Bachelor of Demo Studies',
+      university: { slug: 'demo-university', name: 'Demo University' },
+      genericCourse: { slug: 'demo-course', name: 'Demo Course' },
+      campus: null,
+      courseLevel: { code: 'UG', name: 'Undergraduate' },
+      studyMode: 'FULL_TIME',
+      currencyCode: 'CAD',
+      tuitionMin: '18000',
+      tuitionMax: '22000',
+      status: 'DRAFT',
+    };
+    const exported = definition.toExportRow(record);
+    const asDownloaded = { courseLevelCode: 'Undergraduate' };
+    const row = { ...exported, __line: '2' };
+
+    expect(changedColumns(fields, row, exported, asDownloaded)).toEqual([]);
+  });
+
+  it('still reports a real edit beside a relation written either way', () => {
+    const definition = bulkResource('offerings');
+    const fields = bulkFields(definition);
+    const record = {
+      slug: 'demo-offering',
+      name: 'Bachelor of Demo Studies',
+      university: { slug: 'demo-university', name: 'Demo University' },
+      genericCourse: { slug: 'demo-course', name: 'Demo Course' },
+      campus: null,
+      courseLevel: { code: 'UG', name: 'Undergraduate' },
+      studyMode: 'FULL_TIME',
+      currencyCode: 'CAD',
+      tuitionMin: '18000',
+      tuitionMax: '22000',
+      status: 'DRAFT',
+    };
+    const exported = definition.toExportRow(record);
+    const row = {
+      ...exported,
+      courseLevelCode: 'Undergraduate',
+      tuitionMax: '25000',
+      __line: '2',
+    };
+
+    expect(
+      changedColumns(fields, row, exported, {
+        courseLevelCode: 'Undergraduate',
+      }),
+    ).toEqual(['tuitionMax']);
+  });
 });

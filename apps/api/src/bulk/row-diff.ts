@@ -104,10 +104,19 @@ function relationSet(value: unknown): string {
     .join('|');
 }
 
+/**
+ * `exported` is `toExportRow`, which writes relations as slugs and codes.
+ * `alsoAccepted` is what the export *download* actually writes for the same
+ * record: `humanExportValue` swaps a relation's slug or code for its display
+ * name, so a downloaded file says "Undergraduate" where the projection says
+ * "UG". Both name the same record and the importer takes either, so a column
+ * has only changed when it matches neither.
+ */
 export function changedColumns(
   fields: BulkField[],
   row: Record<string, unknown>,
   exported: Record<string, unknown>,
+  alsoAccepted: Record<string, unknown> = {},
 ): string[] {
   const changed: string[] = [];
   for (const field of fields) {
@@ -133,11 +142,17 @@ export function changedColumns(
       continue;
     }
 
-    const same =
+    const candidates = [stored];
+    if (key in alsoAccepted) candidates.push(alsoAccepted[key]);
+    /* No slug-folding outside relation columns: it would make "Foo, Bar" and
+       "Foo Bar" the same string and quietly drop a punctuation-only edit. The
+       display name is compared as written instead, which is exactly how a
+       downloaded export spells it. */
+    const matches = (value: unknown) =>
       field.type === 'relation'
-        ? relationSet(incoming) === relationSet(stored)
-        : comparable(incoming) === comparable(stored);
-    if (!same) changed.push(key);
+        ? relationSet(incoming) === relationSet(value)
+        : comparable(incoming) === comparable(value);
+    if (!candidates.some(matches)) changed.push(key);
   }
   return changed;
 }

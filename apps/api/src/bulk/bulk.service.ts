@@ -459,11 +459,18 @@ export class BulkOperationsService {
         include: BulkOperationsService.INCLUDE_MAP[resourceKey],
       })) as Record<string, unknown> | null;
       if (!stored) return null;
-      return changedColumns(
-        bulkFields(definition),
-        row,
-        definition.toExportRow(stored),
+      const fields = bulkFields(definition);
+      const exported = definition.toExportRow(stored);
+      /* What the export download writes for this record: the same projection,
+         with relation slugs and codes swapped for display names. A re-uploaded
+         export carries those names, so the comparison has to know them. */
+      const asDownloaded = Object.fromEntries(
+        fields.map((field) => [
+          field.key,
+          this.humanExportValue(field.key, exported, stored),
+        ]),
       );
+      return changedColumns(fields, row, exported, asDownloaded);
     } catch {
       return null;
     }
