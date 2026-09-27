@@ -8,9 +8,9 @@ import {
   intakeCards,
   journeyColumns,
   languageRows,
+  sectionNumbers,
   monthNames,
   searchDestinations,
-  sectionNumbers,
   workSummary,
 } from './study-abroad-view';
 
@@ -358,40 +358,12 @@ describe('languageRows', () => {
       ieltsRequirement: 'REQUIRED',
       ieltsMinScore: '6.50',
       toeflRequirement: 'VARIES',
-      toeflMinScore: '90',
       languageWaiverAvailable: false,
     } as never);
     expect(rows).toEqual([
       { test: 'IELTS Academic', requirement: { label: 'Required', tone: 'req' }, minimum: '6.5', notes: null },
-      { test: 'TOEFL iBT', requirement: { label: 'Varies by programme', tone: 'cond' }, minimum: '90', notes: null },
+      { test: 'TOEFL iBT', requirement: { label: 'Varies by programme', tone: 'cond' }, minimum: null, notes: null },
     ]);
-  });
-
-  /* "Varies by programme" is what the column holds before anybody chooses, so
-     a row carrying it with no score and no note is the default speaking, not
-     an editor. Saving the card to record one test used to publish all four,
-     three of them asserting something nobody had written. */
-  it('leaves out a test nobody filled in', () => {
-    const rows = languageRows({
-      ieltsRequirement: 'REQUIRED',
-      ieltsMinScore: '6.50',
-      toeflRequirement: 'VARIES',
-      pteRequirement: 'VARIES',
-      duolingoRequirement: 'VARIES',
-      languageWaiverAvailable: false,
-    } as never);
-    expect(rows.map((row) => row.test)).toEqual(['IELTS Academic']);
-  });
-
-  /* Chosen deliberately, "varies" is an answer: it stays as soon as the
-     editor has said anything else about that test. */
-  it('keeps a test that varies once a note explains it', () => {
-    const rows = languageRows({
-      toeflRequirement: 'VARIES',
-      toeflNotes: 'Accepted for taught degrees only.',
-      languageWaiverAvailable: false,
-    } as never);
-    expect(rows.map((row) => row.test)).toEqual(['TOEFL iBT']);
   });
 });
 

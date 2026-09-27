@@ -379,15 +379,6 @@ export function languageRows(language: ProfileSummary['language']): LanguageRow[
   ];
   return tests
     .filter(([, requirement]) => requirement && REQUIREMENT[requirement])
-    /* "Varies by programme" with no score and no note is the column's default
-       speaking, not an editor. Saving the card to record one test used to
-       publish all four, three of them asserting something nobody had written
-       -- and the row said nothing anyway, because the section's own lead
-       already tells a reader requirements are set per programme. */
-    .filter(
-      ([, requirement, minimum, notes]) =>
-        requirement !== 'VARIES' || Boolean(minimum) || Boolean(notes),
-    )
     .map(([test, requirement, minimum, notes]) => ({
       test,
       requirement: REQUIREMENT[requirement!],
