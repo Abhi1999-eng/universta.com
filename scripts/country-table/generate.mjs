@@ -459,12 +459,27 @@ for (const row of rows)
     join(flagDir, `${row.iso2.toLowerCase()}.svg`),
   );
 
+/* Which codes have artwork, for the site to ask before it asks for a file.
+   A country the catalogue holds but this table does not -- a test record, a
+   made-up code -- would otherwise request a flag that is not there and draw
+   the browser's broken-image mark over its own colours. */
+writeFileSync(
+  join(ROOT, 'apps/web/src/lib/flag-codes.ts'),
+  banner(
+    "The countries whose flag artwork ships with the site.\n *\n * Generated beside public/flags: asking this before rendering an <img>\n * is what keeps a record with an unknown ISO code from drawing a broken\n * image instead of its colour bands.",
+  ) +
+    `export const FLAG_CODES: ReadonlySet<string> = new Set(${JSON.stringify(
+      rows.map((row) => row.iso2.toLowerCase()).sort(),
+    )});\n\n/** Whether the site can draw this country's flag. */\nexport function hasFlag(iso2Code: string | null | undefined): boolean {\n  const code = iso2Code?.trim().toLowerCase();\n  return code ? FLAG_CODES.has(code) : false;\n}\n`,
+);
+
 /* The repo's lint rewrites quotes and trailing commas, and CI fails a build
    whose tree is not clean afterwards. Formatting the output here means
    generating and then linting leaves nothing to commit twice. */
 for (const [workspace, file] of [
   ['apps/api', 'src/countries/country-table.ts'],
   ['apps/admin', 'src/features/catalog/currency-options.ts'],
+  ['apps/web', 'src/lib/flag-codes.ts'],
 ])
   execFileSync(
     'npx',

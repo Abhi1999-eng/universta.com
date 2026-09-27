@@ -200,13 +200,19 @@ describe('destination directory', () => {
     expect(html).toContain('alt=""');
   });
 
-  /* A destination outside the reference list has no code to ask for, so the
-     card keeps the bands rather than requesting a flag that is not there. */
-  it('asks for no artwork when there is no ISO code', () => {
+  /* A destination outside the reference list has nothing to ask for, so the
+     card keeps the bands rather than requesting a flag that is not there and
+     drawing the browser's broken-image mark over them. A made-up code is the
+     same case: the artwork ships with the site, so what it covers is known
+     before the request rather than after it fails. */
+  it.each([
+    ['no ISO code', null],
+    ['a code the artwork does not cover', 'QX'],
+  ])('asks for no artwork with %s', (_case, iso2Code) => {
     const html = renderToStaticMarkup(
       <DirectoryView
         directory={directory({
-          available: [destination({ name: 'Testland', slug: 'testland', iso2Code: null, bands: null })],
+          available: [destination({ name: 'Testland', slug: 'testland', iso2Code, bands: null })],
           comingSoon: [],
           counts: { available: 1, popular: 1, total: 1 },
         })}

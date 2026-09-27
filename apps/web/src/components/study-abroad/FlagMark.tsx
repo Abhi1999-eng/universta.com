@@ -17,6 +17,8 @@
  * The rule under a country's name on its own page is a different mark. Five
  * pixels tall, it is an accent rather than a picture, and it keeps the bands.
  */
+import { hasFlag } from '@/lib/flag-codes';
+
 const NEUTRAL = ['#0C2038', '#1B3554', '#2A4A70'] as const;
 
 export function FlagMark({
@@ -27,7 +29,10 @@ export function FlagMark({
   bands: readonly [string, string, string] | null;
 }) {
   const colours = bands ?? NEUTRAL;
-  const code = iso2Code?.trim().toLowerCase();
+  /* Asked before the file is: a record with a code the artwork does not
+     cover -- a test row, a made-up pair of letters -- would draw the
+     browser's broken-image mark over its own colours. */
+  const code = hasFlag(iso2Code) ? iso2Code!.trim().toLowerCase() : null;
   /* Decorative: the country's name is always beside it as real text. */
   return (
     <span className="cchip__mark" aria-hidden="true">
