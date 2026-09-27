@@ -88,6 +88,7 @@ export interface CountryRecord {
   popularUniversityIds?: string[];
   popularCourseIds?: string[];
   subjectIds?: string[];
+  subSubjectIds?: string[];
   tagIds?: string[];
   subjects?: Array<{ id: string; name: string; slug: string }>;
   tags?: Array<{ id: string; name: string; slug: string }>;

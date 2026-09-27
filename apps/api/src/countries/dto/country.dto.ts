@@ -225,6 +225,12 @@ export class CreateCountryDto {
   @IsArray()
   @ArrayUnique()
   @IsUUID('4', { each: true })
+  subSubjectIds?: string[];
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
   tagIds?: string[];
 
   /* Both of these used to be closed enums here, which is what made adding a

@@ -926,7 +926,10 @@ async function main() {
         deletedAt: null,
       };
       const specialization = await prisma.subSubject.upsert({
-        where: { slug },
+        // A slug is unique within its subject now, not across the table.
+        where: {
+          subjectId_slug: { subjectId: specializationData.subjectId, slug },
+        },
         update: specializationData,
         create: { ...specializationData, slug, createdByUserId: admin.id },
       });

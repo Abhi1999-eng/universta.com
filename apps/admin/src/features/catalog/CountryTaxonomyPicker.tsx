@@ -14,7 +14,8 @@ import { useMemo, useState } from "react";
 export type TaxonomyRow = {
   id: string;
   label: string;
-  /** Displayed under the parent for context. Selection stays at parent level. */
+  /** Selectable in their own right when `onChildrenChange` is supplied,
+   * otherwise shown under the parent for context only. */
   children?: Array<{ id: string; label: string }>;
   /** Real usage count; when absent the "Most used" view is not offered. */
   usage?: number;
@@ -25,6 +26,10 @@ export type CreateOutcome =
   | { kind: "existing"; id: string; label: string };
 
 type View = "all" | "selected" | "most-used";
+
+/** One shared array, so an absent `selectedChildren` is a stable dependency
+ * rather than a new [] on every render. */
+const NO_CHILDREN: string[] = [];
 
 export function normalizeTermName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -60,6 +65,9 @@ export function CountryTaxonomyPicker({
   onChange,
   onCreate,
   testId,
+  childTitle,
+  selectedChildren,
+  onChildrenChange,
 }: {
   title: string;
   singular: string;
@@ -68,6 +76,11 @@ export function CountryTaxonomyPicker({
   onChange: (next: string[]) => void;
   onCreate: (name: string) => Promise<CreateOutcome>;
   testId?: string;
+  /** Plural noun for the children, used in the counts. */
+  childTitle?: string;
+  /** Supplying both makes the children selectable. */
+  selectedChildren?: string[];
+  onChildrenChange?: (next: string[]) => void;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("all");
@@ -78,6 +91,13 @@ export function CountryTaxonomyPicker({
   const [notice, setNotice] = useState("");
 
   const supportsUsage = rows.some((row) => typeof row.usage === "number");
+  const childrenSelectable = Boolean(onChildrenChange);
+  const childSelection = selectedChildren ?? NO_CHILDREN;
+  const childNoun = childTitle ?? "children";
+  /* Which parents are open. With hundreds of children per parent, showing
+     them all at once is unreadable and slow, so a parent opens on demand --
+     or on its own when a search matches one of its children. */
+  const [expanded, setExpanded] = useState<string[]>([]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -88,14 +108,21 @@ export function CountryTaxonomyPicker({
         child.label.toLowerCase().includes(needle),
       );
     const base = rows.filter(matches);
-    if (view === "selected") return base.filter((row) => selected.includes(row.id));
+    if (view === "selected")
+      return base.filter(
+        (row) =>
+          selected.includes(row.id) ||
+          (row.children ?? []).some((child) =>
+            childSelection.includes(child.id),
+          ),
+      );
     if (view === "most-used")
       return [...base].sort(
         (a, b) =>
           (b.usage ?? 0) - (a.usage ?? 0) || a.label.localeCompare(b.label),
       );
     return base;
-  }, [rows, query, view, selected]);
+  }, [rows, query, view, selected, childSelection]);
 
   const toggle = (id: string) => {
     setNotice("");
@@ -103,6 +130,29 @@ export function CountryTaxonomyPicker({
       selected.includes(id)
         ? selected.filter((value) => value !== id)
         : [...selected, id],
+    );
+  };
+
+  const toggleChild = (id: string) => {
+    if (!onChildrenChange) return;
+    setNotice("");
+    onChildrenChange(
+      childSelection.includes(id)
+        ? childSelection.filter((value) => value !== id)
+        : [...childSelection, id],
+    );
+  };
+
+  /* All or none for one parent: picking two hundred boxes by hand is not a
+     thing anyone should be asked to do. */
+  const setAllChildren = (row: TaxonomyRow, on: boolean) => {
+    if (!onChildrenChange) return;
+    setNotice("");
+    const ids = (row.children ?? []).map((child) => child.id);
+    onChildrenChange(
+      on
+        ? [...childSelection, ...ids.filter((id) => !childSelection.includes(id))]
+        : childSelection.filter((id) => !ids.includes(id)),
     );
   };
 
@@ -210,13 +260,91 @@ export function CountryTaxonomyPicker({
               ) : null}
             </label>
             {(row.children ?? []).length ? (
-              <ul className="ml-6 mt-1 space-y-1">
-                {(row.children ?? []).map((child) => (
-                  <li key={child.id} className="text-xs text-[#828B9B]">
-                    {child.label}
-                  </li>
-                ))}
-              </ul>
+              childrenSelectable ? (
+                (() => {
+                  const kids = row.children ?? [];
+                  const needle = query.trim().toLowerCase();
+                  const hits = needle
+                    ? kids.filter((child) =>
+                        child.label.toLowerCase().includes(needle),
+                      )
+                    : kids;
+                  /* A search that matches a child opens its parent: the point
+                     of typing "animal science" is to see it, not to be told
+                     which subject to open. */
+                  const open =
+                    expanded.includes(row.id) ||
+                    (Boolean(needle) && hits.length > 0);
+                  const mine = kids.filter((child) =>
+                    childSelection.includes(child.id),
+                  ).length;
+                  return (
+                    <div className="ml-6 mt-1">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-[#1657CF]"
+                          aria-expanded={open}
+                          onClick={() =>
+                            setExpanded((current) =>
+                              current.includes(row.id)
+                                ? current.filter((id) => id !== row.id)
+                                : [...current, row.id],
+                            )
+                          }
+                        >
+                          {open ? "Hide" : "Show"} {kids.length} {childNoun}
+                        </button>
+                        <span className="text-xs text-[#828B9B]">
+                          {mine} selected
+                        </span>
+                        {open ? (
+                          <>
+                            <button
+                              type="button"
+                              className="text-xs text-[#475467] underline"
+                              onClick={() => setAllChildren(row, true)}
+                            >
+                              Select all
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs text-[#475467] underline"
+                              onClick={() => setAllChildren(row, false)}
+                            >
+                              Clear
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                      {open ? (
+                        <ul className="mt-1 space-y-1">
+                          {hits.map((child) => (
+                            <li key={child.id}>
+                              <label className="flex cursor-pointer items-center gap-2 text-xs">
+                                <input
+                                  type="checkbox"
+                                  checked={childSelection.includes(child.id)}
+                                  onChange={() => toggleChild(child.id)}
+                                />
+                                <span>{child.label}</span>
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  );
+                })()
+              ) : (
+                <ul className="ml-6 mt-1 space-y-1">
+                  {(row.children ?? []).map((child) => (
+                    <li key={child.id} className="text-xs text-[#828B9B]">
+                      {child.label}
+                    </li>
+                  ))}
+                </ul>
+              )
             ) : null}
           </div>
         ))}
@@ -239,7 +367,12 @@ export function CountryTaxonomyPicker({
         </p>
       ) : null}
 
-      <p className="mt-3 text-xs text-[#667085]">{selected.length} selected</p>
+      <p className="mt-3 text-xs text-[#667085]">
+        {selected.length} selected
+        {childrenSelectable
+          ? ` · ${childSelection.length} ${childNoun} selected`
+          : ""}
+      </p>
 
       {dialogOpen ? (
         // Deliberately a div, not a form: a nested form inside the Country

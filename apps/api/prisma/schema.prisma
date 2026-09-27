@@ -741,7 +741,11 @@ model SubSubject {
   id               String    @id @default(uuid()) @db.Char(36)
   subjectId        String    @map("subject_id") @db.Char(36)
   name             String    @db.VarChar(255)
-  slug             String    @unique @db.VarChar(255)
+  /// Unique within its subject, not globally: the same specialization is
+  /// taught under several of them -- "Animal Science" sits under Agriculture,
+  /// Science and Biological & Life Sciences -- and the page it addresses is
+  /// /subjects/<subject>/<slug>, which already carries the subject.
+  slug             String    @db.VarChar(255)
   shortDescription String?   @map("short_description") @db.VarChar(1000)
   overview         String?   @db.LongText
   iconMediaId      String?   @map("icon_media_id") @db.Char(36)
@@ -756,14 +760,16 @@ model SubSubject {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  subject      Subject     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  iconMedia    MediaAsset? @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
-  listingMedia MediaAsset? @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
-  createdBy    User?       @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy    User?       @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  subject      Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  iconMedia    MediaAsset?         @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia MediaAsset?         @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  createdBy    User?               @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?               @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   courses      Course[]
+  countries    CountrySubSubject[]
 
   @@unique([subjectId, name])
+  @@unique([subjectId, slug])
   @@index([subjectId, status, displayOrder])
   @@index([iconMediaId])
   @@index([listingMediaId])
@@ -902,6 +908,7 @@ model Country {
   faqs                 CountryFaq[]
   tagMaps              CountryTagMap[]
   subjectMaps          CountrySubject[]
+  subSubjectMaps       CountrySubSubject[]
   states               State[]
   cities               City[]
   courses              CountryCourse[]
@@ -1227,6 +1234,24 @@ model CountryTagMap {
   @@index([countryId])
   @@index([tagId, countryId])
   @@map("country_tag_map")
+}
+
+/// Which specializations a destination is offered for. Mirrors
+/// CountrySubject: the subject says the field, this says the branch of it.
+model CountrySubSubject {
+  id           String   @id @default(uuid()) @db.Char(36)
+  countryId    String   @map("country_id") @db.Char(36)
+  subSubjectId String   @map("sub_subject_id") @db.Char(36)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  country    Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  subSubject SubSubject @relation(fields: [subSubjectId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, subSubjectId])
+  @@index([countryId, displayOrder])
+  @@index([subSubjectId, countryId])
+  @@map("country_sub_subjects")
 }
 
 model CountrySubject {
