@@ -285,8 +285,14 @@ export interface CountryPage {
   faqs: Faq[];
   seo: Seo | null;
   consultantCards: ConsultantCard[];
+  /** Who a student could ask about this destination, and where they are. */
+  consultants?: ConsultantPresence;
   /** Attached to the destination rather than to one of its universities. */
   testimonials?: CountryTestimonial[];
+}
+export interface ConsultantPresence {
+  total: number;
+  cities: Array<{ city: string; count: number }>;
 }
 export interface CountryTestimonial {
   id: string;

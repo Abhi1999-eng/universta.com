@@ -1246,6 +1246,34 @@
 .sa .h-bigsearch{ max-width: 760px; }
 
 /* ---------------------------------------------------------------------
+   CONSULTANTS -- the panel that ends a guide, from the reference build
+   --------------------------------------------------------------------- */
+.sa .consultcta{
+  display: grid; gap: 18px; padding: clamp(20px, 3vw, 30px);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+}
+@media (min-width: 900px){
+  .sa .consultcta{ grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+}
+.sa .consultcta__t{ font-size: clamp(21px, 2.3vw, 28px); letter-spacing: -0.03em; margin-top: 4px; }
+.sa .consultcta__d{ color: var(--muted); max-width: 62ch; margin-top: 6px; }
+.sa .consultcta__actions{ display: grid; gap: 10px; }
+.sa .citychips{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 22px; }
+.sa .citychips .label{ margin-inline-end: 6px; }
+.sa .specchip{
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 11px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--white); font-size: 13px; font-weight: 600;
+  color: var(--text); text-decoration: none;
+}
+.sa a.specchip:hover{ border-color: var(--navy); }
+/* The count, in the mono face the rest of the guide counts in. */
+.sa .specchip em{
+  font-style: normal; font-family: var(--font-mono);
+  font-size: 10.5px; color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------
    SEARCH -- the box's suggestions, and the results page
    --------------------------------------------------------------------- */
 /* The panel is positioned against this, not against the form, so it lines up
