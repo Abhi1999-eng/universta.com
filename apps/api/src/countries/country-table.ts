@@ -41,12 +41,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.313,
       },
       {
-        colour: '#d0103a',
-        share: 0.313,
-      },
-      {
         colour: '#fedf00',
         share: 0.247,
+      },
+      {
+        colour: '#d0103a',
+        share: 0.313,
       },
     ],
   },
@@ -87,12 +87,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.325,
       },
       {
-        colour: '#009900',
-        share: 0.325,
-      },
-      {
         colour: '#bf0000',
         share: 0.232,
+      },
+      {
+        colour: '#009900',
+        share: 0.325,
       },
     ],
   },
@@ -106,16 +106,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#ce1126',
-        share: 0.483,
-      },
-      {
         colour: '#000001',
         share: 0.22,
       },
       {
         colour: '#0072c6',
         share: 0.103,
+      },
+      {
+        colour: '#ce1126',
+        share: 0.483,
       },
     ],
   },
@@ -175,12 +175,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.46,
       },
       {
-        colour: '#000001',
-        share: 0.455,
-      },
-      {
         colour: '#feeb00',
         share: 0.027,
+      },
+      {
+        colour: '#000001',
+        share: 0.455,
       },
     ],
   },
@@ -278,12 +278,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#3f9c35',
-        share: 0.333,
-      },
-      {
         colour: '#ed2939',
         share: 0.296,
+      },
+      {
+        colour: '#3f9c35',
+        share: 0.333,
       },
     ],
   },
@@ -389,12 +389,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.444,
       },
       {
-        colour: '#35a100',
-        share: 0.425,
-      },
-      {
         colour: '#fff300',
         share: 0.095,
+      },
+      {
+        colour: '#35a100',
+        share: 0.425,
       },
     ],
   },
@@ -431,12 +431,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '.د.ب',
     bands: [
       {
-        colour: '#ce1126',
-        share: 0.748,
-      },
-      {
         colour: '#ffffff',
         share: 0.223,
+      },
+      {
+        colour: '#ce1126',
+        share: 0.748,
       },
     ],
   },
@@ -477,12 +477,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.388,
       },
       {
-        colour: '#ffd600',
-        share: 0.3,
-      },
-      {
         colour: '#de2110',
         share: 0.294,
+      },
+      {
+        colour: '#ffd600',
+        share: 0.3,
       },
     ],
   },
@@ -546,12 +546,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.336,
       },
       {
-        colour: '#007934',
-        share: 0.335,
-      },
-      {
         colour: '#ffe000',
         share: 0.279,
+      },
+      {
+        colour: '#007934',
+        share: 0.335,
       },
     ],
   },
@@ -588,12 +588,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#08ced6',
-        share: 0.506,
-      },
-      {
         colour: '#000001',
         share: 0.293,
+      },
+      {
+        colour: '#08ced6',
+        share: 0.506,
       },
       {
         colour: '#ffe900',
@@ -657,16 +657,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Br',
     bands: [
       {
+        colour: '#fffdfe',
+        share: 0.021,
+      },
+      {
         colour: '#ce1720',
         share: 0.592,
       },
       {
         colour: '#007c30',
         share: 0.275,
-      },
-      {
-        colour: '#fffdfe',
-        share: 0.021,
       },
     ],
   },
@@ -710,10 +710,6 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         colour: '#ffffff',
         share: 0.413,
       },
-      {
-        colour: '#d7392c',
-        share: 0.026,
-      },
     ],
   },
   {
@@ -749,16 +745,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Fr',
     bands: [
       {
-        colour: '#ffff00',
-        share: 0.207,
-      },
-      {
         colour: '#ffffff',
         share: 0.2,
       },
       {
         colour: '#009a00',
         share: 0.2,
+      },
+      {
+        colour: '#ffff00',
+        share: 0.207,
       },
     ],
   },
@@ -772,12 +768,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Fr',
     bands: [
       {
-        colour: '#ffff00',
-        share: 0.358,
-      },
-      {
         colour: '#00ca00',
         share: 0.309,
+      },
+      {
+        colour: '#ffff00',
+        share: 0.358,
       },
       {
         colour: '#ff0000',
@@ -837,16 +833,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#d52b1e',
-        share: 0.5,
+        colour: '#0039a6',
+        share: 0.166,
       },
       {
         colour: '#ffffff',
         share: 0.323,
       },
       {
-        colour: '#0039a6',
-        share: 0.166,
+        colour: '#d52b1e',
+        share: 0.5,
       },
     ],
   },
@@ -860,16 +856,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Fr',
     bands: [
       {
-        colour: '#fcd116',
-        share: 0.34,
-      },
-      {
         colour: '#007a5e',
         share: 0.333,
       },
       {
         colour: '#ce1126',
         share: 0.315,
+      },
+      {
+        colour: '#fcd116',
+        share: 0.34,
       },
     ],
   },
@@ -944,12 +940,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#002a8f',
-        share: 0.413,
-      },
-      {
         colour: '#cb1515',
         share: 0.284,
+      },
+      {
+        colour: '#002a8f',
+        share: 0.413,
       },
       {
         colour: '#ffffff',
@@ -1032,12 +1028,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.353,
       },
       {
-        colour: '#d7141a',
-        share: 0.353,
-      },
-      {
         colour: '#11457e',
         share: 0.269,
+      },
+      {
+        colour: '#d7141a',
+        share: 0.353,
       },
     ],
   },
@@ -1078,12 +1074,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.354,
       },
       {
-        colour: '#00cc00',
-        share: 0.353,
-      },
-      {
         colour: '#fffefe',
         share: 0.258,
+      },
+      {
+        colour: '#00cc00',
+        share: 0.353,
       },
     ],
   },
@@ -1162,16 +1158,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'د.ج',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.468,
-      },
-      {
         colour: '#006233',
         share: 0.45,
       },
       {
         colour: '#d21034',
         share: 0.051,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.468,
       },
     ],
   },
@@ -1189,12 +1185,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.354,
       },
       {
-        colour: '#da0010',
-        share: 0.214,
-      },
-      {
         colour: '#00148e',
         share: 0.143,
+      },
+      {
+        colour: '#da0010',
+        share: 0.214,
       },
     ],
   },
@@ -1235,12 +1231,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#000001',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.287,
+      },
+      {
+        colour: '#000001',
+        share: 0.333,
       },
     ],
   },
@@ -1254,12 +1250,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Nfk',
     bands: [
       {
-        colour: '#be0027',
-        share: 0.341,
-      },
-      {
         colour: '#239e46',
         share: 0.242,
+      },
+      {
+        colour: '#be0027',
+        share: 0.341,
       },
       {
         colour: '#b4d7f4',
@@ -1300,12 +1296,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.343,
       },
       {
-        colour: '#ef2118',
-        share: 0.309,
-      },
-      {
         colour: '#ffc621',
         share: 0.217,
+      },
+      {
+        colour: '#ef2118',
+        share: 0.309,
       },
     ],
   },
@@ -1495,12 +1491,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#006b3f',
-        share: 0.333,
-      },
-      {
         colour: '#fcd116',
         share: 0.295,
+      },
+      {
+        colour: '#006b3f',
+        share: 0.333,
       },
     ],
   },
@@ -1533,12 +1529,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'D',
     bands: [
       {
-        colour: '#000099',
-        share: 0.3,
-      },
-      {
         colour: '#ff0000',
         share: 0.267,
+      },
+      {
+        colour: '#000099',
+        share: 0.3,
       },
       {
         colour: '#009900',
@@ -1583,12 +1579,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.3,
       },
       {
-        colour: '#e32118',
-        share: 0.299,
-      },
-      {
         colour: '#fefefe',
         share: 0.222,
+      },
+      {
+        colour: '#e32118',
+        share: 0.299,
       },
     ],
   },
@@ -1608,10 +1604,6 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
       {
         colour: '#ffffff',
         share: 0.39,
-      },
-      {
-        colour: '#1f6ab5',
-        share: 0.026,
       },
     ],
   },
@@ -1644,16 +1636,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Fr',
     bands: [
       {
+        colour: '#ce1126',
+        share: 0.312,
+      },
+      {
         colour: '#fcd116',
         share: 0.329,
       },
       {
         colour: '#009e49',
         share: 0.329,
-      },
-      {
-        colour: '#ce1126',
-        share: 0.312,
       },
     ],
   },
@@ -1667,16 +1659,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#399408',
-        share: 0.498,
-      },
-      {
         colour: '#de2110',
         share: 0.163,
       },
       {
         colour: '#ffde08',
         share: 0.157,
+      },
+      {
+        colour: '#399408',
+        share: 0.498,
       },
     ],
   },
@@ -1728,16 +1720,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '€',
     bands: [
       {
-        colour: '#171796',
-        share: 0.319,
-      },
-      {
         colour: '#ff0000',
         share: 0.318,
       },
       {
         colour: '#ffffff',
         share: 0.268,
+      },
+      {
+        colour: '#171796',
+        share: 0.319,
       },
     ],
   },
@@ -1858,12 +1850,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#128807',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.291,
+      },
+      {
+        colour: '#128807',
+        share: 0.333,
       },
     ],
   },
@@ -1881,12 +1873,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#000001',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.287,
+      },
+      {
+        colour: '#000001',
+        share: 0.333,
       },
     ],
   },
@@ -1900,16 +1892,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '﷼',
     bands: [
       {
+        colour: '#239f40',
+        share: 0.267,
+      },
+      {
         colour: '#ffffff',
         share: 0.288,
       },
       {
         colour: '#da0000',
         share: 0.275,
-      },
-      {
-        colour: '#239f40',
-        share: 0.267,
       },
     ],
   },
@@ -1992,12 +1984,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'د.ا',
     bands: [
       {
-        colour: '#ff0000',
-        share: 0.356,
-      },
-      {
         colour: '#000001',
         share: 0.246,
+      },
+      {
+        colour: '#ff0000',
+        share: 0.356,
       },
       {
         colour: '#009900',
@@ -2038,12 +2030,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.29,
       },
       {
-        colour: '#006600',
-        share: 0.283,
-      },
-      {
         colour: '#bb0000',
         share: 0.28,
+      },
+      {
+        colour: '#006600',
+        share: 0.283,
       },
     ],
   },
@@ -2103,12 +2095,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.443,
       },
       {
-        colour: '#005989',
-        share: 0.186,
-      },
-      {
         colour: '#ffffff',
         share: 0.171,
+      },
+      {
+        colour: '#005989',
+        share: 0.186,
       },
     ],
   },
@@ -2122,12 +2114,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Fr',
     bands: [
       {
-        colour: '#239e46',
-        share: 0.218,
-      },
-      {
         colour: '#ffff00',
         share: 0.213,
+      },
+      {
+        colour: '#239e46',
+        share: 0.218,
       },
       {
         colour: '#3b5aa3',
@@ -2145,16 +2137,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
+        colour: '#35a100',
+        share: 0.268,
+      },
+      {
         colour: '#000001',
         share: 0.305,
       },
       {
         colour: '#c70000',
         share: 0.284,
-      },
-      {
-        colour: '#35a100',
-        share: 0.268,
       },
     ],
   },
@@ -2218,12 +2210,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.267,
       },
       {
-        colour: '#f31830',
-        share: 0.267,
-      },
-      {
         colour: '#000001',
         share: 0.242,
+      },
+      {
+        colour: '#f31830',
+        share: 0.267,
       },
     ],
   },
@@ -2348,12 +2340,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Fr',
     bands: [
       {
-        colour: '#ce1126',
-        share: 0.5,
-      },
-      {
         colour: '#002b7f',
         share: 0.446,
+      },
+      {
+        colour: '#ce1126',
+        share: 0.5,
       },
     ],
   },
@@ -2367,16 +2359,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Rs',
     bands: [
       {
-        colour: '#8d2029',
-        share: 0.371,
+        colour: '#005641',
+        share: 0.108,
       },
       {
         colour: '#ffb700',
         share: 0.239,
       },
       {
-        colour: '#005641',
-        share: 0.108,
+        colour: '#8d2029',
+        share: 0.371,
       },
     ],
   },
@@ -2413,12 +2405,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'L',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.351,
-      },
-      {
         colour: '#00209f',
         share: 0.3,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.351,
       },
       {
         colour: '#009543',
@@ -2501,12 +2493,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'ل.د',
     bands: [
       {
-        colour: '#000001',
-        share: 0.474,
-      },
-      {
         colour: '#e70013',
         share: 0.25,
+      },
+      {
+        colour: '#000001',
+        share: 0.474,
       },
       {
         colour: '#239e46',
@@ -2558,16 +2550,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'L',
     bands: [
       {
-        colour: '#de2110',
-        share: 0.312,
-      },
-      {
         colour: '#00319c',
         share: 0.307,
       },
       {
         colour: '#ffde00',
         share: 0.162,
+      },
+      {
+        colour: '#de2110',
+        share: 0.312,
       },
     ],
   },
@@ -2600,16 +2592,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Ar',
     bands: [
       {
+        colour: '#ffffff',
+        share: 0.329,
+      },
+      {
         colour: '#fc3d32',
         share: 0.335,
       },
       {
         colour: '#007e3a',
         share: 0.335,
-      },
-      {
-        colour: '#ffffff',
-        share: 0.329,
       },
     ],
   },
@@ -2692,12 +2684,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.325,
       },
       {
-        colour: '#ea2839',
-        share: 0.308,
-      },
-      {
         colour: '#34b233',
         share: 0.243,
+      },
+      {
+        colour: '#ea2839',
+        share: 0.308,
       },
     ],
   },
@@ -2776,12 +2768,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '€',
     bands: [
       {
-        colour: '#cf142b',
-        share: 0.5,
-      },
-      {
         colour: '#ffffff',
         share: 0.434,
+      },
+      {
+        colour: '#cf142b',
+        share: 0.5,
       },
     ],
   },
@@ -2837,16 +2829,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'MK',
     bands: [
       {
+        colour: '#000001',
+        share: 0.23,
+      },
+      {
         colour: '#f41408',
         share: 0.355,
       },
       {
         colour: '#21873b',
         share: 0.333,
-      },
-      {
-        colour: '#000001',
-        share: 0.23,
       },
     ],
   },
@@ -2864,12 +2856,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#ce1126',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.281,
+      },
+      {
+        colour: '#ce1126',
+        share: 0.333,
       },
     ],
   },
@@ -2906,16 +2898,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'MT',
     bands: [
       {
-        colour: '#ffca00',
-        share: 0.26,
-      },
-      {
         colour: '#009a00',
         share: 0.256,
       },
       {
         colour: '#ff0000',
         share: 0.199,
+      },
+      {
+        colour: '#ffca00',
+        share: 0.26,
       },
     ],
   },
@@ -2929,16 +2921,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
+        colour: '#3662a2',
+        share: 0.225,
+      },
+      {
         colour: '#c70000',
         share: 0.338,
       },
       {
         colour: '#38a100',
         share: 0.281,
-      },
-      {
-        colour: '#3662a2',
-        share: 0.225,
       },
     ],
   },
@@ -2956,12 +2948,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.279,
       },
       {
-        colour: '#009543',
-        share: 0.278,
-      },
-      {
         colour: '#fae600',
         share: 0.175,
+      },
+      {
+        colour: '#009543',
+        share: 0.278,
       },
     ],
   },
@@ -2979,12 +2971,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.375,
       },
       {
-        colour: '#0db02b',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.281,
+      },
+      {
+        colour: '#0db02b',
+        share: 0.333,
       },
     ],
   },
@@ -3151,16 +3143,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '﷼',
     bands: [
       {
+        colour: '#ffffff',
+        share: 0.232,
+      },
+      {
         colour: '#ef2d29',
         share: 0.466,
       },
       {
         colour: '#009025',
         share: 0.242,
-      },
-      {
-        colour: '#ffffff',
-        share: 0.232,
       },
     ],
   },
@@ -3174,12 +3166,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'B/.',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.438,
-      },
-      {
         colour: '#0000ab',
         share: 0.265,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.438,
       },
       {
         colour: '#db0000',
@@ -3243,12 +3235,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.332,
       },
       {
-        colour: '#ce1126',
-        share: 0.332,
-      },
-      {
         colour: '#ffffff',
         share: 0.233,
+      },
+      {
+        colour: '#ce1126',
+        share: 0.332,
       },
     ],
   },
@@ -3262,12 +3254,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '₨',
     bands: [
       {
-        colour: '#0c590b',
-        share: 0.714,
-      },
-      {
         colour: '#ffffff',
         share: 0.248,
+      },
+      {
+        colour: '#0c590b',
+        share: 0.714,
       },
     ],
   },
@@ -3300,12 +3292,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#ed0000',
-        share: 0.425,
-      },
-      {
         colour: '#0050f0',
         share: 0.282,
+      },
+      {
+        colour: '#ed0000',
+        share: 0.425,
       },
       {
         colour: '#ffffff',
@@ -3327,12 +3319,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.275,
       },
       {
-        colour: '#009639',
-        share: 0.275,
-      },
-      {
         colour: '#ed2e38',
         share: 0.239,
+      },
+      {
+        colour: '#009639',
+        share: 0.275,
       },
     ],
   },
@@ -3346,12 +3338,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '€',
     bands: [
       {
-        colour: '#ff0000',
-        share: 0.551,
-      },
-      {
         colour: '#006600',
         share: 0.34,
+      },
+      {
+        colour: '#ff0000',
+        share: 0.551,
       },
     ],
   },
@@ -3388,12 +3380,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#0038a8',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.298,
+      },
+      {
+        colour: '#0038a8',
+        share: 0.333,
       },
     ],
   },
@@ -3407,12 +3399,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '﷼',
     bands: [
       {
-        colour: '#8d1b3d',
-        share: 0.654,
-      },
-      {
         colour: '#ffffff',
         share: 0.306,
+      },
+      {
+        colour: '#8d1b3d',
+        share: 0.654,
       },
     ],
   },
@@ -3449,16 +3441,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'дин',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.309,
-      },
-      {
         colour: '#c6363c',
         share: 0.3,
       },
       {
         colour: '#0c4076',
         share: 0.233,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.309,
       },
     ],
   },
@@ -3541,12 +3533,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.546,
       },
       {
-        colour: '#006000',
-        share: 0.278,
-      },
-      {
         colour: '#fecc00',
         share: 0.085,
+      },
+      {
+        colour: '#006000',
+        share: 0.278,
       },
     ],
   },
@@ -3560,12 +3552,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '₨',
     bands: [
       {
-        colour: '#d92223',
-        share: 0.318,
-      },
-      {
         colour: '#003d88',
         share: 0.16,
+      },
+      {
+        colour: '#d92223',
+        share: 0.318,
       },
       {
         colour: '#007a39',
@@ -3587,12 +3579,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.275,
       },
       {
-        colour: '#000001',
-        share: 0.275,
-      },
-      {
         colour: '#009a00',
         share: 0.242,
+      },
+      {
+        colour: '#000001',
+        share: 0.275,
       },
     ],
   },
@@ -3625,12 +3617,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.521,
-      },
-      {
         colour: '#df0000',
         share: 0.451,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.521,
       },
     ],
   },
@@ -3644,16 +3636,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '€',
     bands: [
       {
-        colour: '#d50000',
-        share: 0.333,
+        colour: '#ffffff',
+        share: 0.305,
       },
       {
         colour: '#0000bf',
         share: 0.331,
       },
       {
-        colour: '#ffffff',
-        share: 0.305,
+        colour: '#d50000',
+        share: 0.333,
       },
     ],
   },
@@ -3667,16 +3659,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '€',
     bands: [
       {
-        colour: '#ee1c25',
-        share: 0.379,
-      },
-      {
         colour: '#ffffff',
         share: 0.327,
       },
       {
         colour: '#0b4ea2',
         share: 0.249,
+      },
+      {
+        colour: '#ee1c25',
+        share: 0.379,
       },
     ],
   },
@@ -3736,12 +3728,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.361,
       },
       {
-        colour: '#bc0000',
-        share: 0.333,
-      },
-      {
         colour: '#ffff00',
         share: 0.288,
+      },
+      {
+        colour: '#bc0000',
+        share: 0.333,
       },
     ],
   },
@@ -3797,15 +3789,15 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '£',
     bands: [
       {
+        colour: '#000001',
+        share: 0.239,
+      },
+      {
         colour: '#0f47af',
         share: 0.284,
       },
       {
         colour: '#078930',
-        share: 0.239,
-      },
-      {
-        colour: '#000001',
         share: 0.239,
       },
     ],
@@ -3820,16 +3812,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'Db',
     bands: [
       {
+        colour: '#d21034',
+        share: 0.181,
+      },
+      {
         colour: '#12ad2b',
         share: 0.503,
       },
       {
         colour: '#ffce00',
         share: 0.246,
-      },
-      {
-        colour: '#d21034',
-        share: 0.181,
       },
     ],
   },
@@ -3866,12 +3858,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#000000',
-        share: 0.333,
-      },
-      {
         colour: '#ffffff',
         share: 0.27,
+      },
+      {
+        colour: '#000000',
+        share: 0.333,
       },
     ],
   },
@@ -3977,12 +3969,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'ЅМ',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.355,
-      },
-      {
         colour: '#cc0000',
         share: 0.283,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.355,
       },
       {
         colour: '#006600',
@@ -4000,16 +3992,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
-        colour: '#cb000f',
-        share: 0.613,
-      },
-      {
         colour: '#000001',
         share: 0.212,
       },
       {
         colour: '#f8c00c',
         share: 0.101,
+      },
+      {
+        colour: '#cb000f',
+        share: 0.613,
       },
     ],
   },
@@ -4168,12 +4160,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'TSh',
     bands: [
       {
-        colour: '#000001',
-        share: 0.296,
-      },
-      {
         colour: '#009900',
         share: 0.276,
+      },
+      {
+        colour: '#000001',
+        share: 0.296,
       },
       {
         colour: '#0099ff',
@@ -4275,16 +4267,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'soʼm',
     bands: [
       {
-        colour: '#1eb53a',
-        share: 0.317,
+        colour: '#0099b5',
+        share: 0.288,
       },
       {
         colour: '#ffffff',
         share: 0.305,
       },
       {
-        colour: '#0099b5',
-        share: 0.288,
+        colour: '#1eb53a',
+        share: 0.317,
       },
     ],
   },
@@ -4317,16 +4309,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '$',
     bands: [
       {
+        colour: '#0058aa',
+        share: 0.225,
+      },
+      {
         colour: '#f4f100',
         share: 0.447,
       },
       {
         colour: '#199a00',
         share: 0.275,
-      },
-      {
-        colour: '#0058aa',
-        share: 0.225,
       },
     ],
   },
@@ -4344,12 +4336,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.333,
       },
       {
-        colour: '#cf142b',
-        share: 0.333,
-      },
-      {
         colour: '#00247d',
         share: 0.305,
+      },
+      {
+        colour: '#cf142b',
+        share: 0.333,
       },
     ],
   },
@@ -4386,12 +4378,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.305,
       },
       {
-        colour: '#009543',
-        share: 0.305,
-      },
-      {
         colour: '#000000',
         share: 0.212,
+      },
+      {
+        colour: '#009543',
+        share: 0.305,
       },
     ],
   },
@@ -4443,12 +4435,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: '﷼',
     bands: [
       {
-        colour: '#ffffff',
-        share: 0.333,
-      },
-      {
         colour: '#f10600',
         share: 0.317,
+      },
+      {
+        colour: '#ffffff',
+        share: 0.333,
       },
       {
         colour: '#000001',
@@ -4466,12 +4458,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'R',
     bands: [
       {
-        colour: '#007847',
-        share: 0.328,
-      },
-      {
         colour: '#e1392d',
         share: 0.196,
+      },
+      {
+        colour: '#007847',
+        share: 0.328,
       },
       {
         colour: '#000c8a',
@@ -4493,12 +4485,12 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
         share: 0.695,
       },
       {
-        colour: '#ef7d00',
-        share: 0.081,
-      },
-      {
         colour: '#000001',
         share: 0.079,
+      },
+      {
+        colour: '#ef7d00',
+        share: 0.081,
       },
     ],
   },
@@ -4512,16 +4504,16 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     currencySymbol: 'P',
     bands: [
       {
+        colour: '#ffffff',
+        share: 0.188,
+      },
+      {
         colour: '#006400',
         share: 0.239,
       },
       {
         colour: '#ffd200',
         share: 0.197,
-      },
-      {
-        colour: '#ffffff',
-        share: 0.188,
       },
     ],
   },

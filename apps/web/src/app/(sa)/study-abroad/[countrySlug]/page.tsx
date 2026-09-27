@@ -39,6 +39,7 @@ import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
 import {
   alternatingBands,
+  builtInWhyRenders,
   costBreakdown,
   countrySnapshot,
   intakeCards,
@@ -126,6 +127,10 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       : 'Explore universities, costs, admission requirements, intakes, language requirements and career pathways — all in one place.';
   const overviewLead = shortText.length > 240 ? shortText : null;
   const editorial = sections.filter(editorialRenders);
+  const whyRenders = builtInWhyRenders(
+    country.configuration?.features,
+    editorial,
+  );
   const language = profiles.language;
   const languageRenders = Boolean(
     language &&
@@ -156,7 +161,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
    * questions take no number, as in the design.
    */
   const run = [
-    country.configuration?.features?.length ? 'why' : null,
+    whyRenders ? 'why' : null,
     country.overview || overviewLead ? 'overview' : null,
     paths.length ? 'study-paths' : null,
     countryUniversities(country).length ? 'universities' : null,
@@ -304,7 +309,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                 <div className="snap__head">
                   <span className="snap__title">Country snapshot</span>
                   <span className="cchip" aria-hidden="true">
-                    <FlagMark name={country.name} iso2Code={country.iso2Code ?? null} bands={bands} />
+                    <FlagMark bands={bands} />
                   </span>
                 </div>
                 {snapshot.map((row) => (
@@ -332,7 +337,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </div>
       </section>
 
-      <CountryWhy country={country} n={number('why')} alt={band('why')} />
+      {whyRenders ? (
+        <CountryWhy country={country} n={number('why')} alt={band('why')} />
+      ) : null}
       <CountryOverview
         country={country}
         lead={overviewLead}

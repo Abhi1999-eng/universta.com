@@ -43,8 +43,30 @@ const FLAGS = 'https://registry.npmjs.org/flag-icons/-/flag-icons-7.5.0.tgz';
 /** A colour under this share of the flag is an edge, not a band. */
 const NOISE = 0.02;
 const MAX_BANDS = 3;
+/**
+ * How far apart the colours' centres must sit before the flag counts as
+ * banded. Measured: every flag of stripes or halves lands above 0.45 and
+ * every flag with a field lands below 0.41, so the line goes in the gap.
+ */
+const BANDED = 0.43;
 
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+/**
+ * Whether two colours are the same colour twice.
+ *
+ * A flag drawn with shading, or one whose two halves were printed from
+ * slightly different inks, buckets into near-identical entries: Canada's leaf
+ * red and its bar red differ by a few points and were taking two of the three
+ * places, leaving no room for the white between them.
+ */
+function isSameColour(candidate, chosen) {
+  const c = rgb(candidate);
+  return chosen.some((other) => {
+    const o = rgb(other);
+    return Math.hypot(...c.map((v, k) => v - o[k])) < 46;
+  });
+}
 
 /**
  * Whether a colour is just the seam between two the flag already has.
@@ -162,11 +184,18 @@ async function flagColours(dir) {
         if (data[i + 3] < 200) continue;
         const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
         const key = `${r >> 4}-${g >> 4}-${b >> 4}`;
-        const bucket = buckets.get(key) ?? { n: 0, r: 0, g: 0, b: 0 };
+        const bucket =
+          buckets.get(key) ?? { n: 0, r: 0, g: 0, b: 0, x: 0, y: 0 };
+        const pixel = i / 4;
         bucket.n += 1;
         bucket.r += r;
         bucket.g += g;
         bucket.b += b;
+        /* Where in the flag the colour sits, as a fraction of each side, so
+           the bands can be put back in the flag's own order rather than in
+           order of area -- and so the two axes compare fairly. */
+        bucket.x += pixel % canvas.width;
+        bucket.y += Math.floor(pixel / canvas.width);
         buckets.set(key, bucket);
       }
       const total = [...buckets.values()].reduce((sum, b) => sum + b.n, 0) || 1;
@@ -183,6 +212,8 @@ async function flagColours(dir) {
               )
               .join(''),
           share: bucket.n / total,
+          x: bucket.x / bucket.n / canvas.width,
+          y: bucket.y / bucket.n / canvas.height,
         }));
     }, svg);
     out.set(file.replace('.svg', '').toUpperCase(), counted);
@@ -190,6 +221,51 @@ async function flagColours(dir) {
 
   await browser.close();
   return out;
+}
+
+/**
+ * The bands a flag is made of, in the order a reader sees them.
+ *
+ * Area decides which colours count; it must not decide their order. India is
+ * saffron above white above green, but its white carries the Ashoka Chakra
+ * and so covers less of the flag than the green does -- sorting by area put
+ * the green in the middle and made the mark read as a flag nobody flies. So
+ * each colour is also asked where it sits, and the bands are laid out along
+ * whichever axis actually separates them.
+ */
+function orderedBands(counted) {
+  const kept = [];
+  for (const band of counted) {
+    if (kept.length >= MAX_BANDS) break;
+    if (band.share < NOISE) break;
+    const chosen = kept.map((b) => b.colour);
+    if (isSameColour(band.colour, chosen)) continue;
+    if (kept.length >= 2 && isSeam(band.colour, chosen)) continue;
+    kept.push(band);
+  }
+  const clean = (bands) =>
+    bands.map(({ colour, share }) => ({
+      colour,
+      share: Number(share.toFixed(3)),
+    }));
+  if (kept.length < 2) return clean(kept);
+
+  const spread = (axis) =>
+    Math.max(...kept.map((band) => band[axis])) -
+    Math.min(...kept.map((band) => band[axis]));
+  const axis = spread('y') > spread('x') ? 'y' : 'x';
+
+  /* How far apart the centres sit is what says which kind of flag this is.
+     Stripes and halves put each colour in its own slice, so their centres
+     are far apart and position is the only honest order. A field with
+     something drawn on it puts every centre in the same place -- Denmark's
+     white cross and its red share a centre -- so position says nothing there
+     and would open the mark with the cross instead of the flag's own colour;
+     area is the honest order instead. Deciding this by which colour covered
+     most, rather than by where the colours sit, read Singapore and Portugal
+     backwards: in both the larger colour is a band, not a field. */
+  if (spread(axis) < BANDED) return clean(kept);
+  return clean([...kept].sort((a, b) => a[axis] - b[axis]));
 }
 
 const world = await fetchJson(WORLD);
@@ -220,15 +296,7 @@ for (const [iso2, { name, region }] of [...listed].sort((a, b) =>
     currencyCode: mine?.currencyCode || code,
     currencyName: currencies[code]?.name ?? '',
     currencySymbol: mine?.currencySymbol || currencies[code]?.symbol || '',
-    bands: (colours.get(iso2) ?? [])
-      .filter((band) => band.share >= NOISE)
-      .reduce((kept, band) => {
-        if (kept.length >= MAX_BANDS) return kept;
-        if (kept.length >= 2 && isSeam(band.colour, kept.map((b) => b.colour)))
-          return kept;
-        kept.push({ colour: band.colour, share: Number(band.share.toFixed(3)) });
-        return kept;
-      }, []),
+    bands: orderedBands(colours.get(iso2) ?? []),
   };
   if (!row.bands.length) problems.push(`${name} (${iso2}): no flag artwork`);
   if (!row.currencyCode) problems.push(`${name} (${iso2}): no currency`);

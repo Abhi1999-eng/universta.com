@@ -679,7 +679,7 @@ export function CountryOtherDestinations({
         <div className="switcher">
           {others.map((entry) => (
             <Link className="switcher__item" key={entry.name} href={`/study-abroad/${entry.slug}`}>
-              <FlagMark name={entry.name} iso2Code={entry.iso2Code} bands={entry.bands} />
+              <FlagMark bands={entry.bands} />
               <span className="cchip__name">{entry.name}</span>
               <span className="switcher__arrow" aria-hidden="true">
                 &rarr;
