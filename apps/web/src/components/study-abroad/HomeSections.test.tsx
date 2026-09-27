@@ -107,9 +107,11 @@ describe('homepage funnel sections', () => {
 });
 
 describe('homepage search and catalogue previews', () => {
-  /* The design's box searched a /search page this site does not have, so it
-     searches courses, and its placeholder says so rather than promising more. */
-  it('searches courses and offers the popular starting points', () => {
+  /* It searched the course listing, which was the only listing a query could
+     be handed to, so "Denmark" found the courses called Denmark -- none. It
+     goes to the search page now, which answers for the whole catalogue, and
+     it is still a plain form: Enter works before the script has loaded. */
+  it('searches the catalogue and offers the popular starting points', () => {
     const html = renderToStaticMarkup(
       <HomeHero
         directory={directory()}
@@ -119,9 +121,9 @@ describe('homepage search and catalogue previews', () => {
         ]}
       />,
     );
-    expect(html).toContain('action="/courses"');
+    expect(html).toContain('action="/search"');
     expect(html).toContain('name="q"');
-    expect(html).toContain('placeholder="Search courses, e.g. Computer Science"');
+    expect(html).toContain('placeholder="Search countries, courses, universities, scholarships…"');
     expect(html).toContain('href="/study-abroad/germany"');
     expect(html).toContain('href="/subjects/computer-science"');
   });

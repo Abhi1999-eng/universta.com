@@ -3,6 +3,7 @@ import type { DestinationDirectory } from '@/lib/study-abroad';
 import { destinationCounts, featuredDestinations } from '@/lib/study-abroad-view';
 import { AssessmentCta } from './AssessmentCta';
 import { FlagMark } from './FlagMark';
+import { SiteSearch } from './SiteSearch';
 
 /**
  * The homepage's funnel sections, from the approved design's home page.
@@ -144,35 +145,11 @@ export function HomeHero({
             </Link>
           </div>
 
-          {/* The design's box searched everything through a /search page this
-              site does not have. It searches courses here, the largest part
-              of the catalogue, and says so; destinations have their own
-              search a screen below, and the chips reach both. */}
-          <form className="bigsearch h-bigsearch" action="/courses" method="get" role="search">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#667085"
-              strokeWidth="1.8"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              className="bigsearch__input"
-              type="search"
-              name="q"
-              placeholder="Search courses, e.g. Computer Science"
-              aria-label="Search courses"
-              autoComplete="off"
-            />
-            <button className="btn btn--sm" type="submit">
-              Search
-            </button>
-          </form>
+          {/* It used to search courses alone -- the only listing a query could
+              be handed to -- so "Denmark" found the courses called Denmark, of
+              which there are none. It searches the catalogue now, and answers
+              under headings while the reader types. */}
+          <SiteSearch />
           {popular.length ? (
             <p className="bigsearch__ex">
               <span className="label">Popular</span>

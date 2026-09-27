@@ -35,6 +35,7 @@ import { StaticPageSeoModule } from './static-page-seo/static-page-seo.module';
 import { PreviewModule } from './preview/preview.module';
 import { VersionsModule } from './versions/versions.module';
 import { StatsPillsModule } from './stats-pills/stats-pills.module';
+import { SearchModule } from './search/search.module';
 import { SeoManagementModule } from './seo-management/seo-management.module';
 
 @Module({
@@ -74,6 +75,7 @@ import { SeoManagementModule } from './seo-management/seo-management.module';
     // ExpandedPublicController's generic `phase1/:resource`.
     LocationsModule,
     StatsPillsModule,
+    SearchModule,
     // Same reason again: literal `phase1/preview/page`.
     PreviewModule,
     VersionsModule,
