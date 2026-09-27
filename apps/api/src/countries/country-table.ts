@@ -935,8 +935,8 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     region: 'Latin America',
     iso2: 'CU',
     iso3: 'CUB',
-    currencyCode: 'CUC',
-    currencyName: 'Cuban convertible peso',
+    currencyCode: 'CUP',
+    currencyName: 'Cuban peso',
     currencySymbol: '$',
     bands: [
       {
@@ -3310,9 +3310,9 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     region: 'Middle East',
     iso2: 'PS',
     iso3: 'PSE',
-    currencyCode: 'EGP',
-    currencyName: 'Egyptian pound',
-    currencySymbol: 'E£',
+    currencyCode: 'ILS',
+    currencyName: 'Israeli new shekel',
+    currencySymbol: '₪',
     bands: [
       {
         colour: '#000000',
@@ -4499,9 +4499,9 @@ export const COUNTRY_TABLE: readonly CountryTableRow[] = [
     region: 'Africa',
     iso2: 'ZW',
     iso3: 'ZWE',
-    currencyCode: 'BWP',
-    currencyName: 'Botswana pula',
-    currencySymbol: 'P',
+    currencyCode: 'USD',
+    currencyName: 'United States dollar',
+    currencySymbol: '$',
     bands: [
       {
         colour: '#ffffff',
