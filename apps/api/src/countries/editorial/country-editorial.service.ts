@@ -414,6 +414,7 @@ export class CountryEditorialService {
     if (!record) throw notFound();
     const bundle = await this.profiles.publicBundle(country.id);
     return {
+      consultants: await this.consultantPresence(country.id),
       country,
       profiles: this.profiles.publicDetail(bundle),
       sections: record.contentSections.map((item) => this.section(item)),
@@ -436,6 +437,55 @@ export class CountryEditorialService {
         attribution: item.attribution,
         attributionNote: item.attributionNote,
       })),
+    };
+  }
+
+  /**
+   * Who a student could ask for help with this destination, and where they are.
+   *
+   * The guide ends by offering the assessment, which is Universta asking; a
+   * reader who would rather ask a person had nothing to go to. Consultants
+   * are already recorded against the destinations they work on and the
+   * cities they sit in, so this counts them rather than asking anybody to
+   * curate a second list that could disagree with the directory.
+   *
+   * Counted by consultant, not by office: one firm with three branches in a
+   * city is one consultant a student can approach.
+   */
+  private async consultantPresence(countryId: string) {
+    const consultants = await this.prisma.consultant.findMany({
+      where: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        countries: { some: { countryId } },
+      },
+      select: {
+        id: true,
+        locations: {
+          where: { location: { status: 'ACTIVE', deletedAt: null } },
+          select: { location: { select: { city: true } } },
+        },
+      },
+    });
+
+    const byCity = new Map<string, Set<string>>();
+    for (const consultant of consultants)
+      for (const { location } of consultant.locations) {
+        const city = location.city.trim();
+        if (!city) continue;
+        (byCity.get(city) ?? byCity.set(city, new Set()).get(city)!).add(
+          consultant.id,
+        );
+      }
+
+    return {
+      total: consultants.length,
+      /* The places a reader is likeliest to be, busiest first; a long tail of
+         one-office cities belongs on the directory, not in a chip row. */
+      cities: [...byCity.entries()]
+        .map(([city, ids]) => ({ city, count: ids.size }))
+        .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city))
+        .slice(0, 6),
     };
   }
 

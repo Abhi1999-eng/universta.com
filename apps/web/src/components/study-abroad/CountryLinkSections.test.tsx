@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Country, ProfileSummary } from '@/lib/countries';
+import { CountryConsultants } from './CountryConsultants';
 import {
   CountryCourses,
   countryCourses,
+  countryFigures,
   CountryNumbers,
   CountryScholarships,
   CountrySubjects,
@@ -300,5 +302,93 @@ describe('country guide catalogue sections', () => {
       />,
     );
     expect(html).toBe('');
+  });
+});
+
+describe('what a figure means', () => {
+  /* The band states a country's numbers and leaves a reader to work out what
+     to do with them. Each meaning is derived from the same published data as
+     the figure, so it cannot drift out of date separately from the number. */
+  const costed = () => profiles({ tuitionMin: '1500', tuitionMax: '12000' });
+
+  it('reads the intake months out of the figure that counted them', () => {
+    const figures = countryFigures(country(), costed());
+    const intakes = figures.find((figure) => figure.label === 'Intakes per year');
+    expect(intakes?.value).toBe('2');
+    expect(intakes?.meaning).toContain('April and October');
+  });
+
+  it('names the top of the range beside the bottom of it', () => {
+    const figures = countryFigures(country(), costed());
+    const tuition = figures.find((figure) => figure.label === 'Tuition from, per year');
+    expect(tuition?.meaning).toContain('€12,000');
+  });
+
+  /* Without a maximum there is no range to name, and inventing one would be
+     worse than saying less. */
+  it('says only what it has when there is no top of the range', () => {
+    const figures = countryFigures(country(), profiles({ tuitionMin: '1500' }));
+    const tuition = figures.find((figure) => figure.label === 'Tuition from, per year');
+    expect(tuition?.meaning).not.toContain('range runs to');
+    expect(tuition?.meaning).toContain('Germany');
+  });
+
+  it('counts the public universities against the profiled ones', () => {
+    const figures = countryFigures(country(), costed());
+    const paid = figures.find((figure) => figure.label === 'Public universities');
+    expect(paid?.meaning).toContain('Of the 5 profiled');
+  });
+
+  it('gives every figure on the band something to open', () => {
+    const figures = countryFigures(country(), costed());
+    expect(figures.filter((figure) => !figure.meaning.trim())).toEqual([]);
+  });
+});
+
+describe('the consultants panel', () => {
+  const presence = { total: 3, cities: [{ city: 'Delhi', count: 2 }, { city: 'Dubai', count: 1 }] };
+
+  it('carries the destination into the directory it links to', () => {
+    const html = renderToStaticMarkup(
+      <CountryConsultants
+        countryName="Germany"
+        countrySlug="germany"
+        presence={presence}
+        alt={false}
+      />,
+    );
+    expect(html).toContain('href="/study-abroad-consultants?country=germany"');
+    expect(html).toContain(
+      'href="/study-abroad-consultants?country=germany&amp;city=Delhi"',
+    );
+    expect(html).toContain('3 consultants on Universta');
+  });
+
+  it('counts one consultant as one, not as 1 consultants', () => {
+    const html = renderToStaticMarkup(
+      <CountryConsultants
+        countryName="Germany"
+        countrySlug="germany"
+        presence={{ total: 1, cities: [] }}
+        alt={false}
+      />,
+    );
+    expect(html).toContain('One consultant on Universta');
+  });
+
+  /* A destination nobody advises has no panel: an empty "Near you" row and a
+     link to a directory that will show nothing is worse than no offer. */
+  it('stands down for a destination with no consultants', () => {
+    for (const none of [undefined, { total: 0, cities: [] }])
+      expect(
+        renderToStaticMarkup(
+          <CountryConsultants
+            countryName="Germany"
+            countrySlug="germany"
+            presence={none}
+            alt={false}
+          />,
+        ),
+      ).toBe('');
   });
 });

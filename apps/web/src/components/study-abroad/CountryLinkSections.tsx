@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Country, CountryTestimonial, ProfileSummary } from '@/lib/countries';
+import { monthNames } from '@/lib/study-abroad-view';
 import { SectionHead } from './SectionHead';
 
 /**
@@ -48,6 +49,15 @@ function SplitHead({
 }
 
 /**
+ * A figure on the "by the numbers" band, and what it means for a reader.
+ *
+ * The meaning is derived from the same published data as the figure, never
+ * written per country: a number on its own decides nothing, and the honest
+ * thing to say about it is where it comes from and what it does not say.
+ */
+export type CountryFigure = { value: string; label: string; meaning: string };
+
+/**
  * "By the numbers": the figures a country actually has, in the order the
  * section shows them. A figure with nothing behind it is left out rather than
  * shown as a zero or a dash., in the order the section shows them.
@@ -59,45 +69,76 @@ function SplitHead({
 export function countryFigures(
   country: Country,
   profiles: ProfileSummary,
-): Array<{ value: string; label: string }> {
+): CountryFigure[] {
   const stats = country.derived?.statistics;
-  const intakeCount = country.configuration?.intakeMonths?.length ?? 0;
+  const months = country.configuration?.intakeMonths ?? [];
+  const intakeCount = months.length;
   const workMonths = country.configuration?.postStudyWorkPermitMonths ?? null;
   const symbol = country.currency?.symbol ?? '';
   const tuitionMin = profiles?.cost?.tuitionMin ?? null;
+  const tuitionMax = profiles?.cost?.tuitionMax ?? null;
   const internationalStudents = country.statistics?.internationalStudentsCount ?? null;
+  const money = (value: string | number) =>
+    `${symbol}${Number(value).toLocaleString('en-US')}`;
 
-  const figures: Array<{ value: string; label: string }> = [];
+  const figures: CountryFigure[] = [];
   if (stats?.universitiesCount)
-    figures.push({ value: String(stats.universitiesCount), label: 'Universities profiled' });
+    figures.push({
+      value: String(stats.universitiesCount),
+      label: 'Universities profiled',
+      meaning: `University profiles Universta holds for ${country.name}, each with its own courses, fees and entry requirements. It is what we cover, not a count of every institution in the country.`,
+    });
   if (stats?.publicUniversitiesCount)
     figures.push({
       value: String(stats.publicUniversitiesCount),
       label: 'Public universities',
+      meaning: stats.universitiesCount
+        ? `Of the ${stats.universitiesCount} profiled. A public university usually publishes one international fee for a programme; a private one sets its own, so the two are worth shortlisting separately.`
+        : 'A public university usually publishes one international fee for a programme; a private one sets its own, so the two are worth shortlisting separately.',
     });
   if (stats?.coursesCount)
-    figures.push({ value: String(stats.coursesCount), label: 'Programmes listed' });
+    figures.push({
+      value: String(stats.coursesCount),
+      label: 'Programmes listed',
+      meaning: `Programmes published across those universities, filterable by subject and level. A subject with few programmes here is a subject to check directly with the university before you build a shortlist around it.`,
+    });
   /* The one figure on the band that Universta cannot count for itself: it is
      published only because an editor recorded it. */
   if (internationalStudents)
     figures.push({
       value: internationalStudents.toLocaleString('en-US'),
       label: 'International students',
+      meaning: `The country's own published figure, recorded by an editor rather than counted by Universta. It says how used to international students the system is -- support services, English-taught provision, visa processing -- rather than anything about your own chances.`,
     });
   if (tuitionMin !== null && tuitionMin !== undefined)
     figures.push({
-      value: `${symbol}${Number(tuitionMin).toLocaleString('en-US')}`,
+      value: money(tuitionMin),
       label: 'Tuition from, per year',
+      meaning:
+        tuitionMax !== null && tuitionMax !== undefined
+          ? `The lowest international rate published for ${country.name}; the range runs to ${money(tuitionMax)}. Your own figure sits somewhere between the two and depends on the university and the programme, not on the destination alone.`
+          : `The lowest international rate published for ${country.name}. Your own figure depends on the university and the programme, not on the destination alone.`,
     });
   if (intakeCount)
     figures.push({
       value: String(intakeCount),
       label: intakeCount === 1 ? 'Intake per year' : 'Intakes per year',
+      meaning: `${listMonths(monthNames(months))}. Applications usually open several months ahead of each one, so the intake you are aiming at decides when your documents have to be ready -- not when the course starts.`,
     });
   if (workMonths)
-    figures.push({ value: String(workMonths), label: 'Months of post-study work' });
+    figures.push({
+      value: String(workMonths),
+      label: 'Months of post-study work',
+      meaning: `How long you may stay on to work after finishing. It is the length of the permit, not a job offer: it decides how much time you have to find work that could lead to a longer stay.`,
+    });
 
   return figures;
+}
+
+/** "January and September", "January, May and September". */
+function listMonths(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 /** Two figures is the floor: one number on its own is a statistic, not a section. */

@@ -18,6 +18,7 @@ import {
   CountryCourses,
   countryCourses,
   CountryNumbers,
+  countryFigures,
   countryUniversities,
   hasCountryFigures,
   CountryScholarships,
@@ -28,6 +29,8 @@ import {
   type CountryScholarshipCard,
 } from '@/components/study-abroad/CountryLinkSections';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
+import { CountryConsultants } from '@/components/study-abroad/CountryConsultants';
+import { CountryNumbersMeaning } from '@/components/study-abroad/CountryNumbersMeaning';
 import { EditorialSection, editorialRenders } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
@@ -168,6 +171,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     languageRenders ? 'language' : null,
     work.length ? 'work-visa' : null,
     hasCountryFigures(country, profiles) ? 'numbers' : null,
+    /* The band states the figures; this opens them. It has nothing to say
+       without them, so it stands or falls with the band above it. */
+    hasCountryFigures(country, profiles) ? 'numbers-meaning' : null,
     ...editorial.map((section) => `editorial:${section.id}`),
     consultantCards.length ? 'guidance' : null,
     testimonials.length ? 'testimonials' : null,
@@ -175,6 +181,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   ].filter((id): id is string => Boolean(id));
   const closing = [
     countryScholarships.length ? 'scholarship-funding' : null,
+    page.consultants?.total ? 'consultants' : null,
     others.length ? 'other-destinations' : null,
     'connect',
   ].filter((id): id is string => Boolean(id));
@@ -393,6 +400,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* BY THE NUMBERS — every figure already published for this country. */}
       <CountryNumbers country={country} profiles={profiles} n={number('numbers')} alt={band('numbers')} />
+      <CountryNumbersMeaning
+        figures={countryFigures(country, profiles)}
+        countryName={country.name}
+        n={number('numbers-meaning')}
+        alt={band('numbers-meaning')}
+      />
 
       {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
           and in the shape each one declares. */}
@@ -424,6 +437,15 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         country={country}
         scholarships={countryScholarships}
         alt={band('scholarship-funding')}
+      />
+
+      {/* Everything above is Universta answering; this is where to ask a
+          person, with the destination already carried into the filter. */}
+      <CountryConsultants
+        countryName={country.name}
+        countrySlug={country.slug}
+        presence={page.consultants}
+        alt={band('consultants')}
       />
 
       <PlanBand
