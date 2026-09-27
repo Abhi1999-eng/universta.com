@@ -290,9 +290,14 @@
   overflow: hidden;
   display: grid; place-items: center;
 }
-/* Full strength: the bands were held at a third of their opacity only so the
-   ISO code printed over them stayed readable. Nothing is printed over them
-   now, so the mark can be the flag's own colours. */
+/* The flag covers the mark; the bands sit under it for a country with no ISO
+   code, and for the moment before the file arrives. The artwork is 4:3 and
+   the mark is 38x28, so `cover` trims a hair off the sides rather than
+   squashing a flag out of shape. */
+.sa .cchip__flag{
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
 .sa .cchip__bands{ position: absolute; inset: 0; display: flex; }
 .sa .cchip__bands span{ flex: 1; }
 .sa .cchip__name{ font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }

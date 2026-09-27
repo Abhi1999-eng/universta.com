@@ -180,9 +180,48 @@ describe('destination directory', () => {
     expect(html).toContain('background:#0C2038');
   });
 
-  /* The mark carried the ISO code across the bands, which meant dimming them
-     to a third of their opacity to keep two letters readable -- letters the
-     country's own name already said, right beside them. */
+  /* Bands can say what a flag is made of and not what it looks like: India's
+     stripes run across and were drawn down the chip, and Japan's disc is not
+     a stripe at all. The mark draws the flag itself now. */
+  it('draws the country\'s own flag', () => {
+    const html = renderToStaticMarkup(
+      <DirectoryView
+        directory={directory({
+          available: [
+            destination({ name: 'India', slug: 'india', iso2Code: 'IN', bands: ['#ff9933', '#ffffff', '#128807'] }),
+          ],
+          comingSoon: [],
+          counts: { available: 1, popular: 1, total: 1 },
+        })}
+      />,
+    );
+    expect(html).toContain('src="/flags/in.svg"');
+    /* Decorative: the name is beside it as real text. */
+    expect(html).toContain('alt=""');
+  });
+
+  /* A destination outside the reference list has nothing to ask for, so the
+     card keeps the bands rather than requesting a flag that is not there and
+     drawing the browser's broken-image mark over them. A made-up code is the
+     same case: the artwork ships with the site, so what it covers is known
+     before the request rather than after it fails. */
+  it.each([
+    ['no ISO code', null],
+    ['a code the artwork does not cover', 'QX'],
+  ])('asks for no artwork with %s', (_case, iso2Code) => {
+    const html = renderToStaticMarkup(
+      <DirectoryView
+        directory={directory({
+          available: [destination({ name: 'Testland', slug: 'testland', iso2Code, bands: null })],
+          comingSoon: [],
+          counts: { available: 1, popular: 1, total: 1 },
+        })}
+      />,
+    );
+    expect(html).not.toContain('/flags/');
+    expect(html).toContain('background:#0C2038');
+  });
+
   it('writes nothing across the mark', () => {
     const html = renderToStaticMarkup(
       <DirectoryView

@@ -711,7 +711,7 @@ export function HomeDestinations({
               data-country
               data-status={entry.isPopular ? 'popular' : 'published'}
             >
-              <FlagMark bands={entry.bands} />
+              <FlagMark iso2Code={entry.iso2Code} bands={entry.bands} />
               <span className="cchip__name" title={entry.name}>
                 {entry.name}
               </span>

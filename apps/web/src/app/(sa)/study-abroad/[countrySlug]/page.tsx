@@ -304,7 +304,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                 <div className="snap__head">
                   <span className="snap__title">Country snapshot</span>
                   <span className="cchip" aria-hidden="true">
-                    <FlagMark bands={bands} />
+                    <FlagMark iso2Code={country.iso2Code ?? null} bands={bands} />
                   </span>
                 </div>
                 {snapshot.map((row) => (

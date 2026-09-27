@@ -31,7 +31,15 @@
  */
 
 import { chromium } from '@playwright/test';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -272,7 +280,8 @@ const world = await fetchJson(WORLD);
 const byIso = new Map(world.map((entry) => [entry.cca2, entry]));
 const listed = listedCountries();
 const already = curated();
-const colours = await flagColours(downloadFlags());
+const artwork = downloadFlags();
+const colours = await flagColours(artwork);
 
 const rows = [];
 const problems = [];
@@ -427,12 +436,50 @@ export function flagEmojiFromIso(iso2: string | null | undefined) {
 `,
 );
 
+/**
+ * The flag artwork, beside the colours measured from it.
+ *
+ * Three colour bands can say what a flag is made of and not what it looks
+ * like: India's stripes run across and were being drawn down the chip, and
+ * Japan's disc is not a stripe at all, so it came out as three bands of a
+ * flag nobody flies. A mark 38 pixels wide has room for the real thing.
+ *
+ * The bands stay in the table -- the rule under a country's name is five
+ * pixels tall, which is an accent and no place for artwork -- and these files
+ * are what the chips draw. They are the same MIT-licensed set the colours are
+ * measured from, so the two can never disagree, and they are served from this
+ * repo rather than fetched, so there is nothing to depend on at runtime.
+ */
+const flagDir = join(ROOT, 'apps/web/public/flags');
+rmSync(flagDir, { recursive: true, force: true });
+mkdirSync(flagDir, { recursive: true });
+for (const row of rows)
+  copyFileSync(
+    join(artwork, `${row.iso2.toLowerCase()}.svg`),
+    join(flagDir, `${row.iso2.toLowerCase()}.svg`),
+  );
+
+/* Which codes have artwork, for the site to ask before it asks for a file.
+   A country the catalogue holds but this table does not -- a test record, a
+   made-up code -- would otherwise request a flag that is not there and draw
+   the browser's broken-image mark over its own colours. */
+writeFileSync(
+  join(ROOT, 'apps/web/src/lib/flag-codes.ts'),
+  banner(
+    "The countries whose flag artwork ships with the site.\n *\n * Generated beside public/flags: asking this before rendering an <img>\n * is what keeps a record with an unknown ISO code from drawing a broken\n * image instead of its colour bands.",
+  ) +
+    `export const FLAG_CODES: ReadonlySet<string> = new Set(${JSON.stringify(
+      rows.map((row) => row.iso2.toLowerCase()).sort(),
+    )});\n\n/** Whether the site can draw this country's flag. */\nexport function hasFlag(iso2Code: string | null | undefined): boolean {\n  const code = iso2Code?.trim().toLowerCase();\n  return code ? FLAG_CODES.has(code) : false;\n}\n`,
+);
+
 /* The repo's lint rewrites quotes and trailing commas, and CI fails a build
    whose tree is not clean afterwards. Formatting the output here means
    generating and then linting leaves nothing to commit twice. */
 for (const [workspace, file] of [
   ['apps/api', 'src/countries/country-table.ts'],
   ['apps/admin', 'src/features/catalog/currency-options.ts'],
+  ['apps/web', 'src/lib/flag-codes.ts'],
 ])
   execFileSync(
     'npx',
@@ -441,5 +488,6 @@ for (const [workspace, file] of [
   );
 
 console.log(`countries   : ${rows.length}`);
+console.log(`flag files  : ${readdirSync(flagDir).length}`);
 console.log(`currencies  : ${currencies.size}`);
 console.log(`with bands  : ${rows.filter((row) => row.bands.length).length}`);
