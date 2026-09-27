@@ -1,4 +1,5 @@
 import { changedColumns } from './row-diff';
+import { bulkFields, bulkResource } from './bulk-resources';
 import type { BulkField } from './bulk-resources';
 
 const field = (label: string, type: BulkField['type'] = 'text'): BulkField => ({
@@ -137,5 +138,52 @@ describe('changedColumns', () => {
     const row = { intakes: 'September|February intake' };
     const stored = { intakes: 'September | February intake' };
     expect(changedColumns(FIELDS, row, stored)).toEqual([]);
+  });
+
+  /**
+   * Resources that do not declare their fields get a humanised `label`
+   * ("Employment Type") while the uploaded row and `toExportRow` both speak
+   * in keys ("employmentType"). Comparing on the label matched nothing, so
+   * every row of those resources looked unchanged and real edits were
+   * silently dropped. Found by CI, on the jobs e2e.
+   */
+  it('compares a resource whose labels are not its keys', () => {
+    const definition = bulkResource('jobs');
+    const row = {
+      slug: 'bulk-e2e-job-a',
+      title: 'Bulk E2E Job A Again',
+      status: 'PUBLISHED',
+      __line: '2',
+    };
+    const stored = definition.toExportRow({
+      slug: 'bulk-e2e-job-a',
+      title: 'Bulk E2E Job A',
+      department: 'Operations',
+      status: 'PUBLISHED',
+    });
+
+    expect(changedColumns(bulkFields(definition), row, stored)).toEqual([
+      'title',
+    ]);
+  });
+
+  it('still reports nothing when that resource repeats itself', () => {
+    const definition = bulkResource('jobs');
+    const stored = definition.toExportRow({
+      slug: 'bulk-e2e-job-a',
+      title: 'Bulk E2E Job A',
+      department: 'Operations',
+      employmentType: 'FULL_TIME',
+      status: 'PUBLISHED',
+    });
+    const row = {
+      slug: 'bulk-e2e-job-a',
+      title: 'Bulk E2E Job A',
+      employmentType: 'FULL_TIME',
+      status: 'PUBLISHED',
+      __line: '2',
+    };
+
+    expect(changedColumns(bulkFields(definition), row, stored)).toEqual([]);
   });
 });

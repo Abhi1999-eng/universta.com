@@ -111,7 +111,11 @@ export function changedColumns(
 ): string[] {
   const changed: string[] = [];
   for (const field of fields) {
-    const key = field.label;
+    /* `key`, never `label`: an uploaded row is normalised onto field keys and
+       `toExportRow` is written in them too. `label` is a display name -- for
+       resources that do not declare their fields it is humanised, so
+       "employmentType" arrives as "Employment Type" and matches nothing. */
+    const key = field.key;
     /* Absent from the sheet: the upload is silent about it, not clearing it. */
     if (!(key in row)) continue;
     const incoming = row[key];
