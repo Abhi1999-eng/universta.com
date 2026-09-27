@@ -175,8 +175,8 @@ export const CURRENCY_OPTIONS: readonly CurrencyOption[] = [
     symbol: "₡"
   },
   {
-    code: "CUC",
-    name: "Cuban convertible peso",
+    code: "CUP",
+    name: "Cuban peso",
     symbol: "$"
   },
   {

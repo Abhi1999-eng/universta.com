@@ -110,6 +110,23 @@ describe('the country table', () => {
     expect(incomplete).toEqual([]);
   });
 
+  /* Thirteen countries list more than one currency and the dataset's order
+     is alphabetical, not practical. For ten the country's own currency sorts
+     first anyway; for these three it does not, and a fee quoted in the
+     dataset's first pick would be a fee no university charges. */
+  it('prices a country in the currency it actually uses', () => {
+    const byIso = new Map(COUNTRY_TABLE.map((row) => [row.iso2, row]));
+    for (const [iso2, code] of [
+      ['CU', 'CUP'],
+      ['PS', 'ILS'],
+      ['ZW', 'USD'],
+    ] as Array<[string, string]>)
+      expect({ iso2, code: byIso.get(iso2)?.currencyCode }).toEqual({
+        iso2,
+        code,
+      });
+  });
+
   /* The curated entries carry judgement the reference data does not: "KSh"
      rather than the "Sh" it gives Kenya, Tanzania and Uganda alike. */
   it('keeps the curated currency symbols rather than the dataset ones', () => {

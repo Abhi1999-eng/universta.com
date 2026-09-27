@@ -107,6 +107,18 @@ function isSeam(candidate, chosen) {
    Heard and Micronesia -- and only the last is a place anyone studies in. */
 const CURRENCY_GAPS = { FM: { code: 'USD', name: 'United States dollar', symbol: '$' } };
 
+/**
+ * Which currency a country that lists several actually prices things in.
+ *
+ * Thirteen entries carry more than one, and for ten of them the country's
+ * own currency happens to sort first, so taking the first was right by
+ * accident. For these three it is wrong: Cuba's convertible peso was
+ * withdrawn in 2021, Palestine prices in the shekel rather than the Egyptian
+ * pound, and Zimbabwe's list opens with the Botswana pula. A fee quoted in
+ * any of those would be a fee no university charges.
+ */
+const CURRENCY_PICKS = { CU: 'CUP', PS: 'ILS', ZW: 'USD' };
+
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 
 async function fetchJson(url) {
@@ -295,7 +307,11 @@ for (const [iso2, { name, region }] of [...listed].sort((a, b) =>
     : CURRENCY_GAPS[iso2]
       ? { [CURRENCY_GAPS[iso2].code]: CURRENCY_GAPS[iso2] }
       : {};
-  const code = Object.keys(currencies)[0] ?? '';
+  const codes = Object.keys(currencies);
+  const code =
+    (CURRENCY_PICKS[iso2] && codes.includes(CURRENCY_PICKS[iso2])
+      ? CURRENCY_PICKS[iso2]
+      : codes[0]) ?? '';
 
   const row = {
     name,
