@@ -644,10 +644,35 @@ export class BulkOperationsService {
         message: 'None of the selected records could be archived',
         details: null,
       });
-    const result = await table.updateMany({
-      where: { id: { in: archivable }, deletedAt: null },
-      data: { deletedAt: new Date(), status: 'ARCHIVED' },
-    });
+    const deletedAt = new Date();
+    /**
+     * A country's name, slug and ISO codes are each unique together with its
+     * `deletedKey`, which is empty while the row is live. Archiving without
+     * filling that key leaves the pair ("algeria", "") in the index, so the
+     * slug stays taken and the country can never be created again -- not by
+     * hand and not by the import that put it there. The editor's own delete
+     * has always filled it; this is the same soft delete, so it fills it too.
+     *
+     * Written one row at a time because each row's key is its own id, which
+     * `updateMany` cannot express.
+     */
+    const result = definition.releasesUniqueKeys
+      ? {
+          count: (
+            await this.prisma.$transaction(
+              archivable.map((id) =>
+                table.updateMany({
+                  where: { id, deletedAt: null },
+                  data: { deletedAt, status: 'ARCHIVED', deletedKey: id },
+                }),
+              ),
+            )
+          ).reduce((sum: number, one: { count: number }) => sum + one.count, 0),
+        }
+      : await table.updateMany({
+          where: { id: { in: archivable }, deletedAt: null },
+          data: { deletedAt, status: 'ARCHIVED' },
+        });
     await writeAudit(
       this.prisma,
       request,
