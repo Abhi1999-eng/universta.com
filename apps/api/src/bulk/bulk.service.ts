@@ -14,6 +14,7 @@ import {
   type BulkRow,
 } from './bulk-resources';
 import { parseCsv, rowsWithHeader, toCsv } from './csv.util';
+import { changedColumns } from './row-diff';
 import { parseXlsx, toXlsx, toXlsxTemplate } from './xlsx.util';
 
 const MAX_ROWS = 2000;
@@ -58,6 +59,8 @@ export interface ImportSummary {
   totalRows: number;
   created: number;
   updated: number;
+  /** Rows whose record already said exactly what the sheet says. */
+  unchanged: number;
   failed: number;
   errors: RowError[];
 }
@@ -436,6 +439,36 @@ export class BulkOperationsService {
     });
   }
 
+  /**
+   * Which columns of an uploaded row differ from the stored record, or null
+   * when the record cannot be read back in the shape the sheet uses.
+   *
+   * Null means "no opinion", and the caller writes the row rather than risking
+   * a skip it cannot justify: not knowing whether something changed is never a
+   * reason to drop an edit.
+   */
+  private async changedAgainstStored(
+    resourceKey: string,
+    definition: BulkResourceDefinition,
+    id: string,
+    row: BulkRow,
+  ): Promise<string[] | null> {
+    try {
+      const stored = (await delegate(this.prisma, definition).findFirst({
+        where: { id },
+        include: BulkOperationsService.INCLUDE_MAP[resourceKey],
+      })) as Record<string, unknown> | null;
+      if (!stored) return null;
+      return changedColumns(
+        bulkFields(definition),
+        row,
+        definition.toExportRow(stored),
+      );
+    } catch {
+      return null;
+    }
+  }
+
   private async validateRows(
     definition: BulkResourceDefinition,
     rows: BulkRow[],
@@ -489,11 +522,12 @@ export class BulkOperationsService {
       totalRows: rows.length,
       created: 0,
       updated: 0,
+      unchanged: 0,
       failed: 0,
       errors: [],
     };
     const table = delegate(this.prisma, definition);
-    for (const { line, parsed } of validated) {
+    for (const { line, row, parsed } of validated) {
       if (parsed.errors) {
         summary.failed += 1;
         summary.errors.push({ line, errors: parsed.errors });
@@ -531,12 +565,27 @@ export class BulkOperationsService {
           }
         }
         if (existing) {
+          /* A row that says nothing new is not a conflict and not an update.
+             Re-sending a whole sheet to change three countries should touch
+             three records, whichever mode it is sent in. */
+          const changed = await this.changedAgainstStored(
+            resourceKey,
+            definition,
+            existing.id,
+            row,
+          );
+          if (changed !== null && changed.length === 0) {
+            summary.unchanged += 1;
+            continue;
+          }
           if (mode !== 'upsert') {
             summary.failed += 1;
             summary.errors.push({
               line,
               errors: [
-                `a record with slug "${slug}" already exists (use upsert mode to update it)`,
+                changed?.length
+                  ? `a record with slug "${slug}" already exists and this row changes ${changed.join(', ')} (use upsert mode to apply it)`
+                  : `a record with slug "${slug}" already exists (use upsert mode to update it)`,
               ],
             });
             continue;
@@ -565,9 +614,10 @@ export class BulkOperationsService {
         totalRows: summary.totalRows,
         created: summary.created,
         updated: summary.updated,
+        unchanged: summary.unchanged,
         failed: summary.failed,
       },
-      `Bulk ${mode} import: ${summary.created} created, ${summary.updated} updated, ${summary.failed} failed`,
+      `Bulk ${mode} import: ${summary.created} created, ${summary.updated} updated, ${summary.unchanged} unchanged, ${summary.failed} failed`,
     );
     return summary;
   }

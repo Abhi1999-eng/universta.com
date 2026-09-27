@@ -17,6 +17,8 @@ type ImportSummary = {
   totalRows: number;
   created: number;
   updated: number;
+  /** Rows whose record already matched the sheet, so nothing was written. */
+  unchanged: number;
   failed: number;
   errors: RowError[];
 };
@@ -278,7 +280,11 @@ export function BulkDataManager() {
       setImportResult(result);
       if (result.errors.length === 0) {
         setNotice(
-          `Import complete: ${result.created} created and ${result.updated} updated in the database.`,
+          `Import complete: ${result.created} created, ${result.updated} updated${
+            result.unchanged
+              ? ` and ${result.unchanged} already up to date`
+              : ""
+          }.`,
         );
       }
       await loadRecords(selectedKey);
@@ -611,7 +617,7 @@ export function BulkDataManager() {
                       : "Database import completed"}
                   </p>
                   <p className="mt-1 text-xs">
-                    {importResult.created} created · {importResult.updated} updated · {importResult.failed} failed · {importResult.totalRows} total
+                    {importResult.created} created · {importResult.updated} updated · {importResult.unchanged} unchanged · {importResult.failed} failed · {importResult.totalRows} total
                   </p>
                 </div>
                 <RowErrors
