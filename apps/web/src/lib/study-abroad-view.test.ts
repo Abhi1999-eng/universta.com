@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { CountryPage } from './countries';
 import {
   alternatingBands,
-  builtInWhyRenders,
   costBreakdown,
   countrySnapshot,
   guideIntakes,
@@ -472,31 +471,5 @@ describe('journeyColumns', () => {
      eight application steps six and two. */
   it('puts up to five steps on one row, and divides longer runs evenly', () => {
     expect([1, 3, 5, 6, 8, 9, 7].map(journeyColumns)).toEqual([1, 3, 5, 3, 4, 3, 4]);
-  });
-});
-
-describe('builtInWhyRenders', () => {
-  it('draws the feature grid when nobody has written the section', () => {
-    expect(builtInWhyRenders([{ code: 'a' }], [])).toBe(true);
-  });
-
-  /* Two sections in a row headed "Why study in X": the ticked labels, then
-     the prose the author wrote under the same title. The one they wrote is
-     the one they meant. */
-  it('stands down for a why-study section the author wrote', () => {
-    expect(
-      builtInWhyRenders([{ code: 'a' }], [{ sectionKey: 'why-study' }]),
-    ).toBe(false);
-  });
-
-  it('is unmoved by an editorial section about something else', () => {
-    expect(
-      builtInWhyRenders([{ code: 'a' }], [{ sectionKey: 'cost-of-study' }]),
-    ).toBe(true);
-  });
-
-  it('has nothing to draw without features', () => {
-    expect(builtInWhyRenders(undefined, [])).toBe(false);
-    expect(builtInWhyRenders([], [])).toBe(false);
   });
 });

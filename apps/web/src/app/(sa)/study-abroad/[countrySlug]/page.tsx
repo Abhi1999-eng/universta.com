@@ -39,7 +39,6 @@ import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
 import {
   alternatingBands,
-  builtInWhyRenders,
   costBreakdown,
   countrySnapshot,
   intakeCards,
@@ -127,10 +126,6 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       : 'Explore universities, costs, admission requirements, intakes, language requirements and career pathways — all in one place.';
   const overviewLead = shortText.length > 240 ? shortText : null;
   const editorial = sections.filter(editorialRenders);
-  const whyRenders = builtInWhyRenders(
-    country.configuration?.features,
-    editorial,
-  );
   const language = profiles.language;
   const languageRenders = Boolean(
     language &&
@@ -161,7 +156,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
    * questions take no number, as in the design.
    */
   const run = [
-    whyRenders ? 'why' : null,
+    country.configuration?.features?.length ? 'why' : null,
     country.overview || overviewLead ? 'overview' : null,
     paths.length ? 'study-paths' : null,
     countryUniversities(country).length ? 'universities' : null,
@@ -337,9 +332,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </div>
       </section>
 
-      {whyRenders ? (
-        <CountryWhy country={country} n={number('why')} alt={band('why')} />
-      ) : null}
+      <CountryWhy country={country} n={number('why')} alt={band('why')} />
       <CountryOverview
         country={country}
         lead={overviewLead}

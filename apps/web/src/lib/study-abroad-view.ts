@@ -532,28 +532,3 @@ export function featuredDestinations(available: Destination[], limit = 8): Desti
     limit,
   );
 }
-
-/**
- * Whether the page draws the "why" section itself.
- *
- * The built-in one is a grid of the short feature labels ticked in the
- * country's configuration, headed "Why study in X". The editorial section
- * keys mirror the built-in sections by design -- "why-study",
- * "cost-of-study", "universities" and the rest -- so a country whose author
- * ticked the features and then wrote the section properly published both:
- * the labels under the page's own heading, and the prose further down under
- * the author's. On Australia and Canada, where the author had titled another
- * section "Why study in X" as well, that exact heading appeared twice on one
- * page.
- *
- * The section they wrote is the one they meant, so the grid stands down for
- * it. The labels are not lost with it; they are what the destination cards
- * carry.
- */
-export function builtInWhyRenders(
-  features: readonly unknown[] | undefined,
-  renderedSections: readonly { sectionKey: string }[],
-): boolean {
-  if (!features?.length) return false;
-  return !renderedSections.some((section) => section.sectionKey === 'why-study');
-}
