@@ -73,6 +73,16 @@ export interface BulkResourceDefinition {
   /** Returns a human-readable reason the row can't be archived (e.g. "3
    * cities still reference this state"), or null if it's safe to archive. */
   dependencyCheck?(id: string, prisma: PrismaService): Promise<string | null>;
+  /**
+   * Whether this model holds a `deletedKey` that its unique indexes are part
+   * of, so a soft-deleted row has to fill it to let the name, slug or code it
+   * was using be used again.
+   *
+   * Only countries carry the column today. Archiving anything else leaves its
+   * slug taken, which is a schema question rather than one this service can
+   * answer, so nothing pretends otherwise here.
+   */
+  releasesUniqueKeys?: boolean;
 }
 
 const relationLabels: Record<string, string> = {
@@ -192,6 +202,8 @@ const countries: BulkResourceDefinition = {
   label: 'Countries',
   model: 'country',
   uniqueColumn: 'slug',
+  /* name, slug, iso2Code and iso3Code are each unique with `deletedKey`. */
+  releasesUniqueKeys: true,
   columns: [
     'uid',
     'slug',
