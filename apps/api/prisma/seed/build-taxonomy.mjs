@@ -67,7 +67,14 @@ lines.push('ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status)
 lines.push('');
 
 lines.push('-- 2. Subjects that are no longer part of the taxonomy.');
-lines.push(`DELETE FROM subjects WHERE slug NOT IN (${[...subjects.keys()].map((n) => q(slugify(n))).join(', ')});`);
+lines.push('--    Their specializations go first: sub_subjects.subject_id is ON');
+lines.push('--    DELETE RESTRICT, so a subject that still has one cannot be');
+lines.push('--    deleted and the whole statement fails.');
+const keep = [...subjects.keys()].map((n) => q(slugify(n))).join(', ');
+lines.push(
+  `DELETE ss FROM sub_subjects ss JOIN subjects s ON s.id = ss.subject_id WHERE s.slug NOT IN (${keep});`,
+);
+lines.push(`DELETE FROM subjects WHERE slug NOT IN (${keep});`);
 lines.push('');
 
 lines.push(`-- 3. The ${specTotal} specializations, each under its own subject.`);
