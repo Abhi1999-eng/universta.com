@@ -760,11 +760,11 @@ model SubSubject {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  subject      Subject     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  iconMedia    MediaAsset? @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
-  listingMedia MediaAsset? @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
-  createdBy    User?       @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy    User?       @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  subject      Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  iconMedia    MediaAsset?         @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia MediaAsset?         @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  createdBy    User?               @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?               @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   courses      Course[]
   countries    CountrySubSubject[]
 
