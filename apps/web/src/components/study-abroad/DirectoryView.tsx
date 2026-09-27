@@ -228,7 +228,7 @@ export function DirectoryView({
                         data-country
                         data-status={entry.isPopular ? 'popular' : 'published'}
                       >
-                        <FlagMark bands={entry.bands} />
+                        <FlagMark iso2Code={entry.iso2Code} bands={entry.bands} />
                         <span className="cchip__name" title={entry.name}>
                           {entry.name}
                         </span>
@@ -248,7 +248,7 @@ export function DirectoryView({
                         data-country
                         data-status="soon"
                       >
-                        <FlagMark bands={entry.bands} />
+                        <FlagMark iso2Code={entry.iso2Code} bands={entry.bands} />
                         <span className="cchip__name" title={entry.name}>
                           {entry.name}
                         </span>
