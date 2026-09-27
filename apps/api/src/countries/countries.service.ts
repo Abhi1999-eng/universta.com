@@ -1158,6 +1158,7 @@ export class CountriesService {
     try {
       const updated = await this.prisma.$transaction(async (tx) => {
         await this.ensureSubjects(dto.subjectIds, tx);
+        await this.ensureSubSubjects(dto.subSubjectIds, tx);
         await this.ensureTags(dto.tagIds, tx);
         if (dto.subjectIds !== undefined) {
           await tx.countrySubject.deleteMany({ where: { countryId: id } });
