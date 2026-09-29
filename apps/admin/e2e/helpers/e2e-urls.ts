@@ -9,9 +9,12 @@ export const webBaseUrl =
  * A public route that still wears the Admin-editable global header and footer.
  *
  * The homepage does not. The Study Abroad route family ships its own header
- * and footer as part of the approved design, and `/` belongs to that family
- * now that the destination listing is the homepage, so the site chrome stands
- * down there. Tests about the chrome itself ask a route outside that family;
- * `/courses` is an ordinary public listing and has no reason to leave it.
+ * and footer as part of the approved design, and it now covers `/`,
+ * `/subjects`, `/specializations` and `/courses` as well as the destination
+ * guides, so the site chrome stands down on all of them.
+ *
+ * Tests about the chrome itself need a route outside that family. This was
+ * `/courses` until the approved design reached it; `/universities` is an
+ * ordinary public listing with no reason to leave.
  */
-export const chromeBaseUrl = `${webBaseUrl}/courses`;
+export const chromeBaseUrl = `${webBaseUrl}/universities`;

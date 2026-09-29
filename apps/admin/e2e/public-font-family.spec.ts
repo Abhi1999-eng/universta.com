@@ -19,11 +19,10 @@ const viewports = [
 /* The Study Abroad family is not audited here and never was: the approved
  * design brings its own typefaces (Sora and Manrope), scoped to `.sa`, rather
  * than the site's Inter. `/` left this list when the destination listing
- * became the homepage and joined that family -- the same reason
+ * became the homepage and joined that family, and `/courses` and `/subjects`
+ * left it when the approved design reached them too -- the same reason
  * `/study-abroad/...` was never in it. */
 const publicRoutes = [
-  '/courses',
-  '/subjects',
   '/scholarships',
   '/study-abroad-consultants',
   '/events',
