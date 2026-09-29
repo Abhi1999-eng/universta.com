@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ContinueJourney } from '@/components/study-abroad/ContinueJourney';
 import {
   HomeCourses,
   HomeDestinations,
@@ -127,6 +128,11 @@ export default async function HomePage() {
         popular={popular}
         scholarshipTotal={Number.isFinite(scholarshipTotal) ? scholarshipTotal : undefined}
       />
+      {/* The strip only exists once this visitor has been somewhere, and only
+          their browser knows that, so it cannot join the server's band
+          alternation. Sharing the shade of the section it introduces means
+          nothing below shifts on the render where it appears. */}
+      <ContinueJourney alt={band('paths')} />
       <StartPaths alt={band('paths')} />
 
       {/* Where the design's own "countries" section sat: eight guides and

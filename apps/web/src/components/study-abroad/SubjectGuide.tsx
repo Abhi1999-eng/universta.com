@@ -90,14 +90,19 @@ export function SubjectGuide({
           />
           <div className="subjhero">
             <span className="subjhero__icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              >
-                <path d="M4 5h16v14H4z M4 9h16" />
-              </svg>
+              {subject.iconMedia ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={subject.iconMedia.url} alt="" />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                >
+                  <path d="M4 5h16v14H4z M4 9h16" />
+                </svg>
+              )}
             </span>
             <div>
               <p className="hero__eyebrow">

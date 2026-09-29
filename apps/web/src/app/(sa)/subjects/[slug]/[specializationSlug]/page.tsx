@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSpecialization } from '@/lib/catalog';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
+import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
 import { jsonLdString } from '@/lib/json-ld';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,11 @@ export default async function SpecializationDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
+      />
+      <RecordVisit
+        kind="specialization"
+        href={`/subjects/${specialization.subject.slug}/${specialization.slug}`}
+        title={specialization.name}
       />
       <SpecializationGuide specialization={specialization} />
     </>
