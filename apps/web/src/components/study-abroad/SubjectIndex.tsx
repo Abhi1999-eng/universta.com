@@ -200,7 +200,17 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                       {subject.levels?.length ? (
                         <>
                           {' · '}
-                          {subject.levels.map((entry) => entry.name).join(', ')}
+                          {/* A summary, not an inventory: our level names are
+                              full titles ("Post Graduate Diploma in
+                              Management"), and five of them turned this line
+                              into a paragraph. */}
+                          {subject.levels
+                            .slice(0, 3)
+                            .map((entry) => entry.name)
+                            .join(', ')}
+                          {subject.levels.length > 3
+                            ? ` +${subject.levels.length - 3}`
+                            : ''}
                         </>
                       ) : null}
                     </p>

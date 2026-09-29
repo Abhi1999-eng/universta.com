@@ -133,7 +133,7 @@ export function SubjectGuide({
       {stats.length ? (
         <section className="sec sec--white sec--tight">
           <div className="wrap">
-            <div className="unisnap">
+            <div className="unisnap unisnap--fit">
               {stats.map((row) => (
                 <div className="unisnap__cell" key={row.label}>
                   <span className="label">{row.label}</span>

@@ -2231,3 +2231,9 @@
 .sa .subjcard__meta,
 .sa .subjcard__desc,
 .sa .specpill { overflow-wrap: anywhere; }
+
+/* The reference's snapshot strip always holds exactly five cells, so it fixes
+   five columns. A subject states only the figures it has, and with two of them
+   the fixed grid left three empty columns of white. This variant sizes itself
+   to the cells that render and still lays five out evenly when all five do. */
+.sa .unisnap--fit { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
