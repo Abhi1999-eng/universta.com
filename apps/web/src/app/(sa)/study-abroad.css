@@ -2160,5 +2160,21 @@
 }
 /* The course index puts its filter panel beside the results; the reference
    does the same with a page-level grid rather than a class of its own. */
+/* `min-width: 0` on the children: a grid track is floored at its content's
+   min-content width, and the results column holds a search field and a card
+   grid that refuse to shrink, so without it the page scrolled sideways on a
+   tablet. */
 .sa .courselayout{ display: grid; gap: clamp(18px, 2.4vw, 32px); align-items: start; }
+.sa .courselayout > *{ min-width: 0; }
 @media (min-width: 900px){ .sa .courselayout{ grid-template-columns: 260px minmax(0, 1fr); } }
+.sa .cresults{ min-width: 0; }
+.sa .cresults__search{ max-width: 100%; }
+/* A grid item's track is floored at its min-content width, and a programme
+   name is one long unbreakable run more often than not. Without these the
+   two-column card grid pushed the page sideways on a tablet. */
+.sa .coursegrid > *{ min-width: 0; }
+.sa .coursecard{ min-width: 0; }
+.sa .coursecard__name,
+.sa .coursecard__uni,
+.sa .coursecard__type,
+.sa .coursecard__facts .datum{ overflow-wrap: anywhere; }
