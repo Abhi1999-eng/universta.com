@@ -176,15 +176,24 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
             {rows.map(({ subject, specs }) => (
               <article className="subjcard" key={subject.id}>
                 <div className="subjcard__head">
+                  {/* The reference draws a different glyph per subject. Ours
+                      are set per record in the Admin, so a subject with an
+                      icon shows its own and the rest keep the generic mark
+                      rather than all thirty looking alike by accident. */}
                   <span className="subjcard__icon" aria-hidden="true">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    >
-                      <path d="M4 5h16v14H4z M4 9h16" />
-                    </svg>
+                    {subject.iconMedia ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={subject.iconMedia.url} alt="" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path d="M4 5h16v14H4z M4 9h16" />
+                      </svg>
+                    )}
                   </span>
                   <div>
                     <h2 className="subjcard__name">

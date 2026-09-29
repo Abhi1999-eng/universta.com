@@ -2237,3 +2237,17 @@
    the fixed grid left three empty columns of white. This variant sizes itself
    to the cells that render and still lays five out evenly when all five do. */
 .sa .unisnap--fit { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+
+/* The reference's subject marks are inline SVG, so it sizes the svg child.
+   Ours can also be an image uploaded against the record, which needs the same
+   box -- and `contain`, because an uploaded logo is rarely square. */
+.sa .subjcard__icon img { width: 21px; height: 21px; object-fit: contain; }
+.sa .subjhero__icon img { width: 55%; height: 55%; object-fit: contain; }
+
+/* --- ported from the reference build: the "Continue your journey" strip --- */
+.sa .h-cont { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+.sa .h-cont__item { display: grid; gap: 3px; padding: 13px 15px; border-radius: 11px; background: var(--white); border: 1px solid var(--line); text-decoration: none; color: var(--text); }
+.sa .h-cont__item:hover { border-color: var(--line-strong); }
+.sa .h-cont__k { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+.sa .h-cont__t { font-weight: 600; font-size: 14.5px; }
+.sa .h-cont__d { font-size: 12.5px; color: var(--muted); }

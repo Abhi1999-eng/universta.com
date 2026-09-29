@@ -233,6 +233,22 @@ export function StartPaths({ alt = false }: { alt?: boolean } = {}) {
               </span>
             </Link>
           </div>
+          {/* The reference offers six ways in. Its sixth, "I need to take an
+              exam", is left out until there is an exams page to send anyone
+              to -- a card that 404s is worse than a card that is absent. */}
+          <div className="h-path">
+            <strong className="h-card__t">I want expert help</strong>
+            <span className="h-card__d">
+              Talk to a Universta advisor, or compare study abroad consultants and the
+              destinations they cover.
+            </span>
+            <Link className="linkcta" href="/study-abroad-consultants">
+              Get Guidance{' '}
+              <span className="linkcta__arrow" aria-hidden="true">
+                →
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
     </section>

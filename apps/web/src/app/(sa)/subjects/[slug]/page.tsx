@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { SubjectGuide } from "@/components/study-abroad/SubjectGuide";
+import { RecordVisit } from "@/components/study-abroad/ContinueJourney";
 import { phaseList } from "@/lib/phase1";
 
 import { jsonLdString } from "@/lib/json-ld";
@@ -87,6 +88,11 @@ export default async function SubjectDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
+      />
+      <RecordVisit
+        kind="subject"
+        href={`/subjects/${subject.slug}`}
+        title={subject.name}
       />
       <SubjectGuide
         subject={subject}
