@@ -115,7 +115,6 @@ function validUrl(value: string | undefined): boolean {
   return !value || /^https?:\/\//i.test(value);
 }
 
-
 /**
  * The language tests a subject's destinations actually accept.
  *
@@ -124,14 +123,37 @@ function validUrl(value: string | undefined): boolean {
  * any of them publishes, because that is the one that clears them all. A test
  * no destination records at all is left out rather than listed at zero.
  */
-function summariseTests(
-  rows: Array<Record<string, unknown>>,
-): Array<{ code: string; name: string; countries: number; minScore: string | null }> {
+function summariseTests(rows: Array<Record<string, unknown>>): Array<{
+  code: string;
+  name: string;
+  countries: number;
+  minScore: string | null;
+}> {
   const tests = [
-    { code: 'IELTS', name: 'IELTS Academic', req: 'ieltsRequirement', score: 'ieltsMinScore' },
-    { code: 'TOEFL', name: 'TOEFL iBT', req: 'toeflRequirement', score: 'toeflMinScore' },
-    { code: 'PTE', name: 'PTE Academic', req: 'pteRequirement', score: 'pteMinScore' },
-    { code: 'Duolingo', name: 'Duolingo English Test', req: 'duolingoRequirement', score: 'duolingoMinScore' },
+    {
+      code: 'IELTS',
+      name: 'IELTS Academic',
+      req: 'ieltsRequirement',
+      score: 'ieltsMinScore',
+    },
+    {
+      code: 'TOEFL',
+      name: 'TOEFL iBT',
+      req: 'toeflRequirement',
+      score: 'toeflMinScore',
+    },
+    {
+      code: 'PTE',
+      name: 'PTE Academic',
+      req: 'pteRequirement',
+      score: 'pteMinScore',
+    },
+    {
+      code: 'Duolingo',
+      name: 'Duolingo English Test',
+      req: 'duolingoRequirement',
+      score: 'duolingoMinScore',
+    },
   ];
   return tests
     .map((test) => {
@@ -253,7 +275,11 @@ export class SubjectsService {
           deletedAt: null,
         },
         include: this.coursePublicInclude(),
-        orderBy: [{ isFeatured: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+        orderBy: [
+          { isFeatured: 'desc' },
+          { displayOrder: 'asc' },
+          { name: 'asc' },
+        ],
         take: 9,
       }),
     ]);
@@ -341,99 +367,99 @@ export class SubjectsService {
       languageRows,
       seo,
     ] = await Promise.all([
-        this.prisma.subSubject.findMany({
-          where: {
+      this.prisma.subSubject.findMany({
+        where: {
+          subjectId: subject.id,
+          status: 'PUBLISHED',
+          deletedAt: null,
+        },
+        include: SUB_SUBJECT_INCLUDE,
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      }),
+      this.prisma.course.groupBy({
+        by: ['courseLevelId'],
+        where: {
+          subjectId: subject.id,
+          status: 'PUBLISHED',
+          deletedAt: null,
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.course.findMany({
+        where: {
+          subjectId: subject.id,
+          status: 'PUBLISHED',
+          deletedAt: null,
+          isFeatured: true,
+        },
+        include: this.coursePublicInclude(),
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: 6,
+      }),
+      this.prisma.countryCourse.findMany({
+        where: {
+          course: {
             subjectId: subject.id,
             status: 'PUBLISHED',
             deletedAt: null,
           },
-          include: SUB_SUBJECT_INCLUDE,
-          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-        }),
-        this.prisma.course.groupBy({
-          by: ['courseLevelId'],
-          where: {
-            subjectId: subject.id,
-            status: 'PUBLISHED',
-            deletedAt: null,
-          },
-          _count: { _all: true },
-        }),
-        this.prisma.course.findMany({
-          where: {
-            subjectId: subject.id,
-            status: 'PUBLISHED',
-            deletedAt: null,
-            isFeatured: true,
-          },
-          include: this.coursePublicInclude(),
-          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-          take: 6,
-        }),
-        this.prisma.countryCourse.findMany({
-          where: {
-            course: {
-              subjectId: subject.id,
-              status: 'PUBLISHED',
-              deletedAt: null,
-            },
-            status: 'ACTIVE',
-            deletedAt: null,
-            availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
-            country: { status: 'PUBLISHED', deletedAt: null },
-          },
-          select: { countryId: true },
-          distinct: ['countryId'],
-        }),
-        /* The editorial link, which is what the country editor sets and what
+          status: 'ACTIVE',
+          deletedAt: null,
+          availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+          country: { status: 'PUBLISHED', deletedAt: null },
+        },
+        select: { countryId: true },
+        distinct: ['countryId'],
+      }),
+      /* The editorial link, which is what the country editor sets and what
            the subject page's destinations section means. `availableCountryCount`
            stays derived from published course offerings: it answers a different
            question and other pages read it. */
-        this.prisma.countrySubject.findMany({
-          where: {
-            subjectId: subject.id,
-            country: { status: 'PUBLISHED', deletedAt: null },
+      this.prisma.countrySubject.findMany({
+        where: {
+          subjectId: subject.id,
+          country: { status: 'PUBLISHED', deletedAt: null },
+        },
+        select: {
+          country: {
+            select: { id: true, name: true, slug: true, iso2Code: true },
           },
-          select: {
-            country: {
-              select: { id: true, name: true, slug: true, iso2Code: true },
-            },
-          },
-          orderBy: [{ displayOrder: 'asc' }, { country: { name: 'asc' } }],
-        }),
-        /* Which language tests the destinations teaching this subject accept.
+        },
+        orderBy: [{ displayOrder: 'asc' }, { country: { name: 'asc' } }],
+      }),
+      /* Which language tests the destinations teaching this subject accept.
            Requirements are set per programme, not per subject, so this is the
            honest version of the reference's "tests you may need": the tests
            actually recorded against the places that run it. */
-        this.prisma.countryLanguageRequirement.findMany({
-          where: {
-            country: {
-              status: 'PUBLISHED',
-              deletedAt: null,
-              subjectMaps: { some: { subjectId: subject.id } },
-            },
+      this.prisma.countryLanguageRequirement.findMany({
+        where: {
+          country: {
+            status: 'PUBLISHED',
+            deletedAt: null,
+            subjectMaps: { some: { subjectId: subject.id } },
           },
-          select: {
-            ieltsRequirement: true,
-            ieltsMinScore: true,
-            toeflRequirement: true,
-            toeflMinScore: true,
-            pteRequirement: true,
-            pteMinScore: true,
-            duolingoRequirement: true,
-            duolingoMinScore: true,
-          },
-        }),
-        this.prisma.seoMetadata.findUnique({
-          where: {
-            ownerType_ownerId: { ownerType: 'SUBJECT', ownerId: subject.id },
-          },
-          include: {
-            ogMedia: { select: MEDIA_SELECT },
-            twitterMedia: { select: MEDIA_SELECT },
-          },
-        }),
-      ]);
+        },
+        select: {
+          ieltsRequirement: true,
+          ieltsMinScore: true,
+          toeflRequirement: true,
+          toeflMinScore: true,
+          pteRequirement: true,
+          pteMinScore: true,
+          duolingoRequirement: true,
+          duolingoMinScore: true,
+        },
+      }),
+      this.prisma.seoMetadata.findUnique({
+        where: {
+          ownerType_ownerId: { ownerType: 'SUBJECT', ownerId: subject.id },
+        },
+        include: {
+          ogMedia: { select: MEDIA_SELECT },
+          twitterMedia: { select: MEDIA_SELECT },
+        },
+      }),
+    ]);
     const levelIds = levels.map((row) => row.courseLevelId);
     const levelNames = levelIds.length
       ? await this.prisma.courseLevel.findMany({
@@ -1189,33 +1215,35 @@ export class SubjectsService {
   }
 
   private async toPublic(row: SubjectRecord) {
-    const [courseCount, subSubjectCount, countries, levels] = await Promise.all([
-      this.prisma.course.count({
-        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-      }),
-      this.prisma.subSubject.count({
-        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-      }),
-      this.prisma.countryCourse.findMany({
-        where: {
-          course: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-          status: 'ACTIVE',
-          deletedAt: null,
-          availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
-          country: { status: 'PUBLISHED', deletedAt: null },
-        },
-        select: { countryId: true },
-        distinct: ['countryId'],
-      }),
-      /* The levels this subject is actually taught at, for the explorer's
+    const [courseCount, subSubjectCount, countries, levels] = await Promise.all(
+      [
+        this.prisma.course.count({
+          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+        }),
+        this.prisma.subSubject.count({
+          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+        }),
+        this.prisma.countryCourse.findMany({
+          where: {
+            course: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+            status: 'ACTIVE',
+            deletedAt: null,
+            availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+            country: { status: 'PUBLISHED', deletedAt: null },
+          },
+          select: { countryId: true },
+          distinct: ['countryId'],
+        }),
+        /* The levels this subject is actually taught at, for the explorer's
          study-level filter. Derived from published courses rather than
          declared on the subject, so it cannot drift from the catalogue. */
-      this.prisma.course.findMany({
-        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-        select: { courseLevel: { select: { code: true, name: true } } },
-        distinct: ['courseLevelId'],
-      }),
-    ]);
+        this.prisma.course.findMany({
+          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+          select: { courseLevel: { select: { code: true, name: true } } },
+          distinct: ['courseLevelId'],
+        }),
+      ],
+    );
     return {
       id: row.id,
       name: row.name,
@@ -1236,7 +1264,9 @@ export class SubjectsService {
          narrows to the published ones. */
       levels: levels
         .map((entry) => entry.courseLevel)
-        .filter((level): level is { code: string; name: string } => Boolean(level)),
+        .filter((level): level is { code: string; name: string } =>
+          Boolean(level),
+        ),
       subSubjects: (row.subSubjects ?? [])
         .filter((child) => child.status === 'PUBLISHED')
         .map((child) => ({

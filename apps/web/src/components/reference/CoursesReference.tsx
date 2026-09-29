@@ -1216,18 +1216,22 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
       {/* COMPARE TRAY */}
       {compare.length ? (
-        <div className="tray" data-testid="course-compare-tray">
-          <div className="tray-inner">
-            <span className="tt">
-              <span className="badge-n">{compare.length}</span> Compare
+        /* The reference's tray is a fixed navy bar that slides up on
+           `data-open`. It is only mounted here once something is shortlisted,
+           so while it exists the drawer is always the open one. */
+        <div className="tray" data-open="true" data-testid="course-compare-tray">
+          <div className="wrap tray__inner">
+            <span className="tray__label">
+              <b>{compare.length}</b> {compare.length === 1 ? 'course' : 'courses'}{' '}
+              to compare
             </span>
-            <div className="tray-slots">
+            <div className="tray__items">
               {compare.map((item) => (
-                <span className="tray-slot" key={item.slug}>
-                  <span className="nm">{item.name}</span>
+                <span className="tray__item" key={item.slug}>
+                  <span className="tray__itemname">{item.name}</span>
                   <button
                     type="button"
-                    className="x"
+                    className="tray__remove"
                     aria-label={`Remove ${item.name} from comparison`}
                     onClick={() =>
                       setCompare((current) => current.filter((entry) => entry.slug !== item.slug))
@@ -1238,12 +1242,15 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </span>
               ))}
             </div>
-            <div className="tray-actions">
-              <button type="button" className="btn-clear" onClick={() => setCompare([])}>
+            <div className="tray__actions">
+              <button type="button" className="linkbtn" onClick={() => setCompare([])}>
                 Clear
               </button>
               <Link href={compareHref} className="btn btn--sm">
-                Compare {compare.length}
+                Compare {compare.length}{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  →
+                </span>
               </Link>
             </div>
           </div>

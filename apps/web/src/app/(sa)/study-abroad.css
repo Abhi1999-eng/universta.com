@@ -2184,3 +2184,26 @@
    catalogue batches a draft and applies it on submit, so the button has to be
    reachable at every width or a desktop filter can be set and never applied. */
 .sa .filters-panel__foot{ display: block; }
+
+/* The reference defines its tray chip in consultants.css, a sheet this route
+   family does not load, and defines it for a light surface. Restated here for
+   the navy bar the course tray actually is, using the reference's own on-navy
+   tokens. The remove control is ours: the reference rebuilds the whole tray
+   from script, so its chips carry no affordance of their own. */
+.sa .tray__item {
+  display: inline-flex; align-items: center; gap: 8px;
+  max-width: 220px; padding: 3px 4px 3px 11px;
+  font-size: 13px; white-space: nowrap;
+  border: 1px solid var(--on-navy-line); border-radius: var(--radius-pill);
+  background: var(--on-navy-raised); color: var(--on-navy);
+}
+.sa .tray__itemname { overflow: hidden; text-overflow: ellipsis; }
+.sa .tray__remove {
+  flex: none; display: grid; place-items: center;
+  width: 20px; height: 20px; padding: 0;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: none; color: var(--on-navy-muted);
+  font-family: inherit; font-size: 12px; line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.sa .tray__remove:hover { background: var(--on-navy-line); color: #fff; }
