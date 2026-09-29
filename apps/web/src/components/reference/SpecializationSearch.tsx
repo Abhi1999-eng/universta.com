@@ -51,23 +51,41 @@ export function SpecializationSearch({ query, subject }: { query: string; subjec
         commit(value.trim());
       }}
     >
-      <div className="searchbar">
-        <span className="ic" aria-hidden="true">
-          🔍
-        </span>
+      <div className="bigsearch searchbar">
+        {/* The reference draws its magnifier rather than setting an emoji,
+            which renders as a different glyph on every platform. */}
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#667085"
+          strokeWidth="1.7"
+          aria-hidden="true"
+          className="ic"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
         <input
+          className="bigsearch__input"
           type="text"
           aria-label="Search specializations"
           placeholder={`Search ${subject} specialisations…`}
           value={value}
           onChange={(event) => setValue(event.target.value)}
         />
-        <button type="submit" className="btn btn-primary">
-          Find specializations
+        {/* The arrow is decoration, so the button is still named
+            "Find specializations" to anything reading the page. */}
+        <button type="submit" className="btn btn--sm">
+          Find specializations{' '}
+          <span className="btn__arrow" aria-hidden="true">
+            →
+          </span>
         </button>
       </div>
       {query ? (
-        <p className="searchnote">
+        <p className="bigsearch__ex">
           <button
             type="button"
             className="linkbtn"
