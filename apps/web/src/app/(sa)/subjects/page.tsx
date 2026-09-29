@@ -5,6 +5,10 @@ import {
   type SubjectIndexRow,
 } from '@/components/study-abroad/SubjectIndex';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
+import {
+  ConnectBand,
+  MatchBand,
+} from '@/components/study-abroad/DiscoveryBands';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,10 +29,31 @@ export default async function SubjectsIndexPage() {
   return (
     <>
       <SubjectIndex subjects={subjects} />
+
+      <MatchBand heading="Found your field?" href="/courses" />
+
       <PlanBand
         heading="Not sure which field is right for you?"
         body="Tell us about your academic profile, goals and budget. We'll help you understand your options across every subject we cover."
         secondary={{ href: '/specializations', label: 'Browse specializations' }}
+      />
+
+      <ConnectBand
+        actions={[
+          { href: '/courses', label: 'Explore courses' },
+          { href: '/specializations', label: 'All specializations', ghost: true },
+          { href: '/study-abroad', label: 'Compare destinations', ghost: true },
+        ]}
+        groups={[
+          {
+            title: 'Subjects',
+            items: subjects.slice(0, 6).map((row) => ({
+              id: row.id,
+              name: row.name,
+              href: `/subjects/${row.slug}`,
+            })),
+          },
+        ]}
       />
     </>
   );

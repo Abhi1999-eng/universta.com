@@ -46,6 +46,16 @@ export function CourseCards({ courses }: { courses: Course[] }) {
                 </span>
               ) : null}
             </div>
+            {course.subSubject ? (
+              <div className="coursecard__tags">
+                <Link
+                  className="tag"
+                  href={`/subjects/${course.subject.slug}/${course.subSubject.slug}`}
+                >
+                  {course.subSubject.name}
+                </Link>
+              </div>
+            ) : null}
             <div className="coursecard__foot">
               <Link className="linkcta" href={`/courses/${course.slug}`}>
                 View programme <span aria-hidden="true">→</span>

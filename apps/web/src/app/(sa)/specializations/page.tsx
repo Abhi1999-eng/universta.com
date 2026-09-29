@@ -46,22 +46,6 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
   const total = result?.meta?.total ?? rows.length;
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
-  /* Grouped under their subject, so the page reads as a taxonomy rather than
-     as an alphabetical wall of nine hundred links. */
-  const grouped = new Map<
-    string,
-    { name: string; slug: string; rows: typeof rows }
-  >();
-  for (const row of rows) {
-    const entry = grouped.get(row.subject.slug) ?? {
-      name: row.subject.name,
-      slug: row.subject.slug,
-      rows: [],
-    };
-    entry.rows.push(row);
-    grouped.set(row.subject.slug, entry);
-  }
-
   const qs = (next: number) =>
     `/specializations?${new URLSearchParams({
       ...(search ? { q: search } : {}),
@@ -94,28 +78,17 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
               taught.
             </p>
           </div>
-          <form className="bigsearch" method="get" role="search">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#667085"
-              strokeWidth="1.7"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              className="bigsearch__input"
-              type="search"
-              name="q"
-              defaultValue={search}
-              placeholder="Search specializations"
-              aria-label="Search specializations"
-              autoComplete="off"
-            />
+          <form className="h-filters" method="get" role="search">
+            <label className="h-filter h-filter--q">
+              <span>Search</span>
+              <input
+                type="search"
+                name="q"
+                defaultValue={search}
+                placeholder="Search specializations"
+                autoComplete="off"
+              />
+            </label>
             <button className="btn btn--sm" type="submit">
               Search{' '}
               <span className="btn__arrow" aria-hidden="true">
@@ -129,38 +102,31 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
       <section className="sec sec--white" id="specializations">
         <div className="wrap">
           {rows.length === 0 ? (
-            <p className="sec-lead">
+            <p className="h-empty">
               {search
                 ? `No specializations match “${search}”.`
                 : 'No specializations are published yet.'}
             </p>
           ) : null}
 
-          {[...grouped.values()].map((group) => (
-            <div className="subjcard" key={group.slug}>
-              <div className="subjcard__head">
-                <div>
-                  <h2 className="subjcard__name">
-                    <Link href={`/subjects/${group.slug}`}>{group.name}</Link>
-                  </h2>
-                  <p className="subjcard__meta">
-                    {group.rows.length} specializations
-                  </p>
-                </div>
-              </div>
-              <div className="subjcard__specs">
-                {group.rows.map((row) => (
-                  <Link
-                    key={row.id}
-                    className="specpill"
-                    href={`/subjects/${group.slug}/${row.slug}`}
-                  >
-                    {row.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
+          <p className="h-count">
+            {formatNumber(rows.length)} shown of {formatNumber(total)}
+          </p>
+          <div className="h-grid">
+            {rows.map((row) => (
+              <Link
+                className="h-card"
+                key={row.id}
+                href={`/subjects/${row.subject.slug}/${row.slug}`}
+              >
+                <strong className="h-card__t">{row.name}</strong>
+                <span className="h-card__d">{row.subject.name}</span>
+                {row.shortDescription ? (
+                  <span className="h-card__m">{row.shortDescription}</span>
+                ) : null}
+              </Link>
+            ))}
+          </div>
 
           {pages > 1 ? (
             <nav className="btn-row" aria-label="Pagination" style={{ marginTop: 24 }}>

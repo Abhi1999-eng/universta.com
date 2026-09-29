@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { SpecializationDetail } from '@/lib/catalog';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { CourseCards } from './CourseCards';
+import { Crumbs } from './Crumbs';
+import { FlagMark } from './FlagMark';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
@@ -32,7 +34,8 @@ export function SpecializationGuide({
 
   /* Numbered in the order they appear, counting only the ones that render. */
   const courses = specialization.courses ?? [];
-  const order: string[] = ['about'];
+  const order: string[] = [];
+  if (hasOverview) order.push('about');
   if (courses.length) order.push('programs');
   if (countries.length) order.push('destinations');
   if (siblings.length) order.push('related');
@@ -47,47 +50,57 @@ export function SpecializationGuide({
 
   return (
     <>
-      <section className={band('about')} id="about">
+      <section className="hero hero--compact">
         <div className="wrap">
-          <nav className="crumb" aria-label="Breadcrumb">
-            <Link href="/">Home</Link>
-            <span aria-hidden="true"> › </span>
-            <Link href="/subjects">Subjects</Link>
-            <span aria-hidden="true"> › </span>
-            <Link href={subjectPath}>{subject.name}</Link>
-            <span aria-hidden="true"> › </span>
-            <span aria-current="page">{specialization.name}</span>
-          </nav>
-
-          <SectionHead
-            n={n('about')}
-            eyebrow="Specialization"
-            title={specialization.name}
-            lead={
-              specialization.shortDescription ??
-              `A specialization within ${subject.name}.`
-            }
-          >
-            <p className="sec-lead">
-              <Link href={subjectPath}>
-                All of {subject.name} <span aria-hidden="true">→</span>
-              </Link>
+          <Crumbs
+            trail={[
+              { label: 'Home', href: '/' },
+              { label: 'Subjects', href: '/subjects' },
+              { label: subject.name, href: subjectPath },
+              { label: specialization.name },
+            ]}
+          />
+          <div className="hero__lead">
+            <p className="hero__eyebrow">
+              Specialization<b>·</b>
+              <Link href={subjectPath}>{subject.name}</Link>
             </p>
-          </SectionHead>
+            <h1 className="hero__h1">Study {specialization.name} abroad</h1>
+            {specialization.shortDescription ? (
+              <p className="hero__sub">{specialization.shortDescription}</p>
+            ) : null}
+            <div className="btn-row" style={{ marginTop: 22 }}>
+              <Link
+                className="btn btn--lg"
+                href={`/courses?subject=${subject.slug}`}
+              >
+                Find my programmes{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+              <Link className="btn btn--lg btn--ghost" href={subjectPath}>
+                All {subject.name}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {hasOverview ? (
+      {hasOverview ? (
+        <section className={band('about')} id="about">
+          <div className="wrap">
+            <SectionHead
+              n={n('about')}
+              eyebrow="Overview"
+              title={`About ${specialization.name}`}
+            />
             <div className="prose">
               <RichText value={overview!} />
             </div>
-          ) : (
-            <p className="prose">
-              Entry requirements, tuition and intakes for {specialization.name}{' '}
-              are set by the university rather than by the specialization, so
-              the destination guides are where those numbers live.
-            </p>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : null}
 
       {courses.length ? (
         <section className={band('programs')} id="programs">
@@ -119,22 +132,19 @@ export function SpecializationGuide({
               title={`Where you can study ${specialization.name}`}
               lead={`${countries.length} ${countries.length === 1 ? 'destination lists' : 'destinations list'} this specialization. Open one to see its fees, visa route and intakes.`}
             />
-            <div className="specgrid">
+            <div className="switcher">
               {countries.map((country) => (
-                <article className="speccard" key={country.id}>
-                  <Link
-                    className="speccard__btn"
-                    href={`/study-abroad/${country.slug}`}
-                  >
-                    <span className="speccard__top">
-                      <span className="label">Destination</span>
-                    </span>
-                    <span className="speccard__name">{country.name}</span>
-                    <span className="speccard__cta">
-                      Open the guide <span aria-hidden="true">→</span>
-                    </span>
-                  </Link>
-                </article>
+                <Link
+                  key={country.id}
+                  className="switcher__item"
+                  href={`/study-abroad/${country.slug}`}
+                >
+                  <FlagMark iso2Code={country.iso2Code} bands={null} />
+                  <span className="cchip__name">{country.name}</span>
+                  <span className="switcher__arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
               ))}
             </div>
           </div>

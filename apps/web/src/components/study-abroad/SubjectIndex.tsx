@@ -7,6 +7,8 @@ import type { Subject, SubSubject } from '@/lib/catalog';
 export type SubjectIndexRow = Subject & {
   subSubjects?: SubSubject[];
   publishedSubSubjectCount?: number;
+  publishedCourseCount?: number;
+  levels?: Array<{ code: string; name: string }>;
 };
 
 /**
@@ -24,13 +26,30 @@ export type SubjectIndexRow = Subject & {
  */
 export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
   const [query, setQuery] = useState('');
+  const [level, setLevel] = useState('all');
+
+  /* The filter offers only the levels the catalogue actually teaches, so it
+     never shows a button that can empty the page. */
+  const levels = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const subject of subjects)
+      for (const entry of subject.levels ?? [])
+        if (!seen.has(entry.code)) seen.set(entry.code, entry.name);
+    return [...seen.entries()].map(([code, name]) => ({ code, name }));
+  }, [subjects]);
 
   const needle = query.trim().toLowerCase();
   const rows = useMemo(() => {
+    const atLevel = (subject: SubjectIndexRow) =>
+      level === 'all' ||
+      (subject.levels ?? []).some((entry) => entry.code === level);
     if (!needle) {
-      return subjects.map((subject) => ({ subject, specs: subject.subSubjects ?? [] }));
+      return subjects
+        .filter(atLevel)
+        .map((subject) => ({ subject, specs: subject.subSubjects ?? [] }));
     }
     return subjects
+      .filter(atLevel)
       .map((subject) => {
         const specs = (subject.subSubjects ?? []).filter((spec) =>
           spec.name.toLowerCase().includes(needle),
@@ -42,7 +61,7 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
         return { subject, specs: self ? (subject.subSubjects ?? []) : specs };
       })
       .filter(Boolean) as Array<{ subject: SubjectIndexRow; specs: SubSubject[] }>;
-  }, [subjects, needle]);
+  }, [subjects, needle, level]);
 
   const examples = ['Computer Science', 'Artificial Intelligence', 'Engineering', 'Law'];
 
@@ -115,6 +134,34 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
 
       <section className="sec sec--white" id="taxonomy">
         <div className="wrap">
+          {levels.length > 1 ? (
+            <div
+              className="levelbar levelbar--wide"
+              role="group"
+              aria-label="Study level"
+            >
+              <span className="filters__label">Study level</span>
+              <button
+                className="chipbtn"
+                type="button"
+                aria-pressed={level === 'all'}
+                onClick={() => setLevel('all')}
+              >
+                All
+              </button>
+              {levels.map((entry) => (
+                <button
+                  key={entry.code}
+                  className="chipbtn"
+                  type="button"
+                  aria-pressed={level === entry.code}
+                  onClick={() => setLevel(entry.code)}
+                >
+                  {entry.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {rows.length === 0 ? (
             <p className="sec-lead">No subjects match “{query.trim()}”.</p>
           ) : null}
@@ -165,12 +212,22 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                 <div className="subjcard__foot">
                   <Link className="linkcta" href={`/subjects/${subject.slug}`}>
                     Explore {subject.name}{' '}
-                    <span aria-hidden="true">→</span>
+                    <span className="linkcta__arrow" aria-hidden="true">
+                      →
+                    </span>
                   </Link>
+                  <span className="subjcard__count datum">
+                    {subject.publishedCourseCount ?? 0} programmes profiled
+                  </span>
                 </div>
               </article>
             ))}
           </div>
+          <p className="trust__note">
+            Programme counts come from universities published in this
+            catalogue, not from the whole sector. A subject with no count is
+            one we have not yet profiled a programme for.
+          </p>
         </div>
       </section>
     </>

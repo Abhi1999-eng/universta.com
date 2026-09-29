@@ -394,7 +394,11 @@ export class SubjectsService {
             subjectId: subject.id,
             country: { status: 'PUBLISHED', deletedAt: null },
           },
-          select: { country: { select: { id: true, name: true, slug: true } } },
+          select: {
+            country: {
+              select: { id: true, name: true, slug: true, iso2Code: true },
+            },
+          },
           orderBy: [{ displayOrder: 'asc' }, { country: { name: 'asc' } }],
         }),
         /* Which language tests the destinations teaching this subject accept.
@@ -1185,7 +1189,7 @@ export class SubjectsService {
   }
 
   private async toPublic(row: SubjectRecord) {
-    const [courseCount, subSubjectCount, countries] = await Promise.all([
+    const [courseCount, subSubjectCount, countries, levels] = await Promise.all([
       this.prisma.course.count({
         where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
       }),
@@ -1202,6 +1206,14 @@ export class SubjectsService {
         },
         select: { countryId: true },
         distinct: ['countryId'],
+      }),
+      /* The levels this subject is actually taught at, for the explorer's
+         study-level filter. Derived from published courses rather than
+         declared on the subject, so it cannot drift from the catalogue. */
+      this.prisma.course.findMany({
+        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+        select: { courseLevel: { select: { code: true, name: true } } },
+        distinct: ['courseLevelId'],
       }),
     ]);
     return {
@@ -1222,6 +1234,9 @@ export class SubjectsService {
          a listing row carries its branches rather than making the page ask
          for them one subject at a time. The include already loads them; this
          narrows to the published ones. */
+      levels: levels
+        .map((entry) => entry.courseLevel)
+        .filter((level): level is { code: string; name: string } => Boolean(level)),
       subSubjects: (row.subSubjects ?? [])
         .filter((child) => child.status === 'PUBLISHED')
         .map((child) => ({
