@@ -114,6 +114,15 @@ export class SpecializationListQueryDto {
   @MaxLength(255)
   subject?: string;
 
+  /** A course level code, so the flat list narrows the same way a subject's
+   *  own specializations do. */
+  @ApiPropertyOptional()
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  level?: string;
+
   /** Exact specialization slug, for resolving a bare /specializations/<slug>. */
   @ApiPropertyOptional()
   @Transform(trim)

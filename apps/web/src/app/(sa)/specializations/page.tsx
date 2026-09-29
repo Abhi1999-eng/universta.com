@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getSpecializations } from '@/lib/catalog';
+import { getCourseLevels, getSpecializations, getSubjects } from '@/lib/catalog';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { formatNumber } from '@/lib/format';
 
@@ -36,11 +36,24 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
   const search = first(params.q).trim();
   const page = Math.max(Number(first(params.page)) || 1, 1);
 
-  const result = await getSpecializations({
-    ...(search ? { search } : {}),
-    limit: String(PAGE_SIZE),
-    page: String(page),
-  }).catch(() => null);
+  const subjectSlug = first(params.subject).trim();
+  const level = first(params.level).trim();
+
+  /* The dropdowns are decoration around the list: if either lookup fails the
+     page still lists specializations, it just cannot offer that filter. */
+  const [result, subjects, levels] = await Promise.all([
+    getSpecializations({
+      ...(search ? { search } : {}),
+      ...(subjectSlug ? { subject: subjectSlug } : {}),
+      ...(level ? { level } : {}),
+      limit: String(PAGE_SIZE),
+      page: String(page),
+    }).catch(() => null),
+    getSubjects({ limit: '100' })
+      .then((response) => response.data)
+      .catch(() => []),
+    getCourseLevels().catch(() => []),
+  ]);
 
   const rows = result?.data ?? [];
   const total = result?.meta?.total ?? rows.length;
@@ -49,6 +62,8 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
   const qs = (next: number) =>
     `/specializations?${new URLSearchParams({
       ...(search ? { q: search } : {}),
+      ...(subjectSlug ? { subject: subjectSlug } : {}),
+      ...(level ? { level } : {}),
       page: String(next),
     })}`;
 
@@ -89,6 +104,32 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
                 autoComplete="off"
               />
             </label>
+            {subjects.length ? (
+              <label className="h-filter">
+                <span>Subject</span>
+                <select name="subject" defaultValue={subjectSlug}>
+                  <option value="">All subjects</option>
+                  {subjects.map((row) => (
+                    <option key={row.id} value={row.slug}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {levels.length ? (
+              <label className="h-filter">
+                <span>Study level</span>
+                <select name="level" defaultValue={level}>
+                  <option value="">All levels</option>
+                  {levels.map((row) => (
+                    <option key={row.id} value={row.code}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <button className="btn btn--sm" type="submit">
               Search{' '}
               <span className="btn__arrow" aria-hidden="true">
@@ -121,8 +162,16 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
               >
                 <strong className="h-card__t">{row.name}</strong>
                 <span className="h-card__d">{row.subject.name}</span>
-                {row.shortDescription ? (
-                  <span className="h-card__m">{row.shortDescription}</span>
+                {/* The reference states a branch's weight on the card: how
+                    many programmes, and the levels that teach them. */}
+                {row.publishedCourseCount || row.levels?.length ? (
+                  <span className="h-card__m">
+                    {row.publishedCourseCount
+                      ? `${formatNumber(row.publishedCourseCount)} ${row.publishedCourseCount === 1 ? 'course' : 'courses'}`
+                      : ''}
+                    {row.publishedCourseCount && row.levels?.length ? ' · ' : ''}
+                    {(row.levels ?? []).map((item) => item.name).join(', ')}
+                  </span>
                 ) : null}
               </Link>
             ))}
