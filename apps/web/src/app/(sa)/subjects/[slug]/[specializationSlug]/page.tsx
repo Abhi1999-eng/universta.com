@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSpecialization } from '@/lib/catalog';
-import { SpecializationDetailReference } from '@/components/reference/SpecializationDetailReference';
+import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
 import { jsonLdString } from '@/lib/json-ld';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const specialization = await load(slug, specializationSlug);
   if (!specialization)
     return {
-      title: 'Specialisation not found | Universta',
+      title: 'Specialisation not found',
       alternates: { canonical },
     };
   return {
-    title: `Study ${specialization.name} abroad | Universta`,
+    title: `Study ${specialization.name} abroad`,
     description:
       specialization.shortDescription ??
       `${specialization.name} is a specialisation within ${specialization.subject.name}. See where you can study it.`,
@@ -70,7 +70,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
       />
-      <SpecializationDetailReference specialization={specialization} />
+      <SpecializationGuide specialization={specialization} />
     </>
   );
 }

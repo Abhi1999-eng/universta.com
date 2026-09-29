@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCourse } from "@/lib/catalog";
-import { CoursePageView } from "@/components/catalog/CoursePageView";
+import { CourseGuide } from "@/components/study-abroad/CourseGuide";
 import { resolvedMetadata } from "@/lib/seo-management";
 type Props = {
   params: Promise<{ slug: string }>;
@@ -24,13 +24,16 @@ export async function generateMetadata({
   const p = await params;
   const q = await searchParams;
   const course = await load(p.slug, one(q.country));
-  if (!course) return { title: "Course not found | Universta" };
-  return resolvedMetadata(
+  if (!course) return { title: "Course not found" };
+  const resolved = resolvedMetadata(
     course.seo,
     course.name,
     course.shortDescription ?? `Explore ${course.name}.`,
     `/courses/${course.slug}`,
   );
+  /* This route family's layout appends the site name through its title
+     template; `resolvedMetadata` appends it too. Hand over the bare title. */
+  return { ...resolved, title: course.seo?.seoTitle ?? course.name };
 }
 export default async function CourseDetailPage({
   params,
@@ -43,7 +46,7 @@ export default async function CourseDetailPage({
   if (!course) notFound();
   return (
     <>
-      <CoursePageView course={course} country={country} />
+      <CourseGuide course={course} />
       <script type="application/ld+json">
         {JSON.stringify(course.jsonLd).replace(/</g, "\\u003c")}
       </script>

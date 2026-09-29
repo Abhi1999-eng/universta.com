@@ -115,6 +115,43 @@ function validUrl(value: string | undefined): boolean {
   return !value || /^https?:\/\//i.test(value);
 }
 
+
+/**
+ * The language tests a subject's destinations actually accept.
+ *
+ * "Required" and "optional" both count as accepted -- a test a destination
+ * takes is a test you may need -- and the score shown is the highest minimum
+ * any of them publishes, because that is the one that clears them all. A test
+ * no destination records at all is left out rather than listed at zero.
+ */
+function summariseTests(
+  rows: Array<Record<string, unknown>>,
+): Array<{ code: string; name: string; countries: number; minScore: string | null }> {
+  const tests = [
+    { code: 'IELTS', name: 'IELTS Academic', req: 'ieltsRequirement', score: 'ieltsMinScore' },
+    { code: 'TOEFL', name: 'TOEFL iBT', req: 'toeflRequirement', score: 'toeflMinScore' },
+    { code: 'PTE', name: 'PTE Academic', req: 'pteRequirement', score: 'pteMinScore' },
+    { code: 'Duolingo', name: 'Duolingo English Test', req: 'duolingoRequirement', score: 'duolingoMinScore' },
+  ];
+  return tests
+    .map((test) => {
+      const accepted = rows.filter((row) => {
+        const value = row[test.req];
+        return value === 'required' || value === 'optional';
+      });
+      const scores = accepted
+        .map((row) => Number(row[test.score]))
+        .filter((value) => Number.isFinite(value) && value > 0);
+      return {
+        code: test.code,
+        name: test.name,
+        countries: accepted.length,
+        minScore: scores.length ? String(Math.max(...scores)) : null,
+      };
+    })
+    .filter((test) => test.countries > 0);
+}
+
 @Injectable()
 export class SubjectsService {
   constructor(
@@ -187,7 +224,7 @@ export class SubjectsService {
         'Specialization not found',
       );
 
-    const [siblings, countries] = await Promise.all([
+    const [siblings, countries, courses] = await Promise.all([
       this.prisma.subSubject.findMany({
         where: {
           subjectId: subject.id,
@@ -209,6 +246,16 @@ export class SubjectsService {
         },
         orderBy: { displayOrder: 'asc' },
       }),
+      this.prisma.course.findMany({
+        where: {
+          subSubjectId: specialization.id,
+          status: 'PUBLISHED',
+          deletedAt: null,
+        },
+        include: this.coursePublicInclude(),
+        orderBy: [{ isFeatured: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+        take: 9,
+      }),
     ]);
 
     return {
@@ -216,6 +263,7 @@ export class SubjectsService {
       subject,
       siblings,
       countries: countries.map((row) => row.country),
+      courses: courses.map((course) => this.toCourseCard(course)),
     };
   }
 
@@ -284,8 +332,15 @@ export class SubjectsService {
     });
     if (!subject)
       throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
-    const [children, levels, featuredCourses, countries, seo] =
-      await Promise.all([
+    const [
+      children,
+      levels,
+      featuredCourses,
+      countries,
+      linkedCountries,
+      languageRows,
+      seo,
+    ] = await Promise.all([
         this.prisma.subSubject.findMany({
           where: {
             subjectId: subject.id,
@@ -330,6 +385,41 @@ export class SubjectsService {
           select: { countryId: true },
           distinct: ['countryId'],
         }),
+        /* The editorial link, which is what the country editor sets and what
+           the subject page's destinations section means. `availableCountryCount`
+           stays derived from published course offerings: it answers a different
+           question and other pages read it. */
+        this.prisma.countrySubject.findMany({
+          where: {
+            subjectId: subject.id,
+            country: { status: 'PUBLISHED', deletedAt: null },
+          },
+          select: { country: { select: { id: true, name: true, slug: true } } },
+          orderBy: [{ displayOrder: 'asc' }, { country: { name: 'asc' } }],
+        }),
+        /* Which language tests the destinations teaching this subject accept.
+           Requirements are set per programme, not per subject, so this is the
+           honest version of the reference's "tests you may need": the tests
+           actually recorded against the places that run it. */
+        this.prisma.countryLanguageRequirement.findMany({
+          where: {
+            country: {
+              status: 'PUBLISHED',
+              deletedAt: null,
+              subjectMaps: { some: { subjectId: subject.id } },
+            },
+          },
+          select: {
+            ieltsRequirement: true,
+            ieltsMinScore: true,
+            toeflRequirement: true,
+            toeflMinScore: true,
+            pteRequirement: true,
+            pteMinScore: true,
+            duolingoRequirement: true,
+            duolingoMinScore: true,
+          },
+        }),
         this.prisma.seoMetadata.findUnique({
           where: {
             ownerType_ownerId: { ownerType: 'SUBJECT', ownerId: subject.id },
@@ -362,6 +452,8 @@ export class SubjectsService {
         this.toCourseCard(course),
       ),
       availableCountryCount: countries.length,
+      countries: linkedCountries.map((row) => row.country),
+      tests: summariseTests(languageRows),
       seo: this.seoManagement
         ? await this.seoManagement.resolve('subject', subject, this.toSeo(seo))
         : this.toSeo(seo),
@@ -1126,6 +1218,17 @@ export class SubjectsService {
       publishedCourseCount: courseCount,
       publishedSubSubjectCount: subSubjectCount,
       availableCountryCount: countries.length,
+      /* The subject explorer searches specializations alongside subjects, so
+         a listing row carries its branches rather than making the page ask
+         for them one subject at a time. The include already loads them; this
+         narrows to the published ones. */
+      subSubjects: (row.subSubjects ?? [])
+        .filter((child) => child.status === 'PUBLISHED')
+        .map((child) => ({
+          id: child.id,
+          name: child.name,
+          slug: child.slug,
+        })),
     };
   }
 
