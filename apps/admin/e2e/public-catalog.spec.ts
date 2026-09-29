@@ -278,7 +278,7 @@ test.describe('approved public subject and course discovery', () => {
 
     await page.getByRole('combobox', { name: 'Sort courses' }).selectOption('name');
     await expect(page).toHaveURL(/sort=name/);
-    const names = await page.locator('.course-list .course h3').allTextContents();
+    const names = await page.locator('.coursegrid .coursecard__name').allTextContents();
     expect(names).toEqual([...names].sort((left, right) => left.localeCompare(right)));
   });
 
@@ -361,7 +361,7 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.getByRole('button', { name: /^Save / })).toHaveCount(0);
     await expect(page.getByTestId('course-compare-tray')).toHaveCount(0);
 
-    const cards = page.locator('.course-list .course');
+    const cards = page.locator('.coursegrid .coursecard');
     await cards.nth(0).getByRole('checkbox', { name: 'Compare' }).check();
     await cards.nth(1).getByRole('checkbox', { name: 'Compare' }).check();
 

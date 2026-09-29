@@ -562,21 +562,25 @@ export function CoursesReference(props: CoursesReferenceProps) {
             <div className="fscroll">
             {facetGroups.map((group) => (
               <details className="fgroup" key={group.key} open={group.open}>
-                <summary>
+                <summary className="fgroup__t">
                   {group.label} <span className="caret">▾</span>
                 </summary>
-                <div className="opts">
+                <div
+                  className={`fgroup__opts${
+                    group.options.length > 8 ? ' fgroup__opts--scroll' : ''
+                  }`}
+                >
                   {group.options.slice(0, 12).map((option) => {
                     const checked = (draft[group.key] ?? []).includes(option.value);
                     return (
-                      <label className="opt" key={option.value}>
+                      <label className="fcheck" key={option.value}>
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleDraft(group.key, option.value)}
                         />
-                        {option.label}{' '}
-                        <span className="cnt">{formatNumber(option.count)}</span>
+                        <span>{option.label}</span>
+                        <em>{formatNumber(option.count)}</em>
                       </label>
                     );
                   })}
@@ -586,14 +590,14 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
             {filterOptions.extras.length ? (
               <details className="fgroup" open>
-                <summary>
+                <summary className="fgroup__t">
                   Extras <span className="caret">▾</span>
                 </summary>
-                <div className="opts">
+                <div className="fgroup__opts">
                   {filterOptions.extras.map((extra) => {
                     const checked = filters[extra.value] === 'true';
                     return (
-                      <label className="opt" key={extra.value}>
+                      <label className="fcheck" key={extra.value}>
                         <input
                           type="checkbox"
                           checked={checked}
@@ -611,13 +615,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
               className="fgroup"
               open={Boolean(tuitionCurrency || tuitionRange.min || tuitionRange.max)}
             >
-              <summary>
+              <summary className="fgroup__t">
                 Tuition fee <span className="caret">▾</span>
               </summary>
-              <div className="opts">
+              <div className="fgroup__opts">
                 {tuitionCurrency ? (
                   <>
-                    <p className="fhelp">Amounts in {tuitionCurrency}, per year.</p>
+                    <p className="fgroup__note">Amounts in {tuitionCurrency}, per year.</p>
                     <label className="frange-field">
                       <span>Minimum</span>
                       <input
@@ -710,93 +714,83 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </Link>
               </div>
             ) : (
-              <div className="slist course-list">
+              <div className="coursegrid coursegrid--3">
                 {courses.map((course) => {
                   const dur = duration(course);
                   const fee = tuition(course);
                   const intake = nextIntake(course);
                   const checked = compare.some((item) => item.slug === course.slug);
                   return (
-                    <article className="course" key={course.id}>
-                      <div className="course-top">
-                        <span className="uni-logo" aria-hidden="true">
-                          {initials(course.subject.name)}
+                    <article className="coursecard" key={course.id}>
+                      <div className="coursecard__top">
+                        <span className="coursecard__type">
+                          {course.courseLevel.name}
+                          {course.studyModes.length
+                            ? ` · ${course.studyModes[0].name}`
+                            : ''}
                         </span>
-                        <div className="course-head">
-                          <div className="course-badges">
-                            <span className="badge badge-lvl">🎓 {course.courseLevel.name}</span>
-                            {course.scholarshipAvailable ? (
-                              <span className="badge badge-sch">★ Scholarships</span>
-                            ) : null}
-                            {course.studyModes.slice(0, 1).map((mode) => (
-                              <span className="badge badge-mode" key={mode.id}>
-                                {mode.name}
-                              </span>
-                            ))}
-                          </div>
-                          <h3>
-                            <Link href={`/courses/${course.slug}`}>{course.name}</Link>
-                          </h3>
-                          <div className="uni">
-                            <span className="cc">{course.subject.name}</span>
-                            {course.subSubject ? <span>· {course.subSubject.name}</span> : null}
-                            {course.selectedCountry ? <span>· {course.selectedCountry.name}</span> : null}
-                          </div>
+                        <div className="coursecard__tools">
+                          {/* The reference puts a save control here; ours is
+                              the comparison shortlist, which is what this
+                              catalogue actually offers. */}
+                          <label className="cmp-check">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={!checked && compare.length >= 3}
+                              onChange={() => toggleCompare(course)}
+                            />
+                            Compare
+                          </label>
                         </div>
                       </div>
 
+                      <h3 className="coursecard__name">
+                        <Link href={`/courses/${course.slug}`}>{course.name}</Link>
+                      </h3>
+                      <div className="coursecard__uni">
+                        <span className="cc">{course.subject.name}</span>
+                        {course.selectedCountry ? (
+                          <span>· {course.selectedCountry.name}</span>
+                        ) : null}
+                      </div>
+
                       {dur || fee || intake || course.availableCountryCount ? (
-                        <div className="course-facts">
-                          {dur ? (
-                            <div className="fact">
-                              <div className="k">Duration</div>
-                              <div className="v">{dur}</div>
-                            </div>
-                          ) : null}
-                          {fee ? (
-                            <div className="fact">
-                              <div className="k">Tuition</div>
-                              <div className="v">{fee}</div>
-                            </div>
-                          ) : null}
-                          {intake ? (
-                            <div className="fact">
-                              <div className="k">Next intake</div>
-                              <div className="v">{intake}</div>
-                            </div>
-                          ) : null}
+                        <div className="coursecard__facts">
+                          {dur ? <span className="datum">{dur}</span> : null}
+                          {fee ? <span className="datum">{fee}</span> : null}
+                          {intake ? <span className="datum">{intake}</span> : null}
                           {course.availableCountryCount ? (
-                            <div className="fact">
-                              <div className="k">Available in</div>
-                              <div className="v">
-                                {course.availableCountryCount} destination
-                                {course.availableCountryCount === 1 ? '' : 's'}
-                              </div>
-                            </div>
-                          ) : null}
-                          {course.qualificationName &&
-                          course.qualificationName !== course.name ? (
-                            <div className="fact">
-                              <div className="k">Qualification</div>
-                              <div className="v">{course.qualificationName}</div>
-                            </div>
+                            <span className="datum">
+                              {course.availableCountryCount} destination
+                              {course.availableCountryCount === 1 ? '' : 's'}
+                            </span>
                           ) : null}
                         </div>
                       ) : null}
 
-                      <div className="course-foot">
-                        <label className="cmp-check">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={!checked && compare.length >= 3}
-                            onChange={() => toggleCompare(course)}
-                          />
-                          Compare
-                        </label>
-                        <span className="spacer" />
-                        <Link href={`/courses/${course.slug}`} className="btn btn-primary btn-sm">
-                          View course →
+                      {course.scholarshipAvailable || course.subSubject ? (
+                        <div className="coursecard__tags">
+                          {course.subSubject ? (
+                            <Link
+                              className="tag"
+                              href={`/subjects/${course.subject.slug}/${course.subSubject.slug}`}
+                            >
+                              {course.subSubject.name}
+                            </Link>
+                          ) : null}
+                          {course.scholarshipAvailable ? (
+                            <span className="tag">Scholarships</span>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div className="coursecard__foot">
+                        <Link className="linkcta" href={`/courses/${course.slug}`}>
+                          View course{' '}
+                          <span className="linkcta__arrow" aria-hidden="true">
+                            →
+                          </span>
                         </Link>
                       </div>
                     </article>
