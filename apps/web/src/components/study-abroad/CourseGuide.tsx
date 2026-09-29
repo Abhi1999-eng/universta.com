@@ -236,7 +236,12 @@ export function CourseGuide({ course }: { course: CourseDetail }) {
             <div className="faq">
               {faqs.map((faq) => (
                 <details className="faq__item" key={faq.id}>
-                  <summary className="faq__q">{faq.question}</summary>
+                  <summary className="faq__q">
+                    {faq.question}
+                    <span className="faq__plus" aria-hidden="true">
+                      +
+                    </span>
+                  </summary>
                   <div className="faq__a prose">
                     <RichText value={faq.answer} />
                   </div>
