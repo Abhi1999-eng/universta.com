@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getCourses, getSubjects } from '@/lib/catalog';
+import { getCourseFilterOptions, getCourses } from '@/lib/catalog';
 import { CourseCards } from '@/components/study-abroad/CourseCards';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
-import { SectionHead } from '@/components/study-abroad/SectionHead';
+import {
+  ConnectBand,
+  MatchBand,
+} from '@/components/study-abroad/DiscoveryBands';
 import { formatNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -20,49 +23,68 @@ const first = (value: string | string[] | undefined) =>
 export const metadata: Metadata = {
   title: 'Courses',
   description:
-    'Published programmes by subject and level, with the destinations that run them.',
+    'Published programmes by subject, level and destination, with the universities that run them.',
   alternates: { canonical: '/courses' },
 };
 
-/**
- * The programme index.
- *
- * Filtering is a set of links rather than a script: the subject filter is the
- * one people reach for, it has to survive a shared URL, and a page that only
- * works once JavaScript arrives is a page search engines read as empty.
- */
+/** Every filter is a link, so a filtered view survives being shared and is
+ *  readable without JavaScript. The reference does this with checkboxes and a
+ *  script; the shape on screen is the same, the state lives in the URL. */
+type Facet = {
+  key: string;
+  title: string;
+  options: Array<{ value: string; label: string; count?: number }>;
+};
+
 export default async function CoursesIndexPage({ searchParams }: Props) {
   const params = await searchParams;
   const search = first(params.q).trim();
-  const subject = first(params.subject).trim();
   const page = Math.max(Number(first(params.page)) || 1, 1);
+  const selected = {
+    subject: first(params.subject),
+    level: first(params.level),
+    country: first(params.country),
+    mode: first(params.mode),
+    intake: first(params.intake),
+  };
 
-  const [result, subjects] = await Promise.all([
+  const [result, options] = await Promise.all([
     getCourses({
       ...(search ? { q: search } : {}),
-      ...(subject ? { subject } : {}),
+      ...Object.fromEntries(
+        Object.entries(selected).filter(([, value]) => value),
+      ),
       limit: String(PAGE_SIZE),
       page: String(page),
     }).catch(() => null),
-    getSubjects({ limit: '100' })
-      .then((response) => response.data)
-      .catch(() => []),
+    getCourseFilterOptions().catch(() => null),
   ]);
 
   const courses = result?.data ?? [];
   const total = result?.meta?.total ?? courses.length;
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-  const active = subjects.find((row) => row.slug === subject);
+
+  const facets: Facet[] = [
+    { key: 'subject', title: 'Subject', options: options?.subjects ?? [] },
+    { key: 'level', title: 'Study level', options: options?.levels ?? [] },
+    { key: 'country', title: 'Country', options: options?.countries ?? [] },
+    { key: 'mode', title: 'Study mode', options: options?.studyModes ?? [] },
+    { key: 'intake', title: 'Intake', options: options?.intakes ?? [] },
+  ].filter((facet) => facet.options.length > 0);
 
   const href = (next: Record<string, string | undefined>) => {
-    const query = new URLSearchParams();
-    const merged = { q: search, subject, page: String(page), ...next };
-    for (const [key, value] of Object.entries(merged)) {
-      if (value && value !== '1') query.set(key, value);
-    }
-    const text = query.toString();
-    return `/courses${text ? `?${text}` : ''}`;
+    const merged: Record<string, string> = {};
+    for (const [key, value] of Object.entries({
+      q: search,
+      ...selected,
+      ...next,
+    }))
+      if (value) merged[key] = value;
+    const query = new URLSearchParams(merged).toString();
+    return `/courses${query ? `?${query}` : ''}`;
   };
+
+  const active = Object.entries(selected).filter(([, value]) => value);
 
   return (
     <>
@@ -80,118 +102,194 @@ export default async function CoursesIndexPage({ searchParams }: Props) {
               Programme discovery<b>·</b>
               {formatNumber(total)} programmes
             </p>
-            <h1 className="hero__h1">
-              {active ? `${active.name} programmes` : 'Find a programme'}
-            </h1>
+            <h1 className="hero__h1">Find a programme</h1>
             <p className="hero__sub">
-              Published programmes by subject and level, with the destinations
-              that run them.
+              Published programmes by subject, level and destination, with the
+              universities that run them.
             </p>
           </div>
-          <form className="bigsearch" method="get" role="search">
-            {subject ? (
-              <input type="hidden" name="subject" value={subject} />
-            ) : null}
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#667085"
-              strokeWidth="1.7"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              className="bigsearch__input"
-              type="search"
-              name="q"
-              defaultValue={search}
-              placeholder="Search programmes"
-              aria-label="Search programmes"
-              autoComplete="off"
-            />
-            <button className="btn btn--sm" type="submit">
-              Search{' '}
-              <span className="btn__arrow" aria-hidden="true">
-                →
-              </span>
-            </button>
-          </form>
         </div>
       </section>
 
       <section className="sec sec--white" id="courses">
         <div className="wrap">
-          <SectionHead
-            n="01"
-            eyebrow="Programmes"
-            title={active ? active.name : 'All programmes'}
-            lead={`${formatNumber(total)} published ${total === 1 ? 'programme' : 'programmes'}.`}
-          />
+          <div className="courselayout">
+            <aside className="filters-panel" aria-label="Course filters">
+              <div className="filters-panel__head">
+                <span className="filters-panel__title">Filters</span>
+                {active.length ? (
+                  <Link className="linkbtn" href="/courses">
+                    Clear all
+                  </Link>
+                ) : null}
+              </div>
+              <div className="filters-panel__body">
+                {facets.map((facet) => (
+                  <div className="fgroup" key={facet.key}>
+                    <p className="fgroup__t">{facet.title}</p>
+                    <div
+                      className={`fgroup__opts${
+                        facet.options.length > 8 ? ' fgroup__opts--scroll' : ''
+                      }`}
+                    >
+                      {facet.options.map((option) => {
+                        const on =
+                          selected[facet.key as keyof typeof selected] ===
+                          option.value;
+                        return (
+                          <Link
+                            className="fcheck"
+                            key={option.value}
+                            href={href({
+                              [facet.key]: on ? undefined : option.value,
+                              page: undefined,
+                            })}
+                            aria-pressed={on}
+                          >
+                            <span>{option.label}</span>
+                            {typeof option.count === 'number' ? (
+                              <em>{option.count}</em>
+                            ) : null}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <p className="fgroup__note">
+                  Counts come from programmes published in this catalogue, not
+                  from the whole sector.
+                </p>
+              </div>
+            </aside>
 
-          <div className="levelbar levelbar--wide" role="group" aria-label="Subject">
-            <span className="filters__label">Subject</span>
-            <Link
-              className="chipbtn"
-              href={href({ subject: undefined, page: undefined })}
-              aria-pressed={!subject}
-            >
-              All
-            </Link>
-            {subjects.map((row) => (
-              <Link
-                key={row.id}
-                className="chipbtn"
-                href={href({ subject: row.slug, page: undefined })}
-                aria-pressed={subject === row.slug}
+            <div className="cresults">
+              <form
+                className="bigsearch bigsearch--sm cresults__search"
+                method="get"
+                role="search"
               >
-                {row.name}
-              </Link>
-            ))}
+                {active.map(([key, value]) => (
+                  <input key={key} type="hidden" name={key} value={value} />
+                ))}
+                <svg
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#667085"
+                  strokeWidth="1.7"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <input
+                  className="bigsearch__input"
+                  type="search"
+                  name="q"
+                  defaultValue={search}
+                  placeholder="Search programmes"
+                  aria-label="Search programmes"
+                  autoComplete="off"
+                />
+                <button className="btn btn--sm" type="submit">
+                  Search
+                </button>
+              </form>
+
+              {active.length ? (
+                <div className="activechips">
+                  {active.map(([key, value]) => (
+                    <Link
+                      className="chipbtn chipbtn--sm"
+                      key={key}
+                      href={href({ [key]: undefined, page: undefined })}
+                    >
+                      {value} <span aria-hidden="true">×</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+
+              <p className="h-count">
+                {formatNumber(courses.length)} shown of {formatNumber(total)}
+              </p>
+
+              {courses.length ? (
+                <CourseCards courses={courses} />
+              ) : (
+                <p className="dir__none">
+                  No programmes match that search yet.{' '}
+                  <Link href="/courses">Clear the filters</Link> to see
+                  everything.
+                </p>
+              )}
+
+              {pages > 1 ? (
+                <nav className="cresults__more" aria-label="Pagination">
+                  {page > 1 ? (
+                    <Link
+                      className="btn btn--sm btn--ghost"
+                      href={href({ page: String(page - 1) })}
+                    >
+                      Previous
+                    </Link>
+                  ) : null}
+                  <span className="datum">
+                    Page {page} of {pages}
+                  </span>
+                  {page < pages ? (
+                    <Link
+                      className="btn btn--sm btn--ghost"
+                      href={href({ page: String(page + 1) })}
+                    >
+                      Next
+                    </Link>
+                  ) : null}
+                </nav>
+              ) : null}
+            </div>
           </div>
-
-          {courses.length ? (
-            <CourseCards courses={courses} />
-          ) : (
-            <p className="sec-lead">
-              No programmes match that search yet.{' '}
-              <Link href="/courses">Clear the filters</Link> to see everything.
-            </p>
-          )}
-
-          {pages > 1 ? (
-            <nav className="btn-row" aria-label="Pagination" style={{ marginTop: 24 }}>
-              {page > 1 ? (
-                <Link
-                  className="btn btn--sm btn--ghost"
-                  href={href({ page: String(page - 1) })}
-                >
-                  Previous
-                </Link>
-              ) : null}
-              <span className="datum">
-                Page {page} of {pages}
-              </span>
-              {page < pages ? (
-                <Link
-                  className="btn btn--sm btn--ghost"
-                  href={href({ page: String(page + 1) })}
-                >
-                  Next
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
         </div>
       </section>
+
+      <MatchBand
+        heading="Narrowed it down?"
+        lead="Tell us your profile and we'll show which of these you are a fit for."
+        href="/contact"
+      />
 
       <PlanBand
         heading="Not sure which programme fits?"
         body="Tell us about your academic profile, goals and budget. We'll help you understand your options across every destination we cover."
         secondary={{ href: '/subjects', label: 'Browse subjects' }}
+      />
+
+      <ConnectBand
+        actions={[
+          { href: '/subjects', label: 'Browse subjects' },
+          { href: '/specializations', label: 'All specializations', ghost: true },
+          { href: '/study-abroad', label: 'Compare destinations', ghost: true },
+        ]}
+        groups={[
+          {
+            title: 'Subjects',
+            items: (options?.subjects ?? []).slice(0, 6).map((row) => ({
+              id: row.value,
+              name: row.label,
+              href: `/subjects/${row.value}`,
+            })),
+          },
+          {
+            title: 'Destinations',
+            items: (options?.countries ?? []).slice(0, 6).map((row) => ({
+              id: row.value,
+              name: row.label,
+              href: `/study-abroad/${row.value}`,
+            })),
+          },
+        ]}
       />
     </>
   );

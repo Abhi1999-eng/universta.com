@@ -2158,3 +2158,7 @@
 .sa .h-filter { flex: 1 1 100%; }
 .sa .mega__grid { grid-template-columns: 1fr; }
 }
+/* The course index puts its filter panel beside the results; the reference
+   does the same with a page-level grid rather than a class of its own. */
+.sa .courselayout{ display: grid; gap: clamp(18px, 2.4vw, 32px); align-items: start; }
+@media (min-width: 900px){ .sa .courselayout{ grid-template-columns: 260px minmax(0, 1fr); } }
