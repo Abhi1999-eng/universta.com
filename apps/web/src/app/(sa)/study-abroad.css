@@ -2207,16 +2207,3 @@
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .sa .tray__remove:hover { background: var(--on-navy-line); color: #fff; }
-
-/* The reference drives its FAQ from script: a button toggles `aria-expanded`
-   and writes `data-open` onto the answer. A course FAQ is server-rendered
-   prose with no state of its own, so it uses a native <details>, where the
-   disclosure state lives on the element instead. These restate the two rules
-   above in terms of that state, so the answer opens and the plus turns
-   without the page having to ship an accordion. */
-.sa details.faq__item > .faq__q { list-style: none; }
-.sa details.faq__item > .faq__q::-webkit-details-marker { display: none; }
-.sa details.faq__item[open] > .faq__a { display: block; }
-.sa details.faq__item[open] > .faq__q .faq__plus {
-  transform: rotate(45deg); background: var(--navy); color: #fff; border-color: var(--navy);
-}

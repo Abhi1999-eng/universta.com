@@ -29,6 +29,8 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
   const alternates = { canonical: `/subjects/${slug}/specializations` };
   if (!subject) return { title: 'Specialisations not found', alternates };
   return {
+    /* This route family's layout appends the site name through its title
+       template, so the page states only its own name. */
     title: `${subject.name} specialisations`,
     description: `Explore published ${subject.name} specialisations and course pathways.`,
     alternates,
