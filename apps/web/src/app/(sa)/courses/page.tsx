@@ -7,6 +7,10 @@ import {
 } from '@/lib/catalog';
 import { legacyCourseDiscoveryUrl } from '@/lib/course-discovery-url';
 import { CoursesReference } from '@/components/reference/CoursesReference';
+import {
+  ConnectBand,
+  MatchBand,
+} from '@/components/study-abroad/DiscoveryBands';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { getListingPageContent } from '@/lib/listing-page-content';
 import { phaseList } from '@/lib/phase1';
@@ -116,6 +120,7 @@ export default async function CoursesPage({
   ]);
 
   return (
+    <>
     <CoursesReference
       courses={courses.data}
       meta={courses.meta}
@@ -148,5 +153,28 @@ export default async function CoursesPage({
         'Filter the published catalogue, shortlist the programmes that fit, and compare them side by side before you apply.'
       }
     />
+      <MatchBand
+        heading="Narrowed it down?"
+        lead="Tell us your profile and we'll show which of these you are a fit for."
+        href="/contact"
+      />
+      <ConnectBand
+        actions={[
+          { href: '/subjects', label: 'Browse subjects' },
+          { href: '/specializations', label: 'All specializations', ghost: true },
+          { href: '/study-abroad', label: 'Compare destinations', ghost: true },
+        ]}
+        groups={[
+          {
+            title: 'Subjects',
+            items: subjects.slice(0, 6).map((row) => ({
+              id: String(row.id),
+              name: String(row.name),
+              href: `/subjects/${String(row.slug)}`,
+            })),
+          },
+        ]}
+      />
+    </>
   );
 }

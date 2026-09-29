@@ -365,13 +365,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
           />
 
           {(filterOptions.extras.length || filterOptions.intakes.length) > 0 ? (
-            <div className="pop" style={{ marginTop: 18 }}>
+            <p className="bigsearch__ex" style={{ marginTop: 18 }}>
               <b>Popular:</b>
               {/* Quick filters toggle a single parameter straight away, so their
                   pressed state is the URL rather than page-local memory. */}
               <button
                 type="button"
-                className={`chip${filters.scholarshipAvailable === 'true' ? ' on' : ''}`}
+                className={`chipbtn chipbtn--sm${filters.scholarshipAvailable === 'true' ? ' on' : ''}`}
                 aria-pressed={filters.scholarshipAvailable === 'true'}
                 onClick={() =>
                   commit({
@@ -384,7 +384,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               </button>
               <button
                 type="button"
-                className={`chip${filters.postStudyWorkAvailable === 'true' ? ' on' : ''}`}
+                className={`chipbtn chipbtn--sm${filters.postStudyWorkAvailable === 'true' ? ' on' : ''}`}
                 aria-pressed={filters.postStudyWorkAvailable === 'true'}
                 onClick={() =>
                   commit({
@@ -396,21 +396,21 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 Post-study work
               </button>
               {filterOptions.intakes.slice(0, 3).map((intake) => (
-                <Link key={intake.value} className="chip" href={browseHref({ intake: intake.value })}>
+                <Link key={intake.value} className="chipbtn chipbtn--sm" href={browseHref({ intake: intake.value })}>
                   {intake.label} intake
                 </Link>
               ))}
-            </div>
+            </p>
           ) : null}
 
-          <div className="hero-ctas">
-            <a href="#discovery" className="btn btn-primary btn-lg">
+          <div className="btn-row hero-ctas">
+            <a href="#discovery" className="btn btn--lg">
               Browse courses
             </a>
-            <Link href="/compare/courses" className="btn btn-outline btn-lg">
+            <Link href="/compare/courses" className="btn btn--ghost btn--lg">
               Compare courses
             </Link>
-            <Link href="/counselling" className="btn btn-outline btn-lg">
+            <Link href="/counselling" className="btn btn--ghost btn--lg">
               Book free counselling
             </Link>
           </div>
@@ -529,28 +529,25 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
           <aside
             id="course-filter-panel"
-            className={`filters${drawerOpen ? ' open' : ''}`}
+            className={`filters-panel filters${drawerOpen ? ' open' : ''}`}
             aria-label="Filter courses"
             data-testid="course-filters"
           >
-            <div className="fhead">
-              <h3>Filters</h3>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                {activeCount ? (
-                  <Link href="/courses#discovery" style={{ fontSize: 13, color: 'var(--blue)', fontWeight: 600 }}>
-                    Clear all
-                  </Link>
-                ) : null}
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm filter-toggle"
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Close filters"
-                  style={{ padding: '6px 10px' }}
-                >
-                  ✕
-                </button>
-              </div>
+            <div className="filters-panel__head">
+              <span className="filters-panel__title">Filters</span>
+              {activeCount ? (
+                <Link className="linkbtn" href="/courses#discovery">
+                  Clear all
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                className="cs__close filters-panel__close filter-toggle"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close filters"
+              >
+                ×
+              </button>
             </div>
 
             <form
@@ -559,7 +556,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 applyDraft();
               }}
             >
-            <div className="fscroll">
+            <div className="filters-panel__body fscroll">
             {facetGroups.map((group) => (
               <details className="fgroup" key={group.key} open={group.open}>
                 <summary className="fgroup__t">
@@ -662,19 +659,19 @@ export function CoursesReference(props: CoursesReferenceProps) {
             </details>
             </div>
 
-            <div className="ffoot">
-              <button className="btn btn-primary btn-block" type="submit">
+            <div className="filters-panel__foot ffoot">
+              <button className="btn btn--block" type="submit">
                 Apply filters
               </button>
             </div>
             </form>
           </aside>
 
-          <div>
+          <div className="cresults">
             <div className="main-head">
               <button
                 type="button"
-                className="btn btn-ghost btn-sm filter-toggle"
+                className="filters-toggle btn btn--ghost btn--sm filter-toggle"
                 onClick={() => setDrawerOpen(true)}
                 aria-expanded={drawerOpen}
                 aria-controls="course-filter-panel"
@@ -682,7 +679,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 <span aria-hidden="true">☰ </span>
                 Filters{activeCount ? ` (${activeCount})` : ''}
               </button>
-              <p className="count" data-testid="course-count">
+              <p className="h-count count" data-testid="course-count">
                 {formatNumber(meta.total)} course{meta.total === 1 ? '' : 's'}{' '}
                 <span>{activeCount ? 'match your filters' : 'published'}</span>
               </p>
@@ -709,7 +706,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               <div className="cref-empty" data-testid="course-empty">
                 <h3>No courses match these filters</h3>
                 <p>Try removing a filter, or browse by subject or destination below.</p>
-                <Link className="btn btn-primary" href="/courses#discovery">
+                <Link className="btn" href="/courses#discovery">
                   Clear filters
                 </Link>
               </div>
@@ -1201,13 +1198,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
           <h2>{props.ctaHeading}</h2>
           <p>{props.ctaBody}</p>
           <div className="hero-ctas">
-            <a href="#discovery" className="btn btn-secondary btn-lg">
+            <a href="#discovery" className="btn btn-secondary btn--lg">
               Browse courses
             </a>
-            <Link href="/compare/courses" className="btn btn-outline btn-lg">
+            <Link href="/compare/courses" className="btn btn--ghost btn--lg">
               Compare courses
             </Link>
-            <Link href="/counselling" className="btn btn-outline btn-lg">
+            <Link href="/counselling" className="btn btn--ghost btn--lg">
               Book free counselling
             </Link>
           </div>
@@ -1242,7 +1239,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               <button type="button" className="btn-clear" onClick={() => setCompare([])}>
                 Clear
               </button>
-              <Link href={compareHref} className="btn btn-primary btn-sm">
+              <Link href={compareHref} className="btn btn--sm">
                 Compare {compare.length}
               </Link>
             </div>
