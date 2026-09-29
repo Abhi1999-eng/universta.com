@@ -2178,3 +2178,9 @@
 .sa .coursecard__uni,
 .sa .coursecard__type,
 .sa .coursecard__facts .datum{ overflow-wrap: anywhere; }
+
+/* The reference applies a filter the moment you tick it, so its panel foot --
+   which holds nothing but a submit -- only appears in the mobile drawer. This
+   catalogue batches a draft and applies it on submit, so the button has to be
+   reachable at every width or a desktop filter can be set and never applied. */
+.sa .filters-panel__foot{ display: block; }

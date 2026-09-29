@@ -530,6 +530,9 @@ export function CoursesReference(props: CoursesReferenceProps) {
           <aside
             id="course-filter-panel"
             className={`filters-panel filters${drawerOpen ? ' open' : ''}`}
+            /* The reference's drawer slides in on `data-open`; ours tracks the
+               same state in React, so it sets the attribute the CSS reads. */
+            data-open={drawerOpen ? 'true' : 'false'}
             aria-label="Filter courses"
             data-testid="course-filters"
           >
