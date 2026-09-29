@@ -2,15 +2,19 @@ import Link from 'next/link';
 import type { Course, SubjectDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
+import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { SpecializationSearch } from './SpecializationSearch';
 
 /** The client-approved specialisations page.
  *
- * The template compares specialisations by salary, demand and difficulty, and
- * closes with skills, trends, stories and a resource rail. Universta records a
- * specialisation as a name, description and the courses mapped to it, so the
- * comparison rows are the real per-specialisation course counts and the blocks
- * with no backing data are omitted. */
+ * The reference has no page of its own for this: a subject lists its
+ * specializations inline. So this is built from that page's vocabulary --
+ * numbered section bands, `sec-head`, the `specgrid` of `speccard`s -- rather
+ * than invented, and the behaviour the catalogue specs pin is unchanged: the
+ * results region is still `#all` and still takes focus on submit, every card
+ * still carries its slug as an anchor, and the call to action still opens the
+ * courses filtered to that specialisation.
+ */
 
 export type SpecializationsReferenceProps = {
   subject: SubjectDetail;
@@ -54,6 +58,10 @@ const FAQS = [
   },
 ];
 
+function courseLabel(count: number) {
+  return `${formatNumber(count)} course${count === 1 ? '' : 's'}`;
+}
+
 export function SpecializationsReference(props: SpecializationsReferenceProps) {
   const { subject, counts, countries, universities, courses, scholarships, query } = props;
   const term = query.trim().toLowerCase();
@@ -75,118 +83,143 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
     from: `/subjects/${subject.slug}/specializations`,
   });
 
+  /* The reference numbers its sections in the order they appear, so the
+     numbering has to be built from the sections this record actually fills
+     rather than hard-coded and left with gaps. */
+  const order: string[] = [];
+  if (popular.length) order.push('popular');
+  order.push('all');
+  if (courses.length) order.push('courses');
+  if (countries.length) order.push('destinations');
+  if (universities.length) order.push('universities');
+  if (scholarships.length) order.push('scholarships');
+  order.push('faq');
+
+  const n = (key: string) => String(order.indexOf(key) + 1).padStart(2, '0');
+  const band = (key: string) =>
+    `sec ${order.indexOf(key) % 2 === 0 ? 'sec--paper' : 'sec--white'}`;
+
   return (
     <div className="cref cref-subj">
-      <div className="wrap">
-        <nav className="crumb" aria-label="Breadcrumb">
-          <Link href="/">Home</Link> › <Link href="/subjects">Subjects</Link> ›{' '}
-          <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link> ›{' '}
-          <span aria-current="page">Specialisations</span>
-        </nav>
-      </div>
+      <section className="hero hero--compact">
+        <div className="wrap">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
+            </span>
+            <Link href="/subjects">Subjects</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
+            </span>
+            <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
+            </span>
+            <span aria-current="page">Specialisations</span>
+          </nav>
 
-      {/* HERO */}
-      <section className="hero">
-        <div className="wrap hero-in">
-          <h1>
-            Explore <span className="b">{subject.name}</span> specialisations
-          </h1>
-          <p className="lead">
-            Narrow your path within {subject.name}. Each specialisation below opens the published
-            courses mapped to it, with the universities and destinations that teach them.
-          </p>
+          <div className="hero__lead">
+            <p className="hero__eyebrow">
+              Narrow your path<b>·</b>
+              {specialisations.length} specialisations<b>·</b>
+              {formatNumber(subject.publishedCourseCount)} courses
+            </p>
+            <h1 className="hero__h1">Explore {subject.name} specialisations</h1>
+            <p className="hero__sub">
+              Each specialisation below opens the published courses mapped to
+              it, with the universities and destinations that teach them.
+            </p>
+          </div>
 
           <SpecializationSearch query={query} subject={subject.name} />
 
-          <div className="hero-ctas">
-            <a href="#all" className="btn btn-primary btn-lg">
-              Explore specialisations
+          <div className="btn-row">
+            <a href="#all" className="btn btn--lg">
+              Explore specialisations{' '}
+              <span className="btn__arrow" aria-hidden="true">
+                →
+              </span>
             </a>
             <Link
               href={`/courses?subject=${subject.slug}#discovery`}
-              className="btn btn-outline btn-lg"
+              className="btn btn--ghost btn--lg"
             >
               All {subject.name} courses
             </Link>
           </div>
-
-          <div className="statgrid four">
-            <div className="stat">
-              <b>{specialisations.length || '—'}</b>
-              <span>Specialisations</span>
-            </div>
-            <div className="stat">
-              <b>{formatNumber(subject.publishedCourseCount) || '—'}</b>
-              <span>Courses</span>
-            </div>
-            <div className="stat">
-              <b>{universities.length || '—'}</b>
-              <span>Universities</span>
-            </div>
-            <div className="stat">
-              <b>{subject.availableCountryCount || '—'}</b>
-              <span>Destinations</span>
-            </div>
-          </div>
         </div>
       </section>
 
-      <div className="wrap layout" style={{ paddingTop: 44 }}>
-        <main className="main">
-          {/* POPULAR */}
-          {popular.length ? (
-            <section className="section" id="popular" style={{ paddingTop: 0 }}>
-              <div className="section-head row-between">
-                <div>
-                  <span className="eyebrow">Most courses</span>
-                  <h2>Popular {subject.name} specialisations</h2>
-                  <p className="sub">Ranked by the number of published courses mapped to each.</p>
-                </div>
-                <a className="link-more" href="#all">
-                  All specialisations →
-                </a>
+      {/* POPULAR */}
+      {popular.length ? (
+        <section className={band('popular')} id="popular">
+          <div className="wrap">
+            <div className="sec-head sec-head--split">
+              <div className="sec-head__aside">
+                <p className="eyebrow">
+                  <span className="eyebrow__n">{n('popular')}</span> Most courses
+                </p>
+                <h2 className="sec-title">Popular {subject.name} specialisations</h2>
               </div>
-              <div className="grid g3">
-                {popular.map((item, index) => (
-                  <Link
-                    key={item.id}
-                    href={`/courses?subject=${subject.slug}&subSubject=${item.slug}#discovery`}
-                    className="card subj-card"
-                  >
-                    <div className={`subj-img c${index % 6}`}>
-                      <span className="si" aria-hidden="true">
-                        {initials(item.name)}
-                      </span>
-                    </div>
-                    <div className="subj-body">
-                      <h3>{item.name}</h3>
-                      {item.shortDescription ? (
-                        <div className="subj-meta">
-                          <span>{item.shortDescription}</span>
-                        </div>
-                      ) : null}
-                      <div className="subj-foot">
-                        <span className="tuit">
-                          {counts[item.slug]
-                            ? `${formatNumber(counts[item.slug])} course${counts[item.slug] === 1 ? '' : 's'}`
-                            : ''}
-                        </span>
-                        <span className="go">Explore →</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+              <div>
+                <p className="sec-lead">
+                  Ranked by the number of published courses mapped to each.
+                </p>
+                <p className="sec-head__cta">
+                  <a className="linkcta" href="#all">
+                    All specialisations{' '}
+                    <span aria-hidden="true">→</span>
+                  </a>
+                </p>
               </div>
-            </section>
-          ) : null}
+            </div>
 
-          {/* ALL */}
-          {/* The results region takes focus on submit, so it is a real target. */}
-          <section className="section" id="all" tabIndex={-1}>
-            <div className="section-head">
-              <span className="eyebrow">Every focus area</span>
-              <h2>All {subject.name} specialisations</h2>
-              <p className="sub">
+            <div className="specgrid">
+              {popular.map((item) => (
+                <article className="speccard speccard--hl" key={item.id}>
+                  <div className="speccard__btn">
+                    <span className="speccard__top">
+                      <span className="label">Specialization</span>
+                      <span className="badge badge--req">Popular</span>
+                    </span>
+                    <h3 className="speccard__name">{item.name}</h3>
+                    {item.shortDescription ? (
+                      <p className="speccard__desc">{item.shortDescription}</p>
+                    ) : null}
+                    <span className="speccard__foot">
+                      <span className="speccard__levels">{initials(subject.name)}</span>
+                      <span className="speccard__count datum">
+                        {counts[item.slug] ? courseLabel(counts[item.slug]) : 'No courses yet'}
+                      </span>
+                    </span>
+                    <Link
+                      className="speccard__cta"
+                      href={`/courses?subject=${subject.slug}&subSubject=${item.slug}#discovery`}
+                    >
+                      Explore specialisation <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ALL */}
+      {/* The results region takes focus on submit, so it is a real target. */}
+      <section className={band('all')} id="all" tabIndex={-1}>
+        <div className="wrap">
+          <div className="sec-head sec-head--split">
+            <div className="sec-head__aside">
+              <p className="eyebrow">
+                <span className="eyebrow__n">{n('all')}</span> Every focus area
+              </p>
+              <h2 className="sec-title">All {subject.name} specialisations</h2>
+            </div>
+            <div>
+              <p className="sec-lead">
                 {term
                   ? `${specialisations.length} specialisation${specialisations.length === 1 ? '' : 's'} matching “${query}”.`
                   : specialisations.length
@@ -194,225 +227,283 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                     : 'No specialisations are published for this subject yet.'}
               </p>
             </div>
-            {specialisations.length === 0 ? (
-              <div className="cref-empty" data-testid="specialization-empty">
-                <h3>{term ? 'No specialisations match that search' : 'No specialisations published yet'}</h3>
-                <p>Browse every {subject.name} course instead.</p>
-                <Link className="btn btn-primary" href={`/courses?subject=${subject.slug}#discovery`}>
-                  Browse courses
-                </Link>
-              </div>
-            ) : (
-              <div className="grid g2">
-                {ranked.map((item) => (
-                  <article className="card spec-card" id={item.slug} key={item.id}>
-                    <span className="spec-ic" aria-hidden="true">
-                      {initials(item.name)}
-                    </span>
-                    <div>
-                      <h3 className="sn">{item.name}</h3>
-                      <div className="sd">
-                        {counts[item.slug]
-                          ? `${formatNumber(counts[item.slug])} course${counts[item.slug] === 1 ? '' : 's'}`
-                          : (item.shortDescription ?? 'Published specialisation')}
-                      </div>
-                      <Link
-                        className="link-more"
-                        href={`/courses?subject=${subject.slug}&subSubject=${item.slug}`}
-                      >
-                        Explore courses →
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+          </div>
 
-          {/* COURSES */}
-          {courses.length ? (
-            <section className="section" id="courses">
-              <div className="section-head row-between">
-                <div>
-                  <span className="eyebrow">Programmes</span>
-                  <h2>Courses across these specialisations</h2>
-                </div>
-                <Link className="link-more" href={`/courses?subject=${subject.slug}#discovery`}>
-                  All courses →
-                </Link>
-              </div>
-              <div className="grid g2">
-                {courses.map((course) => (
-                  <Link key={course.id} className="card course-chip" href={`/courses/${course.slug}`}>
-                    <span className="cc-ic" aria-hidden="true">
-                      {initials(course.subSubject?.name ?? course.courseLevel.name)}
-                    </span>
-                    <div>
-                      <div className="cn">{course.name}</div>
-                      <div className="cs">
-                        {[course.courseLevel.name, course.subSubject?.name]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </div>
-                    </div>
-                    <span className="go" aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {/* DESTINATIONS */}
-          {countries.length ? (
-            <section className="section" id="best-countries">
-              <div className="section-head">
-                <span className="eyebrow">Where to study</span>
-                <h2>Best destinations for {subject.name}</h2>
-                <p className="sub">Destinations with published course offerings in this subject.</p>
-              </div>
-              <div className="card dest-block">
-                <h3>Browse by destination</h3>
-                <div className="dest-flags">
-                  {countries.map((country) => (
-                    <Link
-                      key={country.value}
-                      className="dest-flag"
-                      href={`/courses?subject=${subject.slug}&country=${country.value}#discovery`}
-                    >
-                      <span className="cc">{initials(country.label)}</span>
-                      {country.label}
-                      <span style={{ color: 'var(--muted)' }}>{formatNumber(country.count)}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </section>
-          ) : null}
-
-          {/* UNIVERSITIES */}
-          {universities.length ? (
-            <section className="section" id="universities">
-              <div className="section-head row-between">
-                <div>
-                  <span className="eyebrow">Institutions</span>
-                  <h2>Universities teaching {subject.name}</h2>
-                </div>
-                <Link className="link-more" href="/universities">
-                  All universities →
-                </Link>
-              </div>
-              <div className="grid g2">
-                {universities.map((university) => (
-                  <Link
-                    key={university.slug}
-                    className="card uni-row"
-                    href={`/universities/${university.slug}`}
-                  >
-                    <span className="ulogo" aria-hidden="true">
-                      {initials(university.name)}
-                    </span>
-                    <div>
-                      <h3>{university.name}</h3>
-                      {university.country ? <div className="um">{university.country}</div> : null}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {/* SCHOLARSHIPS */}
-          {scholarships.length ? (
-            <section className="section" id="scholarships">
-              <div className="section-head row-between">
-                <div>
-                  <span className="eyebrow">Funding</span>
-                  <h2>Scholarships</h2>
-                </div>
-                <Link className="link-more" href={`/scholarships?subject=${subject.slug}`}>
-                  All scholarships →
-                </Link>
-              </div>
-              <div className="grid g3">
-                {scholarships.map((scholarship) => (
-                  <article className="card sch" key={scholarship.slug}>
-                    {scholarship.type ? <span className="s-cat">{scholarship.type}</span> : null}
-                    <h3>
-                      <Link href={`/scholarships/${scholarship.slug}`}>{scholarship.title}</Link>
-                    </h3>
-                    {scholarship.amount ? <div className="s-amt">{scholarship.amount}</div> : null}
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {/* FAQ */}
-          <section className="section" id="faq">
-            <div className="section-head">
-              <span className="eyebrow">Answers</span>
-              <h2>Frequently asked questions</h2>
+          {specialisations.length === 0 ? (
+            <div className="cref-empty" data-testid="specialization-empty">
+              <h3>
+                {term
+                  ? 'No specialisations match that search'
+                  : 'No specialisations published yet'}
+              </h3>
+              <p>Browse every {subject.name} course instead.</p>
+              <Link className="btn" href={`/courses?subject=${subject.slug}#discovery`}>
+                Browse courses{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
             </div>
-            <div className="faq">
-              {FAQS.map((item, index) => (
-                <details className="qa" key={item.q} open={index === 0}>
-                  <summary>
-                    {item.q} <span className="plus">+</span>
-                  </summary>
-                  <p className="ans">{item.a}</p>
-                </details>
+          ) : (
+            <div className="specgrid">
+              {ranked.map((item) => (
+                /* The slug is the anchor the subject page and search results
+                   link into, so it stays on the card itself. */
+                <article className="speccard" id={item.slug} key={item.id}>
+                  <div className="speccard__btn">
+                    <span className="speccard__top">
+                      <span className="label">Specialization</span>
+                    </span>
+                    <h3 className="speccard__name">{item.name}</h3>
+                    {item.shortDescription ? (
+                      <p className="speccard__desc">{item.shortDescription}</p>
+                    ) : null}
+                    <span className="speccard__foot">
+                      <span className="speccard__levels">{subject.name}</span>
+                      <span className="speccard__count datum">
+                        {counts[item.slug] ? courseLabel(counts[item.slug]) : 'No courses yet'}
+                      </span>
+                    </span>
+                    <Link
+                      className="speccard__cta"
+                      href={`/courses?subject=${subject.slug}&subSubject=${item.slug}`}
+                    >
+                      Explore courses <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </article>
               ))}
             </div>
-          </section>
+          )}
+        </div>
+      </section>
 
-          {/* EXPLORE */}
-          <section className="section" id="explore">
-            <div className="section-head">
-              <span className="eyebrow">Keep exploring</span>
-              <h2>Explore more</h2>
+      {/* COURSES */}
+      {courses.length ? (
+        <section className={band('courses')} id="courses">
+          <div className="wrap">
+            <div className="sec-head sec-head--split">
+              <div className="sec-head__aside">
+                <p className="eyebrow">
+                  <span className="eyebrow__n">{n('courses')}</span> Programmes
+                </p>
+                <h2 className="sec-title">Courses across these specialisations</h2>
+              </div>
+              <div>
+                <p className="sec-lead">
+                  A sample of the published programmes mapped to {subject.name}.
+                </p>
+                <p className="sec-head__cta">
+                  <Link className="linkcta" href={`/courses?subject=${subject.slug}#discovery`}>
+                    All courses <span aria-hidden="true">→</span>
+                  </Link>
+                </p>
+              </div>
             </div>
-            <div className="explore-grid">
-              {[
+
+            <div className="specgrid">
+              {courses.map((course) => (
+                <article className="speccard" key={course.id}>
+                  <div className="speccard__btn">
+                    <span className="speccard__top">
+                      <span className="label">{course.courseLevel.name}</span>
+                    </span>
+                    <h3 className="speccard__name">{course.name}</h3>
+                    {course.subSubject ? (
+                      <p className="speccard__desc">{course.subSubject.name}</p>
+                    ) : null}
+                    <Link className="speccard__cta" href={`/courses/${course.slug}`}>
+                      View programme <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* DESTINATIONS */}
+      {countries.length ? (
+        <section className={band('destinations')} id="best-countries">
+          <div className="wrap">
+            <div className="sec-head">
+              <p className="eyebrow">
+                <span className="eyebrow__n">{n('destinations')}</span> Where to study
+              </p>
+              <h2 className="sec-title">Best destinations for {subject.name}</h2>
+              <p className="sec-lead">
+                Destinations with published course offerings in this subject.
+              </p>
+            </div>
+
+            <div className="pillrow">
+              {countries.map((country) => (
+                <Link
+                  key={country.value}
+                  className="pill"
+                  href={`/courses?subject=${subject.slug}&country=${country.value}#discovery`}
+                >
+                  {country.label}{' '}
+                  <em>{formatNumber(country.count)}</em>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* UNIVERSITIES */}
+      {universities.length ? (
+        <section className={band('universities')} id="universities">
+          <div className="wrap">
+            <div className="sec-head sec-head--split">
+              <div className="sec-head__aside">
+                <p className="eyebrow">
+                  <span className="eyebrow__n">{n('universities')}</span> Institutions
+                </p>
+                <h2 className="sec-title">Universities teaching {subject.name}</h2>
+              </div>
+              <div>
+                <p className="sec-lead">
+                  Institutions with published programmes in this subject.
+                </p>
+                <p className="sec-head__cta">
+                  <Link className="linkcta" href="/universities">
+                    All universities <span aria-hidden="true">→</span>
+                  </Link>
+                </p>
+              </div>
+            </div>
+
+            <div className="specgrid">
+              {universities.map((university) => (
+                <article className="speccard" key={university.slug}>
+                  <div className="speccard__btn">
+                    <span className="speccard__top">
+                      <span className="label">University</span>
+                    </span>
+                    <h3 className="speccard__name">{university.name}</h3>
+                    {university.country ? (
+                      <p className="speccard__desc">{university.country}</p>
+                    ) : null}
+                    <Link className="speccard__cta" href={`/universities/${university.slug}`}>
+                      View university <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* SCHOLARSHIPS */}
+      {scholarships.length ? (
+        <section className={band('scholarships')} id="scholarships">
+          <div className="wrap">
+            <div className="sec-head sec-head--split">
+              <div className="sec-head__aside">
+                <p className="eyebrow">
+                  <span className="eyebrow__n">{n('scholarships')}</span> Funding
+                </p>
+                <h2 className="sec-title">Scholarships</h2>
+              </div>
+              <div>
+                <p className="sec-lead">
+                  Published awards that can go towards a {subject.name} programme.
+                </p>
+                <p className="sec-head__cta">
+                  <Link className="linkcta" href={`/scholarships?subject=${subject.slug}`}>
+                    All scholarships <span aria-hidden="true">→</span>
+                  </Link>
+                </p>
+              </div>
+            </div>
+
+            <div className="specgrid">
+              {scholarships.map((scholarship) => (
+                <article className="speccard" key={scholarship.slug}>
+                  <div className="speccard__btn">
+                    <span className="speccard__top">
+                      <span className="label">{scholarship.type ?? 'Scholarship'}</span>
+                    </span>
+                    <h3 className="speccard__name">{scholarship.title}</h3>
+                    {scholarship.amount ? (
+                      <span className="speccard__foot">
+                        <span className="speccard__count datum">{scholarship.amount}</span>
+                      </span>
+                    ) : null}
+                    <Link className="speccard__cta" href={`/scholarships/${scholarship.slug}`}>
+                      View scholarship <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* FAQ */}
+      <section className={band('faq')} id="faq">
+        <div className="wrap">
+          <div className="sec-head">
+            <p className="eyebrow">
+              <span className="eyebrow__n">{n('faq')}</span> Answers
+            </p>
+            <h2 className="sec-title">Frequently asked questions</h2>
+          </div>
+
+          <div className="faq">
+            {FAQS.map((item) => (
+              <details className="faq__item" key={item.q}>
+                <summary className="faq__q">
+                  {item.q}
+                  <span className="faq__plus" aria-hidden="true">
+                    +
+                  </span>
+                </summary>
+                <div className="faq__a">
+                  <p>{item.a}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <PlanBand
+        heading="Not sure which strand fits?"
+        body={`A counsellor can help you pick a ${subject.name} specialisation that matches your background, your grades and where you want to study.`}
+        secondary={{ href: counselling, label: 'Book free counselling' }}
+      />
+
+      {/* EXPLORE */}
+      <section className="sec sec--paper sec--tight h-connect" id="explore">
+        <div className="wrap">
+          <div className="sec-head sec-head--compact">
+            <p className="eyebrow">Keep exploring</p>
+            <h2 className="sec-title sec-title--sm">Explore more</h2>
+          </div>
+          <div className="pillrow">
+            {(
+              [
                 [`Back to ${subject.name}`, `/subjects/${subject.slug}`],
                 ['All subjects', '/subjects'],
                 ['All courses', '/courses'],
                 ['Universities', '/universities'],
                 ['Scholarships', '/scholarships'],
                 ['Free counselling', '/counselling'],
-              ].map(([label, href]) => (
-                <Link className="card explore-item" key={href} href={href}>
-                  <span className="en">{label}</span>
-                  <span className="go" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </main>
-
-        <aside className="side">
-          <div className="side-card">
-            <h3>Not sure which strand fits?</h3>
-            <p>A counsellor can help you pick a specialisation that matches your background.</p>
-            <Link className="btn btn-primary btn-block" href={counselling}>
-              Book free counselling
-            </Link>
+              ] as Array<[string, string]>
+            ).map(([label, href]) => (
+              <Link className="pill" key={href} href={href}>
+                {label}
+              </Link>
+            ))}
           </div>
-          <div className="side-card">
-            <h3>Jump to</h3>
-            <div className="side-links">
-              <a href="#popular">Popular specialisations</a>
-              <a href="#all">All specialisations</a>
-              <a href="#courses">Courses</a>
-              <a href="#best-countries">Destinations</a>
-              <a href="#faq">FAQ</a>
-            </div>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

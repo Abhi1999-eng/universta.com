@@ -52,49 +52,53 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page).toHaveURL(`${webBaseUrl}/study-abroad`);
   });
 
+  /* The approved design replaced this page's three stacked sections and its
+     sidebar with one searchable index of subject cards, each carrying its own
+     specializations, so these assert the same discovery contract -- an
+     addressable subject, a unique path to it, no duplicate routes -- against
+     the markup that design ships. */
   test('renders the approved seeded subject catalog with safe discovery paths', async ({ page }) => {
     await page.goto(subjects);
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Explore Subjects' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'What do you want to study?' }),
+    ).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Search subjects' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Popular subjects' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Browse by category' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'A–Z subject directory' })).toBeVisible();
+    await expect(page.locator('#taxonomy .subjindex')).toBeVisible();
     await expect(page.getByRole('link', { name: /Computer Science/i }).first()).toBeVisible();
-    await expect(page.locator('#categories a').filter({ hasText: 'Computer Science' })).toHaveAttribute(
-      'href',
-      '/courses?subject=computer-science',
-    );
-    const popularHrefs = await page.locator('#popular a.subj-card').evaluateAll((links) => (
+    await expect(
+      page.locator('.subjindex .subjcard__name a').filter({ hasText: 'Computer Science' }),
+    ).toHaveAttribute('href', '/subjects/computer-science');
+
+    const cardHrefs = await page.locator('.subjindex .subjcard__name a').evaluateAll((links) => (
       links.map((link) => link.getAttribute('href'))
     ));
-    expect(new Set(popularHrefs).size).toBe(popularHrefs.length);
+    expect(cardHrefs.length).toBeGreaterThan(0);
+    expect(new Set(cardHrefs).size).toBe(cardHrefs.length);
   });
 
-  test('keeps the degree-level cards inside the main column, clear of the sidebar', async ({ page }) => {
-    // A `1fr` track is floored at its item's min-content width, so a long level
-    // name once made this grid wider than the column it sits in and the
-    // overflow painted over the sticky rail.
+  test('keeps the subject cards inside their column at desktop widths', async ({ page }) => {
+    // A `1fr` track is floored at its item's min-content width, so one long
+    // subject or specialization name can make this grid wider than the column
+    // it sits in and paint outside it. The sidebar this once guarded against
+    // is gone with the approved design; the column edge is the bound now.
     for (const width of [1440, 1280]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(subjects);
 
       const geometry = await page.evaluate(() => {
-        const main = document.querySelector('.main')?.getBoundingClientRect();
-        const side = document.querySelector('.side')?.getBoundingClientRect();
-        const cards = [...document.querySelectorAll('#degrees .card')].map((card) => {
+        const column = document.querySelector('#taxonomy .wrap')?.getBoundingClientRect();
+        const cards = [...document.querySelectorAll('.subjindex .subjcard')].map((card) => {
           const box = card.getBoundingClientRect();
           return { text: card.textContent?.trim().slice(0, 30) ?? '', right: box.right, width: box.width };
         });
-        return { mainRight: main?.right ?? 0, sideLeft: side?.left ?? 0, cards };
+        return { columnRight: column?.right ?? 0, cards };
       });
 
       expect(geometry.cards.length).toBeGreaterThan(0);
       for (const card of geometry.cards) {
-        expect(card.right, `${card.text} must stay inside the main column at ${width}px`)
-          .toBeLessThanOrEqual(geometry.mainRight + 1);
-        expect(card.right, `${card.text} must not reach the sidebar at ${width}px`)
-          .toBeLessThanOrEqual(geometry.sideLeft);
+        expect(card.right, `${card.text} must stay inside its column at ${width}px`)
+          .toBeLessThanOrEqual(geometry.columnRight + 1);
       }
       // Every card in a row shares one track width.
       expect(new Set(geometry.cards.map((card) => Math.round(card.width))).size).toBe(1);
@@ -109,7 +113,7 @@ test.describe('approved public subject and course discovery', () => {
     await page.goto(`${subjects}?q=Computer`);
 
     await expect(page.getByRole('combobox', { name: 'Search subjects' })).toHaveValue('Computer');
-    await expect(page.locator('#popular a.subj-card')).toHaveCount(1);
+    await expect(page.locator('.subjindex .subjcard')).toHaveCount(1);
   });
 
   test('offers API-backed subject suggestions with keyboard selection', async ({ page }) => {
@@ -135,7 +139,7 @@ test.describe('approved public subject and course discovery', () => {
 
     await expect(page).toHaveURL(/q=Computer\+Science/);
     await expect(search).toHaveValue('Computer Science');
-    await expect(page.locator('#popular a.subj-card')).toHaveCount(1);
+    await expect(page.locator('.subjindex .subjcard')).toHaveCount(1);
     assertHealthyPage();
   });
 
