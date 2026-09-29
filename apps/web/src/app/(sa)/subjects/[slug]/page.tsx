@@ -22,13 +22,16 @@ async function load(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const subject = await load((await params).slug);
-  if (!subject) return { title: "Subject not found | Universta" };
-  return resolvedMetadata(
+  if (!subject) return { title: "Subject not found" };
+  const resolved = await resolvedMetadata(
     subject.seo,
     subject.name,
     subject.shortDescription ?? `Explore ${subject.name} courses.`,
     `/subjects/${subject.slug}`,
   );
+  /* This route family's layout appends the site name through its title
+     template, and `resolvedMetadata` appends it too. */
+  return { ...resolved, title: subject.name };
 }
 
 export default async function SubjectDetailPage({ params }: Props) {

@@ -27,9 +27,11 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
   // Every other public route declares a canonical; this one declared none,
   // leaving its preferred URL ambiguous to search engines.
   const alternates = { canonical: `/subjects/${slug}/specializations` };
-  if (!subject) return { title: 'Specialisations not found | Universta', alternates };
+  if (!subject) return { title: 'Specialisations not found', alternates };
   return {
-    title: `${subject.name} specialisations | Universta`,
+    /* This route family's layout appends the site name through its title
+       template, so the page states only its own name. */
+    title: `${subject.name} specialisations`,
     description: `Explore published ${subject.name} specialisations and course pathways.`,
     alternates,
   };

@@ -123,11 +123,22 @@ export function SearchCombobox(props: SearchComboboxProps) {
         onSubmit(value);
       }}
     >
-      <div className="searchbar">
-        <span className="ic" aria-hidden="true">
-          🔍
-        </span>
+      <div className="bigsearch searchbar">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#667085"
+          strokeWidth="1.7"
+          aria-hidden="true"
+          className="ic"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
         <input
+          className="bigsearch__input"
           type="text"
           role="combobox"
           aria-label={label}
@@ -144,8 +155,11 @@ export function SearchCombobox(props: SearchComboboxProps) {
           }}
           onKeyDown={onKeyDown}
         />
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
+        <button type="submit" className="btn btn--sm">
+          {submitLabel}{' '}
+          <span className="btn__arrow" aria-hidden="true">
+            →
+          </span>
         </button>
       </div>
       {open && suggestions.length ? (

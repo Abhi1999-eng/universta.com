@@ -9,12 +9,15 @@ import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
-  return staticPageMetadata(
+  const resolved = await staticPageMetadata(
     'subjects-listing',
     'Subjects',
     'Explore published academic subjects and their available courses.',
     '/subjects',
   );
+  /* This route family's layout appends the site name through its title
+     template, and `staticPageMetadata` appends it too. */
+  return { ...resolved, title: 'Subjects' };
 }
 
 type SearchParams = Record<string, string | string[] | undefined>;

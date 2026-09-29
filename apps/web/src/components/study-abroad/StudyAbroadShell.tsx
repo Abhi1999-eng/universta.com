@@ -165,9 +165,13 @@ export function StudyAbroadShell({
       </a>
       <StudyAbroadHeader />
 
-      <div
+      {/* The drawer holds this route family's primary links, so it is the
+          mobile navigation landmark rather than an unnamed div -- the same
+          identity the shared chrome's drawer exposes. */}
+      <nav
         className="drawer"
         id="sa-drawer"
+        aria-label="Mobile navigation"
         data-drawer
         data-open={String(drawerOpen)}
         aria-hidden={!drawerOpen}
@@ -189,7 +193,7 @@ export function StudyAbroadShell({
             </span>
           </button>
         </div>
-      </div>
+      </nav>
 
       <div
         className="cs"

@@ -98,6 +98,41 @@ export class SubjectActionDto {
   expectedUpdatedAt?: string;
 }
 
+export class SpecializationListQueryDto {
+  @ApiPropertyOptional()
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  /** Narrows to one subject, by slug. */
+  @ApiPropertyOptional()
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  subject?: string;
+
+  /** Exact specialization slug, for resolving a bare /specializations/<slug>. */
+  @ApiPropertyOptional()
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  slug?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  limit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  page?: string;
+}
+
 export class SubjectListQueryDto {
   @ApiPropertyOptional()
   @Transform(trim)

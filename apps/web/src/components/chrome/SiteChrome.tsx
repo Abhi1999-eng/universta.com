@@ -23,11 +23,22 @@ import { GlobalFooter, GlobalHeader } from './GlobalNav';
  * design published at `/study-abroad` and `/countries` is now the homepage
  * itself, and it arrives wearing the same header and footer as the country
  * guides it links to. */
+const OWN_CHROME_PREFIXES = [
+  '/study-abroad',
+  /* Subjects and specializations are part of the same approved design: the
+     reference builds them from the same stylesheet and the same section
+     bands as the country guides, and they now live in the (sa) route group
+     that ships its header and footer. */
+  '/subjects',
+  '/specializations',
+  '/courses',
+];
+
 function ownsItsChrome(path: string | undefined) {
-  return (
-    path === '/' ||
-    path === '/study-abroad' ||
-    (path?.startsWith('/study-abroad/') ?? false)
+  if (path === '/') return true;
+  if (!path) return false;
+  return OWN_CHROME_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
 }
 

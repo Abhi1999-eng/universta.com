@@ -24,13 +24,16 @@ export async function generateMetadata({
   const p = await params;
   const q = await searchParams;
   const course = await load(p.slug, one(q.country));
-  if (!course) return { title: "Course not found | Universta" };
-  return resolvedMetadata(
+  if (!course) return { title: "Course not found" };
+  const resolved = await resolvedMetadata(
     course.seo,
     course.name,
     course.shortDescription ?? `Explore ${course.name}.`,
     `/courses/${course.slug}`,
   );
+  /* This route family's layout appends the site name through its title
+     template, and `resolvedMetadata` appends it too. */
+  return { ...resolved, title: course.name };
 }
 export default async function CourseDetailPage({
   params,

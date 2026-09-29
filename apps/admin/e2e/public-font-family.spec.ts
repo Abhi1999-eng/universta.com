@@ -19,11 +19,10 @@ const viewports = [
 /* The Study Abroad family is not audited here and never was: the approved
  * design brings its own typefaces (Sora and Manrope), scoped to `.sa`, rather
  * than the site's Inter. `/` left this list when the destination listing
- * became the homepage and joined that family -- the same reason
+ * became the homepage and joined that family, and `/courses` and `/subjects`
+ * left it when the approved design reached them too -- the same reason
  * `/study-abroad/...` was never in it. */
 const publicRoutes = [
-  '/courses',
-  '/subjects',
   '/scholarships',
   '/study-abroad-consultants',
   '/events',
@@ -83,10 +82,15 @@ function primaryFamily(font: string) {
 test('public typography roles keep headings, cards and native controls on the shared contract', async ({ page }) => {
   await page.setViewportSize(viewports[0]);
 
-  await page.goto(`${webBaseUrl}/courses`, { waitUntil: 'domcontentloaded' });
+  /* This probes the shared public type contract, so it has to stand on a page
+     that still uses it. `/courses` joined the approved Study Abroad design and
+     its scoped typefaces, for the same reason it left `publicRoutes` above;
+     `/universities` is the listing that still carries the shared chrome,
+     catalogue cards and native controls this asserts. */
+  await page.goto(`${webBaseUrl}/universities`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('body')).toBeVisible();
 
-  const courses = await page.evaluate(() => {
+  const listing = await page.evaluate(() => {
     const style = (selector: string) => {
       const element = document.querySelector<HTMLElement>(selector);
       if (!element) return null;
@@ -126,18 +130,18 @@ test('public typography roles keep headings, cards and native controls on the sh
     };
   });
 
-  expect(courses.roles.every(([, value]) => value), 'every documented public type role has a value').toBe(true);
-  expect(Number.parseFloat(courses.display?.size ?? '0')).toBeGreaterThan(
-    Number.parseFloat(courses.section?.size ?? '0'),
+  expect(listing.roles.every(([, value]) => value), 'every documented public type role has a value').toBe(true);
+  expect(Number.parseFloat(listing.display?.size ?? '0')).toBeGreaterThan(
+    Number.parseFloat(listing.section?.size ?? '0'),
   );
-  expect(courses.cardTitles.length).toBeGreaterThan(0);
-  expect(new Set(courses.cardTitles).size, 'equivalent public listing card titles use one role').toBe(1);
-  for (const control of [courses.button, courses.input, courses.select]) {
+  expect(listing.cardTitles.length).toBeGreaterThan(0);
+  expect(new Set(listing.cardTitles).size, 'equivalent public listing card titles use one role').toBe(1);
+  for (const control of [listing.button, listing.input, listing.select]) {
     expect(control).not.toBeNull();
     expect(primaryFamily(control!.family)).toContain('inter');
   }
-  expect(courses.input?.size).toBe('16px');
-  expect(courses.select?.size).toBe('16px');
+  expect(listing.input?.size).toBe('16px');
+  expect(listing.select?.size).toBe('16px');
 
   await page.goto(`${webBaseUrl}/contact`, { waitUntil: 'domcontentloaded' });
   const textarea = await page.locator('textarea').first().evaluate((element) => {
