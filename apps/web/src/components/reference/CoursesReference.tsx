@@ -323,35 +323,35 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
   return (
     <div className="cref">
-      <div className="wrap">
-        <nav className="crumb" aria-label="Breadcrumb">
-          <Link href="/">Home</Link> ›{' '}
-          <Link href="/courses" aria-current="page">
-            Courses
-          </Link>
-        </nav>
-      </div>
-
       {/* HERO */}
-      <section className="hero">
-        <div className="wrap hero-in">
-          {meta.total ? (
-            <span className="hero-pill">
-              <span className="dot" aria-hidden="true" /> <b>{formatNumber(meta.total)}</b>&nbsp;published
-              programmes
-              {filterOptions.countries.length ? (
-                <>
-                  {' '}
-                  · <b>{filterOptions.countries.length}</b>&nbsp;destinations
-                </>
-              ) : null}
+      <section className="hero hero--compact">
+        <div className="wrap">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
             </span>
-          ) : null}
-          <h1 style={{ marginTop: 16 }}>
-            {props.heading}{' '}
-            {props.headingAccent ? <span className="b">{props.headingAccent}</span> : null}
-          </h1>
-          <p className="lead">{props.lede}</p>
+            <span aria-current="page">Courses</span>
+          </nav>
+          <div className="hero__lead">
+            {meta.total ? (
+              <p className="hero__eyebrow">
+                Course discovery<b>·</b>
+                {formatNumber(meta.total)} programmes
+                {filterOptions.countries.length ? (
+                  <>
+                    <b>·</b>
+                    {filterOptions.countries.length} destinations
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            <h1 className="hero__h1">
+              {props.heading}{' '}
+              {props.headingAccent ? <span className="b">{props.headingAccent}</span> : null}
+            </h1>
+            <p className="hero__sub">{props.lede}</p>
+          </div>
 
           <SearchCombobox
             label="Search courses"

@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type { Subject, SubSubject } from '@/lib/catalog';
+import { SearchCombobox } from '@/components/reference/SearchCombobox';
 
 export type SubjectIndexRow = Subject & {
   subSubjects?: SubSubject[];
@@ -25,8 +27,29 @@ export type SubjectIndexRow = Subject & {
  * were given does not have, so the bar is left out rather than shipped inert.
  */
 export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
-  const [query, setQuery] = useState('');
+  const router = useRouter();
+  const params = useSearchParams();
+  const urlQuery = params.get('q') ?? '';
+  const [query, setQuery] = useState(urlQuery);
   const [level, setLevel] = useState('all');
+
+  /* The field follows the URL, so a shared link, a refresh and the back
+     button all land on the same filtered page rather than an empty one.
+     Adjusted during render rather than in an effect: an effect would paint
+     the stale term first and then correct it. */
+  const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
+  if (seenUrlQuery !== urlQuery) {
+    setSeenUrlQuery(urlQuery);
+    setQuery(urlQuery);
+  }
+
+  const commit = (term: string) => {
+    const next = new URLSearchParams(params.toString());
+    if (term.trim()) next.set('q', term.trim());
+    else next.delete('q');
+    const search = next.toString();
+    router.push(search ? `/subjects?${search}` : '/subjects');
+  };
 
   /* The filter offers only the levels the catalogue actually teaches, so it
      never shows a button that can empty the page. */
@@ -88,33 +111,16 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
             </p>
           </div>
           <div className="bigsearch">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#667085"
-              strokeWidth="1.7"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              className="bigsearch__input"
-              type="search"
+            <SearchCombobox
+              label="Search subjects"
               placeholder="Search subjects or specializations"
-              aria-label="Search subjects or specializations"
-              autoComplete="off"
+              submitLabel="Search"
+              endpoint="/api/subjects/suggestions"
+              emptyMessage="No subjects found."
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onValueChange={setQuery}
+              onSubmit={commit}
             />
-            <Link className="btn btn--sm" href="/specializations">
-              All specializations{' '}
-              <span className="btn__arrow" aria-hidden="true">
-                →
-              </span>
-            </Link>
           </div>
           <p className="bigsearch__ex">
             <span className="label">Try</span>
