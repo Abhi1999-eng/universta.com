@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import "./globals.css";
+/* The reference build's admin design system. Every rule in it is scoped under
+ * `.pa`, so it costs the screens still on Tailwind nothing and applies only
+ * where a workspace opts in. */
+import "./portal.css";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
