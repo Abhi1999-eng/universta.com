@@ -110,18 +110,19 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
               available in your destination.
             </p>
           </div>
-          <div className="bigsearch">
-            <SearchCombobox
-              label="Search subjects"
-              placeholder="Search subjects or specializations"
-              submitLabel="Search"
-              endpoint="/api/subjects/suggestions"
-              emptyMessage="No subjects found."
-              value={query}
-              onValueChange={setQuery}
-              onSubmit={commit}
-            />
-          </div>
+          {/* No `bigsearch` wrapper here: the combobox draws that bar itself,
+              and nesting one inside another stacked both paddings, which put
+              the field past the edge of the page at 320px. */}
+          <SearchCombobox
+            label="Search subjects"
+            placeholder="Search subjects or specializations"
+            submitLabel="Search"
+            endpoint="/api/subjects/suggestions"
+            emptyMessage="No subjects found."
+            value={query}
+            onValueChange={setQuery}
+            onSubmit={commit}
+          />
           <p className="bigsearch__ex">
             <span className="label">Try</span>
             {examples.map((example) => (

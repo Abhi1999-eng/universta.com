@@ -1,10 +1,11 @@
+import { getSubject } from "@/lib/catalog";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCourseFilterOptions, getSubject, getSubjects } from "@/lib/catalog";
+
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { SubjectDetailReference } from "@/components/reference/SubjectDetailReference";
+import { SubjectGuide } from "@/components/study-abroad/SubjectGuide";
 import { phaseList } from "@/lib/phase1";
-import { formatNumber } from "@/lib/format";
+
 import { jsonLdString } from "@/lib/json-ld";
 import { resolvedMetadata } from "@/lib/seo-management";
 
@@ -23,15 +24,16 @@ async function load(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const subject = await load((await params).slug);
   if (!subject) return { title: "Subject not found" };
-  const resolved = await resolvedMetadata(
+  const resolved = resolvedMetadata(
     subject.seo,
     subject.name,
     subject.shortDescription ?? `Explore ${subject.name} courses.`,
     `/subjects/${subject.slug}`,
   );
-  /* This route family's layout appends the site name through its title
-     template, and `resolvedMetadata` appends it too. */
-  return { ...resolved, title: subject.name };
+  /* `resolvedMetadata` appends the site name, and this route family's layout
+     appends it again through its title template. Hand the template the bare
+     title and let it do that once. */
+  return { ...resolved, title: subject.seo?.seoTitle ?? subject.name };
 }
 
 export default async function SubjectDetailPage({ params }: Props) {
@@ -39,66 +41,58 @@ export default async function SubjectDetailPage({ params }: Props) {
   const subject = await load(slug);
   if (!subject) notFound();
 
-  // Cross-links around the subject. Each falls back to an omitted section
-  // rather than failing the route.
-  const [filterOptions, universities, scholarships, allSubjects] =
-    await Promise.all([
-      getCourseFilterOptions({ subject: slug }).catch(() => null),
-      phaseList<AnyRecord>("universities", { limit: "4" })
-        .then((result) => result.data)
-        .catch(() => []),
-      phaseList<AnyRecord>("scholarships", { subject: slug, limit: "3" })
-        .then((result) => result.data)
-        .catch(() => []),
-      getSubjects({ limit: "100" })
-        .then((result) => result.data)
-        .catch(() => []),
-    ]);
+  /* Scholarships are a cross-link, not the point of the page: a failure here
+     drops the section rather than the route. */
+  const [scholarships, universities] = await Promise.all([
+    phaseList<AnyRecord>("scholarships", { subject: slug, limit: "6" })
+      .then((result) =>
+        result.data.map((row) => ({
+          id: String(row.id),
+          name: String(row.name ?? row.title ?? ""),
+          slug: String(row.slug ?? ""),
+        })),
+      )
+      .catch(() => []),
+    /* The reference's subject page has no universities section of its own,
+       but the page it replaced cross-linked them, so they are kept as a
+       group in the closing connect band rather than dropped. */
+    phaseList<AnyRecord>("universities", { subject: slug, limit: "8" })
+      .then((result) =>
+        result.data.map((row) => ({
+          id: String(row.id),
+          name: String(row.name ?? ""),
+          slug: String(row.slug ?? ""),
+        })),
+      )
+      .catch(() => []),
+  ]);
 
-  const jsonLd = {
+  const breadcrumb = {
     "@context": "https://schema.org",
-    "@type": "Thing",
-    name: subject.name,
-    description: subject.shortDescription ?? undefined,
-    url: `/subjects/${subject.slug}`,
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "/" },
+      { "@type": "ListItem", position: 2, name: "Subjects", item: "/subjects" },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: subject.name,
+        item: `/subjects/${subject.slug}`,
+      },
+    ],
   };
 
   return (
     <>
-      <SubjectDetailReference
-        subject={subject}
-        countries={filterOptions?.countries.slice(0, 12) ?? []}
-        universities={universities.map((row) => ({
-          name: String(row.name),
-          slug: String(row.slug),
-          country: row.country?.name ? String(row.country.name) : null,
-        }))}
-        scholarships={scholarships.map((row) => {
-          const extra = row as Record<string, unknown>;
-          const amount = extra.amount;
-          return {
-            title: String(row.title ?? row.name),
-            slug: String(row.slug),
-            amount:
-              typeof amount === "string" && amount
-                ? `${typeof row.currencyCode === "string" ? `${row.currencyCode} ` : ""}${formatNumber(amount)}`
-                : null,
-            type:
-              typeof row.benefitType === "string"
-                ? row.benefitType.toLowerCase().replace(/_/g, " ")
-                : null,
-          };
-        })}
-        relatedSubjects={allSubjects
-          .filter((item) => item.slug !== subject.slug)
-          .slice(0, 3)
-          .map((item) => ({
-            name: item.name,
-            slug: item.slug,
-            courses: item.publishedCourseCount,
-          }))}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
       />
-      <script type="application/ld+json">{jsonLdString(jsonLd)}</script>
+      <SubjectGuide
+        subject={subject}
+        scholarships={scholarships}
+        universities={universities}
+      />
     </>
   );
 }
