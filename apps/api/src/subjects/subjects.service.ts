@@ -301,6 +301,9 @@ export class SubjectsService {
   async publicSpecializationList(query: {
     search?: string;
     subject?: string;
+    /** A course level code, so the flat list can be narrowed the way the
+     *  subject pages narrow theirs. */
+    level?: string;
     slug?: string;
     limit?: string;
     page?: string;
@@ -323,6 +326,19 @@ export class SubjectsService {
          under several subjects. Callers that resolve a bare slug take the
          first and say so. */
       ...(query.slug?.trim() ? { slug: query.slug.trim().toLowerCase() } : {}),
+      /* A level narrows to the branches that actually have a published
+         programme at it, rather than to branches merely tagged with it. */
+      ...(query.level?.trim()
+        ? {
+            courses: {
+              some: {
+                status: 'PUBLISHED',
+                deletedAt: null,
+                courseLevel: { code: query.level.trim().toUpperCase() },
+              },
+            },
+          }
+        : {}),
     };
     const [rows, total] = await Promise.all([
       this.prisma.subSubject.findMany({
@@ -334,6 +350,46 @@ export class SubjectsService {
       }),
       this.prisma.subSubject.count({ where }),
     ]);
+    /* How many programmes each branch on this page has, and which levels teach
+       them -- one grouped query for the page rather than one per row. */
+    const branchLevels = rows.length
+      ? await this.prisma.course.groupBy({
+          by: ['subSubjectId', 'courseLevelId'],
+          where: {
+            subSubjectId: { in: rows.map((row) => row.id) },
+            status: 'PUBLISHED',
+            deletedAt: null,
+          },
+          _count: { _all: true },
+        })
+      : [];
+    const levelNames = branchLevels.length
+      ? await this.prisma.courseLevel.findMany({
+          where: {
+            id: {
+              in: [...new Set(branchLevels.map((row) => row.courseLevelId))],
+            },
+          },
+          select: { id: true, name: true, code: true },
+        })
+      : [];
+    const branchStats = new Map<
+      string,
+      {
+        count: number;
+        levels: Array<{ id: string; name: string; code: string | null }>;
+      }
+    >();
+    for (const row of branchLevels) {
+      const key = row.subSubjectId;
+      if (!key) continue;
+      const entry = branchStats.get(key) ?? { count: 0, levels: [] };
+      entry.count += row._count._all;
+      const level = levelNames.find((item) => item.id === row.courseLevelId);
+      if (level && !entry.levels.some((item) => item.id === level.id))
+        entry.levels.push(level);
+      branchStats.set(key, entry);
+    }
     return {
       data: rows.map((row) => ({
         ...this.toSubSubjectPublic(row),
@@ -342,6 +398,8 @@ export class SubjectsService {
           name: row.subject.name,
           slug: row.subject.slug,
         },
+        publishedCourseCount: branchStats.get(row.id)?.count ?? 0,
+        levels: branchStats.get(row.id)?.levels ?? [],
       })),
       meta: { total, page, limit: take },
     };
@@ -361,6 +419,7 @@ export class SubjectsService {
     const [
       children,
       levels,
+      branchLevels,
       featuredCourses,
       countries,
       linkedCountries,
@@ -382,6 +441,19 @@ export class SubjectsService {
           subjectId: subject.id,
           status: 'PUBLISHED',
           deletedAt: null,
+        },
+        _count: { _all: true },
+      }),
+      /* The same count, broken down one level further, so a specialization can
+         state how many programmes it has and which levels teach it without the
+         page issuing a query per branch. */
+      this.prisma.course.groupBy({
+        by: ['subSubjectId', 'courseLevelId'],
+        where: {
+          subjectId: subject.id,
+          status: 'PUBLISHED',
+          deletedAt: null,
+          subSubjectId: { not: null },
         },
         _count: { _all: true },
       }),
@@ -460,16 +532,44 @@ export class SubjectsService {
         },
       }),
     ]);
-    const levelIds = levels.map((row) => row.courseLevelId);
+    /* One lookup for both breakdowns: a level that only appears under a
+       specialization still needs its name. */
+    const levelIds = [
+      ...new Set([
+        ...levels.map((row) => row.courseLevelId),
+        ...branchLevels.map((row) => row.courseLevelId),
+      ]),
+    ];
     const levelNames = levelIds.length
       ? await this.prisma.courseLevel.findMany({
           where: { id: { in: levelIds } },
           select: { id: true, name: true, code: true },
         })
       : [];
+    const branchStats = new Map<
+      string,
+      {
+        count: number;
+        levels: Array<{ id: string; name: string; code: string | null }>;
+      }
+    >();
+    for (const row of branchLevels) {
+      const key = row.subSubjectId;
+      if (!key) continue;
+      const entry = branchStats.get(key) ?? { count: 0, levels: [] };
+      entry.count += row._count._all;
+      const level = levelNames.find((item) => item.id === row.courseLevelId);
+      if (level && !entry.levels.some((item) => item.id === level.id))
+        entry.levels.push(level);
+      branchStats.set(key, entry);
+    }
     return {
       ...(await this.toPublic(subject)),
-      subSubjects: children.map((child) => this.toSubSubjectPublic(child)),
+      subSubjects: children.map((child) => ({
+        ...this.toSubSubjectPublic(child),
+        publishedCourseCount: branchStats.get(child.id)?.count ?? 0,
+        levels: branchStats.get(child.id)?.levels ?? [],
+      })),
       courseCountsByLevel: levels.map((row) => ({
         level: levelNames.find((level) => level.id === row.courseLevelId) ?? {
           id: row.courseLevelId,

@@ -190,10 +190,19 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                     <h2 className="subjcard__name">
                       <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
                     </h2>
+                    {/* The reference states the branches and the levels they
+                        are taught at on one line; the levels half is dropped
+                        rather than left dangling when none are recorded. */}
                     <p className="subjcard__meta">
                       {subject.publishedSubSubjectCount ??
                         (subject.subSubjects ?? []).length}{' '}
                       specializations
+                      {subject.levels?.length ? (
+                        <>
+                          {' · '}
+                          {subject.levels.map((entry) => entry.name).join(', ')}
+                        </>
+                      ) : null}
                     </p>
                   </div>
                   {subject.featured ? (

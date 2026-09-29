@@ -9,6 +9,7 @@ import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
+import { SubjectSpecializations } from './SubjectSpecializations';
 
 /**
  * A subject's guide, in the approved design.
@@ -40,6 +41,26 @@ export function SubjectGuide({
   const tests = subject.tests ?? [];
   const overview = subject.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview));
+
+  /* Only the figures this record actually has: a strip of dashes says less
+     than a shorter strip does. */
+  const stats = [
+    specializations.length
+      ? { label: 'Specializations', value: formatNumber(specializations.length) }
+      : null,
+    levels.length
+      ? { label: 'Study levels', value: levels.map((row) => row.level.name).join(', ') }
+      : null,
+    subject.publishedCourseCount
+      ? { label: 'Programmes profiled', value: formatNumber(subject.publishedCourseCount) }
+      : null,
+    universities.length
+      ? { label: 'Universities', value: formatNumber(universities.length) }
+      : null,
+    countries.length
+      ? { label: 'Destinations', value: formatNumber(countries.length) }
+      : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
 
   const order: string[] = [];
   if (hasOverview) order.push('about');
@@ -106,6 +127,24 @@ export function SubjectGuide({
         </div>
       </section>
 
+      {/* The reference states the shape of a subject before it explains it:
+          how many branches, which levels, and how much of it we have profiled.
+          Each figure stands down on its own rather than showing a zero. */}
+      {stats.length ? (
+        <section className="sec sec--white sec--tight">
+          <div className="wrap">
+            <div className="unisnap">
+              {stats.map((row) => (
+                <div className="unisnap__cell" key={row.label}>
+                  <span className="label">{row.label}</span>
+                  <b>{row.value}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {hasOverview ? (
         <section className={band('about')} id="about">
           <div className="wrap">
@@ -133,42 +172,11 @@ export function SubjectGuide({
               title="Choose a specialization"
               lead={`The branches of ${subject.name} we cover. Each one has its own page.`}
             />
-            {levels.length ? (
-              <div className="levelbar" role="group" aria-label="Study level">
-                <span className="filters__label">Taught at</span>
-                {levels.map((row) => (
-                  <span className="chipbtn" key={row.level.id}>
-                    {row.level.name} <span className="datum">{row.count}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            <div className="specgrid">
-              {specializations.map((row) => (
-                <article className="speccard" key={row.id}>
-                  <Link
-                    className="speccard__btn"
-                    href={`/subjects/${subject.slug}/${row.slug}`}
-                  >
-                    <span className="speccard__top">
-                      <span className="label">Specialization</span>
-                      {row.featured ? (
-                        <span className="badge badge--req">Popular</span>
-                      ) : null}
-                    </span>
-                    <span className="speccard__name">{row.name}</span>
-                    {row.shortDescription ? (
-                      <span className="speccard__desc">
-                        {row.shortDescription}
-                      </span>
-                    ) : null}
-                    <span className="speccard__cta">
-                      View <span aria-hidden="true">→</span>
-                    </span>
-                  </Link>
-                </article>
-              ))}
-            </div>
+            <SubjectSpecializations
+              subjectName={subject.name}
+              subjectSlug={subject.slug}
+              branches={specializations}
+            />
           </div>
         </section>
       ) : null}
