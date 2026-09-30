@@ -2177,7 +2177,24 @@
 .sa .coursecard__name,
 .sa .coursecard__uni,
 .sa .coursecard__type,
-.sa .coursecard__facts .datum{ overflow-wrap: anywhere; }
+.sa .coursecard__facts dt,
+.sa .coursecard__facts dd{ overflow-wrap: anywhere; }
+/* The reference lays its four facts across one line, but its card has a
+   column to itself. A card in the three-up grid is roughly a third as wide,
+   and "Destinations" beside "Study mode" on one line broke both. Two columns
+   there, with the divider only on the right-hand one so a wrapped row does
+   not open with a stray rule. */
+@media (min-width: 520px){
+  .sa .coursegrid--3 .coursecard__facts{
+    grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 0;
+  }
+  .sa .coursegrid--3 .coursecard__facts div:nth-child(odd){
+    padding-left: 0; border-left: 0;
+  }
+}
+.sa .coursecard__uni > span{ min-width: 0; }
+.sa .coursecard__uni b,
+.sa .coursecard__uni em{ overflow-wrap: anywhere; }
 
 /* The reference applies a filter the moment you tick it, so its panel foot --
    which holds nothing but a submit -- only appears in the mobile drawer. This
