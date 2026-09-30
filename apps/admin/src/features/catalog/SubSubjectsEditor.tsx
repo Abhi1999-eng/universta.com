@@ -533,7 +533,7 @@ function SpecializationCard({
         <button
           type="button"
           onClick={onDelete}
-          className="rounded-lg border border-[#F2C5C5] px-4 py-2 text-sm font-semibold text-[#B42318]"
+          className="p-btn p-btn--danger p-btn--sm"
         >
           Delete
         </button>

@@ -436,7 +436,7 @@ export function ScholarshipProvidersPanel() {
                         : 'Archive provider while preserving its record.'
                     }
                     onClick={() => void archive(row)}
-                    className="rounded-lg border border-[#E7D7B0] px-3 py-2 text-sm font-semibold text-[#8A6116] disabled:cursor-not-allowed disabled:opacity-45"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     Archive
                   </button>
@@ -449,7 +449,7 @@ export function ScholarshipProvidersPanel() {
                         : 'Permanently delete this unreferenced provider.'
                     }
                     onClick={() => void removePermanently(row)}
-                    className="rounded-lg border border-[#F2C5C5] px-3 py-2 text-sm font-semibold text-[#B42318] disabled:cursor-not-allowed disabled:opacity-45"
+                    className="p-btn p-btn--danger p-btn--sm"
                   >
                     Delete
                   </button>
