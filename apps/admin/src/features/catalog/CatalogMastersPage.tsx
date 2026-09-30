@@ -135,10 +135,10 @@ function IntakesPanel() {
   }
 
   return (
-    <section className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
+    <section className="p-panel">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Master data
           </p>
           <h3 className="mt-2 text-xl font-semibold">Intakes</h3>
@@ -171,7 +171,7 @@ function IntakesPanel() {
             <input
               id="intake-name"
               required
-              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+              className="p-input"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
@@ -186,7 +186,7 @@ function IntakesPanel() {
             <select
               id="intake-start-month"
               required
-              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+              className="p-input"
               value={startMonth}
               onChange={(event) => setStartMonth(event.target.value)}
             >
@@ -204,7 +204,7 @@ function IntakesPanel() {
             <select
               id="intake-end-month"
               required
-              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+              className="p-input"
               value={endMonth}
               onChange={(event) => setEndMonth(event.target.value)}
             >
@@ -212,41 +212,41 @@ function IntakesPanel() {
               {months.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
             </select>
           </div>
-          <button className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
+          <button className="p-btn p-btn--primary p-btn--sm">
             {editing ? 'Save intake' : 'Create intake'}
           </button>
         </form>
       ) : null}
 
       {loading ? (
-        <p className="mt-5 text-sm text-[#667085]">Loading…</p>
+        <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-5 divide-y divide-[#E8ECF3]">
           {rows.map((row) => (
             <div key={row.id} className="flex items-center justify-between gap-3 py-4">
               <div>
                 <p className="font-semibold">{row.name}</p>
-                <p className="mt-1 text-xs text-[#828B9B]">{row.startMonth ? `${months[row.startMonth - 1]}${row.endMonth && row.endMonth !== row.startMonth ? ` – ${months[row.endMonth - 1]}` : ''} · ` : ''}{row.status}</p>
+                <p className="p-hint">{row.startMonth ? `${months[row.startMonth - 1]}${row.endMonth && row.endMonth !== row.startMonth ? ` – ${months[row.endMonth - 1]}` : ''} · ` : ''}{row.status}</p>
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => void toggle(row)}
-                  className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+                  className="p-btn p-btn--ghost p-btn--sm"
                 >
                   {row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                 </button>
                 <button
                   type="button"
                   onClick={() => edit(row)}
-                  className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+                  className="p-btn p-btn--ghost p-btn--sm"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
                   onClick={() => void archive(row)}
-                  className="rounded-lg border border-[#F2C5C5] px-3 py-2 text-sm font-semibold text-[#B42318]"
+                  className="p-btn p-btn--danger p-btn--sm"
                 >
                   Archive
                 </button>
@@ -254,7 +254,7 @@ function IntakesPanel() {
             </div>
           ))}
           {rows.length === 0 ? (
-            <p className="mt-4 text-sm text-[#667085]">No records found.</p>
+            <p className="p-sub">No records found.</p>
           ) : null}
         </div>
       )}
@@ -400,10 +400,10 @@ export function CatalogMastersPage() {
 
   function panel(title: string, panelKind: Kind, rows: MasterRecord[]) {
     return (
-      <section className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
+      <section className="p-panel">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+            <p className="p-eyebrow">
               Master data
             </p>
             <h3 className="mt-2 text-xl font-semibold">{title}</h3>
@@ -421,7 +421,7 @@ export function CatalogMastersPage() {
             <div key={row.id} className="flex items-center justify-between gap-3 py-4">
               <div>
                 <p className="font-semibold">{row.name}</p>
-                <p className="mt-1 text-xs text-[#828B9B]">
+                <p className="p-hint">
                   {row.code} · {row.status}
                 </p>
               </div>
@@ -429,21 +429,21 @@ export function CatalogMastersPage() {
                 <button
                   type="button"
                   onClick={() => open(panelKind, row)}
-                  className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+                  className="p-btn p-btn--ghost p-btn--sm"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
                   onClick={() => void toggle(row, panelKind)}
-                  className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+                  className="p-btn p-btn--ghost p-btn--sm"
                 >
                   {row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setPending({ kind: panelKind, row })}
-                  className="rounded-lg border border-[#F2C5C5] px-3 py-2 text-sm font-semibold text-[#B42318]"
+                  className="p-btn p-btn--danger p-btn--sm"
                 >
                   Delete
                 </button>
@@ -452,7 +452,7 @@ export function CatalogMastersPage() {
           ))}
         </div>
         {rows.length === 0 ? (
-          <p className="mt-4 text-sm text-[#667085]">No records found.</p>
+          <p className="p-sub">No records found.</p>
         ) : null}
       </section>
     );
@@ -470,10 +470,10 @@ export function CatalogMastersPage() {
 
   return (
     <section aria-labelledby="masters-heading" className="mx-auto max-w-[1180px]">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+      <p className="p-eyebrow">
         Catalog foundations
       </p>
-      <h2 id="masters-heading" className="mt-2 text-3xl font-semibold">
+      <h2 id="masters-heading" className="p-h1">
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667085]">
@@ -526,7 +526,7 @@ export function CatalogMastersPage() {
                   id="master-code"
                   required
                   pattern="[A-Z0-9_-]+"
-                  className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                  className="p-input"
                   value={form.code}
                   onChange={(event) =>
                     setForm({ ...form, code: event.target.value.toUpperCase() })
@@ -543,7 +543,7 @@ export function CatalogMastersPage() {
                 <input
                   id="master-name"
                   required
-                  className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                  className="p-input"
                   value={form.name}
                   onChange={(event) => setForm({ ...form, name: event.target.value })}
                 />
@@ -575,7 +575,7 @@ export function CatalogMastersPage() {
                   id="master-display-order"
                   type="number"
                   min="0"
-                  className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                  className="p-input"
                   value={form.displayOrder}
                   onChange={(event) =>
                     setForm({ ...form, displayOrder: event.target.value })
@@ -593,7 +593,7 @@ export function CatalogMastersPage() {
                     id="master-education-order"
                     type="number"
                     min="0"
-                    className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                    className="p-input"
                     value={form.educationOrder}
                     onChange={(event) =>
                       setForm({ ...form, educationOrder: event.target.value })
@@ -609,7 +609,7 @@ export function CatalogMastersPage() {
                   setEditing(null);
                   setEditorOpen(false);
                 }}
-                className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Cancel
               </button>
@@ -634,7 +634,7 @@ export function CatalogMastersPage() {
             <button
               type="button"
               onClick={() => setPending(null)}
-              className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>

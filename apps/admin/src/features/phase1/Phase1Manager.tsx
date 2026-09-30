@@ -167,15 +167,15 @@ export function Phase1Manager({ resource }: { resource: string }) {
     <section className="mx-auto max-w-[1240px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Expanded Phase 1
           </p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+          <h2 className="p-h1">
             {title}
           </h2>
         </div>
         <div className="flex items-center gap-3">
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             {listMeta ? `${listMeta.total} record${listMeta.total === 1 ? "" : "s"}` : `${rows.length} records`}
           </p>
           {structured || isPageCms || isNavMenu ? (
@@ -185,7 +185,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                 setEditingId(null);
                 setCreating(true);
               }}
-              className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+              className="p-btn p-btn--primary p-btn--sm"
             >
               Create {resource === "offerings" ? "offering" : isPageCms ? "page" : isNavMenu ? "menu" : "record"}
             </button>
@@ -224,13 +224,13 @@ export function Phase1Manager({ resource }: { resource: string }) {
             to show it on the live site. You can add links after creating it.
           </p>
           <div className="sm:col-span-2 flex gap-3">
-            <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
+            <button type="submit" className="p-btn p-btn--primary p-btn--sm">
               Create menu
             </button>
             <button
               type="button"
               onClick={() => setCreating(false)}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>
@@ -343,7 +343,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+                          className="p-btn p-btn--ghost p-btn--sm"
                           onClick={() =>
                             void action(`${resource}/${row.id}/unpublish`)
                           }
@@ -382,7 +382,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
 
         {listMeta && listMeta.totalPages > 1 ? (
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-[#667085]">
+            <p className="p-sub">
               Page {listMeta.page} of {listMeta.totalPages}
             </p>
             <div className="flex gap-3">
@@ -415,9 +415,9 @@ export function Phase1Manager({ resource }: { resource: string }) {
         ) : null}
 
         {!structured && !isPageCms && !isNavMenu && resource !== "contact-inquiries" ? (
-          <aside className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+          <aside className="p-panel">
             <h3 className="font-semibold">Advanced development fallback</h3>
-            <p className="mt-2 text-sm text-[#667085]">
+            <p className="p-sub">
               This JSON tool is retained only for editorial development.
               Catalog records use field-based editors, and navigation menus
               have their own field-based editor with full item management.
@@ -451,10 +451,10 @@ export function Phase1Manager({ resource }: { resource: string }) {
           aria-labelledby="archive-record-title"
         >
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 id="archive-record-title" className="text-lg font-semibold">
+            <h3 id="archive-record-title" className="p-h3">
               Archive this record?
             </h3>
-            <p className="mt-2 text-sm text-[#667085]">
+            <p className="p-sub">
               {pendingArchive.name ??
                 pendingArchive.title ??
                 pendingArchive.quote?.slice(0, 48) ??
@@ -463,7 +463,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
-                className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
                 onClick={() => setPendingArchive(null)}
               >
                 Cancel

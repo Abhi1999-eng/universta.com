@@ -371,10 +371,10 @@ export function CalculatorBuilder({
   if (!parsed && value.trim())
     return (
       <div className="rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4">
-        <p className="text-sm font-semibold text-[#B42318]">
+        <p className="p-danger">
           This calculator was set up outside the form
         </p>
-        <p className="mt-1 text-xs text-[#667085]">
+        <p className="p-hint">
           It holds something the simple form cannot show, so it is left exactly as it is.
           Clear the box below to start again with the form, or ask a developer to look at
           it.
@@ -391,7 +391,7 @@ export function CalculatorBuilder({
   return (
     <div className="rounded-xl border border-[#D9E0EA] bg-[#FCFCFD] p-4">
       <p className="text-sm font-semibold text-[#344054]">Budget calculator</p>
-      <p className="mt-1 text-xs text-[#667085]">
+      <p className="p-hint">
         Lets a student on the country page work out their own yearly budget. Leave every
         box empty for no calculator.
       </p>
@@ -429,7 +429,7 @@ export function CalculatorBuilder({
       <p className="mt-6 text-xs font-bold uppercase tracking-[0.08em] text-[#667085]">
         Questions the student answers
       </p>
-      <p className="mt-1 text-xs text-[#667085]">
+      <p className="p-hint">
         Each answer can raise or lower the living cost, and can add tuition.
       </p>
 

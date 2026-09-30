@@ -2,9 +2,40 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { NAV_GROUPS, findNavItem, navItemKey, resolveActiveNavItem } from './nav-config';
+
+/** Below this the sidebar is a drawer rather than a column -- the same width
+ *  the ported stylesheet switches on. */
+const DRAWER_QUERY = '(max-width: 1023px)';
+
+function subscribeToDrawerWidth(listener: () => void) {
+  const query = window.matchMedia(DRAWER_QUERY);
+  query.addEventListener('change', listener);
+  return () => query.removeEventListener('change', listener);
+}
+
+/**
+ * Whether the sidebar is currently a drawer.
+ *
+ * Read as the external store it is rather than through an effect: the server
+ * has no viewport, so it renders the column, and the browser corrects it on
+ * the first client pass.
+ */
+function useIsDrawer() {
+  return useSyncExternalStore(
+    subscribeToDrawerWidth,
+    () => window.matchMedia(DRAWER_QUERY).matches,
+    () => false,
+  );
+}
 
 function currentBreadcrumb(pathname: string) {
   if (pathname === '/dashboard' || pathname === '/') {
@@ -30,6 +61,14 @@ function currentBreadcrumb(pathname: string) {
   return { group: null as string | null, item: 'Dashboard' };
 }
 
+/**
+ * The Admin frame, in the reference build's design.
+ *
+ * One sidebar, as the reference has: a column from 1024px up and a drawer
+ * below it, rather than a second copy of the navigation rendered for small
+ * screens. While it is a closed drawer it is also inert, so the keyboard
+ * cannot reach a menu that is off the side of the screen.
+ */
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -39,10 +78,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pageTitle = breadcrumb.item;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const isDrawer = useIsDrawer();
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const wasMobileOpen = useRef(false);
+
+  /* A drawer that stops being a drawer -- the window widened while it was
+     open -- must not leave the page scroll-locked behind an invisible scrim.
+     This watches for that change rather than the state, because closing it
+     whenever the viewport is wide would mean it could never be opened at a
+     width where the toggle is reachable at all. */
+  const wasDrawer = useRef(isDrawer);
+  useEffect(() => {
+    if (wasDrawer.current && !isDrawer) setMobileOpen(false);
+    wasDrawer.current = isDrawer;
+  }, [isDrawer]);
 
   useLayoutEffect(() => {
     if (!mobileOpen) {
@@ -96,129 +147,121 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const initial = user?.firstName?.slice(0, 1).toUpperCase() ?? 'U';
+
   return (
-    <div className="min-h-screen bg-[#FAFBFD] text-[#0D1524]">
-      <DesktopSidebar pathname={location} onLogout={handleLogout} loggingOut={loggingOut} />
+    <div className={`pa p-app a-app${mobileOpen ? ' side-open' : ''}`}>
+      <a className="p-skip" href="#main-content">
+        Skip to content
+      </a>
+
+      <aside
+        ref={drawerRef}
+        id="p-side"
+        className="p-side a-side"
+        data-admin-nav-scroll
+        /* The same element is the column and the drawer. It only claims to be
+           a dialog while it is behaving like one. */
+        {...(mobileOpen
+          ? { role: 'dialog' as const, 'aria-modal': true }
+          : {})}
+        {...(isDrawer && !mobileOpen ? { inert: true } : {})}
+        aria-label="Admin navigation"
+      >
+        <div className="p-side__head">
+          <Link className="p-brand" href="/dashboard" onClick={() => setMobileOpen(false)}>
+            <span className="p-brand__mark" aria-hidden="true">
+              U
+            </span>
+            <span className="p-brand__name">
+              Universta<small>Admin console</small>
+            </span>
+          </Link>
+          {mobileOpen ? (
+            <button
+              ref={closeButtonRef}
+              type="button"
+              className="p-iconbtn"
+              aria-label="Close navigation"
+              onClick={() => setMobileOpen(false)}
+            >
+              <CloseIcon />
+            </button>
+          ) : null}
+        </div>
+
+        <Navigation pathname={location} onNavigate={() => setMobileOpen(false)} />
+
+        <div className="p-side__foot">
+          <UserSummary user={user} />
+          <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} />
+        </div>
+      </aside>
+
       {mobileOpen ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close navigation"
-            className="fixed inset-0 z-40 bg-[#0D1524]/45 lg:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside
-            ref={drawerRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Admin navigation"
-            data-admin-nav-scroll
-            className="fixed inset-y-0 left-0 z-50 flex w-[min(86vw,340px)] flex-col overflow-y-auto bg-[#0D1524] p-5 text-white shadow-2xl lg:hidden"
-          >
-            <div className="flex items-center justify-between">
-              <Brand inverse />
-              <button
-                ref={closeButtonRef}
-                type="button"
-                aria-label="Close navigation"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            <Navigation pathname={location} onNavigate={() => setMobileOpen(false)} dark />
-            <div className="mt-auto border-t border-white/10 pt-5">
-              <UserSummary user={user} dark />
-              <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} dark />
-            </div>
-          </aside>
-        </>
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="p-scrim"
+          onClick={() => setMobileOpen(false)}
+        />
       ) : null}
 
-      <div className="lg:pl-[264px]">
-        <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[#E8ECF3] bg-[#FAFBFD]/95 px-5 backdrop-blur sm:px-8 lg:px-10">
-          <div className="flex items-center gap-4">
-            <button
-              ref={menuTriggerRef}
-              type="button"
-              aria-label="Open navigation"
-              aria-expanded={mobileOpen}
-              onClick={() => setMobileOpen(true)}
-              className="rounded-lg p-2 text-[#48505F] hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#1657CF] lg:hidden"
-            >
-              <MenuIcon />
-            </button>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#828B9B]">
-                {breadcrumb.group ? (
-                  <>
-                    <Link href="/dashboard" className="hover:text-[#1657CF]">Admin</Link>
-                    {' / '}
-                    {breadcrumb.group}
-                  </>
-                ) : (
-                  <Link href="/dashboard" className="hover:text-[#1657CF]">Admin workspace</Link>
-                )}
-              </p>
-              <h1 className="mt-1 text-lg font-semibold tracking-[-0.02em]">{pageTitle}</h1>
-            </div>
+      <div className="p-body">
+        <header className="p-top a-top">
+          <button
+            ref={menuTriggerRef}
+            type="button"
+            className="p-iconbtn p-top__menu"
+            aria-label="Open navigation"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(true)}
+          >
+            <MenuIcon />
+          </button>
+          <div className="p-top__title">
+            <p className="p-crumb">
+              {breadcrumb.group ? (
+                <>
+                  <Link href="/dashboard">Admin</Link>
+                  {' / '}
+                  {breadcrumb.group}
+                </>
+              ) : (
+                <Link href="/dashboard">Admin workspace</Link>
+              )}
+            </p>
+            <h1 className="p-h2">{pageTitle}</h1>
           </div>
-          <div className="hidden items-center gap-3 sm:flex">
-            <div className="text-right">
-              <p className="text-sm font-semibold text-[#0D1524]">{user?.firstName} {user?.lastName ?? ''}</p>
-              <p className="text-xs text-[#828B9B]">{user?.email}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#828B9B]">{user?.roles.join(' · ')}</p>
-            </div>
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#DCE8FF] text-sm font-bold text-[#1657CF]">
-              {user?.firstName.slice(0, 1).toUpperCase()}
-            </div>
+          <div className="u-account">
+            {/* Name and role only: the address is stated once, in the
+                sidebar's foot, rather than twice on every screen. */}
+            <span className="u-account__org">
+              <strong>
+                {user?.firstName} {user?.lastName ?? ''}
+              </strong>
+              <span>{user?.roles.join(' · ')}</span>
+            </span>
+            <span className="p-avatar">
+              <span>{initial}</span>
+            </span>
           </div>
         </header>
 
-        <main id="main-content" className="min-h-[calc(100vh-76px)] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
-          <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-5 focus:top-5 focus:z-[60] focus:rounded-lg focus:bg-[#1657CF] focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-white">
-            Skip to content
-          </a>
-          {children}
+        <main id="main-content" className="p-main a-main" tabIndex={-1}>
+          <div className="p-page a-page">{children}</div>
         </main>
       </div>
     </div>
   );
 }
 
-function DesktopSidebar({
-  pathname,
-  onLogout,
-  loggingOut,
-}: {
-  pathname: string;
-  onLogout: () => Promise<void>;
-  loggingOut: boolean;
-}) {
-  return (
-    <aside
-      data-admin-nav-scroll
-      className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col overflow-y-auto bg-[#0D1524] p-6 text-white lg:flex"
-    >
-      <Brand inverse />
-      <p className="mt-2 pl-1 text-xs font-medium text-white/40">ADMIN CONSOLE</p>
-      <Navigation pathname={pathname} />
-      <div className="mt-auto border-t border-white/10 pt-5">
-        <LogoutButton onLogout={onLogout} loggingOut={loggingOut} dark />
-      </div>
-    </aside>
-  );
-}
-
 function Navigation({
   pathname,
   onNavigate,
-  dark = false,
 }: {
   pathname: string;
   onNavigate?: () => void;
-  dark?: boolean;
 }) {
   // One winner for the whole sidebar, resolved once per route rather than
   // per item -- see resolveActiveNavItem for why matching each href
@@ -251,114 +294,143 @@ function Navigation({
     container.scrollTop += delta;
   }, [pathname, activeKey]);
 
-  const linkClass = (active: boolean) =>
-    `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
-      active
-        ? dark
-          ? 'bg-white/12 text-white'
-          : 'bg-[#1657CF] text-white'
-        : dark
-          ? 'text-white/65 hover:bg-white/8 hover:text-white'
-          : 'text-[#48505F] hover:bg-[#F0F4FA]'
-    }`;
   return (
-    <nav ref={navRef} aria-label="Primary navigation" className="mt-10">
+    <nav ref={navRef} aria-label="Primary navigation" className="p-nav a-nav">
       <Link
         href="/dashboard"
         onClick={onNavigate}
         ref={dashboardActive ? activeLinkRef : undefined}
         aria-current={dashboardActive ? 'page' : undefined}
-        className={linkClass(pathname === '/dashboard')}
+        className={`p-nav__link${pathname === '/dashboard' ? ' is-active' : ''}`}
       >
         <GridIcon />
-        Dashboard
+        <span>Dashboard</span>
       </Link>
-      {NAV_GROUPS.map((group) => (
-        <div key={group.label} className="mt-6">
-          <p
-            className={`px-3 text-[10px] font-bold uppercase tracking-[0.18em] ${dark ? 'text-white/35' : 'text-[#A0A8B6]'}`}
+      {NAV_GROUPS.map((group) => {
+        const open = group.items.some(
+          (item) => navItemKey(group.label, item.label) === activeKey,
+        );
+        return (
+          /* The reference collapses its groups and opens the one holding the
+             current screen. `open` is keyed so a route change re-mounts the
+             group rather than leaving a stale disclosure state behind. */
+          <details
+            className="a-navgroup"
+            key={group.label}
+            open={open}
+            {...(open ? { 'data-current-group': 'true' } : {})}
           >
-            {group.label}
-          </p>
-          <div className="mt-2 space-y-1">
-            {group.items.map((item) => {
-              const key = navItemKey(group.label, item.label);
-              const active = key === activeKey;
-              return (
-                <div key={key}>
-                <Link
-                  href={item.href}
-                  onClick={onNavigate}
-                  ref={active ? activeLinkRef : undefined}
-                  aria-current={active ? 'page' : undefined}
-                  className={linkClass(active)}
-                >
-                  <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center text-[10px]">
-                    {item.label.slice(0, 1)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                </Link>
-                {item.hints?.length ? <p className="px-3 pb-2 pl-11 text-[11px] leading-4 text-white/40">{item.hints.join(' · ')} are managed here</p> : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+            <summary className="p-nav__link">
+              <span className="a-nav__dot" aria-hidden="true" />
+              <span>{group.label}</span>
+              <ChevronIcon />
+            </summary>
+            <div className="a-navgroup__items">
+              {group.items.map((item) => {
+                const key = navItemKey(group.label, item.label);
+                const active = key === activeKey;
+                return (
+                  <Link
+                    key={key}
+                    href={item.href}
+                    onClick={onNavigate}
+                    ref={active ? activeLinkRef : undefined}
+                    aria-current={active ? 'page' : undefined}
+                    className={`p-nav__link${active ? ' is-active' : ''}`}
+                    title={item.hints?.length ? `${item.hints.join(' · ')} are managed here` : undefined}
+                  >
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </details>
+        );
+      })}
     </nav>
   );
 }
 
-function UserSummary({ user, dark }: { user: { firstName: string; email: string; roles: string[] } | null; dark: boolean }) {
+function UserSummary({
+  user,
+}: {
+  user: { firstName: string; email: string; roles: string[] } | null;
+}) {
   return (
-    <div className="mb-4 flex items-center gap-3">
-      <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-bold ${dark ? 'bg-white/12 text-white' : 'bg-[#DCE8FF] text-[#1657CF]'}`}>
-        {user?.firstName.slice(0, 1).toUpperCase()}
-      </div>
-      <div className="min-w-0">
-        <p className={`truncate text-sm font-semibold ${dark ? 'text-white' : 'text-[#0D1524]'}`}>{user?.firstName}</p>
-        <p className={`truncate text-xs ${dark ? 'text-white/45' : 'text-[#828B9B]'}`}>{user?.email}</p>
-      </div>
+    <div className="p-menu__who">
+      <strong>{user?.firstName}</strong>
+      <span>{user?.email}</span>
+      <span>{user?.roles.join(' · ')}</span>
     </div>
   );
 }
 
-function LogoutButton({ onLogout, loggingOut, dark }: { onLogout: () => Promise<void>; loggingOut: boolean; dark: boolean }) {
+function LogoutButton({
+  onLogout,
+  loggingOut,
+}: {
+  onLogout: () => Promise<void>;
+  loggingOut: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={() => void onLogout()}
       disabled={loggingOut}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1657CF] disabled:cursor-wait disabled:opacity-60 ${dark ? 'text-white/65 hover:bg-white/8 hover:text-white' : 'text-[#48505F] hover:bg-[#F0F4FA]'}`}
+      className="p-nav__link"
     >
       <LogoutIcon />
-      {loggingOut ? 'Signing out…' : 'Sign out'}
+      <span>{loggingOut ? 'Signing out…' : 'Sign out'}</span>
     </button>
   );
 }
 
-function Brand({ inverse = false }: { inverse?: boolean }) {
+function GridIcon() {
   return (
-    <div className="flex items-center gap-3">
-      <span className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${inverse ? 'bg-white text-[#1657CF]' : 'bg-[#1657CF] text-white'}`}>U</span>
-      <span className={`text-xl font-bold tracking-[-0.04em] ${inverse ? 'text-white' : 'text-[#0D1524]'}`}>Universta</span>
-    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
   );
 }
 
-
-function GridIcon() {
-  return <span aria-hidden="true" className="grid h-5 w-5 grid-cols-2 gap-0.5"><i className="rounded-sm bg-current" /><i className="rounded-sm bg-current" /><i className="rounded-sm bg-current" /><i className="rounded-sm bg-current" /></span>;
+function ChevronIcon() {
+  return (
+    <svg
+      className="a-navgroup__chev"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
 }
 
 function MenuIcon() {
-  return <span aria-hidden="true" className="flex w-5 flex-col gap-1"><i className="h-0.5 w-full bg-current" /><i className="h-0.5 w-full bg-current" /><i className="h-0.5 w-full bg-current" /></span>;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
 }
 
 function CloseIcon() {
-  return <span aria-hidden="true" className="relative block h-5 w-5"><i className="absolute left-0 top-2.5 h-0.5 w-5 rotate-45 bg-current" /><i className="absolute left-0 top-2.5 h-0.5 w-5 -rotate-45 bg-current" /></span>;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  );
 }
 
 function LogoutIcon() {
-  return <span aria-hidden="true" className="text-base">↪</span>;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M15 12H3m0 0 4-4m-4 4 4 4M10 4h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-8" />
+    </svg>
+  );
 }

@@ -37,13 +37,13 @@ export function PageStructurePanel({
 }) {
   return (
     <aside
-      className="rounded-2xl border border-[#E8ECF3] bg-white p-4"
+      className="p-panel"
       aria-label="Page structure"
       data-testid="page-structure"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Page structure</h3>
-        <span className="text-xs text-[#828B9B]">{entries.length}</span>
+        <span className="p-hint">{entries.length}</span>
       </div>
 
       <ul className="mt-3 space-y-2">
@@ -81,7 +81,7 @@ export function PageStructurePanel({
                     type="button"
                     onClick={() => onMove(entry.id, -1)}
                     disabled={index === 0 || entry.isNew}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                     aria-label={`Move ${name} up`}
                   >
                     ↑
@@ -90,7 +90,7 @@ export function PageStructurePanel({
                     type="button"
                     onClick={() => onMove(entry.id, 1)}
                     disabled={index === entries.length - 1 || entry.isNew}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                     aria-label={`Move ${name} down`}
                   >
                     ↓
@@ -99,7 +99,7 @@ export function PageStructurePanel({
                     type="button"
                     onClick={() => onDuplicate(entry.id)}
                     disabled={entry.isNew}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                     aria-label={`Duplicate ${name}`}
                   >
                     Duplicate

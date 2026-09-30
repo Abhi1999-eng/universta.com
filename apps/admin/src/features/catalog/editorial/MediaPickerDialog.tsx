@@ -137,7 +137,7 @@ export function MediaPickerDialog({
             </button>
           </div>
         ) : (
-          <span className="text-xs text-[#828B9B]">No media selected</span>
+          <span className="p-hint">No media selected</span>
         )}
       </div>
 
@@ -238,14 +238,14 @@ export function MediaPickerDialog({
                     <button
                       type="button"
                       onClick={() => void loadLibrary(query)}
-                      className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+                      className="p-btn p-btn--primary p-btn--sm"
                     >
                       Search
                     </button>
                   </div>
 
                   {loading ? (
-                    <p role="status" className="mt-5 text-sm text-[#667085]">
+                    <p role="status" className="p-sub">
                       Loading Media Library…
                     </p>
                   ) : error ? (
@@ -297,7 +297,7 @@ export function MediaPickerDialog({
                     </div>
                   ) : (
                     <div className="mt-5 rounded-xl border border-dashed border-[#D9E0EA] p-5 text-center">
-                      <p role="status" className="text-sm text-[#667085]">
+                      <p role="status" className="p-sub">
                         No active images found in Media Library.
                       </p>
                       <button

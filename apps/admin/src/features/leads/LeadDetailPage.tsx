@@ -160,9 +160,9 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
       <Link href="/leads" className="text-sm font-semibold text-[#1657CF] hover:underline">← Back to leads</Link>
       <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">{lead.leadNumber}</p>
+          <p className="p-eyebrow">{lead.leadNumber}</p>
           <h2 id="lead-heading" className="mt-2 break-words text-3xl font-semibold tracking-[-0.04em]">{name}</h2>
-          <p className="mt-2 text-sm text-[#667085]">Created {dateTime(lead.createdAt)} · Updated {dateTime(lead.updatedAt)}</p>
+          <p className="p-sub">Created {dateTime(lead.createdAt)} · Updated {dateTime(lead.updatedAt)}</p>
         </div>
         <StatusPill status={lead.status} />
       </div>
@@ -236,11 +236,11 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
                 <article className="rounded-xl border border-[#E8ECF3] bg-[#FAFBFD] p-4" key={item.id}>
                   <div className="flex flex-wrap justify-between gap-2">
                     <p className="text-xs font-semibold text-[#48505F]">{person(item.user)}{item.isPinned ? ' · Pinned' : ''}</p>
-                    <time className="text-xs text-[#828B9B]">{dateTime(item.createdAt)}</time>
+                    <time className="p-hint">{dateTime(item.createdAt)}</time>
                   </div>
                   <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#334155]">{item.note}</p>
                 </article>
-              )) : <p className="text-sm text-[#667085]">No internal notes yet.</p>}
+              )) : <p className="p-sub">No internal notes yet.</p>}
             </div>
           </Panel>
         </div>
@@ -266,7 +266,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
               {lead.statusHistory.map((item) => (
                 <article className="border-l-2 border-[#DCE8FF] pl-4" key={item.id}>
                   <p className="text-sm font-semibold">{item.oldStatus ? `${label(item.oldStatus)} → ` : ''}{label(item.newStatus)}</p>
-                  <p className="mt-1 text-xs text-[#667085]">{person(item.changedBy)} · {dateTime(item.createdAt)}</p>
+                  <p className="p-hint">{person(item.changedBy)} · {dateTime(item.createdAt)}</p>
                   {item.reason ? <p className="mt-2 break-words text-xs leading-5 text-[#48505F]">{item.reason}</p> : null}
                 </article>
               ))}
@@ -277,10 +277,10 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
               {lead.audit.length ? lead.audit.map((item) => (
                 <article className="border-l-2 border-[#E8ECF3] pl-4" key={item.id}>
                   <p className="text-sm font-semibold">{label(item.action)}</p>
-                  <p className="mt-1 text-xs text-[#667085]">{person(item.user)} · {dateTime(item.createdAt)}</p>
+                  <p className="p-hint">{person(item.user)} · {dateTime(item.createdAt)}</p>
                   {item.description ? <p className="mt-2 text-xs leading-5 text-[#48505F]">{item.description}</p> : null}
                 </article>
-              )) : <p className="text-sm text-[#667085]">No audit events recorded.</p>}
+              )) : <p className="p-sub">No audit events recorded.</p>}
             </div>
           </Panel>
         </aside>

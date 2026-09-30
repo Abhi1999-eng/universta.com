@@ -124,7 +124,7 @@ export function InternalLinkPicker({
       </div>
       {parsed ? (
         resolution === null ? (
-          <p className="mt-1 text-xs text-[#828B9B]">Checking link…</p>
+          <p className="p-hint">Checking link…</p>
         ) : resolution.missing ? (
           <p className="mt-1 text-xs text-red-700" role="alert">
             This linked page no longer exists.
@@ -153,7 +153,7 @@ export function InternalLinkPicker({
             className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-2xl"
           >
             <div className="flex items-center justify-between gap-4">
-              <h2 id={`${fieldId}-dialog-heading`} className="text-lg font-semibold">
+              <h2 id={`${fieldId}-dialog-heading`} className="p-h3">
                 Link to a page
               </h2>
               <button
@@ -183,13 +183,13 @@ export function InternalLinkPicker({
               />
               <button
                 type="submit"
-                className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+                className="p-btn p-btn--primary p-btn--sm"
               >
                 Search
               </button>
             </form>
             {loading ? (
-              <p role="status" className="mt-5 text-sm text-[#667085]">
+              <p role="status" className="p-sub">
                 Searching…
               </p>
             ) : results.length ? (
@@ -212,7 +212,7 @@ export function InternalLinkPicker({
                 ))}
               </div>
             ) : (
-              <p role="status" className="mt-5 text-sm text-[#667085]">
+              <p role="status" className="p-sub">
                 No matches yet — try a search term.
               </p>
             )}

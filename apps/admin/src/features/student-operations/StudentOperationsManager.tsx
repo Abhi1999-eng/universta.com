@@ -253,7 +253,7 @@ function OperationsTable({
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="p-h3">{title}</h2>
       {rows.length ? (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -363,7 +363,7 @@ function ThreadPanel({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="p-h3">{title}</h2>
       {rows.length ? (
         <div className="mt-4 space-y-4">
           {rows.map((row) => (
@@ -450,7 +450,7 @@ function ReferralTable({
     [user.firstName, user.lastName].filter(Boolean).join(" ") || "Student";
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">Referrals</h2>
+      <h2 className="p-h3">Referrals</h2>
       {referrals.length ? (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[650px] text-left text-sm">

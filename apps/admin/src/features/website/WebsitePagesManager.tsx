@@ -137,12 +137,12 @@ export function WebsitePagesManager() {
   return (
     <section aria-labelledby="website-pages-heading">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        <p className="p-eyebrow">
           Website Builder
         </p>
         <h2
           id="website-pages-heading"
-          className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
+          className="p-h1"
         >
           Website Pages
         </h2>
@@ -161,7 +161,7 @@ export function WebsitePagesManager() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name or URL…"
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+            className="p-input"
           />
         </label>
         <label className="block text-sm font-semibold">
@@ -169,7 +169,7 @@ export function WebsitePagesManager() {
           <select
             value={family}
             onChange={(event) => setFamily(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+            className="p-input"
           >
             <option value="">All families</option>
             {families.map((item) => (
@@ -184,7 +184,7 @@ export function WebsitePagesManager() {
           <select
             value={kind}
             onChange={(event) => setKind(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+            className="p-input"
           >
             <option value="">All types</option>
             <option value="STATIC_PAGE">Static page</option>
@@ -239,7 +239,7 @@ export function WebsitePagesManager() {
         </div>
       ) : null}
 
-      <p className="mt-5 text-sm text-[#667085]">
+      <p className="p-sub">
         {loading
           ? "Loading website pages…"
           : `${visible.length} of ${rows.length} pages`}
@@ -261,16 +261,16 @@ export function WebsitePagesManager() {
               {visible.map((row) => (
                 <tr key={row.key}>
                   <td className="px-5 py-4">
-                    <p className="font-semibold text-[#0D1524]">{row.label}</p>
-                    <p className="mt-1 text-xs text-[#828B9B]">
+                    <p >{row.label}</p>
+                    <p className="p-hint">
                       {row.publicPath}
                       {row.sectionCount !== null
                         ? ` · ${row.sectionCount} section${row.sectionCount === 1 ? "" : "s"}`
                         : ""}
                     </p>
                   </td>
-                  <td className="px-5 py-4 text-[#667085]">{row.family}</td>
-                  <td className="px-5 py-4 text-[#667085]">
+                  <td className="p-muted">{row.family}</td>
+                  <td className="p-muted">
                     {MANAGEMENT_LABEL[row.managementType]}
                   </td>
                   <td className="px-5 py-4">
@@ -283,14 +283,14 @@ export function WebsitePagesManager() {
                       <button
                         type="button"
                         onClick={() => void createPage(row)}
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         Create editable page
                       </button>
                     ) : (
                       <Link
                         href={editHref(row)}
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         Open in Builder
                       </Link>
@@ -298,7 +298,7 @@ export function WebsitePagesManager() {
                     {row.seoKey ? (
                       <Link
                         href={`/seo?key=${encodeURIComponent(row.seoKey)}`}
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         SEO
                       </Link>
@@ -314,7 +314,7 @@ export function WebsitePagesManager() {
                         onClick={() =>
                           setPreview({ slug: row.pageSlug as string, title: row.label })
                         }
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         Preview
                       </button>
@@ -325,7 +325,7 @@ export function WebsitePagesManager() {
                         onClick={() =>
                           setHistory({ id: row.pageId as string, title: row.label })
                         }
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         History
                       </button>

@@ -377,12 +377,12 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       <form onSubmit={(event) => void submit(event)} className="mt-7 space-y-6 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-7" aria-label={`${recordId ? 'Edit' : 'Create'} ${resource}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Structured editor</p>
+            <p className="p-eyebrow">Structured editor</p>
             <h3 className="mt-1 text-2xl font-semibold">
               {recordId ? 'Edit' : 'Create'} {resource === 'offerings' ? 'university course offering' : resource.replaceAll('-', ' ')}
             </h3>
           </div>
-          <button type="button" onClick={onCancel} className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold">
+          <button type="button" onClick={onCancel} className="p-btn p-btn--ghost p-btn--sm">
             Close editor
           </button>
         </div>
@@ -406,7 +406,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
           </div>
         ) : null}
         {loading ? (
-          <p role="status" className="text-sm text-[#667085]">
+          <p role="status" className="p-sub">
             Loading record…
           </p>
         ) : null}
@@ -492,7 +492,7 @@ function Multi({ legend, options, selected, toggle, help, helpKey }: { legend: s
   // icon must be a plain sibling of <legend>, both direct fieldset children.
   const resolved = help ?? (helpKey ? getFieldHelp(helpKey) : undefined);
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="flex items-center px-1 text-sm font-semibold">{legend}</legend>
       {resolved ? <FieldHelpIcon fieldLabel={legend} help={resolved} /> : null}
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -513,7 +513,7 @@ function Tags({ label, values, draft, setDraft, add, remove, help }: { label: st
   // goes empty for every Tags instance, not just ones with an icon.
   const resolved = help ?? undefined;
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="flex items-center px-1 text-sm font-semibold">{label}</legend>
       {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}
       <div className="flex gap-2">
@@ -548,7 +548,7 @@ function Core({ values, set, errors, entity = 'title', summaryKey, resource }: {
 }
 function FeaturedFields(p: any) {
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">Featured placement</legend>
       <div className="flex items-center gap-2 text-sm font-semibold">
         <input id="phase1-is-featured" type="checkbox" checked={p.values.isFeatured === 'true'} onChange={(event) => p.set('isFeatured', event.target.checked ? 'true' : 'false')} />
@@ -573,19 +573,19 @@ function FeaturedFields(p: any) {
         <Field label="Featured from (optional)" type="datetime-local" value={p.values.featuredFrom ?? ''} onChange={(value) => p.set('featuredFrom', value)} help={commonFieldHelp.featuredFrom} />
         <Field label="Featured until (optional)" type="datetime-local" value={p.values.featuredUntil ?? ''} onChange={(value) => p.set('featuredUntil', value)} error={p.errors.featuredUntil} help={commonFieldHelp.featuredUntil} />
       </div>
-      <p className="mt-2 text-xs text-[#667085]">Outside this window (or unchecked), the record shows in normal order.</p>
+      <p className="p-hint">Outside this window (or unchecked), the record shows in normal order.</p>
     </fieldset>
   );
 }
 function ScheduledPublishingFields(p: any) {
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">Scheduled publishing</legend>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Publish from (optional)" type="datetime-local" value={p.values.publishStartsAt ?? ''} onChange={(value) => p.set('publishStartsAt', value)} help={commonFieldHelp.publishStartsAt} />
         <Field label="Publish until (optional)" type="datetime-local" value={p.values.publishEndsAt ?? ''} onChange={(value) => p.set('publishEndsAt', value)} error={p.errors.publishEndsAt} help={commonFieldHelp.publishEndsAt} />
       </div>
-      <p className="mt-2 text-xs text-[#667085]">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit.</p>
+      <p className="p-hint">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit.</p>
     </fieldset>
   );
 }
@@ -934,7 +934,7 @@ function TestimonialFields(p: any) {
 }
 function Repeater({ title, rows, fields, add, update, helpPrefix }: { title: string; rows: Array<Record<string, string>>; fields: string[]; add: () => void; update: (index: number, key: string, value: string) => void; helpPrefix?: string }) {
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">{title}</legend>
       {rows.map((row, index) => (
         <div key={index} className="mt-3 grid gap-3 rounded-xl bg-[#F8FAFC] p-3 sm:grid-cols-2">
@@ -953,7 +953,7 @@ function SeoFields({ values, set }: { values: Record<string, string>; set: (key:
   const canonical = values.canonicalUrl ?? '';
   const canonicalUnsafe = canonical.trim() !== '' && !canonical.startsWith('/') && !/^https:\/\/[^/]*universta/i.test(canonical);
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">SEO</legend>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="SEO title" value={values.seoTitle ?? ''} onChange={(value) => set('seoTitle', value)} help={commonFieldHelp.seoTitle} />
@@ -983,7 +983,7 @@ function SeoFields({ values, set }: { values: Record<string, string>; set: (key:
           <FieldLabel label="Allow search engines to follow its links" htmlFor="seo-robots-follow-phase1" help={commonFieldHelp.robotsFollow} />
         </div>
       </div>
-      <p className="mt-2 text-xs text-[#828B9B]">Unpublished drafts are never indexable regardless of this setting — it only takes effect once the record is Published.</p>
+      <p className="p-hint">Unpublished drafts are never indexable regardless of this setting — it only takes effect once the record is Published.</p>
     </fieldset>
   );
 }

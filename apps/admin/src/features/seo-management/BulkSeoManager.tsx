@@ -517,7 +517,7 @@ export function BulkSeoManager() {
 
   if (loading)
     return (
-      <p className="mt-6 text-sm text-[#667085]">Loading bulk SEO templates…</p>
+      <p className="p-sub">Loading bulk SEO templates…</p>
     );
 
   return (
@@ -655,7 +655,7 @@ export function BulkSeoManager() {
             </p>
           </>
         ) : (
-          <p className="mt-2 text-sm text-[#667085]">
+          <p className="p-sub">
             {preview?.message ??
               "A published record will appear here when available."}
           </p>
@@ -698,7 +698,7 @@ export function BulkSeoManager() {
         <summary className="cursor-pointer text-sm font-semibold text-[#344054] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF]">
           Advanced SEO settings
         </summary>
-        <p className="mt-2 text-sm leading-6 text-[#667085]">
+        <p className="p-sub">
           Leave optional values blank to inherit the resolved title,
           description, canonical URL, and Default SEO settings.
         </p>

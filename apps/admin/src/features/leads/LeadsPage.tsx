@@ -158,14 +158,14 @@ export function LeadsPage() {
 
   return (
     <section aria-labelledby="leads-heading" className="mx-auto max-w-[1240px]">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="p-head">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Counselling pipeline
           </p>
           <h2
             id="leads-heading"
-            className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
+            className="p-h1"
           >
             Leads
           </h2>
@@ -337,18 +337,18 @@ export function LeadsPage() {
       {!loading && !error && rows.length === 0 ? (
         <>
           <div data-testid="leads-empty-state" className="mt-6 rounded-2xl border border-dashed border-[#CBD5E4] bg-white p-10 text-center">
-            <h3 className="text-lg font-semibold">No leads found</h3>
-            <p className="mt-2 text-sm text-[#667085]">
+            <h3 className="p-h3">No leads found</h3>
+            <p className="p-sub">
               New counselling requests or leads matching these filters will
               appear here.
             </p>
           </div>
           {meta && meta.page > 1 ? (
             <nav aria-label="Lead result pages" className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-[#E8ECF3] bg-white px-4 py-3">
-              <a href={hrefFor(activeFilters, meta.page - 1)} className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold">
+              <a href={hrefFor(activeFilters, meta.page - 1)} className="p-btn p-btn--ghost p-btn--sm">
                 Previous
               </a>
-              <span className="text-sm text-[#667085]">Page {meta.page} of {Math.max(1, meta.totalPages)}</span>
+              <span className="p-sub">Page {meta.page} of {Math.max(1, meta.totalPages)}</span>
               <button type="button" disabled className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-40">
                 Next
               </button>
@@ -371,20 +371,20 @@ export function LeadsPage() {
                 {rows.map((lead) => (
                   <tr className="border-t border-[#EEF1F5]" key={lead.id}>
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-[#0D1524]">{displayName(lead)}</p>
-                      <p className="mt-1 text-xs text-[#828B9B]">{lead.leadNumber}</p>
+                      <p >{displayName(lead)}</p>
+                      <p className="p-hint">{lead.leadNumber}</p>
                     </td>
-                    <td className="px-5 py-4 text-[#48505F]">
+                    <td >
                       <p>{maskEmail(lead.email)}</p>
                       <p className="mt-1 text-xs">{maskPhone(lead.phoneNumber)}</p>
                     </td>
-                    <td className="px-5 py-4 text-[#48505F]">
+                    <td >
                       <p>{lead.preferredCountry?.name ?? '—'}</p>
                       <p className="mt-1 text-xs">{lead.preferredCourseLevel?.name ?? '—'} · {lead.preferredIntake?.shortLabel ?? lead.preferredIntake?.name ?? '—'}</p>
                     </td>
-                    <td className="px-5 py-4 text-[#48505F]">{statusLabel(lead.sourceType ?? 'GENERAL')}</td>
+                    <td >{statusLabel(lead.sourceType ?? 'GENERAL')}</td>
                     <td className="px-5 py-4"><StatusPill status={lead.status} /></td>
-                    <td className="px-5 py-4 text-[#48505F]">{formatDate(lead.createdAt)}</td>
+                    <td >{formatDate(lead.createdAt)}</td>
                     <td className="px-5 py-4 text-right">
                       <Link href={`/leads/${lead.id}`} className="inline-block whitespace-nowrap font-semibold text-[#1657CF] hover:underline">
                         View lead
@@ -401,7 +401,7 @@ export function LeadsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="truncate font-semibold">{displayName(lead)}</h3>
-                    <p className="mt-1 text-xs text-[#828B9B]">{lead.leadNumber}</p>
+                    <p className="p-hint">{lead.leadNumber}</p>
                   </div>
                   <StatusPill status={lead.status} />
                 </div>
@@ -424,17 +424,17 @@ export function LeadsPage() {
                   Previous
                 </button>
               ) : (
-                <a href={hrefFor(activeFilters, meta.page - 1)} className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold">
+                <a href={hrefFor(activeFilters, meta.page - 1)} className="p-btn p-btn--ghost p-btn--sm">
                   Previous
                 </a>
               )}
-              <span className="text-sm text-[#667085]">Page {meta.page} of {meta.totalPages}</span>
+              <span className="p-sub">Page {meta.page} of {meta.totalPages}</span>
               {meta.page >= meta.totalPages ? (
                 <button type="button" disabled className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-40">
                   Next
                 </button>
               ) : (
-                <a href={hrefFor(activeFilters, meta.page + 1)} className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold">
+                <a href={hrefFor(activeFilters, meta.page + 1)} className="p-btn p-btn--ghost p-btn--sm">
                   Next
                 </a>
               )}

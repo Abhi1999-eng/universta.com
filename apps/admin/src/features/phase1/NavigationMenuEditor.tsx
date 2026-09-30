@@ -266,7 +266,7 @@ export function NavigationMenuEditor({
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-[#667085]">Loading menu…</p>;
+  if (loading) return <p className="p-sub">Loading menu…</p>;
   if (!menu)
     return (
       <p className="mt-6 text-sm text-[#B42318]" role="alert">
@@ -296,7 +296,7 @@ export function NavigationMenuEditor({
     <section className="mt-8 rounded-2xl border border-[#E8ECF3] bg-white p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Navigation menu
           </p>
           <h3 className="mt-1 text-2xl font-semibold">{menu.name}</h3>
@@ -304,7 +304,7 @@ export function NavigationMenuEditor({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           ← Back to menus
         </button>
@@ -361,10 +361,10 @@ export function NavigationMenuEditor({
           </select>
         </label>
         <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
-          <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
+          <button type="submit" className="p-btn p-btn--primary p-btn--sm">
             Save menu
           </button>
-          <span className="text-sm text-[#667085]">
+          <span className="p-sub">
             Visibility: <strong>{visibility(menu.status)}</strong>
           </span>
           {menu.status === "ACTIVE" ? (
@@ -433,7 +433,7 @@ export function NavigationMenuEditor({
                     <button
                       type="button"
                       onClick={() => move(item, -1)}
-                      className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       aria-label={`Move ${item.label} up`}
                     >
                       ↑
@@ -441,7 +441,7 @@ export function NavigationMenuEditor({
                     <button
                       type="button"
                       onClick={() => move(item, 1)}
-                      className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       aria-label={`Move ${item.label} down`}
                     >
                       ↓
@@ -486,7 +486,7 @@ export function NavigationMenuEditor({
                       <button
                         type="button"
                         onClick={() => move(child, -1)}
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         aria-label={`Move ${child.label} up`}
                       >
                         ↑
@@ -494,7 +494,7 @@ export function NavigationMenuEditor({
                       <button
                         type="button"
                         onClick={() => move(child, 1)}
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         aria-label={`Move ${child.label} down`}
                       >
                         ↓
@@ -632,14 +632,14 @@ export function NavigationMenuEditor({
           </select>
         </label>
         <div className="sm:col-span-2 flex gap-3">
-          <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
+          <button type="submit" className="p-btn p-btn--primary p-btn--sm">
             {itemDraft.id ? "Save item" : "Add item"}
           </button>
           {itemDraft.id ? (
             <button
               type="button"
               onClick={resetDraft}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel edit
             </button>
@@ -655,17 +655,17 @@ export function NavigationMenuEditor({
           aria-labelledby="nav-item-delete-title"
         >
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 id="nav-item-delete-title" className="text-lg font-semibold">
+            <h3 id="nav-item-delete-title" className="p-h3">
               Delete this item?
             </h3>
-            <p className="mt-2 text-sm text-[#667085]">
+            <p className="p-sub">
               &ldquo;{pendingDelete.label}&rdquo; will be permanently removed from this menu.
             </p>
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setPendingDelete(null)}
-                className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Cancel
               </button>

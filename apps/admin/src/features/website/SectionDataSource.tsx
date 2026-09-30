@@ -158,11 +158,11 @@ export function SectionDataSource({
 
   return (
     <fieldset
-      className="mt-4 rounded-xl border border-[#E8ECF3] p-4"
+      className="p-card"
       data-testid="section-data-source"
     >
       <legend className="px-1 text-sm font-semibold">Content source</legend>
-      <p className="text-xs text-[#828B9B]">
+      <p className="p-hint">
         This section shows {source.label} from your catalogue. Only published
         records ever appear.
       </p>
@@ -185,7 +185,7 @@ export function SectionDataSource({
           </button>
         ))}
       </div>
-      <p className="mt-2 text-xs text-[#828B9B]">
+      <p className="p-hint">
         {mode === "automatic"
           ? "Stays up to date on its own as records are added or published."
           : "Shows exactly the records you tick, in the order you tick them."}
@@ -255,7 +255,7 @@ export function SectionDataSource({
               className={controlClass}
             />
           </label>
-          <p className="mt-2 text-xs text-[#828B9B]">
+          <p className="p-hint">
             {picks.length
               ? `${picks.length} chosen`
               : "Nothing chosen yet — this section will be empty until you pick some."}
@@ -275,7 +275,7 @@ export function SectionDataSource({
             ))}
           </ul>
           {options.length === 0 ? (
-            <p className="mt-2 text-xs text-[#828B9B]">
+            <p className="p-hint">
               No {source.label} found.
             </p>
           ) : null}

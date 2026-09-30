@@ -181,9 +181,9 @@ export function PageTemplatesManager() {
     <section className="mx-auto max-w-[1180px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Content management</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Page templates</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+          <p className="p-eyebrow">Content management</p>
+          <h2 className="p-h1">Page templates</h2>
+          <p className="p-sub">
             Reusable starting structures for a page family. In Website Pages, Apply template saves the assignment and
             adds only missing sections, without changing existing content.
           </p>
@@ -211,27 +211,27 @@ export function PageTemplatesManager() {
       ) : (
         <div className="mt-8 grid gap-4">
           {rows.map((row) => (
-            <div key={row.id} className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+            <div key={row.id} className="p-panel">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold">{row.name}</h3>
+                    <h3 className="p-h3">{row.name}</h3>
                     {!row.isActive ? (
                       <span className="rounded-full bg-[#F2E8CF] px-2 py-0.5 text-[10px] font-bold uppercase text-[#8A6D1D]">
                         {row.deletedAt ? "Archived" : "Inactive"}
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-xs text-[#828B9B]">
+                  <p className="p-hint">
                     {row.templateKey} · {row.pageFamily.replaceAll("_", " ")} · {row._count?.pages ?? 0} page(s) assigned
                   </p>
                   {row.description ? <p className="mt-2 max-w-2xl text-sm text-[#48505F]">{row.description}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setPreviewRow(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">Preview</button>
-                  <button type="button" onClick={() => openEdit(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">Edit</button>
-                  <button type="button" onClick={() => void duplicate(row)} className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">Duplicate</button>
-                  <button type="button" onClick={() => void archive(row)} className="rounded-lg border border-[#F2C5C5] px-3 py-2 text-sm font-semibold text-[#B42318]">Archive</button>
+                  <button type="button" onClick={() => setPreviewRow(row)} className="p-btn p-btn--ghost p-btn--sm">Preview</button>
+                  <button type="button" onClick={() => openEdit(row)} className="p-btn p-btn--ghost p-btn--sm">Edit</button>
+                  <button type="button" onClick={() => void duplicate(row)} className="p-btn p-btn--ghost p-btn--sm">Duplicate</button>
+                  <button type="button" onClick={() => void archive(row)} className="p-btn p-btn--danger p-btn--sm">Archive</button>
                 </div>
               </div>
             </div>
@@ -272,7 +272,7 @@ export function PageTemplatesManager() {
               </label>
             </div>
 
-            <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+            <fieldset className="p-card">
               <legend className="px-1 text-sm font-semibold">Sections included in this template</legend>
               <div className="space-y-3">
                 {sections.map((section, index) => (
@@ -313,16 +313,16 @@ export function PageTemplatesManager() {
               <h3 className="text-xl font-semibold">{previewRow.name}</h3>
               <button type="button" onClick={() => setPreviewRow(null)} className="text-sm font-semibold text-[#667085]">Close</button>
             </div>
-            <p className="mt-1 text-xs text-[#828B9B]">{previewRow.pageFamily.replaceAll("_", " ")}</p>
+            <p className="p-hint">{previewRow.pageFamily.replaceAll("_", " ")}</p>
             <ol className="mt-5 space-y-3">
               {(previewRow.defaultSectionsJson ?? []).map((section, index) => (
-                <li key={section.sectionKey} className="rounded-xl border border-[#E8ECF3] p-3">
+                <li key={section.sectionKey} className="p-card">
                   <p className="text-xs font-bold uppercase tracking-wide text-[#828B9B]">{index + 1}. {section.sectionType.replaceAll("_", " ")}</p>
                   {section.heading ? <p className="mt-1 text-sm font-semibold">{section.heading}</p> : <p className="mt-1 text-sm text-[#9AA3B2]">No default heading</p>}
                 </li>
               ))}
               {(previewRow.defaultSectionsJson ?? []).length === 0 ? (
-                <p className="text-sm text-[#667085]">This template has no sections included yet.</p>
+                <p className="p-sub">This template has no sections included yet.</p>
               ) : null}
             </ol>
           </div>

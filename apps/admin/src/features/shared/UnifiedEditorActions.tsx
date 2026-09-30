@@ -27,7 +27,7 @@ export function UnifiedEditorActions({
     >
       <div>
         <p className="text-sm font-semibold text-[#1D2939]">One record, one save flow</p>
-        <p className="mt-1 text-xs text-[#667085]">
+        <p className="p-hint">
           Every section on this page is saved together. Draft keeps it private; Publish makes the complete record live.
         </p>
       </div>

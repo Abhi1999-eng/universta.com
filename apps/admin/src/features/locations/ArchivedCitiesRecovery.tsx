@@ -151,7 +151,7 @@ export function ArchivedCitiesRecovery() {
       </div>
 
       {message ? <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm" role="status">{message}</p> : null}
-      {!loading && cities.length === 0 ? <p className="mt-4 text-sm text-[#667085]">No archived cities.</p> : null}
+      {!loading && cities.length === 0 ? <p className="p-sub">No archived cities.</p> : null}
 
       <div className="mt-4 space-y-3">
         {cities.map((city) => {
@@ -168,15 +168,15 @@ export function ArchivedCitiesRecovery() {
               ) : (
                 <div>
                   <p className="font-semibold">{city.name} <span className="font-normal text-[#9AA3B2]">({city.slug})</span></p>
-                  <p className="mt-1 text-xs text-[#667085]">{city.country.name} · {city.state?.name ?? "No state/province"} · {references} reference{references === 1 ? "" : "s"}</p>
+                  <p className="p-hint">{city.country.name} · {city.state?.name ?? "No state/province"} · {references} reference{references === 1 ? "" : "s"}</p>
                   {city.shortDescription ? <p className="mt-2 text-sm text-[#48505F]">{city.shortDescription}</p> : null}
                 </div>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
                 {editing ? <>
-                  <button type="button" disabled={busyId === city.id} onClick={() => void save(city)} className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">Save changes</button>
-                  <button type="button" onClick={() => setEditingId(null)} className="rounded-lg border px-3 py-2 text-xs font-semibold">Cancel</button>
-                </> : <button type="button" onClick={() => edit(city)} className="rounded-lg border px-3 py-2 text-xs font-semibold">Edit archived city</button>}
+                  <button type="button" disabled={busyId === city.id} onClick={() => void save(city)} className="p-btn p-btn--primary p-btn--sm">Save changes</button>
+                  <button type="button" onClick={() => setEditingId(null)} className="p-btn p-btn--ghost p-btn--sm">Cancel</button>
+                </> : <button type="button" onClick={() => edit(city)} className="p-btn p-btn--ghost p-btn--sm">Edit archived city</button>}
                 <button type="button" disabled={busyId === city.id} onClick={() => void restore(city)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">Restore as draft</button>
                 <button type="button" disabled={busyId === city.id} onClick={() => void remove(city)} className="rounded-lg border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-60">Delete permanently</button>
               </div>

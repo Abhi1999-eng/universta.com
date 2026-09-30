@@ -81,18 +81,18 @@ export function FieldLabel({
   const effectiveRequiredMarkerVisible = requiredMarkerVisible || inferredCountryRequired;
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="p-label p-inline">
       <label htmlFor={htmlFor}>
         {label}
         {effectiveRequired && effectiveRequiredMarkerVisible ? (
           <>
             {' '}
-            <span className="font-bold text-[#D92D20]">*</span>
+            <span className="p-danger">*</span>
           </>
         ) : null}
       </label>
       {effectiveRequired && !effectiveRequiredMarkerVisible ? (
-        <span aria-hidden="true" className="font-bold text-[#D92D20]">*</span>
+        <span aria-hidden="true" className="p-danger">*</span>
       ) : null}
       {resolved ? <FieldHelpIcon fieldLabel={label} help={resolved} /> : null}
     </span>

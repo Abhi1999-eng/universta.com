@@ -894,13 +894,13 @@ export function CourseEditorialWorkspace({
   return (
     <section className="mt-8 space-y-6" aria-labelledby="course-workspace-heading">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        <p className="p-eyebrow">
           Course workspace
         </p>
         <h3 id="course-workspace-heading" className="mt-2 text-2xl font-semibold">
           Availability, content, FAQs, SEO, and related courses
         </h3>
-        <p className="mt-2 text-sm leading-6 text-[#667085]">
+        <p className="p-sub">
           All country facts require source guidance and verification. Zero values remain explicit; unknown values remain blank.
         </p>
       </div>
@@ -1058,7 +1058,7 @@ export function CourseEditorialWorkspace({
             <button
               type="button"
               onClick={() => setPending(null)}
-              className="rounded-lg border px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>
@@ -1126,13 +1126,13 @@ export function CourseEditorialWorkspace({
               <button
                 type="button"
                 onClick={() => setIntakeMapping(null)}
-                className="rounded-lg border px-4 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+                className="p-btn p-btn--primary p-btn--sm"
               >
                 Save intakes
               </button>
@@ -1202,12 +1202,12 @@ function Availability({
     <div className="space-y-5">
       <form
         onSubmit={saveMapping}
-        className="rounded-2xl border border-[#E8ECF3] bg-white p-6"
+        className="p-panel"
       >
         <h4 className="text-xl font-semibold">
           {editMapping ? 'Edit country mapping' : 'Add country mapping'}
         </h4>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-sub">
           Add where this generic course is available. Available and Limited mappings must include an official source and verification date.
         </p>
 
@@ -1587,13 +1587,13 @@ function Availability({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Reset
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+            className="p-btn p-btn--primary p-btn--sm"
           >
             {editMapping ? 'Update mapping' : 'Add mapping'}
           </button>
@@ -1607,12 +1607,12 @@ function Availability({
             .map((row) => (
               <article
                 key={row.id}
-                className="rounded-2xl border border-[#E8ECF3] bg-white p-5"
+                className="p-panel"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h4 className="font-semibold">{row.country.name}</h4>
-                    <p className="mt-1 text-xs text-[#667085]">
+                    <p className="p-hint">
                       {row.availabilityStatus} · {row.status} ·{' '}
                       {row.currencyCode ?? 'Currency unknown'} ·{' '}
                       {row.sourceReference && row.verifiedAt
@@ -1638,7 +1638,7 @@ function Availability({
                     <button
                       type="button"
                       onClick={() => setPending({ type: 'mapping', id: row.id })}
-                      className="rounded-lg border border-[#F2C5C5] px-3 py-2 text-sm font-semibold text-[#B42318]"
+                      className="p-btn p-btn--danger p-btn--sm"
                     >
                       Remove
                     </button>
@@ -1684,12 +1684,12 @@ function Content({
     <div className="space-y-5">
       <form
         onSubmit={saveSection}
-        className="rounded-2xl border border-[#E8ECF3] bg-white p-6"
+        className="p-panel"
       >
         <h4 className="text-xl font-semibold">
           {editSection ? 'Edit content section' : 'Add content section'}
         </h4>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-sub">
           Write normal content below. Universta converts it to the structured format internally; you do not need to write JSON.
         </p>
 
@@ -1868,13 +1868,13 @@ function Content({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Reset
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+            className="p-btn p-btn--primary p-btn--sm"
           >
             {editSection ? 'Update section' : 'Add section'}
           </button>
@@ -1947,7 +1947,7 @@ function Faqs({
     <div className="space-y-5">
       <form
         onSubmit={saveFaq}
-        className="rounded-2xl border border-[#E8ECF3] bg-white p-6"
+        className="p-panel"
       >
         <h4 className="text-xl font-semibold">{editFaq ? 'Edit FAQ' : 'Add FAQ'}</h4>
         <div className="mt-5 block text-sm font-semibold">
@@ -1961,7 +1961,7 @@ function Faqs({
             id="faq-question"
             required
             maxLength={1000}
-            className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+            className="p-input"
             value={faq.question}
             onChange={(event) => setFaq({ ...faq, question: event.target.value })}
           />
@@ -2020,13 +2020,13 @@ function Faqs({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-lg border px-4 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Reset
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+            className="p-btn p-btn--primary p-btn--sm"
           >
             {editFaq ? 'Update FAQ' : 'Add FAQ'}
           </button>
@@ -2084,9 +2084,9 @@ function Related({
   save: () => Promise<void>;
 }) {
   return (
-    <section className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
+    <section className="p-panel">
       <h4 className="text-xl font-semibold">Related courses</h4>
-      <p className="mt-2 text-sm text-[#667085]">
+      <p className="p-sub">
         Select published or draft courses. The API prevents self-relations and duplicates transactionally.
       </p>
       <div className="mt-4">

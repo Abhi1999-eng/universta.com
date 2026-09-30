@@ -89,7 +89,7 @@ export function ArchivedMediaRecovery() {
     <section className="mx-auto mt-8 max-w-[1240px] rounded-2xl border border-[#E8ECF3] bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Recovery
           </p>
           <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em]">Archived media</h3>
@@ -108,15 +108,15 @@ export function ArchivedMediaRecovery() {
       </div>
 
       {message ? (
-        <p className="mt-4 text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}
 
-      {loading ? <p className="mt-5 text-sm text-[#667085]">Loading archived media…</p> : null}
+      {loading ? <p className="p-sub">Loading archived media…</p> : null}
 
       {!loading && assets.length === 0 ? (
-        <p className="mt-5 text-sm text-[#667085]">No archived media records.</p>
+        <p className="p-sub">No archived media records.</p>
       ) : null}
 
       <div className="mt-5 space-y-3">
@@ -130,7 +130,7 @@ export function ArchivedMediaRecovery() {
                 {asset.title || asset.originalFileName}
               </p>
               <p className="mt-1 truncate text-xs text-[#667085]">{asset.originalFileName}</p>
-              <p className="mt-1 text-xs text-[#828B9B]">
+              <p className="p-hint">
                 {asset.mimeType} · {formatSize(asset.fileSizeBytes)}
                 {asset.folder ? ` · ${asset.folder}` : ""}
                 {asset.deletedAt

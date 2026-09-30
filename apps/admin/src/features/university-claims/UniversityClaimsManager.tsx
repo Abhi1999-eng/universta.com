@@ -134,9 +134,9 @@ export function UniversityClaimsManager() {
   return (
     <section className="mx-auto max-w-[1240px]">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Trust & partnerships</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">University claim requests</h2>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-eyebrow">Trust & partnerships</p>
+        <h2 className="p-h1">University claim requests</h2>
+        <p className="p-sub">
           Review requests to take ownership of a published university listing. Approving a
           request never creates admin or partner-portal access on its own.
         </p>
@@ -148,7 +148,7 @@ export function UniversityClaimsManager() {
         </label>
         <select
           id="claim-status-filter"
-          className="rounded-xl border border-[#D9E0EA] bg-white px-3 py-2 text-sm"
+          className="p-input p-input--sm"
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value)}
         >
@@ -162,7 +162,7 @@ export function UniversityClaimsManager() {
       </div>
 
       {message ? (
-        <p className="mt-4 text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}
@@ -186,19 +186,19 @@ export function UniversityClaimsManager() {
                   {claim.status}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#828B9B]">{claim.university.name}</p>
+              <p className="p-hint">{claim.university.name}</p>
               <p className="mt-1 font-mono text-[11px] text-[#9AA3B2]">{claim.claimNumber}</p>
             </button>
           ))}
-          {claims.length === 0 ? <p className="text-sm text-[#667085]">No claim requests yet.</p> : null}
+          {claims.length === 0 ? <p className="p-sub">No claim requests yet.</p> : null}
         </div>
 
         {detail ? (
-          <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+          <div className="p-panel">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold">{detail.claimantName}</h3>
-                <p className="text-xs text-[#828B9B]">
+                <h3 className="p-h3">{detail.claimantName}</h3>
+                <p className="p-hint">
                   Claiming <strong>{detail.university.name}</strong> · {detail.workEmail}
                 </p>
               </div>
@@ -212,10 +212,10 @@ export function UniversityClaimsManager() {
             </div>
 
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div><dt className="text-[#828B9B]">Job title</dt><dd>{detail.jobTitle ?? "—"}</dd></div>
-              <div><dt className="text-[#828B9B]">Organization</dt><dd>{detail.organization ?? "—"}</dd></div>
-              <div><dt className="text-[#828B9B]">Phone</dt><dd>{detail.phoneNumber ?? "—"}</dd></div>
-              <div><dt className="text-[#828B9B]">Official website</dt><dd>{detail.officialWebsite ?? "—"}</dd></div>
+              <div><dt className="p-muted">Job title</dt><dd>{detail.jobTitle ?? "—"}</dd></div>
+              <div><dt className="p-muted">Organization</dt><dd>{detail.organization ?? "—"}</dd></div>
+              <div><dt className="p-muted">Phone</dt><dd>{detail.phoneNumber ?? "—"}</dd></div>
+              <div><dt className="p-muted">Official website</dt><dd>{detail.officialWebsite ?? "—"}</dd></div>
             </dl>
             <p className="mt-4 rounded-xl bg-[#F7F9FC] p-4 text-sm">{detail.message}</p>
 

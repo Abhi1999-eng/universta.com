@@ -62,7 +62,7 @@ export function SiteVerificationManager() {
       <h3 className="text-lg font-semibold text-[#0D1524]">
         Google Search Console
       </h3>
-      <p className="mt-2 text-sm leading-6 text-[#667085]">
+      <p className="p-sub">
         Paste only the content value from Google&apos;s verification tag. Do not
         paste HTML.
       </p>

@@ -29,7 +29,7 @@ export function DashboardContent() {
       <div className="mt-10 space-y-8">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">{group.label}</h3>
+            <h3 className="p-eyebrow">{group.label}</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {group.items.map((item) => (
                 <Link
@@ -56,7 +56,7 @@ export function DashboardContent() {
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#E8ECF3] bg-white p-4">
+    <div className="p-panel">
       <p className="text-xs font-semibold text-[#828B9B]">{label}</p>
       <p className="mt-2 break-words text-sm font-semibold text-[#0D1524]">{value}</p>
     </div>

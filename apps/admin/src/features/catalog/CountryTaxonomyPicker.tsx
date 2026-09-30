@@ -238,7 +238,7 @@ export function CountryTaxonomyPicker({
 
       <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
         {visible.length === 0 ? (
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             {view === "selected"
               ? `No ${title.toLowerCase()} selected yet.`
               : `No ${title.toLowerCase()} match that search.`}
@@ -254,7 +254,7 @@ export function CountryTaxonomyPicker({
               />
               <span>{row.label}</span>
               {view === "most-used" && typeof row.usage === "number" ? (
-                <span className="text-xs text-[#828B9B]">
+                <span className="p-hint">
                   {row.usage} course{row.usage === 1 ? "" : "s"}
                 </span>
               ) : null}
@@ -295,7 +295,7 @@ export function CountryTaxonomyPicker({
                         >
                           {open ? "Hide" : "Show"} {kids.length} {childNoun}
                         </button>
-                        <span className="text-xs text-[#828B9B]">
+                        <span className="p-hint">
                           {mine} selected
                         </span>
                         {open ? (
@@ -339,7 +339,7 @@ export function CountryTaxonomyPicker({
               ) : (
                 <ul className="ml-6 mt-1 space-y-1">
                   {(row.children ?? []).map((child) => (
-                    <li key={child.id} className="text-xs text-[#828B9B]">
+                    <li key={child.id} className="p-hint">
                       {child.label}
                     </li>
                   ))}
@@ -402,7 +402,7 @@ export function CountryTaxonomyPicker({
             />
           </label>
           {draftName.trim() ? (
-            <p className="mt-2 text-xs text-[#667085]">
+            <p className="p-hint">
               Slug: {termSlug(draftName) || "—"}
             </p>
           ) : null}
@@ -423,7 +423,7 @@ export function CountryTaxonomyPicker({
             <button
               type="button"
               onClick={closeDialog}
-              className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>

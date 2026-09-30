@@ -225,7 +225,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
         <div className="mt-3">
           <button
             type="button"
-            className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="p-btn p-btn--primary p-btn--sm"
             onClick={() => void save()}
             disabled={busy}
           >

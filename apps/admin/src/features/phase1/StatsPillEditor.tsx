@@ -179,7 +179,7 @@ export function StatsPillEditor({
 
   if (!config || !data)
     return (
-      <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <div className="p-panel">
         <p>{message || "Loading statistics pill…"}</p>
       </div>
     );
@@ -194,7 +194,7 @@ export function StatsPillEditor({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">
+          <p className="p-eyebrow">
             CMS statistics pill
           </p>
           <h4 className="mt-1 font-semibold">{data.page.title}</h4>
@@ -274,7 +274,7 @@ export function StatsPillEditor({
           return (
             <fieldset
               key={item.id}
-              className="rounded-xl border border-[#E8ECF3] p-4"
+              className="p-card"
             >
               <legend className="px-2 text-sm font-bold">
                 Statistic {itemIndex + 1}

@@ -100,7 +100,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
 
   return (
     <section className="mx-auto mb-6 max-w-[1120px] rounded-2xl border border-[#DCE8FF] bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+      <div className="p-head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#1657CF]">
             Lead routing
@@ -126,7 +126,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
       </div>
 
       {loading ? (
-        <p className="mt-5 text-sm text-[#667085]" role="status">
+        <p className="p-sub" role="status">
           Loading consultants…
         </p>
       ) : (

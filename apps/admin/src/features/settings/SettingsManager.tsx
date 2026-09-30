@@ -160,10 +160,10 @@ function GroupForm({
   }
 
   return (
-    <form onSubmit={(event) => void save(event)} className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Platform settings</p>
+    <form onSubmit={(event) => void save(event)} className="p-panel">
+      <p className="p-eyebrow">Platform settings</p>
       <h3 className="mt-2 text-xl font-semibold">{config.title}</h3>
-      <p className="mt-2 text-sm text-[#667085]">{config.description}</p>
+      <p className="p-sub">{config.description}</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {config.fields.map((field) => {
           const value = values[field.key];
@@ -286,9 +286,9 @@ export function SettingsManager({
 
   return (
     <section className="mx-auto max-w-[1180px]">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">{eyebrow}</p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">{intro}</p>
+      <p className="p-eyebrow">{eyebrow}</p>
+      <h2 className="p-h1">{title}</h2>
+      <p className="p-sub">{intro}</p>
       {error ? <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">{error}</p> : null}
       {loading ? (
         <p className="mt-8 text-sm text-[#667085]">Loading…</p>

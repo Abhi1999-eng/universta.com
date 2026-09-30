@@ -112,9 +112,9 @@ function CreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
   }
 
   return (
-    <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
-      <h3 className="text-lg font-semibold">Create a redirect</h3>
-      <p className="mt-1 text-xs text-[#828B9B]">
+    <div className="p-panel">
+      <h3 className="p-h3">Create a redirect</h3>
+      <p className="p-hint">
         Both paths must be internal (start with a single &quot;/&quot;) -- external
         URLs are rejected to prevent open redirects. A target that is itself
         the source of another active redirect is also rejected, so chains
@@ -130,12 +130,12 @@ function CreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
           type="button"
           disabled={busy || !sourcePath || !targetPath}
           onClick={() => void submit()}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           Create redirect
         </button>
         {message ? (
-          <p className="text-sm text-[#48505F]" role="status">
+          <p className="p-sub" role="status">
             {message}
           </p>
         ) : null}
@@ -188,14 +188,14 @@ function EditRow({
             type="button"
             disabled={busy}
             onClick={() => void save()}
-            className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            className="p-btn p-btn--primary p-btn--sm"
           >
             Save
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Cancel
           </button>
@@ -265,11 +265,11 @@ export function RedirectsManager() {
   return (
     <section className="mx-auto max-w-[1240px]">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        <p className="p-eyebrow">
           URL management
         </p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Redirects</h2>
-        <p className="mt-2 text-sm text-[#667085]">
+        <h2 className="p-h1">Redirects</h2>
+        <p className="p-sub">
           Manage source-to-target URL redirects. Automatic redirects created
           when a resource&apos;s slug changes appear here too and can be
           edited or disabled the same way.
@@ -279,9 +279,9 @@ export function RedirectsManager() {
       <div className="mt-6 space-y-6">
       <CreateForm onCreated={load} />
 
-      <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <div className="p-panel">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold">Redirects</h3>
+          <h3 className="p-h3">Redirects</h3>
           <div className="flex items-center gap-3">
             <input
               value={q}
@@ -310,7 +310,7 @@ export function RedirectsManager() {
         ) : null}
 
         {loading ? (
-          <p className="mt-6 text-sm text-[#667085]">Loading redirects…</p>
+          <p className="p-sub">Loading redirects…</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">

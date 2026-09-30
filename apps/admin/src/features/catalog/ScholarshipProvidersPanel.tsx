@@ -210,10 +210,10 @@ export function ScholarshipProvidersPanel() {
   }
 
   return (
-    <section className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
+    <section className="p-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Master data
           </p>
           <h3 className="mt-2 text-xl font-semibold">Scholarship providers</h3>
@@ -226,7 +226,7 @@ export function ScholarshipProvidersPanel() {
         <button
           type="button"
           onClick={editorOpen ? closeEditor : openCreate}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           {editorOpen ? 'Close' : 'Add provider'}
         </button>
@@ -247,10 +247,10 @@ export function ScholarshipProvidersPanel() {
           className="mt-5 space-y-4 rounded-xl border border-[#E8ECF3] p-4"
         >
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+            <p className="p-eyebrow">
               {editing ? `Editing: ${editing.name}` : 'New provider'}
             </p>
-            <p className="mt-1 text-xs text-[#667085]">
+            <p className="p-hint">
               Slug is generated automatically from the name when left blank.
             </p>
           </div>
@@ -266,7 +266,7 @@ export function ScholarshipProvidersPanel() {
               <input
                 id="provider-name"
                 required
-                className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                className="p-input"
                 value={form.name}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, name: event.target.value }))
@@ -284,7 +284,7 @@ export function ScholarshipProvidersPanel() {
                 id="provider-slug"
                 pattern="[a-z0-9-]+"
                 placeholder="auto-generated-from-name"
-                className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                className="p-input"
                 value={form.slug}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, slug: event.target.value }))
@@ -304,7 +304,7 @@ export function ScholarshipProvidersPanel() {
                 id="provider-website"
                 type="url"
                 placeholder="https://provider.example"
-                className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                className="p-input"
                 value={form.websiteUrl}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -325,7 +325,7 @@ export function ScholarshipProvidersPanel() {
                 id="provider-source"
                 type="url"
                 placeholder="https://official-source.example"
-                className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                className="p-input"
                 value={form.sourceReference}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -341,7 +341,7 @@ export function ScholarshipProvidersPanel() {
             <FieldLabel label="Status" htmlFor="provider-status" />
             <select
               id="provider-status"
-              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+              className="p-input"
               value={form.status}
               onChange={(event) =>
                 setForm((current) => ({ ...current, status: event.target.value }))
@@ -356,7 +356,7 @@ export function ScholarshipProvidersPanel() {
             <button
               type="button"
               onClick={closeEditor}
-              className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>
@@ -371,7 +371,7 @@ export function ScholarshipProvidersPanel() {
       ) : null}
 
       {loading ? (
-        <p className="mt-5 text-sm text-[#667085]">Loading…</p>
+        <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-5 divide-y divide-[#E8ECF3]">
           {rows.map((row) => {

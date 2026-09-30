@@ -1123,7 +1123,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   if (loading)
     return (
       <section className="mx-auto max-w-[1100px] rounded-2xl border border-[#E8ECF3] bg-white p-8">
-        <p className="text-sm text-[#667085]">
+        <p className="p-sub">
           Loading complete country editor…
         </p>
       </section>
@@ -1139,10 +1139,10 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       </Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Unified country editor
           </p>
-          <h2 id="country-form-heading" className="mt-2 text-3xl font-semibold">
+          <h2 id="country-form-heading" className="p-h1">
             {record ? "Edit country" : "Create country"}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#667085]">
@@ -1479,14 +1479,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               documents.map((row, index) => (
                 <div
                   key={index}
-                  className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"
+                  className="p-panel"
                 >
                   <div className="flex justify-between">
                     <h4 className="font-semibold">Document {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => removeDocument(index)}
-                      className="text-sm font-semibold text-[#B42318]"
+                      className="p-danger"
                     >
                       Remove
                     </button>
@@ -1522,7 +1522,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-[#667085]">
+              <p className="p-sub">
                 No documents listed. The public page leaves the section out
                 until you add one.
               </p>
@@ -1530,7 +1530,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <button
               type="button"
               onClick={() => addDocument("")}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               + Add document
             </button>
@@ -1563,7 +1563,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 setSections((rows) => [...rows, { ...blankSection }]);
                 setDirty(true);
               }}
-              className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]"
+              className="p-btn p-btn--outline p-btn--sm"
             >
               + Add section
             </button>
@@ -1598,7 +1598,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 setFaqs((rows) => [...rows, blankFaq()]);
                 setDirty(true);
               }}
-              className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]"
+              className="p-btn p-btn--outline p-btn--sm"
             >
               + Add FAQ
             </button>
@@ -1610,14 +1610,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               faqs.map((row, index) => (
                 <div
                   key={row.id ?? `faq-${index}`}
-                  className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"
+                  className="p-panel"
                 >
                   <div className="flex justify-between">
                     <h4 className="font-semibold">FAQ {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => removeFaq(index)}
-                      className="text-sm font-semibold text-[#B42318]"
+                      className="p-danger"
                     >
                       Remove
                     </button>
@@ -1682,7 +1682,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 setCards((rows) => [...rows, blankCard()]);
                 setDirty(true);
               }}
-              className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]"
+              className="p-btn p-btn--outline p-btn--sm"
             >
               + Add guidance card
             </button>
@@ -1694,14 +1694,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               cards.map((row, index) => (
                 <div
                   key={row.id ?? `card-${index}`}
-                  className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"
+                  className="p-panel"
                 >
                   <div className="flex justify-between">
                     <h4 className="font-semibold">Guidance card {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => removeCard(index)}
-                      className="text-sm font-semibold text-[#B42318]"
+                      className="p-danger"
                     >
                       Remove
                     </button>
@@ -1867,13 +1867,13 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8">
+    <fieldset className="p-panel">
       <legend className="sr-only">{title}</legend>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">
+      <p className="p-eyebrow">
         {eyebrow}
       </p>
       <h3 className="mt-2 text-xl font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#667085]">{description}</p>
+      <p className="p-sub">{description}</p>
       <div className="mt-6">{children}</div>
     </fieldset>
   );
@@ -2197,7 +2197,7 @@ function ContinentField({
               </div>
             </div>
             {error ? (
-              <p role="alert" className="text-sm font-semibold text-[#B42318]">
+              <p role="alert" className="p-danger">
                 {error}
               </p>
             ) : null}
@@ -2205,7 +2205,7 @@ function ContinentField({
               <button
                 type="button"
                 onClick={close}
-                className="rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"
+                className="p-btn p-btn--ghost"
               >
                 Cancel
               </button>
@@ -2329,7 +2329,7 @@ function CheckboxGroup({
               {adding ? "Adding…" : addLabel}
             </button>
           </div>
-          <p className="mt-2 text-xs text-[#667085]">
+          <p className="p-hint">
             Added options are available on every country.
           </p>
           {addError ? (
@@ -2392,7 +2392,7 @@ function RelationPicker({
             </label>
           ))
         ) : (
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             No eligible published records yet.
           </p>
         )}
@@ -2416,13 +2416,13 @@ function CountrySection({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5">
+    <div className="p-panel">
       <div className="flex justify-between">
         <h4 className="font-semibold">Content section {index + 1}</h4>
         <button
           type="button"
           onClick={onRemove}
-          className="text-sm font-semibold text-[#B42318]"
+          className="p-danger"
         >
           Remove
         </button>
@@ -2558,7 +2558,7 @@ function CurrencyRow({
         {field("Currency symbol", (option) => `${option.symbol} · ${option.code}`)}
       </div>
       {code && !selected ? (
-        <p className="mt-2 text-xs text-[#667085]">
+        <p className="p-hint">
           {`This country stores ${code}${symbol ? ` (${symbol})` : ""}, which is not in the selectable list. Choosing a currency above will replace it.`}
         </p>
       ) : null}
