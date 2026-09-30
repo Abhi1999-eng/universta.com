@@ -3,6 +3,7 @@
  * published catalogue. It is deliberately a script, never a runtime repair:
  * once editors own CountrySubject, removals must remain removed.
  */
+import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../src/generated/prisma/client';
 

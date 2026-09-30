@@ -16,6 +16,7 @@
  *
  * Re-running is a no-op: the second pass finds no legacy values left.
  */
+import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../src/generated/prisma/client';
 
