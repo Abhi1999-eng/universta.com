@@ -824,6 +824,104 @@ const cities: BulkResourceDefinition = {
   },
 };
 
+/**
+ * A specialization has no sheet of its own and does not need one: its slug is
+ * unique inside its subject rather than across the table, so it has no
+ * identity a row could carry on its own. It rides on the subject's row
+ * instead, as a pipe-separated list of names -- the same shape the country
+ * sheet uses for its own taxonomy columns.
+ *
+ *     Artificial Intelligence | Machine Learning | Cyber Security
+ *
+ * The slug is derived from the name, exactly as the subject editor derives
+ * it, and a name already under that subject is matched rather than added
+ * twice, so re-sending a sheet is safe.
+ */
+type SpecializationInput = { name: string; slug: string };
+/** The row's specializations and the publication state it asked for. */
+type SpecializationCell = { status: string; rows: SpecializationInput[] };
+
+function parseSpecializations(
+  value: string | undefined,
+): SpecializationInput[] {
+  if (!value?.trim()) return [];
+  const seen = new Set<string>();
+  const rows: SpecializationInput[] = [];
+  for (const part of value.split('|').map((item) => item.trim())) {
+    if (!part) continue;
+    const slug = slugify(part);
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+    rows.push({ name: part, slug });
+  }
+  return rows;
+}
+
+/**
+ * Adds the specializations a row names and renames the ones already there.
+ * It never removes: a specialization has courses hanging off it, and
+ * dropping one because a sheet left it out would orphan them somewhere
+ * nobody was looking. Removing stays in the subject editor, where what
+ * depends on it is on screen.
+ */
+async function reconcileSpecializations(
+  tx: unknown,
+  subjectId: string,
+  relations: unknown,
+) {
+  const cell = (relations ?? {
+    status: 'DRAFT',
+    rows: [],
+  }) as SpecializationCell;
+  if (!cell.rows.length) return;
+  const table = (tx as Record<string, unknown>).subSubject as SubSubjectTable;
+  const existing = await table.findMany({ where: { subjectId } });
+  const bySlug = new Map(existing.map((row) => [row.slug, row]));
+  let order = existing.length;
+  /* One row, one publication decision: a sheet that publishes the subject
+     publishes what it lists under it, and a draft row stays a draft all the
+     way down. Publishing the parent and leaving its children invisible would
+     make the sheet's own status column mean two different things. */
+  const published = cell.status === 'PUBLISHED';
+  const state = published
+    ? { status: 'PUBLISHED', publishedAt: new Date() }
+    : { status: 'DRAFT' };
+  for (const row of cell.rows) {
+    const match = bySlug.get(row.slug);
+    if (match) {
+      if (match.name !== row.name || match.deletedAt)
+        await table.update({
+          where: { id: match.id },
+          data: { name: row.name, deletedAt: null },
+        });
+      continue;
+    }
+    await table.create({
+      data: {
+        subjectId,
+        name: row.name,
+        slug: row.slug,
+        ...state,
+        displayOrder: order,
+      },
+    });
+    order += 1;
+  }
+}
+
+type SubSubjectTable = {
+  findMany(args: {
+    where: Record<string, unknown>;
+  }): Promise<
+    Array<{ id: string; name: string; slug: string; deletedAt: Date | null }>
+  >;
+  create(args: { data: Record<string, unknown> }): Promise<unknown>;
+  update(args: {
+    where: Record<string, unknown>;
+    data: Record<string, unknown>;
+  }): Promise<unknown>;
+};
+
 const subjects: BulkResourceDefinition = {
   key: 'subjects',
   label: 'Subjects',
@@ -833,6 +931,7 @@ const subjects: BulkResourceDefinition = {
     'slug',
     'name',
     'shortDescription',
+    'specializations',
     'isFeatured',
     'status',
     'displayOrder',
@@ -844,10 +943,17 @@ const subjects: BulkResourceDefinition = {
     name: 'Demo Subject',
     shortDescription:
       'A fictional demo subject used only to show the expected import shape.',
+    specializations: 'Demo Specialization | Second Demo Specialization',
     isFeatured: 'false',
     status: 'DRAFT',
     displayOrder: '0',
   },
+  /* `specializations` is deliberately not here. This list drives the
+     "apply one value to the selected rows" control, which writes the field
+     straight onto the model -- and specializations are rows of their own,
+     not a column of `subjects`. Setting the same three on twenty subjects is
+     not an operation anyone wants either. The sheet still carries the column;
+     only the one-field bulk edit leaves it alone. */
   updatableColumns: [
     'name',
     'shortDescription',
@@ -866,13 +972,22 @@ const subjects: BulkResourceDefinition = {
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
+      relations: {
+        status: row.status?.trim() || 'DRAFT',
+        rows: parseSpecializations(row.specializations),
+      },
     };
   },
+  async reconcile(tx, id, relations) {
+    await reconcileSpecializations(tx, id, relations);
+  },
   toExportRow(record) {
+    const children = (record.subSubjects ?? []) as Array<{ name: string }>;
     return {
       slug: record.slug,
       name: record.name,
       shortDescription: record.shortDescription ?? '',
+      specializations: children.map((child) => child.name).join(' | '),
       isFeatured: record.isFeatured,
       status: record.status,
       displayOrder: record.displayOrder,
