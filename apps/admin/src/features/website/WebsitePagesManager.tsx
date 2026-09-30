@@ -231,7 +231,7 @@ export function WebsitePagesManager() {
           />
           <button
             type="button"
-            className="mt-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+            className="mt-3 p-link"
             onClick={() => setHistory(null)}
           >
             Close version history
@@ -245,7 +245,7 @@ export function WebsitePagesManager() {
           : `${visible.length} of ${rows.length} pages`}
       </p>
 
-      <div className="mt-3 overflow-hidden rounded-2xl border border-[#E8ECF3] bg-white">
+      <div className="mt-3 overflow-hidden p-panel">
         <div className="overflow-x-auto">
           <table className="p-table u-table min-w-[900px]">
             <thead>
@@ -261,7 +261,7 @@ export function WebsitePagesManager() {
               {visible.map((row) => (
                 <tr key={row.key}>
                   <td>
-                    <p >{row.label}</p>
+                    <p>{row.label}</p>
                     <p className="p-hint">
                       {row.publicPath}
                       {row.sectionCount !== null
@@ -334,7 +334,7 @@ export function WebsitePagesManager() {
                       href={`${WEB_ORIGIN}${row.publicPath}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold text-[#667085] focus:underline focus:outline-none"
+                      className="p-link"
                     >
                       View live
                     </a>

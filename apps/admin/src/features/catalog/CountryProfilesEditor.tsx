@@ -659,7 +659,7 @@ function ProfileCard({
   unsaved?: boolean;
 }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-[#E8ECF3] bg-white p-4 sm:p-6">
+    <section className="min-w-0 sm:p-6 p-panel">
       <h3 className="p-h3">{title}</h3>
       <p className="mt-1 max-w-3xl p-sub">
         {description}

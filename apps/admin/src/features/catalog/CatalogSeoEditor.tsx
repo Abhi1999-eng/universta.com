@@ -91,9 +91,9 @@ function Field({ label, value, onChange, textarea = false, required = false, hel
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} required={required} help={help} />
       {textarea ? (
-        <textarea id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 font-normal" />
+        <textarea id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="p-input" />
       ) : (
-        <input id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 font-normal" />
+        <input id={fieldId} required={required} value={value} onChange={(event) => onChange(event.target.value)} className="p-input" />
       )}
     </div>
   );

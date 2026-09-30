@@ -85,10 +85,10 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
     <fieldset id="editor-seo" className="p-panel">
       <legend className="sr-only">SEO</legend>
       <p className="p-eyebrow">Search & sharing</p>
-      <h3 className="mt-2 text-xl font-semibold text-[#101828]">SEO</h3>
+      <h3 className="p-h3">SEO</h3>
       <p className="p-sub">SEO is part of this record. There is no separate SEO save button.</p>
       <p className="mt-2 text-xs font-medium text-[#667085]">Leave this whole section blank to use defaults. Once any SEO value is entered, <span className="p-danger">*</span> SEO title and Meta description become required.</p>
-      {requiredError ? <p role="alert" className="mt-2 text-sm font-semibold text-[#B42318]">SEO title and Meta description are required before this Country can be saved.</p> : null}
+      {requiredError ? <p role="alert" className="mt-2 p-danger">SEO title and Meta description are required before this Country can be saved.</p> : null}
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <div className="text-sm font-semibold">

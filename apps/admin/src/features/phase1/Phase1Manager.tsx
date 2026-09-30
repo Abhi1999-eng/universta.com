@@ -196,7 +196,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
       {creating && isNavMenu ? (
         <form
           onSubmit={(event) => void createMenu(event)}
-          className="mt-8 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-2"
+          className="mt-8 grid gap-4 sm:grid-cols-2 p-panel"
         >
           <h3 className="sm:col-span-2 text-lg font-semibold">Create navigation menu</h3>
           <label className="text-sm font-semibold">
@@ -219,7 +219,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
               <option value="FOOTER">Footer</option>
             </select>
           </label>
-          <p className="sm:col-span-2 text-xs text-[#828B9B]">
+          <p className="sm:col-span-2 p-hint">
             Choose this menu in Global Settings → Header or Footer when you are ready
             to show it on the live site. You can add links after creating it.
           </p>
@@ -429,7 +429,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
               onChange={(event) => setDraft(event.target.value)}
             />
             <button
-              className="mt-3 rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+              className="p-btn p-btn--primary p-btn--sm"
               type="button"
               onClick={() => void createAdvanced()}
             >

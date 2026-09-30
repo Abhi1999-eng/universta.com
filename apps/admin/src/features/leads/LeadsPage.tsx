@@ -174,14 +174,14 @@ export function LeadsPage() {
             follow-up notes.
           </p>
         </div>
-        <p className="text-sm font-semibold text-[#48505F]" role="status">
+        <p className="p-label" role="status">
           {meta ? `${meta.total} ${meta.total === 1 ? 'lead' : 'leads'}` : '—'}
         </p>
       </div>
 
       <form
         aria-label="Lead filters"
-        className="mt-8 rounded-2xl border border-[#E8ECF3] bg-white p-4 shadow-sm"
+        className="mt-8 p-panel"
         onSubmit={(event) => {
           event.preventDefault();
           navigate(draft);
@@ -324,7 +324,7 @@ export function LeadsPage() {
       {!loading && error ? (
         <div data-testid="leads-error" className="mt-6 rounded-2xl border border-[#F3C7C7] bg-[#FFF7F7] p-6" role="alert">
           <h3 className="font-semibold text-[#9F1D1D]">Leads could not be loaded</h3>
-          <p className="mt-2 text-sm text-[#7A3232]">{error}</p>
+          <p className="p-danger">{error}</p>
           <button
             type="button"
             onClick={() => setReload((value) => value + 1)}
@@ -336,7 +336,7 @@ export function LeadsPage() {
       ) : null}
       {!loading && !error && rows.length === 0 ? (
         <>
-          <div data-testid="leads-empty-state" className="mt-6 rounded-2xl border border-dashed border-[#CBD5E4] bg-white p-10 text-center">
+          <div data-testid="leads-empty-state" className="p-panel p-empty">
             <h3 className="p-h3">No leads found</h3>
             <p className="p-sub">
               New counselling requests or leads matching these filters will
@@ -371,22 +371,22 @@ export function LeadsPage() {
                 {rows.map((lead) => (
                   <tr className="border-t border-[#EEF1F5]" key={lead.id}>
                     <td>
-                      <p >{displayName(lead)}</p>
+                      <p>{displayName(lead)}</p>
                       <p className="p-hint">{lead.leadNumber}</p>
                     </td>
-                    <td >
+                    <td>
                       <p>{maskEmail(lead.email)}</p>
                       <p className="mt-1 text-xs">{maskPhone(lead.phoneNumber)}</p>
                     </td>
-                    <td >
+                    <td>
                       <p>{lead.preferredCountry?.name ?? '—'}</p>
                       <p className="mt-1 text-xs">{lead.preferredCourseLevel?.name ?? '—'} · {lead.preferredIntake?.shortLabel ?? lead.preferredIntake?.name ?? '—'}</p>
                     </td>
-                    <td >{statusLabel(lead.sourceType ?? 'GENERAL')}</td>
+                    <td>{statusLabel(lead.sourceType ?? 'GENERAL')}</td>
                     <td><StatusPill status={lead.status} /></td>
-                    <td >{formatDate(lead.createdAt)}</td>
+                    <td>{formatDate(lead.createdAt)}</td>
                     <td>
-                      <Link href={`/leads/${lead.id}`} className="inline-block whitespace-nowrap font-semibold text-[#1657CF] hover:underline">
+                      <Link href={`/leads/${lead.id}`} className="inline-block whitespace-nowrap p-link">
                         View lead
                       </Link>
                     </td>
@@ -397,7 +397,7 @@ export function LeadsPage() {
           </div>
           <div className="mt-6 grid gap-4 md:hidden">
             {rows.map((lead) => (
-              <article className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E8ECF3] bg-white p-5 shadow-sm" key={lead.id}>
+              <article className="min-w-0 max-w-full overflow-hidden p-panel" key={lead.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="truncate font-semibold">{displayName(lead)}</h3>
@@ -457,7 +457,7 @@ function Filter({
   children: React.ReactNode;
 }) {
   return (
-    <label className={`grid gap-1.5 text-xs font-semibold text-[#48505F] ${className}`}>
+    <label className={`p-field p-label ${className}`}>
       {label}
       {children}
     </label>

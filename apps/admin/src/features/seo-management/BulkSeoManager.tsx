@@ -235,7 +235,7 @@ function TemplateTextField({
         <button
           type="button"
           onClick={() => onOpenPicker(field)}
-          className="text-xs font-semibold text-[#1657CF] underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF]"
+          className="p-link"
         >
           + Insert variable
         </button>
@@ -521,7 +521,7 @@ export function BulkSeoManager() {
     );
 
   return (
-    <div className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-6">
+    <div className="mt-6 sm:p-6 p-panel">
       <div className="max-w-3xl">
         <label
           htmlFor="bulk-seo-entity"
@@ -666,7 +666,7 @@ export function BulkSeoManager() {
         <button
           type="button"
           onClick={useRecommendedTemplate}
-          className="text-sm font-semibold text-[#1657CF] underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF]"
+          className="p-link"
         >
           Use recommended template
         </button>
@@ -679,7 +679,7 @@ export function BulkSeoManager() {
                 if (selected) setValue(recommendedTemplate(selected));
                 setConfirmRecommended(false);
               }}
-              className="font-semibold text-[#1657CF] underline-offset-2 hover:underline"
+              className="p-link"
             >
               Apply recommended template
             </button>
@@ -694,7 +694,7 @@ export function BulkSeoManager() {
         ) : null}
       </div>
 
-      <details className="mt-6 rounded-xl border border-[#E8ECF3] p-4">
+      <details className="mt-6 p-card">
         <summary className="cursor-pointer text-sm font-semibold text-[#344054] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF]">
           Advanced SEO settings
         </summary>

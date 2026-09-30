@@ -58,7 +58,7 @@ export function SiteVerificationManager() {
     }
   }
   return (
-    <div className="mt-6 max-w-2xl rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-6">
+    <div className="mt-6 max-w-2xl sm:p-6 p-panel">
       <h3 className="text-lg font-semibold text-[#0D1524]">
         Google Search Console
       </h3>

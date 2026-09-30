@@ -135,7 +135,7 @@ export function MediaLibrary() {
 
       <form
         onSubmit={(event) => void upload(event)}
-        className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:grid-cols-2"
+        className="mt-6 grid gap-4 sm:grid-cols-2 p-panel"
       >
         <div className="sm:col-span-2">
           <label className="text-sm font-semibold" htmlFor="media-file">
@@ -196,7 +196,7 @@ export function MediaLibrary() {
           onChange={(event) => setQ(event.target.value)}
           placeholder="Search title, alt text or filename"
           aria-label="Search media"
-          className="w-64 rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
+          className="p-input"
         />
         <input
           value={folder}
@@ -252,7 +252,7 @@ export function MediaLibrary() {
               disabled={asset.inUse}
               title={asset.inUse ? "In use — remove it from every record first" : undefined}
               onClick={() => setPendingArchive(asset)}
-              className="mt-3 w-full rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="mt-3 w-full p-btn p-btn--danger p-btn--sm"
             >
               Archive
             </button>

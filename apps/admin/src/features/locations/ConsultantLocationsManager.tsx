@@ -397,7 +397,7 @@ export function ConsultantLocationsManager() {
       {editorOpen ? (
         <form
           onSubmit={(event) => void save(event)}
-          className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-2"
+          className="mt-6 grid gap-4 sm:grid-cols-2 p-panel"
         >
           <div className="sm:col-span-2">
             <p className="p-eyebrow">

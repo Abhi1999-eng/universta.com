@@ -492,7 +492,7 @@ export function BulkDataManager() {
             <div className="p-head">
               <div>
                 <h3 className="text-sm font-semibold">Import from device</h3>
-                <p className="mt-1 text-xs leading-5 text-[#667085]">
+                <p className="p-hint">
                   Select a CSV/XLSX file. Universta validates it immediately and
                   shows the exact row errors before import.
                 </p>
@@ -510,7 +510,7 @@ export function BulkDataManager() {
               onChange={(event) => void onFileSelected(event)}
             />
 
-            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-[#BFCBE0] bg-[#FAFBFD] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="p-drop">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#334155]">
                   {selectedFile ? selectedFile.name : "No file selected"}
@@ -682,7 +682,7 @@ export function BulkDataManager() {
 
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E8ECF3]">
               <table className="p-table u-table">
-                <thead >
+                <thead>
                   <tr>
                     <th />
                     {visibleRecordFields.map((field) => (

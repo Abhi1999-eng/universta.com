@@ -256,7 +256,7 @@ export function MediaPickerDialog({
                       <button
                         type="button"
                         onClick={() => void loadLibrary(query)}
-                        className="mt-3 text-sm font-semibold text-[#1657CF]"
+                        className="mt-3 p-link"
                       >
                         Try again
                       </button>
@@ -303,7 +303,7 @@ export function MediaPickerDialog({
                       <button
                         type="button"
                         onClick={() => setTab('upload')}
-                        className="mt-3 rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+                        className="p-btn p-btn--primary p-btn--sm"
                       >
                         Upload from device
                       </button>

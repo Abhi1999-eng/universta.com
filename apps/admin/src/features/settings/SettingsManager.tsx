@@ -289,7 +289,7 @@ export function SettingsManager({
       <p className="p-eyebrow">{eyebrow}</p>
       <h2 className="p-h1">{title}</h2>
       <p className="p-sub">{intro}</p>
-      {error ? <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">{error}</p> : null}
+      {error ? <p className="mt-4 p-danger" role="alert">{error}</p> : null}
       {loading ? (
         <p className="p-sub">Loading…</p>
       ) : (

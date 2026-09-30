@@ -142,7 +142,7 @@ export function ArchivedMediaRecovery() {
               type="button"
               disabled={deletingId === asset.id}
               onClick={() => void removePermanently(asset)}
-              className="shrink-0 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 p-btn p-btn--danger p-btn--sm"
             >
               {deletingId === asset.id ? "Deleting…" : "Delete permanently"}
             </button>
