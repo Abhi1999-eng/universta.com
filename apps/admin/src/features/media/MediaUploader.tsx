@@ -104,7 +104,7 @@ export function MediaUploader({
             className="max-h-32 rounded-lg object-contain"
           />
         ) : (
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             Drag and drop an image here, or click to choose from your device.
             <br />
             <span className="text-xs">JPEG, PNG, WEBP or GIF — up to 5MB.</span>
@@ -134,7 +134,7 @@ export function MediaUploader({
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+            className="p-input"
           />
         </label>
         <label className="text-sm font-semibold">
@@ -142,7 +142,7 @@ export function MediaUploader({
           <input
             value={altText}
             onChange={(event) => setAltText(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+            className="p-input"
           />
         </label>
         <label className="text-sm font-semibold sm:col-span-2">
@@ -150,13 +150,13 @@ export function MediaUploader({
           <input
             value={folder}
             onChange={(event) => setFolder(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+            className="p-input"
           />
         </label>
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm text-[#B42318]">
+        <p role="alert" className="p-danger">
           {error}
         </p>
       ) : null}
@@ -167,7 +167,7 @@ export function MediaUploader({
             type="button"
             onClick={onCancel}
             disabled={uploading}
-            className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-50"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Back to library
           </button>
@@ -175,7 +175,7 @@ export function MediaUploader({
         <button
           type="submit"
           disabled={!file || uploading}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="p-btn p-btn--primary"
         >
           {uploading ? 'Uploading…' : 'Upload and use image'}
         </button>

@@ -106,8 +106,8 @@
 }
 .pa *, .pa *, .pa * { box-sizing: border-box; }
 .pa { -webkit-text-size-adjust: 100%; }
-.pa body.portal { margin: 0; background: var(--bg); color: var(--text); font: 400 15px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
-.pa body.has-modal { overflow: hidden; }
+.pa.portal { margin: 0; background: var(--bg); color: var(--text); font: 400 15px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
+.pa.has-modal { overflow: hidden; }
 .pa a { color: var(--navy); text-underline-offset: 2px; }
 .pa a:hover { color: var(--accent); }
 .pa button, .pa input, .pa select, .pa textarea { font: inherit; color: inherit; }
@@ -670,8 +670,8 @@
 .pa .p-roles .p-card { display: grid; gap: 10px; }
 @media (max-width: 1023px) {
 .pa .p-side { transform: translateX(-100%); transition: transform .2s; box-shadow: var(--sh-lg); }
-.pa body.side-open .p-side { transform: none; }
-.pa body.side-open .p-scrim { display: block; position: fixed; inset: 0; background: rgba(7, 20, 38, .45); z-index: 35; }
+.pa.side-open .p-side { transform: none; }
+.pa.side-open .p-scrim { display: block; position: fixed; inset: 0; background: rgba(7, 20, 38, .45); z-index: 35; }
 .pa .p-body { margin-left: 0; }
 .pa .p-top__menu { display: inline-grid; }
 .pa .p-top { padding: 0 16px; }

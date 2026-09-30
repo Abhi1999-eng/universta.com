@@ -66,7 +66,7 @@ export function GlobalFooterWorkspace() {
     }
   }
 
-  if (!values) return <p className="mt-6 text-sm text-[#667085]">Loading footer…</p>;
+  if (!values) return <p className="p-sub">Loading footer…</p>;
 
   const rowCount = layout?.rows.length ?? 0;
 
@@ -74,13 +74,13 @@ export function GlobalFooterWorkspace() {
     <section className="mt-6 space-y-4" aria-labelledby="global-footer-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Website Builder
           </p>
-          <h2 id="global-footer-heading" className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+          <h2 id="global-footer-heading" className="p-h1">
             Global Footer
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+          <p className="p-sub">
             {rowCount
               ? "Your footer is built from the rows below and appears on every page."
               : "Your site is using its standard footer. Add a row to build your own."}
@@ -90,7 +90,7 @@ export function GlobalFooterWorkspace() {
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           Save footer
         </button>
@@ -103,7 +103,7 @@ export function GlobalFooterWorkspace() {
       />
 
       {message ? (
-        <p className="text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}

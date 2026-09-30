@@ -60,9 +60,11 @@ export function useHandedOverFlash(): [Flash | null, () => void] {
   return [flash, clearFlash];
 }
 
+/* The reference's own alert tones. `neutral` has no variant there, so it
+   stays the base alert: informative rather than coloured. */
 const TONES: Record<FlashTone, string> = {
-  success: 'border-[#ABEFC6] bg-[#E9F8F0] text-[#18794E]',
-  neutral: 'border-[#D9E0EA] bg-[#F8FAFC] text-[#475467]',
+  success: 'p-alert--ok',
+  neutral: '',
 };
 
 export function FlashBanner({
@@ -90,14 +92,14 @@ export function FlashBanner({
     <div
       role="status"
       data-flash-tone={flash.tone}
-      className={`${className} flex items-start justify-between gap-4 rounded-xl border px-4 py-3 text-sm font-semibold ${TONES[flash.tone]}`}
+      className={`${className} p-alert ${TONES[flash.tone]}`.trim()}
     >
       <span>{flash.message}</span>
       <button
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss message"
-        className="shrink-0 rounded-lg px-2 text-base leading-none opacity-70 hover:opacity-100 focus:outline-none focus:underline"
+        className="p-iconbtn p-iconbtn--sm"
       >
         ×
       </button>

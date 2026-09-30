@@ -266,10 +266,10 @@ export function NavigationMenuEditor({
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-[#667085]">Loading menu…</p>;
+  if (loading) return <p className="p-sub">Loading menu…</p>;
   if (!menu)
     return (
-      <p className="mt-6 text-sm text-[#B42318]" role="alert">
+      <p className="mt-6 p-danger" role="alert">
         This menu could not be found.
       </p>
     );
@@ -296,7 +296,7 @@ export function NavigationMenuEditor({
     <section className="mt-8 rounded-2xl border border-[#E8ECF3] bg-white p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Navigation menu
           </p>
           <h3 className="mt-1 text-2xl font-semibold">{menu.name}</h3>
@@ -304,7 +304,7 @@ export function NavigationMenuEditor({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           ← Back to menus
         </button>
@@ -333,7 +333,7 @@ export function NavigationMenuEditor({
         </p>
       ) : null}
       {message ? (
-        <p role="status" className="mt-4 rounded-xl bg-[#E9F8F0] px-4 py-3 text-sm font-semibold text-[#18794E]">
+        <p role="status" className="p-alert p-alert--ok">
           {message}
         </p>
       ) : null}
@@ -361,17 +361,17 @@ export function NavigationMenuEditor({
           </select>
         </label>
         <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
-          <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
+          <button type="submit" className="p-btn p-btn--primary p-btn--sm">
             Save menu
           </button>
-          <span className="text-sm text-[#667085]">
+          <span className="p-sub">
             Visibility: <strong>{visibility(menu.status)}</strong>
           </span>
           {menu.status === "ACTIVE" ? (
             <button
               type="button"
               onClick={() => void setMenuStatus("INACTIVE")}
-              className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-xs font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Hide menu
             </button>
@@ -379,7 +379,7 @@ export function NavigationMenuEditor({
             <button
               type="button"
               onClick={() => void setMenuStatus("ACTIVE")}
-              className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
+              className="p-btn p-btn--primary p-btn--sm"
             >
               Show menu
             </button>
@@ -397,7 +397,7 @@ export function NavigationMenuEditor({
 
       {/* Items */}
       <div className="mt-8 overflow-x-auto rounded-2xl border border-[#E8ECF3]">
-        <table className="min-w-full text-left text-sm">
+        <table className="p-table u-table min-w-full">
           <thead className="border-b border-[#E8ECF3] text-[#667085]">
             <tr>
               <th className="p-3">Label</th>
@@ -419,7 +419,7 @@ export function NavigationMenuEditor({
               <Fragment key={item.id}>
                 <tr key={item.id} className="border-b border-[#F0F2F5]">
                   <td className="p-3 font-semibold">{item.label}</td>
-                  <td className="p-3 text-[#667085]">
+                  <td className="p-muted">
                     {targetLabel(item)}
                     {item.brokenTarget ? (
                       <span className="ml-2 rounded-full bg-[#FFF1F0] px-2 py-0.5 text-xs font-semibold text-[#B42318]">
@@ -433,7 +433,7 @@ export function NavigationMenuEditor({
                     <button
                       type="button"
                       onClick={() => move(item, -1)}
-                      className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       aria-label={`Move ${item.label} up`}
                     >
                       ↑
@@ -441,7 +441,7 @@ export function NavigationMenuEditor({
                     <button
                       type="button"
                       onClick={() => move(item, 1)}
-                      className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       aria-label={`Move ${item.label} down`}
                     >
                       ↓
@@ -449,21 +449,21 @@ export function NavigationMenuEditor({
                     <button
                       type="button"
                       onClick={() => beginEdit(item)}
-                      className="rounded-lg border border-[#1657CF] px-3 py-1 text-xs font-semibold text-[#1657CF]"
+                      className="p-btn p-btn--outline p-btn--sm"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => void toggleItemStatus(item)}
-                      className="rounded-lg border border-[#D9E0EA] px-3 py-1 text-xs font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                     >
                       {item.status === "ACTIVE" ? "Hide" : "Show"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setPendingDelete(item)}
-                      className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-700"
+                      className="p-btn p-btn--danger p-btn--sm"
                     >
                       Delete
                     </button>
@@ -472,7 +472,7 @@ export function NavigationMenuEditor({
                 {childrenOf(item.id).map((child) => (
                   <tr key={child.id} className="border-b border-[#F0F2F5] bg-[#FAFBFD]">
                     <td className="p-3 pl-8 text-[#48505F]">↳ {child.label}</td>
-                    <td className="p-3 text-[#667085]">
+                    <td className="p-muted">
                       {targetLabel(child)}
                       {child.brokenTarget ? (
                         <span className="ml-2 rounded-full bg-[#FFF1F0] px-2 py-0.5 text-xs font-semibold text-[#B42318]">
@@ -486,7 +486,7 @@ export function NavigationMenuEditor({
                       <button
                         type="button"
                         onClick={() => move(child, -1)}
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         aria-label={`Move ${child.label} up`}
                       >
                         ↑
@@ -494,7 +494,7 @@ export function NavigationMenuEditor({
                       <button
                         type="button"
                         onClick={() => move(child, 1)}
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1 text-xs font-semibold"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         aria-label={`Move ${child.label} down`}
                       >
                         ↓
@@ -502,21 +502,21 @@ export function NavigationMenuEditor({
                       <button
                         type="button"
                         onClick={() => beginEdit(child)}
-                        className="rounded-lg border border-[#1657CF] px-3 py-1 text-xs font-semibold text-[#1657CF]"
+                        className="p-btn p-btn--outline p-btn--sm"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => void toggleItemStatus(child)}
-                        className="rounded-lg border border-[#D9E0EA] px-3 py-1 text-xs font-semibold"
+                        className="p-btn p-btn--ghost p-btn--sm"
                       >
                         {child.status === "ACTIVE" ? "Hide" : "Show"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setPendingDelete(child)}
-                        className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-700"
+                        className="p-btn p-btn--danger p-btn--sm"
                       >
                         Delete
                       </button>
@@ -632,14 +632,14 @@ export function NavigationMenuEditor({
           </select>
         </label>
         <div className="sm:col-span-2 flex gap-3">
-          <button type="submit" className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white">
+          <button type="submit" className="p-btn p-btn--primary p-btn--sm">
             {itemDraft.id ? "Save item" : "Add item"}
           </button>
           {itemDraft.id ? (
             <button
               type="button"
               onClick={resetDraft}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel edit
             </button>
@@ -654,25 +654,25 @@ export function NavigationMenuEditor({
           aria-modal="true"
           aria-labelledby="nav-item-delete-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 id="nav-item-delete-title" className="text-lg font-semibold">
+          <div className="p-modal__panel">
+            <h3 id="nav-item-delete-title" className="p-h3">
               Delete this item?
             </h3>
-            <p className="mt-2 text-sm text-[#667085]">
+            <p className="p-sub">
               &ldquo;{pendingDelete.label}&rdquo; will be permanently removed from this menu.
             </p>
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setPendingDelete(null)}
-                className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => void removeItem(pendingDelete)}
-                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white"
+                className="p-btn p-btn--danger"
               >
                 Delete item
               </button>

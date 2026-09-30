@@ -137,16 +137,16 @@ export function WebsitePagesManager() {
   return (
     <section aria-labelledby="website-pages-heading">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        <p className="p-eyebrow">
           Website Builder
         </p>
         <h2
           id="website-pages-heading"
-          className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
+          className="p-h1"
         >
           Website Pages
         </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#667085]">
+        <p className="mt-3 max-w-3xl p-sub">
           Every public page and reusable template in one place. Static pages
           such as Home and About are edited as individual pages; dynamic detail
           pages such as University Detail are edited as templates that apply to
@@ -161,7 +161,7 @@ export function WebsitePagesManager() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name or URL…"
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+            className="p-input"
           />
         </label>
         <label className="block text-sm font-semibold">
@@ -169,7 +169,7 @@ export function WebsitePagesManager() {
           <select
             value={family}
             onChange={(event) => setFamily(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+            className="p-input"
           >
             <option value="">All families</option>
             {families.map((item) => (
@@ -184,7 +184,7 @@ export function WebsitePagesManager() {
           <select
             value={kind}
             onChange={(event) => setKind(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+            className="p-input"
           >
             <option value="">All types</option>
             <option value="STATIC_PAGE">Static page</option>
@@ -239,7 +239,7 @@ export function WebsitePagesManager() {
         </div>
       ) : null}
 
-      <p className="mt-5 text-sm text-[#667085]">
+      <p className="p-sub">
         {loading
           ? "Loading website pages…"
           : `${visible.length} of ${rows.length} pages`}
@@ -247,34 +247,34 @@ export function WebsitePagesManager() {
 
       <div className="mt-3 overflow-hidden rounded-2xl border border-[#E8ECF3] bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-[#FAFBFD] text-xs uppercase tracking-[0.12em] text-[#828B9B]">
+          <table className="p-table u-table min-w-[900px]">
+            <thead>
               <tr>
-                <th className="px-5 py-4">Page</th>
-                <th className="px-5 py-4">Family</th>
-                <th className="px-5 py-4">Managed as</th>
-                <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4 text-right">Actions</th>
+                <th>Page</th>
+                <th>Family</th>
+                <th>Managed as</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EEF1F5]">
               {visible.map((row) => (
                 <tr key={row.key}>
-                  <td className="px-5 py-4">
-                    <p className="font-semibold text-[#0D1524]">{row.label}</p>
-                    <p className="mt-1 text-xs text-[#828B9B]">
+                  <td>
+                    <p >{row.label}</p>
+                    <p className="p-hint">
                       {row.publicPath}
                       {row.sectionCount !== null
                         ? ` · ${row.sectionCount} section${row.sectionCount === 1 ? "" : "s"}`
                         : ""}
                     </p>
                   </td>
-                  <td className="px-5 py-4 text-[#667085]">{row.family}</td>
-                  <td className="px-5 py-4 text-[#667085]">
+                  <td className="p-muted">{row.family}</td>
+                  <td className="p-muted">
                     {MANAGEMENT_LABEL[row.managementType]}
                   </td>
-                  <td className="px-5 py-4">
-                    <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-xs font-semibold text-[#1657CF]">
+                  <td>
+                    <span className="p-badge">
                       {row.status}
                     </span>
                   </td>
@@ -283,14 +283,14 @@ export function WebsitePagesManager() {
                       <button
                         type="button"
                         onClick={() => void createPage(row)}
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         Create editable page
                       </button>
                     ) : (
                       <Link
                         href={editHref(row)}
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         Open in Builder
                       </Link>
@@ -298,7 +298,7 @@ export function WebsitePagesManager() {
                     {row.seoKey ? (
                       <Link
                         href={`/seo?key=${encodeURIComponent(row.seoKey)}`}
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         SEO
                       </Link>
@@ -314,7 +314,7 @@ export function WebsitePagesManager() {
                         onClick={() =>
                           setPreview({ slug: row.pageSlug as string, title: row.label })
                         }
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         Preview
                       </button>
@@ -325,7 +325,7 @@ export function WebsitePagesManager() {
                         onClick={() =>
                           setHistory({ id: row.pageId as string, title: row.label })
                         }
-                        className="mr-3 font-semibold text-[#1657CF] focus:underline focus:outline-none"
+                        className="p-link"
                       >
                         History
                       </button>

@@ -201,20 +201,20 @@ export function SubjectForm({ id }: { id?: string }) {
     } finally { setSaving(false); setSavingIntent(null); }
   }
 
-  if (loading) return <section className="mx-auto max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="text-sm text-[#667085]">Loading subject editor…</p></section>;
+  if (loading) return <section className="mx-auto max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="p-sub">Loading subject editor…</p></section>;
 
   return (
     <section className="mx-auto max-w-[1040px]" aria-labelledby="subject-form-heading">
-      <Link href="/subjects" className="text-sm font-semibold text-[#1657CF]">← Subjects</Link>
+      <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Unified subject editor</p><h2 id="subject-form-heading" className="mt-2 text-3xl font-semibold">{record ? 'Edit subject' : 'Create subject'}</h2><p className="mt-2 text-sm text-[#667085]">Basic information, specializations, media and SEO are saved together.</p></div>
-        <span className="rounded-full border border-[#D9E0EA] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{status}</span>
+        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, specializations, media and SEO are saved together.</p></div>
+        <span className="p-chip">{status}</span>
       </div>
-      {error ? <p role="alert" className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] px-4 py-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}
-      {issues.length ? <div role="alert" className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4 text-sm text-[#B42318]"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+      {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
+      {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
 
       <form onSubmit={submit} className="mt-8 space-y-6">
-        <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8">
+        <fieldset className="p-panel">
           <legend className="sr-only">Subject information</legend>
           <h3 className="text-xl font-semibold">Subject information</h3>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -230,13 +230,13 @@ export function SubjectForm({ id }: { id?: string }) {
           <label className="mt-5 flex items-center gap-3 rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={form.isFeatured} onChange={(e) => set('isFeatured', e.target.checked)} /> Featured subject</label>
         </fieldset>
 
-        <fieldset id="editor-specializations" className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8">
+        <fieldset id="editor-specializations" className="p-panel">
           <legend className="sr-only">Specializations</legend>
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">Children</p><h3 className="mt-2 text-xl font-semibold">Specializations</h3><p className="mt-2 text-sm text-[#667085]">Create or edit specializations here. They are persisted only when the Subject is saved.</p></div><button type="button" onClick={() => { setSpecializations((rows) => [...rows, blankSpecialization()]); setDirty(true); }} className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]">+ Add specialization</button></div>
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="p-eyebrow">Children</p><h3 className="mt-2 text-xl font-semibold">Specializations</h3><p className="p-sub">Create or edit specializations here. They are persisted only when the Subject is saved.</p></div><button type="button" onClick={() => { setSpecializations((rows) => [...rows, blankSpecialization()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add specialization</button></div>
           <div className="mt-6 space-y-5">
-            {specializations.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
-              <div key={row.id ?? `new-${index}`} className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5">
-                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}</h4><button type="button" onClick={() => removeSpecialization(index)} className="text-sm font-semibold text-[#B42318]">Remove</button></div>
+            {specializations.length === 0 ? <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
+              <div key={row.id ?? `new-${index}`} className="p-panel">
+                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor={`spec-name-${index}`} /><input id={`spec-name-${index}`} className={inputClass} value={row.name} onChange={(e) => updateSpecialization(index, { name: e.target.value, slug: row.slug || slugify(e.target.value) })} /></div>
                   <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor={`spec-slug-${index}`} /><input id={`spec-slug-${index}`} className={inputClass} value={row.slug} onChange={(e) => updateSpecialization(index, { slug: e.target.value })} /></div>
@@ -245,7 +245,7 @@ export function SubjectForm({ id }: { id?: string }) {
                   <MediaPickerDialog label="Icon media" value={row.iconMediaId} media={media} onChange={(value) => updateSpecialization(index, { iconMediaId: value })} />
                   <MediaPickerDialog label="Listing media" value={row.listingMediaId} media={media} onChange={(value) => updateSpecialization(index, { listingMediaId: value })} />
                   <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor={`spec-order-${index}`} /><input id={`spec-order-${index}`} type="number" min="0" max="999999" className={inputClass} value={row.displayOrder} onChange={(e) => updateSpecialization(index, { displayOrder: e.target.value })} /></div>
-                  <label className="flex items-center gap-3 self-end rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={row.isFeatured} onChange={(e) => updateSpecialization(index, { isFeatured: e.target.checked })} /> Featured specialization</label>
+                  <label className="p-btn p-btn--ghost"><input type="checkbox" checked={row.isFeatured} onChange={(e) => updateSpecialization(index, { isFeatured: e.target.checked })} /> Featured specialization</label>
                 </div>
               </div>
             ))}

@@ -122,7 +122,7 @@ export function GlobalHeaderWorkspace() {
     }
   }
 
-  if (!groups) return <p className="mt-6 text-sm text-[#667085]">Loading header…</p>;
+  if (!groups) return <p className="p-sub">Loading header…</p>;
   const header = groups.header;
   const logoId = (groups.branding.logoMediaId as string | null) ?? null;
 
@@ -132,10 +132,10 @@ export function GlobalHeaderWorkspace() {
         <div className="max-w-2xl">
           {/* The shell owns the page h1; every other workspace titles itself with
               an h2, and this one drifted. */}
-          <h2 id="global-header-heading" className="text-3xl font-semibold tracking-[-0.04em]">
+          <h2 id="global-header-heading" className="p-h1">
             Global Header
           </h2>
-          <p className="mt-1 text-sm leading-6 text-[#667085]">
+          <p className="mt-1 p-sub">
             The bar at the top of every page on your website.
           </p>
         </div>
@@ -143,15 +143,15 @@ export function GlobalHeaderWorkspace() {
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           Save header
         </button>
       </div>
 
-      <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <fieldset className="p-panel">
         <legend className="px-1 text-sm font-semibold">Branding</legend>
-        <p className="text-xs text-[#828B9B]">
+        <p className="p-hint">
           Your logo appears at the top left and links to the home page. With no
           logo your site name is shown as text instead.
         </p>
@@ -194,7 +194,7 @@ export function GlobalHeaderWorkspace() {
         </div>
       </fieldset>
 
-      <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <fieldset className="p-panel">
         <legend className="px-1 text-sm font-semibold">Menu</legend>
         <label className="block text-sm font-semibold">
           Which menu appears in the header
@@ -210,12 +210,12 @@ export function GlobalHeaderWorkspace() {
             ))}
           </select>
         </label>
-        <p className="mt-2 text-xs text-[#828B9B]">
+        <p className="p-hint">
           The links themselves are edited in Website Builder → Navigation menus.
         </p>
       </fieldset>
 
-      <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <fieldset className="p-panel">
         <legend className="px-1 text-sm font-semibold">Main button</legend>
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input
@@ -246,9 +246,9 @@ export function GlobalHeaderWorkspace() {
         </div>
       </fieldset>
 
-      <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <fieldset className="p-panel">
         <legend className="px-1 text-sm font-semibold">Announcement bar</legend>
-        <p className="text-xs text-[#828B9B]">
+        <p className="p-hint">
           A thin strip above the header, for a notice you want on every page.
         </p>
         <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
@@ -286,7 +286,7 @@ export function GlobalHeaderWorkspace() {
         </div>
       </fieldset>
 
-      <details className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+      <details className="p-panel">
         <summary className="cursor-pointer text-sm font-semibold">
           Advanced
         </summary>
@@ -318,14 +318,14 @@ export function GlobalHeaderWorkspace() {
             />
           </label>
         </div>
-        <p className="mt-2 text-xs text-[#828B9B]">
+        <p className="p-hint">
           The secondary link only appears when both a label and a destination
           are set.
         </p>
       </details>
 
       {message ? (
-        <p className="text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}

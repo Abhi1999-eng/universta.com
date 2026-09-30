@@ -37,13 +37,13 @@ export function PageStructurePanel({
 }) {
   return (
     <aside
-      className="rounded-2xl border border-[#E8ECF3] bg-white p-4"
+      className="p-panel"
       aria-label="Page structure"
       data-testid="page-structure"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Page structure</h3>
-        <span className="text-xs text-[#828B9B]">{entries.length}</span>
+        <span className="p-hint">{entries.length}</span>
       </div>
 
       <ul className="mt-3 space-y-2">
@@ -70,7 +70,7 @@ export function PageStructurePanel({
                   <span className="block truncate text-sm font-semibold text-[#1D2433]">
                     {name}
                   </span>
-                  <span className="mt-0.5 block text-xs text-[#828B9B]">
+                  <span className="mt-0.5 block p-hint">
                     {sectionLabel(entry.sectionType)}
                     {entry.hiddenEverywhere ? " · Hidden" : ""}
                     {entry.isNew ? " · Not saved yet" : ""}
@@ -81,7 +81,7 @@ export function PageStructurePanel({
                     type="button"
                     onClick={() => onMove(entry.id, -1)}
                     disabled={index === 0 || entry.isNew}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                     aria-label={`Move ${name} up`}
                   >
                     ↑
@@ -90,7 +90,7 @@ export function PageStructurePanel({
                     type="button"
                     onClick={() => onMove(entry.id, 1)}
                     disabled={index === entries.length - 1 || entry.isNew}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                     aria-label={`Move ${name} down`}
                   >
                     ↓
@@ -99,7 +99,7 @@ export function PageStructurePanel({
                     type="button"
                     onClick={() => onDuplicate(entry.id)}
                     disabled={entry.isNew}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                     aria-label={`Duplicate ${name}`}
                   >
                     Duplicate
@@ -107,7 +107,7 @@ export function PageStructurePanel({
                   <button
                     type="button"
                     onClick={() => onRemove(entry.id)}
-                    className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700"
+                    className="p-btn p-btn--danger p-btn--sm"
                     aria-label={`Remove ${name}`}
                   >
                     Remove
@@ -120,7 +120,7 @@ export function PageStructurePanel({
       </ul>
 
       {entries.length === 0 ? (
-        <p className="mt-3 text-sm text-[#667085]">
+        <p className="p-sub">
           This page has no sections yet.
         </p>
       ) : null}

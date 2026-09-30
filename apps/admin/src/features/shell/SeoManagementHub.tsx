@@ -209,7 +209,7 @@ function StaticSeoEditor({
           type="button"
           disabled={saving || !seoTitle || !metaDescription}
           onClick={() => void save()}
-          className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           {saving ? "Saving…" : "Save SEO"}
         </button>
@@ -277,7 +277,7 @@ function StaticPageSeoTable({ deepLinkKey }: { deepLinkKey: string | null }) {
     );
   }
 
-  if (loading) return <p className="mt-4 text-sm text-[#667085]">Loading…</p>;
+  if (loading) return <p className="p-sub">Loading…</p>;
   if (error)
     return (
       <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">
@@ -292,7 +292,7 @@ function StaticPageSeoTable({ deepLinkKey }: { deepLinkKey: string | null }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{row.label}</p>
-              <p className="mt-1 text-xs text-[#828B9B]">
+              <p className="p-hint">
                 {row.seo
                   ? row.seo.robotsIndex
                     ? "Indexable"
@@ -303,7 +303,7 @@ function StaticPageSeoTable({ deepLinkKey }: { deepLinkKey: string | null }) {
             <button
               type="button"
               onClick={() => setOpenKey(openKey === row.key ? null : row.key)}
-              className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               {openKey === row.key ? "Close" : "Edit SEO"}
             </button>
@@ -329,13 +329,13 @@ export function SeoManagementHub() {
   ] as const;
   return (
     <section className="mx-auto max-w-[1180px]">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+      <p className="p-eyebrow">
         Platform tools
       </p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+      <h2 className="p-h1">
         SEO management
       </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+      <p className="p-sub">
         Manage individual overrides, global fallback values, reusable bulk
         templates and search-engine verification from one place. Individual
         entity SEO remains the highest-priority manual override.
@@ -370,7 +370,7 @@ export function SeoManagementHub() {
                 <h3 className="text-base font-semibold text-[#0D1524]">
                   {entry.label}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">
+                <p className="p-sub">
                   {entry.note}
                 </p>
               </Link>
@@ -380,14 +380,14 @@ export function SeoManagementHub() {
           <h3 className="mt-10 text-xl font-semibold">
             Static / listing pages
           </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+          <p className="p-sub">
             These routes are code-defined, not database records, so their SEO
             lives here instead of inside a resource editor. Comparison pages
             default to noindex until an admin explicitly changes that.
           </p>
           <StaticPageSeoTable deepLinkKey={deepLinkKey} />
 
-          <p className="mt-8 text-xs text-[#828B9B]">
+          <p className="mt-8 p-hint">
             Not covered here: FAQ entries (nested within each Country/Course
             record — no standalone SEO record exists for an individual FAQ
             question in the schema).

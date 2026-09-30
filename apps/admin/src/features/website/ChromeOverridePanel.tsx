@@ -101,7 +101,7 @@ export function ChromeOverridePanel({
   };
 
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">Header &amp; Footer</legend>
       <p className="text-xs leading-5 text-[#828B9B]">
         {scopeLabel} inherits the Global Header and Footer unless you change it here. An
@@ -134,7 +134,7 @@ export function ChromeOverridePanel({
               ))}
             </select>
           </label>
-          <p className="mt-1 text-xs text-[#828B9B]">
+          <p className="p-hint">
             {MODES.find((option) => option.value === header.mode)?.hint}
           </p>
 
@@ -239,7 +239,7 @@ export function ChromeOverridePanel({
               ))}
             </select>
           </label>
-          <p className="mt-1 text-xs text-[#828B9B]">
+          <p className="p-hint">
             {MODES.find((option) => option.value === footer.mode)?.hint}
           </p>
 

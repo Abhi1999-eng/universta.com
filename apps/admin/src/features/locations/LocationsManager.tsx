@@ -122,7 +122,7 @@ function CitySeoEditor({
     }
   }
 
-  if (loading) return <p className="text-sm text-[#667085]">Loading SEO…</p>;
+  if (loading) return <p className="p-sub">Loading SEO…</p>;
 
   return (
     <div>
@@ -188,14 +188,14 @@ function CitySeoEditor({
           type="button"
           disabled={busy || !seoTitle || !metaDescription}
           onClick={() => void save()}
-          className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           Save SEO
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           Close
         </button>
@@ -385,9 +385,9 @@ export function LocationsManager() {
   return (
     <section className="mx-auto max-w-[1240px]">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Location hierarchy</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">States &amp; cities</h2>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-eyebrow">Location hierarchy</p>
+        <h2 className="p-h1">States &amp; cities</h2>
+        <p className="p-sub">
           Manage the destination hierarchy that backs each country&apos;s canonical{" "}
           <code>/study-in-{"{country}"}</code> page and its nested city pages.
         </p>
@@ -411,7 +411,7 @@ export function LocationsManager() {
       </div>
 
       {message ? (
-        <p className="mt-4 text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}
@@ -461,25 +461,25 @@ export function LocationsManager() {
           </form>
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+            <table className="p-table u-table">
+              <thead >
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3" />
+                  <th>Name</th>
+                  <th>Country</th>
+                  <th>Status</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {linkedStates.map((state) => (
                   <tr key={state.id} className="border-t border-[#E8ECF3]">
                     <td className="px-4 py-3 font-medium">
-                      {state.name} <span className="text-[#9AA3B2]">({state.slug})</span>
+                      {state.name} <span className="p-muted">({state.slug})</span>
                     </td>
-                    <td className="px-4 py-3">{state.country.name}</td>
-                    <td className="px-4 py-3">
+                    <td>{state.country.name}</td>
+                    <td>
                       <select
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1.5 text-xs"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         value={state.status}
                         onChange={(event) => void updateStateStatus(state, event.target.value)}
                       >
@@ -490,7 +490,7 @@ export function LocationsManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td>
                       <button
                         type="button"
                         onClick={() => void archiveState(state)}
@@ -504,7 +504,7 @@ export function LocationsManager() {
               </tbody>
             </table>
             {linkedStates.length === 0 ? (
-              <p className="p-5 text-sm text-[#667085]">No states yet.</p>
+              <p className="p-5 p-sub">No states yet.</p>
             ) : null}
           </div>
         </>
@@ -582,7 +582,7 @@ export function LocationsManager() {
             </label>
             <select
               id="city-country-filter"
-              className="rounded-xl border border-[#D9E0EA] bg-white px-3 py-2 text-sm"
+              className="p-input p-input--sm"
               value={countryFilter}
               onChange={(event) => setCountryFilter(event.target.value)}
             >
@@ -596,15 +596,15 @@ export function LocationsManager() {
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+            <table className="p-table u-table">
+              <thead >
                 <tr>
-                  <th className="px-4 py-3">City</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">State</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Featured</th>
-                  <th className="px-4 py-3" />
+                  <th>City</th>
+                  <th>Country</th>
+                  <th>State</th>
+                  <th>Status</th>
+                  <th>Featured</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -612,13 +612,13 @@ export function LocationsManager() {
                   <Fragment key={city.id}>
                   <tr className="border-t border-[#E8ECF3]">
                     <td className="px-4 py-3 font-medium">
-                      {city.name} <span className="text-[#9AA3B2]">({city.slug})</span>
+                      {city.name} <span className="p-muted">({city.slug})</span>
                     </td>
-                    <td className="px-4 py-3">{city.country.name}</td>
-                    <td className="px-4 py-3">{city.state?.name ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td>{city.country.name}</td>
+                    <td>{city.state?.name ?? "—"}</td>
+                    <td>
                       <select
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1.5 text-xs"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         value={city.status}
                         onChange={(event) => void updateCityStatus(city, event.target.value)}
                       >
@@ -629,7 +629,7 @@ export function LocationsManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <button
                         type="button"
                         onClick={() => void toggleFeatured(city)}
@@ -638,13 +638,13 @@ export function LocationsManager() {
                         {city.isFeatured ? "Featured" : "Not featured"}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td>
                       <button
                         type="button"
                         onClick={() =>
                           setSeoEditingCityId(seoEditingCityId === city.id ? null : city.id)
                         }
-                        className="mr-3 text-xs font-semibold text-[#1657CF]"
+                        className="mr-3 p-link"
                       >
                         SEO
                       </button>
@@ -673,7 +673,7 @@ export function LocationsManager() {
               </tbody>
             </table>
             {visibleCities.length === 0 ? (
-              <p className="p-5 text-sm text-[#667085]">No cities yet.</p>
+              <p className="p-5 p-sub">No cities yet.</p>
             ) : null}
           </div>
         </>

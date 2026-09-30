@@ -182,7 +182,7 @@ export function ProtectedBoundary({ children }: { children: ReactNode }) {
   if (status === 'initializing' || status === 'unauthenticated') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#FAFBFD] px-6">
-        <p role="status" aria-live="polite" className="text-sm text-[#48505F]">
+        <p role="status" aria-live="polite" className="p-sub">
           Checking your admin session…
         </p>
       </main>

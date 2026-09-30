@@ -144,7 +144,7 @@ function LocationSeoEditor({
   }
 
   if (loading) {
-    return <p className="text-sm text-[#667085]">Loading SEO…</p>;
+    return <p className="p-sub">Loading SEO…</p>;
   }
 
   return (
@@ -211,14 +211,14 @@ function LocationSeoEditor({
           type="button"
           disabled={busy || !seoTitle || !metaDescription}
           onClick={() => void save()}
-          className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           {busy ? "Saving…" : "Save SEO"}
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           Close
         </button>
@@ -367,13 +367,13 @@ export function ConsultantLocationsManager() {
     <section className="mx-auto max-w-[1180px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Consultants
           </p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+          <h2 className="p-h1">
             Consultant locations
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+          <p className="p-sub">
             Create and manage consultant office locations, then link them from the
             Consultant editor. Contact-specific address data remains on the consultant
             location mapping rather than this shared location record.
@@ -400,7 +400,7 @@ export function ConsultantLocationsManager() {
           className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+            <p className="p-eyebrow">
               {editing ? `Editing: ${editing.name}` : "New consultant location"}
             </p>
           </div>
@@ -534,7 +534,7 @@ export function ConsultantLocationsManager() {
             <button
               type="button"
               onClick={closeEditor}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>
@@ -561,7 +561,7 @@ export function ConsultantLocationsManager() {
         />
         <button
           type="submit"
-          className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           Search
         </button>
@@ -572,7 +572,7 @@ export function ConsultantLocationsManager() {
               setQuery("");
               void load("");
             }}
-            className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Clear
           </button>
@@ -580,47 +580,47 @@ export function ConsultantLocationsManager() {
       </form>
 
       {loading ? (
-        <p className="mt-8 text-sm text-[#667085]">Loading…</p>
+        <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-5 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="bg-[#FAFBFD] text-xs font-bold uppercase tracking-wide text-[#828B9B]">
+          <table className="p-table u-table min-w-[800px]">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Location</th>
-                <th className="px-4 py-3">Consultants</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actions</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Consultants</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF3]">
               {rows.map((row) => (
                 <Fragment key={row.id}>
                   <tr>
-                    <td className="px-4 py-3">
+                    <td>
                       <p className="font-semibold">{row.name}</p>
-                      <p className="mt-1 text-xs text-[#828B9B]">/{row.slug}</p>
+                      <p className="p-hint">/{row.slug}</p>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       {row.city}
                       {row.state ? `, ${row.state}` : ""}
                       {row.country ? ` — ${row.country.name}` : ""}
                     </td>
-                    <td className="px-4 py-3">{row._count?.consultants ?? 0}</td>
-                    <td className="px-4 py-3">{row.status}</td>
-                    <td className="px-4 py-3">
+                    <td>{row._count?.consultants ?? 0}</td>
+                    <td>{row.status}</td>
+                    <td>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => openEdit(row)}
-                          className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
+                          className="p-btn p-btn--ghost p-btn--sm"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => void toggleStatus(row)}
-                          className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
+                          className="p-btn p-btn--ghost p-btn--sm"
                         >
                           {row.status === "ACTIVE" ? "Deactivate" : "Activate"}
                         </button>
@@ -629,7 +629,7 @@ export function ConsultantLocationsManager() {
                           onClick={() =>
                             setSeoEditingId(seoEditingId === row.id ? null : row.id)
                           }
-                          className="rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold"
+                          className="p-btn p-btn--ghost p-btn--sm"
                         >
                           SEO
                         </button>
@@ -645,7 +645,7 @@ export function ConsultantLocationsManager() {
                   </tr>
                   {seoEditingId === row.id ? (
                     <tr>
-                      <td colSpan={5} className="bg-[#FAFBFD] px-4 py-4">
+                      <td colSpan={5}>
                         <LocationSeoEditor
                           locationId={row.id}
                           onSaved={() => setMessage(`Saved SEO for ${row.name}.`)}

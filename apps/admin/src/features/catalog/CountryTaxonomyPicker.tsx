@@ -199,7 +199,7 @@ export function CountryTaxonomyPicker({
 
   return (
     <fieldset
-      className="rounded-xl border border-[#D9E0EA] p-4"
+      className="p-card"
       data-testid={testId}
     >
       <legend className="px-1 text-sm font-semibold">{title}</legend>
@@ -209,7 +209,7 @@ export function CountryTaxonomyPicker({
         onChange={(event) => setQuery(event.target.value)}
         placeholder={`Search ${title.toLowerCase()}`}
         aria-label={`Search ${title.toLowerCase()}`}
-        className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm"
+        className="p-input"
       />
 
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={`${title} view`}>
@@ -238,7 +238,7 @@ export function CountryTaxonomyPicker({
 
       <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
         {visible.length === 0 ? (
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             {view === "selected"
               ? `No ${title.toLowerCase()} selected yet.`
               : `No ${title.toLowerCase()} match that search.`}
@@ -254,7 +254,7 @@ export function CountryTaxonomyPicker({
               />
               <span>{row.label}</span>
               {view === "most-used" && typeof row.usage === "number" ? (
-                <span className="text-xs text-[#828B9B]">
+                <span className="p-hint">
                   {row.usage} course{row.usage === 1 ? "" : "s"}
                 </span>
               ) : null}
@@ -283,7 +283,7 @@ export function CountryTaxonomyPicker({
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          className="text-xs font-semibold text-[#1657CF]"
+                          className="p-link"
                           aria-expanded={open}
                           onClick={() =>
                             setExpanded((current) =>
@@ -295,21 +295,21 @@ export function CountryTaxonomyPicker({
                         >
                           {open ? "Hide" : "Show"} {kids.length} {childNoun}
                         </button>
-                        <span className="text-xs text-[#828B9B]">
+                        <span className="p-hint">
                           {mine} selected
                         </span>
                         {open ? (
                           <>
                             <button
                               type="button"
-                              className="text-xs text-[#475467] underline"
+                              className="p-link"
                               onClick={() => setAllChildren(row, true)}
                             >
                               Select all
                             </button>
                             <button
                               type="button"
-                              className="text-xs text-[#475467] underline"
+                              className="p-link"
                               onClick={() => setAllChildren(row, false)}
                             >
                               Clear
@@ -339,7 +339,7 @@ export function CountryTaxonomyPicker({
               ) : (
                 <ul className="ml-6 mt-1 space-y-1">
                   {(row.children ?? []).map((child) => (
-                    <li key={child.id} className="text-xs text-[#828B9B]">
+                    <li key={child.id} className="p-hint">
                       {child.label}
                     </li>
                   ))}
@@ -367,7 +367,7 @@ export function CountryTaxonomyPicker({
         </p>
       ) : null}
 
-      <p className="mt-3 text-xs text-[#667085]">
+      <p className="mt-3 p-hint">
         {selected.length} selected
         {childrenSelectable
           ? ` · ${childSelection.length} ${childNoun} selected`
@@ -398,16 +398,16 @@ export function CountryTaxonomyPicker({
                 }
                 if (event.key === "Escape") closeDialog();
               }}
-              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm"
+              className="p-input"
             />
           </label>
           {draftName.trim() ? (
-            <p className="mt-2 text-xs text-[#667085]">
+            <p className="p-hint">
               Slug: {termSlug(draftName) || "—"}
             </p>
           ) : null}
           {error ? (
-            <p role="alert" className="mt-2 text-xs text-[#B42318]">
+            <p role="alert" className="mt-2 p-danger">
               {error}
             </p>
           ) : null}
@@ -416,14 +416,14 @@ export function CountryTaxonomyPicker({
               type="button"
               disabled={busy || !draftName.trim()}
               onClick={() => void submitDialog()}
-              className="rounded-lg bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="p-btn p-btn--primary"
             >
               {busy ? "Creating…" : `Create ${singular.toLowerCase()}`}
             </button>
             <button
               type="button"
               onClick={closeDialog}
-              className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>

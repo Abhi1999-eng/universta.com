@@ -124,9 +124,9 @@ export function MediaLibrary() {
   return (
     <section className="mx-auto max-w-[1240px]">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">Media</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Media library</h2>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-eyebrow">Media</p>
+        <h2 className="p-h1">Media library</h2>
+        <p className="p-sub">
           Upload images for use across Pages, Universities, Scholarships, Consultants,
           Events, Success Stories and Testimonials. Accepted types: JPEG, PNG, WEBP, GIF —
           up to 5MB.
@@ -146,7 +146,7 @@ export function MediaLibrary() {
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
-            className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
+            className="p-input"
           />
         </div>
         <div>
@@ -156,7 +156,7 @@ export function MediaLibrary() {
           <input
             id="media-title"
             ref={titleRef}
-            className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
+            className="p-input"
           />
         </div>
         <div>
@@ -166,7 +166,7 @@ export function MediaLibrary() {
           <input
             id="media-alt"
             ref={altRef}
-            className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
+            className="p-input"
           />
         </div>
         <div>
@@ -176,14 +176,14 @@ export function MediaLibrary() {
           <input
             id="media-folder"
             ref={folderRef}
-            className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
+            className="p-input"
           />
         </div>
         <div className="flex items-end">
           <button
             type="submit"
             disabled={uploading}
-            className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="p-btn p-btn--primary"
           >
             {uploading ? "Uploading…" : "Upload"}
           </button>
@@ -208,14 +208,14 @@ export function MediaLibrary() {
       </div>
 
       {message ? (
-        <p className="mt-4 text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {assets.map((asset) => (
-          <article key={asset.id} className="rounded-2xl border border-[#E8ECF3] bg-white p-4">
+          <article key={asset.id} className="p-panel">
             <div className="flex h-36 items-center justify-center overflow-hidden rounded-xl bg-[#F7F9FC]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -227,7 +227,7 @@ export function MediaLibrary() {
             <p className="mt-3 truncate text-sm font-semibold" title={asset.originalFileName}>
               {asset.title || asset.originalFileName}
             </p>
-            <p className="text-xs text-[#828B9B]">
+            <p className="p-hint">
               {asset.mimeType} · {formatSize(asset.fileSizeBytes)}
               {asset.inUse ? " · In use" : ""}
             </p>
@@ -237,14 +237,14 @@ export function MediaLibrary() {
                 placeholder="Alt text"
                 aria-label={`Alt text for ${asset.originalFileName}`}
                 onBlur={(event) => void saveMeta(asset, { altText: event.target.value })}
-                className="w-full rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                className="p-input p-input--sm"
               />
               <input
                 defaultValue={asset.folder ?? ""}
                 placeholder="Folder"
                 aria-label={`Folder for ${asset.originalFileName}`}
                 onBlur={(event) => void saveMeta(asset, { folder: event.target.value })}
-                className="w-full rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                className="p-input p-input--sm"
               />
             </div>
             <button
@@ -259,7 +259,7 @@ export function MediaLibrary() {
           </article>
         ))}
         {assets.length === 0 ? (
-          <p className="text-sm text-[#667085]">No media uploaded yet.</p>
+          <p className="p-sub">No media uploaded yet.</p>
         ) : null}
       </div>
 
@@ -270,25 +270,25 @@ export function MediaLibrary() {
           aria-modal="true"
           aria-labelledby="archive-media-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 id="archive-media-title" className="text-lg font-semibold">
+          <div className="p-modal__panel">
+            <h3 id="archive-media-title" className="p-h3">
               Archive this file?
             </h3>
-            <p className="mt-2 text-sm text-[#667085]">
+            <p className="p-sub">
               {pendingArchive.title || pendingArchive.originalFileName} will be removed from
               the library and deleted from local storage.
             </p>
             <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
-                className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
                 onClick={() => setPendingArchive(null)}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white"
+                className="p-btn p-btn--danger"
                 onClick={() => {
                   void archive(pendingArchive);
                   setPendingArchive(null);

@@ -284,7 +284,7 @@ function Money({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-xs font-semibold text-[#344054]">
+    <label className="p-label">
       {label}
       <input
         className={inputClass}
@@ -371,10 +371,10 @@ export function CalculatorBuilder({
   if (!parsed && value.trim())
     return (
       <div className="rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4">
-        <p className="text-sm font-semibold text-[#B42318]">
+        <p className="p-danger">
           This calculator was set up outside the form
         </p>
-        <p className="mt-1 text-xs text-[#667085]">
+        <p className="p-hint">
           It holds something the simple form cannot show, so it is left exactly as it is.
           Clear the box below to start again with the form, or ask a developer to look at
           it.
@@ -390,8 +390,8 @@ export function CalculatorBuilder({
 
   return (
     <div className="rounded-xl border border-[#D9E0EA] bg-[#FCFCFD] p-4">
-      <p className="text-sm font-semibold text-[#344054]">Budget calculator</p>
-      <p className="mt-1 text-xs text-[#667085]">
+      <p className="p-label">Budget calculator</p>
+      <p className="p-hint">
         Lets a student on the country page work out their own yearly budget. Leave every
         box empty for no calculator.
       </p>
@@ -429,7 +429,7 @@ export function CalculatorBuilder({
       <p className="mt-6 text-xs font-bold uppercase tracking-[0.08em] text-[#667085]">
         Questions the student answers
       </p>
-      <p className="mt-1 text-xs text-[#667085]">
+      <p className="p-hint">
         Each answer can raise or lower the living cost, and can add tuition.
       </p>
 
@@ -440,7 +440,7 @@ export function CalculatorBuilder({
             className="rounded-xl border border-[#E4E7EC] bg-white p-4"
           >
             <div className="flex items-start justify-between gap-3">
-              <label className="block flex-1 text-xs font-semibold text-[#344054]">
+              <label className="block flex-1 p-label">
                 Question {factorIndex + 1}
                 <input
                   className={inputClass}
@@ -454,7 +454,7 @@ export function CalculatorBuilder({
               {draft.factors.length > 1 ? (
                 <button
                   type="button"
-                  className="mt-5 text-xs font-semibold text-[#B42318]"
+                  className="mt-5 p-danger"
                   onClick={() =>
                     update({
                       ...draft,
@@ -474,7 +474,7 @@ export function CalculatorBuilder({
                   className="rounded-lg border border-[#EAECF0] bg-[#FCFCFD] p-3"
                 >
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="block text-xs font-semibold text-[#344054]">
+                    <label className="p-label">
                       Answer {optionIndex + 1}
                       <input
                         className={inputClass}
@@ -487,7 +487,7 @@ export function CalculatorBuilder({
                         }
                       />
                     </label>
-                    <label className="block text-xs font-semibold text-[#344054]">
+                    <label className="p-label">
                       Living cost changes by
                       <input
                         className={inputClass}
@@ -525,7 +525,7 @@ export function CalculatorBuilder({
                     />
                   </div>
                   <div className="mt-3 flex items-end justify-between gap-3">
-                    <label className="block flex-1 text-xs font-semibold text-[#344054]">
+                    <label className="block flex-1 p-label">
                       Note for the student (optional)
                       <input
                         className={inputClass}
@@ -541,7 +541,7 @@ export function CalculatorBuilder({
                     {factor.options.length > 1 ? (
                       <button
                         type="button"
-                        className="pb-2 text-xs font-semibold text-[#B42318]"
+                        className="pb-2 p-danger"
                         onClick={() =>
                           setFactor(factorIndex, {
                             options: factor.options.filter((_, j) => j !== optionIndex),

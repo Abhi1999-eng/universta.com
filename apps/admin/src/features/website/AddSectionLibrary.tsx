@@ -42,8 +42,8 @@ export function AddSectionLibrary({
       <div className="max-h-[80vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold">Add a section</h3>
-            <p className="mt-1 text-sm text-[#667085]">
+            <h3 className="p-h3">Add a section</h3>
+            <p className="mt-1 p-sub">
               Pick what you want to appear on the page. You can edit it straight
               after adding.
             </p>
@@ -51,7 +51,7 @@ export function AddSectionLibrary({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E8ECF3] px-3 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Close
           </button>
@@ -69,14 +69,14 @@ export function AddSectionLibrary({
         </label>
 
         {groups.length === 0 ? (
-          <p className="mt-6 text-sm text-[#667085]">
+          <p className="p-sub">
             Nothing matches “{query}”.
           </p>
         ) : null}
 
         {groups.map((group) => (
           <section key={group.category} className="mt-6">
-            <h4 className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+            <h4 className="p-eyebrow">
               {group.label}
             </h4>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -91,7 +91,7 @@ export function AddSectionLibrary({
                   <span className="block text-sm font-semibold text-[#1D2433]">
                     {item.label}
                   </span>
-                  <span className="mt-1 block text-xs text-[#667085]">
+                  <span className="mt-1 block p-hint">
                     {item.description}
                   </span>
                 </button>

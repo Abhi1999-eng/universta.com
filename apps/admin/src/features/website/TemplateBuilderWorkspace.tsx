@@ -225,7 +225,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
         <div className="mt-3">
           <button
             type="button"
-            className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="p-btn p-btn--primary p-btn--sm"
             onClick={() => void save()}
             disabled={busy}
           >
@@ -294,7 +294,14 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
             {previewUrl ? (
               <div
                 className="wb-preview-shrink"
-                style={{ width: frame.width * scale, height: frame.height * scale }}
+                /* Same as the device preview: before the stage is measured
+                   there is no scale to reserve against, and reserving the
+                   frame's own width would scroll the admin sideways. */
+                style={
+                  stageWidth > 0
+                    ? { width: frame.width * scale, height: frame.height * scale }
+                    : { width: '100%', height: frame.height * scale }
+                }
               >
                 <div
                   className="wb-preview-frame"

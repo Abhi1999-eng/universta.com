@@ -80,12 +80,12 @@ export function FooterBuilder({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
       <aside
-        className="rounded-2xl border border-[#E8ECF3] bg-white p-4"
+        className="p-panel"
         aria-label="Footer structure"
         data-testid="footer-structure"
       >
         <h3 className="text-sm font-semibold">Footer rows</h3>
-        <p className="mt-1 text-xs text-[#828B9B]">
+        <p className="p-hint">
           Each row spans the width of the footer. Add blocks into its columns.
         </p>
 
@@ -93,7 +93,7 @@ export function FooterBuilder({
           {rows.map((row, rowIndex) => (
             <li
               key={row.id}
-              className="rounded-xl border border-[#E8ECF3] p-3"
+              className="p-card"
               data-testid={`footer-row-${row.id}`}
             >
               <div className="flex items-center justify-between gap-2">
@@ -104,7 +104,7 @@ export function FooterBuilder({
                     onClick={() => moveRow(row.id, -1)}
                     disabled={rowIndex === 0}
                     aria-label={`Move row ${rowIndex + 1} up`}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     ↑
                   </button>
@@ -113,7 +113,7 @@ export function FooterBuilder({
                     onClick={() => moveRow(row.id, 1)}
                     disabled={rowIndex === rows.length - 1}
                     aria-label={`Move row ${rowIndex + 1} down`}
-                    className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     ↓
                   </button>
@@ -121,7 +121,7 @@ export function FooterBuilder({
                     type="button"
                     onClick={() => commit(rows.filter((entry) => entry.id !== row.id))}
                     aria-label={`Remove row ${rowIndex + 1}`}
-                    className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700"
+                    className="p-btn p-btn--danger p-btn--sm"
                   >
                     Remove
                   </button>
@@ -202,7 +202,7 @@ export function FooterBuilder({
         </ul>
 
         {rows.length === 0 ? (
-          <p className="mt-3 text-sm text-[#667085]">
+          <p className="p-sub">
             No rows yet. Your site keeps its standard footer until you add one.
           </p>
         ) : null}
@@ -235,7 +235,7 @@ export function FooterBuilder({
             }}
           />
         ) : (
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             Pick a block on the left to edit it, or add one to a column.
           </p>
         )}
@@ -279,11 +279,11 @@ function BlockLibrary({
     >
       <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-lg font-semibold">Add a block</h3>
+          <h3 className="p-h3">Add a block</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E8ECF3] px-3 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Close
           </button>
@@ -298,7 +298,7 @@ function BlockLibrary({
               className="rounded-xl border border-[#E8ECF3] p-3 text-left hover:border-[#1657CF] hover:bg-[#F7F9FC]"
             >
               <span className="block text-sm font-semibold">{block.label}</span>
-              <span className="mt-1 block text-xs text-[#667085]">
+              <span className="mt-1 block p-hint">
                 {block.description}
               </span>
             </button>
@@ -333,13 +333,13 @@ function BlockSettings({
     <div data-testid="footer-block-settings">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold">{definition.label}</h3>
-          <p className="mt-1 text-xs text-[#667085]">{definition.description}</p>
+          <h3 className="p-h3">{definition.label}</h3>
+          <p className="p-hint">{definition.description}</p>
         </div>
         <button
           type="button"
           onClick={onRemove}
-          className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700"
+          className="p-btn p-btn--danger p-btn--sm"
         >
           Remove block
         </button>

@@ -131,13 +131,13 @@ export function MediaPickerDialog({
             <button
               type="button"
               onClick={() => onChange('')}
-              className="shrink-0 text-xs font-semibold text-[#B42318]"
+              className="shrink-0 p-danger"
             >
               Remove
             </button>
           </div>
         ) : (
-          <span className="text-xs text-[#828B9B]">No media selected</span>
+          <span className="p-hint">No media selected</span>
         )}
       </div>
 
@@ -162,7 +162,7 @@ export function MediaPickerDialog({
                 type="button"
                 onClick={close}
                 aria-label="Close media picker"
-                className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Close
               </button>
@@ -233,24 +233,24 @@ export function MediaPickerDialog({
                         void loadLibrary(query);
                       }}
                       placeholder="Search title, alt text or filename"
-                      className="w-full rounded-xl border border-[#D9E0EA] px-3 py-2"
+                      className="p-input"
                     />
                     <button
                       type="button"
                       onClick={() => void loadLibrary(query)}
-                      className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white"
+                      className="p-btn p-btn--primary p-btn--sm"
                     >
                       Search
                     </button>
                   </div>
 
                   {loading ? (
-                    <p role="status" className="mt-5 text-sm text-[#667085]">
+                    <p role="status" className="p-sub">
                       Loading Media Library…
                     </p>
                   ) : error ? (
                     <div className="mt-5 rounded-xl bg-[#FFF7F7] p-4">
-                      <p role="alert" className="text-sm text-[#B42318]">
+                      <p role="alert" className="p-danger">
                         {error}
                       </p>
                       <button
@@ -297,7 +297,7 @@ export function MediaPickerDialog({
                     </div>
                   ) : (
                     <div className="mt-5 rounded-xl border border-dashed border-[#D9E0EA] p-5 text-center">
-                      <p role="status" className="text-sm text-[#667085]">
+                      <p role="status" className="p-sub">
                         No active images found in Media Library.
                       </p>
                       <button

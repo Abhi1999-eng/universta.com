@@ -37,3 +37,21 @@ if (typeof window !== 'undefined') {
   if (!document.elementFromPoint)
     document.elementFromPoint = () => null as unknown as Element;
 }
+
+/* jsdom implements no media queries, so anything that asks the viewport what
+ * shape it is -- the Admin shell deciding whether its sidebar is a column or a
+ * drawer -- dies on `window.matchMedia is not a function`. A stand-in that
+ * always reports "does not match" puts those tests on the desktop layout,
+ * which is the one they were written against. */
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}

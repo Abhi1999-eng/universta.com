@@ -429,13 +429,13 @@ export const CountryProfilesEditor = forwardRef<
   return (
     <section className="mt-8 min-w-0 space-y-6" aria-labelledby="country-profiles-heading">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        <p className="p-eyebrow">
           Country profiles
         </p>
         <h2 id="country-profiles-heading" className="mt-2 text-2xl font-semibold">
           Cost, visa, English and statistics
         </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-[#667085]">
+        <p className="mt-2 max-w-3xl p-sub">
           Each section saves on its own. Leave a value empty to let the
           catalogue answer for it.
         </p>
@@ -660,8 +660,8 @@ function ProfileCard({
 }) {
   return (
     <section className="min-w-0 rounded-2xl border border-[#E8ECF3] bg-white p-4 sm:p-6">
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">
+      <h3 className="p-h3">{title}</h3>
+      <p className="mt-1 max-w-3xl p-sub">
         {description}
       </p>
       <div className={`mt-5 grid gap-4 ${full ? "" : "sm:grid-cols-2"}`}>
@@ -672,12 +672,12 @@ function ProfileCard({
           type="button"
           onClick={onSave}
           disabled={busy || unsaved}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary p-btn--sm"
         >
           {busy ? "Saving…" : `Save ${title.toLowerCase()}`}
         </button>
         {unsaved ? (
-          <p className="text-xs text-[#667085]">
+          <p className="p-hint">
             Saved with the country the first time you use Save draft or
             Publish.
           </p>
@@ -717,7 +717,7 @@ function Fields({
                 minHeight="min-h-28"
               />
               {field.hint ? (
-                <p className="mt-1 text-xs text-[#667085]">{field.hint}</p>
+                <p className="p-hint">{field.hint}</p>
               ) : null}
             </div>
           );
@@ -735,7 +735,7 @@ function Fields({
                 aria-readonly="true"
               />
               {field.hint ? (
-                <p className="mt-1 text-xs text-[#667085]">{field.hint}</p>
+                <p className="p-hint">{field.hint}</p>
               ) : null}
             </label>
           );

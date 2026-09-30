@@ -268,7 +268,7 @@ function SectionRowsEditor({
     onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
   return (
-    <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">{config.legend}</legend>
       <div className="space-y-3">
         {items.map((row, index) => (
@@ -298,7 +298,7 @@ function SectionRowsEditor({
               <button
                 type="button"
                 onClick={() => onChange(items.filter((_, i) => i !== index))}
-                className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700"
+                className="p-btn p-btn--danger p-btn--sm"
               >
                 Remove row
               </button>
@@ -337,7 +337,7 @@ function SectionBodyFields({
   if (sectionType === "RICH_TEXT") {
     const paragraphs = body.paragraphs?.length ? body.paragraphs : [""];
     return (
-      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+      <fieldset className="p-card">
         <legend className="px-1 text-sm font-semibold">Paragraphs</legend>
         <div className="space-y-3">
           {paragraphs.map((paragraph, index) => (
@@ -379,7 +379,7 @@ function SectionBodyFields({
         >
           Add paragraph
         </button>
-        <p className="mt-2 text-xs text-[#828B9B]">
+        <p className="p-hint">
           Plain text only — rendered safely without any HTML markup.
         </p>
       </fieldset>
@@ -397,7 +397,7 @@ function SectionBodyFields({
   }
   if (sectionType === "IMAGE" || sectionType === "IMAGE_TEXT") {
     return (
-      <fieldset className="rounded-xl border border-[#E8ECF3] p-4">
+      <fieldset className="p-card">
         <legend className="px-1 text-sm font-semibold">Image</legend>
         <div className="space-y-3">
           <MediaPickerDialog
@@ -445,7 +445,7 @@ function SectionBodyFields({
   }
   if (sectionType === "LEAD_GENERATION") {
     return (
-      <p className="text-xs text-[#828B9B]">
+      <p className="p-hint">
         Renders the existing enquiry form. The heading and body above become the
         form&apos;s intro copy.
       </p>
@@ -504,7 +504,7 @@ function SectionCard({
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-bold text-[#1657CF]">
             {section.sectionType}
           </span>
-          <span className="text-xs text-[#828B9B]">{section.sectionKey}</span>
+          <span className="p-hint">{section.sectionKey}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -512,7 +512,7 @@ function SectionCard({
             aria-label="Move section up"
             disabled={index === 0}
             onClick={() => onMove(-1)}
-            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold disabled:opacity-40"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             ↑
           </button>
@@ -521,21 +521,21 @@ function SectionCard({
             aria-label="Move section down"
             disabled={index === total - 1}
             onClick={() => onMove(1)}
-            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold disabled:opacity-40"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             ↓
           </button>
           <button
             type="button"
             onClick={onDuplicate}
-            className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-xs font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Duplicate
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-700"
+            className="p-btn p-btn--danger p-btn--sm"
           >
             Remove
           </button>
@@ -605,9 +605,9 @@ function SectionCard({
         ) : null}
       </div>
 
-      <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
+      <fieldset className="p-card">
         <legend className="px-1 text-sm font-semibold">Device visibility</legend>
-        <p className="mb-3 text-xs text-[#667085]">
+        <p className="mb-3 p-hint">
           Hidden sections are removed at that screen size and leave no empty
           space. A section must stay visible on at least one device.
         </p>
@@ -1082,12 +1082,12 @@ export function PageCmsEditor({
     })),
   ];
 
-  if (loading) return <p className="mt-6 text-sm text-[#667085]">Loading page…</p>;
+  if (loading) return <p className="p-sub">Loading page…</p>;
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
-        <h3 className="text-lg font-semibold">Page</h3>
+      <div className="p-panel">
+        <h3 className="p-h3">Page</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Title" value={page.title} onChange={(value) => setPageField("title", value)} />
           <Field label="Slug" value={page.slug} onChange={(value) => setPageField("slug", value)} />
@@ -1126,7 +1126,7 @@ export function PageCmsEditor({
             onChange={(value) => setPageField("endsAt", fromDateTimeLocal(value))}
           />
         </div>
-        <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
+        <fieldset className="p-card">
           <legend className="px-1 text-sm font-semibold">SEO</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
@@ -1160,9 +1160,9 @@ export function PageCmsEditor({
           />
         </div>
         {recordId ? (
-          <fieldset className="mt-4 rounded-xl border border-[#E8ECF3] p-4">
+          <fieldset className="p-card">
             <legend className="px-1 text-sm font-semibold">Template</legend>
-            <p className="text-xs text-[#828B9B]">
+            <p className="p-hint">
               A template is a starting layout. Applying one adds any sections this page is missing and
               leaves everything you have already written untouched, so it is safe to apply again.
             </p>
@@ -1187,7 +1187,7 @@ export function PageCmsEditor({
                 type="button"
                 disabled={templateBusy || !selectedTemplateId}
                 onClick={() => void applyTemplate()}
-                className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+                className="p-btn p-btn--ghost p-btn--sm"
                 title={selectedTemplateId ? undefined : "Choose a template first"}
                 data-testid="apply-template"
               >
@@ -1224,7 +1224,7 @@ export function PageCmsEditor({
             type="button"
             disabled={busy}
             onClick={() => void savePage()}
-            className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="p-btn p-btn--primary p-btn--sm"
           >
             {pageSaveLabel(page.status, Boolean(recordId))}
           </button>
@@ -1232,7 +1232,7 @@ export function PageCmsEditor({
             <button
               type="button"
               onClick={() => void openPreview()}
-              className="rounded-xl border border-[#E8ECF3] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Preview
             </button>
@@ -1240,7 +1240,7 @@ export function PageCmsEditor({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-[#E8ECF3] px-4 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Close
           </button>
@@ -1268,20 +1268,20 @@ export function PageCmsEditor({
 
           <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
+              <h3 className="p-h3">
                 {selectedSection ? "Section settings" : "Sections"}
               </h3>
               {selectedSection ? (
                 <button
                   type="button"
                   onClick={() => setSelectedSectionId(null)}
-                  className="rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+                  className="p-btn p-btn--ghost p-btn--sm"
                 >
                   Show all sections
                 </button>
               ) : null}
             </div>
-            <p className="mt-2 text-xs text-[#828B9B]">
+            <p className="p-hint">
               {selectedSection
                 ? "Editing one section. Changes are saved with the page."
                 : "Pick a section on the left to edit it on its own, or use the full list here."}
@@ -1331,10 +1331,10 @@ export function PageCmsEditor({
               />
             ))}
             {sections.length === 0 && newSections.length === 0 ? (
-              <p className="text-sm text-[#667085]">No sections yet. Add one above.</p>
+              <p className="p-sub">No sections yet. Add one above.</p>
             ) : null}
           </div>
-            <p className="mt-4 text-xs text-[#828B9B]">
+            <p className="mt-4 p-hint">
               Section changes are saved with this page action.
             </p>
           </div>
@@ -1349,7 +1349,7 @@ export function PageCmsEditor({
       ) : null}
 
       {message ? (
-        <p className="text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}
@@ -1363,24 +1363,24 @@ export function PageCmsEditor({
         >
           <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 id="page-preview-title" className="text-lg font-semibold">
+              <h3 id="page-preview-title" className="p-h3">
                 Preview — {preview.title}
               </h3>
               <button
                 type="button"
                 onClick={() => setPreview(null)}
-                className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-xs font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Close
               </button>
             </div>
-            <p className="mt-2 text-sm text-[#667085]">
+            <p className="p-sub">
               This shows every non-deleted section regardless of publish state, exactly
               as an editor working ahead of publication would need to see it.
             </p>
             <div className="mt-4 space-y-4">
               {(preview.sections ?? []).map((section) => (
-                <div key={section.id} className="rounded-xl border border-[#E8ECF3] p-4">
+                <div key={section.id} className="p-card">
                   <div className="flex items-center gap-2 text-xs font-semibold text-[#828B9B]">
                     <span className="rounded-full bg-[#EEF3FF] px-2 py-0.5 text-[#1657CF]">
                       {section.sectionType}
@@ -1394,7 +1394,7 @@ export function PageCmsEditor({
                   ) : null}
                   <h4 className="mt-1 text-base font-semibold">{section.heading}</h4>
                   {section.subheading ? (
-                    <p className="mt-1 text-sm text-[#48505F]">{section.subheading}</p>
+                    <p className="mt-1 p-sub">{section.subheading}</p>
                   ) : null}
                   {section.ctaPrimaryLabel ? (
                     <p className="mt-2 text-sm font-semibold text-[#1657CF]">

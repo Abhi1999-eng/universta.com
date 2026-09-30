@@ -144,13 +144,13 @@ export function SubSubjectsEditor({
       className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-6"
     >
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+        <p className="p-eyebrow">
           Subject structure
         </p>
         <h3 id="specializations-heading" className="mt-2 text-xl font-semibold">
           Specializations
         </h3>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-sub">
           Build the specializations that sit under this Subject. They do not
           have separate Publish buttons; the Subject-level Publish action
           publishes every complete specialization together.
@@ -185,7 +185,7 @@ export function SubSubjectsEditor({
             <input
               id="specialization-name"
               required
-              className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+              className="p-input"
               value={draft.name}
               onChange={(event) => setDraftField('name', event.target.value)}
             />
@@ -198,7 +198,7 @@ export function SubSubjectsEditor({
             />
             <input
               id="specialization-slug"
-              className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+              className="p-input"
               value={draft.slug}
               onChange={(event) => setDraftField('slug', event.target.value)}
               placeholder="Generated from name"
@@ -218,7 +218,7 @@ export function SubSubjectsEditor({
             required
             maxLength={1000}
             rows={3}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+            className="p-input"
             value={draft.shortDescription}
             onChange={(event) =>
               setDraftField('shortDescription', event.target.value)
@@ -236,7 +236,7 @@ export function SubSubjectsEditor({
             id="specialization-overview"
             maxLength={20000}
             rows={5}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+            className="p-input"
             value={draft.overview}
             onChange={(event) => setDraftField('overview', event.target.value)}
           />
@@ -270,7 +270,7 @@ export function SubSubjectsEditor({
               id="specialization-display-order"
               type="number"
               min="0"
-              className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+              className="p-input"
               value={draft.displayOrder}
               onChange={(event) =>
                 setDraftField('displayOrder', event.target.value)
@@ -297,7 +297,7 @@ export function SubSubjectsEditor({
         <div className="flex justify-end">
           <button
             disabled={saving}
-            className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="p-btn p-btn--primary"
           >
             {saving ? 'Adding…' : 'Add specialization'}
           </button>
@@ -338,14 +338,14 @@ export function SubSubjectsEditor({
             <button
               type="button"
               onClick={() => setPending(null)}
-              className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => void remove()}
-              className="rounded-lg bg-[#B42318] px-4 py-2 text-sm font-semibold text-white"
+              className="p-btn p-btn--danger p-btn--sm"
             >
               Delete
             </button>
@@ -409,7 +409,7 @@ function SpecializationCard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="font-semibold">{row.name}</h4>
-          <p className="mt-1 text-xs text-[#828B9B]">/{row.slug}</p>
+          <p className="p-hint">/{row.slug}</p>
         </div>
         <span className="rounded-full bg-[#F2F4F7] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[#667085]">
           {row.status}
@@ -427,7 +427,7 @@ function SpecializationCard({
           <input
             id={`specialization-${row.id}-name`}
             required
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+            className="p-input"
             value={draft.name}
             onChange={(event) => set('name', event.target.value)}
           />
@@ -440,7 +440,7 @@ function SpecializationCard({
           />
           <input
             id={`specialization-${row.id}-slug`}
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+            className="p-input"
             value={draft.slug}
             onChange={(event) => set('slug', event.target.value)}
           />
@@ -459,7 +459,7 @@ function SpecializationCard({
           required
           rows={3}
           maxLength={1000}
-          className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+          className="p-input"
           value={draft.shortDescription}
           onChange={(event) => set('shortDescription', event.target.value)}
         />
@@ -475,7 +475,7 @@ function SpecializationCard({
           id={`specialization-${row.id}-overview`}
           rows={5}
           maxLength={20000}
-          className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+          className="p-input"
           value={draft.overview}
           onChange={(event) => set('overview', event.target.value)}
         />
@@ -509,7 +509,7 @@ function SpecializationCard({
             id={`specialization-${row.id}-display-order`}
             type="number"
             min="0"
-            className="mt-2 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 font-normal"
+            className="p-input"
             value={draft.displayOrder}
             onChange={(event) => set('displayOrder', event.target.value)}
           />
@@ -541,7 +541,7 @@ function SpecializationCard({
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-lg border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF] disabled:opacity-50"
+          className="p-btn p-btn--outline"
         >
           {saving ? 'Saving…' : 'Save specialization'}
         </button>

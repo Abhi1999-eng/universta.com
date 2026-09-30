@@ -62,11 +62,11 @@ export function SiteVerificationManager() {
       <h3 className="text-lg font-semibold text-[#0D1524]">
         Google Search Console
       </h3>
-      <p className="mt-2 text-sm leading-6 text-[#667085]">
+      <p className="p-sub">
         Paste only the content value from Google&apos;s verification tag. Do not
         paste HTML.
       </p>
-      <label className="mt-5 block text-sm font-semibold text-[#344054]">
+      <label className="mt-5 block p-label">
         Google verification token
         <input
           className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]"
@@ -80,7 +80,7 @@ export function SiteVerificationManager() {
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary"
         >
           {saving ? "Saving…" : "Save verification"}
         </button>

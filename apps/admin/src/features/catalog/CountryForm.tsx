@@ -1123,7 +1123,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   if (loading)
     return (
       <section className="mx-auto max-w-[1100px] rounded-2xl border border-[#E8ECF3] bg-white p-8">
-        <p className="text-sm text-[#667085]">
+        <p className="p-sub">
           Loading complete country editor…
         </p>
       </section>
@@ -1134,24 +1134,24 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       className="mx-auto w-full min-w-0 max-w-[1180px] px-4 sm:px-6 lg:px-0"
       aria-labelledby="country-form-heading"
     >
-      <Link href="/countries" className="text-sm font-semibold text-[#1657CF]">
+      <Link href="/countries" className="p-link">
         ← Countries
       </Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">
+          <p className="p-eyebrow">
             Unified country editor
           </p>
-          <h2 id="country-form-heading" className="mt-2 text-3xl font-semibold">
+          <h2 id="country-form-heading" className="p-h1">
             {record ? "Edit country" : "Create country"}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#667085]">
+          <p className="mt-2 max-w-3xl p-sub">
             Editorial country information, configuration and curated
             relationships. University and offering facts are derived
             automatically.
           </p>
         </div>
-        <span className="rounded-full border border-[#D9E0EA] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
+        <span className="p-chip">
           {record?.status ?? "DRAFT"}
         </span>
       </div>
@@ -1159,7 +1159,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       {error ? (
         <p
           role="alert"
-          className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] px-4 py-3 text-sm font-semibold text-[#B42318]"
+          className="p-alert p-alert--error"
         >
           {error}
         </p>
@@ -1167,7 +1167,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       {issues.length ? (
         <div
           role="alert"
-          className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4 text-sm text-[#B42318]"
+          className="p-alert p-alert--error"
         >
           <p className="font-semibold">Fix these fields:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -1240,7 +1240,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 minHeight="min-h-28"
               />
               {fieldErrors.shortDescription ? (
-                <p role="alert" className="mt-1 text-xs font-semibold text-[#B42318]">
+                <p role="alert" className="mt-1 p-danger">
                   {fieldErrors.shortDescription}
                 </p>
               ) : null}
@@ -1459,7 +1459,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         >
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-[#344054]">Suggestions</p>
+              <p className="p-label">Suggestions</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SUGGESTED_DOCUMENTS.filter(
                   (name) => !documents.some((row) => row.name === name),
@@ -1479,14 +1479,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               documents.map((row, index) => (
                 <div
                   key={index}
-                  className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"
+                  className="p-panel"
                 >
                   <div className="flex justify-between">
                     <h4 className="font-semibold">Document {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => removeDocument(index)}
-                      className="text-sm font-semibold text-[#B42318]"
+                      className="p-danger"
                     >
                       Remove
                     </button>
@@ -1522,7 +1522,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-[#667085]">
+              <p className="p-sub">
                 No documents listed. The public page leaves the section out
                 until you add one.
               </p>
@@ -1530,7 +1530,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             <button
               type="button"
               onClick={() => addDocument("")}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               + Add document
             </button>
@@ -1563,7 +1563,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 setSections((rows) => [...rows, { ...blankSection }]);
                 setDirty(true);
               }}
-              className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]"
+              className="p-btn p-btn--outline p-btn--sm"
             >
               + Add section
             </button>
@@ -1598,7 +1598,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 setFaqs((rows) => [...rows, blankFaq()]);
                 setDirty(true);
               }}
-              className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]"
+              className="p-btn p-btn--outline p-btn--sm"
             >
               + Add FAQ
             </button>
@@ -1610,14 +1610,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               faqs.map((row, index) => (
                 <div
                   key={row.id ?? `faq-${index}`}
-                  className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"
+                  className="p-panel"
                 >
                   <div className="flex justify-between">
                     <h4 className="font-semibold">FAQ {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => removeFaq(index)}
-                      className="text-sm font-semibold text-[#B42318]"
+                      className="p-danger"
                     >
                       Remove
                     </button>
@@ -1682,7 +1682,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 setCards((rows) => [...rows, blankCard()]);
                 setDirty(true);
               }}
-              className="rounded-xl border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF]"
+              className="p-btn p-btn--outline p-btn--sm"
             >
               + Add guidance card
             </button>
@@ -1694,14 +1694,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
               cards.map((row, index) => (
                 <div
                   key={row.id ?? `card-${index}`}
-                  className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5"
+                  className="p-panel"
                 >
                   <div className="flex justify-between">
                     <h4 className="font-semibold">Guidance card {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => removeCard(index)}
-                      className="text-sm font-semibold text-[#B42318]"
+                      className="p-danger"
                     >
                       Remove
                     </button>
@@ -1867,13 +1867,13 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-6 sm:p-8">
+    <fieldset className="p-panel">
       <legend className="sr-only">{title}</legend>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#1657CF]">
+      <p className="p-eyebrow">
         {eyebrow}
       </p>
       <h3 className="mt-2 text-xl font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#667085]">{description}</p>
+      <p className="p-sub">{description}</p>
       <div className="mt-6">{children}</div>
     </fieldset>
   );
@@ -1893,7 +1893,7 @@ function Card({
  */
 function Empty({ text }: { text: string }) {
   return (
-    <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">
+    <div className="p-card p-sub">
       {text}
     </div>
   );
@@ -1974,7 +1974,7 @@ function Input({
         <p
           id={errorId}
           role="alert"
-          className="mt-1 text-sm font-medium text-[#B42318]"
+          className="mt-1 p-danger"
         >
           {error}
         </p>
@@ -2197,7 +2197,7 @@ function ContinentField({
               </div>
             </div>
             {error ? (
-              <p role="alert" className="text-sm font-semibold text-[#B42318]">
+              <p role="alert" className="p-danger">
                 {error}
               </p>
             ) : null}
@@ -2205,7 +2205,7 @@ function ContinentField({
               <button
                 type="button"
                 onClick={close}
-                className="rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"
+                className="p-btn p-btn--ghost"
               >
                 Cancel
               </button>
@@ -2213,7 +2213,7 @@ function ContinentField({
                 type="button"
                 onClick={() => void submit()}
                 disabled={busy || !draft.name.trim()}
-                className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+                className="p-btn p-btn--primary"
               >
                 {busy ? "Adding…" : "Add continent"}
               </button>
@@ -2234,7 +2234,7 @@ function BooleanField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 self-end rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold">
+    <label className="p-btn p-btn--ghost">
       <input
         type="checkbox"
         checked={checked}
@@ -2284,7 +2284,7 @@ function CheckboxGroup({
   };
   return (
     <fieldset>
-      <legend className="text-sm font-semibold text-[#344054]">{title}</legend>
+      <legend className="p-label">{title}</legend>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {options.map((option) => (
           <label
@@ -2322,18 +2322,18 @@ function CheckboxGroup({
             />
             <button
               type="button"
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-60"
+              className="p-btn p-btn--ghost p-btn--sm"
               disabled={adding || !draft.trim()}
               onClick={() => void submitNew()}
             >
               {adding ? "Adding…" : addLabel}
             </button>
           </div>
-          <p className="mt-2 text-xs text-[#667085]">
+          <p className="p-hint">
             Added options are available on every country.
           </p>
           {addError ? (
-            <p role="alert" className="mt-1 text-xs text-[#B42318]">
+            <p role="alert" className="mt-1 p-danger">
               {addError}
             </p>
           ) : null}
@@ -2363,11 +2363,11 @@ function RelationPicker({
   disabled?: boolean;
 }) {
   return (
-    <fieldset className="rounded-xl border border-[#D9E0EA] p-4">
-      <legend className="px-1 text-sm font-semibold text-[#344054]">
+    <fieldset className="p-card">
+      <legend className="px-1 p-label">
         {title}
       </legend>
-      <p className="mt-1 text-sm text-[#667085]">
+      <p className="mt-1 p-sub">
         {disabled
           ? "Save the country first, then curate published records."
           : description}
@@ -2392,7 +2392,7 @@ function RelationPicker({
             </label>
           ))
         ) : (
-          <p className="text-sm text-[#667085]">
+          <p className="p-sub">
             No eligible published records yet.
           </p>
         )}
@@ -2416,13 +2416,13 @@ function CountrySection({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-[#E8ECF3] bg-[#FBFCFE] p-5">
+    <div className="p-panel">
       <div className="flex justify-between">
         <h4 className="font-semibold">Content section {index + 1}</h4>
         <button
           type="button"
           onClick={onRemove}
-          className="text-sm font-semibold text-[#B42318]"
+          className="p-danger"
         >
           Remove
         </button>
@@ -2537,7 +2537,7 @@ function CurrencyRow({
     <label className="block text-sm font-semibold">
       {label}
       <select
-        className="mt-2 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+        className="p-input"
         value={selected?.code ?? ""}
         onChange={(event) => apply(currencyByCode(event.target.value))}
       >
@@ -2558,7 +2558,7 @@ function CurrencyRow({
         {field("Currency symbol", (option) => `${option.symbol} · ${option.code}`)}
       </div>
       {code && !selected ? (
-        <p className="mt-2 text-xs text-[#667085]">
+        <p className="p-hint">
           {`This country stores ${code}${symbol ? ` (${symbol})` : ""}, which is not in the selectable list. Choosing a currency above will replace it.`}
         </p>
       ) : null}
@@ -2580,7 +2580,7 @@ function FlagPreview({ iso2 }: { iso2: string }) {
         <span aria-hidden="true" className="text-2xl leading-none">
           {emoji || "—"}
         </span>
-        <span className="text-xs text-[#667085]">
+        <span className="p-hint">
           {emoji
             ? `Derived from ISO ${iso2.toUpperCase()}`
             : "Set the ISO code to show this country's flag"}

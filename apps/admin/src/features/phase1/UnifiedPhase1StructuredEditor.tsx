@@ -62,10 +62,10 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
   const actions = form ? createPortal(
     <div className="sticky bottom-4 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E0EA] bg-white/95 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.12)] backdrop-blur">
       <div>
-        <p className="text-sm font-semibold text-[#1D2939]">
+        <p >
           One record, one save flow
         </p>
-        <p className="mt-1 text-xs text-[#667085]">
+        <p className="p-hint">
           Every field above is saved together. Draft keeps the record private;
           Publish saves the same complete form and makes it live.
         </p>
@@ -82,7 +82,7 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
         <button
           type="button"
           onClick={() => submit('publish')}
-          className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white"
+          className="p-btn p-btn--primary"
         >
           Publish
         </button>

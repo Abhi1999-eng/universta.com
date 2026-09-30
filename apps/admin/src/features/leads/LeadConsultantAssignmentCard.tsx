@@ -100,38 +100,38 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
 
   return (
     <section className="mx-auto mb-6 max-w-[1120px] rounded-2xl border border-[#DCE8FF] bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+      <div className="p-head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#1657CF]">
             Lead routing
           </p>
           <h2 className="mt-2 text-xl font-semibold">Consultant assignment</h2>
-          <p className="mt-1 text-sm text-[#667085]">
+          <p className="mt-1 p-sub">
             Assign this lead to a consultant. The same assignment can be used by
             the consultant panel when that panel is introduced later.
           </p>
         </div>
         {assigned ? (
           <div className="rounded-xl bg-[#F7F9FC] px-4 py-3 text-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+            <p className="p-eyebrow">
               Currently assigned
             </p>
             <p className="mt-1 font-semibold text-[#0D1524]">{assigned.name}</p>
           </div>
         ) : (
-          <span className="rounded-full bg-[#FFF5E8] px-3 py-1.5 text-xs font-semibold text-[#9A5B00]">
+          <span className="p-badge">
             Unassigned
           </span>
         )}
       </div>
 
       {loading ? (
-        <p className="mt-5 text-sm text-[#667085]" role="status">
+        <p className="p-sub" role="status">
           Loading consultants…
         </p>
       ) : (
         <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-          <label className="grid gap-2 text-sm font-semibold text-[#48505F]">
+          <label className="p-field">
             Assign to consultant
             <select
               className="lead-control"
@@ -157,7 +157,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
             disabled={
               working || (assigned?.id ?? '') === selectedId || consultants.length === 0
             }
-            className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="p-btn p-btn--primary"
           >
             {working ? 'Saving…' : assigned ? 'Save reassignment' : 'Assign lead'}
           </button>
@@ -182,7 +182,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
         </p>
       ) : null}
       {message ? (
-        <p className="mt-4 rounded-xl bg-[#E9F8F0] px-4 py-3 text-sm font-semibold text-[#18794E]" role="status">
+        <p className="p-alert p-alert--ok" role="status">
           {message}
         </p>
       ) : null}

@@ -37,7 +37,7 @@ export function CatalogSeoEditor({ seo, media, busy, onSave, onDelete, onError }
   useEffect(() => { const timer = window.setTimeout(() => setDraft(seoDraft(seo)), 0); return () => window.clearTimeout(timer); }, [seo]);
   async function save() { try { if (!draft.seoTitle.trim() || !draft.metaDescription.trim()) throw new Error('SEO title and meta description are required.'); const parse = (value: string, label: string) => { if (!value.trim()) return undefined; const parsed: unknown = JSON.parse(value); if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error(`${label} must be a JSON object.`); return parsed; }; await onSave({ ...draft, schemaJson: parse(draft.schemaJson, 'Schema JSON'), hreflangJson: parse(draft.hreflangJson, 'Hreflang JSON'), ...(seo ? { expectedUpdatedAt: seo.updatedAt } : {}) }); } catch (cause: unknown) { onError(cause instanceof Error ? cause.message : 'Unable to save SEO metadata'); } }
   return (
-    <fieldset className="rounded-2xl border border-[#E8ECF3] bg-white p-6">
+    <fieldset className="p-panel">
       <legend className="sr-only">SEO metadata</legend>
       <h3 className="text-xl font-semibold">SEO metadata and previews</h3>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -76,7 +76,7 @@ export function CatalogSeoEditor({ seo, media, busy, onSave, onDelete, onError }
         <Preview title="Twitter preview" titleText={draft.twitterTitle || draft.seoTitle} description={draft.twitterDescription || draft.metaDescription} />
       </div>
       <div className="mt-5 flex gap-3">
-        <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save SEO'}</button>
+        <button type="button" disabled={busy} onClick={() => void save()} className="p-btn p-btn--primary">{busy ? 'Saving…' : 'Save SEO'}</button>
         {seo && onDelete ? <button type="button" disabled={busy} onClick={onDelete} className="rounded-xl border border-[#B42318] px-4 py-2 text-sm font-semibold text-[#B42318] disabled:opacity-40">Remove SEO</button> : null}
       </div>
     </fieldset>
@@ -98,4 +98,4 @@ function Field({ label, value, onChange, textarea = false, required = false, hel
     </div>
   );
 }
-function Preview({ title, titleText, description }: { title: string; titleText: string; description: string }) { return <div className="rounded-xl border border-[#E8ECF3] p-3"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#828B9B]">{title}</p><strong className="mt-3 block truncate text-[#1657CF]">{titleText || 'Untitled page'}</strong><p className="mt-2 line-clamp-3 text-xs leading-5 text-[#667085]">{description || 'No description yet.'}</p></div>; }
+function Preview({ title, titleText, description }: { title: string; titleText: string; description: string }) { return <div className="p-card"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#828B9B]">{title}</p><strong className="mt-3 block truncate text-[#1657CF]">{titleText || 'Untitled page'}</strong><p className="mt-2 line-clamp-3 text-xs leading-5 text-[#667085]">{description || 'No description yet.'}</p></div>; }

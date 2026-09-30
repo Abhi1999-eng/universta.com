@@ -217,9 +217,9 @@ export function ExperimentsManager() {
   return (
     <section className="mx-auto max-w-[1240px]">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#828B9B]">A/B testing</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Experiments</h2>
-        <p className="mt-2 text-sm text-[#667085]">
+        <p className="p-eyebrow">A/B testing</p>
+        <h2 className="p-h1">Experiments</h2>
+        <p className="p-sub">
           Run bot-safe, deterministic variant tests against a single CMS section. Each
           visitor sees the same variant on every visit; search crawlers always see the
           control content.
@@ -290,7 +290,7 @@ export function ExperimentsManager() {
       </form>
 
       {message ? (
-        <p className="mt-4 text-sm text-[#48505F]" role="status">
+        <p className="p-sub" role="status">
           {message}
         </p>
       ) : null}
@@ -313,11 +313,11 @@ export function ExperimentsManager() {
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">{experiment.name}</p>
-                <span className="rounded-full bg-[#EEF2F8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#48505F]">
+                <span className="p-badge">
                   {experiment.status}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#828B9B]">
+              <p className="p-hint">
                 {experiment.section.heading || experiment.section.sectionKey} ·{" "}
                 {experiment.variants.length} variant{experiment.variants.length === 1 ? "" : "s"}
               </p>
@@ -325,22 +325,22 @@ export function ExperimentsManager() {
             </button>
           ))}
           {experiments.length === 0 ? (
-            <p className="text-sm text-[#667085]">No experiments yet.</p>
+            <p className="p-sub">No experiments yet.</p>
           ) : null}
         </div>
 
         {selected ? (
-          <div className="rounded-2xl border border-[#E8ECF3] bg-white p-5">
+          <div className="p-panel">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold">{selected.name}</h3>
-                <p className="text-xs text-[#828B9B]">
+                <h3 className="p-h3">{selected.name}</h3>
+                <p className="p-hint">
                   Targets: {selected.section.heading || selected.section.sectionKey}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <select
-                  className="rounded-xl border border-[#D9E0EA] bg-white px-3 py-2 text-sm"
+                  className="p-input p-input--sm"
                   value={selected.status}
                   onChange={(event) => void updateStatus(selected, event.target.value)}
                 >
@@ -360,7 +360,7 @@ export function ExperimentsManager() {
                 <button
                   type="button"
                   onClick={() => void archive(selected)}
-                  className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700"
+                  className="p-btn p-btn--danger"
                 >
                   Archive
                 </button>
@@ -369,20 +369,20 @@ export function ExperimentsManager() {
 
             {stats ? (
               <div className="mt-5 overflow-x-auto rounded-xl border border-[#E8ECF3]">
-                <table className="w-full text-sm">
-                  <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+                <table className="p-table u-table">
+                  <thead >
                     <tr>
-                      <th className="px-3 py-2">Variant</th>
-                      <th className="px-3 py-2">Exposures</th>
-                      <th className="px-3 py-2">Conversions</th>
-                      <th className="px-3 py-2">Rate</th>
+                      <th>Variant</th>
+                      <th>Exposures</th>
+                      <th>Conversions</th>
+                      <th>Rate</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stats.map((row) => (
                       <tr key={row.variantId} className="border-t border-[#E8ECF3]">
                         <td className="px-3 py-2 font-medium">
-                          {row.name} {row.isControl ? <span className="text-[#828B9B]">(control)</span> : null}
+                          {row.name} {row.isControl ? <span className="p-muted">(control)</span> : null}
                         </td>
                         <td className="px-3 py-2 tabular-nums">{row.exposureCount}</td>
                         <td className="px-3 py-2 tabular-nums">{row.conversionCount}</td>
@@ -397,7 +397,7 @@ export function ExperimentsManager() {
             <div className="mt-6 space-y-4">
               <h4 className="text-sm font-semibold">Variants</h4>
               {selected.variants.map((variant) => (
-                <div key={variant.id} className="rounded-xl border border-[#E8ECF3] p-4">
+                <div key={variant.id} className="p-card">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold">
                       {variant.name}{" "}
@@ -422,42 +422,42 @@ export function ExperimentsManager() {
                       onBlur={(event) =>
                         void saveVariant(variant, { trafficWeight: Number(event.target.value) || 0 })
                       }
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       placeholder="Traffic weight"
                     />
                     <input
                       defaultValue={variant.eyebrow ?? ""}
                       aria-label={`Eyebrow for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { eyebrow: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       placeholder="Eyebrow override"
                     />
                     <input
                       defaultValue={variant.heading ?? ""}
                       aria-label={`Heading for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { heading: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs sm:col-span-2"
+                      className="p-input p-input--sm sm:col-span-2"
                       placeholder="Heading override"
                     />
                     <input
                       defaultValue={variant.subheading ?? ""}
                       aria-label={`Subheading for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { subheading: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs sm:col-span-2"
+                      className="p-input p-input--sm sm:col-span-2"
                       placeholder="Subheading override"
                     />
                     <input
                       defaultValue={variant.ctaPrimaryLabel ?? ""}
                       aria-label={`CTA label for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { ctaPrimaryLabel: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       placeholder="CTA label override"
                     />
                     <input
                       defaultValue={variant.ctaPrimaryUrl ?? ""}
                       aria-label={`CTA URL for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { ctaPrimaryUrl: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                      className="p-btn p-btn--ghost p-btn--sm"
                       placeholder="CTA URL override"
                     />
                   </div>
@@ -499,7 +499,7 @@ export function ExperimentsManager() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[#D9E0EA] p-8 text-center text-sm text-[#828B9B]">
+          <div className="p-drop">
             Select an experiment to manage its variants and view stats.
           </div>
         )}
