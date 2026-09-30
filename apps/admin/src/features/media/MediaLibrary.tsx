@@ -237,14 +237,14 @@ export function MediaLibrary() {
                 placeholder="Alt text"
                 aria-label={`Alt text for ${asset.originalFileName}`}
                 onBlur={(event) => void saveMeta(asset, { altText: event.target.value })}
-                className="w-full rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                className="p-input p-input--sm"
               />
               <input
                 defaultValue={asset.folder ?? ""}
                 placeholder="Folder"
                 aria-label={`Folder for ${asset.originalFileName}`}
                 onBlur={(event) => void saveMeta(asset, { folder: event.target.value })}
-                className="w-full rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs"
+                className="p-input p-input--sm"
               />
             </div>
             <button

@@ -1065,7 +1065,7 @@ export function CourseEditorialWorkspace({
             <button
               type="button"
               onClick={() => void remove()}
-              className="rounded-lg bg-[#B42318] px-4 py-2 text-sm font-semibold text-white"
+              className="p-btn p-btn--danger p-btn--sm"
             >
               Remove
             </button>
@@ -1647,7 +1647,7 @@ function Availability({
               </article>
             ))
         ) : (
-          <p className="rounded-xl border border-dashed border-[#D9E0EA] p-4 text-sm text-[#667085]">
+          <p className="p-drop">
             No country mappings saved yet.
           </p>
         )}
@@ -1915,7 +1915,7 @@ function Content({
               </article>
             ))
         ) : (
-          <p className="rounded-xl border border-dashed border-[#D9E0EA] p-4 text-sm text-[#667085]">
+          <p className="p-drop">
             No content sections saved yet.
           </p>
         )}

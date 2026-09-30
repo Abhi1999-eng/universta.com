@@ -182,7 +182,7 @@ export function UniversityClaimsManager() {
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">{claim.claimantName}</p>
-                <span className="rounded-full bg-[#EEF2F8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#48505F]">
+                <span className="p-badge">
                   {claim.status}
                 </span>
               </div>
@@ -290,7 +290,7 @@ export function UniversityClaimsManager() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[#D9E0EA] p-8 text-center text-sm text-[#828B9B]">
+          <div className="p-drop">
             Select a claim to review its details, change its status and add notes.
           </div>
         )}

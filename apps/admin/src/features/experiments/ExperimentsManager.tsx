@@ -313,7 +313,7 @@ export function ExperimentsManager() {
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">{experiment.name}</p>
-                <span className="rounded-full bg-[#EEF2F8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#48505F]">
+                <span className="p-badge">
                   {experiment.status}
                 </span>
               </div>
@@ -436,14 +436,14 @@ export function ExperimentsManager() {
                       defaultValue={variant.heading ?? ""}
                       aria-label={`Heading for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { heading: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs sm:col-span-2"
+                      className="p-input p-input--sm sm:col-span-2"
                       placeholder="Heading override"
                     />
                     <input
                       defaultValue={variant.subheading ?? ""}
                       aria-label={`Subheading for ${variant.name}`}
                       onBlur={(event) => void saveVariant(variant, { subheading: event.target.value })}
-                      className="rounded-lg border border-[#E8ECF3] px-2.5 py-1.5 text-xs sm:col-span-2"
+                      className="p-input p-input--sm sm:col-span-2"
                       placeholder="Subheading override"
                     />
                     <input
@@ -499,7 +499,7 @@ export function ExperimentsManager() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[#D9E0EA] p-8 text-center text-sm text-[#828B9B]">
+          <div className="p-drop">
             Select an experiment to manage its variants and view stats.
           </div>
         )}

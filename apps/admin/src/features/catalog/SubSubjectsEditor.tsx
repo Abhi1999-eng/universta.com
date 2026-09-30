@@ -345,7 +345,7 @@ export function SubSubjectsEditor({
             <button
               type="button"
               onClick={() => void remove()}
-              className="rounded-lg bg-[#B42318] px-4 py-2 text-sm font-semibold text-white"
+              className="p-btn p-btn--danger p-btn--sm"
             >
               Delete
             </button>

@@ -284,7 +284,7 @@ function Money({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-xs font-semibold text-[#344054]">
+    <label className="p-label">
       {label}
       <input
         className={inputClass}
@@ -474,7 +474,7 @@ export function CalculatorBuilder({
                   className="rounded-lg border border-[#EAECF0] bg-[#FCFCFD] p-3"
                 >
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="block text-xs font-semibold text-[#344054]">
+                    <label className="p-label">
                       Answer {optionIndex + 1}
                       <input
                         className={inputClass}
@@ -487,7 +487,7 @@ export function CalculatorBuilder({
                         }
                       />
                     </label>
-                    <label className="block text-xs font-semibold text-[#344054]">
+                    <label className="p-label">
                       Living cost changes by
                       <input
                         className={inputClass}

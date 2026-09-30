@@ -107,7 +107,7 @@ export function PageStructurePanel({
                   <button
                     type="button"
                     onClick={() => onRemove(entry.id)}
-                    className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700"
+                    className="p-btn p-btn--danger p-btn--sm"
                     aria-label={`Remove ${name}`}
                   >
                     Remove

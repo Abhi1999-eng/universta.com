@@ -474,7 +474,7 @@ export function LocationsManager() {
                 {linkedStates.map((state) => (
                   <tr key={state.id} className="border-t border-[#E8ECF3]">
                     <td className="px-4 py-3 font-medium">
-                      {state.name} <span className="text-[#9AA3B2]">({state.slug})</span>
+                      {state.name} <span className="p-muted">({state.slug})</span>
                     </td>
                     <td>{state.country.name}</td>
                     <td>
@@ -612,7 +612,7 @@ export function LocationsManager() {
                   <Fragment key={city.id}>
                   <tr className="border-t border-[#E8ECF3]">
                     <td className="px-4 py-3 font-medium">
-                      {city.name} <span className="text-[#9AA3B2]">({city.slug})</span>
+                      {city.name} <span className="p-muted">({city.slug})</span>
                     </td>
                     <td>{city.country.name}</td>
                     <td>{city.state?.name ?? "—"}</td>

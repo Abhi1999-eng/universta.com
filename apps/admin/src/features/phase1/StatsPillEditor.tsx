@@ -205,7 +205,7 @@ export function StatsPillEditor({
             aria-label="Move section up"
             disabled={index === 0}
             onClick={() => onMove(-1)}
-            className="rounded-lg border px-2 py-1 disabled:opacity-40"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             ↑
           </button>
@@ -214,7 +214,7 @@ export function StatsPillEditor({
             aria-label="Move section down"
             disabled={index === total - 1}
             onClick={() => onMove(1)}
-            className="rounded-lg border px-2 py-1 disabled:opacity-40"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             ↓
           </button>

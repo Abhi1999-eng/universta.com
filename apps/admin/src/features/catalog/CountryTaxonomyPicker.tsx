@@ -199,7 +199,7 @@ export function CountryTaxonomyPicker({
 
   return (
     <fieldset
-      className="rounded-xl border border-[#D9E0EA] p-4"
+      className="p-card"
       data-testid={testId}
     >
       <legend className="px-1 text-sm font-semibold">{title}</legend>
@@ -302,14 +302,14 @@ export function CountryTaxonomyPicker({
                           <>
                             <button
                               type="button"
-                              className="text-xs text-[#475467] underline"
+                              className="p-link"
                               onClick={() => setAllChildren(row, true)}
                             >
                               Select all
                             </button>
                             <button
                               type="button"
-                              className="text-xs text-[#475467] underline"
+                              className="p-link"
                               onClick={() => setAllChildren(row, false)}
                             >
                               Clear

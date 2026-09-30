@@ -234,7 +234,7 @@ export function SubjectForm({ id }: { id?: string }) {
           <legend className="sr-only">Specializations</legend>
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="p-eyebrow">Children</p><h3 className="mt-2 text-xl font-semibold">Specializations</h3><p className="p-sub">Create or edit specializations here. They are persisted only when the Subject is saved.</p></div><button type="button" onClick={() => { setSpecializations((rows) => [...rows, blankSpecialization()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add specialization</button></div>
           <div className="mt-6 space-y-5">
-            {specializations.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
+            {specializations.length === 0 ? <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
               <div key={row.id ?? `new-${index}`} className="p-panel">
                 <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">

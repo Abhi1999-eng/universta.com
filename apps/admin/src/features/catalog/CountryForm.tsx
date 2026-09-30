@@ -1893,7 +1893,7 @@ function Card({
  */
 function Empty({ text }: { text: string }) {
   return (
-    <div className="rounded-xl bg-[#F8FAFC] p-5 text-sm text-[#667085]">
+    <div className="p-card p-sub">
       {text}
     </div>
   );
@@ -2363,7 +2363,7 @@ function RelationPicker({
   disabled?: boolean;
 }) {
   return (
-    <fieldset className="rounded-xl border border-[#D9E0EA] p-4">
+    <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold text-[#344054]">
         {title}
       </legend>

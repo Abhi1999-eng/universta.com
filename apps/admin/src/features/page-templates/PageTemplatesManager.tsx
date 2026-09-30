@@ -249,7 +249,7 @@ export function PageTemplatesManager() {
           <form onSubmit={(event) => void save(event)} className="w-full max-w-2xl space-y-5 rounded-2xl bg-white p-6 sm:p-8">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold">{editing ? "Edit template" : "Create template"}</h3>
-              <button type="button" onClick={() => setCreating(false)} className="text-sm font-semibold text-[#667085]">Close</button>
+              <button type="button" onClick={() => setCreating(false)} className="p-sub">Close</button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-semibold">Name
@@ -311,7 +311,7 @@ export function PageTemplatesManager() {
           <div className="w-full max-w-xl rounded-2xl bg-white p-6 sm:p-8">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold">{previewRow.name}</h3>
-              <button type="button" onClick={() => setPreviewRow(null)} className="text-sm font-semibold text-[#667085]">Close</button>
+              <button type="button" onClick={() => setPreviewRow(null)} className="p-sub">Close</button>
             </div>
             <p className="p-hint">{previewRow.pageFamily.replaceAll("_", " ")}</p>
             <ol className="mt-5 space-y-3">

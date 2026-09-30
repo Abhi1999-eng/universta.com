@@ -121,7 +121,7 @@ export function FooterBuilder({
                     type="button"
                     onClick={() => commit(rows.filter((entry) => entry.id !== row.id))}
                     aria-label={`Remove row ${rowIndex + 1}`}
-                    className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700"
+                    className="p-btn p-btn--danger p-btn--sm"
                   >
                     Remove
                   </button>
