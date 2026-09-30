@@ -61,7 +61,7 @@ type Props = {
   media: EditorialMedia[];
 };
 
-const input = 'mt-2 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]';
+const input = 'p-input';
 
 export function UnifiedSeoFields({ value, onChange, media }: Props) {
   const set = <K extends keyof UnifiedSeoDraft>(key: K, next: UnifiedSeoDraft[K]) =>

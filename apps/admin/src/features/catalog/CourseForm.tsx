@@ -191,7 +191,7 @@ const mappingBlank = (): MappingDraft => ({
 });
 const sectionBlank = (): SectionDraft => ({ sectionKey: 'curriculum', sectionType: 'RICH_TEXT', heading: '', subheading: '', bodyText: '', mediaId: '', status: 'ACTIVE', displayOrder: '0' });
 const faqBlank = (): FaqDraft => ({ question: '', answer: '', status: 'ACTIVE', displayOrder: '0' });
-const input = 'mt-2 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]';
+const input = 'p-input';
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
 const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-');

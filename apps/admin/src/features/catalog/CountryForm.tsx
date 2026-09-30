@@ -237,7 +237,7 @@ const blankConfiguration: CountryConfiguration = {
   popularCourseIds: [],
 };
 const input =
-  "mt-2 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
+  "p-input";
 const slugify = (value: string) =>
   value
     .toLowerCase()

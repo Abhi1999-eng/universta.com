@@ -64,7 +64,7 @@ export function AddSectionLibrary({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Try “countries” or “questions”"
-            className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]"
+            className="p-input"
           />
         </label>
 

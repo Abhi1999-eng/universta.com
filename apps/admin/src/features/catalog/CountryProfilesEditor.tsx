@@ -39,7 +39,7 @@ const day = (value: unknown) => text(value).slice(0, 10);
 const bool = (value: unknown) => value === true || value === "true";
 
 const inputClass =
-  "mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm outline-none focus:border-[#1657CF]";
+  "p-input";
 
 const COST_PERIODS = ["PER_YEAR", "PER_MONTH", "PER_TERM", "ONE_TIME"];
 /* BUDGET_BANDS lived here for the Budget band selector, which has left the cost

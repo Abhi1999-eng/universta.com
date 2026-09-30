@@ -50,7 +50,7 @@ const HEADER_VARIANTS = ["default", "compact", "centered", "minimal"];
 const FOOTER_VARIANTS = ["default", "compact", "minimal"];
 
 const selectClass =
-  "mt-1 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm outline-none focus:border-[#1657CF]";
+  "p-input";
 
 export function ChromeOverridePanel({
   value,

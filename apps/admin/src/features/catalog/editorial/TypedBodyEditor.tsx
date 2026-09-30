@@ -40,6 +40,6 @@ export function TypedBodyEditor({ type, value, onChange, variables = [], entityC
 }
 
 function Text({ id, label, value, onChange, variables }: { id: string; label: string; value: string; onChange: (value: string) => void; variables: readonly DynamicVariable[] }) {
-  const className = 'mt-1 w-full rounded-lg border border-[#D9E0EA] px-2 py-2 font-normal';
+  const className = 'p-input p-input--sm';
   return <label className="block text-xs font-semibold">{label}{variables.length ? <VariableAutocompleteTextControl id={id} value={value} onChange={onChange} variables={variables} maxLength={2000} className={className} /> : <input id={id} value={value} onChange={(event) => onChange(event.target.value)} maxLength={2000} className={className} />}</label>;
 }

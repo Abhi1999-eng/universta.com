@@ -25,7 +25,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data as T;
 }
 
-const inputClass = "mt-1 w-full rounded-lg border border-[#D9E0EA] bg-white px-3 py-2 text-sm outline-none focus:border-[#1657CF]";
+const inputClass = "p-input";
 
 export function ArchivedCitiesRecovery() {
   const searchParams = useSearchParams();

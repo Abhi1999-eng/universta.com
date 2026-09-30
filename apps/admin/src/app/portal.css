@@ -1182,3 +1182,13 @@
 .pa .a-chains { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .pa .a-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 9px 12px; border: 1px solid var(--p-line, rgba(7,20,38,.12)); border-radius: 10px; font-size: 14px; }
 .pa .a-chain .p-hint { margin-left: 4px; }
+
+/* --- corrections found by looking at the screens --- */
+
+/* The reference's dark panel gives its heading and body a light colour but
+   leaves the eyebrow at the page's muted grey, which on navy is barely
+   legible. This panel states the workspace above the greeting, so it needs
+   to be readable on the dark. */
+.pa .p-panel--dark .p-eyebrow,
+.pa .p-panel--dark .p-sub { color: #AEBBCE; }
+.pa .p-panel--dark .p-h1 { color: #fff; }
