@@ -156,7 +156,7 @@ export function MediaUploader({
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm text-[#B42318]">
+        <p role="alert" className="p-danger">
           {error}
         </p>
       ) : null}
@@ -167,7 +167,7 @@ export function MediaUploader({
             type="button"
             onClick={onCancel}
             disabled={uploading}
-            className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-50"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Back to library
           </button>
@@ -175,7 +175,7 @@ export function MediaUploader({
         <button
           type="submit"
           disabled={!file || uploading}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="p-btn p-btn--primary"
         >
           {uploading ? 'Uploading…' : 'Upload and use image'}
         </button>

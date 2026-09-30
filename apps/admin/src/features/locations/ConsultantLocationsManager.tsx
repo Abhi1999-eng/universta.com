@@ -534,7 +534,7 @@ export function ConsultantLocationsManager() {
             <button
               type="button"
               onClick={closeEditor}
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Cancel
             </button>
@@ -580,7 +580,7 @@ export function ConsultantLocationsManager() {
       </form>
 
       {loading ? (
-        <p className="mt-8 text-sm text-[#667085]">Loading…</p>
+        <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-5 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
           <table className="w-full min-w-[800px] text-left text-sm">

@@ -43,7 +43,7 @@ export function AddSectionLibrary({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="p-h3">Add a section</h3>
-            <p className="mt-1 text-sm text-[#667085]">
+            <p className="mt-1 p-sub">
               Pick what you want to appear on the page. You can edit it straight
               after adding.
             </p>
@@ -51,7 +51,7 @@ export function AddSectionLibrary({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E8ECF3] px-3 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Close
           </button>
@@ -91,7 +91,7 @@ export function AddSectionLibrary({
                   <span className="block text-sm font-semibold text-[#1D2433]">
                     {item.label}
                   </span>
-                  <span className="mt-1 block text-xs text-[#667085]">
+                  <span className="mt-1 block p-hint">
                     {item.description}
                   </span>
                 </button>

@@ -80,7 +80,7 @@ export function SiteVerificationManager() {
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary"
         >
           {saving ? "Saving…" : "Save verification"}
         </button>

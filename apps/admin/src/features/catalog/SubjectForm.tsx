@@ -205,13 +205,13 @@ export function SubjectForm({ id }: { id?: string }) {
 
   return (
     <section className="mx-auto max-w-[1040px]" aria-labelledby="subject-form-heading">
-      <Link href="/subjects" className="text-sm font-semibold text-[#1657CF]">← Subjects</Link>
+      <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, specializations, media and SEO are saved together.</p></div>
-        <span className="rounded-full border border-[#D9E0EA] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{status}</span>
+        <span className="p-chip">{status}</span>
       </div>
-      {error ? <p role="alert" className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] px-4 py-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}
-      {issues.length ? <div role="alert" className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4 text-sm text-[#B42318]"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+      {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
+      {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
 
       <form onSubmit={submit} className="mt-8 space-y-6">
         <fieldset className="p-panel">
@@ -245,7 +245,7 @@ export function SubjectForm({ id }: { id?: string }) {
                   <MediaPickerDialog label="Icon media" value={row.iconMediaId} media={media} onChange={(value) => updateSpecialization(index, { iconMediaId: value })} />
                   <MediaPickerDialog label="Listing media" value={row.listingMediaId} media={media} onChange={(value) => updateSpecialization(index, { listingMediaId: value })} />
                   <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor={`spec-order-${index}`} /><input id={`spec-order-${index}`} type="number" min="0" max="999999" className={inputClass} value={row.displayOrder} onChange={(e) => updateSpecialization(index, { displayOrder: e.target.value })} /></div>
-                  <label className="flex items-center gap-3 self-end rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={row.isFeatured} onChange={(e) => updateSpecialization(index, { isFeatured: e.target.checked })} /> Featured specialization</label>
+                  <label className="p-btn p-btn--ghost"><input type="checkbox" checked={row.isFeatured} onChange={(e) => updateSpecialization(index, { isFeatured: e.target.checked })} /> Featured specialization</label>
                 </div>
               </div>
             ))}

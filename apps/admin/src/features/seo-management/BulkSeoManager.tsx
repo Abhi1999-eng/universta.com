@@ -197,7 +197,7 @@ function TemplateTextField({
     <div className="relative">
       <label
         htmlFor={id}
-        className="block text-sm font-semibold text-[#344054]"
+        className="p-label"
       >
         {label}
       </label>
@@ -268,11 +268,11 @@ function TemplateTextField({
                 className={`block w-full rounded-lg px-3 py-2 text-left text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] ${picker?.activeIndex === index ? "bg-[#EAF1FF] text-[#0D3F9E]" : "text-[#344054] hover:bg-[#F7F9FC]"}`}
               >
                 <span className="font-semibold">{variable.label}</span>
-                <span className="ml-2 text-xs text-[#667085]">{`{${variable.key}}`}</span>
+                <span className="ml-2 p-hint">{`{${variable.key}}`}</span>
               </button>
             ))
           ) : (
-            <p className="px-3 py-2 text-sm text-[#667085]">
+            <p className="px-3 py-2 p-sub">
               No matching variables.
             </p>
           )}
@@ -525,7 +525,7 @@ export function BulkSeoManager() {
       <div className="max-w-3xl">
         <label
           htmlFor="bulk-seo-entity"
-          className="block text-sm font-semibold text-[#344054]"
+          className="p-label"
         >
           Configure SEO for
         </label>
@@ -634,7 +634,7 @@ export function BulkSeoManager() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-[#0D1524]">Preview</h3>
           {previewLoading ? (
-            <span className="text-xs font-medium text-[#667085]">
+            <span className="p-hint">
               Updating preview…
             </span>
           ) : null}
@@ -770,7 +770,7 @@ export function BulkSeoManager() {
             helper="Leave blank to use the application canonical URL. Type { or % to insert a variable."
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-semibold text-[#344054]">
+            <label className="p-label">
               Indexing behaviour
               <select
                 className={inputClass}
@@ -793,7 +793,7 @@ export function BulkSeoManager() {
                 <option value="false">Noindex</option>
               </select>
             </label>
-            <label className="block text-sm font-semibold text-[#344054]">
+            <label className="p-label">
               Link following behaviour
               <select
                 className={inputClass}
@@ -825,7 +825,7 @@ export function BulkSeoManager() {
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="p-btn p-btn--primary"
         >
           {saving ? "Saving…" : "Save Bulk SEO"}
         </button>

@@ -297,7 +297,7 @@ export function SubSubjectsEditor({
         <div className="flex justify-end">
           <button
             disabled={saving}
-            className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="p-btn p-btn--primary"
           >
             {saving ? 'Adding…' : 'Add specialization'}
           </button>
@@ -541,7 +541,7 @@ function SpecializationCard({
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-lg border border-[#1657CF] px-4 py-2 text-sm font-semibold text-[#1657CF] disabled:opacity-50"
+          className="p-btn p-btn--outline"
         >
           {saving ? 'Saving…' : 'Save specialization'}
         </button>

@@ -135,7 +135,7 @@ export function GlobalHeaderWorkspace() {
           <h2 id="global-header-heading" className="p-h1">
             Global Header
           </h2>
-          <p className="mt-1 text-sm leading-6 text-[#667085]">
+          <p className="mt-1 p-sub">
             The bar at the top of every page on your website.
           </p>
         </div>

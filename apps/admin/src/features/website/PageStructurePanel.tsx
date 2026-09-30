@@ -70,7 +70,7 @@ export function PageStructurePanel({
                   <span className="block truncate text-sm font-semibold text-[#1D2433]">
                     {name}
                   </span>
-                  <span className="mt-0.5 block text-xs text-[#828B9B]">
+                  <span className="mt-0.5 block p-hint">
                     {sectionLabel(entry.sectionType)}
                     {entry.hiddenEverywhere ? " · Hidden" : ""}
                     {entry.isNew ? " · Not saved yet" : ""}
@@ -120,7 +120,7 @@ export function PageStructurePanel({
       </ul>
 
       {entries.length === 0 ? (
-        <p className="mt-3 text-sm text-[#667085]">
+        <p className="p-sub">
           This page has no sections yet.
         </p>
       ) : null}

@@ -387,7 +387,7 @@ export function SeoManagementHub() {
           </p>
           <StaticPageSeoTable deepLinkKey={deepLinkKey} />
 
-          <p className="mt-8 text-xs text-[#828B9B]">
+          <p className="mt-8 p-hint">
             Not covered here: FAQ entries (nested within each Country/Course
             record — no standalone SEO record exists for an individual FAQ
             question in the schema).

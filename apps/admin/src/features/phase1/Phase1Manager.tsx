@@ -321,7 +321,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     {structured || isPageCms || isNavMenu ? (
                       <button
                         type="button"
-                        className="rounded-lg border border-[#1657CF] px-3 py-2 text-xs font-semibold text-[#1657CF]"
+                        className="p-btn p-btn--outline p-btn--sm"
                         onClick={() => {
                           setCreating(false);
                           setEditingId(row.id);
@@ -334,7 +334,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                       <>
                         <button
                           type="button"
-                          className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
+                          className="p-btn p-btn--primary p-btn--sm"
                           onClick={() =>
                             void action(`${resource}/${row.id}/publish`)
                           }
@@ -354,7 +354,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     ) : (
                       <button
                         type="button"
-                        className="rounded-lg bg-[#1657CF] px-3 py-2 text-xs font-semibold text-white"
+                        className="p-btn p-btn--primary p-btn--sm"
                         disabled={Boolean(row.convertedLeadId)}
                         onClick={() =>
                           void action(`${resource}/${row.id}/convert`)
@@ -365,7 +365,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     )}
                     <button
                       type="button"
-                      className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700"
+                      className="p-btn p-btn--danger p-btn--sm"
                       onClick={() => setPendingArchive(row)}
                     >
                       Archive
@@ -376,7 +376,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
             </tbody>
           </table>
           {rows.length ? null : (
-            <p className="p-6 text-sm text-[#667085]">No records yet.</p>
+            <p className="p-6 p-sub">No records yet.</p>
           )}
         </div>
 
@@ -390,7 +390,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((current) => current - 1)}
-                className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-xs font-semibold disabled:opacity-40"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Previous
               </button>
@@ -398,7 +398,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                 type="button"
                 disabled={page >= listMeta.totalPages}
                 onClick={() => setPage((current) => current + 1)}
-                className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-xs font-semibold disabled:opacity-40"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Next
               </button>
@@ -439,7 +439,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
         ) : null}
       </div>
       {message ? (
-        <p className="mt-5 text-sm text-[#48505F]" role="status">
+        <p className="mt-5 p-sub" role="status">
           {message}
         </p>
       ) : null}
@@ -450,7 +450,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
           aria-modal="true"
           aria-labelledby="archive-record-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="p-modal__panel">
             <h3 id="archive-record-title" className="p-h3">
               Archive this record?
             </h3>
@@ -470,7 +470,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white"
+                className="p-btn p-btn--danger"
                 onClick={() => {
                   void action(`${resource}/${pendingArchive.id}`, "DELETE");
                   setPendingArchive(null);

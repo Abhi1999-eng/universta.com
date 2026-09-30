@@ -1134,7 +1134,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       className="mx-auto w-full min-w-0 max-w-[1180px] px-4 sm:px-6 lg:px-0"
       aria-labelledby="country-form-heading"
     >
-      <Link href="/countries" className="text-sm font-semibold text-[#1657CF]">
+      <Link href="/countries" className="p-link">
         ← Countries
       </Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
@@ -1145,13 +1145,13 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           <h2 id="country-form-heading" className="p-h1">
             {record ? "Edit country" : "Create country"}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#667085]">
+          <p className="mt-2 max-w-3xl p-sub">
             Editorial country information, configuration and curated
             relationships. University and offering facts are derived
             automatically.
           </p>
         </div>
-        <span className="rounded-full border border-[#D9E0EA] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
+        <span className="p-chip">
           {record?.status ?? "DRAFT"}
         </span>
       </div>
@@ -1159,7 +1159,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       {error ? (
         <p
           role="alert"
-          className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] px-4 py-3 text-sm font-semibold text-[#B42318]"
+          className="p-alert p-alert--error"
         >
           {error}
         </p>
@@ -1167,7 +1167,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       {issues.length ? (
         <div
           role="alert"
-          className="mt-5 rounded-xl border border-[#F2C5C5] bg-[#FFF7F7] p-4 text-sm text-[#B42318]"
+          className="p-alert p-alert--error"
         >
           <p className="font-semibold">Fix these fields:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -1459,7 +1459,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         >
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-[#344054]">Suggestions</p>
+              <p className="p-label">Suggestions</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SUGGESTED_DOCUMENTS.filter(
                   (name) => !documents.some((row) => row.name === name),
@@ -2213,7 +2213,7 @@ function ContinentField({
                 type="button"
                 onClick={() => void submit()}
                 disabled={busy || !draft.name.trim()}
-                className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+                className="p-btn p-btn--primary"
               >
                 {busy ? "Adding…" : "Add continent"}
               </button>
@@ -2234,7 +2234,7 @@ function BooleanField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 self-end rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold">
+    <label className="p-btn p-btn--ghost">
       <input
         type="checkbox"
         checked={checked}
@@ -2284,7 +2284,7 @@ function CheckboxGroup({
   };
   return (
     <fieldset>
-      <legend className="text-sm font-semibold text-[#344054]">{title}</legend>
+      <legend className="p-label">{title}</legend>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {options.map((option) => (
           <label
@@ -2322,7 +2322,7 @@ function CheckboxGroup({
             />
             <button
               type="button"
-              className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-60"
+              className="p-btn p-btn--ghost p-btn--sm"
               disabled={adding || !draft.trim()}
               onClick={() => void submitNew()}
             >
@@ -2367,7 +2367,7 @@ function RelationPicker({
       <legend className="px-1 text-sm font-semibold text-[#344054]">
         {title}
       </legend>
-      <p className="mt-1 text-sm text-[#667085]">
+      <p className="mt-1 p-sub">
         {disabled
           ? "Save the country first, then curate published records."
           : description}
@@ -2580,7 +2580,7 @@ function FlagPreview({ iso2 }: { iso2: string }) {
         <span aria-hidden="true" className="text-2xl leading-none">
           {emoji || "—"}
         </span>
-        <span className="text-xs text-[#667085]">
+        <span className="p-hint">
           {emoji
             ? `Derived from ISO ${iso2.toUpperCase()}`
             : "Set the ISO code to show this country's flag"}

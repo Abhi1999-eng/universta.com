@@ -471,7 +471,7 @@ export function JoditRichText({
                     {suggestion.label}
                   </span>
                   {suggestion.detail ? (
-                    <span className="block text-xs text-[#667085]">
+                    <span className="block p-hint">
                       {suggestion.detail}
                     </span>
                   ) : null}

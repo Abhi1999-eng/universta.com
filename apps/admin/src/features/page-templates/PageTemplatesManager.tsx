@@ -207,7 +207,7 @@ export function PageTemplatesManager() {
       ) : null}
 
       {loading ? (
-        <p className="mt-8 text-sm text-[#667085]">Loading…</p>
+        <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-8 grid gap-4">
           {rows.map((row) => (
@@ -225,7 +225,7 @@ export function PageTemplatesManager() {
                   <p className="p-hint">
                     {row.templateKey} · {row.pageFamily.replaceAll("_", " ")} · {row._count?.pages ?? 0} page(s) assigned
                   </p>
-                  {row.description ? <p className="mt-2 max-w-2xl text-sm text-[#48505F]">{row.description}</p> : null}
+                  {row.description ? <p className="mt-2 max-w-2xl p-sub">{row.description}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setPreviewRow(row)} className="p-btn p-btn--ghost p-btn--sm">Preview</button>
@@ -238,7 +238,7 @@ export function PageTemplatesManager() {
           ))}
           {rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#D9E0EA] bg-white p-8 text-center text-sm text-[#667085]">
-              No page templates yet. <button type="button" onClick={openCreate} className="font-semibold text-[#1657CF]">Create the first one</button>.
+              No page templates yet. <button type="button" onClick={openCreate} className="p-link">Create the first one</button>.
             </div>
           ) : null}
         </div>
@@ -286,8 +286,8 @@ export function PageTemplatesManager() {
                       <input className={inputClass} value={section.heading ?? ""} onChange={(event) => updateSection(index, { heading: event.target.value })} />
                     </label>
                     <div className="flex items-end gap-1">
-                      <button type="button" onClick={() => moveSection(index, -1)} disabled={index === 0} className="rounded-lg border border-[#D9E0EA] px-2 py-2.5 text-xs font-semibold disabled:opacity-40">↑</button>
-                      <button type="button" onClick={() => moveSection(index, 1)} disabled={index === sections.length - 1} className="rounded-lg border border-[#D9E0EA] px-2 py-2.5 text-xs font-semibold disabled:opacity-40">↓</button>
+                      <button type="button" onClick={() => moveSection(index, -1)} disabled={index === 0} className="p-btn p-btn--ghost p-btn--sm">↑</button>
+                      <button type="button" onClick={() => moveSection(index, 1)} disabled={index === sections.length - 1} className="p-btn p-btn--ghost p-btn--sm">↓</button>
                       <button type="button" onClick={() => removeSection(index)} className="rounded-lg border border-[#F2C5C5] px-2 py-2.5 text-xs font-semibold text-[#B42318]">Remove</button>
                     </div>
                   </div>
@@ -299,7 +299,7 @@ export function PageTemplatesManager() {
             </fieldset>
 
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setCreating(false)} className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold">Cancel</button>
+              <button type="button" onClick={() => setCreating(false)} className="p-btn p-btn--ghost p-btn--sm">Cancel</button>
               <button disabled={saving} className={buttonClass}>{saving ? "Saving…" : "Save template"}</button>
             </div>
           </form>

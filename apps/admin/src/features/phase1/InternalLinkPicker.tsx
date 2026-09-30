@@ -159,7 +159,7 @@ export function InternalLinkPicker({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Close
               </button>
@@ -205,7 +205,7 @@ export function InternalLinkPicker({
                     className="block w-full rounded-xl border border-[#E8ECF3] p-3 text-left hover:border-[#1657CF]"
                   >
                     <strong className="block">{row.label}</strong>
-                    <span className="mt-1 block text-xs text-[#667085]">
+                    <span className="mt-1 block p-hint">
                       {row.entityType} · {row.path} · {row.status}
                     </span>
                   </button>

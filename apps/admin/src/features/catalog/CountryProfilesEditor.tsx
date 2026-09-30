@@ -435,7 +435,7 @@ export const CountryProfilesEditor = forwardRef<
         <h2 id="country-profiles-heading" className="mt-2 text-2xl font-semibold">
           Cost, visa, English and statistics
         </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-[#667085]">
+        <p className="mt-2 max-w-3xl p-sub">
           Each section saves on its own. Leave a value empty to let the
           catalogue answer for it.
         </p>
@@ -661,7 +661,7 @@ function ProfileCard({
   return (
     <section className="min-w-0 rounded-2xl border border-[#E8ECF3] bg-white p-4 sm:p-6">
       <h3 className="p-h3">{title}</h3>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">
+      <p className="mt-1 max-w-3xl p-sub">
         {description}
       </p>
       <div className={`mt-5 grid gap-4 ${full ? "" : "sm:grid-cols-2"}`}>
@@ -677,7 +677,7 @@ function ProfileCard({
           {busy ? "Saving…" : `Save ${title.toLowerCase()}`}
         </button>
         {unsaved ? (
-          <p className="text-xs text-[#667085]">
+          <p className="p-hint">
             Saved with the country the first time you use Save draft or
             Publish.
           </p>

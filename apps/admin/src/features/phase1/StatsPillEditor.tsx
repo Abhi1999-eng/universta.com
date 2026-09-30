@@ -301,7 +301,7 @@ export function StatsPillEditor({
                     }
                   />
                   {fields[`items.${itemIndex}.label`] ? (
-                    <small className="text-[#B42318]">
+                    <small className="p-danger">
                       {fields[`items.${itemIndex}.label`]}
                     </small>
                   ) : null}
@@ -319,7 +319,7 @@ export function StatsPillEditor({
                     }
                   />
                   {fields[`items.${itemIndex}.singularLabel`] ? (
-                    <small className="text-[#B42318]">
+                    <small className="p-danger">
                       {fields[`items.${itemIndex}.singularLabel`]}
                     </small>
                   ) : null}
@@ -358,7 +358,7 @@ export function StatsPillEditor({
                     }
                   />
                   {fields[`items.${itemIndex}.manualValue`] ? (
-                    <small className="text-[#B42318]">
+                    <small className="p-danger">
                       {fields[`items.${itemIndex}.manualValue`]}
                     </small>
                   ) : null}
@@ -393,7 +393,7 @@ export function StatsPillEditor({
                     type="button"
                     disabled={itemIndex === 0}
                     onClick={() => moveItem(item.id, -1)}
-                    className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     Move up
                   </button>
@@ -401,7 +401,7 @@ export function StatsPillEditor({
                     type="button"
                     disabled={itemIndex === ordered.length - 1}
                     onClick={() => moveItem(item.id, 1)}
-                    className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     Move down
                   </button>
@@ -416,7 +416,7 @@ export function StatsPillEditor({
           type="button"
           disabled={busy || !dirty}
           onClick={() => void saveDraft()}
-          className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="p-btn p-btn--primary"
         >
           {busy ? "Working…" : "Save Draft"}
         </button>
@@ -432,7 +432,7 @@ export function StatsPillEditor({
           type="button"
           disabled={dirty}
           onClick={() => setPreviewOpen(true)}
-          className="rounded-xl border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           Preview saved draft
         </button>

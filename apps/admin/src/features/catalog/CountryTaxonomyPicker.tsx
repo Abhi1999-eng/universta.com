@@ -367,7 +367,7 @@ export function CountryTaxonomyPicker({
         </p>
       ) : null}
 
-      <p className="mt-3 text-xs text-[#667085]">
+      <p className="mt-3 p-hint">
         {selected.length} selected
         {childrenSelectable
           ? ` · ${childSelection.length} ${childNoun} selected`
@@ -416,7 +416,7 @@ export function CountryTaxonomyPicker({
               type="button"
               disabled={busy || !draftName.trim()}
               onClick={() => void submitDialog()}
-              className="rounded-lg bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="p-btn p-btn--primary"
             >
               {busy ? "Creating…" : `Create ${singular.toLowerCase()}`}
             </button>

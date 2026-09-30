@@ -146,7 +146,7 @@ export function WebsitePagesManager() {
         >
           Website Pages
         </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#667085]">
+        <p className="mt-3 max-w-3xl p-sub">
           Every public page and reusable template in one place. Static pages
           such as Home and About are edited as individual pages; dynamic detail
           pages such as University Detail are edited as templates that apply to

@@ -124,7 +124,7 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
                   className="h-13 w-full rounded-xl border border-[#DCE2EC] bg-white px-4 text-base text-[#0D1524] outline-none transition placeholder:text-[#9AA3B2] focus:border-[#1657CF] focus:ring-4 focus:ring-[#1657CF]/10"
                   placeholder="you@universta.com"
                 />
-                {emailError ? <p id="email-error" className="mt-2 text-sm text-[#B42318]">{emailError}</p> : null}
+                {emailError ? <p id="email-error" className="mt-2 p-danger">{emailError}</p> : null}
               </div>
 
               <div>
@@ -154,7 +154,7 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
                     {showPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
-                {passwordError ? <p id="password-error" className="mt-2 text-sm text-[#B42318]">{passwordError}</p> : null}
+                {passwordError ? <p id="password-error" className="mt-2 p-danger">{passwordError}</p> : null}
               </div>
 
               <div role="alert" aria-live="polite" className="min-h-6 text-sm text-[#B42318]">

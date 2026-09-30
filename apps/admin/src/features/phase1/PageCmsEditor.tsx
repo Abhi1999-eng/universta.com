@@ -298,7 +298,7 @@ function SectionRowsEditor({
               <button
                 type="button"
                 onClick={() => onChange(items.filter((_, i) => i !== index))}
-                className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700"
+                className="p-btn p-btn--danger p-btn--sm"
               >
                 Remove row
               </button>
@@ -512,7 +512,7 @@ function SectionCard({
             aria-label="Move section up"
             disabled={index === 0}
             onClick={() => onMove(-1)}
-            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold disabled:opacity-40"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             ↑
           </button>
@@ -521,21 +521,21 @@ function SectionCard({
             aria-label="Move section down"
             disabled={index === total - 1}
             onClick={() => onMove(1)}
-            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold disabled:opacity-40"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             ↓
           </button>
           <button
             type="button"
             onClick={onDuplicate}
-            className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-xs font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Duplicate
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-700"
+            className="p-btn p-btn--danger p-btn--sm"
           >
             Remove
           </button>
@@ -607,7 +607,7 @@ function SectionCard({
 
       <fieldset className="p-card">
         <legend className="px-1 text-sm font-semibold">Device visibility</legend>
-        <p className="mb-3 text-xs text-[#667085]">
+        <p className="mb-3 p-hint">
           Hidden sections are removed at that screen size and leave no empty
           space. A section must stay visible on at least one device.
         </p>
@@ -1187,7 +1187,7 @@ export function PageCmsEditor({
                 type="button"
                 disabled={templateBusy || !selectedTemplateId}
                 onClick={() => void applyTemplate()}
-                className="rounded-xl border border-[#D9E0EA] px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+                className="p-btn p-btn--ghost p-btn--sm"
                 title={selectedTemplateId ? undefined : "Choose a template first"}
                 data-testid="apply-template"
               >
@@ -1232,7 +1232,7 @@ export function PageCmsEditor({
             <button
               type="button"
               onClick={() => void openPreview()}
-              className="rounded-xl border border-[#E8ECF3] px-4 py-2 text-sm font-semibold"
+              className="p-btn p-btn--ghost p-btn--sm"
             >
               Preview
             </button>
@@ -1240,7 +1240,7 @@ export function PageCmsEditor({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-[#E8ECF3] px-4 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Close
           </button>
@@ -1334,7 +1334,7 @@ export function PageCmsEditor({
               <p className="p-sub">No sections yet. Add one above.</p>
             ) : null}
           </div>
-            <p className="mt-4 text-xs text-[#828B9B]">
+            <p className="mt-4 p-hint">
               Section changes are saved with this page action.
             </p>
           </div>
@@ -1369,7 +1369,7 @@ export function PageCmsEditor({
               <button
                 type="button"
                 onClick={() => setPreview(null)}
-                className="rounded-lg border border-[#E8ECF3] px-3 py-1 text-xs font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Close
               </button>
@@ -1394,7 +1394,7 @@ export function PageCmsEditor({
                   ) : null}
                   <h4 className="mt-1 text-base font-semibold">{section.heading}</h4>
                   {section.subheading ? (
-                    <p className="mt-1 text-sm text-[#48505F]">{section.subheading}</p>
+                    <p className="mt-1 p-sub">{section.subheading}</p>
                   ) : null}
                   {section.ctaPrimaryLabel ? (
                     <p className="mt-2 text-sm font-semibold text-[#1657CF]">

@@ -1624,14 +1624,14 @@ function Availability({
                     <button
                       type="button"
                       onClick={() => onEdit(row)}
-                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => onIntakes(row)}
-                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      className="p-btn p-btn--ghost p-btn--sm"
                     >
                       Intakes
                     </button>
@@ -1900,14 +1900,14 @@ function Content({
                   <button
                     type="button"
                     onClick={() => onEdit(row)}
-                    className="font-semibold text-[#1657CF]"
+                    className="p-link"
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => setPending({ type: 'section', id: row.id })}
-                    className="font-semibold text-[#B42318]"
+                    className="p-danger"
                   >
                     Remove
                   </button>
@@ -2048,14 +2048,14 @@ function Faqs({
               <button
                 type="button"
                 onClick={() => onEdit(row)}
-                className="font-semibold text-[#1657CF]"
+                className="p-link"
               >
                 Edit
               </button>
               <button
                 type="button"
                 onClick={() => setPending({ type: 'faq', id: row.id })}
-                className="font-semibold text-[#B42318]"
+                className="p-danger"
               >
                 Remove
               </button>
@@ -2121,7 +2121,7 @@ function Related({
           </label>
         ))}
       </div>
-      <p className="mt-4 text-xs text-[#667085]">Saved relations: {related.length}</p>
+      <p className="mt-4 p-hint">Saved relations: {related.length}</p>
       <button
         type="button"
         onClick={() => void save()}

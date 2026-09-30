@@ -146,7 +146,7 @@ function IntakesPanel() {
         <button
           type="button"
           onClick={() => (creating ? resetForm() : setCreating(true))}
-          className="rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white"
+          className="p-btn p-btn--primary"
         >
           {creating ? 'Close' : 'Add'}
         </button>
@@ -411,7 +411,7 @@ export function CatalogMastersPage() {
           <button
             type="button"
             onClick={() => open(panelKind)}
-            className="rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white"
+            className="p-btn p-btn--primary"
           >
             Add
           </button>
@@ -476,7 +476,7 @@ export function CatalogMastersPage() {
       <h2 id="masters-heading" className="p-h1">
         {title}
       </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667085]">
+      <p className="p-sub">
         Maintain the active master values used by course editors and public
         filters. Dependencies are checked before deactivation or deletion.
       </p>
@@ -615,7 +615,7 @@ export function CatalogMastersPage() {
               </button>
               <button
                 disabled={saving}
-                className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="p-btn p-btn--primary"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

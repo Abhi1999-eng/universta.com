@@ -169,7 +169,7 @@ export function LeadsPage() {
           >
             Leads
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667085]">
+          <p className="p-sub">
             Review counselling requests, update progress and keep internal
             follow-up notes.
           </p>
@@ -344,12 +344,12 @@ export function LeadsPage() {
             </p>
           </div>
           {meta && meta.page > 1 ? (
-            <nav aria-label="Lead result pages" className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-[#E8ECF3] bg-white px-4 py-3">
+            <nav aria-label="Lead result pages" className="p-panel p-row p-row--between">
               <a href={hrefFor(activeFilters, meta.page - 1)} className="p-btn p-btn--ghost p-btn--sm">
                 Previous
               </a>
               <span className="p-sub">Page {meta.page} of {Math.max(1, meta.totalPages)}</span>
-              <button type="button" disabled className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-40">
+              <button type="button" disabled className="p-btn p-btn--ghost p-btn--sm">
                 Next
               </button>
             </nav>
@@ -418,9 +418,9 @@ export function LeadsPage() {
             ))}
           </div>
           {meta && (meta.totalPages > 1 || meta.page > 1) ? (
-            <nav aria-label="Lead result pages" className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-[#E8ECF3] bg-white px-4 py-3">
+            <nav aria-label="Lead result pages" className="p-panel p-row p-row--between">
               {meta.page <= 1 ? (
-                <button type="button" disabled className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-40">
+                <button type="button" disabled className="p-btn p-btn--ghost p-btn--sm">
                   Previous
                 </button>
               ) : (
@@ -430,7 +430,7 @@ export function LeadsPage() {
               )}
               <span className="p-sub">Page {meta.page} of {meta.totalPages}</span>
               {meta.page >= meta.totalPages ? (
-                <button type="button" disabled className="rounded-lg border border-[#D9E0EA] px-4 py-2 text-sm font-semibold disabled:opacity-40">
+                <button type="button" disabled className="p-btn p-btn--ghost p-btn--sm">
                   Next
                 </button>
               ) : (

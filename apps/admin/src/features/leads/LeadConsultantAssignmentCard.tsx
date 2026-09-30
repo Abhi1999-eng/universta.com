@@ -106,14 +106,14 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
             Lead routing
           </p>
           <h2 className="mt-2 text-xl font-semibold">Consultant assignment</h2>
-          <p className="mt-1 text-sm text-[#667085]">
+          <p className="mt-1 p-sub">
             Assign this lead to a consultant. The same assignment can be used by
             the consultant panel when that panel is introduced later.
           </p>
         </div>
         {assigned ? (
           <div className="rounded-xl bg-[#F7F9FC] px-4 py-3 text-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+            <p className="p-eyebrow">
               Currently assigned
             </p>
             <p className="mt-1 font-semibold text-[#0D1524]">{assigned.name}</p>
@@ -131,7 +131,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
         </p>
       ) : (
         <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-          <label className="grid gap-2 text-sm font-semibold text-[#48505F]">
+          <label className="p-field">
             Assign to consultant
             <select
               className="lead-control"
@@ -182,7 +182,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
         </p>
       ) : null}
       {message ? (
-        <p className="mt-4 rounded-xl bg-[#E9F8F0] px-4 py-3 text-sm font-semibold text-[#18794E]" role="status">
+        <p className="p-alert p-alert--ok" role="status">
           {message}
         </p>
       ) : null}

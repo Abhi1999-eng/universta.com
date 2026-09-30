@@ -183,7 +183,7 @@ export function MediaLibrary() {
           <button
             type="submit"
             disabled={uploading}
-            className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="p-btn p-btn--primary"
           >
             {uploading ? "Uploading…" : "Upload"}
           </button>
@@ -270,7 +270,7 @@ export function MediaLibrary() {
           aria-modal="true"
           aria-labelledby="archive-media-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="p-modal__panel">
             <h3 id="archive-media-title" className="p-h3">
               Archive this file?
             </h3>
@@ -288,7 +288,7 @@ export function MediaLibrary() {
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white"
+                className="p-btn p-btn--danger"
                 onClick={() => {
                   void archive(pendingArchive);
                   setPendingArchive(null);

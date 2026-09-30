@@ -351,7 +351,7 @@ export function RedirectsManager() {
                       <td className="py-3 pr-3">
                         {row.hitCount}
                         {row.lastHitAt ? (
-                          <span className="ml-1 text-xs text-[#828B9B]">
+                          <span className="ml-1 p-hint">
                             (last {new Date(row.lastHitAt).toLocaleDateString()})
                           </span>
                         ) : null}
@@ -372,21 +372,21 @@ export function RedirectsManager() {
                           <button
                             type="button"
                             onClick={() => setEditingId(row.id)}
-                            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold"
+                            className="p-btn p-btn--ghost p-btn--sm"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => void toggleActive(row)}
-                            className="rounded-lg border border-[#E8ECF3] px-2 py-1 text-xs font-semibold"
+                            className="p-btn p-btn--ghost p-btn--sm"
                           >
                             {row.isActive ? "Disable" : "Enable"}
                           </button>
                           <button
                             type="button"
                             onClick={() => void archive(row)}
-                            className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700"
+                            className="p-btn p-btn--danger p-btn--sm"
                           >
                             Archive
                           </button>

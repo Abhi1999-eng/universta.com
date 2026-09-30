@@ -202,7 +202,7 @@ export function FooterBuilder({
         </ul>
 
         {rows.length === 0 ? (
-          <p className="mt-3 text-sm text-[#667085]">
+          <p className="p-sub">
             No rows yet. Your site keeps its standard footer until you add one.
           </p>
         ) : null}
@@ -283,7 +283,7 @@ function BlockLibrary({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E8ECF3] px-3 py-2 text-sm font-semibold"
+            className="p-btn p-btn--ghost p-btn--sm"
           >
             Close
           </button>
@@ -298,7 +298,7 @@ function BlockLibrary({
               className="rounded-xl border border-[#E8ECF3] p-3 text-left hover:border-[#1657CF] hover:bg-[#F7F9FC]"
             >
               <span className="block text-sm font-semibold">{block.label}</span>
-              <span className="mt-1 block text-xs text-[#667085]">
+              <span className="mt-1 block p-hint">
                 {block.description}
               </span>
             </button>
@@ -339,7 +339,7 @@ function BlockSettings({
         <button
           type="button"
           onClick={onRemove}
-          className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700"
+          className="p-btn p-btn--danger p-btn--sm"
         >
           Remove block
         </button>

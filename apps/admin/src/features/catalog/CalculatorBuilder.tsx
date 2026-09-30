@@ -390,7 +390,7 @@ export function CalculatorBuilder({
 
   return (
     <div className="rounded-xl border border-[#D9E0EA] bg-[#FCFCFD] p-4">
-      <p className="text-sm font-semibold text-[#344054]">Budget calculator</p>
+      <p className="p-label">Budget calculator</p>
       <p className="p-hint">
         Lets a student on the country page work out their own yearly budget. Leave every
         box empty for no calculator.

@@ -360,7 +360,7 @@ export function ExperimentsManager() {
                 <button
                   type="button"
                   onClick={() => void archive(selected)}
-                  className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700"
+                  className="p-btn p-btn--danger"
                 >
                   Archive
                 </button>
@@ -370,7 +370,7 @@ export function ExperimentsManager() {
             {stats ? (
               <div className="mt-5 overflow-x-auto rounded-xl border border-[#E8ECF3]">
                 <table className="w-full text-sm">
-                  <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+                  <thead >
                     <tr>
                       <th className="px-3 py-2">Variant</th>
                       <th className="px-3 py-2">Exposures</th>

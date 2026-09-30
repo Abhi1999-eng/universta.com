@@ -462,7 +462,7 @@ export function LocationsManager() {
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
             <table className="w-full text-sm">
-              <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+              <thead >
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Country</th>
@@ -479,7 +479,7 @@ export function LocationsManager() {
                     <td className="px-4 py-3">{state.country.name}</td>
                     <td className="px-4 py-3">
                       <select
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1.5 text-xs"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         value={state.status}
                         onChange={(event) => void updateStateStatus(state, event.target.value)}
                       >
@@ -504,7 +504,7 @@ export function LocationsManager() {
               </tbody>
             </table>
             {linkedStates.length === 0 ? (
-              <p className="p-5 text-sm text-[#667085]">No states yet.</p>
+              <p className="p-5 p-sub">No states yet.</p>
             ) : null}
           </div>
         </>
@@ -597,7 +597,7 @@ export function LocationsManager() {
 
           <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
             <table className="w-full text-sm">
-              <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+              <thead >
                 <tr>
                   <th className="px-4 py-3">City</th>
                   <th className="px-4 py-3">Country</th>
@@ -618,7 +618,7 @@ export function LocationsManager() {
                     <td className="px-4 py-3">{city.state?.name ?? "—"}</td>
                     <td className="px-4 py-3">
                       <select
-                        className="rounded-lg border border-[#D9E0EA] px-2 py-1.5 text-xs"
+                        className="p-btn p-btn--ghost p-btn--sm"
                         value={city.status}
                         onChange={(event) => void updateCityStatus(city, event.target.value)}
                       >
@@ -673,7 +673,7 @@ export function LocationsManager() {
               </tbody>
             </table>
             {visibleCities.length === 0 ? (
-              <p className="p-5 text-sm text-[#667085]">No cities yet.</p>
+              <p className="p-5 p-sub">No cities yet.</p>
             ) : null}
           </div>
         </>

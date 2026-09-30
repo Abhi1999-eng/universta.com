@@ -291,7 +291,7 @@ export function SettingsManager({
       <p className="p-sub">{intro}</p>
       {error ? <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">{error}</p> : null}
       {loading ? (
-        <p className="mt-8 text-sm text-[#667085]">Loading…</p>
+        <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-8 grid gap-6">
           {(only ?? (focused ? [focused] : GROUP_ORDER)).map((group) => {

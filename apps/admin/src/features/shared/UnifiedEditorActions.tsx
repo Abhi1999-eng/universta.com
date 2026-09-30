@@ -49,7 +49,7 @@ export function UnifiedEditorActions({
           name="intent"
           value="publish"
           disabled={busy}
-          className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="p-btn p-btn--primary"
         >
           {savingIntent === 'publish' ? 'Publishing…' : publishLabel}
         </button>

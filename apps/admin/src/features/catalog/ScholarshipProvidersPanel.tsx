@@ -362,7 +362,7 @@ export function ScholarshipProvidersPanel() {
             </button>
             <button
               disabled={saving}
-              className="rounded-lg bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="p-btn p-btn--primary"
             >
               {saving ? 'Saving…' : editing ? 'Save changes' : 'Create provider'}
             </button>
@@ -415,7 +415,7 @@ export function ScholarshipProvidersPanel() {
                     type="button"
                     disabled={busy}
                     onClick={() => openEdit(row)}
-                    className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     Edit
                   </button>
@@ -423,7 +423,7 @@ export function ScholarshipProvidersPanel() {
                     type="button"
                     disabled={busy}
                     onClick={() => void toggle(row)}
-                    className="rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
                     {row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                   </button>
@@ -458,7 +458,7 @@ export function ScholarshipProvidersPanel() {
             );
           })}
           {rows.length === 0 ? (
-            <p className="py-4 text-sm text-[#667085]">No records found.</p>
+            <p className="py-4 p-sub">No records found.</p>
           ) : null}
         </div>
       )}

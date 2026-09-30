@@ -431,7 +431,7 @@ export function BulkDataManager() {
 
       {selected ? (
         <>
-          <div className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-5">
+          <div className="p-panel">
             <h3 className="text-sm font-semibold">Template &amp; export</h3>
             <p className="p-hint">
               Required: {selected.requiredColumns.join(", ")}. Templates use readable names, generate slugs automatically, and never require database IDs.
@@ -488,7 +488,7 @@ export function BulkDataManager() {
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-5">
+          <div className="p-panel">
             <div className="p-head">
               <div>
                 <h3 className="text-sm font-semibold">Import from device</h3>
@@ -571,7 +571,7 @@ export function BulkDataManager() {
             </div>
 
             {selectedFile && !busy && !dryRunResult && !requestError ? (
-              <p className="mt-3 text-xs text-[#667085]">
+              <p className="mt-3 p-hint">
                 Waiting for validation before import is enabled.
               </p>
             ) : null}
@@ -632,7 +632,7 @@ export function BulkDataManager() {
             ) : null}
           </div>
 
-          <div className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-5">
+          <div className="p-panel">
             <h3 className="text-sm font-semibold">Manage existing records</h3>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <div>
@@ -673,7 +673,7 @@ export function BulkDataManager() {
               </button>
               <button
                 type="button"
-                className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700"
+                className="p-btn p-btn--danger"
                 onClick={() => void applyBulkArchive()}
               >
                 Archive selected ({selectedIds.size})
@@ -682,7 +682,7 @@ export function BulkDataManager() {
 
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E8ECF3]">
               <table className="w-full text-sm">
-                <thead className="bg-[#F7F9FC] text-left text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">
+                <thead >
                   <tr>
                     <th className="px-3 py-2" />
                     {visibleRecordFields.map((field) => (
@@ -713,7 +713,7 @@ export function BulkDataManager() {
                 </tbody>
               </table>
               {records.length === 0 ? (
-                <p className="p-4 text-sm text-[#667085]">No records yet.</p>
+                <p className="p-4 p-sub">No records yet.</p>
               ) : null}
             </div>
           </div>

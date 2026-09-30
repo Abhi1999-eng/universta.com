@@ -139,7 +139,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
     return (
       <section className="mx-auto max-w-[760px] rounded-2xl border border-[#E8ECF3] bg-white p-8 text-center">
         <h2 className="text-2xl font-semibold">Lead not found</h2>
-        <p className="mt-3 text-sm text-[#667085]">This lead may have been removed or is no longer available.</p>
+        <p className="p-sub">This lead may have been removed or is no longer available.</p>
         <Link href="/leads" className="mt-5 inline-flex rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white">Back to leads</Link>
       </section>
     );
@@ -187,12 +187,12 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
               <Fact label="Subject" value={lead.preferredSubject?.name ?? 'Not selected'} />
               <Fact label="Course" value={lead.preferredCourse?.name ?? 'Not selected'} />
             </dl>
-            {lead.message ? <div className="mt-6 border-t border-[#EEF1F5] pt-5"><p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">Student message</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#48505F]">{lead.message}</p></div> : null}
+            {lead.message ? <div className="mt-6 border-t border-[#EEF1F5] pt-5"><p className="p-eyebrow">Student message</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#48505F]">{lead.message}</p></div> : null}
           </Panel>
           {lead.assessment?.answers.length ? (
             <Panel title="Assessment">
               {lead.assessment.bandLabel ? (
-                <p className="mb-5 text-sm text-[#48505F]">
+                <p className="mb-5 p-sub">
                   <span className={`mr-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${lead.assessment.band === 'high' ? 'bg-[#E9F8F0] text-[#18794E]' : lead.assessment.band === 'medium' ? 'bg-[#FFF6E5] text-[#8A5A00]' : 'bg-[#F2F4F7] text-[#475467]'}`}>
                     {lead.assessment.bandLabel}
                   </span>
@@ -221,11 +221,11 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
           </Panel>
           <Panel title="Internal notes">
             <form onSubmit={addNote}>
-              <label className="grid gap-2 text-sm font-semibold text-[#48505F]">
+              <label className="p-field">
                 Add internal note
                 <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={5000} rows={5} className="lead-control resize-y" placeholder="Add follow-up context for the Admin team" />
               </label>
-              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#828B9B]">
+              <div className="mt-2 flex items-center justify-between gap-3 p-hint">
                 <label className="flex items-center gap-2"><input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} /> Pin note</label>
                 <span>{note.length}/5,000</span>
               </div>
@@ -248,7 +248,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
         <aside className="grid min-w-0 content-start gap-6">
           <Panel title="Update status">
             <form onSubmit={saveStatus}>
-              <label className="grid gap-2 text-sm font-semibold text-[#48505F]">
+              <label className="p-field">
                 Current status
                 <select value={status} onChange={(event) => setStatus(event.target.value)} className="lead-control">
                   {options?.statuses.map((value) => <option value={value} key={value}>{label(value)}</option>)}
@@ -307,7 +307,7 @@ function Panel({
 function Fact({ label: title, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[#828B9B]">{title}</dt>
+      <dt className="p-eyebrow">{title}</dt>
       <dd className="mt-1 break-words text-sm leading-6 text-[#334155]">{value}</dd>
     </div>
   );

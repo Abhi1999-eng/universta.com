@@ -205,7 +205,7 @@ export function UniversityClaimsManager() {
               <button
                 type="button"
                 onClick={() => void archive()}
-                className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700"
+                className="p-btn p-btn--danger"
               >
                 Archive
               </button>
@@ -282,7 +282,7 @@ export function UniversityClaimsManager() {
                 <button
                   type="button"
                   onClick={() => void addNote()}
-                  className="rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white"
+                  className="p-btn p-btn--primary"
                 >
                   Add note
                 </button>

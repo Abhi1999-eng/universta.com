@@ -76,7 +76,7 @@ export function CatalogSeoEditor({ seo, media, busy, onSave, onDelete, onError }
         <Preview title="Twitter preview" titleText={draft.twitterTitle || draft.seoTitle} description={draft.twitterDescription || draft.metaDescription} />
       </div>
       <div className="mt-5 flex gap-3">
-        <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-[#1657CF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save SEO'}</button>
+        <button type="button" disabled={busy} onClick={() => void save()} className="p-btn p-btn--primary">{busy ? 'Saving…' : 'Save SEO'}</button>
         {seo && onDelete ? <button type="button" disabled={busy} onClick={onDelete} className="rounded-xl border border-[#B42318] px-4 py-2 text-sm font-semibold text-[#B42318] disabled:opacity-40">Remove SEO</button> : null}
       </div>
     </fieldset>

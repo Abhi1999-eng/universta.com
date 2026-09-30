@@ -162,7 +162,7 @@ export function MediaPickerDialog({
                 type="button"
                 onClick={close}
                 aria-label="Close media picker"
-                className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                className="p-btn p-btn--ghost p-btn--sm"
               >
                 Close
               </button>
@@ -250,7 +250,7 @@ export function MediaPickerDialog({
                     </p>
                   ) : error ? (
                     <div className="mt-5 rounded-xl bg-[#FFF7F7] p-4">
-                      <p role="alert" className="text-sm text-[#B42318]">
+                      <p role="alert" className="p-danger">
                         {error}
                       </p>
                       <button

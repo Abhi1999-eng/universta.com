@@ -252,7 +252,7 @@ function OperationsTable({
   showOfferUpload?: (row: Row) => boolean;
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="p-panel">
       <h2 className="p-h3">{title}</h2>
       {rows.length ? (
         <div className="mt-4 overflow-x-auto">
@@ -362,7 +362,7 @@ function ThreadPanel({
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="p-panel">
       <h2 className="p-h3">{title}</h2>
       {rows.length ? (
         <div className="mt-4 space-y-4">
@@ -449,7 +449,7 @@ function ReferralTable({
   const name = (user: Referral["referrerProfile"]["user"]) =>
     [user.firstName, user.lastName].filter(Boolean).join(" ") || "Student";
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="p-panel">
       <h2 className="p-h3">Referrals</h2>
       {referrals.length ? (
         <div className="mt-4 overflow-x-auto">
