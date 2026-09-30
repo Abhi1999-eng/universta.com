@@ -276,7 +276,7 @@ function inputClass(error?: string) {
 
 function ErrorText({ message }: { message?: string }) {
   return message ? (
-    <p className="mt-1.5 text-xs font-semibold text-[#B42318]">{message}</p>
+    <p className="mt-1.5 p-danger">{message}</p>
   ) : null;
 }
 

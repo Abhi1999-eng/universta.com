@@ -644,7 +644,7 @@ export function LocationsManager() {
                         onClick={() =>
                           setSeoEditingCityId(seoEditingCityId === city.id ? null : city.id)
                         }
-                        className="mr-3 text-xs font-semibold text-[#1657CF]"
+                        className="mr-3 p-link"
                       >
                         SEO
                       </button>

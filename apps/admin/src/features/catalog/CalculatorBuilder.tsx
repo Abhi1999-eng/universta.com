@@ -440,7 +440,7 @@ export function CalculatorBuilder({
             className="rounded-xl border border-[#E4E7EC] bg-white p-4"
           >
             <div className="flex items-start justify-between gap-3">
-              <label className="block flex-1 text-xs font-semibold text-[#344054]">
+              <label className="block flex-1 p-label">
                 Question {factorIndex + 1}
                 <input
                   className={inputClass}
@@ -454,7 +454,7 @@ export function CalculatorBuilder({
               {draft.factors.length > 1 ? (
                 <button
                   type="button"
-                  className="mt-5 text-xs font-semibold text-[#B42318]"
+                  className="mt-5 p-danger"
                   onClick={() =>
                     update({
                       ...draft,
@@ -525,7 +525,7 @@ export function CalculatorBuilder({
                     />
                   </div>
                   <div className="mt-3 flex items-end justify-between gap-3">
-                    <label className="block flex-1 text-xs font-semibold text-[#344054]">
+                    <label className="block flex-1 p-label">
                       Note for the student (optional)
                       <input
                         className={inputClass}
@@ -541,7 +541,7 @@ export function CalculatorBuilder({
                     {factor.options.length > 1 ? (
                       <button
                         type="button"
-                        className="pb-2 text-xs font-semibold text-[#B42318]"
+                        className="pb-2 p-danger"
                         onClick={() =>
                           setFactor(factorIndex, {
                             options: factor.options.filter((_, j) => j !== optionIndex),

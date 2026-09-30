@@ -153,7 +153,7 @@ function IntakesPanel() {
       </div>
 
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[#B42318]">{error}</p>
+        <p className="mt-3 p-danger">{error}</p>
       ) : null}
 
       {creating ? (

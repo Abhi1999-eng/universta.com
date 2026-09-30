@@ -449,7 +449,7 @@ function Field({ label, value, onChange, error, textarea = false, richText = fal
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
       {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} hideLabel allowedVariables={variablesForContext(variableContext)} entityContext={{ variableContext }} /> : textarea ? <textarea id={fieldId} value={value} onChange={(event) => onChange(event.target.value)} className={`${error ? invalidInputClass : inputClass} min-h-28`} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} /> : <input id={fieldId} type={type} value={value} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} />}
       {error ? (
-        <span id={errorId} className="mt-1 block text-xs text-[#B42318]">
+        <span id={errorId} className="mt-1 block p-danger">
           {error}
         </span>
       ) : null}
@@ -471,7 +471,7 @@ function Select({ label, value, onChange, options, error, helpKey, help, require
         ))}
       </select>
       {error ? (
-        <span id={errorId} className="mt-1 block text-xs text-[#B42318]">
+        <span id={errorId} className="mt-1 block p-danger">
           {error}
         </span>
       ) : null}
@@ -960,7 +960,7 @@ function SeoFields({ values, set }: { values: Record<string, string>; set: (key:
         <Field label="Meta description" value={values.metaDescription ?? ''} onChange={(value) => set('metaDescription', value)} help={commonFieldHelp.metaDescription} />
         <div>
           <Field label="Canonical URL" value={canonical} onChange={(value) => set('canonicalUrl', value)} help={commonFieldHelp.canonicalUrl} />
-          {canonicalUnsafe ? <p className="mt-1 text-xs font-semibold text-[#B42318]">This points off-site. Use a site-relative path (starting with &quot;/&quot;) unless an external canonical is intentional.</p> : null}
+          {canonicalUnsafe ? <p className="mt-1 p-danger">This points off-site. Use a site-relative path (starting with &quot;/&quot;) unless an external canonical is intentional.</p> : null}
         </div>
         <Field label="Focus keyword" value={values.focusKeyword ?? ''} onChange={(value) => set('focusKeyword', value)} help={commonFieldHelp.focusKeyword} />
       </div>

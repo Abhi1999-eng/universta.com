@@ -66,7 +66,7 @@ export function SiteVerificationManager() {
         Paste only the content value from Google&apos;s verification tag. Do not
         paste HTML.
       </p>
-      <label className="mt-5 block text-sm font-semibold text-[#344054]">
+      <label className="mt-5 block p-label">
         Google verification token
         <input
           className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]"

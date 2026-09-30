@@ -283,7 +283,7 @@ export function CountryTaxonomyPicker({
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          className="text-xs font-semibold text-[#1657CF]"
+                          className="p-link"
                           aria-expanded={open}
                           onClick={() =>
                             setExpanded((current) =>
@@ -407,7 +407,7 @@ export function CountryTaxonomyPicker({
             </p>
           ) : null}
           {error ? (
-            <p role="alert" className="mt-2 text-xs text-[#B42318]">
+            <p role="alert" className="mt-2 p-danger">
               {error}
             </p>
           ) : null}

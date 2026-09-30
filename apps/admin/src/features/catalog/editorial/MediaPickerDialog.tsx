@@ -131,7 +131,7 @@ export function MediaPickerDialog({
             <button
               type="button"
               onClick={() => onChange('')}
-              className="shrink-0 text-xs font-semibold text-[#B42318]"
+              className="shrink-0 p-danger"
             >
               Remove
             </button>

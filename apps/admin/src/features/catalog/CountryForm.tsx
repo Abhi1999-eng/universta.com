@@ -1240,7 +1240,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 minHeight="min-h-28"
               />
               {fieldErrors.shortDescription ? (
-                <p role="alert" className="mt-1 text-xs font-semibold text-[#B42318]">
+                <p role="alert" className="mt-1 p-danger">
                   {fieldErrors.shortDescription}
                 </p>
               ) : null}
@@ -1974,7 +1974,7 @@ function Input({
         <p
           id={errorId}
           role="alert"
-          className="mt-1 text-sm font-medium text-[#B42318]"
+          className="mt-1 p-danger"
         >
           {error}
         </p>
@@ -2333,7 +2333,7 @@ function CheckboxGroup({
             Added options are available on every country.
           </p>
           {addError ? (
-            <p role="alert" className="mt-1 text-xs text-[#B42318]">
+            <p role="alert" className="mt-1 p-danger">
               {addError}
             </p>
           ) : null}
@@ -2364,7 +2364,7 @@ function RelationPicker({
 }) {
   return (
     <fieldset className="p-card">
-      <legend className="px-1 text-sm font-semibold text-[#344054]">
+      <legend className="px-1 p-label">
         {title}
       </legend>
       <p className="mt-1 p-sub">
@@ -2537,7 +2537,7 @@ function CurrencyRow({
     <label className="block text-sm font-semibold">
       {label}
       <select
-        className="mt-2 w-full rounded-xl border border-[#D9E0EA] bg-white px-4 py-3 font-normal outline-none focus:border-[#1657CF]"
+        className="p-input"
         value={selected?.code ?? ""}
         onChange={(event) => apply(currencyByCode(event.target.value))}
       >

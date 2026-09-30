@@ -232,7 +232,7 @@ export function UniversityClaimsManager() {
                 />
               </div>
               <select
-                className="rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm"
+                className="p-input"
                 value=""
                 onChange={(event) => {
                   if (event.target.value) void updateStatus(event.target.value);

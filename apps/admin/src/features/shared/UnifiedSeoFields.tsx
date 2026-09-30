@@ -106,7 +106,7 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
         <div className="text-sm font-semibold sm:col-span-2">
           <FieldLabel label="Canonical URL" htmlFor="seo-canonical" help={commonFieldHelp.canonicalUrl} />
           <input id="seo-canonical" type="text" inputMode="url" aria-invalid={Boolean(canonicalError)} aria-describedby={canonicalError ? 'seo-canonical-error' : undefined} className={input} value={value.canonicalUrl} onChange={(e) => set('canonicalUrl', e.target.value)} />
-          {canonicalError ? <p id="seo-canonical-error" role="alert" className="mt-1 text-sm font-medium text-[#B42318]">{canonicalError}</p> : <p className="mt-1 text-xs font-normal text-[#667085]">Use /countries/example for this site, or an absolute HTTP(S) URL.</p>}
+          {canonicalError ? <p id="seo-canonical-error" role="alert" className="mt-1 p-danger">{canonicalError}</p> : <p className="mt-1 text-xs font-normal text-[#667085]">Use /countries/example for this site, or an absolute HTTP(S) URL.</p>}
         </div>
         <div className="text-sm font-semibold">
           <FieldLabel label="Open Graph title" htmlFor="seo-og-title" />

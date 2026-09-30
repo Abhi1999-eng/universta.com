@@ -641,7 +641,7 @@ export function BulkDataManager() {
                 </label>
                 <select
                   id="update-field"
-                  className="mt-1 rounded-xl border border-[#D9E0EA] bg-white px-3 py-2 text-sm"
+                  className="p-input"
                   value={updateField}
                   onChange={(event) => setUpdateField(event.target.value)}
                 >
