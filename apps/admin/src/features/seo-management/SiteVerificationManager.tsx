@@ -69,7 +69,7 @@ export function SiteVerificationManager() {
       <label className="mt-5 block p-label">
         Google verification token
         <input
-          className="mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]"
+          className="p-input"
           value={google}
           onChange={(event) => setGoogle(event.target.value)}
           placeholder="google-site-verification token"

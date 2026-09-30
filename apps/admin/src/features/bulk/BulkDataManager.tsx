@@ -32,9 +32,9 @@ type ApiEnvelope<T> = {
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 const buttonClass =
-  "rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
+  "p-btn p-btn--primary";
 const secondaryButtonClass =
-  "rounded-xl border border-[#D9E0EA] bg-white px-4 py-2.5 text-sm font-semibold text-[#48505F] disabled:cursor-not-allowed disabled:opacity-50";
+  "p-btn p-btn--ghost";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authFetch(`/api/v1/admin/bulk${path}`, init);

@@ -12,7 +12,7 @@ export function DashboardContent() {
     <section aria-labelledby="dashboard-heading" className="p-dash">
       <div className="p-panel p-panel--dark">
         <p className="p-eyebrow">Super Admin workspace</p>
-        <h2 id="dashboard-heading" className="p-h1">
+        <h2 id="dashboard-heading" className="p-h2">
           Good to see you, {firstName}.
         </h2>
         <p className="p-sub">

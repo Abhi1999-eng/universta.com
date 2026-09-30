@@ -52,8 +52,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const inputClass =
-  "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
-const buttonClass = "rounded-xl bg-[#1657CF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60";
+  "p-input";
+const buttonClass = "p-btn p-btn--primary";
 
 function CitySeoEditor({
   cityId,

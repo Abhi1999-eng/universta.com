@@ -240,14 +240,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <h1 className="p-h2">{pageTitle}</h1>
           </div>
           <div className="u-account">
-            {/* Name and role only: the address is stated once, in the
-                sidebar's foot, rather than twice on every screen. */}
-            <span className="u-account__org">
-              <strong>
-                {user?.firstName} {user?.lastName ?? ''}
-              </strong>
-              <span>{user?.roles.join(' · ')}</span>
-            </span>
+            {/* One ellipsised line, as the design intends it: the role. The
+                name and the address are stated in the sidebar's foot, and
+                stacking all three here ran them together. */}
+            <span className="u-account__org">{user?.roles.join(' · ')}</span>
             <span className="p-avatar">
               <span>{initial}</span>
             </span>
@@ -397,7 +393,7 @@ function LogoutButton({
 
 function GridIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg className="p-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -409,7 +405,7 @@ function GridIcon() {
 function ChevronIcon() {
   return (
     <svg
-      className="a-navgroup__chev"
+      className="p-ic a-navgroup__chev"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -423,7 +419,7 @@ function ChevronIcon() {
 
 function MenuIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg className="p-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <path d="M4 7h16M4 12h16M4 17h16" />
     </svg>
   );
@@ -431,7 +427,7 @@ function MenuIcon() {
 
 function CloseIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg className="p-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <path d="m6 6 12 12M18 6 6 18" />
     </svg>
   );
@@ -439,7 +435,7 @@ function CloseIcon() {
 
 function LogoutIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg className="p-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <path d="M15 12H3m0 0 4-4m-4 4 4 4M10 4h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-8" />
     </svg>
   );
