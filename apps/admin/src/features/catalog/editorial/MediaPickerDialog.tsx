@@ -109,7 +109,7 @@ export function MediaPickerDialog({
           type="button"
           disabled={disabled}
           onClick={() => openPicker('library')}
-          className={compact ? 'rounded-lg border border-[#D9E0EA] px-2.5 py-1.5 text-xs font-semibold hover:border-[#1657CF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1657CF] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-[#98A2B3]' : 'rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45'}
+          className={compact ? 'p-btn p-btn--ghost p-btn--sm' : 'p-btn p-btn--ghost p-btn--sm'}
         >
           {compact ? 'Image' : selected ? 'Change media' : 'Choose media'}
         </button>

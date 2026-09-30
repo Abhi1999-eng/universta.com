@@ -199,7 +199,7 @@ export function PageTemplatesManager() {
 
       {message ? (
         <p
-          className={`mt-4 text-sm font-semibold ${messageTone === "error" ? "text-[#B42318]" : "text-[#18794E]"}`}
+          className={`mt-4 text-sm font-semibold ${messageTone === "error" ? "p-danger" : "text-[#18794E]"}`}
           role={messageTone === "error" ? "alert" : "status"}
         >
           {message}

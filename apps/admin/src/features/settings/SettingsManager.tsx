@@ -232,7 +232,7 @@ function GroupForm({
       </div>
       <div className="mt-5 flex items-center gap-3">
         <button disabled={saving} className={buttonClass}>{saving ? "Saving…" : "Save"}</button>
-        {message ? <p className={`text-sm font-semibold ${message === "Saved." ? "text-[#18794E]" : "text-[#B42318]"}`} role={message === "Saved." ? "status" : "alert"}>{message}</p> : null}
+        {message ? <p className={`text-sm font-semibold ${message === "Saved." ? "text-[#18794E]" : "p-danger"}`} role={message === "Saved." ? "status" : "alert"}>{message}</p> : null}
       </div>
     </form>
   );

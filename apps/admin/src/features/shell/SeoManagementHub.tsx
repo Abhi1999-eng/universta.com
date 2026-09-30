@@ -215,7 +215,7 @@ function StaticSeoEditor({
         </button>
         {message ? (
           <p
-            className={`text-xs font-semibold ${message === "Saved." ? "text-[#18794E]" : "text-[#B42318]"}`}
+            className={`text-xs font-semibold ${message === "Saved." ? "text-[#18794E]" : "p-danger"}`}
           >
             {message}
           </p>

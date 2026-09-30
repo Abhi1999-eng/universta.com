@@ -832,7 +832,7 @@ export function BulkSeoManager() {
         {message ? (
           <p
             role={message.startsWith("Saved") ? "status" : "alert"}
-            className={`text-sm font-semibold ${message.startsWith("Saved") ? "text-[#18794E]" : "text-[#B42318]"}`}
+            className={`text-sm font-semibold ${message.startsWith("Saved") ? "text-[#18794E]" : "p-danger"}`}
           >
             {message}
           </p>
