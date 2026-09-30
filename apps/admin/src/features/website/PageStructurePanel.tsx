@@ -128,7 +128,7 @@ export function PageStructurePanel({
       <button
         type="button"
         onClick={onAdd}
-        className="mt-4 w-full rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white"
+        className="p-btn p-btn--primary p-btn--block"
       >
         Add section
       </button>

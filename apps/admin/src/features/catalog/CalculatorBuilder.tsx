@@ -558,7 +558,7 @@ export function CalculatorBuilder({
 
             <button
               type="button"
-              className="mt-3 rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold text-[#344054]"
+              className="p-btn p-btn--ghost p-btn--sm"
               onClick={() =>
                 setFactor(factorIndex, { options: [...factor.options, blankOption()] })
               }
@@ -571,7 +571,7 @@ export function CalculatorBuilder({
 
       <button
         type="button"
-        className="mt-3 rounded-lg border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold text-[#344054]"
+        className="p-btn p-btn--ghost p-btn--sm"
         onClick={() => update({ ...draft, factors: [...draft.factors, blankFactor()] })}
       >
         + Add question

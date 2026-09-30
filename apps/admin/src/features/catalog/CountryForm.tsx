@@ -1122,7 +1122,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
 
   if (loading)
     return (
-      <section className="mx-auto max-w-[1100px] rounded-2xl border border-[#E8ECF3] bg-white p-8">
+      <section className="p-panel">
         <p className="p-sub">
           Loading complete country editor…
         </p>
@@ -2103,7 +2103,7 @@ function ContinentField({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="text-xs font-semibold text-[#1657CF] focus:outline-none focus:underline"
+          className="p-link"
         >
           + Add continent
         </button>

@@ -141,7 +141,7 @@ export function SubSubjectsEditor({
   return (
     <section
       aria-labelledby="specializations-heading"
-      className="mt-6 rounded-2xl border border-[#E8ECF3] bg-white p-6"
+      className="mt-6 p-panel"
     >
       <div>
         <p className="p-eyebrow">
@@ -405,7 +405,7 @@ function SpecializationCard({
   }
 
   return (
-    <article className="rounded-xl border border-[#E8ECF3] p-5">
+    <article className="p-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="font-semibold">{row.name}</h4>

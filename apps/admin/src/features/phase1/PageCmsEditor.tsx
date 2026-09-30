@@ -309,7 +309,7 @@ function SectionRowsEditor({
       <button
         type="button"
         onClick={() => onChange([...items, { label: "", value: "" }])}
-        className="mt-3 rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+        className="p-btn p-btn--ghost p-btn--sm"
       >
         Add row
       </button>
@@ -375,7 +375,7 @@ function SectionBodyFields({
         <button
           type="button"
           onClick={() => onBodyChange({ ...body, paragraphs: [...paragraphs, ""] })}
-          className="mt-3 rounded-lg border border-[#E8ECF3] px-3 py-2 text-xs font-semibold"
+          className="p-btn p-btn--ghost p-btn--sm"
         >
           Add paragraph
         </button>
@@ -1266,7 +1266,7 @@ export function PageCmsEditor({
             onAdd={() => setLibraryOpen(true)}
           />
 
-          <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
+          <div className="p-panel">
             <div className="flex items-center justify-between">
               <h3 className="p-h3">
                 {selectedSection ? "Section settings" : "Sections"}
@@ -1397,7 +1397,7 @@ export function PageCmsEditor({
                     <p className="mt-1 p-sub">{section.subheading}</p>
                   ) : null}
                   {section.ctaPrimaryLabel ? (
-                    <p className="mt-2 text-sm font-semibold text-[#1657CF]">
+                    <p className="mt-2 p-link">
                       {section.ctaPrimaryLabel} → {section.ctaPrimaryUrl}
                     </p>
                   ) : null}

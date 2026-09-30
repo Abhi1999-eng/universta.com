@@ -148,7 +148,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
     return (
       <section className="p-panel p-panel--danger" role="alert">
         <h2 className="p-h3 p-danger">Lead could not be loaded</h2>
-        <p className="mt-2 text-sm text-[#7A3232]">{error}</p>
+        <p className="p-danger">{error}</p>
         <button type="button" onClick={() => setReload((value) => value + 1)} className="p-btn p-btn--primary">Retry</button>
       </section>
     );
@@ -254,7 +254,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
                   {options?.statuses.map((value) => <option value={value} key={value}>{label(value)}</option>)}
                 </select>
               </label>
-              <label className="mt-4 grid gap-2 text-sm font-semibold text-[#48505F]">
+              <label className="mt-4 grid gap-2 p-label">
                 Reason (optional)
                 <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} className="lead-control resize-y" />
               </label>
@@ -297,7 +297,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-[#E8ECF3] bg-white p-5 shadow-sm sm:p-6">
+    <section className="min-w-0 sm:p-6 p-panel">
       <h3 className="text-lg font-semibold tracking-[-0.02em]">{title}</h3>
       <div className="mt-5">{children}</div>
     </section>

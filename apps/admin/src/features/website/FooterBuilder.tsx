@@ -210,13 +210,13 @@ export function FooterBuilder({
         <button
           type="button"
           onClick={() => commit([...rows, newRow()])}
-          className="mt-4 w-full rounded-xl bg-[#1657CF] px-3 py-2 text-sm font-semibold text-white"
+          className="p-btn p-btn--primary p-btn--block"
         >
           Add row
         </button>
       </aside>
 
-      <div className="rounded-2xl border border-[#E8ECF3] bg-[#F7F9FC] p-5">
+      <div className="p-panel">
         {selectedBlock ? (
           <BlockSettings
             block={selectedBlock.block}

@@ -280,7 +280,7 @@ function StaticPageSeoTable({ deepLinkKey }: { deepLinkKey: string | null }) {
   if (loading) return <p className="p-sub">Loading…</p>;
   if (error)
     return (
-      <p className="mt-4 text-sm font-semibold text-[#B42318]" role="alert">
+      <p className="mt-4 p-danger" role="alert">
         {error}
       </p>
     );
@@ -352,7 +352,7 @@ export function SeoManagementHub() {
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold ${tab === key ? "bg-[#1657CF] text-white" : "text-[#475467] hover:bg-[#F2F4F7]"}`}
+            className={`p-tab${tab === key ? " is-active" : ""}`}
           >
             {label}
           </button>
@@ -365,9 +365,9 @@ export function SeoManagementHub() {
               <Link
                 key={entry.href}
                 href={entry.href}
-                className="block rounded-2xl border border-[#E8ECF3] bg-white p-5 transition hover:border-[#1657CF] hover:shadow-[0_8px_24px_rgba(22,87,207,0.08)]"
+                className="block p-panel"
               >
-                <h3 className="text-base font-semibold text-[#0D1524]">
+                <h3>
                   {entry.label}
                 </h3>
                 <p className="p-sub">

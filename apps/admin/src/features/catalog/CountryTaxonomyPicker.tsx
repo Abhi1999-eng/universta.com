@@ -352,7 +352,7 @@ export function CountryTaxonomyPicker({
 
       <button
         type="button"
-        className="mt-3 text-sm font-semibold text-[#1657CF]"
+        className="mt-3 p-link"
         onClick={() => {
           setNotice("");
           setDialogOpen(true);

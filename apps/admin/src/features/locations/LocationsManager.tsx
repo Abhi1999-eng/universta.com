@@ -425,7 +425,7 @@ export function LocationsManager() {
         <>
           <form
             onSubmit={(event) => void createState(event)}
-            className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:grid-cols-3"
+            className="mt-6 grid gap-4 sm:grid-cols-3 p-panel"
           >
             <div>
               <FieldLabel label="Country" htmlFor="state-country" required help={commonFieldHelp.country} />
@@ -462,7 +462,7 @@ export function LocationsManager() {
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
             <table className="p-table u-table">
-              <thead >
+              <thead>
                 <tr>
                   <th>Name</th>
                   <th>Country</th>
@@ -512,7 +512,7 @@ export function LocationsManager() {
         <>
           <form
             onSubmit={(event) => void createCity(event)}
-            className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:grid-cols-2"
+            className="mt-6 grid gap-4 sm:grid-cols-2 p-panel"
           >
             <div>
               <FieldLabel label="Country" htmlFor="city-country" required help={commonFieldHelp.country} />
@@ -597,7 +597,7 @@ export function LocationsManager() {
 
           <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
             <table className="p-table u-table">
-              <thead >
+              <thead>
                 <tr>
                   <th>City</th>
                   <th>Country</th>

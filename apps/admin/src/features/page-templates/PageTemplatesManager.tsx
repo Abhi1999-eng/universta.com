@@ -189,7 +189,7 @@ export function PageTemplatesManager() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm font-semibold text-[#48505F]">
+          <label className="flex items-center gap-2 p-label">
             <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
             Show archived
           </label>

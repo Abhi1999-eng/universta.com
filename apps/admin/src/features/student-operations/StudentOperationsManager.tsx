@@ -369,7 +369,7 @@ function ThreadPanel({
           {rows.map((row) => (
             <article
               key={row.id}
-              className="rounded-lg border border-slate-200 p-4"
+              className="p-card"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-medium">{label(row)}</h3>

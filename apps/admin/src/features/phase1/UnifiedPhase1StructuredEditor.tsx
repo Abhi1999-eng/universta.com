@@ -62,7 +62,7 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
   const actions = form ? createPortal(
     <div className="sticky bottom-4 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E0EA] bg-white/95 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.12)] backdrop-blur">
       <div>
-        <p >
+        <p>
           One record, one save flow
         </p>
         <p className="p-hint">

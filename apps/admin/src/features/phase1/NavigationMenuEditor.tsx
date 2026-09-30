@@ -293,7 +293,7 @@ export function NavigationMenuEditor({
     status === "ACTIVE" ? "Visible" : "Hidden";
 
   return (
-    <section className="mt-8 rounded-2xl border border-[#E8ECF3] bg-white p-6">
+    <section className="mt-8 p-panel">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="p-eyebrow">
@@ -388,7 +388,7 @@ export function NavigationMenuEditor({
             href={WEB_ORIGIN}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto text-sm font-semibold text-[#1657CF]"
+            className="ml-auto p-link"
           >
             View live site →
           </a>

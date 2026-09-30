@@ -217,7 +217,7 @@ export function ScholarshipProvidersPanel() {
             Master data
           </p>
           <h3 className="mt-2 text-xl font-semibold">Scholarship providers</h3>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#667085]">
+          <p className="p-hint">
             Manage the organisation behind a scholarship. Edit provider details,
             deactivate it temporarily, archive it, or permanently delete an
             unreferenced provider.
@@ -384,7 +384,7 @@ export function ScholarshipProvidersPanel() {
               >
                 <div className="min-w-0">
                   <p className="font-semibold">{row.name}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#828B9B]">
+                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 p-hint">
                     <span>{row.slug}</span>
                     <span>·</span>
                     <span>{row.status}</span>
@@ -398,13 +398,13 @@ export function ScholarshipProvidersPanel() {
                       href={row.websiteUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-1 block break-all text-xs font-semibold text-[#1657CF] hover:underline"
+                      className="mt-1 block break-all p-link"
                     >
                       {row.websiteUrl}
                     </a>
                   ) : null}
                   {row.sourceReference ? (
-                    <p className="mt-1 break-all text-xs text-[#667085]">
+                    <p className="mt-1 break-all p-hint">
                       Source: {row.sourceReference}
                     </p>
                   ) : null}

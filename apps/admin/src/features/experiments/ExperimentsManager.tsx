@@ -228,7 +228,7 @@ export function ExperimentsManager() {
 
       <form
         onSubmit={(event) => void createExperiment(event)}
-        className="mt-6 grid gap-4 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:grid-cols-3"
+        className="mt-6 grid gap-4 sm:grid-cols-3 p-panel"
       >
         <div>
           <label className="text-sm font-semibold" htmlFor="exp-page">
@@ -370,7 +370,7 @@ export function ExperimentsManager() {
             {stats ? (
               <div className="mt-5 overflow-x-auto rounded-xl border border-[#E8ECF3]">
                 <table className="p-table u-table">
-                  <thead >
+                  <thead>
                     <tr>
                       <th>Variant</th>
                       <th>Exposures</th>

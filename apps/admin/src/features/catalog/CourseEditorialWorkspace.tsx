@@ -911,14 +911,12 @@ export function CourseEditorialWorkspace({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 border-b border-[#E8ECF3] pb-3">
+      <nav className="p-tabs p-tabs--line" aria-label="Sections">
         {tabs.map(([value, label]) => (
           <button
             key={value}
             type="button"
-            className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-              tab === value ? 'bg-[#1657CF] text-white' : 'border border-[#D9E0EA]'
-            }`}
+            className={`p-tab${tab === value ? ' is-active' : ''}`}
             onClick={() => {
               setError('');
               setTab(value);
@@ -927,7 +925,7 @@ export function CourseEditorialWorkspace({
             {label}
           </button>
         ))}
-      </div>
+      </nav>
 
       {tab === 'availability' ? (
         <Availability
@@ -2117,7 +2115,7 @@ function Related({
               }
             />
             {item.name}
-            <span className="ml-auto text-xs text-[#667085]">{item.status}</span>
+            <span className="ml-auto p-hint">{item.status}</span>
           </label>
         ))}
       </div>
