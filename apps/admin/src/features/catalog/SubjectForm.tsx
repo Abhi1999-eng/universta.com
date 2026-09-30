@@ -158,14 +158,32 @@ export function SubjectForm({ id }: { id?: string }) {
     return savedRows;
   }
 
+  /* Publishing a specialization bumps its version, so the rows this returns
+     are the ones the form must keep: writing back the pre-publish rows left
+     every specialization a version behind, and the next save was refused with
+     "changed in another session" for an edit nobody else had made. */
   async function applyPublication(subject: SubjectRecord, children: SubSubjectRecord[], intent: Intent) {
+    const settled: SubSubjectRecord[] = [];
     if (intent === 'publish') {
       const current = subject.status === 'PUBLISHED' ? subject : (await publishSubject(subject.id, subject.updatedAt)).data;
-      for (const child of children) if (child.status !== 'PUBLISHED') await publishSubSubject(current.id, child.id, child.updatedAt);
-      return current;
+      for (const child of children) {
+        settled.push(
+          child.status === 'PUBLISHED'
+            ? child
+            : (await publishSubSubject(current.id, child.id, child.updatedAt)).data,
+        );
+      }
+      return { record: current, children: settled };
     }
-    for (const child of children) if (child.status === 'PUBLISHED') await unpublishSubSubject(subject.id, child.id, child.updatedAt);
-    return subject.status === 'PUBLISHED' ? (await unpublishSubject(subject.id, subject.updatedAt)).data : subject;
+    for (const child of children) {
+      settled.push(
+        child.status === 'PUBLISHED'
+          ? (await unpublishSubSubject(subject.id, child.id, child.updatedAt)).data
+          : child,
+      );
+    }
+    const record = subject.status === 'PUBLISHED' ? (await unpublishSubject(subject.id, subject.updatedAt)).data : subject;
+    return { record, children: settled };
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -191,9 +209,11 @@ export function SubjectForm({ id }: { id?: string }) {
         await deleteSubjectSeo(saved.id, existingSeo.updatedAt);
         setExistingSeo(null);
       }
-      const finalRecord = await applyPublication(saved, children, intent);
-      setRecord(finalRecord); setDirty(false);
-      if (!id) router.replace(`/subjects/${finalRecord.id}`);
+      const settled = await applyPublication(saved, children, intent);
+      setRecord(settled.record);
+      setSpecializations(settled.children.map(specializationFromRecord));
+      setDirty(false);
+      if (!id) router.replace(`/subjects/${settled.record.id}`);
       router.refresh();
     } catch (cause: unknown) {
       const typed = cause as Partial<CatalogMutationError>;
