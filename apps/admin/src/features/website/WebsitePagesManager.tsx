@@ -247,20 +247,20 @@ export function WebsitePagesManager() {
 
       <div className="mt-3 overflow-hidden rounded-2xl border border-[#E8ECF3] bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-[#FAFBFD] text-xs uppercase tracking-[0.12em] text-[#828B9B]">
+          <table className="p-table u-table min-w-[900px]">
+            <thead>
               <tr>
-                <th className="px-5 py-4">Page</th>
-                <th className="px-5 py-4">Family</th>
-                <th className="px-5 py-4">Managed as</th>
-                <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4 text-right">Actions</th>
+                <th>Page</th>
+                <th>Family</th>
+                <th>Managed as</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EEF1F5]">
               {visible.map((row) => (
                 <tr key={row.key}>
-                  <td className="px-5 py-4">
+                  <td>
                     <p >{row.label}</p>
                     <p className="p-hint">
                       {row.publicPath}
@@ -273,8 +273,8 @@ export function WebsitePagesManager() {
                   <td className="p-muted">
                     {MANAGEMENT_LABEL[row.managementType]}
                   </td>
-                  <td className="px-5 py-4">
-                    <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-xs font-semibold text-[#1657CF]">
+                  <td>
+                    <span className="p-badge">
                       {row.status}
                     </span>
                   </td>

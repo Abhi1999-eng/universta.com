@@ -369,13 +369,13 @@ export function ExperimentsManager() {
 
             {stats ? (
               <div className="mt-5 overflow-x-auto rounded-xl border border-[#E8ECF3]">
-                <table className="w-full text-sm">
+                <table className="p-table u-table">
                   <thead >
                     <tr>
-                      <th className="px-3 py-2">Variant</th>
-                      <th className="px-3 py-2">Exposures</th>
-                      <th className="px-3 py-2">Conversions</th>
-                      <th className="px-3 py-2">Rate</th>
+                      <th>Variant</th>
+                      <th>Exposures</th>
+                      <th>Conversions</th>
+                      <th>Rate</th>
                     </tr>
                   </thead>
                   <tbody>

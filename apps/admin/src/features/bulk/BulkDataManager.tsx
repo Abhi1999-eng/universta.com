@@ -497,7 +497,7 @@ export function BulkDataManager() {
                   shows the exact row errors before import.
                 </p>
               </div>
-              <span className="rounded-full bg-[#F7F9FC] px-3 py-1.5 text-xs font-semibold text-[#667085]">
+              <span className="p-badge">
                 Max 3 MB · Max 2,000 rows
               </span>
             </div>
@@ -681,12 +681,12 @@ export function BulkDataManager() {
             </div>
 
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E8ECF3]">
-              <table className="w-full text-sm">
+              <table className="p-table u-table">
                 <thead >
                   <tr>
-                    <th className="px-3 py-2" />
+                    <th />
                     {visibleRecordFields.map((field) => (
-                      <th className="px-3 py-2" key={field.key}>
+                      <th key={field.key}>
                         {field.label}
                       </th>
                     ))}
@@ -695,7 +695,7 @@ export function BulkDataManager() {
                 <tbody>
                   {records.map((row) => (
                     <tr key={row.id} className="border-t border-[#E8ECF3]">
-                      <td className="px-3 py-2">
+                      <td>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(row.id)}
@@ -704,7 +704,7 @@ export function BulkDataManager() {
                         />
                       </td>
                       {visibleRecordFields.map((field) => (
-                        <td className="px-3 py-2" key={field.key}>
+                        <td key={field.key}>
                           {recordTableValue(field, row)}
                         </td>
                       ))}

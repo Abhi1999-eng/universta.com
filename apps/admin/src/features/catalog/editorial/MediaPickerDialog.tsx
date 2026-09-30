@@ -233,7 +233,7 @@ export function MediaPickerDialog({
                         void loadLibrary(query);
                       }}
                       placeholder="Search title, alt text or filename"
-                      className="w-full rounded-xl border border-[#D9E0EA] px-3 py-2"
+                      className="p-input"
                     />
                     <button
                       type="button"

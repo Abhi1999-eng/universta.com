@@ -176,7 +176,7 @@ function EditRow({
   }
 
   return (
-    <tr className="bg-[#F7F9FC]">
+    <tr>
       <td colSpan={6} className="p-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Source path" value={sourcePath} onChange={setSourcePath} />
@@ -313,7 +313,7 @@ export function RedirectsManager() {
           <p className="p-sub">Loading redirects…</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="p-table u-table">
               <thead>
                 <tr className="border-b border-[#E8ECF3] text-xs font-bold uppercase tracking-wide text-[#828B9B]">
                   <th className="py-2 pr-3">Source</th>

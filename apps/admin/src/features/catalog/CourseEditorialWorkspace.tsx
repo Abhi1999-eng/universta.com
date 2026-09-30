@@ -2093,7 +2093,7 @@ function Related({
         <FieldLabel label="Search related courses" helpKey="course-related.selection" />
         <input
           aria-label="Search related courses"
-          className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2"
+          className="p-input"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search courses"

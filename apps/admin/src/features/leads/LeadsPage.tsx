@@ -289,7 +289,7 @@ export function LeadsPage() {
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="submit"
-            className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0F3FA0] focus:outline-none focus:ring-2 focus:ring-[#1657CF]"
+            className="p-btn p-btn--primary"
           >
             Apply filters
           </button>
@@ -359,8 +359,8 @@ export function LeadsPage() {
       {!loading && !error && rows.length ? (
         <>
           <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white md:block">
-            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-              <thead className="bg-[#F7F9FC] text-xs uppercase tracking-[0.08em] text-[#667085]">
+            <table className="p-table u-table min-w-[980px]">
+              <thead>
                 <tr>
                   {['Name', 'Contact', 'Interest', 'Source', 'Status', 'Created', ''].map((heading) => (
                     <th className="px-5 py-4 font-semibold" key={heading}>{heading}</th>
@@ -370,7 +370,7 @@ export function LeadsPage() {
               <tbody>
                 {rows.map((lead) => (
                   <tr className="border-t border-[#EEF1F5]" key={lead.id}>
-                    <td className="px-5 py-4">
+                    <td>
                       <p >{displayName(lead)}</p>
                       <p className="p-hint">{lead.leadNumber}</p>
                     </td>
@@ -383,9 +383,9 @@ export function LeadsPage() {
                       <p className="mt-1 text-xs">{lead.preferredCourseLevel?.name ?? '—'} · {lead.preferredIntake?.shortLabel ?? lead.preferredIntake?.name ?? '—'}</p>
                     </td>
                     <td >{statusLabel(lead.sourceType ?? 'GENERAL')}</td>
-                    <td className="px-5 py-4"><StatusPill status={lead.status} /></td>
+                    <td><StatusPill status={lead.status} /></td>
                     <td >{formatDate(lead.createdAt)}</td>
-                    <td className="px-5 py-4 text-right">
+                    <td>
                       <Link href={`/leads/${lead.id}`} className="inline-block whitespace-nowrap font-semibold text-[#1657CF] hover:underline">
                         View lead
                       </Link>

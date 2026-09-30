@@ -397,7 +397,7 @@ export function NavigationMenuEditor({
 
       {/* Items */}
       <div className="mt-8 overflow-x-auto rounded-2xl border border-[#E8ECF3]">
-        <table className="min-w-full text-left text-sm">
+        <table className="p-table u-table min-w-full">
           <thead className="border-b border-[#E8ECF3] text-[#667085]">
             <tr>
               <th className="p-3">Label</th>

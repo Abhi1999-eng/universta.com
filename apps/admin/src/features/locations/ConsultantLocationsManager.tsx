@@ -583,32 +583,32 @@ export function ConsultantLocationsManager() {
         <p className="p-sub">Loading…</p>
       ) : (
         <div className="mt-5 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="bg-[#FAFBFD] text-xs font-bold uppercase tracking-wide text-[#828B9B]">
+          <table className="p-table u-table min-w-[800px]">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Location</th>
-                <th className="px-4 py-3">Consultants</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actions</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Consultants</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF3]">
               {rows.map((row) => (
                 <Fragment key={row.id}>
                   <tr>
-                    <td className="px-4 py-3">
+                    <td>
                       <p className="font-semibold">{row.name}</p>
                       <p className="p-hint">/{row.slug}</p>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       {row.city}
                       {row.state ? `, ${row.state}` : ""}
                       {row.country ? ` — ${row.country.name}` : ""}
                     </td>
-                    <td className="px-4 py-3">{row._count?.consultants ?? 0}</td>
-                    <td className="px-4 py-3">{row.status}</td>
-                    <td className="px-4 py-3">
+                    <td>{row._count?.consultants ?? 0}</td>
+                    <td>{row.status}</td>
+                    <td>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
@@ -645,7 +645,7 @@ export function ConsultantLocationsManager() {
                   </tr>
                   {seoEditingId === row.id ? (
                     <tr>
-                      <td colSpan={5} className="bg-[#FAFBFD] px-4 py-4">
+                      <td colSpan={5}>
                         <LocationSeoEditor
                           locationId={row.id}
                           onSaved={() => setMessage(`Saved SEO for ${row.name}.`)}

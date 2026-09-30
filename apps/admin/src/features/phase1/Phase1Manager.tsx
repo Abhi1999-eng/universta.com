@@ -202,7 +202,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
           <label className="text-sm font-semibold">
             Menu name
             <input
-              className="mt-1 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
+              className="p-input"
               value={newMenu.name}
               onChange={(event) => setNewMenu((v) => ({ ...v, name: event.target.value }))}
               required
@@ -211,7 +211,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
           <label className="text-sm font-semibold">
             Designed for
             <select
-              className="mt-1 w-full rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
+              className="p-input"
               value={newMenu.location}
               onChange={(event) => setNewMenu((v) => ({ ...v, location: event.target.value }))}
             >
@@ -278,7 +278,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
         }`}
       >
         <div className="overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-          <table className="min-w-full text-left text-sm">
+          <table className="p-table u-table min-w-full">
             <thead className="border-b border-[#E8ECF3] text-[#667085]">
               <tr>
                 <th className="p-4">Record</th>

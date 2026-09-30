@@ -461,13 +461,13 @@ export function LocationsManager() {
           </form>
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-            <table className="w-full text-sm">
+            <table className="p-table u-table">
               <thead >
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3" />
+                  <th>Name</th>
+                  <th>Country</th>
+                  <th>Status</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -476,8 +476,8 @@ export function LocationsManager() {
                     <td className="px-4 py-3 font-medium">
                       {state.name} <span className="text-[#9AA3B2]">({state.slug})</span>
                     </td>
-                    <td className="px-4 py-3">{state.country.name}</td>
-                    <td className="px-4 py-3">
+                    <td>{state.country.name}</td>
+                    <td>
                       <select
                         className="p-btn p-btn--ghost p-btn--sm"
                         value={state.status}
@@ -490,7 +490,7 @@ export function LocationsManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td>
                       <button
                         type="button"
                         onClick={() => void archiveState(state)}
@@ -596,15 +596,15 @@ export function LocationsManager() {
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
-            <table className="w-full text-sm">
+            <table className="p-table u-table">
               <thead >
                 <tr>
-                  <th className="px-4 py-3">City</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">State</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Featured</th>
-                  <th className="px-4 py-3" />
+                  <th>City</th>
+                  <th>Country</th>
+                  <th>State</th>
+                  <th>Status</th>
+                  <th>Featured</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -614,9 +614,9 @@ export function LocationsManager() {
                     <td className="px-4 py-3 font-medium">
                       {city.name} <span className="text-[#9AA3B2]">({city.slug})</span>
                     </td>
-                    <td className="px-4 py-3">{city.country.name}</td>
-                    <td className="px-4 py-3">{city.state?.name ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td>{city.country.name}</td>
+                    <td>{city.state?.name ?? "—"}</td>
+                    <td>
                       <select
                         className="p-btn p-btn--ghost p-btn--sm"
                         value={city.status}
@@ -629,7 +629,7 @@ export function LocationsManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <button
                         type="button"
                         onClick={() => void toggleFeatured(city)}
@@ -638,7 +638,7 @@ export function LocationsManager() {
                         {city.isFeatured ? "Featured" : "Not featured"}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td>
                       <button
                         type="button"
                         onClick={() =>

@@ -209,7 +209,7 @@ export function CountryTaxonomyPicker({
         onChange={(event) => setQuery(event.target.value)}
         placeholder={`Search ${title.toLowerCase()}`}
         aria-label={`Search ${title.toLowerCase()}`}
-        className="mt-2 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm"
+        className="p-input"
       />
 
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={`${title} view`}>
@@ -398,7 +398,7 @@ export function CountryTaxonomyPicker({
                 }
                 if (event.key === "Escape") closeDialog();
               }}
-              className="mt-1 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm"
+              className="p-input"
             />
           </label>
           {draftName.trim() ? (

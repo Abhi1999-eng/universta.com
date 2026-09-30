@@ -256,7 +256,7 @@ function OperationsTable({
       <h2 className="p-h3">{title}</h2>
       {rows.length ? (
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="p-table u-table min-w-[720px]">
             <thead>
               <tr className="border-b text-slate-600">
                 <th className="p-2">Record</th>
@@ -453,7 +453,7 @@ function ReferralTable({
       <h2 className="p-h3">Referrals</h2>
       {referrals.length ? (
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[650px] text-left text-sm">
+          <table className="p-table u-table min-w-[650px]">
             <thead>
               <tr className="border-b text-slate-600">
                 <th className="p-2">Referrer</th>

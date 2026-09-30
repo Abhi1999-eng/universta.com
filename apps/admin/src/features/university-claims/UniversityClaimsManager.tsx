@@ -226,7 +226,7 @@ export function UniversityClaimsManager() {
                 </label>
                 <input
                   id="status-reason"
-                  className="mt-1 w-full rounded-xl border border-[#D9E0EA] px-3 py-2.5 text-sm"
+                  className="p-input"
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                 />

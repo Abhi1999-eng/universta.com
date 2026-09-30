@@ -119,7 +119,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
             <p className="mt-1 font-semibold text-[#0D1524]">{assigned.name}</p>
           </div>
         ) : (
-          <span className="rounded-full bg-[#FFF5E8] px-3 py-1.5 text-xs font-semibold text-[#9A5B00]">
+          <span className="p-badge">
             Unassigned
           </span>
         )}
@@ -157,7 +157,7 @@ export function LeadConsultantAssignmentCard({ leadId }: { leadId: string }) {
             disabled={
               working || (assigned?.id ?? '') === selectedId || consultants.length === 0
             }
-            className="rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="p-btn p-btn--primary"
           >
             {working ? 'Saving…' : assigned ? 'Save reassignment' : 'Assign lead'}
           </button>
