@@ -142,7 +142,7 @@ describe('public course filter contract (e2e)', () => {
   it('uses OR within a dimension and AND across different dimensions', async () => {
     const response = await request(app.getHttpServer())
       .get(
-        '/api/v1/courses?subject=computer-science,business-management&level=UG,DIPLOMA&country=canada&pageSize=100',
+        '/api/v1/courses?subject=computer-science,business-and-management&level=UG,DIPLOMA&country=canada&pageSize=100',
       )
       .expect(200);
     const rows = courses(response);
@@ -150,7 +150,7 @@ describe('public course filter contract (e2e)', () => {
     expect(rows.length).toBeGreaterThan(0);
     expect(
       rows.every((course) =>
-        ['computer-science', 'business-management'].includes(
+        ['computer-science', 'business-and-management'].includes(
           course.subject.slug,
         ),
       ),

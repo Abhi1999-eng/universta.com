@@ -35,10 +35,10 @@ const COUNTRY_SLUGS = [
 ];
 const SUBJECT_SLUGS = [
   'computer-science',
-  'business-management',
+  'business-and-management',
   'engineering',
-  'health-medicine',
-  'creative-arts-design',
+  'health-and-medicine',
+  'design-and-creative-arts',
 ];
 const UNIVERSITY_SLUGS = [
   'northstar-demonstration-university',
