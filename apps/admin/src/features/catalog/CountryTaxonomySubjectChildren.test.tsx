@@ -40,13 +40,13 @@ const ALL_CHILDREN = ['law-intl', 'law-ip', 'cs-ai', 'cs-ml'];
 
 function Harness({
   subjects = ROWS.map((row) => row.id),
-  children = ALL_CHILDREN,
+  specializations = ALL_CHILDREN,
 }: {
   subjects?: string[];
-  children?: string[];
+  specializations?: string[];
 }) {
   const [selected, setSelected] = useState(subjects);
-  const [childSelection, setChildSelection] = useState(children);
+  const [childSelection, setChildSelection] = useState(specializations);
   return (
     <form onSubmit={(event) => event.preventDefault()}>
       <CountryTaxonomyPicker
@@ -91,7 +91,7 @@ describe('unticking a subject', () => {
 
   it('brings the whole set back when the subject is ticked again', async () => {
     const user = userEvent.setup();
-    render(<Harness subjects={['cs']} children={['cs-ai']} />);
+    render(<Harness subjects={['cs']} specializations={['cs-ai']} />);
 
     await user.click(screen.getByRole('checkbox', { name: /^Law/ }));
 
@@ -103,7 +103,9 @@ describe('unticking a subject', () => {
 
   it('leaves a subject with no specializations alone', async () => {
     const user = userEvent.setup();
-    render(<Harness subjects={['law']} children={['law-intl', 'law-ip']} />);
+    render(
+      <Harness subjects={['law']} specializations={['law-intl', 'law-ip']} />,
+    );
 
     await user.click(screen.getByRole('checkbox', { name: /^Computer Science/ }));
 

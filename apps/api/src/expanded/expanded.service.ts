@@ -419,6 +419,12 @@ export class ExpandedService {
     if (resource === 'universities') {
       const where: any = {
         ...publishedWhereScheduled(now),
+        /* A university is only a study destination while its country is one.
+           Deleting a destination left its universities listed and reachable,
+           naming a country the site no longer had -- the country filter
+           already required a live one, so this is the same condition when
+           nobody has filtered. */
+        country: { status: 'PUBLISHED', deletedAt: null },
         ...(q ? { OR: [{ name: q }, { shortDescription: q }] } : {}),
         ...(query.country
           ? {
@@ -875,7 +881,12 @@ export class ExpandedService {
   private async universityDetail(slug: string) {
     const now = new Date();
     const row = await this.prisma.university.findFirst({
-      where: { slug, ...publishedWhereScheduled(now) },
+      // Same rule as the list: no live country, no public page.
+      where: {
+        slug,
+        ...publishedWhereScheduled(now),
+        country: { status: 'PUBLISHED', deletedAt: null },
+      },
       include: {
         country: true,
         campuses: {
