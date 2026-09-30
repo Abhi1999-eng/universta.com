@@ -93,3 +93,25 @@ export function isUniqueConstraintError(error: unknown): boolean {
     (error as { code?: unknown }).code === 'P2002',
   );
 }
+
+/**
+ * The furthest ahead of UTC any civil calendar runs (Kiribati, UTC+14).
+ *
+ * A "verified date" is a calendar date, and the check that it is not in the
+ * future compares it to an instant. Those are not the same kind of thing: a
+ * date input sends `YYYY-MM-DD`, which parses as midnight UTC, so an editor
+ * in India picking today between midnight and 05:30 IST sent a date the
+ * server had not reached yet and was told the date was in the future. A
+ * calendar date is only genuinely ahead once it has not begun anywhere.
+ */
+export const CALENDAR_AHEAD_OF_UTC_MS = 14 * 60 * 60 * 1000;
+
+/** Whether a supplied date is later than any calendar has yet reached. */
+export function isFutureCalendarDate(
+  value: string | Date,
+  now: Date = new Date(),
+): boolean {
+  const supplied = new Date(value);
+  if (Number.isNaN(supplied.getTime())) return false;
+  return supplied.getTime() > now.getTime() + CALENDAR_AHEAD_OF_UTC_MS;
+}

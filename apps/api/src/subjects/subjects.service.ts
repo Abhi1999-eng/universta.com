@@ -457,15 +457,23 @@ export class SubjectsService {
         },
         _count: { _all: true },
       }),
+      /* Featured first, then whatever else is published.
+         Filtering on `isFeatured` alone meant a subject whose programmes
+         nobody had ticked showed no programmes section at all -- on a page
+         whose own lead said "Undergraduate (1)". Being featured is a
+         preference about ordering, not a condition for existing. */
       this.prisma.course.findMany({
         where: {
           subjectId: subject.id,
           status: 'PUBLISHED',
           deletedAt: null,
-          isFeatured: true,
         },
         include: this.coursePublicInclude(),
-        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        orderBy: [
+          { isFeatured: 'desc' },
+          { displayOrder: 'asc' },
+          { name: 'asc' },
+        ],
         take: 6,
       }),
       this.prisma.countryCourse.findMany({

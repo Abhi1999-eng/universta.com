@@ -15,6 +15,7 @@ import {
   isUniqueConstraintError,
   paginationMeta,
   slugify,
+  isFutureCalendarDate,
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
 import { sanitizeRichText } from '../common/rich-text';
@@ -2026,7 +2027,7 @@ export class CoursesService {
         'COURSE_MAPPING_SOURCE_INVALID',
         'Source reference must use HTTPS',
       );
-    if (dto.verifiedAt && new Date(dto.verifiedAt) > new Date())
+    if (dto.verifiedAt && isFutureCalendarDate(dto.verifiedAt))
       throw catalogBadRequest(
         'COURSE_MAPPING_VERIFICATION_INVALID',
         'Verification date cannot be in the future',

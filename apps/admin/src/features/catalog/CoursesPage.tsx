@@ -10,6 +10,7 @@ import {
   listSubjects,
   publishCourse,
   unpublishCourse,
+  listEvery,
 } from './catalog-client';
 import type {
   CatalogMutationError,
@@ -82,13 +83,14 @@ export function CoursesPage() {
     void Promise.all([
       listSubjects({ limit: 100 }),
       listCourseLevels({ status: 'ACTIVE', limit: 100 }),
-      listCountries({ status: 'PUBLISHED', limit: 100 }),
+      // A filter has to offer every destination, not the first page of them.
+      listEvery(listCountries, { status: 'PUBLISHED' }),
     ])
-      .then(([subjectResult, levelResult, countryResult]) => {
+      .then(([subjectResult, levelResult, countries]) => {
         if (!cancelled) {
           setSubjects(subjectResult.data);
           setLevels(levelResult.data);
-          setCountries(countryResult.data);
+          setCountries(countries);
         }
       })
       .catch(() => undefined);

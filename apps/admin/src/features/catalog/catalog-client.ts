@@ -166,6 +166,38 @@ export function listCountries(
   });
 }
 
+/** The largest page any catalogue list endpoint will serve. */
+export const CATALOG_MAX_LIMIT = 100;
+
+/**
+ * Every row a list endpoint has, not just the first page of them.
+ *
+ * A picker needs the whole set: a dropdown that stops at the hundredth
+ * country cannot be used to choose the hundred and first. The catalogue's
+ * `limit` is capped at 100 by the API, so asking for more is not an option
+ * and the call sites that did -- the course editor, its editorial workspace
+ * and the course list's filter -- silently offered the first hundred
+ * countries in the sort order and nothing after. With 206 destinations that
+ * hid everything from Latvia onwards.
+ *
+ * `meta.totalPages` says how many more to ask for; a list that answers
+ * without meta is taken to be complete.
+ */
+export async function listEvery<T>(
+  fetchPage: (params: CatalogListParams) => Promise<{ data: T[]; meta: PageMeta | null }>,
+  params: CatalogListParams = {},
+): Promise<T[]> {
+  const first = await fetchPage({ ...params, page: 1, limit: CATALOG_MAX_LIMIT });
+  const pages = first.meta?.totalPages ?? 1;
+  if (pages <= 1) return first.data;
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, index) =>
+      fetchPage({ ...params, page: index + 2, limit: CATALOG_MAX_LIMIT }),
+    ),
+  );
+  return rest.reduce((all, page) => all.concat(page.data), first.data);
+}
+
 /* Country features and accepted English tests are reusable master data: an
  * option added here is offered on every Country, not just the one being
  * edited. The Admin reads the list rather than carrying its own copy, which is
