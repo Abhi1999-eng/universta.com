@@ -32,7 +32,11 @@ export default function RootLayout({
       lang="en"
       className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* The ported stylesheet is scoped under `.pa`, and several of its
+          rules -- the app frame, the sign-in split -- target the element
+          that carries the scope's own state. Putting the scope on the
+          document, as the reference does, is what lets those match. */}
+      <body className="pa min-h-full flex flex-col">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

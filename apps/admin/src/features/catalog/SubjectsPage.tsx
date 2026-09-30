@@ -80,7 +80,7 @@ export function SubjectsPage() {
   }
 
   return (
-    <section className="pa" aria-labelledby="subjects-heading">
+    <section aria-labelledby="subjects-heading">
       <header className="p-head">
         <div>
           <p className="p-eyebrow">Catalog discovery</p>

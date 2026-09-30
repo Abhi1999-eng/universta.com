@@ -63,7 +63,7 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
 
   if (status === 'initializing' || status === 'authenticated') {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FAFBFD] px-6">
+      <main className="p-auth__main">
         <p role="status" aria-live="polite" className="p-sub">
           Checking your admin session…
         </p>
@@ -72,43 +72,41 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAFBFD] text-[#0D1524]">
-      <div className="mx-auto grid min-h-screen max-w-[1500px] lg:grid-cols-[minmax(360px,0.82fr)_minmax(520px,1.18fr)]">
-        <section className="relative hidden overflow-hidden bg-[#0D1524] px-12 py-14 text-white lg:flex lg:flex-col lg:justify-between xl:px-20">
-          <div className="absolute -right-32 -top-28 h-96 w-96 rounded-full bg-[#1657CF]/40 blur-3xl" />
-          <div className="relative">
+    <main className="p-auth">
+        <section className="p-auth__side">
+          <div>
             <BrandMark inverse />
-            <p className="mt-24 max-w-sm text-sm font-medium uppercase tracking-[0.24em] text-white/55">
+            <p className="p-eyebrow">
               Admin workspace
             </p>
-            <h1 className="mt-5 max-w-lg text-5xl font-semibold leading-[1.08] tracking-[-0.04em]">
+            <h1 className="p-h1">
               Make every destination feel within reach.
             </h1>
-            <p className="mt-6 max-w-md text-base leading-7 text-white/65">
+            <p className="p-sub">
               A focused workspace for the people shaping Universta’s next chapter.
             </p>
           </div>
-          <p className="relative text-xs text-white/45">Secure access for authorized Universta administrators.</p>
+          <p className="p-auth__fine">Secure access for authorized Universta administrators.</p>
         </section>
 
-        <section className="flex items-center px-6 py-10 sm:px-10 lg:px-16 xl:px-24">
-          <div className="mx-auto w-full max-w-[470px]">
+        <section className="p-auth__main">
+          <div className="p-auth__card">
             <div className="mb-12 lg:hidden">
               <BrandMark />
             </div>
             <div className="mb-9">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#1657CF]">Super Admin</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-[#0D1524] sm:text-4xl">
+              <p className="p-eyebrow">Super Admin</p>
+              <h2 className="p-h2">
                 Welcome back.
               </h2>
-              <p className="mt-3 text-base leading-7 text-[#48505F]">
+              <p className="p-sub">
                 Sign in to manage the Universta admin workspace.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} noValidate className="space-y-5">
               <div>
-                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-[#0D1524]">
+                <label htmlFor="email" className="p-label">
                   Email address
                 </label>
                 <input
@@ -121,14 +119,14 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
                   onChange={(event) => setEmail(event.target.value)}
                   aria-invalid={Boolean(emailError)}
                   aria-describedby={emailError ? 'email-error' : undefined}
-                  className="h-13 w-full rounded-xl border border-[#DCE2EC] bg-white px-4 text-base text-[#0D1524] outline-none transition placeholder:text-[#9AA3B2] focus:border-[#1657CF] focus:ring-4 focus:ring-[#1657CF]/10"
+                  className="p-input"
                   placeholder="you@universta.com"
                 />
                 {emailError ? <p id="email-error" className="mt-2 p-danger">{emailError}</p> : null}
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-[#0D1524]">
+                <label htmlFor="password" className="p-label">
                   Password
                 </label>
                 <div className="relative">
@@ -142,13 +140,13 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
                     onChange={(event) => setPassword(event.target.value)}
                     aria-invalid={Boolean(passwordError)}
                     aria-describedby={passwordError ? 'password-error' : undefined}
-                    className="h-13 w-full rounded-xl border border-[#DCE2EC] bg-white px-4 pr-24 text-base text-[#0D1524] outline-none transition placeholder:text-[#9AA3B2] focus:border-[#1657CF] focus:ring-4 focus:ring-[#1657CF]/10"
+                    className="p-input" style={{ paddingRight: 84 }}
                     placeholder="Enter your password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((visible) => !visible)}
-                    className="absolute right-2 top-2 rounded-lg px-3 py-2 text-xs font-semibold text-[#48505F] hover:bg-[#F0F4FA] focus:outline-none focus:ring-2 focus:ring-[#1657CF]"
+                    className="p-btn p-btn--text p-btn--sm" style={{ position: 'absolute', right: 6, top: 5 }}
                     aria-pressed={showPassword}
                   >
                     {showPassword ? 'Hide' : 'Show'}
@@ -157,25 +155,24 @@ export function LoginScreen({ returnTo }: { returnTo: string }) {
                 {passwordError ? <p id="password-error" className="mt-2 p-danger">{passwordError}</p> : null}
               </div>
 
-              <div role="alert" aria-live="polite" className="min-h-6 text-sm text-[#B42318]">
+              <div role="alert" aria-live="polite" className="p-danger" style={{ minHeight: 24 }}>
                 {error}
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex h-13 w-full items-center justify-center rounded-xl bg-[#1657CF] px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(22,87,207,0.2)] transition hover:bg-[#1049B2] focus:outline-none focus:ring-4 focus:ring-[#1657CF]/25 disabled:cursor-not-allowed disabled:opacity-60"
+                className="p-btn p-btn--primary p-btn--block"
               >
                 {submitting ? 'Signing in…' : 'Sign in securely'}
               </button>
             </form>
 
-            <p className="mt-9 text-center text-xs leading-5 text-[#828B9B]">
+            <p className="p-auth__alt">
               This area is restricted to authorized Universta administrators.
             </p>
           </div>
         </section>
-      </div>
     </main>
   );
 }

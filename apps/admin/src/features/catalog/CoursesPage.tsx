@@ -122,7 +122,7 @@ export function CoursesPage() {
   }
 
   return (
-    <section className="pa" aria-labelledby="courses-heading">
+    <section aria-labelledby="courses-heading">
       <header className="p-head">
         <div>
           <p className="p-eyebrow">Catalog discovery</p>

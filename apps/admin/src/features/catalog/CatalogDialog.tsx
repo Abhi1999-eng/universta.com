@@ -80,7 +80,7 @@ export function CatalogDialog({
   }, []);
 
   return (
-    <div className="pa p-modal" data-open="true" role="presentation">
+    <div className="p-modal" data-open="true" role="presentation">
       <button type="button" aria-hidden="true" tabIndex={-1} className="p-modal__scrim" onClick={onClose} />
       <section
         ref={dialogRef}

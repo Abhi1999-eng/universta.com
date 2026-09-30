@@ -98,6 +98,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useLayoutEffect(() => {
     if (!mobileOpen) {
       document.body.style.overflow = '';
+      document.body.classList.remove('side-open');
       if (wasMobileOpen.current) {
         menuTriggerRef.current?.focus();
       }
@@ -106,6 +107,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
     wasMobileOpen.current = true;
     document.body.style.overflow = 'hidden';
+    /* The drawer's own rule is `.pa.side-open .p-side`, and the scope is on
+       the document, so that is where the state belongs -- which is also
+       where the reference puts it. */
+    document.body.classList.add('side-open');
     closeButtonRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -131,6 +136,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = '';
+      document.body.classList.remove('side-open');
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [mobileOpen]);
@@ -150,7 +156,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const initial = user?.firstName?.slice(0, 1).toUpperCase() ?? 'U';
 
   return (
-    <div className={`pa p-app a-app${mobileOpen ? ' side-open' : ''}`}>
+    <div className="p-app a-app">
       <a className="p-skip" href="#main-content">
         Skip to content
       </a>
