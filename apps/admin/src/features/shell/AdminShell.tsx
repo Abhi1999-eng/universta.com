@@ -311,13 +311,17 @@ function Navigation({
           (item) => navItemKey(group.label, item.label) === activeKey,
         );
         return (
-          /* The reference collapses its groups and opens the one holding the
-             current screen. `open` is keyed so a route change re-mounts the
-             group rather than leaving a stale disclosure state behind. */
+          /* The reference collapses its groups and opens only the one
+             holding the current screen. Its navigation is a handful of
+             entries; this one is long enough that collapsing it would put
+             most of the Admin behind a disclosure nobody asked for -- and
+             did, hiding links the acceptance specs click directly. So the
+             groups are the reference's, and they open: a reader can still
+             fold one away, and nothing starts out hidden. */
           <details
             className="a-navgroup"
             key={group.label}
-            open={open}
+            open
             {...(open ? { 'data-current-group': 'true' } : {})}
           >
             <summary className="p-nav__link">

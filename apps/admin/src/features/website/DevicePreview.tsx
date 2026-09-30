@@ -188,8 +188,16 @@ export function DevicePreview({
           <div
             className="wb-preview-shrink"
             /* Reserves only the scaled-down footprint, so the admin page never
-               scrolls sideways around a 1440px frame. */
-            style={{ width: frame.width * scale, height: frame.height * scale }}
+               scrolls sideways around a 1440px frame.
+               Until the stage has been measured there is no scale to reserve
+               against, and reserving the frame's own width would be exactly
+               the sideways scroll this avoids -- so it takes the column until
+               the first measurement lands. */
+            style={
+              stageWidth > 0
+                ? { width: frame.width * scale, height: frame.height * scale }
+                : { width: '100%', height: frame.height * scale }
+            }
           >
             <div
               className="wb-preview-frame"
