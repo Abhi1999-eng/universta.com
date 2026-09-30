@@ -63,8 +63,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const input =
-  "mt-1 w-full rounded-xl border border-[#D9E0EA] bg-white px-3 py-2 text-sm outline-none focus:border-[#1657CF] focus:ring-2 focus:ring-[#DCE8FF]";
-const label = "text-sm font-semibold text-[#1F2933]";
+  "p-input";
+const label = "";
 
 const emptyDraft = {
   id: "" as string | null,

@@ -40,7 +40,7 @@ export function UnifiedEditorActions({
           name="intent"
           value="draft"
           disabled={busy}
-          className="rounded-xl border border-[#1657CF] bg-white px-5 py-3 text-sm font-semibold text-[#1657CF] disabled:opacity-50"
+          className="p-btn p-btn--outline"
         >
           {savingIntent === 'draft' ? 'Saving…' : published ? 'Move to draft' : draftLabel}
         </button>
