@@ -290,7 +290,7 @@ export function CoursesPage() {
                 <th scope="col">Subject</th>
                 <th scope="col">Level</th>
                 <th scope="col">Status</th>
-                <th scope="col">Actions</th>
+                <th scope="col" className="p-td-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -309,8 +309,8 @@ export function CoursesPage() {
                       {row.status}
                     </span>
                   </td>
-                  <td>
-                    <div className="p-row p-row--wrap">
+                  <td className="p-td-actions">
+                    <div className="p-row p-row--actions">
                       <Link href={`/courses/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">
                         Edit
                       </Link>

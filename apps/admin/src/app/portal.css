@@ -1192,3 +1192,28 @@
 .pa .p-panel--dark .p-eyebrow,
 .pa .p-panel--dark .p-sub { color: #AEBBCE; }
 .pa .p-panel--dark .p-h1 { color: #fff; }
+
+/* A row's actions belong on one line. The reference's own tables are narrow
+   enough that they never wrap, but a catalogue row carries a slug, a term
+   list and a date as well, and "Edit / Unpublish / Delete" folded onto a
+   second line -- which tripled the height of every row in the list and left
+   a band of empty cell beside it. The wrapper already scrolls sideways, so
+   the buttons keep their line and the table takes the width it needs. */
+.pa .p-table td .p-row--actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.pa .p-table th.p-td-actions,
+.pa .p-table td.p-td-actions { width: 1%; white-space: nowrap; text-align: right; }
+.pa .p-table td { vertical-align: middle; }
+/* Holding the actions on one line only helps if the line is on screen. A
+   record's slug and its list of subjects are the two cells that grow without
+   limit, so they are the two that give way: the table then fits its wrapper
+   instead of pushing Edit and Delete past the right edge. */
+.pa .p-table td:first-child { max-width: 260px; }
+.pa .p-table td:first-child .p-hint { overflow-wrap: anywhere; }
+.pa .p-table td .p-terms {
+  display: block; max-width: 340px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
