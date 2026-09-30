@@ -133,23 +133,23 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
   }
 
   if (loading) {
-    return <p className="mx-auto max-w-[1120px] rounded-2xl border border-[#E8ECF3] bg-white p-10 text-center text-sm text-[#667085]" role="status">Loading lead…</p>;
+    return <p className="p-panel p-empty" role="status">Loading lead…</p>;
   }
   if (notFound) {
     return (
-      <section className="mx-auto max-w-[760px] rounded-2xl border border-[#E8ECF3] bg-white p-8 text-center">
+      <section className="p-panel p-empty">
         <h2 className="text-2xl font-semibold">Lead not found</h2>
         <p className="p-sub">This lead may have been removed or is no longer available.</p>
-        <Link href="/leads" className="mt-5 inline-flex rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white">Back to leads</Link>
+        <Link href="/leads" className="p-btn p-btn--primary">Back to leads</Link>
       </section>
     );
   }
   if (error || !lead) {
     return (
-      <section className="mx-auto max-w-[760px] rounded-2xl border border-[#F3C7C7] bg-[#FFF7F7] p-8" role="alert">
-        <h2 className="text-xl font-semibold text-[#9F1D1D]">Lead could not be loaded</h2>
+      <section className="p-panel p-panel--danger" role="alert">
+        <h2 className="p-h3 p-danger">Lead could not be loaded</h2>
         <p className="mt-2 text-sm text-[#7A3232]">{error}</p>
-        <button type="button" onClick={() => setReload((value) => value + 1)} className="mt-5 rounded-xl bg-[#1657CF] px-5 py-3 text-sm font-semibold text-white">Retry</button>
+        <button type="button" onClick={() => setReload((value) => value + 1)} className="p-btn p-btn--primary">Retry</button>
       </section>
     );
   }
@@ -157,7 +157,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
   const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
   return (
     <section aria-labelledby="lead-heading" className="mx-auto max-w-[1120px]">
-      <Link href="/leads" className="text-sm font-semibold text-[#1657CF] hover:underline">← Back to leads</Link>
+      <Link href="/leads" className="p-link">← Back to leads</Link>
       <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="min-w-0">
           <p className="p-eyebrow">{lead.leadNumber}</p>
@@ -166,8 +166,8 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
         </div>
         <StatusPill status={lead.status} />
       </div>
-      {actionMessage ? <p role="status" className="mt-5 rounded-xl bg-[#E9F8F0] px-4 py-3 text-sm font-semibold text-[#18794E]">{actionMessage}</p> : null}
-      {actionError ? <div role="alert" className="mt-5 rounded-xl border border-[#F3C7C7] bg-[#FFF7F7] px-4 py-3 text-sm text-[#9F1D1D]"><p>{actionError}</p><button type="button" onClick={() => setReload((value) => value + 1)} className="mt-2 font-semibold underline">Reload current lead</button></div> : null}
+      {actionMessage ? <p role="status" className="p-alert p-alert--ok">{actionMessage}</p> : null}
+      {actionError ? <div role="alert" className="p-alert p-alert--error"><p>{actionError}</p><button type="button" onClick={() => setReload((value) => value + 1)} className="mt-2 font-semibold underline">Reload current lead</button></div> : null}
 
       <div className="mt-7 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid min-w-0 gap-6">
@@ -202,7 +202,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
               <dl className="grid gap-5 sm:grid-cols-2">
                 {lead.assessment.answers.map((entry) => (
                   <div className="min-w-0" key={entry.id}>
-                    <dt className="text-xs font-medium text-[#828B9B]">{entry.question}</dt>
+                    <dt className="p-hint">{entry.question}</dt>
                     <dd className="mt-1 break-words text-sm font-semibold leading-6 text-[#334155]">{entry.answer}</dd>
                   </div>
                 ))}
@@ -233,9 +233,9 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
             </form>
             <div className="mt-6 grid gap-3">
               {lead.notes.length ? lead.notes.map((item) => (
-                <article className="rounded-xl border border-[#E8ECF3] bg-[#FAFBFD] p-4" key={item.id}>
+                <article className="p-card" key={item.id}>
                   <div className="flex flex-wrap justify-between gap-2">
-                    <p className="text-xs font-semibold text-[#48505F]">{person(item.user)}{item.isPinned ? ' · Pinned' : ''}</p>
+                    <p className="p-label">{person(item.user)}{item.isPinned ? ' · Pinned' : ''}</p>
                     <time className="p-hint">{dateTime(item.createdAt)}</time>
                   </div>
                   <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#334155]">{item.note}</p>
