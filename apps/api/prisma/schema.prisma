@@ -1424,6 +1424,10 @@ model CountryCourse {
   availabilityStatus    String    @default("AVAILABLE") @map("availability_status") @db.VarChar(30)
   indicativeTuitionMin  Decimal?  @map("indicative_tuition_min") @db.Decimal(12, 2)
   indicativeTuitionMax  Decimal?  @map("indicative_tuition_max") @db.Decimal(12, 2)
+  /** True when an editor set the range by hand. False means it is worked
+   * out from what this country's universities charge for the course, and
+   * is rewritten whenever those change. */
+  tuitionIsOverride     Boolean   @default(true) @map("tuition_is_override")
   currencyCode          String?   @map("currency_code") @db.Char(3)
   tuitionPeriod         String    @default("PER_YEAR") @map("tuition_period") @db.VarChar(30)
   applicationFeeMin     Decimal?  @map("application_fee_min") @db.Decimal(12, 2)
@@ -1457,6 +1461,7 @@ model CountryCourse {
   intakes CountryCourseIntake[]
 
   @@unique([countryId, courseId])
+  @@index([countryId, tuitionIsOverride])
   @@index([countryId, status, isFeatured])
   @@index([courseId, status])
   @@map("country_courses")

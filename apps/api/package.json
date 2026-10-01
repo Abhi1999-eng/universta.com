@@ -27,7 +27,8 @@
     "db:seed:catalogue": "tsx prisma/catalogue-seed.ts",
     "db:seed:abundant": "tsx prisma/abundant-seed.ts",
     "db:reset:except-admin": "tsx prisma/reset-except-admin.ts",
-    "db:reconcile:country-taxonomy": "tsx prisma/reconcile-country-taxonomy.ts"
+    "db:reconcile:country-taxonomy": "tsx prisma/reconcile-country-taxonomy.ts",
+    "db:reconcile:country-tuition": "tsx prisma/reconcile-country-course-tuition.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
