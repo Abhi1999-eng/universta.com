@@ -281,11 +281,7 @@ export class SubjectsService {
           deletedAt: null,
         },
         include: this.coursePublicInclude(),
-        orderBy: [
-          { isFeatured: 'desc' },
-          { displayOrder: 'asc' },
-          { name: 'asc' },
-        ],
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         take: 9,
       }),
     ]);
@@ -475,11 +471,7 @@ export class SubjectsService {
           deletedAt: null,
         },
         include: this.coursePublicInclude(),
-        orderBy: [
-          { isFeatured: 'desc' },
-          { displayOrder: 'asc' },
-          { name: 'asc' },
-        ],
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         take: 6,
       }),
       this.prisma.countryCourse.findMany({
@@ -1304,13 +1296,9 @@ export class SubjectsService {
     if (sort === 'name') return [{ name: 'asc' }, { id: 'asc' }];
     if (sort === 'createdAt') return [{ createdAt: 'desc' }, { id: 'asc' }];
     if (sort === 'updatedAt') return [{ updatedAt: 'desc' }, { id: 'asc' }];
-    if (sort === 'featured')
-      return [
-        { isFeatured: 'desc' },
-        { displayOrder: 'asc' },
-        { name: 'asc' },
-        { id: 'asc' },
-      ];
+    /* "featured" is still accepted, so a saved link keeps working, but it is
+       the catalogue's own order now: nothing sets `isFeatured` any more, so
+       sorting on it only read a column that is false on every row. */
     return [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
   }
 

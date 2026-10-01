@@ -114,7 +114,6 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
   const popular = [...subjects]
     .sort((a, b) => b.publishedCourseCount - a.publishedCourseCount)
     .slice(0, 6);
-  const featured = subjects.filter((subject) => subject.featured).slice(0, 3);
 
   return (
     <div className="cref cref-subj">
@@ -354,51 +353,6 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
                       →
                     </span>
                   </Link>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {/* FEATURED */}
-          {featured.length ? (
-            <section className="section" id="featured">
-              <div className="section-head">
-                <span className="eyebrow">Editor’s picks</span>
-                <h2>Featured subjects</h2>
-                <p className="sub">Subjects an admin has marked as featured in the catalogue.</p>
-              </div>
-              <div className="grid g3">
-                {featured.map((subject) => (
-                  <article className="card feat-card" key={subject.id}>
-                    <div className="feat-top">
-                      <span className="feat-ic" aria-hidden="true">
-                        {initials(subject.name)}
-                      </span>
-                      <h3>{subject.name}</h3>
-                    </div>
-                    {subject.shortDescription ? (
-                      <p style={{ fontSize: 14, color: 'var(--muted)' }}>
-                        {subject.shortDescription}
-                      </p>
-                    ) : null}
-                    <div className="feat-rows">
-                      <div className="feat-row">
-                        <span>Courses</span>
-                        <span>{formatNumber(subject.publishedCourseCount)}</span>
-                      </div>
-                      <div className="feat-row">
-                        <span>Specialisations</span>
-                        <span>{subject.publishedSubSubjectCount}</span>
-                      </div>
-                      <div className="feat-row">
-                        <span>Destinations</span>
-                        <span>{subject.availableCountryCount}</span>
-                      </div>
-                    </div>
-                    <Link className="btn btn-ghost btn-sm" href={`/subjects/${subject.slug}`}>
-                      Explore {subject.name}
-                    </Link>
-                  </article>
                 ))}
               </div>
             </section>

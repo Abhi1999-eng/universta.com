@@ -27,7 +27,6 @@ export type UniversityRow = {
   institutionType: string | null;
   offerings: number;
   campuses: number;
-  featured: boolean;
   verified: boolean;
 };
 
@@ -50,7 +49,6 @@ export type UniversitiesReferenceProps = {
 };
 
 const SORTS = [
-  { value: 'featured', label: 'Featured first' },
   { value: 'name-asc', label: 'Name (A–Z)' },
   { value: 'name-desc', label: 'Name (Z–A)' },
   { value: 'newest', label: 'Recently published' },
@@ -59,7 +57,7 @@ const SORTS = [
 const FAQS = [
   {
     q: 'How are these universities chosen?',
-    a: 'Every institution here is a published record in the Universta catalogue. There is no paid placement and no ranking: the default order puts featured records first, and you can re-sort alphabetically or by recency.',
+    a: 'Every institution here is a published record in the Universta catalogue. There is no paid placement and no ranking: the default order is the catalogue\u2019s own, and you can re-sort alphabetically or by recency.',
   },
   {
     q: 'Why are there no rankings on this page?',
@@ -144,7 +142,6 @@ export function UniversitiesReference(props: UniversitiesReferenceProps) {
     return [...map.entries()];
   }, [directory]);
 
-  const featured = rows.filter((row) => row.featured).slice(0, 3);
   const totalOfferings = directory.reduce((sum, entry) => sum + entry.offerings, 0);
 
   return (
@@ -249,24 +246,6 @@ export function UniversitiesReference(props: UniversitiesReferenceProps) {
                   </Link>
                 );
               })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* FEATURED */}
-      {featured.length ? (
-        <section className="sec" id="featured">
-          <div className="wrap">
-            <div className="head">
-              <span className="eyebrow">Editor’s picks</span>
-              <h2>Featured universities</h2>
-              <p>Institutions an admin has marked as featured in the catalogue.</p>
-            </div>
-            <div className="unis">
-              {featured.map((row, index) => (
-                <UniversityCard key={row.id} row={row} tint={index % 4} />
-              ))}
             </div>
           </div>
         </section>

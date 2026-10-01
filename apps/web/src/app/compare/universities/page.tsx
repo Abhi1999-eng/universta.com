@@ -37,7 +37,6 @@ function toItem(record: AnyRecord): CompareUniversity {
       .map((entry) => (entry.name ? String(entry.name) : ''))
       .filter(Boolean),
     verifiedAt: typeof row.verifiedAt === 'string' ? row.verifiedAt : null,
-    featured: row.isFeatured === true,
   };
 }
 

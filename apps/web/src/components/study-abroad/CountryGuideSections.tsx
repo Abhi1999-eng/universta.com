@@ -14,6 +14,7 @@ import {
 } from '@/lib/study-abroad-view';
 import { DocumentChecklist } from './DocumentChecklist';
 import { FlagMark } from './FlagMark';
+import { switcherClass } from './switcher';
 import { Longform } from './Longform';
 import { SectionHead } from './SectionHead';
 
@@ -676,7 +677,7 @@ export function CountryOtherDestinations({
             <h2 className="sec-title sec-title--sm">Same platform. Different country.</h2>
           </div>
         </div>
-        <div className="switcher">
+        <div className={switcherClass(others.length)}>
           {others.map((entry) => (
             <Link className="switcher__item" key={entry.name} href={`/study-abroad/${entry.slug}`}>
               <FlagMark iso2Code={entry.iso2Code} bands={entry.bands} />
