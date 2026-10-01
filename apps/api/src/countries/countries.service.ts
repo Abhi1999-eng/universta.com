@@ -88,7 +88,12 @@ const COUNTRY_INCLUDE = {
     orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
   },
   subSubjectMaps: {
-    select: { subSubjectId: true, displayOrder: true },
+    select: {
+      subSubjectId: true,
+      displayOrder: true,
+      // So a deleted specialization can be left out of what the Admin shows.
+      subSubject: { select: { deletedAt: true } },
+    },
     orderBy: [{ displayOrder: 'asc' }, { subSubjectId: 'asc' }],
   },
   tagMaps: {
@@ -204,6 +209,7 @@ type CountryRecord = {
   subSubjectMaps: Array<{
     subSubjectId: string;
     displayOrder: number;
+    subSubject: { deletedAt: Date | null };
   }>;
   tagMaps: Array<{
     tagId: string;
@@ -2050,19 +2056,30 @@ export class CountriesService {
       popularCourseIds: record.popularCourses.map(
         (relation) => relation.courseId,
       ),
-      subjectIds: record.subjectMaps.map((relation) => relation.subjectId),
-      subSubjectIds: record.subSubjectMaps.map(
-        (relation) => relation.subSubjectId,
-      ),
+      /* Deleting a subject does not unlink the countries that taught it --
+         the link is kept so restoring the subject restores its destinations.
+         The Admin must not show those links, though: the Countries list went
+         on naming a subject an editor had just deleted, and the country
+         editor pre-selected an id its own picker no longer offers, so the
+         next save quietly relinked it. The public view already filtered
+         these out; this is the same rule one screen later. */
+      subjectIds: record.subjectMaps
+        .filter(({ subject }) => !subject.deletedAt)
+        .map((relation) => relation.subjectId),
+      subSubjectIds: record.subSubjectMaps
+        .filter((relation) => !relation.subSubject.deletedAt)
+        .map((relation) => relation.subSubjectId),
       tagIds: record.tagMaps.map((relation) => relation.tagId),
       /* Labels as well as ids: the Countries list renders assigned taxonomy
        * per row, and both relations are already loaded by COUNTRY_INCLUDE, so
        * this costs no additional query. */
-      subjects: record.subjectMaps.map((relation) => ({
-        id: relation.subject.id,
-        name: relation.subject.name,
-        slug: relation.subject.slug,
-      })),
+      subjects: record.subjectMaps
+        .filter((relation) => !relation.subject.deletedAt)
+        .map((relation) => ({
+          id: relation.subject.id,
+          name: relation.subject.name,
+          slug: relation.subject.slug,
+        })),
       tags: record.tagMaps.map((relation) => ({
         id: relation.tag.id,
         name: relation.tag.name,

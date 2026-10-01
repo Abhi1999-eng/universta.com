@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createCourse,
@@ -36,6 +36,7 @@ import {
   updateCourseFaq,
   updateCourseMapping,
   updateCourseSection,
+  listEvery,
 } from './catalog-client';
 import type {
   CatalogMutationError,
@@ -321,6 +322,11 @@ export function CourseForm({ id }: { id?: string }) {
   const [savingIntent, setSavingIntent] = useState<Intent | null>(null);
   const [error, setError] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
+  /* The editor is one long page -- thirteen thousand pixels of it -- and the
+     Save buttons sit at the bottom while the "fix these fields" summary
+     renders at the top. A rejected save looked to an author exactly like
+     nothing happening. The summary is brought into view instead. */
+  const alertRef = useRef<HTMLDivElement | null>(null);
   const [dirty, setDirty] = useState(false);
   const [slugEdited, setSlugEdited] = useState(false);
 
@@ -328,23 +334,27 @@ export function CourseForm({ id }: { id?: string }) {
     let active = true;
     const load = async () => {
       try {
+        /* Countries and courses are pickers, so they need every row: the
+           API caps a page at 100 and there are more destinations than
+           that, which used to leave the country dropdown ending partway
+           down the alphabet. */
         const base = await Promise.all([
           listSubjects({ limit: 100 }),
           listCourseLevels({ status: 'ACTIVE', limit: 100 }),
           listStudyModes({ status: 'ACTIVE', limit: 100 }),
           listEditorialMedia({ limit: 50 }),
-          listCountries({ status: 'PUBLISHED', limit: 100 }),
+          listEvery(listCountries, { status: 'PUBLISHED' }),
           listIntakeOptions(),
-          listAdminCourses({ limit: 100 }),
+          listEvery(listAdminCourses),
         ]);
         if (!active) return;
         setSubjects(base[0].data);
         setLevels(base[1].data);
         setModes(base[2].data);
         setMedia(base[3].data);
-        setCountries(base[4].data);
+        setCountries(base[4]);
         setIntakeOptions(base[5].data);
-        setAllCourses(base[6].data);
+        setAllCourses(base[6]);
         if (!id) return;
 
         const [courseResult, mappingResult, sectionResult, faqResult, relatedResult, seoResult] = await Promise.all([
@@ -522,7 +532,18 @@ export function CourseForm({ id }: { id?: string }) {
       if (!verified) next.push('Publish requires at least one Available/Limited country with source URL and verified date.');
     }
     setIssues(next);
+    if (next.length) showAlert();
     return next.length === 0;
+  }
+
+  /** Puts the error summary on screen and in focus, after React paints it. */
+  function showAlert() {
+    requestAnimationFrame(() => {
+      const node = alertRef.current;
+      if (!node) return;
+      node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      node.focus({ preventScroll: true });
+    });
   }
 
   function mappingPayload(row: MappingDraft) {
@@ -636,6 +657,16 @@ export function CourseForm({ id }: { id?: string }) {
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
       };
       let saved = record ? (await updateCourse(record.id, corePayload)).data : (await createCourse(corePayload)).data;
+      /* The course exists from here on. Everything that follows -- study
+         modes, availability, sections, FAQs, SEO, publishing -- can still
+         fail, and when it did the author was left on /courses/new with a
+         record they could not see, and a retry collided with their own slug:
+         "Course slug already exists", about a course they had just made by
+         accident. Adopting it now turns the retry into an update. The URL is
+         only replaced once the whole save is through, because /courses/new
+         and /courses/[id] are separate routes and swapping them mid-save
+         would unmount the form under its own request. */
+      if (!record) setRecord(saved);
       saved = (await replaceCourseModes(saved.id, selectedModes, saved.updatedAt)).data;
       await syncMappings(saved.id);
       await syncSections(saved.id);
@@ -659,6 +690,7 @@ export function CourseForm({ id }: { id?: string }) {
     } catch (cause: unknown) {
       const typed = cause as Partial<CatalogMutationError>;
       setError(typed.message ?? (cause instanceof Error ? cause.message : 'Unable to save course'));
+      showAlert();
     } finally {
       setSaving(false);
       setSavingIntent(null);
@@ -679,8 +711,10 @@ export function CourseForm({ id }: { id?: string }) {
         </div>
         <span className="p-chip">{record?.status ?? 'DRAFT'}</span>
       </div>
-      {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
-      {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : null}
+      <div ref={alertRef} tabIndex={-1}>
+        {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
+        {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : null}
+      </div>
 
       <form onSubmit={submit} className="mt-8 space-y-6">
         <EditorCard eyebrow="Course" title="Basic information" description="Identity, classification and public summary.">

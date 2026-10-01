@@ -322,6 +322,15 @@ export class BulkOperationsService {
         flagMedia: { select: { publicUrl: true } },
         heroMedia: { select: { publicUrl: true } },
       },
+      /* The subject sheet carries its specializations in one column, so the
+         export and the unchanged-check both have to read them back. */
+      subjects: {
+        subSubjects: {
+          where: { deletedAt: null },
+          select: { name: true },
+          orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        },
+      },
       states: { country: { select: { slug: true, name: true } } },
       cities: {
         country: { select: { slug: true, name: true } },

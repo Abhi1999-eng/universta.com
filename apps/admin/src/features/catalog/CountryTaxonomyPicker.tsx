@@ -124,12 +124,33 @@ export function CountryTaxonomyPicker({
     return base;
   }, [rows, query, view, selected, childSelection]);
 
+  /* A subject is the container its specializations live in, so the two move
+     together. Unticking a subject used to leave every one of its
+     specializations still attached to the country: the destination stopped
+     listing Law and went on claiming twelve Law specializations, and
+     re-ticking the subject silently handed them all back as if nothing had
+     been said. Off clears them; on restores the full set, which is the same
+     rule a new country starts under -- the whole catalogue until its author
+     narrows it. */
   const toggle = (id: string) => {
     setNotice("");
+    const turningOff = selected.includes(id);
     onChange(
-      selected.includes(id)
+      turningOff
         ? selected.filter((value) => value !== id)
         : [...selected, id],
+    );
+    if (!onChildrenChange) return;
+    const row = rows.find((candidate) => candidate.id === id);
+    const childIds = (row?.children ?? []).map((child) => child.id);
+    if (!childIds.length) return;
+    onChildrenChange(
+      turningOff
+        ? childSelection.filter((value) => !childIds.includes(value))
+        : [
+            ...childSelection,
+            ...childIds.filter((value) => !childSelection.includes(value)),
+          ],
     );
   };
 

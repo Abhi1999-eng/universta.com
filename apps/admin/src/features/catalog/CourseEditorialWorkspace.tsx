@@ -27,6 +27,7 @@ import {
   updateCourseFaq,
   updateCourseMapping,
   updateCourseSection,
+  listEvery,
 } from './catalog-client';
 import type {
   CatalogMutationError,
@@ -42,6 +43,7 @@ import type {
 } from './catalog.types';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
+import { isFutureCalendarDate } from '@/lib/calendar-date';
 
 type Tab = 'availability' | 'content' | 'faqs' | 'seo' | 'related';
 type Pending = { type: 'mapping' | 'section' | 'faq'; id: string } | null;
@@ -375,7 +377,7 @@ function validateMappingDraft(draft: MappingDraft): MappingErrors {
   }
   if (needsVerification && !draft.verifiedAt) {
     errors.verifiedAt = 'Verified date is required for Available or Limited mappings.';
-  } else if (draft.verifiedAt && new Date(draft.verifiedAt) > new Date()) {
+  } else if (draft.verifiedAt && isFutureCalendarDate(draft.verifiedAt)) {
     errors.verifiedAt = 'Verified date cannot be in the future.';
   }
 
@@ -535,9 +537,10 @@ export function CourseEditorialWorkspace({
         listCourseFaqs(courseId),
         listCourseRelated(courseId),
         getCourseSeo(courseId),
-        listCountries({ status: 'PUBLISHED', limit: 100 }),
+        // Both are pickers: every row, not the first hundred.
+        listEvery(listCountries, { status: 'PUBLISHED' }),
         listIntakeOptions(),
-        listAdminCourses({ limit: 100 }),
+        listEvery(listAdminCourses),
       ] as const,
     )
       .then((results) => {
@@ -562,11 +565,13 @@ export function CourseEditorialWorkspace({
           );
         }
         if (seoResult.status === 'fulfilled') setSeoState(seoResult.value.data);
+        /* These two come from `listEvery`, which hands back the rows
+           themselves rather than a page envelope. */
         if (countriesResult.status === 'fulfilled') {
-          setCountries(countriesResult.value.data);
+          setCountries(countriesResult.value);
         }
         if (intakeResult.status === 'fulfilled') setIntakes(intakeResult.value.data);
-        if (courseResult.status === 'fulfilled') setAllCourses(courseResult.value.data);
+        if (courseResult.status === 'fulfilled') setAllCourses(courseResult.value);
 
         const failures = results
           .filter((result) => result.status === 'rejected')

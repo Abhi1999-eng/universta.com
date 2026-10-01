@@ -10,6 +10,7 @@ import {
   listSubjects,
   publishCourse,
   unpublishCourse,
+  listEvery,
 } from './catalog-client';
 import type {
   CatalogMutationError,
@@ -82,13 +83,14 @@ export function CoursesPage() {
     void Promise.all([
       listSubjects({ limit: 100 }),
       listCourseLevels({ status: 'ACTIVE', limit: 100 }),
-      listCountries({ status: 'PUBLISHED', limit: 100 }),
+      // A filter has to offer every destination, not the first page of them.
+      listEvery(listCountries, { status: 'PUBLISHED' }),
     ])
-      .then(([subjectResult, levelResult, countryResult]) => {
+      .then(([subjectResult, levelResult, countries]) => {
         if (!cancelled) {
           setSubjects(subjectResult.data);
           setLevels(levelResult.data);
-          setCountries(countryResult.data);
+          setCountries(countries);
         }
       })
       .catch(() => undefined);
@@ -290,7 +292,7 @@ export function CoursesPage() {
                 <th scope="col">Subject</th>
                 <th scope="col">Level</th>
                 <th scope="col">Status</th>
-                <th scope="col">Actions</th>
+                <th scope="col" className="p-td-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -309,8 +311,8 @@ export function CoursesPage() {
                       {row.status}
                     </span>
                   </td>
-                  <td>
-                    <div className="p-row p-row--wrap">
+                  <td className="p-td-actions">
+                    <div className="p-row p-row--actions">
                       <Link href={`/courses/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">
                         Edit
                       </Link>

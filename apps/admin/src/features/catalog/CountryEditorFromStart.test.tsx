@@ -118,6 +118,33 @@ async function openNewCountry() {
 }
 
 describe('new country editor visibility', () => {
+  it('starts a new country with the whole catalogue selected', async () => {
+    /* A destination teaches everything until someone says otherwise. Starting
+     * from nothing meant a country could be published with an empty Subjects
+     * section unless the author remembered to tick every box. */
+    mocks.listAllSubjects.mockResolvedValueOnce([
+      {
+        id: 'subject-cs',
+        name: 'Computer Science',
+        subSubjects: [
+          { id: 'spec-ai', name: 'Artificial Intelligence' },
+          { id: 'spec-sec', name: 'Cyber Security' },
+        ],
+      },
+      { id: 'subject-law', name: 'Law', subSubjects: [] },
+    ]);
+
+    await openNewCountry();
+
+    expect(
+      await screen.findByRole('checkbox', { name: 'Computer Science' }),
+    ).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Law' })).toBeChecked();
+    // The specializations sit behind their parent's disclosure, which states
+    // how many of them are selected.
+    expect(screen.getByText('2 selected')).toBeVisible();
+  });
+
   it('shows every profile section before the country exists', async () => {
     await openNewCountry();
 

@@ -20,10 +20,12 @@
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "db:migrate:recover-country-derived": "tsx prisma/recover-country-derived-migration.ts",
     "db:backfill:country-subjects": "tsx prisma/backfill-country-subjects.ts",
+    "db:merge:duplicate-subjects": "tsx prisma/merge-duplicate-subjects.ts",
     "db:backfill:country-budget-bands": "tsx prisma/backfill-country-budget-bands.ts",
     "db:seed:demo": "tsx prisma/demo-seed.ts",
     "db:qa-dataset": "tsx prisma/qa-dataset.ts",
     "db:seed:catalogue": "tsx prisma/catalogue-seed.ts",
+    "db:seed:abundant": "tsx prisma/abundant-seed.ts",
     "db:reset:except-admin": "tsx prisma/reset-except-admin.ts"
   },
   "dependencies": {

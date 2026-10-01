@@ -17,6 +17,7 @@ import { commonFieldHelp } from '@/lib/field-help/common';
 import { nextAutoSlug } from '@/lib/slug';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
+import { isFutureCalendarDate } from '@/lib/calendar-date';
 
 type Option = {
   id: string;
@@ -273,7 +274,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     if (!/^\d+$/.test(values.displayOrder ?? '') || Number(values.displayOrder) < 0 || Number(values.displayOrder) > 999999) next.displayOrder = 'Display order must be a whole number from 0 to 999999.';
     if (resource === 'universities') {
       if (values.sourceReference?.trim() && !/^https:\/\//i.test(values.sourceReference.trim())) next.sourceReference = 'Source URL must start with https://.';
-      if (values.verifiedAt && new Date(values.verifiedAt) > new Date()) next.verifiedAt = 'Verified date cannot be in the future.';
+      if (values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
     }
     if (resource === 'offerings' && !values.courseLevelId) next.courseLevelId = 'Select a course level.';
     if (resource === 'events' && values.startsAt && values.endsAt) {

@@ -487,7 +487,23 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         setFeatureOptions(featureResult.data ?? []);
         setTestOptions(testResult.data ?? []);
         setSubjects(subjectRows ?? []);
-        if (!countryId) return;
+        if (!countryId) {
+          /* A new destination covers the whole catalogue until its author
+             narrows it: every subject and every specialization starts
+             selected, and unchecking is how you say this country does not
+             teach something. Starting from nothing meant a country was
+             published with an empty Subjects section unless someone
+             remembered to tick thirty boxes.
+             An existing country keeps what was saved -- its unticks are a
+             decision, and re-selecting everything here would quietly undo
+             them on the next save. */
+          const rows = subjectRows ?? [];
+          setSubjectIds(rows.map((row) => row.id));
+          setSubSubjectIds(
+            rows.flatMap((row) => (row.subSubjects ?? []).map((child) => child.id)),
+          );
+          return;
+        }
         const [countryResult, editorialResult, curationResult] =
           await Promise.all([
             getCountry(countryId),

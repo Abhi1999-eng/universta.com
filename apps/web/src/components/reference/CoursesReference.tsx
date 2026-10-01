@@ -755,18 +755,43 @@ export function CoursesReference(props: CoursesReferenceProps) {
                         ) : null}
                       </div>
 
+                      {/* A `<dl>` of `<div><dt>/<dd></div>` groups, as the
+                          reference has it: the column track and the dividers
+                          between facts are written for those groups, and a
+                          row of bare spans ran the values into each other
+                          with nothing to say which figure was which. */}
                       {dur || fee || intake || course.availableCountryCount ? (
-                        <div className="coursecard__facts">
-                          {dur ? <span className="datum">{dur}</span> : null}
-                          {fee ? <span className="datum">{fee}</span> : null}
-                          {intake ? <span className="datum">{intake}</span> : null}
-                          {course.availableCountryCount ? (
-                            <span className="datum">
-                              {course.availableCountryCount} destination
-                              {course.availableCountryCount === 1 ? '' : 's'}
-                            </span>
+                        <dl className="coursecard__facts">
+                          {dur ? (
+                            <div>
+                              <dt>Duration</dt>
+                              <dd className="datum">{dur}</dd>
+                            </div>
                           ) : null}
-                        </div>
+                          {fee ? (
+                            <div>
+                              <dt>Tuition</dt>
+                              <dd className="datum">{fee}</dd>
+                            </div>
+                          ) : null}
+                          {intake ? (
+                            <div>
+                              <dt>Next intake</dt>
+                              <dd>{intake}</dd>
+                            </div>
+                          ) : null}
+                          {course.availableCountryCount ? (
+                            <div>
+                              <dt>
+                                Destination
+                                {course.availableCountryCount === 1 ? '' : 's'}
+                              </dt>
+                              <dd className="datum">
+                                {course.availableCountryCount}
+                              </dd>
+                            </div>
+                          ) : null}
+                        </dl>
                       ) : null}
 
                       {course.scholarshipAvailable || course.subSubject ? (

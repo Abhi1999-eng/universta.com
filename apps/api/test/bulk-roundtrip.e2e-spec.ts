@@ -103,6 +103,12 @@ describe('Bulk templates and exports round-trip (e2e)', () => {
     await prisma.universityCampus.deleteMany({ where: { slug: own } });
     await prisma.university.deleteMany({ where: { slug: own } });
     await prisma.course.deleteMany({ where: { slug: own } });
+    /* A subject's specializations hold it with onDelete: Restrict, and the
+       subject sheet creates them from its own `specializations` column, so
+       they go before it. */
+    await prisma.subSubject.deleteMany({
+      where: { subject: { slug: own } },
+    });
     await prisma.subject.deleteMany({ where: { slug: own } });
     await prisma.scholarship.deleteMany({ where: { slug: own } });
     await prisma.consultantLocation.deleteMany({ where: { slug: own } });

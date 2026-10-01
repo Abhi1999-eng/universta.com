@@ -833,6 +833,13 @@ async function main() {
     }
   }
 
+  /* These are the catalogue's own subjects and specializations, by the
+     catalogue's slugs. They used to be near-misses of them -- "Business &
+     Management" at `business-management` beside `business-and-management`,
+     "Creative Arts & Design" beside "Design and Creative Arts" -- so a
+     database that had seen both seeds carried each of those subjects twice,
+     and the public subject index listed both. Matching the slug makes this
+     seed hang its demo courses off the record that is already there. */
   const subjectSeeds = [
     {
       name: 'Computer Science',
@@ -847,8 +854,8 @@ async function main() {
       ],
     },
     {
-      name: 'Business & Management',
-      slug: 'business-management',
+      name: 'Business and Management',
+      slug: 'business-and-management',
       description: 'Business leadership, finance and global management.',
       featured: true,
       specializations: [
@@ -864,13 +871,13 @@ async function main() {
       featured: true,
       specializations: [
         ['Civil Engineering', 'civil-engineering'],
-        ['Electrical Engineering', 'electrical-engineering'],
+        ['Electrical and Electronic Engineering', 'electrical-and-electronic-engineering'],
         ['Mechanical Engineering', 'mechanical-engineering'],
       ],
     },
     {
-      name: 'Health & Medicine',
-      slug: 'health-medicine',
+      name: 'Health and Medicine',
+      slug: 'health-and-medicine',
       description: 'Health systems, nursing and public health.',
       featured: false,
       specializations: [
@@ -879,13 +886,16 @@ async function main() {
       ],
     },
     {
-      name: 'Creative Arts & Design',
-      slug: 'creative-arts-design',
+      name: 'Design and Creative Arts',
+      slug: 'design-and-creative-arts',
       description: 'Design, creativity and digital experiences.',
       featured: false,
       specializations: [
-        ['Graphic Design', 'graphic-design'],
-        ['User Experience Design', 'user-experience-design'],
+        ['Graphic and Communication Design', 'graphic-and-communication-design'],
+        [
+          'Interaction and User Experience Design',
+          'interaction-and-user-experience-design',
+        ],
       ],
     },
   ] as const;
@@ -903,10 +913,27 @@ async function main() {
       updatedByUserId: admin.id,
       deletedAt: null,
     };
+    /* The placeholder prose is what an empty database should start with, not
+       something to write over a subject that already has real copy -- the
+       catalogue seed and an editor both put better words here, and running
+       this afterwards replaced them with "Fictional subject data for local
+       discovery testing." All this seed needs from a subject that already
+       exists is that it be published and not deleted. */
+    const { name, shortDescription, overview, isFeatured, displayOrder, ...standing } =
+      subjectData;
     const subject = await prisma.subject.upsert({
       where: { slug: item.slug },
-      update: subjectData,
-      create: { ...subjectData, slug: item.slug, createdByUserId: admin.id },
+      update: standing,
+      create: {
+        name,
+        shortDescription,
+        overview,
+        isFeatured,
+        displayOrder,
+        ...standing,
+        slug: item.slug,
+        createdByUserId: admin.id,
+      },
     });
     subjectBySlug.set(item.slug, subject);
     for (const [
@@ -925,13 +952,31 @@ async function main() {
         updatedByUserId: admin.id,
         deletedAt: null,
       };
+      // Same reasoning as the subject above: describe it only on the way in.
+      const {
+        name: specName,
+        shortDescription: specShort,
+        overview: specOverview,
+        isFeatured: specFeatured,
+        displayOrder: specOrder,
+        ...specStanding
+      } = specializationData;
       const specialization = await prisma.subSubject.upsert({
         // A slug is unique within its subject now, not across the table.
         where: {
           subjectId_slug: { subjectId: specializationData.subjectId, slug },
         },
-        update: specializationData,
-        create: { ...specializationData, slug, createdByUserId: admin.id },
+        update: specStanding,
+        create: {
+          name: specName,
+          shortDescription: specShort,
+          overview: specOverview,
+          isFeatured: specFeatured,
+          displayOrder: specOrder,
+          ...specStanding,
+          slug,
+          createdByUserId: admin.id,
+        },
       });
       subSubjectBySlug.set(slug, specialization);
     }
@@ -1006,7 +1051,7 @@ async function main() {
     {
       name: 'Postgraduate Diploma in Digital Business',
       slug: 'pgdm-digital-business',
-      subject: 'business-management',
+      subject: 'business-and-management',
       specialization: 'marketing',
       level: 'PGDM',
       modes: ['HYBRID', 'PART_TIME'],
@@ -1022,7 +1067,7 @@ async function main() {
     {
       name: 'MBA in Global Management',
       slug: 'mba-global-management',
-      subject: 'business-management',
+      subject: 'business-and-management',
       specialization: 'international-business',
       level: 'MBA',
       modes: ['FULL_TIME', 'PART_TIME'],
@@ -1070,7 +1115,7 @@ async function main() {
     {
       name: 'Master of Public Health',
       slug: 'master-public-health',
-      subject: 'health-medicine',
+      subject: 'health-and-medicine',
       specialization: 'public-health',
       level: 'PG',
       modes: ['FULL_TIME', 'ONLINE'],
@@ -1086,8 +1131,8 @@ async function main() {
     {
       name: 'Diploma in User Experience Design',
       slug: 'diploma-user-experience-design',
-      subject: 'creative-arts-design',
-      specialization: 'user-experience-design',
+      subject: 'design-and-creative-arts',
+      specialization: 'interaction-and-user-experience-design',
       level: 'DIPLOMA',
       modes: ['HYBRID'],
       duration: '1',
@@ -1102,7 +1147,7 @@ async function main() {
     {
       name: 'Bachelor of Finance',
       slug: 'bachelor-finance',
-      subject: 'business-management',
+      subject: 'business-and-management',
       specialization: 'finance',
       level: 'UG',
       modes: ['FULL_TIME'],

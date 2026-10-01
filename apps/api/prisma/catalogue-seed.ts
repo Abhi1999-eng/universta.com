@@ -21,6 +21,7 @@
  *
  * Run:  npm run db:seed:catalogue         (add --dry-run to report without writing)
  */
+import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { COUNTRIES } from './catalogue/countries';
@@ -752,10 +753,15 @@ async function seedAcademics() {
       displayOrder: order,
       deletedAt: null,
     };
+    /* A specialization slug is unique within its subject, not across the
+       table, since the migration that scoped it. Looking one up by slug
+       alone stopped being a unique read then, and this seed could no longer
+       run at all -- it failed on the first specialization with "needs at
+       least one of `id`, `subjectId_name` or `subjectId_slug`". */
     const row = await upsertCounted(
       'SubSubject',
       prisma.subSubject as any,
-      { slug: spec.slug },
+      { subjectId_slug: { subjectId, slug: spec.slug } },
       { slug: spec.slug, ...data },
       data,
     );

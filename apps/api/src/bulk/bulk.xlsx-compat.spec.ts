@@ -47,9 +47,12 @@ describe('BulkOperationsService XLSX dry-run compatibility', () => {
     await workbook.xlsx.load(template.buffer as unknown as ExcelJS.Buffer);
     workbook
       .getWorksheet('Data')!
+      /* Positional, so it follows the sheet's own column order: name,
+         short description, specializations, featured, status, order. */
       .addRow([
         'Demo Mathematics',
         'Fictional populated subject row.',
+        'Demo Algebra | Demo Geometry',
         'false',
         'PUBLISHED',
         '2',
