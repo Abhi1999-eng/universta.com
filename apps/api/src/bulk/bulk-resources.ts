@@ -72,6 +72,19 @@ export interface BulkResourceDefinition {
   /** Applies relations and profiles for one row inside that row's own
    * transaction, so scalars and relations succeed or fail together. */
   reconcile?(tx: unknown, id: string, relations: unknown): Promise<void>;
+  /** Whether `reconcile` would still have work to do for this record.
+   *
+   * The unchanged check compares the columns the sheet carries, and a
+   * reconciler can write rows that no column of its own describes -- the
+   * country sheet derives a country's specializations from the same cell
+   * that names its subjects. Without this, re-importing a sheet whose
+   * visible columns all match skips those rows entirely and the derived
+   * rows are never written. */
+  relationsChanged?(
+    id: string,
+    relations: unknown,
+    prisma: PrismaService,
+  ): Promise<boolean>;
   toExportRow(record: Record<string, unknown>): Record<string, unknown>;
   /** Returns a human-readable reason the row can't be archived (e.g. "3
    * cities still reference this state"), or null if it's safe to archive. */
@@ -526,6 +539,23 @@ const countries: BulkResourceDefinition = {
       id,
       relations as CountryRelations,
     );
+  },
+  /* The specializations come out of the `subject` cell, and nothing in the
+     sheet spells them out, so the column diff cannot see them. A country
+     whose subjects are already right but whose specializations were never
+     written looks unchanged to it, and would stay empty through any number
+     of re-imports. */
+  async relationsChanged(id, relations, prisma) {
+    const cell = (relations as CountryRelations).subSubjects;
+    if (cell.kind === 'absent') return false;
+    const wanted = cell.kind === 'clear' ? [] : cell.value;
+    const stored = await prisma.countrySubSubject.findMany({
+      where: { countryId: id },
+      select: { subSubjectId: true },
+    });
+    if (stored.length !== wanted.length) return true;
+    const have = new Set(stored.map((row) => row.subSubjectId));
+    return wanted.some((subSubjectId) => !have.has(subSubjectId));
   },
   toExportRow(record) {
     return exportCountryRow(record);

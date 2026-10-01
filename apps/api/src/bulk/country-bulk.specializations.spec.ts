@@ -1,4 +1,5 @@
 import { parseCountryRelations, reconcileCountry } from './country-bulk';
+import { bulkResource } from './bulk-resources';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -227,5 +228,82 @@ describe('writing them against the country', () => {
     expect(calls.filter((call) => call.table === 'countrySubSubject')).toEqual(
       [],
     );
+  });
+});
+
+/**
+ * The unchanged check reads the columns the sheet carries. Specializations
+ * are not one of them -- they come out of the `subject` cell -- so a country
+ * whose subjects already match looked unchanged and was skipped whole, and
+ * the specializations it had never been given were never written. Importing
+ * the same sheet twice would not have fixed it, nor three times.
+ */
+describe('whether a row still has relation work', () => {
+  const countries = bulkResource('countries');
+
+  const prismaWith = (storedIds: string[]) =>
+    ({
+      countrySubSubject: {
+        findMany: async () =>
+          storedIds.map((subSubjectId) => ({ subSubjectId })),
+      },
+    }) as unknown as PrismaService;
+
+  const relations = (cell: unknown) =>
+    ({ subSubjects: cell }) as unknown as Record<string, unknown>;
+
+  it('says yes when the country has none of them yet', async () => {
+    const changed = await countries.relationsChanged!(
+      'country-1',
+      relations({ kind: 'value', value: ['spec-it', 'spec-ml'] }),
+      prismaWith([]),
+    );
+    expect(changed).toBe(true);
+  });
+
+  it('says no when the stored set already matches, order aside', async () => {
+    const changed = await countries.relationsChanged!(
+      'country-1',
+      relations({ kind: 'value', value: ['spec-it', 'spec-ml'] }),
+      prismaWith(['spec-ml', 'spec-it']),
+    );
+    expect(changed).toBe(false);
+  });
+
+  it('says yes when the sheet adds one', async () => {
+    const changed = await countries.relationsChanged!(
+      'country-1',
+      relations({ kind: 'value', value: ['spec-it', 'spec-ml'] }),
+      prismaWith(['spec-it']),
+    );
+    expect(changed).toBe(true);
+  });
+
+  it('says yes when the sheet drops one', async () => {
+    const changed = await countries.relationsChanged!(
+      'country-1',
+      relations({ kind: 'value', value: ['spec-it'] }),
+      prismaWith(['spec-it', 'spec-ml']),
+    );
+    expect(changed).toBe(true);
+  });
+
+  it('says yes to clearing a country that still has some', async () => {
+    const changed = await countries.relationsChanged!(
+      'country-1',
+      relations({ kind: 'clear' }),
+      prismaWith(['spec-it']),
+    );
+    expect(changed).toBe(true);
+  });
+
+  it('says no when the column was absent, whatever is stored', async () => {
+    /* A sheet about tuition is not an instruction about taxonomy. */
+    const changed = await countries.relationsChanged!(
+      'country-1',
+      relations({ kind: 'absent' }),
+      prismaWith(['spec-it']),
+    );
+    expect(changed).toBe(false);
   });
 });
