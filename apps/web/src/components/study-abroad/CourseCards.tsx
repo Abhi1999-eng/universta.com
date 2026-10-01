@@ -69,11 +69,21 @@ function facts(course: Course) {
   return rows.slice(0, 4);
 }
 
-export function CourseCards({ courses }: { courses: Course[] }) {
+export function CourseCards({
+  courses,
+  /** Where a card points. A university's own programmes are offerings with
+   * their own pages under that university, not entries in the shared course
+   * catalogue, so they say so rather than linking to a generic course that
+   * is only part of what they are. */
+  hrefFor,
+}: {
+  courses: Course[];
+  hrefFor?: (course: Course) => string;
+}) {
   return (
     <div className="coursegrid coursegrid--3">
       {courses.map((course) => {
-        const href = `/courses/${course.slug}`;
+        const href = hrefFor ? hrefFor(course) : `/courses/${course.slug}`;
         /* The card's second line names where the programme sits in the
            catalogue: its specialization over its subject, or just the subject
            when the programme hangs straight off one. */

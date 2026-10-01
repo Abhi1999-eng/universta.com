@@ -34,17 +34,19 @@ const OWN_CHROME_PREFIXES = [
   '/courses',
 ];
 
-/** The same, for a route whose children have not moved yet. The university
- * directory is built on the approved design and ships its own chrome; a
- * university's own page is still the older template and needs the site
- * chrome, so this matches the one path rather than the family. Fold it into
- * the prefixes above once the detail page moves too. */
+/** The same, for the routes under a family whose other children have not
+ * moved. The university directory and a university's own guide are built on
+ * the approved design and ship its chrome; the claim form and an offering's
+ * page are still the older template and need the site chrome, so these match
+ * a path rather than the family. */
 const OWN_CHROME_PATHS = ['/universities'];
+const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/];
 
 function ownsItsChrome(path: string | undefined) {
   if (path === '/') return true;
   if (!path) return false;
   if (OWN_CHROME_PATHS.includes(path)) return true;
+  if (OWN_CHROME_PATTERNS.some((pattern) => pattern.test(path))) return true;
   return OWN_CHROME_PREFIXES.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
