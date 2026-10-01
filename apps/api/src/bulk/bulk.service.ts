@@ -612,7 +612,16 @@ export class BulkOperationsService {
             existing.id,
             row,
           );
-          if (changed !== null && changed.length === 0) {
+          /* A reconciler can have work the columns cannot describe, so the
+             resource gets to say so before the row is written off. */
+          const relationWork = definition.relationsChanged
+            ? await definition.relationsChanged(
+                existing.id,
+                parsed.relations,
+                this.prisma,
+              )
+            : false;
+          if (changed !== null && changed.length === 0 && !relationWork) {
             summary.unchanged += 1;
             continue;
           }
