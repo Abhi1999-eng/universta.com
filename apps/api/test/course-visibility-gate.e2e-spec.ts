@@ -216,9 +216,7 @@ describe('country-course public visibility gate (e2e)', () => {
     const seen: string[] = [];
     for (let page = 1; page <= 40; page += 1) {
       const response = await request(app.getHttpServer())
-        .get(
-          `/api/v1/courses?country=${countrySlug}&page=${page}&pageSize=100`,
-        )
+        .get(`/api/v1/courses?country=${countrySlug}&page=${page}&pageSize=100`)
         .expect(200);
       const slugs = courseSlugs(response);
       seen.push(...slugs);
@@ -242,9 +240,12 @@ describe('country-course public visibility gate (e2e)', () => {
     ['an inactive mapping', 'inactive-mapping'],
     ['a mapping marked not available', 'unavailable'],
     ['a mapping to an unpublished country', 'unpublished-country'],
-  ])('lists a published course whose only mapping is %s', async (_label, name) => {
-    expect(await listAll()).toContain(slug(name));
-  });
+  ])(
+    'lists a published course whose only mapping is %s',
+    async (_label, name) => {
+      expect(await listAll()).toContain(slug(name));
+    },
+  );
 
   it('still excludes a draft course', async () => {
     /* The one exclusion that was always about the record itself. */
