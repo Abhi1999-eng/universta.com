@@ -5,6 +5,7 @@ import { formatNumber } from '@/lib/format';
 import { CourseCards } from './CourseCards';
 import { Crumbs } from './Crumbs';
 import { FlagMark } from './FlagMark';
+import { switcherClass } from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
@@ -195,7 +196,7 @@ export function SubjectGuide({
               title={`Where you can study ${subject.name}`}
               lead="Open a destination to see its fees, visa route and intakes."
             />
-            <div className="switcher">
+            <div className={switcherClass(countries.length)}>
               {countries.map((country) => (
                 <Link
                   key={country.id}

@@ -43,7 +43,6 @@ function toRow(row: AnyRecord): UniversityRow {
     institutionType: typeof row.institutionType === 'string' ? row.institutionType : null,
     offerings: counts?.offerings ?? 0,
     campuses: Array.isArray(campuses) ? campuses.length : 0,
-    featured: extra.isFeatured === true,
     verified: row.verificationStatus === 'VERIFIED' || Boolean(extra.verifiedAt),
   };
 }

@@ -1225,6 +1225,13 @@
    and two columns divide the six evenly and leave every name room. */
 @media (min-width: 560px){.sa .switcher{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
 @media (min-width: 900px){.sa .switcher{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
+/* One or two destinations used to sit in those tracks, so a single chip was
+   stretched across a third of the band with two empty columns beside it.
+   Below the column count the chips keep their own width and pack to the
+   start. It follows the two rules above because it overrides them. */
+@media (min-width: 560px){
+.sa .switcher--few{ grid-template-columns: repeat(auto-fit, minmax(190px, 260px)); justify-content: start; }
+}
 /* ---------------------------------------------------------------------
    HOME SEARCH
    The design's hero search and its popular chips, from its universities
@@ -2147,7 +2154,11 @@
 .sa .h-empty { display: grid; gap: 4px; padding: 26px; text-align: center; border: 1px dashed var(--line-strong); border-radius: 12px; margin-top: 12px; }
 .sa .h-empty span { color: var(--muted); }
 .sa .h-related__t { font-size: clamp(22px, 2.4vw, 30px); margin-bottom: 16px; }
-.sa .h-related__grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); }
+/* `auto-fit`, not `auto-fill`: two groups on a wide page were laid into
+   four tracks and left two of them empty. And `start`, so each card is as
+   tall as its own list -- a group of one used to be stretched to the
+   height of a group of six and read as a card someone forgot to fill. */
+.sa .h-related__grid { display: grid; gap: 14px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
 .sa .h-relgroup { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .sa .h-relgroup__t { font-size: 15.5px; font-family: var(--font-display); display: flex; justify-content: space-between; gap: 10px; margin: 0; }
 .sa .h-relgroup__more { align-self: flex-start; font-size: 14px; }

@@ -1625,13 +1625,9 @@ export class CountriesService {
               { id: 'asc' },
             ]
           : [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
+      /* "featured" still answers, so a saved link keeps working, but it is
+         the catalogue's own order: nothing sets `isFeatured` any more. */
       case 'featured':
-        return [
-          { isFeatured: 'desc' },
-          { displayOrder: 'asc' },
-          { name: 'asc' },
-          { id: 'asc' },
-        ];
       default:
         return [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
     }
@@ -1643,13 +1639,9 @@ export class CountriesService {
     switch (sort) {
       case 'name':
         return [{ name: 'asc' }, { id: 'asc' }];
+      /* "featured" still answers, so a saved link keeps working, but it is
+         the catalogue's own order: nothing sets `isFeatured` any more. */
       case 'featured':
-        return [
-          { isFeatured: 'desc' },
-          { displayOrder: 'asc' },
-          { name: 'asc' },
-          { id: 'asc' },
-        ];
       default:
         return [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
     }

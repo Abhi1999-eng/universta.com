@@ -1802,12 +1802,10 @@ export class CoursesService {
     if (sort === 'duration') return [{ durationMin: 'asc' }, { name: 'asc' }];
     if (sort === 'popularity')
       return [{ popularityScore: 'desc' }, { name: 'asc' }, { id: 'asc' }];
-    return [
-      { isFeatured: 'desc' },
-      { displayOrder: 'asc' },
-      { name: 'asc' },
-      { id: 'asc' },
-    ];
+    /* The catalogue's own order. It used to lead with `isFeatured`, which
+       nothing sets any more, so the column was read on every list and was
+       false on every row. "Recommended" in the rail means displayOrder. */
+    return [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }];
   }
   private publicInclude(countries?: string[]) {
     return {

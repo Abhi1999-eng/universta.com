@@ -25,7 +25,6 @@ export type CompareUniversity = {
   offerings: number;
   accreditations: string[];
   verifiedAt: string | null;
-  featured: boolean;
 };
 
 export type UniversityCompareReferenceProps = {
