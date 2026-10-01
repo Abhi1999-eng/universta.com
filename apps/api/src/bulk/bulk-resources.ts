@@ -2125,4 +2125,3 @@ export function bulkResource(key: string): BulkResourceDefinition {
   if (!definition) throw new Error(`Unknown bulk resource: ${key}`);
   return definition;
 }
-
