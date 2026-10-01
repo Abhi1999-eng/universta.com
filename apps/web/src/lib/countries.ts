@@ -49,7 +49,15 @@ export interface Country {
     symbol: string | null;
     name?: string | null;
   } | null;
-  subjects?: Array<{ id: string; name: string; slug: string }>;
+  /** `source` is DERIVED when a published course in that subject is taught
+   * here, EDITORIAL when somebody added it for a market the catalogue has
+   * not caught up with. The two are not the same claim. */
+  subjects?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    source?: string;
+  }>;
   /** What a student needs in hand to study here; empty when none are listed. */
   documents?: Array<{
     id: string;

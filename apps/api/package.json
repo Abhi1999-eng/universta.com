@@ -26,7 +26,8 @@
     "db:qa-dataset": "tsx prisma/qa-dataset.ts",
     "db:seed:catalogue": "tsx prisma/catalogue-seed.ts",
     "db:seed:abundant": "tsx prisma/abundant-seed.ts",
-    "db:reset:except-admin": "tsx prisma/reset-except-admin.ts"
+    "db:reset:except-admin": "tsx prisma/reset-except-admin.ts",
+    "db:reconcile:country-taxonomy": "tsx prisma/reconcile-country-taxonomy.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

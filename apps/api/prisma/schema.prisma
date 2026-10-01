@@ -1243,6 +1243,9 @@ model CountrySubSubject {
   countryId    String   @map("country_id") @db.Char(36)
   subSubjectId String   @map("sub_subject_id") @db.Char(36)
   displayOrder Int      @default(0) @map("display_order")
+  /** DERIVED: worked out from the courses taught here, and removed again
+   * when they stop being. EDITORIAL: an editor meant it, and it stays. */
+  source       String   @default("EDITORIAL") @db.VarChar(20)
   createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
   country    Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
@@ -1251,6 +1254,7 @@ model CountrySubSubject {
   @@unique([countryId, subSubjectId])
   @@index([countryId, displayOrder])
   @@index([subSubjectId, countryId])
+  @@index([countryId, source])
   @@map("country_sub_subjects")
 }
 
@@ -1259,6 +1263,9 @@ model CountrySubject {
   countryId    String   @map("country_id") @db.Char(36)
   subjectId    String   @map("subject_id") @db.Char(36)
   displayOrder Int      @default(0) @map("display_order")
+  /** DERIVED: worked out from the courses taught here, and removed again
+   * when they stop being. EDITORIAL: an editor meant it, and it stays. */
+  source       String   @default("EDITORIAL") @db.VarChar(20)
   createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
   country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
@@ -1267,6 +1274,7 @@ model CountrySubject {
   @@unique([countryId, subjectId])
   @@index([countryId, displayOrder])
   @@index([subjectId, countryId])
+  @@index([countryId, source])
   @@map("country_subjects")
 }
 
