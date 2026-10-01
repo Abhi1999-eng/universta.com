@@ -9,7 +9,11 @@ import {
   purgeAcceptanceRecords,
   totalAcceptanceRecords,
 } from './acceptance-cleanup';
-import { acceptanceEmail, acceptanceSlugPrefix } from './acceptance-run';
+import {
+  acceptanceCountryName,
+  acceptanceEmail,
+  acceptanceSlugPrefix,
+} from './acceptance-run';
 
 /** The predicate tests prove what the filters *mean*; these prove what the
  * database actually does with them. Both matter: a filter can be correct and
@@ -201,6 +205,36 @@ describe('purgeAcceptanceRecords', () => {
     expect(
       await prisma.leadStatusHistory.count({ where: { leadId: lead.id } }),
     ).toBe(0);
+  });
+
+  it('clears a subject’s specializations before the subject itself', async () => {
+    /* The subject bulk sheet creates specializations from its own column, so
+       an acceptance run that imports subjects leaves children behind -- and a
+       specialization holds its subject with onDelete: Restrict. Cleanup used
+       to stop here with "Foreign key constraint violated on the fields:
+       (`subject_id`)", which left the whole Playwright suite unfinished. */
+    const subject = await prisma.subject.create({
+      data: {
+        name: `${acceptanceCountryName(THIS_RUN)} Imported Subject`,
+        slug: `${acceptanceSlugPrefix(THIS_RUN)}-imported-subject`,
+        status: 'DRAFT',
+      },
+    });
+    const child = await prisma.subSubject.create({
+      data: {
+        subjectId: subject.id,
+        name: 'Imported Specialization',
+        slug: 'imported-specialization',
+        status: 'DRAFT',
+      },
+    });
+
+    const removed = await purgeAcceptanceRecords(THIS_RUN);
+
+    expect(removed.browserSubSubjects).toBe(1);
+    expect(removed.browserSubjects).toBe(1);
+    expect(await prisma.subSubject.findUnique({ where: { id: child.id } })).toBeNull();
+    expect(await prisma.subject.findUnique({ where: { id: subject.id } })).toBeNull();
   });
 
   it('reports zero owned records once cleanup has run', async () => {

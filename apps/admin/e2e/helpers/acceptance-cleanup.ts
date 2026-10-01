@@ -126,6 +126,12 @@ export async function countAcceptanceRecords(
     const browserSubjects = await prisma.subject.count({
       where: { name: { startsWith: own.countryName } },
     });
+    /* A subject imported from the bulk sheet brings specializations with it,
+       and they are this run's records too -- counted here so leaving them
+       behind fails the suite rather than passing quietly. */
+    const browserSubSubjects = await prisma.subSubject.count({
+      where: { subject: { name: { startsWith: own.countryName } } },
+    });
     const browserCountryTags = await prisma.countryTag.count({
       where: { name: { startsWith: own.countryName } },
     });
@@ -148,6 +154,7 @@ export async function countAcceptanceRecords(
       browserContinents,
       browserCountries,
       browserSubjects,
+      browserSubSubjects,
       browserCountryTags,
       browserMedia,
       universities,
@@ -270,6 +277,15 @@ export async function purgeAcceptanceRecords(
     removed.browserContinents = (
       await prisma.continent.deleteMany({
         where: { name: { startsWith: own.continentName } },
+      })
+    ).count;
+    /* Before the subjects: a specialization holds its subject with
+       onDelete: Restrict, and the subject bulk sheet creates them from its
+       own `specializations` column, so a run that imported subjects leaves
+       children standing in the way of their parent. */
+    removed.browserSubSubjects = (
+      await prisma.subSubject.deleteMany({
+        where: { subject: { name: { startsWith: own.countryName } } },
       })
     ).count;
     // After the countries, so the join rows are already gone.
