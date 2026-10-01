@@ -337,6 +337,8 @@ export class BulkOperationsService {
       },
       courses: {
         subject: { select: { slug: true, name: true } },
+        // The sheet carries the specialization, so the export has to read it.
+        subSubject: { select: { slug: true, name: true } },
         courseLevel: { select: { code: true, name: true } },
       },
       universities: { country: { select: { slug: true, name: true } } },
