@@ -264,7 +264,13 @@ export class SubjectsService {
           country: { status: 'PUBLISHED', deletedAt: null },
         },
         select: {
-          country: { select: { id: true, name: true, slug: true } },
+          /* `iso2Code` is what draws the flag. Without it the chip falls
+             back to three neutral bands, so India showed as a navy block
+             next to its own name. The subject page beside this one has
+             always selected it. */
+          country: {
+            select: { id: true, name: true, slug: true, iso2Code: true },
+          },
         },
         orderBy: { displayOrder: 'asc' },
       }),
