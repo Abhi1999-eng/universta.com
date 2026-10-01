@@ -3,8 +3,8 @@ import type { SpecializationDetail } from '@/lib/catalog';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { CourseCards } from './CourseCards';
 import { Crumbs } from './Crumbs';
-import { FlagMark } from './FlagMark';
-import { switcherClass } from './switcher';
+import { DestinationSwitcher } from './DestinationSwitcher';
+import { sparseBandClass } from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
@@ -125,7 +125,10 @@ export function SpecializationGuide({
       ) : null}
 
       {countries.length ? (
-        <section className={band('destinations')} id="destinations">
+        <section
+          className={band('destinations') + sparseBandClass(countries.length)}
+          id="destinations"
+        >
           <div className="wrap">
             <SectionHead
               n={n('destinations')}
@@ -133,21 +136,10 @@ export function SpecializationGuide({
               title={`Where you can study ${specialization.name}`}
               lead={`${countries.length} ${countries.length === 1 ? 'destination lists' : 'destinations list'} this specialization. Open one to see its fees, visa route and intakes.`}
             />
-            <div className={switcherClass(countries.length)}>
-              {countries.map((country) => (
-                <Link
-                  key={country.id}
-                  className="switcher__item"
-                  href={`/study-abroad/${country.slug}`}
-                >
-                  <FlagMark iso2Code={country.iso2Code} bands={null} />
-                  <span className="cchip__name">{country.name}</span>
-                  <span className="switcher__arrow" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <DestinationSwitcher
+              countries={countries}
+              label={specialization.name}
+            />
           </div>
         </section>
       ) : null}

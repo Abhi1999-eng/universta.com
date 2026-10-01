@@ -84,10 +84,11 @@ test('public typography roles keep headings, cards and native controls on the sh
 
   /* This probes the shared public type contract, so it has to stand on a page
      that still uses it. `/courses` joined the approved Study Abroad design and
-     its scoped typefaces, for the same reason it left `publicRoutes` above;
-     `/universities` is the listing that still carries the shared chrome,
-     catalogue cards and native controls this asserts. */
-  await page.goto(`${webBaseUrl}/universities`, { waitUntil: 'domcontentloaded' });
+     its scoped typefaces, for the same reason it left `publicRoutes` above,
+     and `/universities` has now joined it too; `/scholarships` is the listing
+     that still carries the shared chrome, catalogue cards and native controls
+     this asserts. */
+  await page.goto(`${webBaseUrl}/scholarships`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('body')).toBeVisible();
 
   const listing = await page.evaluate(() => {
@@ -121,7 +122,10 @@ test('public typography roles keep headings, cards and native controls on the sh
       ].map((name) => [name, getComputedStyle(document.documentElement).getPropertyValue(name).trim()]),
       display: style('h1'),
       section: style('h2'),
-      cardTitles: [...document.querySelectorAll<HTMLElement>('.card h3, .catalog-card h2, .catalog-card h3')]
+      /* Every public listing's card title, whatever that listing calls its
+         card. `/universities` carried this probe until the approved design
+         reached it; scholarships name theirs `.scard`. */
+      cardTitles: [...document.querySelectorAll<HTMLElement>('.card h3, .catalog-card h2, .catalog-card h3, .scard h3')]
         .slice(0, 8)
         .map((element) => getComputedStyle(element).font),
       button: style('button:not([aria-label])'),

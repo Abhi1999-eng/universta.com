@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SWITCHER_COLUMNS, switcherClass } from './switcher';
+import {
+  SWITCHER_COLUMNS,
+  sparseBandClass,
+  switcherClass,
+} from './switcher';
 
 /**
  * "Where you can study X" lays its destination chips into three equal
@@ -25,5 +29,25 @@ describe('the destination chip grid', () => {
 
   it('is harmless at zero, where the section does not render at all', () => {
     expect(switcherClass(0)).toBe('switcher switcher--few');
+  });
+});
+
+describe('the band around it', () => {
+  it('goes compact when it holds one or two', () => {
+    expect(sparseBandClass(1)).toBe(' sec--sparse');
+    expect(sparseBandClass(2)).toBe(' sec--sparse');
+  });
+
+  it('keeps the full furniture once there is something to fill it', () => {
+    expect(sparseBandClass(SWITCHER_COLUMNS)).toBe('');
+    expect(sparseBandClass(205)).toBe('');
+  });
+
+  it('is a suffix, so it appends to whatever band class it is given', () => {
+    /* The call site is `band('destinations') + sparseBandClass(n)`. */
+    expect('sec sec--white' + sparseBandClass(1)).toBe(
+      'sec sec--white sec--sparse',
+    );
+    expect('sec sec--white' + sparseBandClass(9)).toBe('sec sec--white');
   });
 });

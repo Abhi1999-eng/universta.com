@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { pagerPages } from './pager-pages';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
 import { SearchCombobox } from './SearchCombobox';
@@ -834,23 +835,16 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 >
                   ‹
                 </button>
-                {Array.from({ length: meta.totalPages }, (_, index) => index + 1)
-                  .filter(
-                    (page) =>
-                      page === 1 ||
-                      page === meta.totalPages ||
-                      Math.abs(page - meta.page) <= 1,
-                  )
-                  .map((page, index, list) => (
-                    <span key={page} style={{ display: 'contents' }}>
-                      {index > 0 && page - list[index - 1] > 1 ? <span>…</span> : null}
-                      {page === meta.page ? (
-                        <span className="cur">{page}</span>
-                      ) : (
-                        <Link href={pageHref(page)}>{page}</Link>
-                      )}
-                    </span>
-                  ))}
+                {pagerPages(meta.page, meta.totalPages).map((item) => (
+                  <span key={item.page} style={{ display: 'contents' }}>
+                    {item.gapBefore ? <span>…</span> : null}
+                    {item.page === meta.page ? (
+                      <span className="cur">{item.page}</span>
+                    ) : (
+                      <Link href={pageHref(item.page)}>{item.page}</Link>
+                    )}
+                  </span>
+                ))}
                 <button
                   type="button"
                   aria-label="Next results page"

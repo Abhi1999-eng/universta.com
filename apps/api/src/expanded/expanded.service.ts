@@ -452,7 +452,9 @@ export class ExpandedService {
           where,
           take: FEATURED_FETCH_CAP,
           include: {
-            country: { select: { name: true, slug: true } },
+            /* `iso2Code` draws the flag on the directory card, the same way
+               it does on every other country chip on the site. */
+            country: { select: { name: true, slug: true, iso2Code: true } },
             campuses: {
               where: { status: 'ACTIVE', deletedAt: null },
               select: { id: true },

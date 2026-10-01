@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { pagerPages } from './pager-pages';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SearchCombobox } from './SearchCombobox';
 import { Disclosure } from './Disclosure';
@@ -983,17 +984,16 @@ export function CountriesReference(props: CountriesReferenceProps) {
             >
               Previous
             </button>
-            {Array.from({ length: meta.totalPages }, (_, index) => index + 1).map((page) =>
-              page === meta.page ? (
-                <span className="cur" key={page}>
-                  {page}
-                </span>
-              ) : (
-                <Link key={page} href={pageHref(page)}>
-                  {page}
-                </Link>
-              ),
-            )}
+            {pagerPages(meta.page, meta.totalPages).map((item) => (
+              <span key={item.page} style={{ display: 'contents' }}>
+                {item.gapBefore ? <span aria-hidden="true">…</span> : null}
+                {item.page === meta.page ? (
+                  <span className="cur">{item.page}</span>
+                ) : (
+                  <Link href={pageHref(item.page)}>{item.page}</Link>
+                )}
+              </span>
+            ))}
             <button
               type="button"
               disabled={meta.page >= meta.totalPages}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { pagerPages } from './pager-pages';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { formatDate, formatNumber } from '@/lib/format';
 
@@ -366,14 +367,16 @@ export function UniversityCoursesReference(props: UniversityCoursesReferenceProp
             {meta.totalPages > 1 ? (
               <nav className="pager" aria-label="Pagination">
                 {meta.page > 1 ? <Link href={pageHref(meta.page - 1)}>‹</Link> : <span>‹</span>}
-                {Array.from({ length: meta.totalPages }, (_, index) => index + 1).map((page) => (
-                  <Link
-                    key={page}
-                    href={pageHref(page)}
-                    aria-current={page === meta.page ? 'page' : undefined}
-                  >
-                    {page}
-                  </Link>
+                {pagerPages(meta.page, meta.totalPages).map((item) => (
+                  <span key={item.page} style={{ display: 'contents' }}>
+                    {item.gapBefore ? <span aria-hidden="true">…</span> : null}
+                    <Link
+                      href={pageHref(item.page)}
+                      aria-current={item.page === meta.page ? 'page' : undefined}
+                    >
+                      {item.page}
+                    </Link>
+                  </span>
                 ))}
                 {meta.page < meta.totalPages ? (
                   <Link href={pageHref(meta.page + 1)}>›</Link>
