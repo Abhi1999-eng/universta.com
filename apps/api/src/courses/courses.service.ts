@@ -197,6 +197,36 @@ export function sanitizeCourseRichTextBody(
   return { paragraphs };
 }
 
+/** How many facet counts may be in flight at once. Each one is its own
+ * `SELECT COUNT(*)`, and the filter rail asks for one per option across
+ * seven facets; firing them all at once took more connections than the
+ * pool has and the whole page came back "Database is temporarily
+ * unavailable" rather than slowly. */
+const FACET_COUNT_CONCURRENCY = 8;
+
+/** A gate that lets at most `limit` of the work it is handed run at once.
+ * One gate is shared by every facet, because the seven of them are awaited
+ * together -- a ceiling applied per facet would still be seven times the
+ * ceiling in flight. */
+export function createLimiter(limit: number) {
+  let running = 0;
+  const waiting: Array<() => void> = [];
+  const release = () => {
+    running -= 1;
+    waiting.shift()?.();
+  };
+  return async <R>(work: () => Promise<R>): Promise<R> => {
+    if (running >= limit)
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    running += 1;
+    try {
+      return await work();
+    } finally {
+      release();
+    }
+  };
+}
+
 @Injectable()
 export class CoursesService {
   constructor(
@@ -253,6 +283,58 @@ export class CoursesService {
       subject: row.subject,
       courseLevel: row.courseLevel,
     }));
+  }
+
+  /** The ids any published course is actually filed under, one grouped read
+   * per dimension. `intake` and `englishTest` are absent on purpose: they
+   * are short lists that do not hang off the course row, and narrowing them
+   * would cost more than it saves. */
+  private async facetValuesInUse(): Promise<
+    Partial<Record<string, Set<string>>>
+  > {
+    const published = { status: 'PUBLISHED', deletedAt: null } as const;
+    const ids = <K extends string>(
+      rows: Array<Record<K, string | null>>,
+      key: K,
+    ) =>
+      new Set(
+        rows
+          .map((row) => row[key])
+          .filter((value): value is string => Boolean(value)),
+      );
+    const [bySubject, bySpecialization, byLevel, byCountry, byStudyMode] =
+      await Promise.all([
+        this.prisma.course.groupBy({
+          by: ['subjectId'],
+          where: published,
+        }),
+        this.prisma.course.groupBy({
+          by: ['subSubjectId'],
+          where: published,
+        }),
+        this.prisma.course.groupBy({
+          by: ['courseLevelId'],
+          where: published,
+        }),
+        this.prisma.countryCourse.groupBy({
+          by: ['countryId'],
+          where: {
+            ...this.publicMappingWhere(),
+            course: published,
+          },
+        }),
+        this.prisma.courseStudyMode.groupBy({
+          by: ['studyModeId'],
+          where: { course: published },
+        }),
+      ]);
+    return {
+      subject: ids(bySubject, 'subjectId'),
+      subSubject: ids(bySpecialization, 'subSubjectId'),
+      level: ids(byLevel, 'courseLevelId'),
+      country: ids(byCountry, 'countryId'),
+      studyMode: ids(byStudyMode, 'studyModeId'),
+    };
   }
 
   async publicFilterOptions(query: CourseListQueryDto) {
@@ -333,6 +415,12 @@ export class CoursesService {
           pageSize: 1,
         }),
       });
+    /* Which values any published course actually carries. An option outside
+       these sets cannot survive the `count > 0` filter below, so counting it
+       is a round trip spent to learn nothing -- and there are 1,077
+       specializations against 150 courses. */
+    const present = await this.facetValuesInUse();
+    const limiter = createLimiter(FACET_COUNT_CONCURRENCY);
     const counted = async <
       T extends { value: string; label: string; id?: string },
     >(
@@ -347,12 +435,37 @@ export class CoursesService {
       options: T[],
     ) => {
       const selectedValues = query[key] ?? [];
+      const inUse = present[key];
+      /* The ids are turned into the values the count is actually made of
+         first. A specialization slug is unique only inside its subject, so
+         two rows can share one -- and the count, which matches on the slug,
+         covers both. Filtering on the id alone would drop the sibling whose
+         own id no course carries, while its count came back above zero. */
+      const valuesInUse = inUse
+        ? new Set(
+            options
+              .filter((option) => !option.id || inUse.has(option.id))
+              .map((option) => option.value),
+          )
+        : null;
+      /* A selected value is kept whatever its count, so it is still asked
+         about even when nothing carries it -- the rail has to be able to
+         show the filter the reader just ticked, at zero. */
+      const worth = valuesInUse
+        ? options.filter(
+            (option) =>
+              valuesInUse.has(option.value) ||
+              selectedValues.includes(option.value),
+          )
+        : options;
       return (
         await Promise.all(
-          options.map(async (option) => ({
-            ...option,
-            count: await contextualCount(key, option.value),
-          })),
+          worth.map((option) =>
+            limiter(async () => ({
+              ...option,
+              count: await contextualCount(key, option.value),
+            })),
+          ),
         )
       ).filter(
         (option) => option.count > 0 || selectedValues.includes(option.value),
