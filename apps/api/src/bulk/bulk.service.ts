@@ -556,14 +556,24 @@ export class BulkOperationsService {
           resourceKey === 'countries'
             ? (parsed.data.externalUid as string | null | undefined)
             : undefined;
-        // A supplied uid identifies the record; slug is only the fallback.
-        // The delegate is untyped here, so name the one field this branch uses.
-        const existing = (await table.findFirst({
-          where: externalUid
-            ? { externalUid, deletedAt: null }
-            : { slug, deletedAt: null },
-        })) as { id: string } | null;
-        if (externalUid && existing) {
+        /* A supplied uid identifies the record, and the slug is the
+           fallback -- which it was not: a uid matching nothing made this
+           skip the slug entirely and try to create, so re-uploading a sheet
+           of uids into a database whose rows had never been given one
+           failed every single line with "Another country already uses this
+           name", about the record the slug was pointing straight at.
+           The delegate is untyped here, so name the one field this uses. */
+        let existing = (
+          externalUid
+            ? await table.findFirst({ where: { externalUid, deletedAt: null } })
+            : null
+        ) as { id: string } | null;
+        const matchedByUid = Boolean(existing);
+        if (!existing)
+          existing = (await table.findFirst({
+            where: { slug, deletedAt: null },
+          })) as { id: string } | null;
+        if (externalUid && matchedByUid && existing) {
           // The uid points at one record and the slug at another: renaming one
           // and re-pointing the other are both plausible readings, so the row
           // is rejected rather than guessed at.
