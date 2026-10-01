@@ -1,12 +1,16 @@
 /**
- * A country-course mapping is public because the relationship is real, not
- * because someone has finished citing it.
+ * What a course mapping does, and what it no longer does.
  *
- * Source references and verification dates remain useful editorial metadata,
- * but gating visibility on them hid the entire seeded catalogue: courses that
- * were published, mapped to published countries and genuinely available simply
- * did not appear. These cases pin the corrected rule, and pin the conditions
- * that must still exclude a mapping.
+ * A mapping is public because the relationship is real, not because someone
+ * has finished citing it: gating on source references and verification dates
+ * once hid the entire seeded catalogue.
+ *
+ * And it no longer decides whether a course exists. The unfiltered list is
+ * the published catalogue -- a subject's own page always counted its courses
+ * that way, and /courses disagreeing with it hid a real fault for weeks.
+ * Every condition below still governs the question it was written for, which
+ * is "where can I study this": ask for a destination and a dead, inactive,
+ * unavailable or unpublished mapping excludes the course exactly as before.
  */
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
@@ -207,22 +211,74 @@ describe('country-course public visibility gate (e2e)', () => {
     return seen;
   }
 
+  /** The same list, narrowed to one destination. */
+  async function listIn(countrySlug: string): Promise<string[]> {
+    const seen: string[] = [];
+    for (let page = 1; page <= 40; page += 1) {
+      const response = await request(app.getHttpServer())
+        .get(
+          `/api/v1/courses?country=${countrySlug}&page=${page}&pageSize=100`,
+        )
+        .expect(200);
+      const slugs = courseSlugs(response);
+      seen.push(...slugs);
+      if (slugs.length < 100) break;
+    }
+    return seen;
+  }
+
   it('publishes a mapped course that has no source reference or verified date', async () => {
     expect(await listAll()).toContain(slug('uncited'));
   });
 
-  it('keeps that course out of the catalogue when nothing maps it', async () => {
-    expect(await listAll()).not.toContain(slug('unmapped'));
+  it('lists a published course that nothing maps yet', async () => {
+    /* It is in the catalogue because an editor published it. Where it can
+       be studied is the next question, not a condition of this one. */
+    expect(await listAll()).toContain(slug('unmapped'));
   });
 
   it.each([
     ['a soft-deleted mapping', 'deleted-mapping'],
     ['an inactive mapping', 'inactive-mapping'],
     ['a mapping marked not available', 'unavailable'],
-    ['a draft course', 'draft-course'],
     ['a mapping to an unpublished country', 'unpublished-country'],
-  ])('still excludes %s', async (_label, name) => {
-    expect(await listAll()).not.toContain(slug(name));
+  ])('lists a published course whose only mapping is %s', async (_label, name) => {
+    expect(await listAll()).toContain(slug(name));
+  });
+
+  it('still excludes a draft course', async () => {
+    /* The one exclusion that was always about the record itself. */
+    expect(await listAll()).not.toContain(slug('draft-course'));
+  });
+
+  it.each([
+    ['a soft-deleted mapping', 'deleted-mapping'],
+    ['an inactive mapping', 'inactive-mapping'],
+    ['a mapping marked not available', 'unavailable'],
+  ])('excludes %s once a destination is asked for', async (_label, name) => {
+    /* The conditions have not moved; the question they answer has. */
+    expect(await listIn(slug('country-published'))).not.toContain(slug(name));
+  });
+
+  it('refuses to filter by a destination that is not published', async () => {
+    /* There is no list to narrow to. Answering with an empty one would say
+       the country exists and teaches nothing; 400 says it is not a
+       destination this catalogue offers. */
+    await request(app.getHttpServer())
+      .get(`/api/v1/courses?country=${slug('country-draft')}&pageSize=100`)
+      .expect(400);
+  });
+
+  it('keeps a course mapped only to an unpublished country out of a published one', async () => {
+    expect(await listIn(slug('country-published'))).not.toContain(
+      slug('unpublished-country'),
+    );
+  });
+
+  it('excludes an unmapped course from every destination’s list', async () => {
+    expect(await listIn(slug('country-published'))).not.toContain(
+      slug('unmapped'),
+    );
   });
 
   it('filters the uncited course by its country like any other', async () => {
