@@ -828,6 +828,19 @@ type SpecializationInput = { name: string; slug: string };
 /** The row's specializations and the publication state it asked for. */
 type SpecializationCell = { status: string; rows: SpecializationInput[] };
 
+/** A pipe-separated cell, trimmed and with the blanks dropped. */
+function splitList(value: string | undefined): string[] {
+  if (!value?.trim()) return [];
+  return [
+    ...new Set(
+      value
+        .split('|')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
 function parseSpecializations(
   value: string | undefined,
 ): SpecializationInput[] {
@@ -972,6 +985,49 @@ const subjects: BulkResourceDefinition = {
   },
 };
 
+type CountryCourseTable = {
+  findMany(args: {
+    where: Record<string, unknown>;
+  }): Promise<Array<{ id: string; countryId: string; deletedAt: Date | null }>>;
+  create(args: { data: Record<string, unknown> }): Promise<unknown>;
+  update(args: {
+    where: Record<string, unknown>;
+    data: Record<string, unknown>;
+  }): Promise<unknown>;
+};
+
+/**
+ * Adds the destinations a course row names, and revives one that had been
+ * archived. Like the subject's specializations it never removes: a sheet
+ * that leaves a destination out is usually a sheet about something else,
+ * and an offering carries tuition, intakes and entry requirements that
+ * nobody would want dropped by omission. Removing stays in the editor.
+ */
+async function reconcileCourseOfferings(
+  tx: unknown,
+  courseId: string,
+  relations: unknown,
+) {
+  const ids = ((relations ?? {}) as { countryIds?: string[] }).countryIds ?? [];
+  if (!ids.length) return;
+  const table = (tx as Record<string, unknown>)
+    .countryCourse as CountryCourseTable;
+  const existing = await table.findMany({ where: { courseId } });
+  const byCountry = new Map(existing.map((row) => [row.countryId, row]));
+  for (const countryId of ids) {
+    const match = byCountry.get(countryId);
+    if (!match) {
+      await table.create({ data: { courseId, countryId } });
+      continue;
+    }
+    if (match.deletedAt)
+      await table.update({
+        where: { id: match.id },
+        data: { deletedAt: null, status: 'ACTIVE' },
+      });
+  }
+}
+
 const courses: BulkResourceDefinition = {
   key: 'courses',
   label: 'Generic courses',
@@ -980,13 +1036,17 @@ const courses: BulkResourceDefinition = {
   /* A course row carries what its page shows: the qualification and its
      short name, which specialization it sits under, how long it runs, the
      overview and where it leads. The sheet used to stop at a one-line
-     summary, so an imported course arrived as a name and a level. */
+     summary, so an imported course arrived as a name and a level.
+     `countrySlugs` is what makes it public: the course list is built from
+     country offerings, so a course with no destination is published and
+     still invisible. */
   columns: [
     'slug',
     'name',
     'subjectSlug',
     'specializationSlug',
     'courseLevelCode',
+    'countrySlugs',
     'qualificationName',
     'shortName',
     'shortDescription',
@@ -1014,6 +1074,14 @@ const courses: BulkResourceDefinition = {
       label: 'Course Level',
       required: true,
       type: 'relation',
+    },
+    {
+      key: 'countrySlugs',
+      label: 'Destinations',
+      required: false,
+      type: 'relation',
+      description:
+        'Destinations this course is offered in, by slug or name, separated by |. A course with none is not listed publicly.',
     },
     {
       key: 'qualificationName',
@@ -1070,6 +1138,7 @@ const courses: BulkResourceDefinition = {
     subjectSlug: 'Demo Subject',
     specializationSlug: '',
     courseLevelCode: 'UG',
+    countrySlugs: '',
     qualificationName: 'Bachelor of Science',
     shortName: 'BSc',
     shortDescription:
@@ -1083,6 +1152,9 @@ const courses: BulkResourceDefinition = {
     displayOrder: '0',
     status: 'DRAFT',
   },
+  /* `countrySlugs` is deliberately absent, for the reason `specializations`
+     is absent from the subject's list: the one-field bulk edit writes its
+     value straight onto the model, and an offering is a row of its own. */
   updatableColumns: [
     'name',
     'qualificationName',
@@ -1140,6 +1212,22 @@ const courses: BulkResourceDefinition = {
         );
       else if (found) specializationId = found.id;
     }
+    /* Where the course is offered. Each name is resolved here rather than in
+       `reconcile`, so a destination nobody recognises is reported against
+       its row at validation time instead of failing the import. */
+    const countryIds: string[] = [];
+    for (const term of splitList(row.countrySlugs)) {
+      const found = await findRef(
+        prisma.country,
+        term,
+        'countrySlugs',
+        errors,
+        { deletedAt: null },
+      );
+      if (found === null) errors.push(`country "${term}" was not found`);
+      else if (found && !countryIds.includes(found.id))
+        countryIds.push(found.id);
+    }
     const unit = row.durationUnit?.trim().toUpperCase();
     if (unit && !COURSE_DURATION_UNITS.includes(unit as 'YEARS'))
       errors.push(
@@ -1169,14 +1257,25 @@ const courses: BulkResourceDefinition = {
         displayOrder: Number(row.displayOrder) || 0,
         status: row.status?.trim() || 'DRAFT',
       },
+      relations: { countryIds },
     };
   },
+  async reconcile(tx, id, relations) {
+    await reconcileCourseOfferings(tx, id, relations);
+  },
   toExportRow(record) {
+    const offerings = (record.countryCourses ?? []) as Array<{
+      country?: { slug?: string };
+    }>;
     return {
       slug: record.slug,
       name: record.name,
       subjectSlug:
         (record as { subject?: { slug?: string } }).subject?.slug ?? '',
+      countrySlugs: offerings
+        .map((offering) => offering.country?.slug ?? '')
+        .filter(Boolean)
+        .join(' | '),
       specializationSlug:
         (record as { subSubject?: { slug?: string } }).subSubject?.slug ?? '',
       courseLevelCode:
