@@ -260,6 +260,22 @@ export function CountrySubjects({
   const subjects = country.subjects ?? [];
   if (!subjects.length) return null;
 
+  /* A subject reaches this page one of two ways, and they are not the same
+     claim. A derived one is here because a published course in it is taught
+     in this destination -- open it and there is something behind it. An
+     editorial one is here because somebody added it, usually for a market
+     the catalogue has not caught up with, and may still be empty. Showing
+     them in one undifferentiated grid is how a reader ends up on a page
+     with nothing on it, so the ones we can stand behind come first and the
+     rest are named for what they are. */
+  const taught = subjects.filter((subject) => subject.source !== 'EDITORIAL');
+  const editorial = subjects.filter((subject) => subject.source === 'EDITORIAL');
+  const card = (subject: (typeof subjects)[number]) => (
+    <Link className="h-card" href={`/subjects/${subject.slug}`} key={subject.id}>
+      <strong className="h-card__t">{subject.name}</strong>
+    </Link>
+  );
+
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="subjects">
       <div className="wrap">
@@ -267,16 +283,28 @@ export function CountrySubjects({
           index={n}
           eyebrow="Find your field"
           title={`Popular subjects to study in ${country.name}`}
-          lead="Explore the fields taught here, then see the courses and specializations inside each one."
+          lead={
+            taught.length
+              ? 'Explore the fields taught here, then see the courses and specializations inside each one.'
+              : 'These fields are listed for this destination. The catalogue has no programmes under them yet.'
+          }
           cta={{ href: '/subjects', label: 'Browse the full subject taxonomy' }}
         />
-        <div className="h-grid h-grid--4">
-          {subjects.map((subject) => (
-            <Link className="h-card" href={`/subjects/${subject.slug}`} key={subject.id}>
-              <strong className="h-card__t">{subject.name}</strong>
-            </Link>
-          ))}
-        </div>
+        {taught.length ? (
+          <div className="h-grid h-grid--4">{taught.map(card)}</div>
+        ) : null}
+        {editorial.length ? (
+          <>
+            {taught.length ? (
+              <p className="h-more">
+                <span className="label">
+                  Also listed here, with no programme in the catalogue yet
+                </span>
+              </p>
+            ) : null}
+            <div className="h-grid h-grid--4">{editorial.map(card)}</div>
+          </>
+        ) : null}
       </div>
     </section>
   );

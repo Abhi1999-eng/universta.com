@@ -198,6 +198,7 @@ type CountryRecord = {
   subjectMaps: Array<{
     subjectId: string;
     displayOrder: number;
+    source: string;
     subject: {
       id: string;
       name: string;
@@ -300,7 +301,7 @@ export interface CountryPublicDto {
     details: string | null;
     isRequired: boolean;
   }>;
-  subjects: Array<{ id: string; name: string; slug: string }>;
+  subjects: Array<{ id: string; name: string; slug: string; source?: string }>;
   /* Tags are deliberately absent: they are an Admin, import and filter
    * taxonomy, and never part of what the public site is told about a country.
    * `toAdmin` maps them itself. */
@@ -357,7 +358,7 @@ export interface CountryAdminDto extends CountryPublicDto {
   subjectIds: string[];
   subSubjectIds: string[];
   tagIds: string[];
-  subjects: Array<{ id: string; name: string; slug: string }>;
+  subjects: Array<{ id: string; name: string; slug: string; source?: string }>;
   tags: Array<{ id: string; name: string; slug: string }>;
   linkedCounts: { universities: number; courses: number; scholarships: number };
 }
@@ -2013,14 +2014,21 @@ export class CountriesService {
           details: row.details,
           isRequired: row.isRequired,
         })),
+      /* `source` says where the link came from: DERIVED means a published
+         course in that subject is live against this destination, so the
+         page can stand behind it. EDITORIAL means an editor meant it --
+         usually a market the catalogue has not caught up with -- and it may
+         have nothing under it yet. The page is free to say which is which
+         rather than presenting both as the same claim. */
       subjects: record.subjectMaps
         .filter(
           ({ subject }) => subject.status === 'PUBLISHED' && !subject.deletedAt,
         )
-        .map(({ subject }) => ({
+        .map(({ subject, source }) => ({
           id: subject.id,
           name: subject.name,
           slug: subject.slug,
+          source,
         })),
     };
   }

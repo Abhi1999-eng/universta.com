@@ -15,6 +15,7 @@ import {
   type CountryRelations,
   type SectionColumn,
 } from './country-bulk';
+import { reconcileCourseTuition } from '../countries/country-course-tuition';
 
 export type BulkRow = Record<string, string>;
 export type BulkField = {
@@ -1835,7 +1836,20 @@ const offerings: BulkResourceDefinition = {
         tuitionMax,
         status: row.status?.trim() || 'DRAFT',
       },
+      relations: { genericCourseId: (genericCourse as { id: string }).id },
     };
+  },
+  /* A country's indicative tuition is the range its universities charge,
+     so writing an offering can change it. The reconciler only rewrites the
+     mappings an editor has not overridden. */
+  async reconcile(tx, _id, relations) {
+    const courseId = (relations as { genericCourseId?: string } | null)
+      ?.genericCourseId;
+    if (!courseId) return;
+    await reconcileCourseTuition(
+      tx as Parameters<typeof reconcileCourseTuition>[0],
+      courseId,
+    );
   },
   toExportRow(record) {
     return {
