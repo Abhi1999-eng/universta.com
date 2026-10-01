@@ -90,11 +90,13 @@ export default async function HomePage() {
     );
   }
 
-  /* The design's popular searches, pointed at pages that exist: the popular
-     guides, then the subjects students open most. */
+  /* Shortcuts under the search box, pointed at pages that exist: the first
+     destinations the catalogue lists, then a couple of subjects. These used
+     to be whatever an editor had flagged as featured; nothing is featured
+     any more, so they follow the catalogue's own order. */
   const popular: PopularLink[] = [
     ...directory.available
-      .filter((entry) => entry.isPopular && entry.slug)
+      .filter((entry) => entry.slug)
       .slice(0, 4)
       .map((entry) => ({ label: entry.name, href: `/study-abroad/${entry.slug}` })),
     ...subjects.slice(0, 2).map((subject) => ({ label: subject.name, href: `/subjects/${subject.slug}` })),

@@ -25,7 +25,8 @@ const MAX_ROWS = 2000;
  * accept a string representation directly -- but the two Int/Boolean columns
  * across the whole registry (`displayOrder`, `isFeatured`) do not, and
  * `updateMany` threw an unhandled 500 rather than applying the value. */
-const BOOLEAN_UPDATE_FIELDS = new Set(['isFeatured']);
+/* `isFeatured` used to be the one boolean here. Nothing is featured any
+   more, so the only value a sheet's bulk edit has to coerce is a number. */
 const INTEGER_UPDATE_FIELDS = new Set(['displayOrder']);
 
 function coerceUpdateFields(
@@ -33,9 +34,7 @@ function coerceUpdateFields(
 ): Record<string, unknown> {
   const coerced: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
-    if (BOOLEAN_UPDATE_FIELDS.has(key) && typeof value === 'string') {
-      coerced[key] = value.trim().toLowerCase() === 'true';
-    } else if (INTEGER_UPDATE_FIELDS.has(key) && typeof value === 'string') {
+    if (INTEGER_UPDATE_FIELDS.has(key) && typeof value === 'string') {
       const parsed = Number(value);
       if (!Number.isFinite(parsed))
         throw new BadRequestException({

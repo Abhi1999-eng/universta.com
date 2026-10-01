@@ -356,18 +356,6 @@ export function LocationsManager() {
     }
   }
 
-  async function toggleFeatured(city: CityRow) {
-    try {
-      await api(`/cities/${city.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ isFeatured: !city.isFeatured }),
-      });
-      await loadCities();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to update city");
-    }
-  }
-
   async function archiveCity(city: CityRow) {
     try {
       await api(`/cities/${city.id}`, { method: "DELETE" });
@@ -603,7 +591,6 @@ export function LocationsManager() {
                   <th>Country</th>
                   <th>State</th>
                   <th>Status</th>
-                  <th>Featured</th>
                   <th />
                 </tr>
               </thead>
@@ -628,15 +615,6 @@ export function LocationsManager() {
                           </option>
                         ))}
                       </select>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => void toggleFeatured(city)}
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${city.isFeatured ? "bg-[#E9F8F0] text-[#18794E]" : "bg-[#F7F9FC] text-[#828B9B]"}`}
-                      >
-                        {city.isFeatured ? "Featured" : "Not featured"}
-                      </button>
                     </td>
                     <td>
                       <button

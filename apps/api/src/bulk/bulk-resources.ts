@@ -1,7 +1,6 @@
 import { COUNTRY_STATUSES, slugify } from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 import {
-  boolOrUndefined,
   CLEAR_TOKEN,
   COUNTRY_SECTION_KEYS,
   intOrNull,
@@ -239,7 +238,6 @@ const countries: BulkResourceDefinition = {
     'visa_process',
     'flag_image',
     'hero_image',
-    'featured',
     'rank_order',
     'faqs',
     'continent',
@@ -372,7 +370,6 @@ const countries: BulkResourceDefinition = {
     },
     { key: 'flag_image', label: 'flag_image', required: false, type: 'text' },
     { key: 'hero_image', label: 'hero_image', required: false, type: 'text' },
-    { key: 'featured', label: 'featured', required: false, type: 'boolean' },
     { key: 'rank_order', label: 'rank_order', required: false, type: 'number' },
     {
       key: 'faqs',
@@ -444,7 +441,6 @@ const countries: BulkResourceDefinition = {
     visa_process: 'How the study visa is applied for.',
     flag_image: '',
     hero_image: '',
-    featured: 'false',
     rank_order: '0',
     faqs: '[{"question":"Can I work while studying?","answer":"Yes, within the permitted hours."}]',
     continent: 'asia',
@@ -462,7 +458,6 @@ const countries: BulkResourceDefinition = {
     'currency',
     'language',
     'tagline',
-    'featured',
     'rank_order',
   ],
   async parseRow(row, prisma) {
@@ -514,7 +509,6 @@ const countries: BulkResourceDefinition = {
         // canonical field and the name/symbol are left untouched rather than
         // blanked by an import that does not carry them.
         currencyCode: textOrNull(row.currency)?.toUpperCase(),
-        isFeatured: boolOrUndefined(row.featured),
         displayOrder: intOrNull(row.rank_order) ?? undefined,
         status: (row.status ?? '').trim() || 'DRAFT',
         ...media,
@@ -650,7 +644,6 @@ export function exportCountryRow(
     visa_process: sectionText(record, 'visa_process'),
     flag_image: rel.flagMedia?.publicUrl ?? '',
     hero_image: rel.heroMedia?.publicUrl ?? '',
-    featured: record.isFeatured ? 'true' : 'false',
     rank_order: decimalText(record.displayOrder ?? 0),
     faqs: (rel.faqs ?? []).length
       ? JSON.stringify(
@@ -744,7 +737,6 @@ const cities: BulkResourceDefinition = {
     'countrySlug',
     'stateSlug',
     'shortDescription',
-    'isFeatured',
     'status',
     'displayOrder',
   ],
@@ -757,17 +749,10 @@ const cities: BulkResourceDefinition = {
     stateSlug: '',
     shortDescription:
       'A fictional demo city used only to show the expected import shape.',
-    isFeatured: 'false',
     status: 'DRAFT',
     displayOrder: '0',
   },
-  updatableColumns: [
-    'name',
-    'shortDescription',
-    'isFeatured',
-    'status',
-    'displayOrder',
-  ],
+  updatableColumns: ['name', 'shortDescription', 'status', 'displayOrder'],
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
@@ -802,7 +787,6 @@ const cities: BulkResourceDefinition = {
         countryId: (country as { id: string }).id,
         stateId,
         shortDescription: row.shortDescription?.trim() || null,
-        isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
@@ -817,7 +801,6 @@ const cities: BulkResourceDefinition = {
       stateSlug:
         (record as { state?: { slug?: string } | null }).state?.slug ?? '',
       shortDescription: record.shortDescription ?? '',
-      isFeatured: record.isFeatured,
       status: record.status,
       displayOrder: record.displayOrder,
     };
@@ -932,7 +915,6 @@ const subjects: BulkResourceDefinition = {
     'name',
     'shortDescription',
     'specializations',
-    'isFeatured',
     'status',
     'displayOrder',
   ],
@@ -944,7 +926,6 @@ const subjects: BulkResourceDefinition = {
     shortDescription:
       'A fictional demo subject used only to show the expected import shape.',
     specializations: 'Demo Specialization | Second Demo Specialization',
-    isFeatured: 'false',
     status: 'DRAFT',
     displayOrder: '0',
   },
@@ -954,13 +935,7 @@ const subjects: BulkResourceDefinition = {
      not a column of `subjects`. Setting the same three on twenty subjects is
      not an operation anyone wants either. The sheet still carries the column;
      only the one-field bulk edit leaves it alone. */
-  updatableColumns: [
-    'name',
-    'shortDescription',
-    'isFeatured',
-    'status',
-    'displayOrder',
-  ],
+  updatableColumns: ['name', 'shortDescription', 'status', 'displayOrder'],
   async parseRow(row) {
     if (!row.name?.trim()) return { errors: ['name is required'] };
     return {
@@ -968,7 +943,6 @@ const subjects: BulkResourceDefinition = {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
         shortDescription: row.shortDescription?.trim() || null,
-        isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
@@ -988,7 +962,6 @@ const subjects: BulkResourceDefinition = {
       name: record.name,
       shortDescription: record.shortDescription ?? '',
       specializations: children.map((child) => child.name).join(' | '),
-      isFeatured: record.isFeatured,
       status: record.status,
       displayOrder: record.displayOrder,
     };
@@ -1006,7 +979,6 @@ const courses: BulkResourceDefinition = {
     'subjectSlug',
     'courseLevelCode',
     'shortDescription',
-    'isFeatured',
     'status',
   ],
   fields: [
@@ -1024,7 +996,6 @@ const courses: BulkResourceDefinition = {
       required: false,
       type: 'text',
     },
-    { key: 'isFeatured', label: 'Featured', required: false, type: 'boolean' },
     { key: 'status', label: 'Status', required: false, type: 'status' },
   ],
   statusAllowedValues: PUBLISH_STATUSES,
@@ -1036,10 +1007,9 @@ const courses: BulkResourceDefinition = {
     courseLevelCode: 'UG',
     shortDescription:
       'A fictional demo course used only to show the expected import shape.',
-    isFeatured: 'false',
     status: 'DRAFT',
   },
-  updatableColumns: ['name', 'shortDescription', 'isFeatured', 'status'],
+  updatableColumns: ['name', 'shortDescription', 'status'],
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
@@ -1072,7 +1042,6 @@ const courses: BulkResourceDefinition = {
         subjectId: (subject as { id: string }).id,
         courseLevelId: (courseLevel as { id: string }).id,
         shortDescription: row.shortDescription?.trim() || null,
-        isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
         status: row.status?.trim() || 'DRAFT',
       },
     };
@@ -1086,7 +1055,6 @@ const courses: BulkResourceDefinition = {
       courseLevelCode:
         (record as { courseLevel?: { code?: string } }).courseLevel?.code ?? '',
       shortDescription: record.shortDescription ?? '',
-      isFeatured: record.isFeatured,
       status: record.status,
     };
   },

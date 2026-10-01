@@ -39,7 +39,6 @@ export function CoursesPage() {
   const [subSubject, setSubSubject] = useState('');
   const [level, setLevel] = useState('');
   const [country, setCountry] = useState('');
-  const [featured, setFeatured] = useState('');
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
@@ -60,7 +59,6 @@ export function CoursesPage() {
       subSubject,
       level,
       country,
-      featured: featured === '' ? undefined : featured === 'true',
       page,
       limit: 12,
     })
@@ -72,7 +70,7 @@ export function CoursesPage() {
         setError(cause instanceof Error ? cause.message : 'Unable to load courses'),
       )
       .finally(() => setLoading(false));
-  }, [country, featured, level, page, q, status, subject, subSubject]);
+  }, [country, level, page, q, status, subject, subSubject]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -219,21 +217,6 @@ export function CoursesPage() {
             </select>
           </label>
           <label className="p-field">
-            <span className="p-label">Featured</span>
-            <select
-              className="p-input"
-              value={featured}
-              onChange={(event) => {
-                setFeatured(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All featured states</option>
-              <option value="true">Featured</option>
-              <option value="false">Not featured</option>
-            </select>
-          </label>
-          <label className="p-field">
             <span className="p-label">Search</span>
             <input
               className="p-input"
@@ -272,7 +255,6 @@ export function CoursesPage() {
               setSubSubject('');
               setLevel('');
               setCountry('');
-              setFeatured('');
               setPage(1);
             }}
           >
