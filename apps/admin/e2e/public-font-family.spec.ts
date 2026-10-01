@@ -122,7 +122,10 @@ test('public typography roles keep headings, cards and native controls on the sh
       ].map((name) => [name, getComputedStyle(document.documentElement).getPropertyValue(name).trim()]),
       display: style('h1'),
       section: style('h2'),
-      cardTitles: [...document.querySelectorAll<HTMLElement>('.card h3, .catalog-card h2, .catalog-card h3')]
+      /* Every public listing's card title, whatever that listing calls its
+         card. `/universities` carried this probe until the approved design
+         reached it; scholarships name theirs `.scard`. */
+      cardTitles: [...document.querySelectorAll<HTMLElement>('.card h3, .catalog-card h2, .catalog-card h3, .scard h3')]
         .slice(0, 8)
         .map((element) => getComputedStyle(element).font),
       button: style('button:not([aria-label])'),
