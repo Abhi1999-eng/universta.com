@@ -4,8 +4,8 @@ import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { formatNumber } from '@/lib/format';
 import { CourseCards } from './CourseCards';
 import { Crumbs } from './Crumbs';
-import { FlagMark } from './FlagMark';
-import { sparseBandClass, switcherClass } from './switcher';
+import { DestinationSwitcher } from './DestinationSwitcher';
+import { sparseBandClass } from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
@@ -199,21 +199,7 @@ export function SubjectGuide({
               title={`Where you can study ${subject.name}`}
               lead="Open a destination to see its fees, visa route and intakes."
             />
-            <div className={switcherClass(countries.length)}>
-              {countries.map((country) => (
-                <Link
-                  key={country.id}
-                  className="switcher__item"
-                  href={`/study-abroad/${country.slug}`}
-                >
-                  <FlagMark iso2Code={country.iso2Code} bands={null} />
-                  <span className="cchip__name">{country.name}</span>
-                  <span className="switcher__arrow" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <DestinationSwitcher countries={countries} label={subject.name} />
           </div>
         </section>
       ) : null}
