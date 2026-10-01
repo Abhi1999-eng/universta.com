@@ -1232,6 +1232,17 @@
 @media (min-width: 560px){
 .sa .switcher--few{ grid-template-columns: repeat(auto-fit, minmax(190px, 260px)); justify-content: start; }
 }
+/* And the band around them. A three-line display title with a sticky aside,
+   a lead in its own column and 64px of air under all of it is built for a
+   section with something in it; around one chip it reads as a page that
+   failed to load. Sparse bands keep the same parts, smaller and closer. */
+.sa .sec--sparse{ padding-block: clamp(34px, 4vw, 56px); }
+.sa .sec--sparse .sec-head{ margin-bottom: 22px; }
+.sa .sec--sparse .sec-title{ font-size: clamp(21px, 2.3vw, 29px); }
+@media (min-width: 940px){
+.sa .sec--sparse .sec-head--split{ grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 36px; align-items: baseline; }
+.sa .sec--sparse .sec-head--split .sec-head__aside{ position: static; }
+}
 /* ---------------------------------------------------------------------
    HOME SEARCH
    The design's hero search and its popular chips, from its universities
@@ -2154,11 +2165,16 @@
 .sa .h-empty { display: grid; gap: 4px; padding: 26px; text-align: center; border: 1px dashed var(--line-strong); border-radius: 12px; margin-top: 12px; }
 .sa .h-empty span { color: var(--muted); }
 .sa .h-related__t { font-size: clamp(22px, 2.4vw, 30px); margin-bottom: 16px; }
-/* `auto-fit`, not `auto-fill`: two groups on a wide page were laid into
-   four tracks and left two of them empty. And `start`, so each card is as
-   tall as its own list -- a group of one used to be stretched to the
-   height of a group of six and read as a card someone forgot to fill. */
-.sa .h-related__grid { display: grid; gap: 14px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+/* Sized to what is in them, in both directions, and packed to the start.
+   `auto-fill` with `1fr` tracks laid two groups into four and stretched
+   them across half the page each, every card as tall as the tallest -- so a
+   destination group of one was drawn at the height of six specializations
+   and read as a card somebody forgot to fill. Capped at 360px so one long
+   name cannot make a card the width of the band. */
+.sa .h-related__grid {
+  display: grid; gap: 14px; align-items: start; justify-content: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 360px));
+}
 .sa .h-relgroup { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .sa .h-relgroup__t { font-size: 15.5px; font-family: var(--font-display); display: flex; justify-content: space-between; gap: 10px; margin: 0; }
 .sa .h-relgroup__more { align-self: flex-start; font-size: 14px; }

@@ -5,7 +5,7 @@ import { formatNumber } from '@/lib/format';
 import { CourseCards } from './CourseCards';
 import { Crumbs } from './Crumbs';
 import { FlagMark } from './FlagMark';
-import { switcherClass } from './switcher';
+import { sparseBandClass, switcherClass } from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
@@ -188,7 +188,10 @@ export function SubjectGuide({
       ) : null}
 
       {countries.length ? (
-        <section className={band('destinations')} id="destinations">
+        <section
+          className={band('destinations') + sparseBandClass(countries.length)}
+          id="destinations"
+        >
           <div className="wrap">
             <SectionHead
               n={n('destinations')}

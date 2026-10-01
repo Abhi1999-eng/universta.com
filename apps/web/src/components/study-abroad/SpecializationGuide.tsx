@@ -4,7 +4,7 @@ import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { CourseCards } from './CourseCards';
 import { Crumbs } from './Crumbs';
 import { FlagMark } from './FlagMark';
-import { switcherClass } from './switcher';
+import { sparseBandClass, switcherClass } from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
@@ -125,7 +125,10 @@ export function SpecializationGuide({
       ) : null}
 
       {countries.length ? (
-        <section className={band('destinations')} id="destinations">
+        <section
+          className={band('destinations') + sparseBandClass(countries.length)}
+          id="destinations"
+        >
           <div className="wrap">
             <SectionHead
               n={n('destinations')}

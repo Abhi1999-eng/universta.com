@@ -13,3 +13,13 @@ export const SWITCHER_COLUMNS = 3;
 export function switcherClass(count: number): string {
   return count < SWITCHER_COLUMNS ? 'switcher switcher--few' : 'switcher';
 }
+
+/** The band around a switcher that holds only a chip or two.
+ *
+ * The full furniture -- a three-line display title, a sticky aside, a lead
+ * in its own column and 64px under all of it -- is built for a section with
+ * something in it. Around one chip it is mostly air, and the band reads as
+ * a page that failed to load rather than a short list. */
+export function sparseBandClass(count: number): string {
+  return count < SWITCHER_COLUMNS ? ' sec--sparse' : '';
+}
