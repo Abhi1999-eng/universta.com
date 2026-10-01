@@ -340,6 +340,12 @@ export class BulkOperationsService {
         // The sheet carries the specialization, so the export has to read it.
         subSubject: { select: { slug: true, name: true } },
         courseLevel: { select: { code: true, name: true } },
+        /* And the destinations, which is what makes a course public. */
+        countryCourses: {
+          where: { deletedAt: null },
+          select: { country: { select: { slug: true } } },
+          orderBy: { country: { slug: 'asc' } },
+        },
       },
       universities: { country: { select: { slug: true, name: true } } },
       campuses: { university: { select: { slug: true, name: true } } },
