@@ -46,13 +46,16 @@ async function match(rows: Row[], uid: string | undefined, slug: string) {
       }
     >
   ).country;
+  const slugOwner = await table.findFirst({ where: { slug, deletedAt: null } });
   let existing = uid
     ? await table.findFirst({ where: { externalUid: uid, deletedAt: null } })
     : null;
   const matchedByUid = Boolean(existing);
-  if (!existing)
-    existing = await table.findFirst({ where: { slug, deletedAt: null } });
-  return { existing, matchedByUid };
+  if (!existing && (!uid || !slugOwner?.externalUid)) existing = slugOwner;
+  const conflict = Boolean(
+    matchedByUid && slugOwner && slugOwner.id !== existing?.id,
+  );
+  return { existing, matchedByUid, conflict };
 }
 
 describe('matching a sheet row to a record', () => {
@@ -76,6 +79,25 @@ describe('matching a sheet row to a record', () => {
   it('still finds nothing when neither matches, so the row is created', async () => {
     const { existing } = await match(bySlugOnly, 'ZZ', 'narnia');
     expect(existing).toBeNull();
+  });
+
+  it('does not adopt a record that already carries a different uid', async () => {
+    /* The sheet says "this is a new record" by naming a uid nobody holds,
+       and the slug it wants belongs to a record with a uid of its own. That
+       is a taken slug, not a record to update -- so it is left to be created
+       and refused by the unique index, which says so plainly. */
+    const held: Row[] = [{ id: 'c1', slug: 'estonia', externalUid: 'EE' }];
+    const { existing } = await match(held, 'ZZ', 'estonia');
+    expect(existing).toBeNull();
+  });
+
+  it('refuses when the uid matched one record and the slug another', async () => {
+    const two: Row[] = [
+      { id: 'c1', slug: 'estonia', externalUid: 'EE' },
+      { id: 'c2', slug: 'latvia', externalUid: 'LV' },
+    ];
+    const { conflict } = await match(two, 'LV', 'estonia');
+    expect(conflict).toBe(true);
   });
 
   it('uses the slug when the sheet carries no uid at all', async () => {

@@ -203,30 +203,22 @@ describe('Featured listings and advanced filters (e2e)', () => {
     await app.close();
   });
 
-  it('sorts effectively-featured universities ahead of an expired one, honoring featuredPriority', async () => {
+  it('lists universities in the catalogue\u2019s own order, whatever the old flag says', async () => {
+    /* These fixtures still carry isFeatured, featuredPriority and a featured
+       window, because the columns are still there. Nothing reads them now:
+       the list is display order, then name. The fixtures share a display
+       order, so this is the alphabetical fallback -- and a row that was once
+       "priority 1" no longer jumps the queue. */
     const response = await request(app.getHttpServer())
       .get('/api/v1/phase1/universities')
       .query({ country: `featured-e2e-${suffix}`, limit: '20' })
       .expect(200);
     const names = arrayData(response).map((row) => String(row.name));
-    const priorityOneIdx = names.indexOf(
-      `Featured E2E Priority One University ${suffix}`,
+    const ours = names.filter(
+      (name) => name.includes(`E2E`) && name.includes(suffix),
     );
-    const priorityTwoIdx = names.indexOf(
-      `Featured E2E Priority Two University ${suffix}`,
-    );
-    const expiredIdx = names.indexOf(
-      `Featured E2E Expired University ${suffix}`,
-    );
-    expect(priorityOneIdx).toBeGreaterThanOrEqual(0);
-    expect(priorityTwoIdx).toBeGreaterThanOrEqual(0);
-    expect(expiredIdx).toBeGreaterThanOrEqual(0);
-    // Priority 1 (lower number) beats priority 2 among currently-featured rows.
-    expect(priorityOneIdx).toBeLessThan(priorityTwoIdx);
-    // An expired featured window is no longer effectively featured, so it
-    // must not outrank a genuinely active featured row.
-    expect(priorityOneIdx).toBeLessThan(expiredIdx);
-    expect(priorityTwoIdx).toBeLessThan(expiredIdx);
+    expect(ours.length).toBeGreaterThanOrEqual(3);
+    expect(ours).toEqual([...ours].sort((a, b) => a.localeCompare(b)));
   });
 
   it('filters universities by campus city and state', async () => {

@@ -557,39 +557,44 @@ export class BulkOperationsService {
             ? (parsed.data.externalUid as string | null | undefined)
             : undefined;
         /* A supplied uid identifies the record, and the slug is the
-           fallback -- which it was not: a uid matching nothing made this
-           skip the slug entirely and try to create, so re-uploading a sheet
-           of uids into a database whose rows had never been given one
-           failed every single line with "Another country already uses this
-           name", about the record the slug was pointing straight at.
-           The delegate is untyped here, so name the one field this uses. */
+           fallback the comment here always claimed it was -- which it was
+           not. A uid matching nothing made this skip the slug entirely and
+           try to create, so re-uploading a sheet of uids into a database
+           whose rows had never been given one failed every single line with
+           "Another country already uses this name", about the record the
+           slug was pointing straight at.
+
+           The fallback only adopts a record that has no uid of its own. A
+           slug held by a record carrying a *different* uid is the conflict
+           the guard below was written for, and stays one: the sheet is
+           claiming to introduce a new record under a slug somebody else is
+           already using. The delegate is untyped, so name the fields used. */
+        const slugOwner = (await table.findFirst({
+          where: { slug, deletedAt: null },
+        })) as { id: string; externalUid?: string | null } | null;
         let existing = (
           externalUid
             ? await table.findFirst({ where: { externalUid, deletedAt: null } })
             : null
         ) as { id: string } | null;
         const matchedByUid = Boolean(existing);
-        if (!existing)
-          existing = (await table.findFirst({
-            where: { slug, deletedAt: null },
-          })) as { id: string } | null;
-        if (externalUid && matchedByUid && existing) {
-          // The uid points at one record and the slug at another: renaming one
-          // and re-pointing the other are both plausible readings, so the row
-          // is rejected rather than guessed at.
-          const slugOwner = await table.findFirst({
-            where: { slug, deletedAt: null },
+        if (!existing && (!externalUid || !slugOwner?.externalUid))
+          existing = slugOwner;
+        if (matchedByUid && slugOwner && slugOwner.id !== existing?.id) {
+          /* The uid points at one record and the slug at another: renaming
+             one and re-pointing the other are both plausible readings, so
+             the row is rejected rather than guessed at. Only when the uid
+             actually matched something -- a uid nobody holds, over a slug
+             somebody else does, is just a taken slug, and the database says
+             so more plainly than this could. */
+          summary.failed += 1;
+          summary.errors.push({
+            line,
+            errors: [
+              `uid "${externalUid}" matches a different record than slug "${slug}"; resolve the conflict before importing`,
+            ],
           });
-          if (slugOwner && slugOwner.id !== existing.id) {
-            summary.failed += 1;
-            summary.errors.push({
-              line,
-              errors: [
-                `uid "${externalUid}" matches a different record than slug "${slug}"; resolve the conflict before importing`,
-              ],
-            });
-            continue;
-          }
+          continue;
         }
         if (existing) {
           /* A row that says nothing new is not a conflict and not an update.
