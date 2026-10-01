@@ -18,6 +18,7 @@ import {
 } from './catalog-client';
 import type { CatalogMutationError, MasterRecord } from './catalog.types';
 import { ScholarshipProvidersPanel } from './ScholarshipProvidersPanel';
+import { catalogErrorText } from './catalog-errors';
 
 type IntakeRow = {
   id: string;
@@ -359,8 +360,7 @@ export function CatalogMastersPage() {
       setEditorOpen(false);
       load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Unable to save master record');
+      setError(catalogErrorText(cause, 'Unable to save master record'));
     } finally {
       setSaving(false);
     }
@@ -377,8 +377,7 @@ export function CatalogMastersPage() {
       setPending(null);
       load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Unable to delete master record');
+      setError(catalogErrorText(cause, 'Unable to delete master record'));
       setPending(null);
     }
   }
@@ -393,8 +392,7 @@ export function CatalogMastersPage() {
       else await updateStudyMode(row.id, data);
       load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Unable to change master status');
+      setError(catalogErrorText(cause, 'Unable to change master status'));
     }
   }
 

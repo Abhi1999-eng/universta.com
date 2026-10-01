@@ -92,6 +92,7 @@ import {
   fieldErrorsFromServer,
   seoFieldRules,
 } from "./country-field-rules";
+import { catalogErrorText, catalogFieldLabel } from "./catalog-errors";
 
 type Intent = "draft" | "publish";
 type Core = {
@@ -327,6 +328,20 @@ const seoFromRecord = (row: EditorialSeo | null): UnifiedSeoDraft =>
         robotsFollow: row.robotsFollow,
       }
     : blankUnifiedSeo;
+
+/** The fields this form renders an inline message under. Anything else the
+ * server rejects has no control to sit beneath, so it goes in the banner. */
+const INLINE_ERROR_FIELDS = new Set([
+  "capitalCity",
+  "externalUid",
+  "iso2Code",
+  "name",
+  "officialLanguage",
+  "pageHeading",
+  "shortDescription",
+  "slug",
+  "tagline",
+]);
 
 export function CountryForm({ countryId }: { countryId?: string }) {
   const router = useRouter();
@@ -1110,26 +1125,44 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       if (!countryId) router.replace(`/countries/${saved.id}`);
       router.refresh();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
       /* The API names the offending field -- in `details` for a readiness
        * failure, in the code for a conflict. Routing it back to that field is
        * the difference between "Invalid catalog request" and a message the
        * operator can act on without leaving the control they are editing. */
       const serverFields = fieldErrorsFromServer(cause);
-      if (Object.keys(serverFields).length) {
-        setFieldErrors((current) => ({ ...current, ...serverFields }));
-        focusField(Object.keys(serverFields)[0]);
-        setError(
-          Object.keys(serverFields).length === 1
-            ? "One field needs attention — see the message under it."
-            : `${Object.keys(serverFields).length} fields need attention — see the messages under them.`,
-        );
-      } else {
-        setError(
-          typed.message ??
-            (cause instanceof Error ? cause.message : "Unable to save country"),
-        );
+      /* Only the fields this form renders a message under can be pointed at.
+         The server also rejects things the editor has no single control for
+         -- `subjectIds`, `popularCourseIds` -- and telling an author to "see
+         the message under it" about one of those sends them looking for a
+         message that is nowhere on the page. Those go in the banner, where
+         they can actually be read. */
+      const inline = Object.fromEntries(
+        Object.entries(serverFields).filter(([field]) =>
+          INLINE_ERROR_FIELDS.has(field),
+        ),
+      );
+      const elsewhere = Object.entries(serverFields).filter(
+        ([field]) => !INLINE_ERROR_FIELDS.has(field),
+      );
+      if (Object.keys(inline).length) {
+        setFieldErrors((current) => ({ ...current, ...inline }));
+        focusField(Object.keys(inline)[0]);
       }
+      const banner = elsewhere.map(
+        ([field, message]) =>
+          `${catalogFieldLabel(field)}: ${message}`,
+      );
+      if (Object.keys(inline).length)
+        banner.unshift(
+          Object.keys(inline).length === 1
+            ? "One field needs attention — see the message under it."
+            : `${Object.keys(inline).length} fields need attention — see the messages under them.`,
+        );
+      setError(
+        banner.length
+          ? banner.join(" · ")
+          : catalogErrorText(cause, "Unable to save country"),
+      );
     } finally {
       setSaving(false);
       setSavingIntent(null);
@@ -2101,13 +2134,7 @@ function ContinentField({
       onCreated(created.data);
       close();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(
-        typed.message ??
-          (cause instanceof Error
-            ? cause.message
-            : "Unable to create continent"),
-      );
+      setError(catalogErrorText(cause, "Unable to create continent"));
       setBusy(false);
     }
   }

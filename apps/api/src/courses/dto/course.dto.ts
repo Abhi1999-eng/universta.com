@@ -325,7 +325,8 @@ export class StudyModeReplacementDto {
   @IsArray()
   @ArrayMaxSize(20)
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  // Any version: seeded rows carry MySQL v1 ids, Prisma's carry v4.
+  @IsUUID(undefined, { each: true })
   studyModeIds!: string[];
   @ApiPropertyOptional() @IsOptional() @IsISO8601() expectedUpdatedAt?: string;
 }

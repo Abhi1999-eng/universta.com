@@ -214,23 +214,31 @@ export class CreateCountryDto {
   @IsUUID()
   heroMediaId?: string;
 
+  /* Any UUID version, not only v4. Most of this catalogue's ids were minted
+     by MySQL's own `UUID()` in the taxonomy seed, which issues version 1;
+     the rest by Prisma's `@default(uuid())`, which issues version 4. Pinning
+     these to v4 meant the Admin could not hand back the ids the database had
+     given it -- and once a new country started with the whole catalogue
+     selected, every create was refused with "each value in subjectIds must
+     be a UUID", about ids the server itself had made. The student DTOs
+     already take any version; this is the catalogue agreeing with them. */
   @Transform(arrayValue)
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   subjectIds?: string[];
   @Transform(arrayValue)
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   subSubjectIds?: string[];
   @Transform(arrayValue)
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   tagIds?: string[];
 
   /* Both of these used to be closed enums here, which is what made adding a
@@ -310,14 +318,14 @@ export class CreateCountryDto {
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   popularUniversityIds?: string[];
 
   @Transform(arrayValue)
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   popularCourseIds?: string[];
 }
 

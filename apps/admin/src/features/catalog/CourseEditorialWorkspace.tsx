@@ -44,6 +44,7 @@ import type {
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
 import { isFutureCalendarDate } from '@/lib/calendar-date';
+import { catalogErrorText } from './catalog-errors';
 
 type Tab = 'availability' | 'content' | 'faqs' | 'seo' | 'related';
 type Pending = { type: 'mapping' | 'section' | 'faq'; id: string } | null;
@@ -231,21 +232,6 @@ function mappingPayload(draft: MappingDraft): Record<string, unknown> {
   return data;
 }
 
-function readableCatalogError(cause: unknown, fallback: string): string {
-  const typed = cause as Partial<CatalogMutationError>;
-  if (typed.code === 'VALIDATION_ERROR' && Array.isArray(typed.details)) {
-    const messages = typed.details
-      .map((item) => {
-        if (!item || typeof item !== 'object') return '';
-        const detail = item as { property?: unknown; message?: unknown };
-        if (typeof detail.message !== 'string') return '';
-        return detail.message;
-      })
-      .filter(Boolean);
-    if (messages.length) return [...new Set(messages)].join(' · ');
-  }
-  return typed.message ?? (cause instanceof Error ? cause.message : fallback);
-}
 
 function serverFieldErrors<T extends string>(
   cause: unknown,
@@ -577,7 +563,7 @@ export function CourseEditorialWorkspace({
           .filter((result) => result.status === 'rejected')
           .map((result) =>
             result.status === 'rejected'
-              ? readableCatalogError(result.reason, 'Unable to load workspace data')
+              ? catalogErrorText(result.reason, 'Unable to load workspace data')
               : '',
           )
           .filter(Boolean);
@@ -651,7 +637,7 @@ export function CourseEditorialWorkspace({
         setError('Fix the highlighted Availability fields before saving the mapping.');
         focusField(firstErrorId(fields, 'mapping-'));
       } else {
-        showActionError(readableCatalogError(cause, 'Unable to save mapping'));
+        showActionError(catalogErrorText(cause, 'Unable to save mapping'));
       }
     }
   }
@@ -676,7 +662,7 @@ export function CourseEditorialWorkspace({
       setIntakeMapping(null);
       setError('');
     } catch (cause: unknown) {
-      showActionError(readableCatalogError(cause, 'Unable to save intakes'));
+      showActionError(catalogErrorText(cause, 'Unable to save intakes'));
     }
   }
 
@@ -746,7 +732,7 @@ export function CourseEditorialWorkspace({
         focusField(firstErrorId(mapped, 'section-'));
       } else {
         showActionError(
-          readableCatalogError(cause, 'Unable to save content section'),
+          catalogErrorText(cause, 'Unable to save content section'),
         );
       }
     }
@@ -776,7 +762,7 @@ export function CourseEditorialWorkspace({
       setEditFaq(null);
       setFaq({ ...blankFaq });
     } catch (cause: unknown) {
-      showActionError(readableCatalogError(cause, 'Unable to save FAQ'));
+      showActionError(catalogErrorText(cause, 'Unable to save FAQ'));
     }
   }
 
@@ -811,7 +797,7 @@ export function CourseEditorialWorkspace({
       setError('');
     } catch (cause: unknown) {
       setPending(null);
-      showActionError(readableCatalogError(cause, 'Unable to remove record'));
+      showActionError(catalogErrorText(cause, 'Unable to remove record'));
     }
   }
 
@@ -830,7 +816,7 @@ export function CourseEditorialWorkspace({
       setError('');
     } catch (cause: unknown) {
       showActionError(
-        readableCatalogError(cause, 'Unable to save related courses'),
+        catalogErrorText(cause, 'Unable to save related courses'),
       );
     }
   }
@@ -844,7 +830,7 @@ export function CourseEditorialWorkspace({
       setError('');
     } catch (cause: unknown) {
       showActionError(
-        readableCatalogError(cause, 'Unable to remove SEO metadata'),
+        catalogErrorText(cause, 'Unable to remove SEO metadata'),
       );
     } finally {
       setSeoPending(false);
@@ -882,7 +868,7 @@ export function CourseEditorialWorkspace({
       );
       setIntakeMapping(row);
     } catch (cause: unknown) {
-      showActionError(readableCatalogError(cause, 'Unable to load intakes'));
+      showActionError(catalogErrorText(cause, 'Unable to load intakes'));
     }
   }
 

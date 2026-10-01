@@ -60,6 +60,7 @@ import { variablesForContext } from '@/features/shared/variable-autocomplete';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { catalogErrorText } from './catalog-errors';
 
 type Intent = 'draft' | 'publish';
 type CoreState = {
@@ -688,8 +689,7 @@ export function CourseForm({ id }: { id?: string }) {
       if (!id) router.replace(`/courses/${finalRecord.id}`);
       router.refresh();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? (cause instanceof Error ? cause.message : 'Unable to save course'));
+      setError(catalogErrorText(cause, 'Unable to save course'));
       showAlert();
     } finally {
       setSaving(false);

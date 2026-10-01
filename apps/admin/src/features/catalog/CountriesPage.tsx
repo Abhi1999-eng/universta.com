@@ -6,6 +6,7 @@ import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { FlashBanner, useHandedOverFlash, type Flash } from '@/features/shared/Flash';
 import { deleteCountry, listContinents, listCountries, listCountryTags, listAllSubjects, publishCountry, unpublishCountry } from './catalog-client';
 import type { CatalogMutationError, ContinentRecord, CountryRecord, CountryTagRecord, PageMeta, SubjectRecord } from './catalog.types';
+import { catalogErrorText } from './catalog-errors';
 
 type PendingAction = { kind: 'publish' | 'unpublish' | 'delete'; country: CountryRecord } | null;
 
@@ -58,8 +59,7 @@ export function CountriesPage() {
       setOwnFlash({ tone: pending.kind === 'publish' ? 'success' : 'neutral', message: pending.kind === 'publish' ? `${pending.country.name} published successfully.` : pending.kind === 'unpublish' ? 'Country unpublished.' : 'Country soft-deleted.' });
       setPending(null); setPendingValue(''); setReload((value) => value + 1);
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Catalog action failed');
+      setError(catalogErrorText(cause, 'Catalog action failed'));
       setPending(null); setPendingValue('');
     } finally { setWorking(false); }
   }

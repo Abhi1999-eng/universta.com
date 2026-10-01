@@ -120,9 +120,22 @@ export function fieldErrorsFromServer(cause: unknown): Record<string, string> {
   const mapped: Record<string, string> = {};
   if (Array.isArray(typed?.details))
     for (const entry of typed.details) {
-      const row = entry as { field?: unknown; message?: unknown };
-      if (typeof row?.field === 'string' && typeof row?.message === 'string')
-        mapped[row.field] = row.message;
+      /* A readiness failure names the field in `field`; a rejected validation
+         names it in `property`, which is what class-validator sends. Reading
+         only `field` meant every validation error matched nothing here and
+         fell through to "Invalid catalog request" with no field named. */
+      const row = entry as {
+        field?: unknown;
+        property?: unknown;
+        message?: unknown;
+      };
+      const name =
+        typeof row?.field === 'string'
+          ? row.field
+          : typeof row?.property === 'string'
+            ? row.property
+            : null;
+      if (name && typeof row?.message === 'string') mapped[name] = row.message;
     }
   if (Object.keys(mapped).length) return mapped;
 
