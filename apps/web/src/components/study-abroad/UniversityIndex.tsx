@@ -150,8 +150,19 @@ export function UniversityIndex({
   const active = countries.length + types.length;
 
   return (
-    <section className="sec sec--white sec--tight" id="results">
+    <section
+      className="sec sec--white sec--tight"
+      id="results"
+      aria-labelledby="results-heading"
+    >
       <div className="wrap">
+        {/* The band carries no visible title -- the approved design opens
+            straight into the filters and the grid -- but the outline needs
+            one between the page's h1 and the cards' h3 names, and a screen
+            reader needs the region named. */}
+        <h2 className="sr-only" id="results-heading">
+          All universities
+        </h2>
         <div className="results">
           <aside
             className="filters-panel filters-panel--live"

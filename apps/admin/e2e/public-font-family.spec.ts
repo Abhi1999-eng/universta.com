@@ -84,10 +84,11 @@ test('public typography roles keep headings, cards and native controls on the sh
 
   /* This probes the shared public type contract, so it has to stand on a page
      that still uses it. `/courses` joined the approved Study Abroad design and
-     its scoped typefaces, for the same reason it left `publicRoutes` above;
-     `/universities` is the listing that still carries the shared chrome,
-     catalogue cards and native controls this asserts. */
-  await page.goto(`${webBaseUrl}/universities`, { waitUntil: 'domcontentloaded' });
+     its scoped typefaces, for the same reason it left `publicRoutes` above,
+     and `/universities` has now joined it too; `/scholarships` is the listing
+     that still carries the shared chrome, catalogue cards and native controls
+     this asserts. */
+  await page.goto(`${webBaseUrl}/scholarships`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('body')).toBeVisible();
 
   const listing = await page.evaluate(() => {

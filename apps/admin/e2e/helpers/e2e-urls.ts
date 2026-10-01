@@ -10,11 +10,13 @@ export const webBaseUrl =
  *
  * The homepage does not. The Study Abroad route family ships its own header
  * and footer as part of the approved design, and it now covers `/`,
- * `/subjects`, `/specializations` and `/courses` as well as the destination
- * guides, so the site chrome stands down on all of them.
+ * `/subjects`, `/specializations`, `/courses` and `/universities` as well as
+ * the destination guides, so the site chrome stands down on all of them.
  *
- * Tests about the chrome itself need a route outside that family. This was
- * `/courses` until the approved design reached it; `/universities` is an
- * ordinary public listing with no reason to leave.
+ * Tests about the chrome itself need a route outside that family, and the
+ * family keeps growing: this was `/courses`, then `/universities`, and is
+ * now `/scholarships`. When the approved design reaches that too, move this
+ * again rather than asserting the site chrome on a page that no longer has
+ * one -- the failure reads as a broken header, which is not what it is.
  */
-export const chromeBaseUrl = `${webBaseUrl}/universities`;
+export const chromeBaseUrl = `${webBaseUrl}/scholarships`;
