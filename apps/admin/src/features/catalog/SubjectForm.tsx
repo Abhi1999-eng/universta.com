@@ -27,6 +27,7 @@ import { commonFieldHelp } from '@/lib/field-help/common';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { catalogErrorText } from './catalog-errors';
 
 type Intent = 'draft' | 'publish';
 type SpecializationDraft = {
@@ -216,8 +217,7 @@ export function SubjectForm({ id }: { id?: string }) {
       if (!id) router.replace(`/subjects/${settled.record.id}`);
       router.refresh();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? (cause instanceof Error ? cause.message : 'Unable to save subject'));
+      setError(catalogErrorText(cause, 'Unable to save subject'));
     } finally { setSaving(false); setSavingIntent(null); }
   }
 

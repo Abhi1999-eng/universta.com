@@ -20,6 +20,7 @@ import type {
   PageMeta,
   SubjectRecord,
 } from './catalog.types';
+import { catalogErrorText } from './catalog-errors';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: CourseRecord } | null;
 
@@ -116,8 +117,7 @@ export function CoursesPage() {
       setConfirm('');
       void load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Course action failed');
+      setError(catalogErrorText(cause, 'Course action failed'));
       setPending(null);
       setConfirm('');
     }

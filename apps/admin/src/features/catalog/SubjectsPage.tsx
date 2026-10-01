@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { deleteSubject, listSubjects, publishSubject, unpublishSubject } from './catalog-client';
 import type { CatalogMutationError, PageMeta, SubjectRecord } from './catalog.types';
+import { catalogErrorText } from './catalog-errors';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubjectRecord } | null;
 
@@ -72,8 +73,7 @@ export function SubjectsPage() {
       setConfirm('');
       void load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Subject action failed');
+      setError(catalogErrorText(cause, 'Subject action failed'));
       setPending(null);
       setConfirm('');
     }

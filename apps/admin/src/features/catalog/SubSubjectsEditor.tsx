@@ -16,6 +16,7 @@ import type {
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
+import { catalogErrorText } from './catalog-errors';
 
 type SpecializationDraft = {
   name: string;
@@ -118,8 +119,7 @@ export function SubSubjectsEditor({
       setDraft(emptyDraft);
       load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Unable to create Specialization');
+      setError(catalogErrorText(cause, 'Unable to create Specialization'));
     } finally {
       setSaving(false);
     }
@@ -132,8 +132,7 @@ export function SubSubjectsEditor({
       setPending(null);
       load();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      setError(typed.message ?? 'Unable to delete Specialization');
+      setError(catalogErrorText(cause, 'Unable to delete Specialization'));
       setPending(null);
     }
   }
@@ -397,8 +396,7 @@ function SpecializationCard({
       });
       onSaved();
     } catch (cause: unknown) {
-      const typed = cause as Partial<CatalogMutationError>;
-      onError(typed.message ?? 'Unable to save Specialization');
+      onError(catalogErrorText(cause, 'Unable to save Specialization'));
     } finally {
       setSaving(false);
     }
