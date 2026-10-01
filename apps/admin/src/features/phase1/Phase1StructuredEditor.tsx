@@ -131,8 +131,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
 
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
-    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'featuredPriority', 'featuredFrom', 'featuredUntil', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
-    next.isFeatured = record.isFeatured ? 'true' : 'false';
+    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
     if (record.seo && typeof record.seo === 'object') {
       const seo = record.seo as Row;
       for (const key of ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId']) next[key] = string(seo[key]);
@@ -147,8 +146,6 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     next.publishedDate = next.publishedDate ? next.publishedDate.slice(0, 10) : '';
     next.expiryDate = next.expiryDate ? next.expiryDate.slice(0, 10) : '';
     next.startsAt = next.startsAt ? next.startsAt.slice(0, 16) : '';
-    next.featuredFrom = next.featuredFrom ? next.featuredFrom.slice(0, 16) : '';
-    next.featuredUntil = next.featuredUntil ? next.featuredUntil.slice(0, 16) : '';
     next.endsAt = next.endsAt ? next.endsAt.slice(0, 16) : '';
     next.publishStartsAt = next.publishStartsAt ? next.publishStartsAt.slice(0, 16) : '';
     next.publishEndsAt = next.publishEndsAt ? next.publishEndsAt.slice(0, 16) : '';
@@ -280,14 +277,12 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     if (resource === 'events' && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt)) next.endsAt = 'End date and time must be after the start.';
     }
-    // ISS-037. featuredFrom/featuredUntil and publishStartsAt/publishEndsAt
-    // are shared across several resources (only rendered where relevant, so
-    // this stays a no-op elsewhere) and had no ordering check at all -- an
-    // inverted window saves silently and the record can then never be
-    // effectively featured, or never publicly visible, at any point in time.
-    if (values.featuredFrom && values.featuredUntil) {
-      if (new Date(values.featuredUntil) <= new Date(values.featuredFrom)) next.featuredUntil = 'Featured until must be after featured from.';
-    }
+    /* ISS-037. The publish window is shared across several resources (only
+       rendered where relevant, so this stays a no-op elsewhere) and had no
+       ordering check at all -- an inverted window saves silently and the
+       record can then never be publicly visible at any point in time. The
+       featured window that used to be checked here is gone with the rest of
+       featured placement. */
     if (values.publishStartsAt && values.publishEndsAt) {
       if (new Date(values.publishEndsAt) <= new Date(values.publishStartsAt)) next.publishEndsAt = 'Publish until must be after publish from.';
     }
@@ -305,8 +300,6 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       displayOrder: Number(values.displayOrder || 0),
       ...(['universities', 'offerings', 'scholarships', 'consultants', 'jobs', 'events'].includes(resource)
         ? {
-            isFeatured: values.isFeatured === 'true',
-            featuredPriority: Number(values.featuredPriority || 0),
           }
         : {}),
       ...(resource === 'events' ? { speakers: tags.speakers } : {}),
@@ -547,37 +540,6 @@ function Core({ values, set, errors, entity = 'title', summaryKey, resource }: {
     </div>
   );
 }
-function FeaturedFields(p: any) {
-  return (
-    <fieldset className="p-card">
-      <legend className="px-1 text-sm font-semibold">Featured placement</legend>
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <input id="phase1-is-featured" type="checkbox" checked={p.values.isFeatured === 'true'} onChange={(event) => p.set('isFeatured', event.target.checked ? 'true' : 'false')} />
-        <FieldLabel label="Featured" htmlFor="phase1-is-featured" help={commonFieldHelp.featured} />
-      </div>
-      <div className="mt-3 grid gap-4 sm:grid-cols-3">
-        <Field
-          label="Priority (lower shows first)"
-          type="number"
-          value={p.values.featuredPriority ?? '0'}
-          onChange={(value) => p.set('featuredPriority', value)}
-          help={{
-            purpose: 'Controls the order featured records appear in within a Featured section.',
-            input: 'A whole number. Lower numbers appear first.',
-            dataType: 'Number',
-            required: 'Optional — leave at 0 if the order does not matter.',
-            example: '0',
-            dependency: 'Only takes effect together with the Featured checkbox.',
-            frontendEffect: 'Sorts records within Featured sections on the public site.',
-          }}
-        />
-        <Field label="Featured from (optional)" type="datetime-local" value={p.values.featuredFrom ?? ''} onChange={(value) => p.set('featuredFrom', value)} help={commonFieldHelp.featuredFrom} />
-        <Field label="Featured until (optional)" type="datetime-local" value={p.values.featuredUntil ?? ''} onChange={(value) => p.set('featuredUntil', value)} error={p.errors.featuredUntil} help={commonFieldHelp.featuredUntil} />
-      </div>
-      <p className="p-hint">Outside this window (or unchecked), the record shows in normal order.</p>
-    </fieldset>
-  );
-}
 function ScheduledPublishingFields(p: any) {
   return (
     <fieldset className="p-card">
@@ -632,7 +594,6 @@ function UniversityFields(p: any) {
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="universities.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="university" value={p.values.overview ?? ''} onChange={(value) => p.set('overview', value)} helpKey="universities.overview" />
-      <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
       <Repeater title="Campuses" rows={p.rows.campuses} fields={['name', 'city', 'state', 'address']} helpPrefix="campuses" add={() => p.addRow('campuses', { name: '', city: '', state: '', address: '' })} update={(i: number, key: string, value: string) => p.updateRow('campuses', i, key, value)} />
       <Repeater
@@ -686,7 +647,6 @@ function OfferingFields(p: any) {
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="offerings.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="offering" value={p.values.overview ?? ''} onChange={(value) => p.set('overview', value)} helpKey="offerings.overview" />
-      <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
       <Multi legend="Intakes" options={p.intakes} selected={p.selected.intakeIds ?? []} toggle={(id) => p.toggle('intakeIds', id)} />
       {(p.selected.intakeIds ?? []).map((intakeId: string) => {
@@ -727,7 +687,6 @@ function ScholarshipFields(p: any) {
       </div>
       <Field label="Description" textarea richText variableContext="scholarship" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="scholarships.description" />
       <Field label="Eligibility" textarea richText variableContext="scholarship" value={p.values.eligibility ?? ''} onChange={(value) => p.set('eligibility', value)} helpKey="scholarships.eligibility" />
-      <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
       <Multi legend="Eligible countries" options={p.countries} selected={p.selected.countryIds ?? []} toggle={(id) => p.toggle('countryIds', id)} />
       <Multi legend="Eligible universities" options={p.universities} selected={p.selected.universityIds ?? []} toggle={(id) => p.toggle('universityIds', id)} />
@@ -754,7 +713,6 @@ function ConsultantFields(p: any) {
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="consultants.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="consultant" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="consultants.description" />
-      <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
       <Multi
         legend="Locations"
@@ -847,7 +805,6 @@ function JobFields(p: any) {
       <Field label="Description" textarea richText variableContext="job" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="jobs.description" />
       <Field label="Responsibilities" textarea richText variableContext="job" value={p.values.responsibilities ?? ''} onChange={(value) => p.set('responsibilities', value)} />
       <Field label="Qualifications" textarea richText variableContext="job" value={p.values.qualifications ?? ''} onChange={(value) => p.set('qualifications', value)} />
-      <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
     </>
   );
@@ -877,7 +834,6 @@ function EventFields(p: any) {
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="events.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="event" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="events.description" />
-      <FeaturedFields {...p} />
       <ScheduledPublishingFields {...p} />
       <Tags
         label="Speakers"

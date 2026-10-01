@@ -21,7 +21,7 @@ import { FlagMark } from './FlagMark';
  * both jobs, so a student never has to know which of the two to open.
  */
 
-type StatusFilter = 'all' | 'published' | 'popular';
+type StatusFilter = 'all' | 'published';
 type HasFilter = 'any' | 'guide' | 'universities' | 'scholarships' | 'consultants';
 
 /** Whether a destination satisfies the "has" filter. */
@@ -69,7 +69,6 @@ export function DirectoryView({
       if (needle && !entry.name.toLowerCase().includes(needle)) return false;
       if (region !== 'all' && entry.region !== region) return false;
       if (status === 'published' && !entry.isAvailable) return false;
-      if (status === 'popular' && !entry.isPopular) return false;
       if (!satisfiesHas(entry, has)) return false;
       return true;
     });
@@ -100,7 +99,6 @@ export function DirectoryView({
   const statusFilters: Array<{ value: StatusFilter; label: string }> = [
     { value: 'all', label: 'All' },
     { value: 'published', label: 'Published' },
-    { value: 'popular', label: 'Popular' },
   ];
   const hasFilters: Array<{ value: HasFilter; label: string }> = [
     { value: 'any', label: 'Anything' },
@@ -226,7 +224,7 @@ export function DirectoryView({
                         key={entry.name}
                         href={`/study-abroad/${entry.slug}`}
                         data-country
-                        data-status={entry.isPopular ? 'popular' : 'published'}
+                        data-status="published"
                       >
                         <FlagMark iso2Code={entry.iso2Code} bands={entry.bands} />
                         <span className="cchip__name" title={entry.name}>

@@ -1706,13 +1706,6 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                       }
                       type="number"
                     />
-                    <BooleanField
-                      label="Featured FAQ"
-                      checked={row.isFeatured}
-                      onChange={(checked) =>
-                        updateFaq(index, { isFeatured: checked })
-                      }
-                    />
                   </div>
                 </div>
               ))
@@ -1869,13 +1862,6 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                       checked={row.isFreeConsultation}
                       onChange={(checked) =>
                         updateCard(index, { isFreeConsultation: checked })
-                      }
-                    />
-                    <BooleanField
-                      label="Featured card"
-                      checked={row.isFeatured}
-                      onChange={(checked) =>
-                        updateCard(index, { isFeatured: checked })
                       }
                     />
                   </div>

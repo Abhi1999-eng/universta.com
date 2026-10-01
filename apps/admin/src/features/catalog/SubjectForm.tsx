@@ -247,7 +247,6 @@ export function SubjectForm({ id }: { id?: string }) {
             <MediaPickerDialog label="Hero media" value={form.heroMediaId} media={media} onChange={(value) => set('heroMediaId', value)} />
             <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor="subject-order" help={commonFieldHelp.displayOrder} /><input id="subject-order" type="number" min="0" max="999999" className={inputClass} value={form.displayOrder} onChange={(e) => set('displayOrder', e.target.value)} /></div>
           </div>
-          <label className="p-btn p-btn--ghost"><input type="checkbox" checked={form.isFeatured} onChange={(e) => set('isFeatured', e.target.checked)} /> Featured subject</label>
         </fieldset>
 
         <fieldset id="editor-specializations" className="p-panel">

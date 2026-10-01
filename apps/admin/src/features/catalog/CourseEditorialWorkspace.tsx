@@ -1551,21 +1551,6 @@ function Availability({
               helpKey="course-mappings.scholarshipAvailable"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="mapping-isFeatured"
-              type="checkbox"
-              checked={mapping.isFeatured}
-              onChange={(event) =>
-                setMapping({ ...mapping, isFeatured: event.target.checked })
-              }
-            />
-            <FieldLabel
-              label="Featured mapping"
-              htmlFor="mapping-isFeatured"
-              help={commonFieldHelp.featured}
-            />
-          </div>
         </div>
 
         <p className="mt-4 text-xs leading-5 text-[#667085]">

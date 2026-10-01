@@ -224,9 +224,6 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                       ) : null}
                     </p>
                   </div>
-                  {subject.featured ? (
-                    <span className="badge badge--req">Popular</span>
-                  ) : null}
                 </div>
                 {subject.shortDescription ? (
                   <p className="subjcard__desc">{subject.shortDescription}</p>

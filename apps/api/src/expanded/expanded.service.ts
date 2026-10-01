@@ -146,23 +146,10 @@ type FeaturedRow = {
   displayOrder: number;
 };
 
-function isEffectivelyFeatured(row: FeaturedRow, now: Date): boolean {
-  if (!row.isFeatured) return false;
-  if (row.featuredFrom && row.featuredFrom > now) return false;
-  if (row.featuredUntil && row.featuredUntil <= now) return false;
-  return true;
-}
-
-/**
- * Effective-featured first, then featuredPriority ascending (lower number =
- * shown earlier among featured items), then displayOrder, then name — mirrors
- * the isFeatured/displayOrder/name ordering already used elsewhere, just with
- * the boolean replaced by the time-windowed effective value.
- */
 /** Optional, additive result ordering for the public listing pages.
  *
- * The default stays exactly as before -- featured-first, then priority,
- * displayOrder, name -- so omitting `sort` cannot change any existing
+ * The default is the catalogue's own order -- displayOrder, then name -- so
+ * omitting `sort` cannot change any existing
  * response. Only an explicit, recognised `sort` value replaces the ordering,
  * and an unrecognised value falls back to the default rather than erroring,
  * so a stale bookmarked URL still renders. */
@@ -221,18 +208,22 @@ export function applyListSort<T extends Record<string, unknown>>(
   }
 }
 
+/**
+ * The catalogue's own order: what an editor set, then by name.
+ *
+ * This used to put the featured records first and rank them by their
+ * featured priority. Nothing is featured any more, so a list is simply in
+ * the order the catalogue gives it. The parameters are kept so the call
+ * sites read the same; `now` no longer decides anything.
+ */
 function sortByFeatured<T extends FeaturedRow>(
   rows: T[],
   now: Date,
   nameOf: (row: T) => string,
   tiebreak?: (a: T, b: T) => number,
 ): T[] {
+  void now;
   return [...rows].sort((a, b) => {
-    const fa = isEffectivelyFeatured(a, now);
-    const fb = isEffectivelyFeatured(b, now);
-    if (fa !== fb) return fa ? -1 : 1;
-    if (a.featuredPriority !== b.featuredPriority)
-      return a.featuredPriority - b.featuredPriority;
     if (tiebreak) {
       const result = tiebreak(a, b);
       if (result !== 0) return result;

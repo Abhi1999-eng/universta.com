@@ -1,7 +1,10 @@
-import { COUNTRY_STATUSES, slugify } from '../catalog/catalog.constants';
+import {
+  COUNTRY_STATUSES,
+  COURSE_DURATION_UNITS,
+  slugify,
+} from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 import {
-  boolOrUndefined,
   CLEAR_TOKEN,
   COUNTRY_SECTION_KEYS,
   intOrNull,
@@ -239,7 +242,6 @@ const countries: BulkResourceDefinition = {
     'visa_process',
     'flag_image',
     'hero_image',
-    'featured',
     'rank_order',
     'faqs',
     'continent',
@@ -372,7 +374,6 @@ const countries: BulkResourceDefinition = {
     },
     { key: 'flag_image', label: 'flag_image', required: false, type: 'text' },
     { key: 'hero_image', label: 'hero_image', required: false, type: 'text' },
-    { key: 'featured', label: 'featured', required: false, type: 'boolean' },
     { key: 'rank_order', label: 'rank_order', required: false, type: 'number' },
     {
       key: 'faqs',
@@ -444,7 +445,6 @@ const countries: BulkResourceDefinition = {
     visa_process: 'How the study visa is applied for.',
     flag_image: '',
     hero_image: '',
-    featured: 'false',
     rank_order: '0',
     faqs: '[{"question":"Can I work while studying?","answer":"Yes, within the permitted hours."}]',
     continent: 'asia',
@@ -462,7 +462,6 @@ const countries: BulkResourceDefinition = {
     'currency',
     'language',
     'tagline',
-    'featured',
     'rank_order',
   ],
   async parseRow(row, prisma) {
@@ -514,7 +513,6 @@ const countries: BulkResourceDefinition = {
         // canonical field and the name/symbol are left untouched rather than
         // blanked by an import that does not carry them.
         currencyCode: textOrNull(row.currency)?.toUpperCase(),
-        isFeatured: boolOrUndefined(row.featured),
         displayOrder: intOrNull(row.rank_order) ?? undefined,
         status: (row.status ?? '').trim() || 'DRAFT',
         ...media,
@@ -650,7 +648,6 @@ export function exportCountryRow(
     visa_process: sectionText(record, 'visa_process'),
     flag_image: rel.flagMedia?.publicUrl ?? '',
     hero_image: rel.heroMedia?.publicUrl ?? '',
-    featured: record.isFeatured ? 'true' : 'false',
     rank_order: decimalText(record.displayOrder ?? 0),
     faqs: (rel.faqs ?? []).length
       ? JSON.stringify(
@@ -744,7 +741,6 @@ const cities: BulkResourceDefinition = {
     'countrySlug',
     'stateSlug',
     'shortDescription',
-    'isFeatured',
     'status',
     'displayOrder',
   ],
@@ -757,17 +753,10 @@ const cities: BulkResourceDefinition = {
     stateSlug: '',
     shortDescription:
       'A fictional demo city used only to show the expected import shape.',
-    isFeatured: 'false',
     status: 'DRAFT',
     displayOrder: '0',
   },
-  updatableColumns: [
-    'name',
-    'shortDescription',
-    'isFeatured',
-    'status',
-    'displayOrder',
-  ],
+  updatableColumns: ['name', 'shortDescription', 'status', 'displayOrder'],
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
@@ -802,7 +791,6 @@ const cities: BulkResourceDefinition = {
         countryId: (country as { id: string }).id,
         stateId,
         shortDescription: row.shortDescription?.trim() || null,
-        isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
@@ -817,7 +805,6 @@ const cities: BulkResourceDefinition = {
       stateSlug:
         (record as { state?: { slug?: string } | null }).state?.slug ?? '',
       shortDescription: record.shortDescription ?? '',
-      isFeatured: record.isFeatured,
       status: record.status,
       displayOrder: record.displayOrder,
     };
@@ -932,7 +919,6 @@ const subjects: BulkResourceDefinition = {
     'name',
     'shortDescription',
     'specializations',
-    'isFeatured',
     'status',
     'displayOrder',
   ],
@@ -944,7 +930,6 @@ const subjects: BulkResourceDefinition = {
     shortDescription:
       'A fictional demo subject used only to show the expected import shape.',
     specializations: 'Demo Specialization | Second Demo Specialization',
-    isFeatured: 'false',
     status: 'DRAFT',
     displayOrder: '0',
   },
@@ -954,13 +939,7 @@ const subjects: BulkResourceDefinition = {
      not a column of `subjects`. Setting the same three on twenty subjects is
      not an operation anyone wants either. The sheet still carries the column;
      only the one-field bulk edit leaves it alone. */
-  updatableColumns: [
-    'name',
-    'shortDescription',
-    'isFeatured',
-    'status',
-    'displayOrder',
-  ],
+  updatableColumns: ['name', 'shortDescription', 'status', 'displayOrder'],
   async parseRow(row) {
     if (!row.name?.trim()) return { errors: ['name is required'] };
     return {
@@ -968,7 +947,6 @@ const subjects: BulkResourceDefinition = {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
         shortDescription: row.shortDescription?.trim() || null,
-        isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
@@ -988,7 +966,6 @@ const subjects: BulkResourceDefinition = {
       name: record.name,
       shortDescription: record.shortDescription ?? '',
       specializations: children.map((child) => child.name).join(' | '),
-      isFeatured: record.isFeatured,
       status: record.status,
       displayOrder: record.displayOrder,
     };
@@ -1000,18 +977,38 @@ const courses: BulkResourceDefinition = {
   label: 'Generic courses',
   model: 'course',
   uniqueColumn: 'slug',
+  /* A course row carries what its page shows: the qualification and its
+     short name, which specialization it sits under, how long it runs, the
+     overview and where it leads. The sheet used to stop at a one-line
+     summary, so an imported course arrived as a name and a level. */
   columns: [
     'slug',
     'name',
     'subjectSlug',
+    'specializationSlug',
     'courseLevelCode',
+    'qualificationName',
+    'shortName',
     'shortDescription',
-    'isFeatured',
+    'overview',
+    'durationMin',
+    'durationMax',
+    'durationUnit',
+    'careerSummary',
+    'displayOrder',
     'status',
   ],
   fields: [
     { key: 'name', label: 'Course Name', required: true, type: 'text' },
     { key: 'subjectSlug', label: 'Subject', required: true, type: 'relation' },
+    {
+      key: 'specializationSlug',
+      label: 'Specialization',
+      required: false,
+      type: 'relation',
+      description:
+        'A specialization under the subject above, by its slug or name.',
+    },
     {
       key: 'courseLevelCode',
       label: 'Course Level',
@@ -1019,12 +1016,50 @@ const courses: BulkResourceDefinition = {
       type: 'relation',
     },
     {
+      key: 'qualificationName',
+      label: 'Qualification',
+      required: false,
+      type: 'text',
+    },
+    { key: 'shortName', label: 'Short name', required: false, type: 'text' },
+    {
       key: 'shortDescription',
       label: 'Short Description',
       required: false,
       type: 'text',
     },
-    { key: 'isFeatured', label: 'Featured', required: false, type: 'boolean' },
+    { key: 'overview', label: 'Overview', required: false, type: 'text' },
+    {
+      key: 'durationMin',
+      label: 'Duration minimum',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'durationMax',
+      label: 'Duration maximum',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'durationUnit',
+      label: 'Duration unit',
+      required: false,
+      type: 'text',
+      allowedValues: COURSE_DURATION_UNITS,
+    },
+    {
+      key: 'careerSummary',
+      label: 'Career summary',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'displayOrder',
+      label: 'Display order',
+      required: false,
+      type: 'number',
+    },
     { key: 'status', label: 'Status', required: false, type: 'status' },
   ],
   statusAllowedValues: PUBLISH_STATUSES,
@@ -1033,13 +1068,34 @@ const courses: BulkResourceDefinition = {
     slug: '',
     name: 'Demo Course',
     subjectSlug: 'Demo Subject',
+    specializationSlug: '',
     courseLevelCode: 'UG',
+    qualificationName: 'Bachelor of Science',
+    shortName: 'BSc',
     shortDescription:
       'A fictional demo course used only to show the expected import shape.',
-    isFeatured: 'false',
+    overview:
+      '<p>What the degree covers, how it is taught and what it leads to. HTML is allowed.</p>',
+    durationMin: '3',
+    durationMax: '4',
+    durationUnit: 'YEARS',
+    careerSummary: '',
+    displayOrder: '0',
     status: 'DRAFT',
   },
-  updatableColumns: ['name', 'shortDescription', 'isFeatured', 'status'],
+  updatableColumns: [
+    'name',
+    'qualificationName',
+    'shortName',
+    'shortDescription',
+    'overview',
+    'durationMin',
+    'durationMax',
+    'durationUnit',
+    'careerSummary',
+    'displayOrder',
+    'status',
+  ],
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
@@ -1065,14 +1121,52 @@ const courses: BulkResourceDefinition = {
     if (courseLevel === null)
       errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);
     if (errors.length) return { errors };
+    /* A specialization is named within its subject, so it is looked up
+       under the subject this row already resolved -- the same slug can
+       belong to two subjects. */
+    const specTerm = row.specializationSlug?.trim();
+    let specializationId: string | null = null;
+    if (specTerm) {
+      const found = await findRef(
+        prisma.subSubject,
+        specTerm,
+        'specializationSlug',
+        errors,
+        { deletedAt: null, subjectId: (subject as { id: string }).id },
+      );
+      if (found === null)
+        errors.push(
+          `specializationSlug "${specTerm}" was not found under "${row.subjectSlug}"`,
+        );
+      else if (found) specializationId = found.id;
+    }
+    const unit = row.durationUnit?.trim().toUpperCase();
+    if (unit && !COURSE_DURATION_UNITS.includes(unit as 'YEARS'))
+      errors.push(
+        `durationUnit must be one of ${COURSE_DURATION_UNITS.join(', ')}`,
+      );
+    for (const key of ['durationMin', 'durationMax'] as const) {
+      const value = row[key]?.trim();
+      if (value && !/^\d+(\.\d+)?$/.test(value))
+        errors.push(`${key} must be a number`);
+    }
+    if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
         subjectId: (subject as { id: string }).id,
+        subSubjectId: specializationId,
         courseLevelId: (courseLevel as { id: string }).id,
+        qualificationName: row.qualificationName?.trim() || null,
+        shortName: row.shortName?.trim() || null,
         shortDescription: row.shortDescription?.trim() || null,
-        isFeatured: row.isFeatured?.trim().toLowerCase() === 'true',
+        overview: row.overview?.trim() || null,
+        durationMin: row.durationMin?.trim() || null,
+        durationMax: row.durationMax?.trim() || null,
+        durationUnit: unit || null,
+        careerSummary: row.careerSummary?.trim() || null,
+        displayOrder: Number(row.displayOrder) || 0,
         status: row.status?.trim() || 'DRAFT',
       },
     };
@@ -1083,10 +1177,19 @@ const courses: BulkResourceDefinition = {
       name: record.name,
       subjectSlug:
         (record as { subject?: { slug?: string } }).subject?.slug ?? '',
+      specializationSlug:
+        (record as { subSubject?: { slug?: string } }).subSubject?.slug ?? '',
       courseLevelCode:
         (record as { courseLevel?: { code?: string } }).courseLevel?.code ?? '',
+      qualificationName: record.qualificationName ?? '',
+      shortName: record.shortName ?? '',
       shortDescription: record.shortDescription ?? '',
-      isFeatured: record.isFeatured,
+      overview: record.overview ?? '',
+      durationMin: record.durationMin ?? '',
+      durationMax: record.durationMax ?? '',
+      durationUnit: record.durationUnit ?? '',
+      careerSummary: record.careerSummary ?? '',
+      displayOrder: record.displayOrder,
       status: record.status,
     };
   },
@@ -1243,12 +1346,22 @@ const universities: BulkResourceDefinition = {
   label: 'Universities',
   model: 'university',
   uniqueColumn: 'slug',
+  /* A university row carries what its public page shows: the summary under
+     the name, the overview that fills the page, its type and ranking, and
+     the citation an editor is asked for anywhere a fact is published. The
+     sheet used to stop at the summary, which left every imported university
+     a name and one line. */
   columns: [
     'slug',
     'name',
     'countrySlug',
     'institutionType',
+    'qsRanking',
     'shortDescription',
+    'overview',
+    'sourceReference',
+    'verifiedAt',
+    'displayOrder',
     'status',
   ],
   fields: [
@@ -1260,11 +1373,31 @@ const universities: BulkResourceDefinition = {
       required: false,
       type: 'text',
     },
+    { key: 'qsRanking', label: 'QS ranking', required: false, type: 'number' },
     {
       key: 'shortDescription',
       label: 'Short Description',
       required: true,
       type: 'text',
+    },
+    { key: 'overview', label: 'Overview', required: false, type: 'text' },
+    {
+      key: 'sourceReference',
+      label: 'Official source URL',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'verifiedAt',
+      label: 'Verified date',
+      required: false,
+      type: 'date',
+    },
+    {
+      key: 'displayOrder',
+      label: 'Display order',
+      required: false,
+      type: 'number',
     },
     { key: 'status', label: 'Status', required: false, type: 'status' },
   ],
@@ -1275,11 +1408,27 @@ const universities: BulkResourceDefinition = {
     name: 'Demo University',
     countrySlug: 'Demo Country',
     institutionType: 'PUBLIC',
+    qsRanking: '',
     shortDescription:
       'A fictional demo university used only to show the expected import shape.',
+    overview:
+      '<p>A longer description of the university, its campuses and what it is known for. HTML is allowed.</p>',
+    sourceReference: '',
+    verifiedAt: '',
+    displayOrder: '0',
     status: 'DRAFT',
   },
-  updatableColumns: ['name', 'institutionType', 'shortDescription', 'status'],
+  updatableColumns: [
+    'name',
+    'institutionType',
+    'qsRanking',
+    'shortDescription',
+    'overview',
+    'sourceReference',
+    'verifiedAt',
+    'displayOrder',
+    'status',
+  ],
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
@@ -1293,13 +1442,25 @@ const universities: BulkResourceDefinition = {
     if (country === null)
       errors.push(`countrySlug "${row.countrySlug}" was not found`);
     if (errors.length) return { errors };
+    const ranking = row.qsRanking?.trim();
+    if (ranking && !/^\d+$/.test(ranking))
+      errors.push('qsRanking must be a whole number');
+    const verified = row.verifiedAt?.trim();
+    if (verified && Number.isNaN(new Date(verified).getTime()))
+      errors.push('verifiedAt must be a date, for example 2026-10-01');
+    if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
         name: row.name.trim(),
         countryId: (country as { id: string }).id,
         institutionType: row.institutionType?.trim() || null,
+        qsRanking: ranking ? Number(ranking) : null,
         shortDescription: row.shortDescription.trim(),
+        overview: row.overview?.trim() || null,
+        sourceReference: row.sourceReference?.trim() || null,
+        verifiedAt: verified ? new Date(verified) : null,
+        displayOrder: Number(row.displayOrder) || 0,
         status: row.status?.trim() || 'DRAFT',
       },
     };
@@ -1311,7 +1472,14 @@ const universities: BulkResourceDefinition = {
       countrySlug:
         (record as { country?: { slug?: string } }).country?.slug ?? '',
       institutionType: record.institutionType ?? '',
+      qsRanking: record.qsRanking ?? '',
       shortDescription: record.shortDescription ?? '',
+      overview: record.overview ?? '',
+      sourceReference: record.sourceReference ?? '',
+      verifiedAt: record.verifiedAt
+        ? (record.verifiedAt as Date).toISOString().slice(0, 10)
+        : '',
+      displayOrder: record.displayOrder,
       status: record.status,
     };
   },

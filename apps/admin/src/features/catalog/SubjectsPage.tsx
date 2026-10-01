@@ -22,7 +22,6 @@ export function SubjectsPage() {
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
-  const [featured, setFeatured] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,10 +35,8 @@ export function SubjectsPage() {
     void listSubjects({
       q,
       status,
-      featured: featured === '' ? undefined : featured === 'true',
       page,
       limit: 12,
-      sort: 'featured',
     })
       .then((result) => {
         setRows(result.data);
@@ -49,7 +46,7 @@ export function SubjectsPage() {
         setError(cause instanceof Error ? cause.message : 'Unable to load subjects'),
       )
       .finally(() => setLoading(false));
-  }, [featured, page, q, status]);
+  }, [page, q, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -132,21 +129,6 @@ export function SubjectsPage() {
             <option value="PUBLISHED">Published</option>
           </select>
         </label>
-        <label className="p-field">
-          <span className="p-label">Featured</span>
-          <select
-            className="p-input"
-            value={featured}
-            onChange={(event) => {
-              setFeatured(event.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">All</option>
-            <option value="true">Featured</option>
-            <option value="false">Not featured</option>
-          </select>
-        </label>
         </div>
         <div className="p-row p-row--wrap">
           <button
@@ -155,7 +137,6 @@ export function SubjectsPage() {
             onClick={() => {
               setQ('');
               setStatus('');
-              setFeatured('');
               setPage(1);
             }}
           >
@@ -184,7 +165,7 @@ export function SubjectsPage() {
                     <strong>{row.name}</strong>
                     <span className="p-hint">
                       /{row.slug}
-                      {row.isFeatured ? ' · Featured' : ''}
+                      
                     </span>
                   </td>
                   <td>

@@ -68,7 +68,6 @@ export function SubjectSpecializations({
             <Link className="speccard__btn" href={`/subjects/${subjectSlug}/${row.slug}`}>
               <span className="speccard__top">
                 <span className="label">Specialization</span>
-                {row.featured ? <span className="badge badge--req">Popular</span> : null}
               </span>
               <span className="speccard__name">{row.name}</span>
               {row.shortDescription ? (

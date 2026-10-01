@@ -48,12 +48,11 @@ describe('BulkOperationsService XLSX dry-run compatibility', () => {
     workbook
       .getWorksheet('Data')!
       /* Positional, so it follows the sheet's own column order: name,
-         short description, specializations, featured, status, order. */
+         short description, specializations, status, order. */
       .addRow([
         'Demo Mathematics',
         'Fictional populated subject row.',
         'Demo Algebra | Demo Geometry',
-        'false',
         'PUBLISHED',
         '2',
       ]);

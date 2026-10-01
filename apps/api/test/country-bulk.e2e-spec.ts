@@ -214,7 +214,6 @@ describe('country bulk contract (e2e)', () => {
     post_study_work: '24',
     work_hours: '20',
     ielts_min: '6.5',
-    featured: 'true',
     rank_order: '5',
     subject: `${subjectA} | ${subjectB}`,
     tag: `bulktag-one-${stamp}`,
@@ -241,7 +240,6 @@ describe('country bulk contract (e2e)', () => {
     expect(row.tagline).toBe('Imported tagline');
     expect(row.officialLanguage).toBe('English');
     expect(row.capitalCity).toBe('Bulk City');
-    expect(row.isFeatured).toBe(true);
     expect(row.displayOrder).toBe(5);
     expect(row.subjectMaps).toHaveLength(2);
     expect(row.tagMaps).toHaveLength(1);
@@ -682,7 +680,6 @@ describe('country bulk contract (e2e)', () => {
       'visa_process',
       'flag_image',
       'hero_image',
-      'featured',
       'rank_order',
       'faqs',
       'continent',

@@ -25,7 +25,8 @@ const MAX_ROWS = 2000;
  * accept a string representation directly -- but the two Int/Boolean columns
  * across the whole registry (`displayOrder`, `isFeatured`) do not, and
  * `updateMany` threw an unhandled 500 rather than applying the value. */
-const BOOLEAN_UPDATE_FIELDS = new Set(['isFeatured']);
+/* `isFeatured` used to be the one boolean here. Nothing is featured any
+   more, so the only value a sheet's bulk edit has to coerce is a number. */
 const INTEGER_UPDATE_FIELDS = new Set(['displayOrder']);
 
 function coerceUpdateFields(
@@ -33,9 +34,7 @@ function coerceUpdateFields(
 ): Record<string, unknown> {
   const coerced: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
-    if (BOOLEAN_UPDATE_FIELDS.has(key) && typeof value === 'string') {
-      coerced[key] = value.trim().toLowerCase() === 'true';
-    } else if (INTEGER_UPDATE_FIELDS.has(key) && typeof value === 'string') {
+    if (INTEGER_UPDATE_FIELDS.has(key) && typeof value === 'string') {
       const parsed = Number(value);
       if (!Number.isFinite(parsed))
         throw new BadRequestException({
@@ -338,6 +337,8 @@ export class BulkOperationsService {
       },
       courses: {
         subject: { select: { slug: true, name: true } },
+        // The sheet carries the specialization, so the export has to read it.
+        subSubject: { select: { slug: true, name: true } },
         courseLevel: { select: { code: true, name: true } },
       },
       universities: { country: { select: { slug: true, name: true } } },
@@ -555,30 +556,45 @@ export class BulkOperationsService {
           resourceKey === 'countries'
             ? (parsed.data.externalUid as string | null | undefined)
             : undefined;
-        // A supplied uid identifies the record; slug is only the fallback.
-        // The delegate is untyped here, so name the one field this branch uses.
-        const existing = (await table.findFirst({
-          where: externalUid
-            ? { externalUid, deletedAt: null }
-            : { slug, deletedAt: null },
-        })) as { id: string } | null;
-        if (externalUid && existing) {
-          // The uid points at one record and the slug at another: renaming one
-          // and re-pointing the other are both plausible readings, so the row
-          // is rejected rather than guessed at.
-          const slugOwner = await table.findFirst({
-            where: { slug, deletedAt: null },
+        /* A supplied uid identifies the record, and the slug is the
+           fallback the comment here always claimed it was -- which it was
+           not. A uid matching nothing made this skip the slug entirely and
+           try to create, so re-uploading a sheet of uids into a database
+           whose rows had never been given one failed every single line with
+           "Another country already uses this name", about the record the
+           slug was pointing straight at.
+
+           The fallback only adopts a record that has no uid of its own. A
+           slug held by a record carrying a *different* uid is the conflict
+           the guard below was written for, and stays one: the sheet is
+           claiming to introduce a new record under a slug somebody else is
+           already using. The delegate is untyped, so name the fields used. */
+        const slugOwner = (await table.findFirst({
+          where: { slug, deletedAt: null },
+        })) as { id: string; externalUid?: string | null } | null;
+        let existing = (
+          externalUid
+            ? await table.findFirst({ where: { externalUid, deletedAt: null } })
+            : null
+        ) as { id: string } | null;
+        const matchedByUid = Boolean(existing);
+        if (!existing && (!externalUid || !slugOwner?.externalUid))
+          existing = slugOwner;
+        if (matchedByUid && slugOwner && slugOwner.id !== existing?.id) {
+          /* The uid points at one record and the slug at another: renaming
+             one and re-pointing the other are both plausible readings, so
+             the row is rejected rather than guessed at. Only when the uid
+             actually matched something -- a uid nobody holds, over a slug
+             somebody else does, is just a taken slug, and the database says
+             so more plainly than this could. */
+          summary.failed += 1;
+          summary.errors.push({
+            line,
+            errors: [
+              `uid "${externalUid}" matches a different record than slug "${slug}"; resolve the conflict before importing`,
+            ],
           });
-          if (slugOwner && slugOwner.id !== existing.id) {
-            summary.failed += 1;
-            summary.errors.push({
-              line,
-              errors: [
-                `uid "${externalUid}" matches a different record than slug "${slug}"; resolve the conflict before importing`,
-              ],
-            });
-            continue;
-          }
+          continue;
         }
         if (existing) {
           /* A row that says nothing new is not a conflict and not an update.

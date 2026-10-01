@@ -39,20 +39,22 @@ describe('BulkOperationsService.bulkUpdate -- field type coercion', () => {
     });
   });
 
-  it('coerces a string isFeatured to a boolean', async () => {
+  it('refuses a column no sheet carries any more', async () => {
+    /* `isFeatured` was the one boolean a bulk edit had to coerce. Nothing is
+       featured now, so the column is not offered and a request naming it is
+       turned away rather than written through. */
     const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const service = new BulkOperationsService(fakePrisma(updateMany));
-    await service.bulkUpdate(
-      'subjects',
-      ['id-1'],
-      { isFeatured: 'true' },
-      fakeRequest(),
-      'user-1',
-    );
-    expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['id-1'] }, deletedAt: null },
-      data: { isFeatured: true },
-    });
+    await expect(
+      service.bulkUpdate(
+        'subjects',
+        ['id-1'],
+        { isFeatured: 'true' },
+        fakeRequest(),
+        'user-1',
+      ),
+    ).rejects.toMatchObject({ message: expect.stringContaining('isFeatured') });
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('rejects an unparsable displayOrder before reaching Prisma', async () => {
