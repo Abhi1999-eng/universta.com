@@ -2146,7 +2146,10 @@
 .sa .drawer .drawer__group a { font-size: 16px; font-family: var(--font-body); font-weight: 500; padding: 10px 0 10px 12px; border-bottom: 0; }
 .sa .h-hero .hero__lead { max-width: 820px; }
 .sa .h-hero .bigsearch { max-width: 760px; }
-.sa .h-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.sa .h-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px 26px; }
+/* Two to a row once there is room for two. Below that the pair would be
+   two cramped columns, so it stays a single list. */
+@media (min-width: 620px){ .sa .h-related .h-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sa .h-list li { display: grid; gap: 1px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
 .sa .h-list li:last-child { border-bottom: 0; }
 .sa .h-list a { font-weight: 600; font-size: 14.5px; color: var(--text); text-decoration: none; }
@@ -2165,16 +2168,12 @@
 .sa .h-empty { display: grid; gap: 4px; padding: 26px; text-align: center; border: 1px dashed var(--line-strong); border-radius: 12px; margin-top: 12px; }
 .sa .h-empty span { color: var(--muted); }
 .sa .h-related__t { font-size: clamp(22px, 2.4vw, 30px); margin-bottom: 16px; }
-/* Sized to what is in them, in both directions, and packed to the start.
-   `auto-fill` with `1fr` tracks laid two groups into four and stretched
-   them across half the page each, every card as tall as the tallest -- so a
-   destination group of one was drawn at the height of six specializations
-   and read as a card somebody forgot to fill. Capped at 360px so one long
-   name cannot make a card the width of the band. */
-.sa .h-related__grid {
-  display: grid; gap: 14px; align-items: start; justify-content: start;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 360px));
-}
+/* One card per row, each as tall as its own list, with the list itself in
+   two columns. Side by side the groups were two tall narrow strips of six
+   names with half a page of air beside them; stacked and paired they read
+   as two short lists, and a group of one is a single line rather than a
+   card drawn to somebody else's height. */
+.sa .h-related__grid { display: grid; gap: 14px; align-items: start; grid-template-columns: 1fr; }
 .sa .h-relgroup { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .sa .h-relgroup__t { font-size: 15.5px; font-family: var(--font-display); display: flex; justify-content: space-between; gap: 10px; margin: 0; }
 .sa .h-relgroup__more { align-self: flex-start; font-size: 14px; }
