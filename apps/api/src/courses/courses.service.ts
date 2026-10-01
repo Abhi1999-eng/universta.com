@@ -18,6 +18,7 @@ import {
   isFutureCalendarDate,
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
+import { PUBLISHED } from '../catalog/published';
 import { sanitizeRichText } from '../common/rich-text';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type {
@@ -1699,8 +1700,7 @@ export class CoursesService {
         : {}),
     };
     return {
-      status: 'PUBLISHED',
-      deletedAt: null,
+      ...PUBLISHED,
       ...(query.q
         ? {
             OR: [
@@ -1741,6 +1741,13 @@ export class CoursesService {
             },
           }
         : {}),
+      /* A destination filter narrows the list to what is taught there, and
+         the tuition, intake and English filters are all recorded on that
+         mapping, so asking for any of them means asking about destinations.
+         Without one, the list is the published catalogue -- it does not also
+         demand that somebody has filled in the mapping table. That demand
+         was why /courses said "0 Programmes" while every subject page
+         counted the same courses correctly. See catalog/published.ts. */
       ...(query.country?.length ||
       query.intake?.length ||
       query.minTuition ||
@@ -1749,7 +1756,7 @@ export class CoursesService {
       query.englishTest?.length ||
       query.postStudyWorkAvailable !== undefined
         ? { countryCourses: { some: mapping } }
-        : { countryCourses: { some: this.publicMappingWhere() } }),
+        : {}),
     };
   }
   private adminWhere(query: AdminCourseListQueryDto): Prisma.CourseWhereInput {
