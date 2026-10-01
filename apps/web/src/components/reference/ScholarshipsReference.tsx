@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { pagerPages } from './pager-pages';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { richTextToPlainText } from '@/components/phase1/RichText';
 import type { ScholarshipRow } from '@/components/templates/ListingCards';
@@ -460,30 +461,22 @@ export function ScholarshipsReference(props: ScholarshipsReferenceProps) {
 
           {meta.totalPages > 1 ? (
             <nav className="pager" aria-label="Pagination">
-              {Array.from({ length: meta.totalPages }, (_, index) => index + 1)
-                .filter(
-                  (page) =>
-                    page === 1 ||
-                    page === meta.totalPages ||
-                    Math.abs(page - meta.page) <= 1,
-                )
-                .map((page, index, list) => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  if (page === 1) params.delete('page');
-                  else params.set('page', String(page));
-                  const gap = index > 0 && page - list[index - 1] > 1;
-                  return (
-                    <span key={page} style={{ display: 'contents' }}>
-                      {gap ? <span aria-hidden="true">…</span> : null}
-                      <Link
-                        href={`/scholarships${params.size ? `?${params}` : ''}`}
-                        aria-current={page === meta.page ? 'page' : undefined}
-                      >
-                        {page}
-                      </Link>
-                    </span>
-                  );
-                })}
+              {pagerPages(meta.page, meta.totalPages).map((item) => {
+                const params = new URLSearchParams(searchParams.toString());
+                if (item.page === 1) params.delete('page');
+                else params.set('page', String(item.page));
+                return (
+                  <span key={item.page} style={{ display: 'contents' }}>
+                    {item.gapBefore ? <span aria-hidden="true">…</span> : null}
+                    <Link
+                      href={`/scholarships${params.size ? `?${params}` : ''}`}
+                      aria-current={item.page === meta.page ? 'page' : undefined}
+                    >
+                      {item.page}
+                    </Link>
+                  </span>
+                );
+              })}
             </nav>
           ) : null}
         </div>
