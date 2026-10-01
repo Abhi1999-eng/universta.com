@@ -44,6 +44,8 @@ export type CellState<T> =
 
 export type CountryRelations = {
   subjects: CellState<string[]>;
+  /** Taken from the same cell as `subjects`, and written beside them. */
+  subSubjects: CellState<string[]>;
   tags: CellState<string[]>;
   intakes: CellState<string[]>;
   faqs: CellState<FaqInput[]>;
@@ -249,13 +251,24 @@ export function parseFaqCell(value: string): FaqInput[] {
 }
 
 /** Resolves taxonomy terms to ids, reporting every unresolved term at once so
- * an editor fixes one row rather than one term per attempt. */
+ * an editor fixes one row rather than one term per attempt.
+ *
+ * A bare subject brings its specializations with it, which is what the
+ * subject editor does when the same box is ticked: the sheet used to attach
+ * the subject alone, so "Where you can study X" was empty on every
+ * specialization page but the one country filled in by hand. A
+ * `Subject > Child` term pins that one specialization instead -- the child
+ * was being looked up and then thrown away. */
 async function resolveSubjects(
   terms: string[],
   prisma: PrismaService,
   errors: string[],
-): Promise<string[]> {
-  const ids: string[] = [];
+): Promise<{ subjectIds: string[]; subSubjectIds: string[] }> {
+  const subjectIds: string[] = [];
+  const subSubjectIds: string[] = [];
+  const add = (into: string[], id: string) => {
+    if (!into.includes(id)) into.push(id);
+  };
   for (const term of terms) {
     const { parent, child } = splitHierarchy(term);
     const slug = slugify(parent);
@@ -281,10 +294,22 @@ async function resolveSubjects(
         errors.push(`subject "${child}" is not under "${subject.name}"`);
         continue;
       }
+      add(subSubjectIds, sub.id);
+    } else {
+      const children = await prisma.subSubject.findMany({
+        where: {
+          subjectId: subject.id,
+          deletedAt: null,
+          status: 'PUBLISHED',
+        },
+        select: { id: true },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      });
+      for (const row of children) add(subSubjectIds, row.id);
     }
-    if (!ids.includes(subject.id)) ids.push(subject.id);
+    add(subjectIds, subject.id);
   }
-  return ids;
+  return { subjectIds, subSubjectIds };
 }
 
 async function resolveTags(
@@ -391,14 +416,20 @@ export async function parseCountryRelations(
   const applicationFee = parseApplicationFee(row.application_fee, errors);
   const visaFee = parseVisaFee(row.visa_fee, errors);
 
+  /* One read of the cell, two lists out of it: the subject rows and the
+     specialization rows underneath them. */
+  const taxonomy =
+    subjectCell.kind === 'value'
+      ? await resolveSubjects(subjectCell.value, prisma, errors)
+      : null;
+
   return {
-    subjects:
-      subjectCell.kind === 'value'
-        ? {
-            kind: 'value',
-            value: await resolveSubjects(subjectCell.value, prisma, errors),
-          }
-        : subjectCell,
+    subjects: taxonomy
+      ? { kind: 'value', value: taxonomy.subjectIds }
+      : subjectCell,
+    subSubjects: taxonomy
+      ? { kind: 'value', value: taxonomy.subSubjectIds }
+      : subjectCell,
     tags:
       tagCell.kind === 'value'
         ? {
@@ -487,6 +518,22 @@ export async function reconcileCountry(
     for (const [index, subjectId] of ids.entries())
       await tx.countrySubject.create({
         data: { countryId, subjectId, displayOrder: index },
+      });
+  }
+
+  if (relations.subSubjects.kind !== 'absent') {
+    const ids =
+      relations.subSubjects.kind === 'clear' ? [] : relations.subSubjects.value;
+    await tx.countrySubSubject.deleteMany({ where: { countryId } });
+    /* One statement rather than one per row: a country that takes a dozen
+       subjects takes some hundreds of specializations with them. */
+    if (ids.length)
+      await tx.countrySubSubject.createMany({
+        data: ids.map((subSubjectId, index) => ({
+          countryId,
+          subSubjectId,
+          displayOrder: index,
+        })),
       });
   }
 

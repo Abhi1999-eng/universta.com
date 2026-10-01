@@ -190,3 +190,78 @@ describe('the publication state of a bulk-created specialization', () => {
     expect(draft.calls.created[0].publishedAt).toBeUndefined();
   });
 });
+
+/**
+ * The subject sheet carries specializations as names and derives each slug
+ * from the name. A catalogue that spells "Accounting & Finance" as
+ * `accounting-and-finance` does not agree with that derivation, which drops
+ * the ampersand: `accounting-finance`. Exporting those subjects and
+ * importing the export straight back therefore created a second row beside
+ * every one of them -- 27 of the 1,077 on the demo.
+ */
+describe('a specialization whose slug is not its name slugified', () => {
+  const stored = [
+    {
+      id: 'spec-1',
+      name: 'Accounting & Finance',
+      slug: 'accounting-and-finance',
+      deletedAt: null,
+    },
+  ];
+
+  function table() {
+    const created: Array<Record<string, unknown>> = [];
+    const updated: Array<Record<string, unknown>> = [];
+    return {
+      created,
+      updated,
+      tx: {
+        subSubject: {
+          findMany: async () => stored,
+          create: async ({ data }: { data: Record<string, unknown> }) => {
+            created.push(data);
+            return data;
+          },
+          update: async (args: {
+            where: Record<string, unknown>;
+            data: Record<string, unknown>;
+          }) => {
+            updated.push({ ...args.where, ...args.data });
+            return args.data;
+          },
+        },
+      },
+    };
+  }
+
+  const subjects = bulkResource('subjects');
+
+  it('is recognised by its name, and not created a second time', async () => {
+    const parsed = await subjects.parseRow(
+      {
+        name: 'Business & Management',
+        specializations: 'Accounting & Finance',
+        status: 'PUBLISHED',
+      },
+      {} as never,
+    );
+    const { tx, created } = table();
+    await subjects.reconcile!(tx, 'subject-1', parsed.relations);
+    expect(created).toEqual([]);
+  });
+
+  it('still creates one the subject really does not have', async () => {
+    const parsed = await subjects.parseRow(
+      {
+        name: 'Business & Management',
+        specializations: 'Accounting & Finance | Risk & Insurance',
+        status: 'PUBLISHED',
+      },
+      {} as never,
+    );
+    const { tx, created } = table();
+    await subjects.reconcile!(tx, 'subject-1', parsed.relations);
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ name: 'Risk & Insurance' });
+  });
+});

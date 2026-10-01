@@ -877,6 +877,14 @@ async function reconcileSpecializations(
   const table = (tx as Record<string, unknown>).subSubject as SubSubjectTable;
   const existing = await table.findMany({ where: { subjectId } });
   const bySlug = new Map(existing.map((row) => [row.slug, row]));
+  /* And by name, because the cell carries names and the slug is derived
+     from one. A catalogue that spells "Accounting & Finance" as
+     accounting-and-finance does not agree with that derivation, which drops
+     the ampersand entirely -- so the sheet this subject exports, imported
+     straight back, used to create a second row beside each of them. */
+  const byName = new Map(
+    existing.map((row) => [row.name.trim().toLowerCase(), row]),
+  );
   let order = existing.length;
   /* One row, one publication decision: a sheet that publishes the subject
      publishes what it lists under it, and a draft row stays a draft all the
@@ -887,7 +895,8 @@ async function reconcileSpecializations(
     ? { status: 'PUBLISHED', publishedAt: new Date() }
     : { status: 'DRAFT' };
   for (const row of cell.rows) {
-    const match = bySlug.get(row.slug);
+    const match =
+      bySlug.get(row.slug) ?? byName.get(row.name.trim().toLowerCase());
     if (match) {
       if (match.name !== row.name || match.deletedAt)
         await table.update({
