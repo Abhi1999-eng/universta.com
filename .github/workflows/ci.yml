@@ -66,55 +66,16 @@ jobs:
         with:
           ref: ${{ env.RELEASE_SHA }}
 
-      - name: Setup Node.js 25
-        uses: actions/setup-node@v6
+      - name: Set up Node, dependencies and a seeded database
+        uses: ./.github/actions/ci-setup
         with:
-          node-version: 25
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Linux CSS build binary
-        run: |
-          lightning_dir="${RUNNER_TEMP}/lightningcss-linux-x64-gnu"
-          mkdir -p "$lightning_dir/extracted" node_modules/lightningcss-linux-x64-gnu
-          npm pack --silent --pack-destination "$lightning_dir" lightningcss-linux-x64-gnu@1.32.0
-          tar -xzf "$lightning_dir/lightningcss-linux-x64-gnu-1.32.0.tgz" -C "$lightning_dir/extracted"
-          cp -R "$lightning_dir/extracted/package/." node_modules/lightningcss-linux-x64-gnu/
-
-          oxide_dir="${RUNNER_TEMP}/tailwindcss-oxide-linux-x64-gnu"
-          mkdir -p "$oxide_dir/extracted" apps/web/node_modules/@tailwindcss/oxide-linux-x64-gnu apps/admin/node_modules/@tailwindcss/oxide-linux-x64-gnu
-          npm pack --silent --pack-destination "$oxide_dir" @tailwindcss/oxide-linux-x64-gnu@4.3.3
-          tar -xzf "$oxide_dir/tailwindcss-oxide-linux-x64-gnu-4.3.3.tgz" -C "$oxide_dir/extracted"
-          cp -R "$oxide_dir/extracted/package/." apps/web/node_modules/@tailwindcss/oxide-linux-x64-gnu/
-          cp -R "$oxide_dir/extracted/package/." apps/admin/node_modules/@tailwindcss/oxide-linux-x64-gnu/
-
-      - name: Start native MySQL
-        run: sudo systemctl start mysql
-
-      - name: Create CI-only databases and user
-        run: |
-          # Ubuntu's preinstalled runner MySQL root password is the documented CI-only value: root.
-          sudo mysql --protocol=socket -uroot -proot -e "CREATE DATABASE IF NOT EXISTS universta_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS universta_ci_shadow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS 'universta_ci_user'@'127.0.0.1' IDENTIFIED BY '${CI_DB_PASSWORD}'; GRANT ALL PRIVILEGES ON universta_ci.* TO 'universta_ci_user'@'127.0.0.1'; GRANT ALL PRIVILEGES ON universta_ci_shadow.* TO 'universta_ci_user'@'127.0.0.1'; FLUSH PRIVILEGES;"
+          ci-db-password: ${{ env.CI_DB_PASSWORD }}
 
       - name: Prisma format check
         run: npm run db:format -- --check
 
       - name: Prisma validate
         run: npm run db:validate
-
-      - name: Prisma generate
-        run: npm run db:generate
-
-      - name: Prisma migrate deploy
-        run: npm run db:migrate:deploy
-
-      - name: Foundation seed
-        run: npm run db:seed
-
-      - name: Demo catalog seed
-        run: npm --workspace apps/api run db:seed:demo
 
       - name: API unit tests
         run: npm --workspace apps/api run test -- --runInBand
@@ -127,22 +88,6 @@ jobs:
 
       - name: Web unit tests
         run: npm --workspace apps/web run test -- --run
-
-      - name: Install Playwright Chromium
-        run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
-
-      - name: Admin browser E2E tests
-        run: npm --workspace apps/admin run test:e2e
-
-      - name: Upload Playwright failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin-playwright-failures
-          path: |
-            apps/admin/test-results/
-            apps/admin/playwright-report/
-          if-no-files-found: ignore
 
       - name: Lint
         run: npm run lint
@@ -189,11 +134,80 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  browser-e2e:
+    # The browser suite was 582 of the pipeline's 960 seconds, run by a single
+    # Playwright worker because its specs share one database and clean up by a
+    # run marker -- two workers in one run would tread on each other.
+    #
+    # Sharding across jobs sidesteps that rather than loosening it: each shard
+    # is a runner of its own, with its own MySQL and its own seed, so the
+    # isolation `workers: 1` is protecting is free here. The config is
+    # untouched.
+    #
+    # It also splits the two Next production builds Playwright's webServer does
+    # on the way in, which were part of that 582s and not of the tests at all.
+    name: CI / Admin browser E2E ${{ matrix.shard }}/3
+    if: github.event_name != 'workflow_dispatch' || inputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      NODE_ENV: test
+      PORT: 4000
+      DATABASE_URL: mysql://universta_ci_user:ci-only-db-password-2026@127.0.0.1:3306/universta_ci
+      SHADOW_DATABASE_URL: mysql://universta_ci_user:ci-only-db-password-2026@127.0.0.1:3306/universta_ci_shadow
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      SWAGGER_ENABLED: false
+      JWT_ACCESS_SECRET: ci-only-access-secret-2026-long-enough-for-tests
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-2026-different-and-long
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 30d
+      AUTH_REFRESH_COOKIE_NAME: universta_admin_refresh
+      AUTH_MAX_FAILED_ATTEMPTS: 5
+      AUTH_LOCK_MINUTES: 15
+      SEED_ADMIN_EMAIL: ci-admin@example.invalid
+      SEED_ADMIN_PASSWORD: ci-only-seed-password-2026-strong
+      SEED_DEMO_CATALOG: "true"
+      SUPER_ADMIN_FIRST_NAME: CI
+      SUPER_ADMIN_LAST_NAME: Admin
+      CI_DB_PASSWORD: ci-only-db-password-2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+
+      - name: Set up Node, dependencies and a seeded database
+        uses: ./.github/actions/ci-setup
+        with:
+          ci-db-password: ${{ env.CI_DB_PASSWORD }}
+
+      - name: Install Playwright Chromium
+        run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
+
+      - name: Admin browser E2E tests
+        run: npm --workspace apps/admin run test:e2e -- --shard=${{ matrix.shard }}/3
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-playwright-failures-shard-${{ matrix.shard }}
+          path: |
+            apps/admin/test-results/
+            apps/admin/playwright-report/
+          if-no-files-found: ignore
+
   deploy-demo:
     name: Deploy / AWS demo
-    needs: foundation-ci
+    needs: [foundation-ci, browser-e2e]
     if: >-
       needs.foundation-ci.result == 'success' &&
+      needs.browser-e2e.result == 'success' &&
       (github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'))
     runs-on: ubuntu-latest
