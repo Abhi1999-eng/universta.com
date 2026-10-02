@@ -232,7 +232,10 @@ export function CountryUniversities({
              which would drop the reader back into every country. */
           cta={{
             href: `/study-abroad/${country.slug}/universities`,
-            label: `All universities in ${country.name}`,
+            /* The heading above already names the destination, and a label
+               carrying it too overflows a 390px screen the moment the name
+               is as long as "United Arab Emirates". */
+            label: 'All universities here',
           }}
         />
         <div className="h-grid h-grid--wide">
@@ -296,7 +299,7 @@ export function CountrySubjects({
           }
           cta={{
             href: `/study-abroad/${country.slug}/subjects`,
-            label: `All subjects in ${country.name}`,
+            label: 'All subjects here',
           }}
         />
         {taught.length ? (
