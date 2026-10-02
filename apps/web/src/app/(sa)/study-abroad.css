@@ -2092,6 +2092,8 @@
 .sa .schcard__name a:hover { color: var(--accent); }
 .sa .schcard__provider { font-size: 13.5px; color: var(--muted); }
 .sa .schcard__provider .label { margin-right: 4px; }
+.sa .schcard__note { font-size: 13.5px; line-height: 1.55; color: var(--muted); margin: 0; }
+.sa .schcard__note .label { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft, var(--muted)); margin-right: 2px; }
 .sa .schcard__where { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .sa .schcard__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line-soft); }
 .sa .schcard__facts dt { font-size: 11px; color: var(--muted); margin-bottom: 2px; }

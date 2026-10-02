@@ -5,6 +5,7 @@ import {
   programmeName,
   type UniversityRecord,
 } from './UniversityGuide';
+import { toScholarshipCards } from '@/lib/scholarship-card';
 
 /**
  * The approved build's university template carries twelve sections. Most
@@ -66,8 +67,13 @@ const university = (over: Partial<UniversityRecord> = {}): UniversityRecord =>
     ...over,
   }) as UniversityRecord;
 
-const render = (record: UniversityRecord) =>
-  renderToStaticMarkup(<UniversityGuide university={record} />);
+const render = (record: UniversityRecord, scholarships: unknown[] = []) =>
+  renderToStaticMarkup(
+    <UniversityGuide
+      university={record}
+      scholarships={toScholarshipCards(scholarships)}
+    />,
+  );
 
 describe('a university’s guide', () => {
   it('names the institution once in the programme list, not on every card', () => {
@@ -249,5 +255,58 @@ describe('reaching the university itself', () => {
 
   it('stands the section down when there is no way to make contact', () => {
     expect(html({})).not.toContain('Ask the university directly');
+  });
+});
+
+/**
+ * The catalogue has always been able to record a scholarship against an
+ * institution, and the university page never asked for one. A student
+ * reading about a university was told what it teaches and what it costs,
+ * and nothing about the money attached to studying there.
+ */
+describe('funding at a university', () => {
+  const award = {
+    id: 'sch-1',
+    title: 'International Merit Scholarship',
+    slug: 'international-merit',
+    benefitType: 'PARTIAL_TUITION',
+    amount: '5000.00',
+    currencyCode: 'EUR',
+    deadline: '2027-05-01',
+    provider: { name: 'Elmswood Polytechnic University' },
+    countries: [{ country: { name: 'Germany', slug: 'germany', iso2Code: 'DE' } }],
+  };
+  const html = (scholarships: unknown[]) => render(university(), scholarships);
+
+  it('opens a funding band for the awards recorded against it', () => {
+    const markup = html([award]);
+    expect(markup).toContain('Scholarships at Elmswood Polytechnic University');
+    expect(markup).toContain('International Merit Scholarship');
+    expect(markup).toContain('EUR 5,000');
+    expect(markup).toContain('1 May 2027');
+  });
+
+  it('says plainly that eligibility is not an award', () => {
+    expect(html([award])).toContain('not a guarantee of an award');
+  });
+
+  it('does not repeat the destination the university already states', () => {
+    /* The snapshot above it names the country; a flag chip on every card
+       would be the same fact a third time. */
+    expect(html([award])).not.toContain('flagchip');
+  });
+
+  it('stands the band down when no award is recorded', () => {
+    expect(html([])).not.toContain('Scholarships at');
+  });
+
+  it('keeps the numbered run sequential with the band in it', () => {
+    /* The snapshot holds place 01 without printing it, so the visible run
+       starts at 02. The band takes its place in that run rather than being
+       appended, and the section after it carries the next number. */
+    const markup = html([award]);
+    expect(markup).toContain('>02</span> Courses');
+    expect(markup).toContain('>03</span> Funding');
+    expect(markup).toContain('>04</span> Destination');
   });
 });

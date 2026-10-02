@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Country, ProfileSummary } from '@/lib/countries';
+import { toScholarshipCards } from '@/lib/scholarship-card';
 import { CountryConsultants } from './CountryConsultants';
 import {
   CountryCourses,
@@ -206,19 +207,48 @@ describe('country guide catalogue sections', () => {
       <CountryScholarships
         alt
         country={country()}
-        scholarships={[
+        scholarships={toScholarshipCards([
           {
             id: 'sch1',
             title: 'DAAD Scholarships',
             slug: 'daad',
             summary: 'Germany’s national academic exchange service.',
             provider: { name: 'DAAD' },
+            benefitType: 'FULL_TUITION',
+            amount: '12000.00',
+            currencyCode: 'EUR',
+            deadline: '2027-01-15',
+            eligibility: '<p>Open to international applicants.</p>',
+            countries: [{ country: { name: 'Germany', slug: 'germany', iso2Code: 'DE' } }],
           },
-        ]}
+        ])}
       />,
     );
     expect(html).toContain('href="/scholarships/daad"');
     expect(html).toContain('Scholarships to study in Germany');
+    /* What the band's own lead promises, and what it used to leave out. */
+    expect(html).toContain('EUR 12,000');
+    expect(html).toContain('15 Jan 2027');
+    expect(html).toContain('Full tuition');
+    expect(html).toContain('Open to international applicants.');
+  });
+
+  it('does not repeat the destination the page is already about', () => {
+    const html = renderToStaticMarkup(
+      <CountryScholarships
+        alt
+        country={country()}
+        scholarships={toScholarshipCards([
+          {
+            id: 'sch1',
+            title: 'DAAD Scholarships',
+            slug: 'daad',
+            countries: [{ country: { name: 'Germany', slug: 'germany', iso2Code: 'DE' } }],
+          },
+        ])}
+      />,
+    );
+    expect(html).not.toContain('flagchip');
   });
 
   it('quotes the testimonials filed against the country', () => {

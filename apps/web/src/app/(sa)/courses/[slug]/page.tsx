@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { getCourse } from "@/lib/catalog";
 import { CourseGuide } from "@/components/study-abroad/CourseGuide";
 import { resolvedMetadata } from "@/lib/seo-management";
+import { phaseList } from "@/lib/phase1";
+import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { toScholarshipCards } from "@/lib/scholarship-card";
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -44,9 +47,22 @@ export default async function CourseDetailPage({
   const country = one(q.country);
   const course = await load(p.slug, country);
   if (!course) notFound();
+  /* Funding is a cross-link, not the point of the page: a failure here drops
+     the section rather than the route. */
+  const scholarships = await phaseList<AnyRecord>("scholarships", {
+    course: course.slug,
+    limit: "6",
+    ...(country ? { country } : {}),
+  })
+    .then((result) => toScholarshipCards(result.data))
+    .catch(() => []);
   return (
     <>
-      <CourseGuide course={course} country={country} />
+      <CourseGuide
+        course={course}
+        country={country}
+        scholarships={scholarships}
+      />
       <script type="application/ld+json">
         {JSON.stringify(course.jsonLd).replace(/</g, "\\u003c")}
       </script>

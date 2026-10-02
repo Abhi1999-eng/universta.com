@@ -9,6 +9,7 @@ import { phaseList } from "@/lib/phase1";
 
 import { jsonLdString } from "@/lib/json-ld";
 import { resolvedMetadata } from "@/lib/seo-management";
+import { toScholarshipCards } from "@/lib/scholarship-card";
 
 export const dynamic = "force-dynamic";
 
@@ -46,13 +47,7 @@ export default async function SubjectDetailPage({ params }: Props) {
      drops the section rather than the route. */
   const [scholarships, universities] = await Promise.all([
     phaseList<AnyRecord>("scholarships", { subject: slug, limit: "6" })
-      .then((result) =>
-        result.data.map((row) => ({
-          id: String(row.id),
-          name: String(row.name ?? row.title ?? ""),
-          slug: String(row.slug ?? ""),
-        })),
-      )
+      .then((result) => toScholarshipCards(result.data))
       .catch(() => []),
     /* The reference's subject page has no universities section of its own,
        but the page it replaced cross-linked them, so they are kept as a

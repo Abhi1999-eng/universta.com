@@ -11,6 +11,8 @@ import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
 import { SubjectSpecializations } from './SubjectSpecializations';
+import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
+import type { ScholarshipCard } from '@/lib/scholarship-card';
 
 /**
  * A subject's guide, in the approved design.
@@ -30,7 +32,7 @@ export function SubjectGuide({
   universities = [],
 }: {
   subject: SubjectDetail;
-  scholarships: Array<{ id: string; name: string; slug: string }>;
+  scholarships: ScholarshipCard[];
   /** Cross-links only: the reference gives a subject no universities section,
    *  so these close the page in the connect band rather than open one. */
   universities?: Array<{ id: string; name: string; slug: string }>;
@@ -283,7 +285,7 @@ export function SubjectGuide({
               n={n('scholarship-funding')}
               eyebrow="Funding"
               title={`Scholarships for ${subject.name}`}
-              lead="Awards recorded against this subject."
+              lead={`Awards recorded against this subject. ${FUNDING_CAVEAT}`}
             />
             <div className="schgroup">
               <div className="schgroup__head">
@@ -292,26 +294,7 @@ export function SubjectGuide({
                   <span className="schgroup__n datum">{scholarships.length}</span>
                 </p>
               </div>
-              <div className="schgrid schgrid--3">
-                {scholarships.map((row) => (
-                  <article className="schcard" key={row.id}>
-                    <div className="schcard__top">
-                      <span className="badge badge--neutral">Scholarship</span>
-                    </div>
-                    <h3 className="schcard__t">
-                      <Link href={`/scholarships/${row.slug}`}>{row.name}</Link>
-                    </h3>
-                    <div className="schcard__foot">
-                      <Link className="linkcta" href={`/scholarships/${row.slug}`}>
-                        View award{' '}
-                        <span className="linkcta__arrow" aria-hidden="true">
-                          →
-                        </span>
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <ScholarshipCards scholarships={scholarships} />
             </div>
             <div className="consultcta">
               <div className="consultcta__copy">
