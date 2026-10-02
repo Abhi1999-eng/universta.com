@@ -352,18 +352,18 @@ function validateMappingDraft(draft: MappingDraft): MappingErrors {
     errors.academicMinCgpa = 'CGPA cannot exceed 10.';
   }
 
-  const needsVerification = draft.availabilityStatus !== 'UNAVAILABLE';
-  if (needsVerification && !draft.sourceReference.trim()) {
-    errors.sourceReference = 'Official HTTPS source is required for Available or Limited mappings.';
-  } else if (
+  /* Neither of these is required, and the API says so in as many words: a
+     mapping is valid without them. Most mappings are now worked out from the
+     offerings a university publishes, and a derived row has no URL anybody
+     typed -- demanding one forbade exactly the mappings the catalogue
+     establishes for itself. What an editor does supply is still checked. */
+  if (
     draft.sourceReference &&
     !/^https:\/\//i.test(draft.sourceReference.trim())
   ) {
     errors.sourceReference = 'Official source must start with https://';
   }
-  if (needsVerification && !draft.verifiedAt) {
-    errors.verifiedAt = 'Verified date is required for Available or Limited mappings.';
-  } else if (draft.verifiedAt && isFutureCalendarDate(draft.verifiedAt)) {
+  if (draft.verifiedAt && isFutureCalendarDate(draft.verifiedAt)) {
     errors.verifiedAt = 'Verified date cannot be in the future.';
   }
 
@@ -1158,7 +1158,6 @@ function Availability({
   onEdit: (row: CourseMappingRecord) => void;
   onIntakes: (row: CourseMappingRecord) => void;
 }) {
-  const needsVerification = mapping.availabilityStatus !== 'UNAVAILABLE';
 
   const field = (
     key: keyof MappingDraft,
@@ -1406,13 +1405,13 @@ function Availability({
             <FieldLabel
               label="Official HTTPS source"
               htmlFor="mapping-sourceReference"
-              required={needsVerification}
+              required={false}
               helpKey="course-mappings.sourceReference"
             />
             <input
               id="mapping-sourceReference"
               type="url"
-              required={needsVerification}
+              required={false}
               placeholder="https://official-source.example/..."
               className={inputClass(errors.sourceReference)}
               value={mapping.sourceReference}
@@ -1427,13 +1426,13 @@ function Availability({
             <FieldLabel
               label="Verified date"
               htmlFor="mapping-verifiedAt"
-              required={needsVerification}
+              required={false}
               helpKey="course-mappings.verifiedAt"
             />
             <input
               id="mapping-verifiedAt"
               type="date"
-              required={needsVerification}
+              required={false}
               max={new Date().toISOString().slice(0, 10)}
               className={inputClass(errors.verifiedAt)}
               value={mapping.verifiedAt}
@@ -1554,7 +1553,9 @@ function Availability({
         </div>
 
         <p className="mt-4 text-xs leading-5 text-[#667085]">
-          Available or Limited mappings require an official HTTPS source and a verification date. Unavailable mappings may leave those fields blank.
+          A course needs one Available or Limited mapping against a published
+          country before it can go live. Most of these are worked out from the
+          offerings a university publishes, and appear here on their own.
         </p>
 
         <div className="mt-5 flex justify-end gap-3">
