@@ -1500,6 +1500,59 @@ const events: BulkResourceDefinition = {
   },
 };
 
+/**
+ * The student figures on a university row, read from the sheet.
+ *
+ * These are somebody else's numbers, so a cell that cannot be read is
+ * reported rather than coerced to zero: an institution whose size nobody
+ * recorded is not an institution with no students. A blank clears the
+ * figure, which is how an importer takes one back.
+ */
+function universityFigures(
+  row: Record<string, string | undefined>,
+  errors: string[],
+): Record<string, unknown> {
+  const whole = (key: string, label: string) => {
+    const raw = row[key]?.trim();
+    if (raw === undefined || raw === '') return null;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0) {
+      errors.push(`${label} must be a whole number`);
+      return null;
+    }
+    return value;
+  };
+  const decimal = (key: string, label: string) => {
+    const raw = row[key]?.trim();
+    if (raw === undefined || raw === '') return null;
+    if (!/^\d+(?:\.\d+)?$/.test(raw)) {
+      errors.push(`${label} must be a number`);
+      return null;
+    }
+    return raw;
+  };
+  const setting = row.campusSetting?.trim().toUpperCase();
+  if (setting && !['URBAN', 'SUBURBAN', 'RURAL'].includes(setting))
+    errors.push('campusSetting must be URBAN, SUBURBAN or RURAL');
+
+  return {
+    totalStudents: whole('totalStudents', 'totalStudents'),
+    internationalStudentsPercent: decimal(
+      'internationalStudentsPercent',
+      'internationalStudentsPercent',
+    ),
+    studentFacultyRatio: decimal('studentFacultyRatio', 'studentFacultyRatio'),
+    establishedYear: whole('establishedYear', 'establishedYear'),
+    campusSetting: setting || null,
+    websiteUrl: row.websiteUrl?.trim() || null,
+    admissionsEmail: row.admissionsEmail?.trim() || null,
+    phone: row.phone?.trim() || null,
+    statsSourceName: row.statsSourceName?.trim() || null,
+    statsSourceUrl: row.statsSourceUrl?.trim() || null,
+    statsYear: whole('statsYear', 'statsYear'),
+  };
+}
+
 const universities: BulkResourceDefinition = {
   key: 'universities',
   label: 'Universities',
@@ -1516,6 +1569,17 @@ const universities: BulkResourceDefinition = {
     'countrySlug',
     'institutionType',
     'qsRanking',
+    'totalStudents',
+    'internationalStudentsPercent',
+    'studentFacultyRatio',
+    'establishedYear',
+    'campusSetting',
+    'websiteUrl',
+    'admissionsEmail',
+    'phone',
+    'statsSourceName',
+    'statsSourceUrl',
+    'statsYear',
     'shortDescription',
     'overview',
     'sourceReference',
@@ -1533,6 +1597,67 @@ const universities: BulkResourceDefinition = {
       type: 'text',
     },
     { key: 'qsRanking', label: 'QS ranking', required: false, type: 'number' },
+    {
+      key: 'totalStudents',
+      label: 'Total students',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'internationalStudentsPercent',
+      label: 'International students %',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'studentFacultyRatio',
+      label: 'Student-faculty ratio',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'establishedYear',
+      label: 'Established year',
+      required: false,
+      type: 'number',
+    },
+    {
+      key: 'campusSetting',
+      label: 'Campus setting',
+      required: false,
+      type: 'text',
+      description: 'URBAN, SUBURBAN or RURAL.',
+    },
+    { key: 'websiteUrl', label: 'Website', required: false, type: 'text' },
+    {
+      key: 'admissionsEmail',
+      label: 'Admissions email',
+      required: false,
+      type: 'text',
+    },
+    { key: 'phone', label: 'Phone', required: false, type: 'text' },
+    {
+      key: 'statsSourceName',
+      label: 'Figures source',
+      required: false,
+      type: 'text',
+      description:
+        'Who published the student figures, for example "Times Higher Education".',
+    },
+    {
+      key: 'statsSourceUrl',
+      label: 'Figures source URL',
+      required: false,
+      type: 'text',
+    },
+    {
+      key: 'statsYear',
+      label: 'Figures year',
+      required: false,
+      type: 'number',
+      description:
+        'The year the figures were published, so the page can say how old they are.',
+    },
     {
       key: 'shortDescription',
       label: 'Short Description',
@@ -1607,6 +1732,9 @@ const universities: BulkResourceDefinition = {
     const verified = row.verifiedAt?.trim();
     if (verified && Number.isNaN(new Date(verified).getTime()))
       errors.push('verifiedAt must be a date, for example 2026-10-01');
+    /* Read before the gate below, so a figure the sheet got wrong is
+       reported with everything else rather than after the row is accepted. */
+    const figures = universityFigures(row, errors);
     if (errors.length) return { errors };
     return {
       data: {
@@ -1615,6 +1743,7 @@ const universities: BulkResourceDefinition = {
         countryId: (country as { id: string }).id,
         institutionType: row.institutionType?.trim() || null,
         qsRanking: ranking ? Number(ranking) : null,
+        ...figures,
         shortDescription: row.shortDescription.trim(),
         overview: row.overview?.trim() || null,
         sourceReference: row.sourceReference?.trim() || null,
@@ -1639,6 +1768,19 @@ const universities: BulkResourceDefinition = {
         (record as { country?: { slug?: string } }).country?.slug ?? '',
       institutionType: record.institutionType ?? '',
       qsRanking: record.qsRanking ?? '',
+      totalStudents: record.totalStudents ?? '',
+      internationalStudentsPercent: decimalText(
+        record.internationalStudentsPercent,
+      ),
+      studentFacultyRatio: decimalText(record.studentFacultyRatio),
+      establishedYear: record.establishedYear ?? '',
+      campusSetting: record.campusSetting ?? '',
+      websiteUrl: record.websiteUrl ?? '',
+      admissionsEmail: record.admissionsEmail ?? '',
+      phone: record.phone ?? '',
+      statsSourceName: record.statsSourceName ?? '',
+      statsSourceUrl: record.statsSourceUrl ?? '',
+      statsYear: record.statsYear ?? '',
       shortDescription: record.shortDescription ?? '',
       overview: record.overview ?? '',
       sourceReference: record.sourceReference ?? '',

@@ -131,7 +131,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
 
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
-    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
+    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'totalStudents', 'internationalStudentsPercent', 'studentFacultyRatio', 'establishedYear', 'campusSetting', 'admissionsEmail', 'statsSourceName', 'statsSourceUrl', 'statsYear', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
     if (record.seo && typeof record.seo === 'object') {
       const seo = record.seo as Row;
       for (const key of ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId']) next[key] = string(seo[key]);
@@ -592,6 +592,174 @@ function UniversityFields(p: any) {
           }}
         />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="universities.featuredMediaId" />
+      </div>
+      {/* Somebody else's figures. They go stale, so the two source fields
+          below travel with them and the page says who counted and when --
+          a number without a source is shown as indicative, not settled. */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Total students"
+          type="number"
+          value={p.values.totalStudents ?? ''}
+          onChange={(value) => p.set('totalStudents', value)}
+          help={{
+            purpose: 'How large the institution is, shown in the snapshot a student compares universities on.',
+            input: 'Whole number of enrolled students, or blank when nobody has published one.',
+            dataType: 'Whole number',
+            required: 'Optional',
+            example: '22005',
+            dependency: 'Record the source and year alongside it.',
+            frontendEffect: 'Appears as "Students" in the university snapshot.',
+          }}
+        />
+        <Field
+          label="International students %"
+          type="number"
+          value={p.values.internationalStudentsPercent ?? ''}
+          onChange={(value) => p.set('internationalStudentsPercent', value)}
+          help={{
+            purpose: 'How international the student body is.',
+            input: 'A percentage, without the % sign.',
+            dataType: 'Number',
+            required: 'Optional',
+            example: '43',
+            dependency: 'Record the source and year alongside it.',
+            frontendEffect: 'Appears as "International" in the snapshot.',
+          }}
+        />
+        <Field
+          label="Students per staff"
+          type="number"
+          value={p.values.studentFacultyRatio ?? ''}
+          onChange={(value) => p.set('studentFacultyRatio', value)}
+          help={{
+            purpose: 'How many students there are for each member of academic staff.',
+            input: 'A number, usually with one decimal place.',
+            dataType: 'Number',
+            required: 'Optional',
+            example: '10.4',
+            dependency: 'Record the source and year alongside it.',
+            frontendEffect: 'Appears as "Students per staff" in the snapshot.',
+          }}
+        />
+        <Field
+          label="Established year"
+          type="number"
+          value={p.values.establishedYear ?? ''}
+          onChange={(value) => p.set('establishedYear', value)}
+          help={{
+            purpose: 'When the institution was founded.',
+            input: 'A four-digit year.',
+            dataType: 'Whole number',
+            required: 'Optional',
+            example: '1096',
+            dependency: 'None.',
+            frontendEffect: 'Appears as "Founded" in the snapshot.',
+          }}
+        />
+        <Field
+          label="Campus setting"
+          value={p.values.campusSetting ?? ''}
+          onChange={(value) => p.set('campusSetting', value)}
+          error={p.errors.campusSetting}
+          help={{
+            purpose: 'Whether the campus sits in a city, a suburb or the countryside.',
+            input: 'URBAN, SUBURBAN or RURAL.',
+            dataType: 'Choice',
+            required: 'Optional',
+            example: 'URBAN',
+            dependency: 'Anything else is refused.',
+            frontendEffect: 'Appears as "Setting" in the snapshot.',
+          }}
+        />
+        <Field
+          label="Official website"
+          type="url"
+          value={p.values.websiteUrl ?? ''}
+          onChange={(value) => p.set('websiteUrl', value)}
+          help={{
+            purpose: 'The institution\u2019s own site, which is where an answer about fees or deadlines is binding.',
+            input: 'The university homepage.',
+            dataType: 'URL',
+            required: 'Optional',
+            example: 'https://www.example.ac.uk',
+            dependency: 'Shown beside the admissions email and phone.',
+            frontendEffect: 'Appears in the \u201cAsk the university directly\u201d section.',
+          }}
+        />
+        <Field
+          label="Phone"
+          value={p.values.phone ?? ''}
+          onChange={(value) => p.set('phone', value)}
+          help={{
+            purpose: 'A number a student can call the institution on.',
+            input: 'Include the country code.',
+            dataType: 'Text',
+            required: 'Optional',
+            example: '+44 1865 270000',
+            dependency: 'Shown beside the website and admissions email.',
+            frontendEffect: 'Appears as a dialable link in the contact section.',
+          }}
+        />
+        <Field
+          label="Admissions email"
+          type="email"
+          value={p.values.admissionsEmail ?? ''}
+          onChange={(value) => p.set('admissionsEmail', value)}
+          help={{
+            purpose: 'Where a student can ask the university itself, since anything on the page can change between intakes.',
+            input: 'The admissions office address.',
+            dataType: 'Email',
+            required: 'Optional',
+            example: 'admissions@example.ac.uk',
+            dependency: 'Shown beside the website and phone.',
+            frontendEffect: 'Appears in the "Ask the university directly" section.',
+          }}
+        />
+        <Field
+          label="Figures source"
+          value={p.values.statsSourceName ?? ''}
+          onChange={(value) => p.set('statsSourceName', value)}
+          help={{
+            purpose: 'Who published the student figures above. The page names them rather than presenting the numbers as ours.',
+            input: 'The organisation that published the figures.',
+            dataType: 'Text',
+            required: 'Optional, but a figure without one is shown as indicative.',
+            example: 'Times Higher Education',
+            dependency: 'Pairs with the figures year.',
+            frontendEffect: 'Prints under the snapshot as "as published by …".',
+          }}
+        />
+        <Field
+          label="Figures source URL"
+          type="url"
+          value={p.values.statsSourceUrl ?? ''}
+          onChange={(value) => p.set('statsSourceUrl', value)}
+          help={{
+            purpose: 'Where a reader can check the figures for themselves.',
+            input: 'The page the figures were published on.',
+            dataType: 'URL',
+            required: 'Optional',
+            example: 'https://example.org/rankings/2026',
+            dependency: 'Makes the source name a link.',
+            frontendEffect: 'Links the source named under the snapshot.',
+          }}
+        />
+        <Field
+          label="Figures year"
+          type="number"
+          value={p.values.statsYear ?? ''}
+          onChange={(value) => p.set('statsYear', value)}
+          help={{
+            purpose: 'How old the figures are, so a reader can judge them.',
+            input: 'The year the figures were published.',
+            dataType: 'Whole number',
+            required: 'Optional',
+            example: '2026',
+            dependency: 'Pairs with the figures source.',
+            frontendEffect: 'Printed beside the source under the snapshot.',
+          }}
+        />
       </div>
       <Field label="Description" textarea richText variableContext="university" value={p.values.overview ?? ''} onChange={(value) => p.set('overview', value)} helpKey="universities.overview" />
       <ScheduledPublishingFields {...p} />

@@ -25,6 +25,20 @@ export type UniversityRecord = {
   overview: string | null;
   institutionType: string | null;
   qsRanking: number | null;
+  /* Somebody else's figures, which is why they travel with who published
+     them and when. The page says that out loud rather than presenting a
+     count of students as a fact of its own. */
+  totalStudents: number | null;
+  internationalStudentsPercent: string | number | null;
+  studentFacultyRatio: string | number | null;
+  establishedYear: number | null;
+  campusSetting: string | null;
+  websiteUrl: string | null;
+  admissionsEmail: string | null;
+  phone: string | null;
+  statsSourceName: string | null;
+  statsSourceUrl: string | null;
+  statsYear: number | null;
   sourceReference: string | null;
   verifiedAt: string | null;
   campuses: number;
@@ -117,6 +131,10 @@ export function UniversityGuide({
   const order: string[] = ['snapshot'];
   if (hasOverview) order.push('about');
   if (offerings.length) order.push('programmes');
+  const hasContact = Boolean(
+    university.websiteUrl || university.admissionsEmail || university.phone,
+  );
+  if (hasContact) order.push('contact');
   if (country) order.push('destination');
   const n = (id: string) => {
     const index = order.indexOf(id);
@@ -160,6 +178,48 @@ export function UniversityGuide({
     });
   if (university.qsRanking)
     snapshot.push({ label: 'QS ranking', value: `#${university.qsRanking}` });
+
+  /* The figures a student compares institutions on. Each is added only when
+     the record holds it, for the same reason as every cell above: a
+     snapshot half full of dashes says less than a short one that is true. */
+  const figure = (value: string | number | null | undefined) =>
+    value === null || value === undefined || value === '' ? null : Number(value);
+  const students = figure(university.totalStudents);
+  const international = figure(university.internationalStudentsPercent);
+  const ratio = figure(university.studentFacultyRatio);
+  if (students)
+    snapshot.push({
+      label: 'Students',
+      value: students.toLocaleString('en-GB'),
+    });
+  if (international)
+    snapshot.push({ label: 'International', value: `${international}%` });
+  if (ratio)
+    snapshot.push({ label: 'Students per staff', value: String(ratio) });
+  if (university.establishedYear)
+    snapshot.push({
+      label: 'Founded',
+      value: String(university.establishedYear),
+    });
+  if (university.campusSetting)
+    snapshot.push({
+      label: 'Setting',
+      value:
+        university.campusSetting[0] +
+        university.campusSetting.slice(1).toLowerCase(),
+    });
+
+  /* Who counted, and when. Without this the numbers above would read as the
+     catalogue's own, which they are not. */
+  const figuresShown = Boolean(
+    students || international || ratio || university.establishedYear,
+  );
+  const figureSource =
+    figuresShown && (university.statsSourceName || university.statsYear)
+      ? [university.statsSourceName, university.statsYear]
+          .filter(Boolean)
+          .join(', ')
+      : null;
 
   return (
     <>
@@ -254,6 +314,28 @@ export function UniversityGuide({
               </div>
             ))}
           </div>
+          {figureSource ? (
+            <p className="unisnap__source">
+              Student figures as published by{' '}
+              {university.statsSourceUrl ? (
+                <a
+                  href={university.statsSourceUrl}
+                  rel="nofollow noopener"
+                  target="_blank"
+                >
+                  {figureSource}
+                </a>
+              ) : (
+                figureSource
+              )}
+              . Universta does not count them itself.
+            </p>
+          ) : figuresShown ? (
+            <p className="unisnap__source">
+              Student figures are recorded in the catalogue without a
+              published source, so treat them as indicative.
+            </p>
+          ) : null}
           <div className="verifybar">
             <div className="verifybar__body">
               <strong>Check before you apply.</strong> Fees, entry requirements
@@ -320,6 +402,52 @@ export function UniversityGuide({
                 `/universities/${university.slug}/courses/${course.slug}`
               }
             />
+          </div>
+        </section>
+      ) : null}
+
+      {hasContact ? (
+        <section className={`${band('contact')} sec--tight`} id="contact">
+          <div className="wrap">
+            <SectionHead
+              n={n('contact')}
+              eyebrow="Contact"
+              title="Ask the university directly"
+              lead="Anything on this page can change between intakes. These are the institution's own channels, which is where an answer is binding."
+            />
+            <div className="switcher switcher--few">
+              {university.websiteUrl ? (
+                <a
+                  className="switcher__item"
+                  href={university.websiteUrl}
+                  rel="nofollow noopener"
+                  target="_blank"
+                >
+                  <span className="cchip__name">Official website</span>
+                  <span className="switcher__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </a>
+              ) : null}
+              {university.admissionsEmail ? (
+                <a
+                  className="switcher__item"
+                  href={`mailto:${university.admissionsEmail}`}
+                >
+                  <span className="cchip__name">
+                    {university.admissionsEmail}
+                  </span>
+                </a>
+              ) : null}
+              {university.phone ? (
+                <a
+                  className="switcher__item"
+                  href={`tel:${university.phone.replace(/[^+\d]/g, '')}`}
+                >
+                  <span className="cchip__name">{university.phone}</span>
+                </a>
+              ) : null}
+            </div>
           </div>
         </section>
       ) : null}

@@ -2410,3 +2410,15 @@
 .sa .verifybar__body { flex: 1; min-width: 220px; font-size: 13.5px; color: var(--muted); }
 .sa .verifybar__body strong { color: var(--text); }
 .sa .verifybar__note { margin-top: 5px; font-size: 12.5px; }
+
+/* Who published the student figures on a university page. It sits directly
+   under the snapshot because the numbers above it are not ours, and a
+   reader deciding between institutions should see whose they are and how
+   old without hunting for a footnote. */
+.sa .unisnap__source{
+  margin: .75rem 0 0;
+  font-size: .8125rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.sa .unisnap__source a{ color: inherit; text-decoration: underline; }

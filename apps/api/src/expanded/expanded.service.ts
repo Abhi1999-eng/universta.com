@@ -2231,6 +2231,17 @@ export class ExpandedService {
         'slug',
         'institutionType',
         'qsRanking',
+        'totalStudents',
+        'internationalStudentsPercent',
+        'studentFacultyRatio',
+        'establishedYear',
+        'campusSetting',
+        'websiteUrl',
+        'admissionsEmail',
+        'phone',
+        'statsSourceName',
+        'statsSourceUrl',
+        'statsYear',
         'shortDescription',
         'overview',
         'featuredMediaId',
@@ -2524,6 +2535,21 @@ export class ExpandedService {
         });
       data[key] = parsed;
     };
+    const normalizeWholeNumber = (key: string) => {
+      if (!(key in data)) return;
+      if (data[key] === null || data[key] === '') {
+        data[key] = null;
+        return;
+      }
+      const parsed = Number(data[key]);
+      if (!Number.isInteger(parsed) || parsed < 0)
+        throw new UnprocessableEntityException({
+          code: 'VALIDATION_ERROR',
+          message: `${key} must be a whole number`,
+          details: null,
+        });
+      data[key] = parsed;
+    };
     const normalizeDecimal = (key: string) => {
       if (!(key in data)) return;
       if (data[key] === null || data[key] === '') {
@@ -2566,6 +2592,35 @@ export class ExpandedService {
             });
           data.qsRanking = ranking;
         }
+      }
+      /* Somebody else's figures, typed into a form, so they arrive as
+         strings and have to be read as numbers or refused. A blank clears
+         the figure rather than storing zero -- an institution whose size
+         nobody has recorded is not an institution with no students. */
+      for (const key of [
+        'totalStudents',
+        'establishedYear',
+        'statsYear',
+      ] as const)
+        normalizeWholeNumber(key);
+      for (const key of [
+        'internationalStudentsPercent',
+        'studentFacultyRatio',
+      ] as const)
+        normalizeDecimal(key);
+      if ('campusSetting' in data) {
+        const raw = data.campusSetting;
+        const setting = (typeof raw === 'string' ? raw : '')
+          .trim()
+          .toUpperCase();
+        if (!setting) data.campusSetting = null;
+        else if (!['URBAN', 'SUBURBAN', 'RURAL'].includes(setting))
+          throw new UnprocessableEntityException({
+            code: 'VALIDATION_ERROR',
+            message: 'campusSetting must be URBAN, SUBURBAN or RURAL',
+            details: null,
+          });
+        else data.campusSetting = setting;
       }
     }
     const FEATURED_RESOURCES = new Set([
