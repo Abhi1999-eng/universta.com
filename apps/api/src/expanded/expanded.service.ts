@@ -14,6 +14,12 @@ import { sanitizeRichText } from '../common/rich-text';
 import { DbNull } from '../generated/prisma/internal/prismaNamespaceBrowser';
 import { parseChromeConfig } from '../settings/chrome-overrides';
 import { isCanonicalPublicSlug } from '../common/public-slug';
+import {
+  asDeriveClient,
+  deriveForCourse,
+  deriveForUniversity,
+  deriveQuietly,
+} from '../catalog/derive-links';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
 import type {
   SeoBulkEntityType,
@@ -1316,6 +1322,7 @@ export class ExpandedService {
         data: { ...data, ...this.relationWrites(resource, body, false) },
       });
       await this.saveSeo(resource, String(created.id), body.seo);
+      await this.deriveLinks(resource, created);
       return created;
     } catch (error) {
       throw this.conflict(error);
@@ -1343,6 +1350,7 @@ export class ExpandedService {
       });
       await this.saveSeo(resource, id, body.seo);
       await this.recordSlugRedirect(resource, current, updated);
+      await this.deriveLinks(resource, updated, current);
       return updated;
     } catch (error) {
       throw this.conflict(error);
@@ -1404,13 +1412,17 @@ export class ExpandedService {
         where: { id },
         data: { status: published ? 'ACTIVE' : 'INACTIVE' },
       });
-    return delegate.update({
+    const updated = await delegate.update({
       where: { id },
       data: {
         status: published ? 'PUBLISHED' : 'DRAFT',
         publishedAt: published ? new Date() : null,
       },
     });
+    /* Publishing is the moment an offering starts counting towards its
+       destination, and unpublishing the moment it stops. */
+    await this.deriveLinks(resource, updated);
+    return updated;
   }
 
   async adminDelete(resource: Resource, id: string) {
@@ -1422,13 +1434,51 @@ export class ExpandedService {
     await this.adminDetail(resource, id);
     if (resource === 'navigation-menus')
       return delegate.update({ where: { id }, data: { status: 'INACTIVE' } });
-    return delegate.update({
+    const removed = await delegate.update({
       where: { id },
       data: {
         deletedAt: new Date(),
         ...(resource === 'contact-inquiries' ? {} : { status: 'DRAFT' }),
       },
     });
+    await this.deriveLinks(resource, removed);
+    return removed;
+  }
+
+  /**
+   * Re-reads the derived catalogue links a write to this resource could
+   * have changed.
+   *
+   * Only two of the resources here feed them. An offering is what puts a
+   * course in a destination at all, and a university is what gives its
+   * offerings a country and a published state -- so moving an institution
+   * to another country, or taking it off the site, moves or withdraws
+   * every course it teaches along with it.
+   */
+  private async deriveLinks(
+    resource: Resource,
+    row: Record<string, unknown>,
+    previous?: Record<string, unknown>,
+  ) {
+    const prisma = asDeriveClient(this.prisma);
+    if (resource === 'offerings') {
+      /* An offering repointed at a different course leaves the old one
+         with one fewer institution behind it, so both are read again. */
+      const courseIds = new Set(
+        [row.genericCourseId, previous?.genericCourseId].filter(
+          (value): value is string => typeof value === 'string',
+        ),
+      );
+      for (const courseId of courseIds)
+        await deriveQuietly(`offering ${String(row.id)}`, () =>
+          deriveForCourse(prisma, courseId),
+        );
+      return;
+    }
+    if (resource === 'universities')
+      await deriveQuietly(`university ${String(row.id)}`, () =>
+        deriveForUniversity(prisma, String(row.id)),
+      );
   }
 
   /** Block types the admin editor can add. Kept as a plain string on the

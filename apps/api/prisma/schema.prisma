@@ -1434,6 +1434,14 @@ model CountryCourse {
    * is rewritten whenever those change.
    */
   tuitionIsOverride     Boolean   @default(true) @map("tuition_is_override")
+  /**
+   * Whether this link was worked out or meant. DERIVED means a published
+   * university in this country has a published offering for the course,
+   * and the row comes and goes with those offerings. EDITORIAL means an
+   * editor said so, for a destination whose guide runs ahead of its
+   * catalogue, and no sweep may remove it.
+   */
+  source                String    @default("EDITORIAL") @db.VarChar(20)
   currencyCode          String?   @map("currency_code") @db.Char(3)
   tuitionPeriod         String    @default("PER_YEAR") @map("tuition_period") @db.VarChar(30)
   applicationFeeMin     Decimal?  @map("application_fee_min") @db.Decimal(12, 2)
@@ -1467,6 +1475,8 @@ model CountryCourse {
   intakes CountryCourseIntake[]
 
   @@unique([countryId, courseId])
+  @@index([courseId, source])
+  @@index([countryId, source])
   @@index([countryId, tuitionIsOverride])
   @@index([countryId, status, isFeatured])
   @@index([courseId, status])

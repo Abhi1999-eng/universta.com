@@ -19,6 +19,11 @@ import {
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
 import { PUBLISHED } from '../catalog/published';
+import {
+  asDeriveClient,
+  deriveForCourse,
+  deriveQuietly,
+} from '../catalog/derive-links';
 import { sanitizeRichText } from '../common/rich-text';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type {
@@ -865,6 +870,7 @@ export class CoursesService {
         { name: row.name, slug: row.slug, status: row.status },
         'Course updated',
       );
+      await this.derive(id);
       return this.toAdmin(row);
     } catch (error) {
       if (isUniqueConstraintError(error))
@@ -909,6 +915,7 @@ export class CoursesService {
       { status: row.status },
       'Course published',
     );
+    await this.derive(id);
     return this.toAdmin(row);
   }
   async unpublish(
@@ -936,6 +943,7 @@ export class CoursesService {
       { status: row.status },
       'Course unpublished',
     );
+    await this.derive(id);
     return this.toAdmin(row);
   }
   async remove(
@@ -968,7 +976,23 @@ export class CoursesService {
       { deleted: true },
       'Course soft-deleted',
     );
+    await this.derive(id);
     return { deleted: true, id: row.id };
+  }
+
+  /**
+   * Re-reads the destinations this course reaches and the subjects they
+   * teach because of it.
+   *
+   * Every write above can move those: publishing and withdrawing decide
+   * whether the course counts at all, changing its subject changes what
+   * its destinations claim to teach, and a mapping edited by hand is one
+   * more thing the destination's subject list is read from.
+   */
+  private async derive(courseId: string) {
+    await deriveQuietly(`course ${courseId}`, () =>
+      deriveForCourse(asDeriveClient(this.prisma), courseId),
+    );
   }
 
   async replaceStudyModes(
@@ -1066,6 +1090,7 @@ export class CoursesService {
         },
         'Country-course mapping created',
       );
+      await this.derive(id);
       return this.toAdminMapping(row);
     } catch (error) {
       if (isUniqueConstraintError(error))
@@ -1124,6 +1149,7 @@ export class CoursesService {
         },
         'Country-course mapping updated',
       );
+      await this.derive(id);
       return this.toAdminMapping(row);
     } catch (error) {
       if (isUniqueConstraintError(error))
@@ -1163,6 +1189,7 @@ export class CoursesService {
       { deleted: true },
       'Country-course mapping removed',
     );
+    await this.derive(id);
     return { deleted: true };
   }
 

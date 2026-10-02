@@ -151,8 +151,18 @@ fi
 runuser --preserve-environment -u universta -- \
   bash -lc "cd '${release}' && npm run db:seed"
 
-# Two facts the catalogue states twice, brought back into step on every
+# Three facts the catalogue states twice, brought back into step on every
 # deploy because the seed above can move either side of them.
+#
+# The admin write paths keep all three in step as an editor works, so these
+# are the backstop rather than the mechanism: what they catch is a seed, an
+# import, a crash between a save and its derivation, or an edit made
+# straight against the database.
+#
+# They run in this order because each reads what the one before it writes.
+#
+# Which destinations offer a course: derived from the offerings its
+# published universities publish. Nothing else can make that true.
 #
 # A destination's subject and specialization links: derived from the courses
 # taught there. Only the derived ones -- a link an editor meant survives
@@ -163,7 +173,9 @@ runuser --preserve-environment -u universta -- \
 # universities charge. Only where an editor has not set it by hand, and
 # never wiped in favour of silence when nothing behind it is priced.
 #
-# Both are idempotent: a second run on unchanged data reports zero.
+# All three are idempotent: a second run on unchanged data reports zero.
+runuser --preserve-environment -u universta -- \
+  bash -lc "cd '${release}' && npm --workspace apps/api run db:reconcile:country-courses"
 runuser --preserve-environment -u universta -- \
   bash -lc "cd '${release}' && npm --workspace apps/api run db:reconcile:country-taxonomy"
 runuser --preserve-environment -u universta -- \

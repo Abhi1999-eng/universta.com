@@ -29,6 +29,7 @@ import {
   type ProfileStatisticsRecord,
 } from './profiles/profile.mappers';
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
+import { EDITORIAL } from './country-taxonomy-reconciler';
 import { CountryDerivedService } from './country-derived.service';
 import {
   parseCalculatorConfig,
@@ -1168,12 +1169,33 @@ export class CountriesService {
         await this.ensureSubSubjects(dto.subSubjectIds, tx);
         await this.ensureTags(dto.tagIds, tx);
         if (dto.subjectIds !== undefined) {
-          await tx.countrySubject.deleteMany({ where: { countryId: id } });
-          if (dto.subjectIds.length)
+          /* Only the rows an editor put here are theirs to replace. A
+             derived row states which subjects this destination's courses
+             actually cover, and unticking a box cannot make that untrue --
+             the reconciler owns those, and wiping them here is what made
+             the deployment sweep's work last until the next save. */
+          await tx.countrySubject.deleteMany({
+            where: { countryId: id, source: EDITORIAL },
+          });
+          /* Whatever survived that is derived, and a link that already
+             exists needs no second row -- the pair is unique. */
+          const derived = new Set(
+            (
+              await tx.countrySubject.findMany({
+                where: { countryId: id },
+                select: { subjectId: true },
+              })
+            ).map((row) => row.subjectId),
+          );
+          const added = dto.subjectIds.filter(
+            (subjectId) => !derived.has(subjectId),
+          );
+          if (added.length)
             await tx.countrySubject.createMany({
-              data: dto.subjectIds.map((subjectId, displayOrder) => ({
+              data: added.map((subjectId, displayOrder) => ({
                 countryId: id,
                 subjectId,
+                source: EDITORIAL,
                 displayOrder,
               })),
             });
@@ -1181,12 +1203,26 @@ export class CountriesService {
         /* Same contract as subjects: a supplied array replaces the set, an
          * omitted key leaves it alone. */
         if (dto.subSubjectIds !== undefined) {
-          await tx.countrySubSubject.deleteMany({ where: { countryId: id } });
-          if (dto.subSubjectIds.length)
+          await tx.countrySubSubject.deleteMany({
+            where: { countryId: id, source: EDITORIAL },
+          });
+          const derived = new Set(
+            (
+              await tx.countrySubSubject.findMany({
+                where: { countryId: id },
+                select: { subSubjectId: true },
+              })
+            ).map((row) => row.subSubjectId),
+          );
+          const added = dto.subSubjectIds.filter(
+            (subSubjectId) => !derived.has(subSubjectId),
+          );
+          if (added.length)
             await tx.countrySubSubject.createMany({
-              data: dto.subSubjectIds.map((subSubjectId, displayOrder) => ({
+              data: added.map((subSubjectId, displayOrder) => ({
                 countryId: id,
                 subSubjectId,
+                source: EDITORIAL,
                 displayOrder,
               })),
             });
