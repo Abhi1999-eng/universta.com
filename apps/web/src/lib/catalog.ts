@@ -12,7 +12,44 @@ export interface SubjectBranch extends SubSubject { publishedCourseCount: number
 export interface SubjectDetail extends Subject { subSubjects: SubjectBranch[]; countries: Array<{ id: string; name: string; slug: string; iso2Code: string | null }>; tests: SubjectTest[]; courseCountsByLevel: Array<{ level: { id: string; name: string; code: string | null }; count: number }>; featuredCourses: Course[]; seo: Seo | null; }
 export interface Seo { seoTitle: string; metaDescription: string; canonicalUrl: string | null; ogTitle: string | null; ogDescription: string | null; ogMedia: Media | null; twitterTitle: string | null; twitterDescription: string | null; robotsIndex: boolean; robotsFollow: boolean; schemaJson: Record<string, unknown> | null; }
 export interface Course { id: string; name: string; slug: string; shortName: string | null; qualificationName: string | null; shortDescription: string | null; subject: { id: string; name: string; slug: string; }; subSubject: { id: string; name: string; slug: string } | null; courseLevel: { id: string; name: string; code: string; }; studyModes: Array<{ id: string; name: string; code: string }>; duration: { min: string | null; max: string | null; unit: string | null }; credits: string | null; featuredMedia: Media | null; featured: boolean; availableCountryCount: number; selectedCountry: { id: string; name: string; slug: string } | null; selectedTuition: { min: string | null; max: string | null; currencyCode: string | null; period: string } | null; selectedIntakes: Array<{ intake?: { id: string; name: string; slug: string; shortLabel: string | null; startMonth?: number | null; endMonth?: number | null }; applicationDeadline: string | null; deadlineNotes: string | null; status: string }>; scholarshipAvailable: boolean | null; displayOrder: number; }
-export interface CourseDetail extends Course { overview: string | null; careerSummary: string | null; availability: Array<{ id: string; country: { id: string; name: string; slug: string } }>; selectedCountry: { id: string; name: string; slug: string } | null; contentSections: Array<{ id: string; sectionKey: string; sectionType: string; heading: string | null; subheading: string | null; bodyJson: { paragraphs?: unknown } | null; media: Media | null; displayOrder: number }>; faqs: Array<{ id: string; question: string; answer: string }>; relatedCourses: Course[]; seo: Seo | null; jsonLd: Record<string, unknown>; }
+/**
+ * What one destination asks of an applicant to this course.
+ *
+ * The API has carried all of this for a long time and the page threw it
+ * away at the type boundary: `availability` declared a country and an id
+ * and nothing else, so entry requirements, English scores and application
+ * deadlines were fetched on every request and discarded before anything
+ * could render them.
+ *
+ * Every field is optional because every field is genuinely optional in the
+ * catalogue. A destination that has not recorded a CGPA floor has not set
+ * one to zero.
+ */
+export interface CourseAvailability {
+  id: string;
+  country: { id: string; name: string; slug: string };
+  availabilityStatus?: string | null;
+  tuition?: { min?: string | null; max?: string | null; currencyCode?: string | null; period?: string | null } | null;
+  applicationFee?: { min?: string | null; max?: string | null; currencyCode?: string | null } | null;
+  academicRequirements?: { percentage?: string | null; cgpa?: string | null } | null;
+  englishRequirements?: { ielts?: string | null; pte?: string | null; toefl?: string | null; duolingo?: string | null } | null;
+  englishRequirementsText?: string | null;
+  admissionRequirements?: string | null;
+  applicationNotes?: string | null;
+  careerOpportunities?: string | null;
+  workExperienceMonths?: number | null;
+  scholarshipAvailable?: boolean | null;
+  sourceReference?: string | null;
+  verifiedAt?: string | null;
+  intakes?: Array<{
+    id: string;
+    intake?: { id: string; name: string; slug: string; shortLabel?: string | null };
+    applicationDeadline?: string | null;
+    deadlineNotes?: string | null;
+    status?: string | null;
+  }>;
+}
+export interface CourseDetail extends Course { overview: string | null; careerSummary: string | null; availability: CourseAvailability[]; selectedCountry: { id: string; name: string; slug: string } | null; contentSections: Array<{ id: string; sectionKey: string; sectionType: string; heading: string | null; subheading: string | null; bodyJson: { paragraphs?: unknown } | null; media: Media | null; displayOrder: number }>; faqs: Array<{ id: string; question: string; answer: string }>; relatedCourses: Course[]; seo: Seo | null; jsonLd: Record<string, unknown>; }
 export interface CourseFilterOption {
   id?: string;
   value: string;
