@@ -240,6 +240,29 @@ function sortByFeatured<T extends FeaturedRow>(
   });
 }
 
+/**
+ * The university listing's order, as the database can express it.
+ *
+ * Mirrors what `applyListSort` did in memory for this resource -- it is
+ * handed only a `name` accessor, so name-asc, name-desc and newest are the
+ * sorts that ever applied. `newest` read `publishedAt ?? createdAt`; MySQL
+ * cannot order on that expression through Prisma, and ordering on the two
+ * columns in turn reaches the same answer, because a row with no
+ * `publishedAt` sorts last under DESC either way.
+ */
+function universityOrder(sort: string | undefined) {
+  switch (sort) {
+    case 'name-asc':
+      return [{ name: 'asc' as const }];
+    case 'name-desc':
+      return [{ name: 'desc' as const }];
+    case 'newest':
+      return [{ publishedAt: 'desc' as const }, { createdAt: 'desc' as const }];
+    default:
+      return [{ displayOrder: 'asc' as const }, { name: 'asc' as const }];
+  }
+}
+
 function idFrom(actor: { sub?: string } | undefined) {
   if (!actor?.sub)
     throw new BadRequestException('Authenticated admin is required');
@@ -453,10 +476,24 @@ export class ExpandedService {
           ? { campuses: { some: { state: { contains: query.state } } } }
           : {}),
       };
-      const all = (
-        await this.prisma.university.findMany({
+      /* Counted and paged in the database rather than in memory.
+         `FEATURED_FETCH_CAP` used to read the first 500 rows, sort them
+         here and slice a page out of that -- which was invisible while the
+         catalogue held twenty universities and became the whole story at
+         9,761: everything past the five hundredth was unreachable, and
+         `meta.total` reported 500 however many there were.
+
+         The in-memory sort this replaces no longer sorted by anything the
+         database cannot: `sortByFeatured` ignores its `now` argument and
+         orders by displayOrder then name. */
+      const orderBy = universityOrder(query.sort);
+      const [total, rows] = await Promise.all([
+        this.prisma.university.count({ where }),
+        this.prisma.university.findMany({
           where,
-          take: FEATURED_FETCH_CAP,
+          orderBy,
+          skip,
+          take: limit,
           include: {
             /* `iso2Code` draws the flag on the directory card, the same way
                it does on every other country chip on the site. */
@@ -469,15 +506,15 @@ export class ExpandedService {
               select: { offerings: { where: publishedWhereScheduled(now) } },
             },
           },
-        })
-      ).filter((row) => isCanonicalPublicSlug(row.slug));
-      const sorted = applyListSort(
-        sortByFeatured(all, now, (row) => row.name),
-        query.sort,
-        { name: (row) => row.name },
-      );
-      const total = sorted.length;
-      const data = sorted.slice(skip, skip + limit);
+        }),
+      ]);
+      /* A slug an editor typed by hand rather than one `slugify` produced.
+         Machine-generated slugs are always canonical, so this shortens a
+         page about as often as never -- but it stays, because the public
+         URL it would advertise is one the router cannot route. It is not
+         folded into `total`: counting it would mean reading every row,
+         which is the thing this change exists to stop doing. */
+      const data = rows.filter((row) => isCanonicalPublicSlug(row.slug));
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'scholarships') {
