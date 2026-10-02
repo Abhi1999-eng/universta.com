@@ -667,7 +667,7 @@ describe('country bulk contract (e2e)', () => {
       'living_min',
       'living_max',
       'application_fee',
-      'intakes',
+      'intake_months',
       'visa_type',
       'visa_fee',
       'visa_processing',
