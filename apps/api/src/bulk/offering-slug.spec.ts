@@ -15,7 +15,10 @@ import { offeringSlug } from './bulk-resources';
 describe('offeringSlug', () => {
   it('lets two universities teach the same programme', () => {
     const toronto = offeringSlug('university-of-toronto', 'MSc Data Science');
-    const melbourne = offeringSlug('university-of-melbourne', 'MSc Data Science');
+    const melbourne = offeringSlug(
+      'university-of-melbourne',
+      'MSc Data Science',
+    );
     expect(toronto).toBe('university-of-toronto-msc-data-science');
     expect(melbourne).toBe('university-of-melbourne-msc-data-science');
     expect(toronto).not.toBe(melbourne);
@@ -40,7 +43,9 @@ describe('offeringSlug', () => {
   it('falls back to the name when no university is given', () => {
     // The row will fail validation for the missing university anyway; the
     // slug should not throw on the way there.
-    expect(offeringSlug(undefined, 'MSc Data Science')).toBe('msc-data-science');
+    expect(offeringSlug(undefined, 'MSc Data Science')).toBe(
+      'msc-data-science',
+    );
     expect(offeringSlug('', 'MSc Data Science')).toBe('msc-data-science');
   });
 
