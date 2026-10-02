@@ -176,6 +176,27 @@ function slugOrFallback(row: BulkRow, fallbackSource: string) {
   return row.slug?.trim() || slugify(fallbackSource);
 }
 
+/**
+ * The slug for a university's offering of a course.
+ *
+ * Qualified by the university because the name is only unique within one.
+ * Where the sheet already repeats the university in the name -- the
+ * convention operators were told to follow while this was broken -- it is
+ * not repeated again, so "MSc Data Science at Oxford" under `oxford` stays
+ * `oxford-msc-data-science` rather than growing a second copy.
+ */
+export function offeringSlug(
+  universitySlug: string | undefined,
+  name: string,
+): string {
+  const university = slugify(universitySlug ?? '');
+  const offering = slugify(name);
+  if (!university) return offering;
+  if (offering === university || offering.startsWith(`${university}-`))
+    return offering;
+  return `${university}-${offering}`;
+}
+
 type RefRecord = { id: string; slug: string };
 type RefTable = {
   findFirst(args: { where: Record<string, unknown> }): Promise<unknown>;
@@ -1993,7 +2014,19 @@ const offerings: BulkResourceDefinition = {
     if (errors.length) return { errors };
     return {
       data: {
-        slug: slugOrFallback(row, row.name),
+        /* An offering's slug is unique across the whole catalogue, but its
+           name only has to be unique within its university -- the schema
+           says so: @@unique([universityId, name]). Deriving the slug from
+           the name alone collapsed those two rules into one, so the second
+           university to teach "MSc Data Science" produced a slug that was
+           already taken and its row was dropped. A sheet of forty-seven
+           offerings once loaded twenty-nine that way, silently.
+
+           The university is part of the slug now, which is the thing that
+           actually distinguishes two offerings of the same programme. An
+           explicit `slug` column still wins, for a sheet that wants to
+           name its own. */
+        slug: row.slug?.trim() || offeringSlug(row.universitySlug, row.name),
         name: row.name.trim(),
         universityId: (university as RefRecord).id,
         genericCourseId: (genericCourse as { id: string }).id,
