@@ -227,7 +227,13 @@ export function CountryUniversities({
               ? `${count} ${count === 1 ? 'university' : 'universities'} and ${courses} ${courses === 1 ? 'programme' : 'programmes'} profiled with tuition, entry requirements and deadlines.`
               : `${count} ${count === 1 ? 'university' : 'universities'} profiled with tuition, entry requirements and deadlines.`
           }
-          cta={{ href: '/universities', label: 'Explore all universities' }}
+          /* The destination is already chosen, so the way on is the rest
+             of this destination's institutions -- not the global directory,
+             which would drop the reader back into every country. */
+          cta={{
+            href: `/study-abroad/${country.slug}/universities`,
+            label: `All universities in ${country.name}`,
+          }}
         />
         <div className="h-grid h-grid--wide">
           {universities.slice(0, 6).map((university) => (
@@ -288,7 +294,10 @@ export function CountrySubjects({
               ? 'Explore the fields taught here, then see the courses and specializations inside each one.'
               : 'These fields are listed for this destination. The catalogue has no programmes under them yet.'
           }
-          cta={{ href: '/subjects', label: 'Browse the full subject taxonomy' }}
+          cta={{
+            href: `/study-abroad/${country.slug}/subjects`,
+            label: `All subjects in ${country.name}`,
+          }}
         />
         {taught.length ? (
           <div className="h-grid h-grid--4">{taught.map(card)}</div>
