@@ -18,7 +18,11 @@ import {
   type CountryRelations,
   type SectionColumn,
 } from './country-bulk';
-import { reconcileCourseTuition } from '../countries/country-course-tuition';
+import {
+  asDeriveClient,
+  deriveForCourse,
+  deriveForUniversity,
+} from '../catalog/derive-links';
 
 export type BulkRow = Record<string, string>;
 export type BulkField = {
@@ -1312,7 +1316,12 @@ const courses: BulkResourceDefinition = {
     };
   },
   async reconcile(tx, id, relations) {
+    /* The sheet's own destinations first -- those are an editor's, and
+       stated. Then everything that follows from the offerings, which is
+       where the rest of a course's destinations and its subjects come
+       from. */
     await reconcileCourseOfferings(tx, id, relations);
+    await deriveForCourse(asDeriveClient(tx), id);
   },
   toExportRow(record) {
     const offerings = (record.countryCourses ?? []) as Array<{
@@ -1615,6 +1624,13 @@ const universities: BulkResourceDefinition = {
       },
     };
   },
+  /* An institution is what gives its offerings a country and a published
+     state, so importing one moves every course it teaches: into a new
+     destination when its country changes, out of the catalogue when it is
+     taken off the site. */
+  async reconcile(tx, id) {
+    await deriveForUniversity(asDeriveClient(tx), id);
+  },
   toExportRow(record) {
     return {
       slug: record.slug,
@@ -1850,17 +1866,23 @@ const offerings: BulkResourceDefinition = {
       relations: { genericCourseId: (genericCourse as { id: string }).id },
     };
   },
-  /* A country's indicative tuition is the range its universities charge,
-     so writing an offering can change it. The reconciler only rewrites the
-     mappings an editor has not overridden. */
+  /* An offering is what puts a course in a destination at all, so writing
+     one moves everything downstream of it: which countries offer the
+     course, what they quote for it, and which subjects they teach because
+     of it.
+
+     This used to rewrite the tuition only. The mapping itself was left to
+     whoever typed it in, which meant a sheet could load forty-seven
+     offerings and leave every destination claiming nothing -- the
+     catalogue had the facts and no link between them until the next
+     deployment swept. The admin's own write paths were given the full
+     derivation; an import deserves the same, because an import is how most
+     of the catalogue actually arrives. */
   async reconcile(tx, _id, relations) {
     const courseId = (relations as { genericCourseId?: string } | null)
       ?.genericCourseId;
     if (!courseId) return;
-    await reconcileCourseTuition(
-      tx as Parameters<typeof reconcileCourseTuition>[0],
-      courseId,
-    );
+    await deriveForCourse(asDeriveClient(tx), courseId);
   },
   toExportRow(record) {
     return {

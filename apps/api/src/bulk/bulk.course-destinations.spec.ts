@@ -62,6 +62,10 @@ function offerings(
           created.push(data);
           return data;
         },
+        createMany: async ({ data }: { data: Record<string, unknown>[] }) => {
+          created.push(...data);
+          return { count: data.length };
+        },
         update: async (args: {
           where: Record<string, unknown>;
           data: Record<string, unknown>;
@@ -69,6 +73,28 @@ function offerings(
           updated.push({ ...args.where, ...args.data });
           return args.data;
         },
+        updateMany: async (args: {
+          where: Record<string, unknown>;
+          data: Record<string, unknown>;
+        }) => {
+          updated.push({ ...args.where, ...args.data });
+          return { count: 0 };
+        },
+      },
+      /* Writing a course now also re-reads what follows from its offerings.
+         This row has none, so the derivation runs and finds nothing, which
+         is what these assertions want: only the sheet's own destinations
+         should appear below. */
+      universityCourseOffering: { findMany: async () => [] },
+      countrySubject: {
+        findMany: async () => [],
+        createMany: async () => ({ count: 0 }),
+        deleteMany: async () => ({ count: 0 }),
+      },
+      countrySubSubject: {
+        findMany: async () => [],
+        createMany: async () => ({ count: 0 }),
+        deleteMany: async () => ({ count: 0 }),
       },
     },
   };
