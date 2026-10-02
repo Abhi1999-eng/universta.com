@@ -95,6 +95,69 @@ export function cellState<T>(
   return { kind: 'value', value: parse(value) };
 }
 
+const MONTH_NAMES = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
+
+/**
+ * The months a destination takes students in, as the country editor records
+ * them: a plain list of month numbers on the country itself.
+ *
+ * This is deliberately not the `intakes` column beside it. That one resolves
+ * against the Intake master table, which exists so a course mapping can hang
+ * an application deadline off a named intake -- and which is seeded with
+ * whatever handful of intakes somebody created. The country page reads
+ * neither of those; it reads this list. A sheet that could only write the
+ * master relation could not set what the page actually shows, and an import
+ * naming a month nobody had created as a master was rejected outright.
+ *
+ * Accepts the month's name, its usual three-letter short form, or its
+ * number, because an operator typing a spreadsheet will use all three.
+ */
+export function parseIntakeMonths(value: string, errors: string[]): number[] {
+  const months: number[] = [];
+  for (const term of value.split('|').map((part) => part.trim())) {
+    if (!term) continue;
+    const lower = term.toLowerCase();
+    const numeric = /^\d{1,2}$/.test(term) ? Number(term) : null;
+    const index =
+      numeric !== null
+        ? numeric
+        : MONTH_NAMES.findIndex(
+            (name) => name === lower || name.slice(0, 3) === lower,
+          ) + 1;
+    if (!index || index < 1 || index > 12) {
+      errors.push(`intake month "${term}" is not a month`);
+      continue;
+    }
+    if (!months.includes(index)) months.push(index);
+  }
+  return months.sort((left, right) => left - right);
+}
+
+/** The reverse, for an export that has to round-trip. */
+export function intakeMonthNames(value: unknown): string {
+  if (!Array.isArray(value)) return '';
+  return value
+    .filter((month): month is number => typeof month === 'number')
+    .sort((left, right) => left - right)
+    .map((month) => MONTH_NAMES[month - 1])
+    .filter(Boolean)
+    .map((name) => name[0].toUpperCase() + name.slice(1))
+    .join(' | ');
+}
+
 /** A non-negative decimal, or a reason it is not one. */
 function decimalPart(text: string): Prisma.Decimal | null {
   if (!/^\d+(?:\.\d+)?$/.test(text)) return null;
