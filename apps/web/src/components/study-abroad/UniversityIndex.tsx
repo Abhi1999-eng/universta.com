@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { FlagMark } from './FlagMark';
 
@@ -62,7 +62,6 @@ export function UniversityIndex({
 }: {
   universities: UniversityIndexRow[];
 }) {
-  const router = useRouter();
   const params = useSearchParams();
   const urlQuery = params.get('q') ?? '';
   const [query, setQuery] = useState(urlQuery);
@@ -78,14 +77,6 @@ export function UniversityIndex({
     setSeenUrlQuery(urlQuery);
     setQuery(urlQuery);
   }
-
-  const commit = (term: string) => {
-    const next = new URLSearchParams(params.toString());
-    if (term.trim()) next.set('q', term.trim());
-    else next.delete('q');
-    const search = next.toString();
-    router.push(search ? `/universities?${search}` : '/universities');
-  };
 
   /* Built from the catalogue, so a filter can never offer a value that
      would empty the grid. */

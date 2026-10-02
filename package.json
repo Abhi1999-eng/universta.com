@@ -2,7 +2,10 @@
   "name": "universta-platform",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:web": "npm --workspace apps/web run dev",
     "dev:admin": "npm --workspace apps/admin run dev -- --port 3001",
@@ -22,7 +25,9 @@
     "db:studio": "npm --workspace apps/api exec -- prisma studio",
     "db:seed": "npm --workspace apps/api exec -- prisma db seed",
     "seed:phase1-demo": "npm --workspace apps/api run db:seed:demo",
-    "qa:dataset": "npm --workspace apps/api run db:qa-dataset --"
+    "qa:dataset": "npm --workspace apps/api run db:qa-dataset --",
+    "verify": "npm run db:format -- --check && npm run db:validate && npm run lint",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "engines": {
     "node": ">=24"

@@ -1,0 +1,12 @@
+#!/bin/sh
+# The cheap half of CI, before it costs a runner.
+#
+# Three of one session's CI failures were formatting alone -- a Prisma schema
+# comment style, a Prettier line break in a spec, a trailing newline. Each one
+# failed the build about ninety seconds in, after a full checkout, install and
+# database, and each cost a whole cycle to learn something that takes seconds
+# here.
+#
+# Only the gates that need no database and no browser, so this stays short.
+# `git push --no-verify` skips it.
+exec npm run verify

@@ -15,6 +15,12 @@ inputs:
     description: The CI-only database password.
     required: false
     default: ''
+  playwright:
+    description: >-
+      Set to "true" to install the Chromium build the browser suite drives,
+      from cache when the pinned Playwright version has not moved.
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -77,3 +83,34 @@ runs:
       if: inputs.database == 'true'
       shell: bash
       run: npm --workspace apps/api run db:seed:demo
+
+    # Chromium is the same ~46s download on every job of every run, and it
+    # only changes when Playwright does. Keyed on the installed version, so
+    # a bump misses the cache once and then stops costing anything again.
+    - name: Resolve the pinned Playwright version
+      if: inputs.playwright == 'true'
+      id: playwright-version
+      shell: bash
+      run: |
+        version="$(npm --workspace apps/admin exec -- playwright --version | tr -dc '0-9.')"
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the Playwright browser cache
+      if: inputs.playwright == 'true'
+      id: playwright-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+    # The browser itself comes from the cache; its system libraries are the
+    # runner's and are not cached, so they are installed either way.
+    - name: Install Playwright Chromium
+      if: inputs.playwright == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
+
+    - name: Install only Chromium's system libraries
+      if: inputs.playwright == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: npm --workspace apps/admin exec -- playwright install-deps chromium
