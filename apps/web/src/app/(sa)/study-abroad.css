@@ -2374,6 +2374,10 @@
    batches a draft, so its foot holds a submit that has to be reachable at
    every width; this one has nothing pending, so the foot is only the mobile
    sheet's way out and has no business on the desktop sidebar. */
+/* With no filters to offer, the panel stands down -- and the row it sat in
+   has to as well, or the results start 262px in from a sidebar that is not
+   there any more. */
+.sa .results--open{ grid-template-columns: minmax(0, 1fr); }
 .sa .filters-panel--live .filters-panel__foot{ display: none; }
 @media (max-width: 999px){
 .sa .filters-panel--live .filters-panel__foot{ display: block; }
