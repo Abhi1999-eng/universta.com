@@ -47,7 +47,6 @@ export type CountryRelations = {
   /** Taken from the same cell as `subjects`, and written beside them. */
   subSubjects: CellState<string[]>;
   tags: CellState<string[]>;
-  intakes: CellState<string[]>;
   faqs: CellState<FaqInput[]>;
   sections: Partial<Record<SectionColumn, CellState<string>>>;
   cost: Record<string, unknown> | null;
@@ -396,27 +395,6 @@ async function resolveTags(
   return ids;
 }
 
-async function resolveIntakes(
-  terms: string[],
-  prisma: PrismaService,
-  errors: string[],
-): Promise<string[]> {
-  const ids: string[] = [];
-  for (const term of terms) {
-    const slug = slugify(term);
-    const intake = await prisma.intake.findFirst({
-      where: { status: 'ACTIVE', OR: [{ slug }, { name: term }] },
-      select: { id: true },
-    });
-    if (!intake) {
-      errors.push(`intake "${term}" was not found`);
-      continue;
-    }
-    if (!ids.includes(intake.id)) ids.push(intake.id);
-  }
-  return ids;
-}
-
 /** Media is referenced, never created: an import must not mint a MediaAsset
  * row pointing at a URL nobody has verified. */
 async function resolveMedia(
@@ -453,7 +431,6 @@ export async function parseCountryRelations(
 ): Promise<CountryRelations> {
   const subjectCell = cellState(row.subject, splitTerms);
   const tagCell = cellState(row.tag, splitTerms);
-  const intakeCell = cellState(row.intakes, splitTerms);
 
   let faqCell: CellState<FaqInput[]> = { kind: 'absent' };
   if (row.faqs !== undefined) {
@@ -500,13 +477,6 @@ export async function parseCountryRelations(
             value: await resolveTags(tagCell.value, prisma, errors),
           }
         : tagCell,
-    intakes:
-      intakeCell.kind === 'value'
-        ? {
-            kind: 'value',
-            value: await resolveIntakes(intakeCell.value, prisma, errors),
-          }
-        : intakeCell,
     faqs: faqCell,
     sections,
     cost: compact({
@@ -607,29 +577,26 @@ export async function reconcileCountry(
       await tx.countryTagMap.create({ data: { countryId, tagId } });
   }
 
-  if (relations.intakes.kind !== 'absent') {
-    const ids =
-      relations.intakes.kind === 'clear' ? [] : relations.intakes.value;
-    const existing = await tx.countryIntake.findMany({ where: { countryId } });
-    const keep = new Map(existing.map((row) => [row.intakeId, row]));
-    await tx.countryIntake.deleteMany({
-      where: {
-        countryId,
-        intakeId: { notIn: ids.length ? ids : ['__none__'] },
-      },
-    });
-    for (const [index, intakeId] of ids.entries()) {
-      const current = keep.get(intakeId);
-      if (current) {
-        // Membership-only import: the application window, notes and ordering
-        // an editor set are not the import's to discard.
-        continue;
-      }
-      await tx.countryIntake.create({
-        data: { countryId, intakeId, displayOrder: index },
-      });
-    }
-  }
+  /* The country sheet no longer carries intakes, and this is where they
+     were written.
+
+     `CountryIntake` is not a list of months -- it holds whether an intake is
+     the major one, when applications open and close, and the notes beside
+     both. None of that has an editor on the country page: the form offers
+     twelve checkboxes, which are `intakeMonths` on the country itself, and
+     that is what the page renders. So the only writer this relation ever had
+     was an import, which could set membership and nothing else, against a
+     master table seeded with whatever intakes somebody had created.
+
+     The master stays -- leads, student applications, course offerings and
+     course-country mappings all hang off it, and those are real. What is
+     gone is a column that asked an operator to fill in a relation nobody
+     could read and nobody could finish. Rows already stored are left exactly
+     as they are.
+
+     If the application window is wanted on the country page, it needs an
+     editor first, and then this can come back as something that writes more
+     than a month. */
 
   if (relations.faqs.kind !== 'absent') {
     const rows = relations.faqs.kind === 'clear' ? [] : relations.faqs.value;

@@ -244,7 +244,6 @@ const countries: BulkResourceDefinition = {
     'living_min',
     'living_max',
     'application_fee',
-    'intakes',
     'intake_months',
     'visa_type',
     'visa_fee',
@@ -328,13 +327,6 @@ const countries: BulkResourceDefinition = {
       required: false,
       type: 'text',
       description: 'A single fee ("60") or a range ("60-120").',
-    },
-    {
-      key: 'intakes',
-      label: 'intakes',
-      required: false,
-      type: 'relation',
-      description: 'Pipe-separated intake names.',
     },
     {
       key: 'intake_months',
@@ -456,7 +448,6 @@ const countries: BulkResourceDefinition = {
     living_min: '700',
     living_max: '1100',
     application_fee: '60-120',
-    intakes: 'September | January',
     intake_months: 'September | January',
     visa_type: 'Student residence permit',
     visa_fee: 'USD 85',
@@ -682,10 +673,6 @@ export function exportCountryRow(
       feeMin && feeMax && feeMin !== feeMax
         ? `${feeMin}-${feeMax}`
         : feeMin || feeMax,
-    intakes: (rel.intakes ?? [])
-      .map((row) => row.intake?.name ?? '')
-      .filter(Boolean)
-      .join(' | '),
     intake_months: intakeMonthNames(record.intakeMonths),
     visa_type: work.visaType ?? '',
     // One client column carries both stored values: "USD 185" when a currency

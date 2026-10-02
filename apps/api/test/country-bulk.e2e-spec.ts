@@ -36,7 +36,6 @@ describe('country bulk contract (e2e)', () => {
   const tagIds: string[] = [];
   let mediaId = '';
   let mediaUrl = '';
-  let intakeName = '';
 
   // The service writes an audit row, which reads request metadata off an
   // Express request, so the stub has to answer those calls.
@@ -139,11 +138,6 @@ describe('country bulk contract (e2e)', () => {
       });
       tagIds.push(tag.id);
     }
-    const intake = await prisma.intake.findFirstOrThrow({
-      where: { status: 'ACTIVE' },
-    });
-    intakeName = intake.name;
-
     mediaUrl = `https://media.example.invalid/${stamp}.png`;
     const media = await prisma.mediaAsset.create({
       data: {
@@ -217,7 +211,7 @@ describe('country bulk contract (e2e)', () => {
     rank_order: '5',
     subject: `${subjectA} | ${subjectB}`,
     tag: `bulktag-one-${stamp}`,
-    intakes: intakeName,
+    intake_months: 'April | October',
     faqs: JSON.stringify([
       {
         question: 'Can I work?',
@@ -243,7 +237,7 @@ describe('country bulk contract (e2e)', () => {
     expect(row.displayOrder).toBe(5);
     expect(row.subjectMaps).toHaveLength(2);
     expect(row.tagMaps).toHaveLength(1);
-    expect(row.intakes).toHaveLength(1);
+    expect(row.intakeMonths).toEqual([4, 10]);
     expect(row.faqs).toHaveLength(1);
     expect(String(row.costProfile?.tuitionMin)).toBe('9000');
     expect(row.workProfile?.visaType).toBe('Student permit');
@@ -359,7 +353,11 @@ describe('country bulk contract (e2e)', () => {
     expect(badPath.errors[0].errors.join(' ')).toContain('is not under');
   });
 
-  it('keeps editor-set intake metadata when an import only restates membership', async () => {
+  it('leaves intake rows an editor owns alone, because it no longer writes them', async () => {
+    /* `CountryIntake` holds the application window and the notes beside it,
+       none of which the country page can edit. The sheet used to be its only
+       writer and could set membership and nothing else, so the column is
+       gone. What is already stored must survive an import untouched. */
     const row = await country();
     await prisma.countryIntake.updateMany({
       where: { countryId: row.id },
@@ -369,10 +367,14 @@ describe('country bulk contract (e2e)', () => {
         notes: 'Editor note',
       },
     });
+    const before = await country();
     await importRows([baseRow()]);
     const after = await country();
-    expect(after.intakes[0].applicationOpeningMonth).toBe(3);
-    expect(after.intakes[0].notes).toBe('Editor note');
+    expect(after.intakes).toHaveLength(before.intakes.length);
+    if (after.intakes.length) {
+      expect(after.intakes[0].applicationOpeningMonth).toBe(3);
+      expect(after.intakes[0].notes).toBe('Editor note');
+    }
   });
 
   it('reconciles FAQs without duplicating them on re-import', async () => {
