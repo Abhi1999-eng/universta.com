@@ -6,6 +6,13 @@ import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
 import { counsellingHref } from '@/lib/counselling-link';
+import {
+  academicRows,
+  englishRows,
+  feeRange,
+  hasEntryDetail,
+  intakeRows,
+} from '@/lib/course-entry';
 
 /**
  * A programme's guide, in the approved design.
@@ -43,6 +50,10 @@ export function CourseGuide({
   if (curriculum) order.push('curriculum');
   if (eligibility) order.push('eligibility');
   if (availability.length) order.push('destinations');
+  /* A destination that is only a name adds a card saying nothing, so the
+     section is built from the ones that actually recorded something. */
+  const detailed = availability.filter(hasEntryDetail);
+  if (detailed.length) order.push('entry');
   if (apply) order.push('apply');
   if (careers) order.push('careers');
   if (faqs.length) order.push('faqs');
@@ -216,6 +227,141 @@ export function CourseGuide({
                   {row.country.name}
                 </Link>
               ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {detailed.length ? (
+        <section className={band('entry')} id="entry">
+          <div className="wrap">
+            <SectionHead
+              n={n('entry')}
+              eyebrow="Entry"
+              title="What each destination asks for"
+              lead="The same programme is admitted on different terms in different countries. Only what the catalogue records is shown -- a figure missing here has not been set, not set to zero."
+            />
+            <div className="entrygrid">
+              {detailed.map((row) => {
+                const tuition = feeRange(row.tuition);
+                const applicationFee = feeRange(row.applicationFee);
+                const academic = academicRows(row);
+                const english = englishRows(row);
+                const intakes = intakeRows(row);
+                return (
+                  <article className="entrycard" key={row.id}>
+                    <h3 className="entrycard__t">
+                      <Link href={`/study-abroad/${row.country.slug}`}>
+                        {row.country.name}
+                      </Link>
+                    </h3>
+
+                    {tuition || applicationFee ? (
+                      <dl className="entrycard__facts">
+                        {tuition ? (
+                          <div>
+                            <dt>Tuition</dt>
+                            <dd>{tuition}</dd>
+                          </div>
+                        ) : null}
+                        {applicationFee ? (
+                          <div>
+                            <dt>Application fee</dt>
+                            <dd>{applicationFee}</dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    ) : null}
+
+                    {academic.length ? (
+                      <dl className="entrycard__facts">
+                        {academic.map((fact) => (
+                          <div key={fact.label}>
+                            <dt>{fact.label}</dt>
+                            <dd>{fact.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
+
+                    {english.length ? (
+                      <>
+                        <p className="entrycard__label">
+                          <span className="label">English, minimum</span>
+                        </p>
+                        <dl className="entrycard__facts">
+                          {english.map((fact) => (
+                            <div key={fact.label}>
+                              <dt>{fact.label}</dt>
+                              <dd>{fact.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </>
+                    ) : null}
+
+                    {row.englishRequirementsText?.trim() ? (
+                      <p className="entrycard__note">
+                        {row.englishRequirementsText}
+                      </p>
+                    ) : null}
+
+                    {intakes.length ? (
+                      <table className="entrytable">
+                        <caption className="sr-only">
+                          Intakes and application deadlines in{' '}
+                          {row.country.name}
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Intake</th>
+                            <th scope="col">Apply by</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {intakes.map((intake) => (
+                            <tr key={intake.id}>
+                              <th scope="row">{intake.name}</th>
+                              <td>
+                                {intake.deadline ?? 'Deadline not published'}
+                                {intake.notes ? (
+                                  <span className="entrytable__note">
+                                    {intake.notes}
+                                  </span>
+                                ) : null}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : null}
+
+                    {row.admissionRequirements?.trim() ? (
+                      <p className="entrycard__note">
+                        {row.admissionRequirements}
+                      </p>
+                    ) : null}
+                    {row.applicationNotes?.trim() ? (
+                      <p className="entrycard__note">{row.applicationNotes}</p>
+                    ) : null}
+
+                    {row.sourceReference ? (
+                      <p className="entrycard__src">
+                        <a
+                          href={row.sourceReference}
+                          rel="nofollow noopener"
+                          target="_blank"
+                        >
+                          The university&rsquo;s own page for this programme
+                        </a>
+                        {row.verifiedAt
+                          ? `, checked ${new Date(row.verifiedAt).toISOString().slice(0, 10)}`
+                          : null}
+                      </p>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
