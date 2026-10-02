@@ -139,6 +139,9 @@ export function UniversityIndex({
     list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
   const active = countries.length + types.length;
+  /* Nothing to narrow by: no destination carries an institution and no type
+     is recorded. The panel and its toggle both hang off this. */
+  const hasFilters = countryOptions.length > 0 || typeOptions.length > 1;
 
   return (
     <section
@@ -154,7 +157,12 @@ export function UniversityIndex({
         <h2 className="sr-only" id="results-heading">
           All universities
         </h2>
-        <div className="results">
+        <div className={hasFilters ? 'results' : 'results results--open'}>
+          {/* Both groups are built from the catalogue, so an empty catalogue
+              offers nothing to narrow by and the panel is a titled box around
+              nothing. It stands down with its groups rather than framing the
+              absence of them. */}
+          {hasFilters ? (
           <aside
             className="filters-panel filters-panel--live"
             id="uni-filters"
@@ -235,6 +243,7 @@ export function UniversityIndex({
               </button>
             </div>
           </aside>
+          ) : null}
 
           <div className="results__main">
             <div className="results__bar">
@@ -242,15 +251,17 @@ export function UniversityIndex({
                 {shown.length} {shown.length === 1 ? 'university' : 'universities'}
               </span>
               <div className="results__tools">
-                <button
-                  className="chipbtn filters-toggle"
-                  type="button"
-                  aria-controls="uni-filters"
-                  aria-expanded={filtersOpen}
-                  onClick={() => setFiltersOpen(true)}
-                >
-                  Filters {active ? <em>{active}</em> : null}
-                </button>
+                {hasFilters ? (
+                  <button
+                    className="chipbtn filters-toggle"
+                    type="button"
+                    aria-controls="uni-filters"
+                    aria-expanded={filtersOpen}
+                    onClick={() => setFiltersOpen(true)}
+                  >
+                    Filters {active ? <em>{active}</em> : null}
+                  </button>
+                ) : null}
                 <label className="sortsel">
                   <span className="sr-only">Sort universities</span>
                   <select value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
@@ -326,8 +337,14 @@ export function UniversityIndex({
               </div>
             ) : (
               <p className="dir__none">
-                No university matches that. Clear a filter, or search for a
-                destination instead.
+                {/* Telling a reader to clear a filter they have not set, or
+                    to search a catalogue that holds nothing, is advice they
+                    cannot take. Each case says only what is true of it. */}
+                {universities.length === 0
+                  ? 'No university is published yet. Destinations and subjects are worth a look in the meantime.'
+                  : active || query.trim()
+                    ? 'No university matches that. Clear a filter, or try a different search.'
+                    : 'No university matches that.'}
               </p>
             )}
           </div>

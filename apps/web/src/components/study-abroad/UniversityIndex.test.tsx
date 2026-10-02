@@ -82,6 +82,40 @@ describe('the university directory', () => {
   });
 
   it('says so plainly when the catalogue is empty', () => {
-    expect(render([])).toContain('No university matches that');
+    /* Not "no match" -- there is nothing to match against. */
+    expect(render([])).toContain('No university is published yet');
+  });
+});
+
+/**
+ * Found by emptying the production catalogue and looking at the page.
+ *
+ * Both filter groups are built from the catalogue, so an empty one offers
+ * nothing to narrow by — and the panel rendered anyway, a titled box framing
+ * the absence of its own contents. The empty message, meanwhile, told a
+ * reader to clear a filter they had not set.
+ */
+describe('the directory with nothing in it', () => {
+  it('stands the filter panel down when there is nothing to narrow by', () => {
+    const html = render([]);
+    expect(html).not.toContain('filters-panel');
+    expect(html).not.toContain('filters-toggle');
+  });
+
+  it('says what is actually true of an empty catalogue', () => {
+    const html = render([]);
+    expect(html).toContain('No university is published yet');
+    expect(html).not.toContain('Clear a filter');
+  });
+
+  it('keeps the panel the moment there is one destination to offer', () => {
+    expect(render([row()])).toContain('filters-panel');
+  });
+
+  it('does not offer to clear a filter nobody has set', () => {
+    /* A catalogue with rows, no filter, no search: the reader has nothing
+       to undo, so they are not told to undo anything. */
+    const html = render([row({ name: 'Aalto' })]);
+    expect(html).not.toContain('Clear a filter');
   });
 });
