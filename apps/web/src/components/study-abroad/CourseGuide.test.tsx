@@ -10,6 +10,7 @@ vi.mock('./StudyAbroadShell', () => ({
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CourseGuide } from './CourseGuide';
 import type { CourseAvailability, CourseDetail } from '@/lib/catalog';
+import { toScholarshipCards } from '@/lib/scholarship-card';
 
 /**
  * The same programme is admitted on different terms in different countries,
@@ -50,8 +51,13 @@ const course = (rows: CourseAvailability[]): CourseDetail =>
     jsonLd: {},
   }) as unknown as CourseDetail;
 
-const html = (rows: CourseAvailability[]) =>
-  renderToStaticMarkup(<CourseGuide course={course(rows)} />);
+const html = (rows: CourseAvailability[], scholarships: unknown[] = []) =>
+  renderToStaticMarkup(
+    <CourseGuide
+      course={course(rows)}
+      scholarships={toScholarshipCards(scholarships)}
+    />,
+  );
 
 describe('what each destination asks for', () => {
   it('prints the grade floors a destination set', () => {
@@ -142,5 +148,57 @@ describe('what each destination asks for', () => {
     const markup = html([availability({ englishRequirements: { ielts: '6.5' } })]);
     expect(markup).toContain('01');
     expect(markup).toContain('02');
+  });
+});
+
+/**
+ * A scholarship can be recorded against the offerings that teach a
+ * programme, and the course page never asked for them. A reader deciding
+ * whether they could afford the course was told nothing about the money
+ * attached to it.
+ */
+describe('funding on a course', () => {
+  const award = {
+    id: 'sch-1',
+    title: 'DAAD Masters Award',
+    slug: 'daad-masters',
+    benefitType: 'FULL_TUITION',
+    amount: '12000.00',
+    currencyCode: 'EUR',
+    deadline: '2027-01-15',
+    provider: { name: 'DAAD' },
+  };
+
+  it('opens a funding band when an award is recorded against the programme', () => {
+    const markup = html([availability()], [award]);
+    expect(markup).toContain('Scholarships for MSc Computer Science');
+    expect(markup).toContain('DAAD Masters Award');
+    expect(markup).toContain('EUR 12,000');
+    expect(markup).toContain('15 Jan 2027');
+  });
+
+  it('says plainly that eligibility is not an award', () => {
+    expect(html([availability()], [award])).toContain(
+      'not a guarantee of an award',
+    );
+  });
+
+  it('counts one award as one and two as two', () => {
+    expect(html([availability()], [award])).toContain('1 award is');
+    expect(
+      html([availability()], [award, { ...award, id: 'sch-2', slug: 'other' }]),
+    ).toContain('2 awards are');
+  });
+
+  it('stands the band down when the catalogue records no funding', () => {
+    expect(html([availability()])).not.toContain('Scholarships for');
+  });
+
+  it('keeps the numbered run sequential with the band in it', () => {
+    const markup = html([availability({ englishRequirements: { ielts: '6.5' } })], [award]);
+    expect(markup).toContain('01');
+    expect(markup).toContain('02');
+    expect(markup).toContain('03');
+    expect(markup).not.toContain('04');
   });
 });

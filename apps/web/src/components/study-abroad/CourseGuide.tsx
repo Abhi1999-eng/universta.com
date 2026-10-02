@@ -5,6 +5,8 @@ import { CourseCards } from './CourseCards';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
+import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
+import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { counsellingHref } from '@/lib/counselling-link';
 import {
   academicRows,
@@ -25,8 +27,13 @@ import {
 export function CourseGuide({
   course,
   country,
+  scholarships = [],
 }: {
   course: CourseDetail;
+  /** Awards recorded against this programme wherever it is taught. Read on
+   *  the page rather than carried on the course record, so a failure to
+   *  reach the funding list costs a section and not the route. */
+  scholarships?: ScholarshipCard[];
   /** The destination the visitor arrived under, so counselling booked from
    *  here starts with the course and that country already stated. */
   country?: string;
@@ -55,6 +62,7 @@ export function CourseGuide({
   const detailed = availability.filter(hasEntryDetail);
   if (detailed.length) order.push('entry');
   if (apply) order.push('apply');
+  if (scholarships.length) order.push('funding');
   if (careers) order.push('careers');
   if (faqs.length) order.push('faqs');
   if (related.length) order.push('similar');
@@ -380,6 +388,20 @@ export function CourseGuide({
                 <RichText key={index} value={line} />
               ))}
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {scholarships.length ? (
+        <section className={band('funding')} id="funding">
+          <div className="wrap">
+            <SectionHead
+              n={n('funding')}
+              eyebrow="Funding"
+              title={`Scholarships for ${course.name}`}
+              lead={`${scholarships.length} ${scholarships.length === 1 ? 'award is' : 'awards are'} recorded against this programme at the universities that teach it. ${FUNDING_CAVEAT}`}
+            />
+            <ScholarshipCards scholarships={scholarships} />
           </div>
         </section>
       ) : null}

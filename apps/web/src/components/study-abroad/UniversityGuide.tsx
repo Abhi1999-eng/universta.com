@@ -4,6 +4,8 @@ import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { CourseCards } from './CourseCards';
 import { FlagMark } from './FlagMark';
 import { SectionHead } from './SectionHead';
+import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
+import type { ScholarshipCard } from '@/lib/scholarship-card';
 
 export type UniversityOffering = {
   id: string;
@@ -120,8 +122,13 @@ function asCourse(offering: UniversityOffering, university: string): Course {
  */
 export function UniversityGuide({
   university,
+  scholarships = [],
 }: {
   university: UniversityRecord;
+  /** Awards the catalogue records against this institution. Read on the
+   *  page rather than carried on the record, because a failure to reach the
+   *  funding list should cost a section, not the university. */
+  scholarships?: ScholarshipCard[];
 }) {
   const { country, offerings } = university;
   const overview = university.overview?.trim();
@@ -131,6 +138,7 @@ export function UniversityGuide({
   const order: string[] = ['snapshot'];
   if (hasOverview) order.push('about');
   if (offerings.length) order.push('programmes');
+  if (scholarships.length) order.push('funding');
   const hasContact = Boolean(
     university.websiteUrl || university.admissionsEmail || university.phone,
   );
@@ -402,6 +410,20 @@ export function UniversityGuide({
                 `/universities/${university.slug}/courses/${course.slug}`
               }
             />
+          </div>
+        </section>
+      ) : null}
+
+      {scholarships.length ? (
+        <section className={band('funding')} id="funding">
+          <div className="wrap">
+            <SectionHead
+              n={n('funding')}
+              eyebrow="Funding"
+              title={`Scholarships at ${university.name}`}
+              lead={`${scholarships.length} ${scholarships.length === 1 ? 'award is' : 'awards are'} recorded against this institution. ${FUNDING_CAVEAT}`}
+            />
+            <ScholarshipCards scholarships={scholarships} showCountries={false} />
           </div>
         </section>
       ) : null}

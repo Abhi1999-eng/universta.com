@@ -26,7 +26,6 @@ import {
   CountryTestimonials,
   CountryUniversities,
   type CountryCourseCard,
-  type CountryScholarshipCard,
 } from '@/components/study-abroad/CountryLinkSections';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
 import { CountryConsultants } from '@/components/study-abroad/CountryConsultants';
@@ -37,6 +36,8 @@ import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { richTextToPlainText } from '@/components/phase1/RichText';
 import { getCourses } from '@/lib/catalog';
 import { phaseList } from '@/lib/phase1';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { toScholarshipCards } from '@/lib/scholarship-card';
 import { getDestinations, getStudyAbroadCountry, otherDestinations } from '@/lib/study-abroad';
 import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
@@ -90,7 +91,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     /* More than the six the section shows: an editor's curated courses lead
        it, and they have to be in hand to be put first. */
     getCourses({ country: countrySlug, limit: '24' }).catch(() => null),
-    phaseList<CountryScholarshipCard>('scholarships', {
+    phaseList<AnyRecord>('scholarships', {
       country: countrySlug,
       limit: '6',
     }).catch(() => null),
@@ -98,7 +99,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   if (!page) notFound();
 
   const publishedCourses = (courseList?.data ?? []) as CountryCourseCard[];
-  const countryScholarships = scholarshipList?.data ?? [];
+  const countryScholarships = toScholarshipCards(scholarshipList?.data);
 
   const { country, profiles, sections, faqs, consultantCards } = page;
   const testimonials = page.testimonials ?? [];

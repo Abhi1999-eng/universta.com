@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { Country, CountryTestimonial, ProfileSummary } from '@/lib/countries';
 import { monthNames } from '@/lib/study-abroad-view';
 import { SectionHead } from './SectionHead';
+import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
+import type { ScholarshipCard } from '@/lib/scholarship-card';
 
 /**
  * The country guide's sections that link out to the rest of the catalogue:
@@ -533,15 +535,14 @@ export function CountryConnect({ country, alt }: { country: Country; alt: boolea
   );
 }
 
-export type CountryScholarshipCard = {
-  id: string;
-  title: string;
-  slug: string;
-  summary: string | null;
-  provider?: { name?: string | null } | null;
-};
-
-/** "Funding to look into". */
+/** "Funding to look into".
+ *
+ * The lead has always promised "the eligibility each one publishes" and the
+ * cards carried a title, a summary and a provider -- not the eligibility,
+ * the award or the closing date, all of which the list endpoint sends. They
+ * use the funding card now, which prints what the record holds.
+ *
+ * The destination is the page, so the cards do not repeat it. */
 export function CountryScholarships({
   country,
   scholarships,
@@ -549,7 +550,7 @@ export function CountryScholarships({
   alt,
 }: {
   country: Country;
-  scholarships: CountryScholarshipCard[];
+  scholarships: ScholarshipCard[];
   n?: string | null;
   alt: boolean;
 }) {
@@ -562,26 +563,13 @@ export function CountryScholarships({
           index={n}
           eyebrow="Funding"
           title={`Scholarships to study in ${country.name}`}
-          lead="Funding open to international students here, with the eligibility each one publishes."
-          cta={{ href: '/scholarships', label: 'Find scholarships' }}
+          lead={`Funding open to international students here. ${FUNDING_CAVEAT}`}
+          cta={{ href: `/scholarships?country=${country.slug}`, label: 'Find scholarships' }}
         />
-        <div className="h-grid h-grid--wide">
-          {scholarships.slice(0, 6).map((scholarship) => (
-            <Link
-              className="h-card"
-              href={`/scholarships/${scholarship.slug}`}
-              key={scholarship.id}
-            >
-              <strong className="h-card__t">{scholarship.title}</strong>
-              {scholarship.summary ? (
-                <span className="h-card__d">{scholarship.summary}</span>
-              ) : null}
-              {scholarship.provider?.name ? (
-                <span className="h-card__m">{scholarship.provider.name}</span>
-              ) : null}
-            </Link>
-          ))}
-        </div>
+        <ScholarshipCards
+          scholarships={scholarships.slice(0, 6)}
+          showCountries={false}
+        />
       </div>
     </section>
   );

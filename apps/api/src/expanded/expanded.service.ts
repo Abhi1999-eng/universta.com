@@ -494,29 +494,6 @@ export class ExpandedService {
               },
             }
           : {}),
-        ...(query.offering
-          ? { offerings: { some: { offering: { slug: query.offering } } } }
-          : {}),
-        ...(query.subject
-          ? {
-              offerings: {
-                some: {
-                  offering: {
-                    genericCourse: { subject: { slug: query.subject } },
-                  },
-                },
-              },
-            }
-          : {}),
-        ...(query.degreeLevel
-          ? {
-              offerings: {
-                some: {
-                  offering: { courseLevel: { code: query.degreeLevel } },
-                },
-              },
-            }
-          : {}),
         ...(query.type ? { benefitType: query.type } : {}),
         ...(query.amountMin
           ? { amount: { gte: Number(query.amountMin) } }
@@ -528,13 +505,45 @@ export class ExpandedService {
           ? { OR: [{ deadline: null }, { deadline: { gte: new Date() } }] }
           : {}),
       };
+      /* Four filters reach the scholarship through the same relation. Spread
+         into one object literal they overwrite each other -- a request for
+         both a subject and a degree level kept only the last one written --
+         so each contributes its own `some` and they are met together.
+         `publishedWhereScheduled` already holds an AND, so these are added
+         to it rather than over it. */
+      const throughOfferings = [
+        query.offering ? { offering: { slug: query.offering } } : null,
+        /* A generic course, taught anywhere. The course page asks this: a
+           reader is looking at the programme, not at one university's
+           instance of it. */
+        query.course
+          ? { offering: { genericCourse: { slug: query.course } } }
+          : null,
+        query.subject
+          ? {
+              offering: { genericCourse: { subject: { slug: query.subject } } },
+            }
+          : null,
+        query.degreeLevel
+          ? { offering: { courseLevel: { code: query.degreeLevel } } }
+          : null,
+      ].filter(Boolean) as Array<Record<string, unknown>>;
+      if (throughOfferings.length)
+        where.AND = [
+          ...((where.AND as unknown[] | undefined) ?? []),
+          ...throughOfferings.map((some) => ({ offerings: { some } })),
+        ];
       const all = await this.prisma.scholarship.findMany({
         where,
         take: FEATURED_FETCH_CAP,
         include: {
           provider: true,
           countries: {
-            include: { country: { select: { name: true, slug: true } } },
+            /* The card marks each destination with its ISO code, the way the
+               reference build's flag chip does. */
+            include: {
+              country: { select: { name: true, slug: true, iso2Code: true } },
+            },
           },
           universities: {
             include: { university: { select: { name: true, slug: true } } },

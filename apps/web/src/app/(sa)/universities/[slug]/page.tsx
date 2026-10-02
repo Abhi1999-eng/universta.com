@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
-import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
+import { phaseDetail, phaseList, phaseResolveRedirect } from '@/lib/phase1';
+import { toScholarshipCards } from '@/lib/scholarship-card';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import {
   UniversityGuide,
@@ -148,9 +149,18 @@ export default async function UniversityPage({ params }: Props) {
   }
   const record = toRecord(row);
 
+  /* Funding is a cross-link, not the point of the page: a failure here drops
+     the section rather than the route. */
+  const scholarships = await phaseList<AnyRecord>('scholarships', {
+    university: record.slug,
+    limit: '6',
+  })
+    .then((result) => toScholarshipCards(result.data))
+    .catch(() => []);
+
   return (
     <>
-      <UniversityGuide university={record} />
+      <UniversityGuide university={record} scholarships={scholarships} />
 
       <MatchBand
         heading={`Interested in ${record.name}?`}
