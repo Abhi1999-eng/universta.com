@@ -50,3 +50,6 @@ playwright-report/
 # Deterministic local visual-QA evidence. The runner is versioned, but its
 # screenshots and JSON reports are intentionally local, run-specific output.
 visual-qa/
+
+# Hand-authored catalogue sheets kept for the operator, not part of the build.
+scratchpad/

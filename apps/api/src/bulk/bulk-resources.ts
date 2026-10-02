@@ -7,8 +7,11 @@ import type { PrismaService } from '../prisma/prisma.service';
 import {
   CLEAR_TOKEN,
   COUNTRY_SECTION_KEYS,
+  cellState,
+  intakeMonthNames,
   intOrNull,
   parseCountryRelations,
+  parseIntakeMonths,
   reconcileCountry,
   resolveCountryMedia,
   textOrNull,
@@ -241,7 +244,7 @@ const countries: BulkResourceDefinition = {
     'living_min',
     'living_max',
     'application_fee',
-    'intakes',
+    'intake_months',
     'visa_type',
     'visa_fee',
     'visa_processing',
@@ -326,11 +329,12 @@ const countries: BulkResourceDefinition = {
       description: 'A single fee ("60") or a range ("60-120").',
     },
     {
-      key: 'intakes',
-      label: 'intakes',
+      key: 'intake_months',
+      label: 'intake_months',
       required: false,
-      type: 'relation',
-      description: 'Pipe-separated intake names.',
+      type: 'text',
+      description:
+        'Pipe-separated month names, as the country editor offers them: "April | October".',
     },
     { key: 'visa_type', label: 'visa_type', required: false, type: 'text' },
     {
@@ -444,7 +448,7 @@ const countries: BulkResourceDefinition = {
     living_min: '700',
     living_max: '1100',
     application_fee: '60-120',
-    intakes: 'September | January',
+    intake_months: 'September | January',
     visa_type: 'Student residence permit',
     visa_fee: 'USD 85',
     visa_processing: '4 to 6 weeks',
@@ -503,6 +507,11 @@ const countries: BulkResourceDefinition = {
 
     const relations = await parseCountryRelations(row, prisma, errors);
     const media = await resolveCountryMedia(row, prisma, errors);
+    /* The months the country page actually shows. Absent leaves whatever is
+       stored alone; an explicit clear empties it. */
+    const monthsCell = cellState(row.intake_months, (value: string) =>
+      parseIntakeMonths(value, errors),
+    );
     if (errors.length) return { errors };
 
     const slug = (row.slug ?? '').trim() || slugify(title);
@@ -527,6 +536,11 @@ const countries: BulkResourceDefinition = {
         // canonical field and the name/symbol are left untouched rather than
         // blanked by an import that does not carry them.
         currencyCode: textOrNull(row.currency)?.toUpperCase(),
+        ...(monthsCell.kind === 'absent'
+          ? {}
+          : {
+              intakeMonths: monthsCell.kind === 'clear' ? [] : monthsCell.value,
+            }),
         displayOrder: intOrNull(row.rank_order) ?? undefined,
         status: (row.status ?? '').trim() || 'DRAFT',
         ...media,
@@ -659,10 +673,7 @@ export function exportCountryRow(
       feeMin && feeMax && feeMin !== feeMax
         ? `${feeMin}-${feeMax}`
         : feeMin || feeMax,
-    intakes: (rel.intakes ?? [])
-      .map((row) => row.intake?.name ?? '')
-      .filter(Boolean)
-      .join(' | '),
+    intake_months: intakeMonthNames(record.intakeMonths),
     visa_type: work.visaType ?? '',
     // One client column carries both stored values: "USD 185" when a currency
     // is known, the bare amount when none is, rather than inventing one.
