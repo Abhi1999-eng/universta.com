@@ -1,0 +1,79 @@
+name: CI setup
+description: >-
+  Node, dependencies, the two Linux-only CSS binaries, a CI MySQL and a
+  migrated, seeded database. Everything every CI job needs before it can run
+  anything, in one place so the jobs cannot drift apart.
+
+inputs:
+  database:
+    description: >-
+      Set to "false" for a job that needs no database, which skips MySQL,
+      the migrations and both seeds.
+    required: false
+    default: 'true'
+  ci-db-password:
+    description: The CI-only database password.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js 25
+      uses: actions/setup-node@v6
+      with:
+        node-version: 25
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Install Linux CSS build binary
+      shell: bash
+      run: |
+        lightning_dir="${RUNNER_TEMP}/lightningcss-linux-x64-gnu"
+        mkdir -p "$lightning_dir/extracted" node_modules/lightningcss-linux-x64-gnu
+        npm pack --silent --pack-destination "$lightning_dir" lightningcss-linux-x64-gnu@1.32.0
+        tar -xzf "$lightning_dir/lightningcss-linux-x64-gnu-1.32.0.tgz" -C "$lightning_dir/extracted"
+        cp -R "$lightning_dir/extracted/package/." node_modules/lightningcss-linux-x64-gnu/
+
+        oxide_dir="${RUNNER_TEMP}/tailwindcss-oxide-linux-x64-gnu"
+        mkdir -p "$oxide_dir/extracted" apps/web/node_modules/@tailwindcss/oxide-linux-x64-gnu apps/admin/node_modules/@tailwindcss/oxide-linux-x64-gnu
+        npm pack --silent --pack-destination "$oxide_dir" @tailwindcss/oxide-linux-x64-gnu@4.3.3
+        tar -xzf "$oxide_dir/tailwindcss-oxide-linux-x64-gnu-4.3.3.tgz" -C "$oxide_dir/extracted"
+        cp -R "$oxide_dir/extracted/package/." apps/web/node_modules/@tailwindcss/oxide-linux-x64-gnu/
+        cp -R "$oxide_dir/extracted/package/." apps/admin/node_modules/@tailwindcss/oxide-linux-x64-gnu/
+
+    - name: Start native MySQL
+      if: inputs.database == 'true'
+      shell: bash
+      run: sudo systemctl start mysql
+
+    - name: Create CI-only databases and user
+      if: inputs.database == 'true'
+      shell: bash
+      env:
+        CI_DB_PASSWORD: ${{ inputs.ci-db-password }}
+      run: |
+        # Ubuntu's preinstalled runner MySQL root password is the documented CI-only value: root.
+        sudo mysql --protocol=socket -uroot -proot -e "CREATE DATABASE IF NOT EXISTS universta_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS universta_ci_shadow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS 'universta_ci_user'@'127.0.0.1' IDENTIFIED BY '${CI_DB_PASSWORD}'; GRANT ALL PRIVILEGES ON universta_ci.* TO 'universta_ci_user'@'127.0.0.1'; GRANT ALL PRIVILEGES ON universta_ci_shadow.* TO 'universta_ci_user'@'127.0.0.1'; FLUSH PRIVILEGES;"
+
+    - name: Prisma generate
+      shell: bash
+      run: npm run db:generate
+
+    - name: Prisma migrate deploy
+      if: inputs.database == 'true'
+      shell: bash
+      run: npm run db:migrate:deploy
+
+    - name: Foundation seed
+      if: inputs.database == 'true'
+      shell: bash
+      run: npm run db:seed
+
+    - name: Demo catalog seed
+      if: inputs.database == 'true'
+      shell: bash
+      run: npm --workspace apps/api run db:seed:demo
