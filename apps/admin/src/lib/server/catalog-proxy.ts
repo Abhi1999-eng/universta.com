@@ -95,8 +95,6 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_TUITION_COUNTRY_REQUIRED: 'Tuition filters require a country',
   COURSE_DURATION_INVALID: 'Duration values are invalid',
   COURSE_POPULARITY_INVALID: 'Popularity score must be between 0 and 100',
-  COUNTRY_MAPPING_SOURCE_REQUIRED: 'Available mappings require an HTTPS source and verification date',
-  COURSE_MAPPING_SOURCE_REQUIRED: 'Available mappings require an HTTPS source and verification date',
   COURSE_MAPPING_SOURCE_INVALID: 'Source reference must use HTTPS',
   COURSE_MAPPING_VERIFICATION_INVALID: 'Verification date cannot be in the future',
   COURSE_MAPPING_RANGE_INVALID: 'Course mapping values are invalid',

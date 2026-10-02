@@ -228,9 +228,9 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
     input: 'Select Available, Limited or Unavailable based on real, verified information.',
     dataType: 'Choice',
     required: 'Required.',
-    dependency: 'Available/Limited require Official HTTPS source and Verified date to publish.',
+    dependency: 'A course needs one Available or Limited mapping against a published country before it can go live.',
     frontendEffect: 'Drives whether/how this course shows up in this country’s availability listings.',
-    caution: 'Never mark Available without a verified source — this is user-facing factual information.',
+    caution: 'Never mark Available unless the course is genuinely offered there — this is user-facing factual information.',
   },
   'course-mappings.indicativeTuitionMin': {
     purpose: 'The lower end of the indicative tuition range for this course in this country.',
