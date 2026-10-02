@@ -123,15 +123,29 @@ describe('admin subjects list contract (e2e)', () => {
     }
   });
 
-  it('orders featured subjects first when asked to', async () => {
+  it('answers sort=featured in the catalogue’s own order', async () => {
+    /* The screen still sends `sort=featured` and a saved link still has to
+       work, but the sort no longer reads `isFeatured`: nothing sets that
+       column any more, so ordering on it only sorted by a value that is
+       false on every row an editor creates. What it promises now is the
+       order the catalogue itself keeps -- display order, then name.
+
+       This used to assert featured-first, and passed only because the
+       seeded featured subjects happened to hold the lowest display
+       orders. Any new subject, which starts at display order 0, put a
+       plain row in front of them and broke it. */
     const response = await list('?sort=featured&limit=100').expect(200);
-    const rows = body(response).data as Array<{ isFeatured?: boolean }>;
-    const flags = rows.map((row) => Boolean(row.isFeatured));
-    // Once a non-featured row appears, no featured row may follow it.
-    const firstPlain = flags.indexOf(false);
-    if (firstPlain !== -1) {
-      expect(flags.slice(firstPlain).some(Boolean)).toBe(false);
-    }
+    const rows = body(response).data as Array<{
+      displayOrder?: number;
+      name?: string;
+    }>;
+    const keys = rows.map((row) => [row.displayOrder ?? 0, row.name ?? '']);
+    const sorted = [...keys].sort(
+      (a, b) =>
+        (a[0] as number) - (b[0] as number) ||
+        String(a[1]).localeCompare(String(b[1])),
+    );
+    expect(keys).toEqual(sorted);
   });
 
   it('still rejects an unsupported sort', async () => {
