@@ -35,8 +35,12 @@ env:
   RELEASE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.sha }}
 
 jobs:
-  foundation-ci:
-    name: CI / Foundation and Admin Auth
+  checks:
+    # Everything that needs no database: the schema checks, the linter, the
+    # unit suites that run in memory, the build, and the release this run
+    # would deploy. None of it waits for MySQL to come up and be seeded, so a
+    # formatting slip is known in a couple of minutes rather than six.
+    name: CI / Checks and build
     if: github.event_name != 'workflow_dispatch' || inputs.action == 'deploy'
     runs-on: ubuntu-latest
     env:
@@ -66,10 +70,10 @@ jobs:
         with:
           ref: ${{ env.RELEASE_SHA }}
 
-      - name: Set up Node, dependencies and a seeded database
+      - name: Set up Node and dependencies
         uses: ./.github/actions/ci-setup
         with:
-          ci-db-password: ${{ env.CI_DB_PASSWORD }}
+          database: 'false'
 
       - name: Prisma format check
         run: npm run db:format -- --check
@@ -77,20 +81,14 @@ jobs:
       - name: Prisma validate
         run: npm run db:validate
 
-      - name: API unit tests
-        run: npm --workspace apps/api run test -- --runInBand
-
-      - name: API foundation, auth and catalog E2E tests
-        run: npm --workspace apps/api run test:e2e -- --runInBand
+      - name: Lint
+        run: npm run lint
 
       - name: Admin unit and catalog tests
         run: npm --workspace apps/admin run test -- --run
 
       - name: Web unit tests
         run: npm --workspace apps/web run test -- --run
-
-      - name: Lint
-        run: npm run lint
 
       - name: Build web, admin, and API
         run: npm run build
@@ -133,6 +131,52 @@ jobs:
             ${{ runner.temp }}/universta-release/universta-${{ env.RELEASE_SHA }}.tar.gz.sha256
           if-no-files-found: error
           retention-days: 3
+
+  api-tests:
+    # The API's own suites, which need a migrated and seeded database. Split
+    # from the checks above so a lint error does not first wait for MySQL,
+    # and so the two run side by side.
+    name: CI / API tests
+    if: github.event_name != 'workflow_dispatch' || inputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_ENV: test
+      PORT: 4000
+      DATABASE_URL: mysql://universta_ci_user:ci-only-db-password-2026@127.0.0.1:3306/universta_ci
+      SHADOW_DATABASE_URL: mysql://universta_ci_user:ci-only-db-password-2026@127.0.0.1:3306/universta_ci_shadow
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      SWAGGER_ENABLED: false
+      JWT_ACCESS_SECRET: ci-only-access-secret-2026-long-enough-for-tests
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-2026-different-and-long
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 30d
+      AUTH_REFRESH_COOKIE_NAME: universta_admin_refresh
+      AUTH_MAX_FAILED_ATTEMPTS: 5
+      AUTH_LOCK_MINUTES: 15
+      SEED_ADMIN_EMAIL: ci-admin@example.invalid
+      SEED_ADMIN_PASSWORD: ci-only-seed-password-2026-strong
+      SEED_DEMO_CATALOG: "true"
+      SUPER_ADMIN_FIRST_NAME: CI
+      SUPER_ADMIN_LAST_NAME: Admin
+      CI_DB_PASSWORD: ci-only-db-password-2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+
+      - name: Set up Node, dependencies and a seeded database
+        uses: ./.github/actions/ci-setup
+        with:
+          ci-db-password: ${{ env.CI_DB_PASSWORD }}
+
+      - name: API unit tests
+        run: npm --workspace apps/api run test -- --runInBand
+
+      - name: API foundation, auth and catalog E2E tests
+        run: npm --workspace apps/api run test:e2e -- --runInBand
 
   browser-e2e:
     # The browser suite was 582 of the pipeline's 960 seconds, run by a single
@@ -181,13 +225,11 @@ jobs:
         with:
           ref: ${{ env.RELEASE_SHA }}
 
-      - name: Set up Node, dependencies and a seeded database
+      - name: Set up Node, dependencies, a seeded database and Chromium
         uses: ./.github/actions/ci-setup
         with:
           ci-db-password: ${{ env.CI_DB_PASSWORD }}
-
-      - name: Install Playwright Chromium
-        run: npm --workspace apps/admin exec -- playwright install --with-deps chromium
+          playwright: 'true'
 
       - name: Admin browser E2E tests
         run: npm --workspace apps/admin run test:e2e -- --shard=${{ matrix.shard }}/3
@@ -204,9 +246,10 @@ jobs:
 
   deploy-demo:
     name: Deploy / AWS demo
-    needs: [foundation-ci, browser-e2e]
+    needs: [checks, api-tests, browser-e2e]
     if: >-
-      needs.foundation-ci.result == 'success' &&
+      needs.checks.result == 'success' &&
+      needs.api-tests.result == 'success' &&
       needs.browser-e2e.result == 'success' &&
       (github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'))
