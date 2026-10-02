@@ -1801,29 +1801,46 @@ model SearchLog {
 }
 
 model University {
-  id               String    @id @default(uuid()) @db.Char(36)
-  countryId        String    @map("country_id") @db.Char(36)
-  name             String    @db.VarChar(255)
-  slug             String    @unique @db.VarChar(255)
-  institutionType  String?   @map("institution_type") @db.VarChar(80)
-  qsRanking        Int?      @map("qs_ranking")
-  shortDescription String?   @map("short_description") @db.VarChar(1000)
-  overview         String?   @db.LongText
-  featuredMediaId  String?   @map("featured_media_id") @db.Char(36)
-  sourceReference  String?   @map("source_reference") @db.VarChar(2048)
-  verifiedAt       DateTime? @map("verified_at") @db.DateTime(3)
-  status           String    @default("DRAFT") @db.VarChar(30)
-  isFeatured       Boolean   @default(false) @map("is_featured")
-  featuredPriority Int       @default(0) @map("featured_priority")
-  featuredFrom     DateTime? @map("featured_from") @db.DateTime(3)
-  featuredUntil    DateTime? @map("featured_until") @db.DateTime(3)
-  publishStartsAt  DateTime? @map("publish_starts_at") @db.DateTime(3)
-  publishEndsAt    DateTime? @map("publish_ends_at") @db.DateTime(3)
-  displayOrder     Int       @default(0) @map("display_order")
-  publishedAt      DateTime? @map("published_at") @db.DateTime(3)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
-  deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
+  id                           String    @id @default(uuid()) @db.Char(36)
+  countryId                    String    @map("country_id") @db.Char(36)
+  name                         String    @db.VarChar(255)
+  slug                         String    @unique @db.VarChar(255)
+  institutionType              String?   @map("institution_type") @db.VarChar(80)
+  qsRanking                    Int?      @map("qs_ranking")
+  /// How big the institution is, how international, and how crowded. These
+  /// are somebody else's figures and they go stale, so they travel with
+  /// `statsSourceName`, `statsSourceUrl` and `statsYear` -- the page says
+  /// who counted and when, or says the figure is unsourced.
+  totalStudents                Int?      @map("total_students")
+  internationalStudentsPercent Decimal?  @map("international_students_percent") @db.Decimal(5, 2)
+  studentFacultyRatio          Decimal?  @map("student_faculty_ratio") @db.Decimal(5, 2)
+  establishedYear              Int?      @map("established_year") @db.SmallInt
+  /// URBAN, SUBURBAN or RURAL. Kept as a plain string like the other
+  /// catalogue vocabularies rather than a database enum.
+  campusSetting                String?   @map("campus_setting") @db.VarChar(30)
+  websiteUrl                   String?   @map("website_url") @db.VarChar(2048)
+  admissionsEmail              String?   @map("admissions_email") @db.VarChar(255)
+  phone                        String?   @db.VarChar(50)
+  statsSourceName              String?   @map("stats_source_name") @db.VarChar(150)
+  statsSourceUrl               String?   @map("stats_source_url") @db.VarChar(2048)
+  statsYear                    Int?      @map("stats_year") @db.SmallInt
+  shortDescription             String?   @map("short_description") @db.VarChar(1000)
+  overview                     String?   @db.LongText
+  featuredMediaId              String?   @map("featured_media_id") @db.Char(36)
+  sourceReference              String?   @map("source_reference") @db.VarChar(2048)
+  verifiedAt                   DateTime? @map("verified_at") @db.DateTime(3)
+  status                       String    @default("DRAFT") @db.VarChar(30)
+  isFeatured                   Boolean   @default(false) @map("is_featured")
+  featuredPriority             Int       @default(0) @map("featured_priority")
+  featuredFrom                 DateTime? @map("featured_from") @db.DateTime(3)
+  featuredUntil                DateTime? @map("featured_until") @db.DateTime(3)
+  publishStartsAt              DateTime? @map("publish_starts_at") @db.DateTime(3)
+  publishEndsAt                DateTime? @map("publish_ends_at") @db.DateTime(3)
+  displayOrder                 Int       @default(0) @map("display_order")
+  publishedAt                  DateTime? @map("published_at") @db.DateTime(3)
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt                    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt                    DateTime? @map("deleted_at") @db.DateTime(3)
 
   country             Country                    @relation(fields: [countryId], references: [id], onDelete: Restrict)
   campuses            UniversityCampus[]

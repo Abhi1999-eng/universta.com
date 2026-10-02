@@ -38,6 +38,17 @@ const university = (over: Partial<UniversityRecord> = {}): UniversityRecord =>
     overview: null,
     institutionType: 'PUBLIC',
     qsRanking: null,
+    totalStudents: null,
+    internationalStudentsPercent: null,
+    studentFacultyRatio: null,
+    establishedYear: null,
+    campusSetting: null,
+    websiteUrl: null,
+    admissionsEmail: null,
+    phone: null,
+    statsSourceName: null,
+    statsSourceUrl: null,
+    statsYear: null,
     sourceReference: null,
     verifiedAt: null,
     campuses: 0,
@@ -136,5 +147,107 @@ describe('a university’s guide', () => {
     );
     expect(html).toContain('Last checked 2026-10-01');
     expect(html).toContain('https://example.org/elmswood');
+  });
+});
+
+/**
+ * How big an institution is, how international, and how crowded are the
+ * figures a student compares institutions on, and the catalogue had
+ * nowhere to keep them. They are somebody else's counts, so the page says
+ * whose and from when -- and when nobody has said, it admits that too
+ * rather than presenting a number as settled.
+ */
+describe('the figures a university is compared on', () => {
+  const html = (over: Partial<UniversityRecord>) =>
+    renderToStaticMarkup(<UniversityGuide university={university(over)} />);
+
+  it('shows the student count in a readable form', () => {
+    expect(html({ totalStudents: 22005 })).toContain('22,005');
+  });
+
+  it('shows how many come from abroad', () => {
+    expect(html({ internationalStudentsPercent: '43' })).toContain('43%');
+  });
+
+  it('shows how many students there are per member of staff', () => {
+    const markup = html({ studentFacultyRatio: '10.4' });
+    expect(markup).toContain('Students per staff');
+    expect(markup).toContain('10.4');
+  });
+
+  it('names who published the figures, and when', () => {
+    const markup = html({
+      totalStudents: 22005,
+      statsSourceName: 'Times Higher Education',
+      statsYear: 2026,
+    });
+    expect(markup).toContain('Times Higher Education, 2026');
+    expect(markup).toContain('does not count them itself');
+  });
+
+  it('links the source when there is one to link', () => {
+    expect(
+      html({
+        totalStudents: 22005,
+        statsSourceName: 'Times Higher Education',
+        statsSourceUrl: 'https://example.invalid/the',
+      }),
+    ).toContain('https://example.invalid/the');
+  });
+
+  it('says a figure is unsourced rather than letting it pass as settled', () => {
+    const markup = html({ totalStudents: 22005 });
+    expect(markup).toContain('without a published source');
+  });
+
+  it('says nothing about sources when it has no figures to source', () => {
+    const markup = html({});
+    expect(markup).not.toContain('without a published source');
+    expect(markup).not.toContain('does not count them itself');
+  });
+
+  it('leaves out every figure the record does not hold', () => {
+    const markup = html({});
+    for (const label of [
+      'Students per staff',
+      'International',
+      'Founded',
+      'Setting',
+    ])
+      expect(markup).not.toContain(label);
+  });
+
+  it('writes the campus setting as a word, not a shout', () => {
+    expect(html({ campusSetting: 'URBAN' })).toContain('Urban');
+  });
+});
+
+/**
+ * Anything on the page can change between intakes, so the institution's own
+ * channels are worth offering. The section stands down entirely when the
+ * record has none, like every other band here.
+ */
+describe('reaching the university itself', () => {
+  const html = (over: Partial<UniversityRecord>) =>
+    renderToStaticMarkup(<UniversityGuide university={university(over)} />);
+
+  it('offers the official website', () => {
+    expect(html({ websiteUrl: 'https://example.invalid' })).toContain(
+      'Official website',
+    );
+  });
+
+  it('offers the admissions address as a mail link', () => {
+    expect(html({ admissionsEmail: 'admissions@example.invalid' })).toContain(
+      'mailto:admissions@example.invalid',
+    );
+  });
+
+  it('strips a phone number down to something dialable', () => {
+    expect(html({ phone: '+44 1865 270000' })).toContain('tel:+441865270000');
+  });
+
+  it('stands the section down when there is no way to make contact', () => {
+    expect(html({})).not.toContain('Ask the university directly');
   });
 });
