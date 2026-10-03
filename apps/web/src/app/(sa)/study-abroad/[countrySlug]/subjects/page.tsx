@@ -83,7 +83,10 @@ export default async function Page({ params }: Params) {
     ? partitionSubjects(subjects)
     : { taught: [], editorial: [] };
 
-  const tabs = await loadCountryTabs(country.slug, subjects.length);
+  const tabs = await loadCountryTabs(
+    country.slug,
+    (country.subjects ?? []).length,
+  );
   const where = inCountry(country.name, country.iso2Code);
 
   const toCard = (subject: {
