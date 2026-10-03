@@ -1892,16 +1892,31 @@ export class CoursesService {
       expected.push(query.subject.length);
     }
     if (query.subSubject?.length) {
+      /* A specialization's slug is unique within its subject, not across the
+         catalogue: `artificial-intelligence` is a record under Computer
+         Science and another under Engineering, and filtering by that slug is
+         meant to match both. Counting rows and comparing the total to the
+         number of values asked for therefore read three records for one value
+         as a mismatch, and rejected the filter outright -- 203 of the 647
+         specializations the rail offers answered "not an active published
+         option" when a reader clicked them.
+
+         What has to hold is that every slug asked for resolves to something,
+         not that it resolves to exactly one thing. */
       checks.push(
-        this.prisma.subSubject.count({
-          where: {
-            slug: { in: query.subSubject },
-            status: 'PUBLISHED',
-            deletedAt: null,
-          },
-        }),
+        this.prisma.subSubject
+          .findMany({
+            where: {
+              slug: { in: query.subSubject },
+              status: 'PUBLISHED',
+              deletedAt: null,
+            },
+            select: { slug: true },
+            distinct: ['slug'],
+          })
+          .then((rows) => rows.length),
       );
-      expected.push(query.subSubject.length);
+      expected.push(new Set(query.subSubject).size);
     }
     if (query.level?.length) {
       checks.push(
