@@ -29,6 +29,20 @@ export function phaseList<T>(
 /* The phase-1 list endpoints cap a page at 50 rows. */
 const PHASE_PAGE_SIZE = 50;
 const PHASE_MAX_PAGES = 40;
+/* How many of those pages are in flight together. The API sheds load above
+   roughly a dozen concurrent reads and answers 503. */
+const PHASE_CONCURRENCY = 5;
+
+/** One retry, because the failure this guards against is load, not a bad
+ *  request: the same page asked for a moment later usually answers. */
+async function withRetry<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return run();
+  }
+}
 
 /**
  * Every record a phase-1 list holds, read page by page.
@@ -56,12 +70,34 @@ export async function phaseListAll<T>(
     Number.isFinite(totalPages) && totalPages > 1 ? totalPages : 1,
     PHASE_MAX_PAGES,
   );
-  const rest = await Promise.all(
-    Array.from({ length: pages - 1 }, (_, index) => page(index + 2)),
-  );
+  /* In batches, not all at once.
+     This used to fire every remaining page in one `Promise.all`. While the
+     universities listing was capped at 500 rows that was nine requests and
+     nobody noticed. The moment the API started reporting its real page
+     count -- 3,254 for 9,761 universities -- it became thirty-nine at once,
+     and fourteen of them came back 503. One rejection failed the whole
+     call, the page caught it, and a catalogue of 9,761 universities
+     rendered as "No university is published yet".
+
+     Five at a time is slower and finishes. */
+  const rest: Array<{ data: T[]; meta: unknown }> = [];
+  for (let from = 2; from <= pages; from += PHASE_CONCURRENCY) {
+    const batch = Array.from(
+      { length: Math.min(PHASE_CONCURRENCY, pages - from + 1) },
+      (_, index) => withRetry(() => page(from + index)),
+    );
+    rest.push(...(await Promise.all(batch)));
+  }
+  const data = [...first.data, ...rest.flatMap((result) => result.data)];
+  const total = Number((first.meta as { total?: unknown } | null)?.total);
   return {
-    data: [...first.data, ...rest.flatMap((result) => result.data)],
+    data,
     meta: first.meta,
+    /* What the caller actually got against what exists, so a screen can say
+       "2,000 of 9,761" rather than presenting the cap as the whole. */
+    truncated: Number.isFinite(total) && total > data.length
+      ? { shown: data.length, total }
+      : null,
   };
 }
 export function phaseDetail<T>(resource: string, slug: string) {
