@@ -120,3 +120,82 @@ describe('a subject arriving through the sheet', () => {
     expect(touched).not.toContain('country');
   });
 });
+
+/**
+ * The attach again, once the row has committed.
+ *
+ * A country and a subject imported at the same moment each attach
+ * themselves to everything they can see, and inside their own transactions
+ * neither can see the other -- so the pair is written by nobody, and
+ * nothing later would write it. After the commit, whichever landed second
+ * sees the first.
+ */
+describe('after the row has committed', () => {
+  it('attaches a new country again, where it can see what landed meanwhile', async () => {
+    const { touched, client } = tx();
+    await bulkResource('countries').afterCommit!(
+      client as never,
+      'c-1',
+      EMPTY_COUNTRY_RELATIONS,
+      true,
+    );
+    expect(touched).toContain('subject');
+    expect(touched).toContain('countrySubject');
+  });
+
+  it('does the same for a row that says "All subjects", new or not', async () => {
+    const { touched, client } = tx();
+    await bulkResource('countries').afterCommit!(
+      client as never,
+      'c-1',
+      { ...EMPTY_COUNTRY_RELATIONS, subjects: { kind: 'all' } },
+      false,
+    );
+    expect(touched).toContain('countrySubject');
+  });
+
+  it('leaves a re-imported country alone, so a narrowing survives', async () => {
+    const { touched, client } = tx();
+    await bulkResource('countries').afterCommit!(
+      client as never,
+      'c-1',
+      EMPTY_COUNTRY_RELATIONS,
+      false,
+    );
+    expect(touched).toEqual([]);
+  });
+
+  it('leaves a new country that named its own subjects alone', async () => {
+    const { touched, client } = tx();
+    await bulkResource('countries').afterCommit!(
+      client as never,
+      'c-1',
+      {
+        ...EMPTY_COUNTRY_RELATIONS,
+        subjects: { kind: 'value', value: ['s-1'] },
+      },
+      true,
+    );
+    expect(touched).toEqual([]);
+  });
+
+  it('attaches a new subject again, and not a re-imported one', async () => {
+    const born = tx();
+    await bulkResource('subjects').afterCommit!(
+      born.client as never,
+      's-1',
+      { status: 'DRAFT', rows: [] },
+      true,
+    );
+    expect(born.touched).toContain('country');
+
+    const again = tx();
+    await bulkResource('subjects').afterCommit!(
+      again.client as never,
+      's-1',
+      { status: 'DRAFT', rows: [] },
+      false,
+    );
+    expect(again.touched).toEqual([]);
+  });
+});

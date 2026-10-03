@@ -301,6 +301,14 @@ describe('country taxonomy admin (e2e)', () => {
       ),
     );
     expect(other.subjectIds).toEqual(expect.arrayContaining(subjectIds));
+
+    /* In the catalogue's order, not the order the rows were generated in:
+       the three fixtures are Alpha, Beta and Gamma, and their ids are
+       random. */
+    const mine = (other.subjects as Array<{ id: string; name: string }>)
+      .filter((subject) => subjectIds.includes(subject.id))
+      .map((subject) => subject.name.split(' ')[1]);
+    expect(mine).toEqual(['Alpha', 'Beta', 'Gamma']);
   });
 
   it('lets an editor narrow that default away, and keeps it narrowed', async () => {
@@ -361,6 +369,54 @@ describe('country taxonomy admin (e2e)', () => {
       `/api/v1/admin/countries?subjectId=${subjectIds[0]}&tagId=${tagIds[1]}&limit=50`,
     ).expect(200);
     expect(rows(mismatched).map((item) => item.id)).not.toContain(countryId);
+  });
+
+  it('keeps a subject the editor never saw when the country is saved', async () => {
+    /* Created while the country form was open: linked here by default, and
+       in nobody's `subjectIds`. */
+    const created = record(
+      await admin('post', '/api/v1/admin/subjects', {
+        name: `Taxonomy Late ${stamp}`,
+        slug: `taxonomy-late-${stamp}`,
+        shortDescription: 'Created after the form was opened',
+      }).expect(201),
+    );
+    const lateId = String(created.id);
+    subjectIds.push(lateId); // for the clean-up; nothing below reads it by index
+    /* The response is what the inline picker shows, and it was read before
+       the destinations were attached. */
+    expect(Number(created.countryCount)).toBeGreaterThan(0);
+
+    const link = (subjectId: string) =>
+      prisma.countrySubject.findFirst({ where: { countryId, subjectId } });
+    expect(await link(lateId)).not.toBeNull();
+
+    /* The form posts the list it built before that subject existed, and
+       says which subjects it could see. Beta is unticked on purpose. */
+    const current = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+      ...corePayload(current),
+      subjectIds: [subjectIds[0]],
+      knownSubjectIds: [subjectIds[0], subjectIds[1], subjectIds[2]],
+    }).expect(200);
+
+    expect(await link(lateId)).not.toBeNull();
+    expect(await link(subjectIds[0])).not.toBeNull();
+    expect(await link(subjectIds[1])).toBeNull();
+
+    /* A caller that does not say what it could see replaces the whole list,
+       as it always has -- which also puts this fixture back as it was. */
+    const again = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+      ...corePayload(again),
+      subjectIds: [subjectIds[0], subjectIds[1]],
+    }).expect(200);
+    expect(await link(lateId)).toBeNull();
+    expect(await link(subjectIds[1])).not.toBeNull();
   });
 
   it('replaces the subject and tag sets rather than appending to them', async () => {

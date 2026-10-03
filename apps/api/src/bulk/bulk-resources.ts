@@ -90,6 +90,19 @@ export interface BulkResourceDefinition {
     relations: unknown,
     born?: boolean,
   ): Promise<void>;
+  /** Runs after the row's transaction has committed, on the plain client.
+   *
+   * For the one thing a transaction cannot do: see rows another transaction
+   * committed while it was open. A country and a subject imported at the
+   * same moment each attach themselves to everything they can see, neither
+   * can see the other, and the pair is written by nobody. Repeating the
+   * attach here lets whichever commits second see the first. */
+  afterCommit?(
+    prisma: PrismaService,
+    id: string,
+    relations: unknown,
+    born?: boolean,
+  ): Promise<void>;
   /** Whether `reconcile` would still have work to do for this record.
    *
    * The unchanged check compares the columns the sheet carries, and a
@@ -635,6 +648,11 @@ const countries: BulkResourceDefinition = {
     if (born && (relations as CountryRelations).subjects.kind === 'absent')
       await attachDefaultTaxonomy(tx as never, { countryId: id });
   },
+  async afterCommit(prisma, id, relations, born) {
+    const { kind } = (relations as CountryRelations).subjects;
+    if (kind === 'all' || (born && kind === 'absent'))
+      await attachDefaultTaxonomy(prisma, { countryId: id });
+  },
   /* The specializations come out of the `subject` cell, and nothing in the
      sheet spells them out, so the column diff cannot see them. A country
      whose subjects are already right but whose specializations were never
@@ -1132,6 +1150,9 @@ const subjects: BulkResourceDefinition = {
   async reconcile(tx, id, relations, born) {
     await reconcileSpecializations(tx, id, relations);
     if (born) await attachDefaultTaxonomy(tx as never, { subjectId: id });
+  },
+  async afterCommit(prisma, id, _relations, born) {
+    if (born) await attachDefaultTaxonomy(prisma, { subjectId: id });
   },
   toExportRow(record) {
     const children = (record.subSubjects ?? []) as Array<{ name: string }>;

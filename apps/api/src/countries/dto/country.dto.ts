@@ -337,6 +337,21 @@ export class UpdateCountryDto extends CreateCountryDto {
   @IsOptional()
   @IsISO8601()
   expectedUpdatedAt?: string;
+
+  /* Every subject the editor had in front of it when `subjectIds` was
+     chosen -- ticked or not. `subjectIds` replaces the destination's list,
+     and a list can only speak for the subjects it knew about: one created
+     after the form was opened is linked to this destination by default, is
+     not in a `subjectIds` the form built earlier, and used to be removed by
+     the save as though somebody had unticked it. Omitted, the save replaces
+     the whole list as it always has. */
+  @ApiPropertyOptional({ type: [String] })
+  @Transform(arrayValue)
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID(undefined, { each: true })
+  knownSubjectIds?: string[];
 }
 
 /** `a,b,c` -> ['a','b','c']. Bounded and de-duplicated so a hostile query

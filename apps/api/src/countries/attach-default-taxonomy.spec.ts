@@ -96,6 +96,17 @@ describe('how the rows are written', () => {
     );
   });
 
+  it("gives them no order of its own, so the catalogue's shows through", async () => {
+    /* The subjects arrive in id order, which means nothing. Numbering them
+       froze that as the destination's arrangement, and its subjects page
+       opened on Transport & Logistics. */
+    const c = client(['s-1', 's-2'], []);
+    await attachDefaultTaxonomy(c.api, { countryId: 'c-1' });
+    expect(c.writes[0].data.every((row) => !('displayOrder' in row))).toBe(
+      true,
+    );
+  });
+
   it('skips duplicates rather than failing the transaction', async () => {
     // A pair may already stand -- a subject created while this one was being
     // written -- and the unique key would otherwise roll the creation back.

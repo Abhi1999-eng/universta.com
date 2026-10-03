@@ -672,7 +672,9 @@ export class SubjectsService {
          either way, and a destination list that failed to write is worth
          less than the subject. The deployment sweep and the country
          editor both still reach these rows. */
-      await attachDefaultTaxonomy(this.prisma, { subjectId: row.id });
+      const reached = await attachDefaultTaxonomy(this.prisma, {
+        subjectId: row.id,
+      });
       await writeAudit(
         this.prisma,
         request,
@@ -685,7 +687,10 @@ export class SubjectsService {
         { name, slug, status: row.status },
         'Subject created',
       );
-      return this.toAdmin(row);
+      /* `row` was read before the destinations were attached, so its count
+         of them is zero. The picker that creates a subject inline shows
+         this figure straight away. */
+      return { ...this.toAdmin(row), countryCount: reached };
     } catch (error) {
       if (isUniqueConstraintError(error))
         throw catalogConflict(

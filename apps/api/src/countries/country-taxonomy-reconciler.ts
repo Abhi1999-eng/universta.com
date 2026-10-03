@@ -225,10 +225,12 @@ export async function attachDefaultTaxonomy(
     const subjects = await client.subject.findMany(everything);
     if (!subjects.length) return 0;
     const { count } = await client.countrySubject.createMany({
-      data: subjects.map((subject, index) => ({
+      /* No order of its own. These arrive in id order, which means
+         nothing, and numbering them would freeze that as the destination's
+         arrangement; left equal, the catalogue's order shows through. */
+      data: subjects.map((subject) => ({
         countryId: target.countryId,
         subjectId: subject.id,
-        displayOrder: index,
         source: EDITORIAL,
       })),
       skipDuplicates: true,

@@ -503,6 +503,35 @@ describe('country editor subject and tag pickers', () => {
     expect(payload.subjectIds).toEqual(['subject-1', 'subject-2']);
     expect(payload.tagIds).toEqual(['tag-1']);
   });
+
+  /* `subjectIds` replaces the destination's list, and it can only speak for
+     the subjects this form knew about. A subject created in another tab
+     after the form opened is linked to every destination by default; it is
+     not in the picker and not in the list, and the save used to remove it
+     as though somebody had unticked it. Saying what the form could see is
+     what lets the server leave the rest alone. */
+  it('tells the server which subjects it could see, ticked or not', async () => {
+    mocks.listAllSubjects.mockResolvedValue([
+      { id: 'subject-1', name: 'Engineering', slug: 'engineering', status: 'ACTIVE' },
+      { id: 'subject-2', name: 'Law', slug: 'law', status: 'ACTIVE' },
+    ]);
+    mocks.getCountry.mockResolvedValue({
+      /* `subject-9` is saved on the country but the picker no longer offers
+         it. It is still something this form holds and posts, so it counts. */
+      data: { ...country, subjectIds: ['subject-1', 'subject-9'] },
+    });
+    await openEditor();
+
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    await waitFor(() => expect(mocks.updateCountry).toHaveBeenCalled());
+    const payload = mocks.updateCountry.mock.calls[0][1];
+    expect([...payload.knownSubjectIds].sort()).toEqual([
+      'subject-1',
+      'subject-2',
+      'subject-9',
+    ]);
+  });
 });
 
 /**
