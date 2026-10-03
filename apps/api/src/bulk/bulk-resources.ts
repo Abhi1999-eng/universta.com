@@ -18,6 +18,7 @@ import {
   type CountryRelations,
   type SectionColumn,
 } from './country-bulk';
+import { attachDefaultTaxonomy } from '../countries/country-taxonomy-reconciler';
 import {
   asDeriveClient,
   deriveForCourse,
@@ -79,7 +80,15 @@ export interface BulkResourceDefinition {
   parseRow(row: BulkRow, prisma: PrismaService): Promise<BulkParseResult>;
   /** Applies relations and profiles for one row inside that row's own
    * transaction, so scalars and relations succeed or fail together. */
-  reconcile?(tx: unknown, id: string, relations: unknown): Promise<void>;
+  /** `born` is true only when this row was just created. A hook that
+   * attaches defaults must not re-attach them on every re-import -- that
+   * would undo whatever an editor narrowed since. */
+  reconcile?(
+    tx: unknown,
+    id: string,
+    relations: unknown,
+    born?: boolean,
+  ): Promise<void>;
   /** Whether `reconcile` would still have work to do for this record.
    *
    * The unchanged check compares the columns the sheet carries, and a
@@ -605,12 +614,18 @@ const countries: BulkResourceDefinition = {
       relations,
     };
   },
-  async reconcile(tx, id, relations) {
+  async reconcile(tx, id, relations, born) {
     await reconcileCountry(
       tx as Parameters<typeof reconcileCountry>[0],
       id,
       relations as CountryRelations,
     );
+    /* Only on the row's first import. A destination starts offering every
+       field and the editor narrows it; re-importing the sheet must not put
+       back what was narrowed away. The sheet's own `subject` cell, when it
+       has one, has already been written above -- `skipDuplicates` leaves
+       it alone and fills the rest. */
+    if (born) await attachDefaultTaxonomy(tx as never, { countryId: id });
   },
   /* The specializations come out of the `subject` cell, and nothing in the
      sheet spells them out, so the column diff cannot see them. A country
@@ -1086,8 +1101,9 @@ const subjects: BulkResourceDefinition = {
       },
     };
   },
-  async reconcile(tx, id, relations) {
+  async reconcile(tx, id, relations, born) {
     await reconcileSpecializations(tx, id, relations);
+    if (born) await attachDefaultTaxonomy(tx as never, { subjectId: id });
   },
   toExportRow(record) {
     const children = (record.subSubjects ?? []) as Array<{ name: string }>;

@@ -29,7 +29,10 @@ import {
   type ProfileStatisticsRecord,
 } from './profiles/profile.mappers';
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
-import { EDITORIAL } from './country-taxonomy-reconciler';
+import {
+  attachDefaultTaxonomy,
+  EDITORIAL,
+} from './country-taxonomy-reconciler';
 import { CountryDerivedService } from './country-derived.service';
 import {
   parseCalculatorConfig,
@@ -999,7 +1002,7 @@ export class CountriesService {
         await this.ensureSubjects(dto.subjectIds, tx);
         await this.ensureSubSubjects(dto.subSubjectIds, tx);
         await this.ensureTags(dto.tagIds, tx);
-        return tx.country.create({
+        const created = await tx.country.create({
           data: {
             continentId: dto.continentId,
             name,
@@ -1065,6 +1068,17 @@ export class CountriesService {
           },
           include: COUNTRY_INCLUDE,
         });
+        /* A destination nobody has narrowed yet offers every field, which
+           is what the taxonomy seed has always written and what this
+           editor exists to cut down. Countries born after the seed had
+           none of it and opened on an empty subject list.
+
+           After the create rather than nested in it: the payload may have
+           named subjects already, and the unique key would fail the whole
+           transaction on the overlap. `skipDuplicates` lets whatever the
+           author chose stand and fills in the rest. */
+        await attachDefaultTaxonomy(tx, { countryId: created.id });
+        return created;
       });
       await writeAudit(
         this.prisma,

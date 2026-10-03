@@ -138,3 +138,84 @@ export async function reconcileCountryTaxonomy(
 
   return change;
 }
+
+/** The two tables this writes, narrowed to what it uses. */
+type AttachClient = {
+  country: { findMany: (args: unknown) => Promise<Array<{ id: string }>> };
+  subject: { findMany: (args: unknown) => Promise<Array<{ id: string }>> };
+  countrySubject: {
+    createMany: (args: {
+      data: Array<{ countryId: string; subjectId: string; source: string }>;
+      skipDuplicates?: boolean;
+    }) => Promise<{ count: number }>;
+  };
+};
+
+/**
+ * The links a destination or a field starts life with.
+ *
+ * Every subject Universta publishes is taught somewhere, and a destination
+ * nobody has narrowed yet offers all of them -- which is what the taxonomy
+ * SQL has always seeded, and what the country editor exists to cut down.
+ * A destination or a subject born afterwards had none of it, so a new
+ * country opened on an empty field list and a new subject reached no
+ * destination until somebody attached it by hand, thirty times or two
+ * hundred and five.
+ *
+ * Written EDITORIAL, which is the only value the editor can then remove:
+ * the sweep adds and deletes DERIVED rows and would take these back out on
+ * the next course save, and `CountriesService.update` replaces exactly the
+ * EDITORIAL slice, so a narrowing sticks.
+ *
+ * `skipDuplicates` rather than a read-then-write, because the caller may
+ * already have written the pairs its own payload asked for, and the unique
+ * key would otherwise fail the transaction that created the record.
+ *
+ * Specializations are deliberately not written. Attaching every one of them
+ * is 190,035 rows for two readers, and the pages that show a destination's
+ * specializations read them from the subject rather than from here.
+ */
+export async function attachDefaultTaxonomy(
+  client: AttachClient,
+  target: { countryId: string } | { subjectId: string },
+): Promise<number> {
+  /* Not filtered to PUBLISHED. A draft on either side becomes live later,
+     and a link made now is the only way it reaches what already existed --
+     filtering here would mean a subject published tomorrow never reached a
+     country created today, and the reverse. Nothing leaks: every reader
+     filters the record's own status, so a link to a draft is invisible
+     until the draft publishes, which is exactly the moment it should
+     appear. */
+  const live = { deletedAt: null };
+  if ('countryId' in target) {
+    const subjects = await client.subject.findMany({
+      where: live,
+      select: { id: true },
+    });
+    if (!subjects.length) return 0;
+    const { count } = await client.countrySubject.createMany({
+      data: subjects.map((subject, index) => ({
+        countryId: target.countryId,
+        subjectId: subject.id,
+        displayOrder: index,
+        source: EDITORIAL,
+      })),
+      skipDuplicates: true,
+    });
+    return count;
+  }
+  const countries = await client.country.findMany({
+    where: live,
+    select: { id: true },
+  });
+  if (!countries.length) return 0;
+  const { count } = await client.countrySubject.createMany({
+    data: countries.map((country) => ({
+      countryId: country.id,
+      subjectId: target.subjectId,
+      source: EDITORIAL,
+    })),
+    skipDuplicates: true,
+  });
+  return count;
+}

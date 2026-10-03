@@ -482,7 +482,12 @@ export class BulkOperationsService {
         mode === 'update'
           ? await scoped.update({ where: { id }, data: parsed.data })
           : await scoped.create({ data: parsed.data });
-      await definition.reconcile!(tx, String(record.id), parsed.relations);
+      await definition.reconcile!(
+        tx,
+        String(record.id),
+        parsed.relations,
+        mode === 'create',
+      );
     });
   }
 
