@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BulkDataManager } from "./BulkDataManager";
 
@@ -65,5 +66,90 @@ describe("BulkDataManager existing records", () => {
     expect(screen.getByRole("columnheader", { name: "Continent" })).toBeVisible();
     expect(screen.getByText("Europe")).toBeVisible();
     expect(screen.getByText("Study in Demo Country")).toBeVisible();
+  });
+});
+
+/** Three countries, so "all" means something a selection does not. */
+function threeCountries() {
+  authFetch.mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/resources"))
+      return Promise.resolve(
+        jsonResponse([
+          {
+            key: "countries",
+            label: "Countries",
+            columns: ["Name"],
+            requiredColumns: ["Name"],
+            updatableColumns: ["name"],
+            fields: [{ key: "name", label: "Name", required: true }],
+          },
+        ]),
+      );
+    if (url.endsWith("/countries/records"))
+      return Promise.resolve(
+        jsonResponse([
+          { id: "c-1", name: "Alpha" },
+          { id: "c-2", name: "Beta" },
+          { id: "c-3", name: "Gamma" },
+        ]),
+      );
+    return Promise.reject(new Error(`Unexpected request: ${url}`));
+  });
+}
+
+describe("selecting records in bulk", () => {
+  it("ticks and clears every row from the header box", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+
+    await user.click(screen.getByRole("checkbox", { name: "Select all 3" }));
+    expect(screen.getByRole("button", { name: /Archive selected \(3\)/ })).toBeVisible();
+
+    await user.click(screen.getByRole("checkbox", { name: "Clear selection" }));
+    expect(screen.getByRole("button", { name: /Archive selected \(0\)/ })).toBeVisible();
+  });
+
+  it("will not archive everything until the resource is typed", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+
+    const archiveAll = screen.getByRole("button", { name: "Archive all 3" });
+    expect(archiveAll).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/Archive every countries record/), "countrie");
+    expect(archiveAll).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/Archive every countries record/), "s");
+    expect(archiveAll).toBeEnabled();
+  });
+
+  it("archives nothing when there is nothing to archive", async () => {
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/resources"))
+        return Promise.resolve(
+          jsonResponse([
+            {
+              key: "countries",
+              label: "Countries",
+              columns: ["Name"],
+              requiredColumns: ["Name"],
+              updatableColumns: ["name"],
+              fields: [{ key: "name", label: "Name", required: true }],
+            },
+          ]),
+        );
+      if (url.endsWith("/countries/records")) return Promise.resolve(jsonResponse([]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    render(<BulkDataManager />);
+    expect(await screen.findByText("No records yet.")).toBeVisible();
+    // The confirmation panel is not offered at all, so it cannot be armed.
+    expect(screen.queryByRole("button", { name: /Archive all/ })).toBeNull();
   });
 });

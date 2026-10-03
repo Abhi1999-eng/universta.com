@@ -14,10 +14,23 @@ import {
   type BulkRow,
 } from './bulk-resources';
 import { parseCsv, rowsWithHeader, toCsv } from './csv.util';
+import { createLimiter } from '../courses/courses.service';
 import { changedColumns } from './row-diff';
 import { parseXlsx, toXlsx, toXlsxTemplate } from './xlsx.util';
 
 const MAX_ROWS = 2000;
+/* How many dependency checks are in flight at once when archiving a whole
+   resource, and how many ids go into one UPDATE. */
+const ARCHIVE_CHECK_CONCURRENCY = 8;
+const ARCHIVE_WRITE_CHUNK = 500;
+
+/** Splits a list into runs of at most `size`. */
+function chunk<T>(rows: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let from = 0; from < rows.length; from += size)
+    out.push(rows.slice(from, from + size));
+  return out;
+}
 
 /** ISS-035. Every bulk-update value arrives as a raw string from the admin's
  * single generic text input, regardless of the target column's real type.
@@ -712,28 +725,65 @@ export class BulkOperationsService {
     return { updated: result.count };
   }
 
+  /**
+   * Archives a selection, or everything the resource holds.
+   *
+   * `all` is here because a selection stops being able to say "all of them"
+   * once a resource is large: the universities alone are nine thousand, and
+   * the cap below stops at {@link MAX_ROWS}. Passed `all`, the ids are read
+   * here rather than travelling over the wire, and everything after that is
+   * the same path -- each row's own dependency check, the unique-key release
+   * countries need, one audit entry naming what went.
+   */
   async bulkArchive(
     resourceKey: string,
     ids: string[],
     request: AuthenticatedRequest,
     actorUserId: string,
+    all = false,
   ) {
     const definition = bulkResource(resourceKey);
-    if (ids.length === 0 || ids.length > MAX_ROWS)
+    const table = delegate(this.prisma, definition);
+    if (all) {
+      const rows = (await table.findMany({
+        where: { deletedAt: null },
+        select: { id: true },
+      })) as Array<{ id: string }>;
+      ids = rows.map((row) => row.id);
+      if (ids.length === 0)
+        throw new NotFoundException({
+          code: 'NO_RECORDS_ARCHIVABLE',
+          message: `Nothing live to archive in ${resourceKey}`,
+          details: null,
+        });
+    } else if (ids.length === 0 || ids.length > MAX_ROWS)
       throw new BadRequestException({
         code: 'INVALID_SELECTION',
         message: `Select between 1 and ${MAX_ROWS} records`,
         details: null,
       });
-    const table = delegate(this.prisma, definition);
     const blocked: { id: string; reason: string }[] = [];
     const archivable: string[] = [];
-    for (const id of ids) {
-      const reason = definition.dependencyCheck
-        ? await definition.dependencyCheck(id, this.prisma)
-        : null;
-      if (reason) blocked.push({ id, reason });
-      else archivable.push(id);
+    if (!definition.dependencyCheck) archivable.push(...ids);
+    else {
+      /* One or two counts per row, and a resource can hand this nine
+         thousand of them: run sequentially that is twenty thousand round
+         trips and the request is gone long before the last one. Eight at a
+         time is the ceiling the facet counts settled on against the same
+         database. */
+      const gate = createLimiter(ARCHIVE_CHECK_CONCURRENCY);
+      const checks = await Promise.all(
+        ids.map((id) =>
+          gate(async () => ({
+            id,
+            reason: await definition.dependencyCheck!(id, this.prisma),
+          })),
+        ),
+      );
+      for (const check of checks) {
+        if (check.reason) blocked.push({ id: check.id, reason: check.reason });
+        else archivable.push(check.id);
+      }
     }
     if (archivable.length === 0)
       throw new NotFoundException({
@@ -766,10 +816,20 @@ export class BulkOperationsService {
             )
           ).reduce((sum: number, one: { count: number }) => sum + one.count, 0),
         }
-      : await table.updateMany({
-          where: { id: { in: archivable }, deletedAt: null },
-          data: { deletedAt, status: 'ARCHIVED' },
-        });
+      : /* Chunked, because `IN (...)` with nine thousand ids is one
+           statement the server may refuse outright on packet size. */
+        {
+          count: (
+            await Promise.all(
+              chunk(archivable, ARCHIVE_WRITE_CHUNK).map((part) =>
+                table.updateMany({
+                  where: { id: { in: part }, deletedAt: null },
+                  data: { deletedAt, status: 'ARCHIVED' },
+                }),
+              ),
+            )
+          ).reduce((sum: number, one: { count: number }) => sum + one.count, 0),
+        };
     await writeAudit(
       this.prisma,
       request,

@@ -31,6 +31,10 @@ type ApiEnvelope<T> = {
 };
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+/* What one bulk-archive request accepts. A larger selection is sent as
+   several, from here, rather than the server growing a way to empty a whole
+   table on one call. */
+const ARCHIVE_BATCH = 2000;
 const buttonClass =
   "p-btn p-btn--primary";
 const secondaryButtonClass =
@@ -148,6 +152,8 @@ export function BulkDataManager() {
 
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  /** Holds the resource key an operator has typed to unlock "archive all". */
+  const [confirmAll, setConfirmAll] = useState("");
   const [updateField, setUpdateField] = useState("");
   const [updateValue, setUpdateValue] = useState("");
 
@@ -320,6 +326,16 @@ export function BulkDataManager() {
     });
   }
 
+  const allSelected =
+    records.length > 0 && selectedIds.size === records.length;
+
+  /** The header box: everything, or nothing. */
+  function toggleAll() {
+    setSelectedIds(
+      allSelected ? new Set() : new Set(records.map((row) => String(row.id))),
+    );
+  }
+
   async function applyBulkUpdate() {
     if (!selectedKey || selectedIds.size === 0 || !updateField) {
       setRequestError("Select at least one record and a field to update.");
@@ -344,32 +360,88 @@ export function BulkDataManager() {
     }
   }
 
+  /**
+   * Archives a selection of any size, or the whole resource.
+   *
+   * A ticked selection is sent in batches, because one request accepts at
+   * most {@link ARCHIVE_BATCH} ids. "Everything" is not a selection at all:
+   * the server is told `all` and reads the ids itself, which is the only
+   * way to say it once a resource runs to thousands of rows.
+   */
+  async function archiveIds(ids: string[] | "all") {
+    setRequestError("");
+    setBusy(true);
+    let archived = 0;
+    const blocked: { id: string; reason: string }[] = [];
+    const send = (body: Record<string, unknown>) =>
+      api<{ archived: number; blocked: { id: string; reason: string }[] }>(
+        `/${selectedKey}/bulk-archive`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+    try {
+      if (ids === "all") {
+        setNotice(`Archiving every ${selectedKey} record…`);
+        const result = await send({ all: true });
+        archived = result.archived;
+        blocked.push(...result.blocked);
+      } else
+        for (let from = 0; from < ids.length; from += ARCHIVE_BATCH) {
+          const batch = ids.slice(from, from + ARCHIVE_BATCH);
+          if (ids.length > ARCHIVE_BATCH)
+            setNotice(
+              `Archiving ${from + 1}–${Math.min(from + batch.length, ids.length)} of ${ids.length}…`,
+            );
+          const result = await send({ ids: batch });
+          archived += result.archived;
+          blocked.push(...result.blocked);
+        }
+      const reasons = [...new Set(blocked.map((entry) => entry.reason))];
+      setNotice(
+        blocked.length
+          ? `Archived ${archived}; ${blocked.length} blocked (${reasons.join("; ")})`
+          : `Archived ${archived} record(s).`,
+      );
+      setSelectedIds(new Set());
+      setConfirmAll("");
+      await loadRecords(selectedKey);
+    } catch (error) {
+      setRequestError(
+        `${error instanceof Error ? error.message : "Bulk archive failed"}${
+          archived ? ` (${archived} archived before this)` : ""
+        }`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function applyBulkArchive() {
     if (!selectedKey || selectedIds.size === 0) {
       setRequestError("Select at least one record to archive.");
       return;
     }
-    setRequestError("");
-    try {
-      const result = await api<{
-        archived: number;
-        blocked: { id: string; reason: string }[];
-      }>(`/${selectedKey}/bulk-archive`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: [...selectedIds] }),
-      });
-      setNotice(
-        result.blocked.length
-          ? `Archived ${result.archived}; ${result.blocked.length} blocked (${result.blocked.map((entry) => entry.reason).join("; ")})`
-          : `Archived ${result.archived} record(s).`,
-      );
-      await loadRecords(selectedKey);
-    } catch (error) {
-      setRequestError(
-        error instanceof Error ? error.message : "Bulk archive failed",
-      );
+    await archiveIds([...selectedIds]);
+  }
+
+  /**
+   * Archiving every live record of a resource.
+   *
+   * Behind a typed confirmation rather than a dialog, because this is the
+   * one action on the page a mis-click cannot be taken back from in the
+   * UI -- the rows are soft-deleted and restoring them is not something
+   * this screen offers.
+   */
+  async function archiveEverything() {
+    if (!selectedKey || records.length === 0) return;
+    if (confirmAll.trim() !== selectedKey) {
+      setRequestError(`Type ${selectedKey} to confirm archiving all of them.`);
+      return;
     }
+    await archiveIds("all");
   }
 
   const hasValidationErrors = Boolean(dryRunResult?.errors.length);
@@ -674,17 +746,61 @@ export function BulkDataManager() {
               <button
                 type="button"
                 className="p-btn p-btn--danger"
+                disabled={busy || selectedIds.size === 0}
                 onClick={() => void applyBulkArchive()}
               >
                 Archive selected ({selectedIds.size})
               </button>
             </div>
 
+            {/* Everything, which is a different question from a selection and
+                is asked differently: the resource's own name, typed. */}
+            {records.length ? (
+              <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-[#F0C9C9] bg-[#FDF6F6] p-3">
+                <div>
+                  <label className="text-sm font-semibold" htmlFor="confirm-all">
+                    Archive every {selectedKey} record ({records.length})
+                  </label>
+                  <p className="p-sub mt-1">
+                    Type <code>{selectedKey}</code> to confirm. They are
+                    soft-deleted, and this screen offers no way back.
+                  </p>
+                </div>
+                <input
+                  id="confirm-all"
+                  className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
+                  value={confirmAll}
+                  placeholder={selectedKey}
+                  autoComplete="off"
+                  onChange={(event) => setConfirmAll(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="p-btn p-btn--danger"
+                  disabled={busy || confirmAll.trim() !== selectedKey}
+                  onClick={() => void archiveEverything()}
+                >
+                  Archive all {records.length}
+                </button>
+              </div>
+            ) : null}
+
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E8ECF3]">
               <table className="p-table u-table">
                 <thead>
                   <tr>
-                    <th />
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        aria-label={
+                          allSelected
+                            ? "Clear selection"
+                            : `Select all ${records.length}`
+                        }
+                      />
+                    </th>
                     {visibleRecordFields.map((field) => (
                       <th key={field.key}>
                         {field.label}
