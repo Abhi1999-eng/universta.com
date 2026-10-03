@@ -820,7 +820,10 @@ export function BulkDataManager() {
                   id="confirm-all"
                   className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
                   value={confirmAll}
-                  placeholder={selectedKey}
+                  /* Not the phrase itself. A box whose placeholder is the
+                     thing you have to type looks already filled in, and the
+                     button beside it looks broken rather than locked. */
+                  placeholder="Type to confirm"
                   autoComplete="off"
                   onChange={(event) => setConfirmAll(event.target.value)}
                 />
@@ -854,7 +857,7 @@ export function BulkDataManager() {
                 id="confirm-delete"
                 className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
                 value={confirmDelete}
-                placeholder={`delete ${selectedKey}`}
+                placeholder="Type to confirm"
                 autoComplete="off"
                 onChange={(event) => setConfirmDelete(event.target.value)}
               />
