@@ -361,39 +361,44 @@ export function BulkDataManager() {
   }
 
   /**
-   * Archives a selection of any size.
+   * Archives a selection of any size, or the whole resource.
    *
-   * The endpoint takes at most {@link ARCHIVE_BATCH} ids at a time, which is
-   * fine for a handful of ticked rows and not for "everything" -- the
-   * universities alone are thousands. So the selection is sent in batches
-   * from here rather than the server being given a way to archive a whole
-   * table on one request: every id still arrives explicitly, each row still
-   * goes through its own dependency check, and a batch that fails stops the
-   * run with what it managed already reported.
+   * A ticked selection is sent in batches, because one request accepts at
+   * most {@link ARCHIVE_BATCH} ids. "Everything" is not a selection at all:
+   * the server is told `all` and reads the ids itself, which is the only
+   * way to say it once a resource runs to thousands of rows.
    */
-  async function archiveIds(ids: string[]) {
+  async function archiveIds(ids: string[] | "all") {
     setRequestError("");
     setBusy(true);
     let archived = 0;
     const blocked: { id: string; reason: string }[] = [];
-    try {
-      for (let from = 0; from < ids.length; from += ARCHIVE_BATCH) {
-        const batch = ids.slice(from, from + ARCHIVE_BATCH);
-        if (ids.length > ARCHIVE_BATCH)
-          setNotice(
-            `Archiving ${from + 1}–${Math.min(from + batch.length, ids.length)} of ${ids.length}…`,
-          );
-        const result = await api<{
-          archived: number;
-          blocked: { id: string; reason: string }[];
-        }>(`/${selectedKey}/bulk-archive`, {
+    const send = (body: Record<string, unknown>) =>
+      api<{ archived: number; blocked: { id: string; reason: string }[] }>(
+        `/${selectedKey}/bulk-archive`,
+        {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ids: batch }),
-        });
-        archived += result.archived;
+          body: JSON.stringify(body),
+        },
+      );
+    try {
+      if (ids === "all") {
+        setNotice(`Archiving every ${selectedKey} record…`);
+        const result = await send({ all: true });
+        archived = result.archived;
         blocked.push(...result.blocked);
-      }
+      } else
+        for (let from = 0; from < ids.length; from += ARCHIVE_BATCH) {
+          const batch = ids.slice(from, from + ARCHIVE_BATCH);
+          if (ids.length > ARCHIVE_BATCH)
+            setNotice(
+              `Archiving ${from + 1}–${Math.min(from + batch.length, ids.length)} of ${ids.length}…`,
+            );
+          const result = await send({ ids: batch });
+          archived += result.archived;
+          blocked.push(...result.blocked);
+        }
       const reasons = [...new Set(blocked.map((entry) => entry.reason))];
       setNotice(
         blocked.length
@@ -436,7 +441,7 @@ export function BulkDataManager() {
       setRequestError(`Type ${selectedKey} to confirm archiving all of them.`);
       return;
     }
-    await archiveIds(records.map((row) => String(row.id)));
+    await archiveIds("all");
   }
 
   const hasValidationErrors = Boolean(dryRunResult?.errors.length);

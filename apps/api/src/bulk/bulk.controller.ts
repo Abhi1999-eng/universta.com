@@ -182,14 +182,23 @@ export class BulkOperationsController {
     );
   }
 
+  /** `all: true` archives every live record of the resource; the ids are
+   * then read on the server rather than sent, because a selection cannot
+   * carry nine thousand of them. */
   @Post(':resource/bulk-archive') async bulkArchive(
     @Req() req: AuthenticatedRequest,
     @Param('resource') resource: string,
-    @Body() body: { ids?: string[] },
+    @Body() body: { ids?: string[]; all?: boolean },
   ) {
     return successEnvelope(
       req,
-      await this.bulk.bulkArchive(resource, body.ids ?? [], req, actorId(req)),
+      await this.bulk.bulkArchive(
+        resource,
+        body.ids ?? [],
+        req,
+        actorId(req),
+        body.all === true,
+      ),
     );
   }
 }
