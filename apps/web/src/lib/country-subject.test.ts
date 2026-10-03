@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { countrySubjectPage, rankSpecializations } from './country-subject';
+import {
+  countrySubjectPage,
+  rankSpecializations,
+  subjectsForCountry,
+} from './country-subject';
 
 const spec = (name: string, slug: string, publishedCourseCount = 0) => ({
   id: slug,
@@ -56,5 +60,33 @@ describe('the other subjects offered beside it', () => {
       subjectSlug: 'none-of-them',
     });
     expect(view.others).toHaveLength(8);
+  });
+});
+
+describe('which subjects a destination shows', () => {
+  const linked = [{ id: '1', name: 'Engineering', slug: 'engineering' }];
+  const catalogue = [
+    { id: '1', name: 'Engineering', slug: 'engineering' },
+    { id: '2', name: 'Law', slug: 'law' },
+    { id: '3', name: 'Medicine', slug: 'medicine' },
+  ];
+
+  it('shows its own when it has them', () => {
+    const view = subjectsForCountry({ linked, catalogue });
+    expect(view.subjects.map((row) => row.slug)).toEqual(['engineering']);
+    expect(view.listed).toBe(true);
+  });
+
+  it('falls back to the catalogue rather than showing nothing', () => {
+    // A destination with no courses yet is not a destination with no fields.
+    const view = subjectsForCountry({ linked: [], catalogue });
+    expect(view.subjects).toHaveLength(3);
+    expect(view.listed).toBe(false);
+  });
+
+  it('still has nothing to show when the catalogue is empty too', () => {
+    const view = subjectsForCountry({ linked: [], catalogue: [] });
+    expect(view.subjects).toEqual([]);
+    expect(view.listed).toBe(false);
   });
 });

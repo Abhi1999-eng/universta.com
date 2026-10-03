@@ -52,3 +52,23 @@ export function countrySubjectPage<
       .slice(0, 8),
   };
 }
+
+/**
+ * Which subjects a destination's page shows, and whether they are its own.
+ *
+ * The links are derived from the courses published in a destination, so a
+ * destination with no courses had no subjects and the page said so and
+ * stopped. But the taxonomy is not per-country: the fields Universta knows
+ * are the same everywhere, and what varies is which of them have programmes
+ * behind them here. Falling back to the catalogue is what keeps a new
+ * destination from being a dead end, and `listed` is how the page knows to
+ * say the list is the catalogue's rather than its own.
+ */
+export function subjectsForCountry<T extends SubjectLink>(input: {
+  linked: readonly T[];
+  catalogue: readonly T[];
+}): { subjects: T[]; listed: boolean } {
+  return input.linked.length
+    ? { subjects: [...input.linked], listed: true }
+    : { subjects: [...input.catalogue], listed: false };
+}

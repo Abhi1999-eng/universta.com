@@ -83,14 +83,13 @@ export default async function Page({ params }: Params) {
     limit: '9',
   }).catch(() => null);
 
-  /* The destination has to claim the field for this page to be about it.
-     Published courses in it are the stronger claim and are checked first;
-     the editorial link is what carries a market the catalogue has not
-     reached yet. */
-  const listed = (country.subjects ?? []).some(
-    (entry) => entry.slug === subject.slug,
-  );
-  if (!listed && !courses?.meta.total) notFound();
+  /* The destination does not have to claim the field. It used to: a page
+     rendered only where the country listed the subject or published a
+     course in it, which meant a destination with no courses yet 404d on
+     every one of the thirty fields the catalogue knows. The taxonomy is
+     not per-country -- what varies is which fields have programmes behind
+     them here, and this page says that plainly where there are none. The
+     subject itself still has to exist, which `load` has already settled. */
 
   const tabs = await loadCountryTabs(
     country.slug,
