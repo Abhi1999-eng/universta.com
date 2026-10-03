@@ -206,6 +206,15 @@ export function BulkDataManager() {
     setSelectedKey(key);
     setUpdateField("");
     setUpdateValue("");
+    /* A different resource is a different table. The ticked ids belong to
+       the one being left -- sending them under the new resource's name is
+       the kind of mistake only noticed afterwards -- and both
+       confirmations were typed about it, so a phrase that armed
+       "delete countries" must not still be in the box when the screen has
+       moved on to subjects. */
+    setSelectedIds(new Set());
+    setConfirmAll("");
+    setConfirmDelete("");
     resetImportState();
   }
 
@@ -863,18 +872,21 @@ export function BulkDataManager() {
               >
                 Delete selected ({selectedIds.size})
               </button>
-              <button
-                type="button"
-                className="p-btn p-btn--danger"
-                disabled={
-                  busy ||
-                  records.length === 0 ||
-                  confirmDelete.trim() !== `delete ${selectedKey}`
-                }
-                onClick={() => void purge({ all: true }, "record(s)")}
-              >
-                Delete all {records.length}
-              </button>
+              {/* Not offered at nothing: "Delete all 0" is a button that
+                  cannot do anything. Emptying the archive still can, which
+                  is exactly what a resource with no live rows is for. */}
+              {records.length ? (
+                <button
+                  type="button"
+                  className="p-btn p-btn--danger"
+                  disabled={
+                    busy || confirmDelete.trim() !== `delete ${selectedKey}`
+                  }
+                  onClick={() => void purge({ all: true }, "record(s)")}
+                >
+                  Delete all {records.length}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="p-btn"
