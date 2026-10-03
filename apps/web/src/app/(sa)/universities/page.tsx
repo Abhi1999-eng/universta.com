@@ -54,12 +54,20 @@ function toRow(row: AnyRecord): UniversityIndexRow {
 }
 
 export default async function UniversitiesPage() {
-  /* Every published institution, because the directory narrows in the
-     browser: the counts beside each filter are then true, and the reader
-     pays for one request rather than one per filter. */
-  const universities = await phaseListAll<AnyRecord>('universities')
-    .then((result) => result.data.map(toRow))
-    .catch(() => [] as UniversityIndexRow[]);
+  /* The directory narrows in the browser, so it wants every institution:
+     the counts beside each filter are then true, and the reader pays for
+     one request rather than one per filter.
+
+     That stopped being affordable at 9,761 universities. `phaseListAll`
+     reads at most forty pages of fifty, so what arrives here is the first
+     two thousand -- and the hero is told the catalogue's real size rather
+     than the size of what was read, because presenting a ceiling as a
+     total is how this page came to claim nothing was published at all. */
+  const read = await phaseListAll<AnyRecord>('universities').catch(
+    () => null,
+  );
+  const universities = read ? read.data.map(toRow) : [];
+  const total = read?.truncated?.total ?? universities.length;
 
   const byCountry = new Map<string, DirectoryDestination>();
   for (const row of universities) {
@@ -74,10 +82,7 @@ export default async function UniversitiesPage() {
 
   return (
     <>
-      <UniversityIndexHero
-        total={universities.length}
-        destinations={destinations}
-      />
+      <UniversityIndexHero total={total} destinations={destinations} />
 
       <UniversityIndex universities={universities} />
 
