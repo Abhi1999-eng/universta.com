@@ -154,6 +154,8 @@ export function BulkDataManager() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   /** Holds the resource key an operator has typed to unlock "archive all". */
   const [confirmAll, setConfirmAll] = useState("");
+  /** Typed to unlock the two that remove rows rather than mark them. */
+  const [confirmDelete, setConfirmDelete] = useState("");
   const [updateField, setUpdateField] = useState("");
   const [updateValue, setUpdateValue] = useState("");
 
@@ -413,6 +415,45 @@ export function BulkDataManager() {
         `${error instanceof Error ? error.message : "Bulk archive failed"}${
           archived ? ` (${archived} archived before this)` : ""
         }`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Removes records outright. Archiving marks them deleted and the rows
+   * stay; this is the other thing, and the server says so plainly when a
+   * record is still referenced rather than taking the reference with it.
+   */
+  async function purge(
+    body: { ids?: string[]; all?: boolean; emptyArchive?: boolean },
+    what: string,
+  ) {
+    setRequestError("");
+    setBusy(true);
+    try {
+      const result = await api<{
+        deleted: number;
+        blocked: { id: string; reason: string }[];
+      }>(`/${selectedKey}/bulk-delete`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const reasons = [...new Set(result.blocked.map((row) => row.reason))];
+      setNotice(
+        result.blocked.length
+          ? `Deleted ${result.deleted} ${what}; ${result.blocked.length} could not go (${reasons.join("; ")})`
+          : `Deleted ${result.deleted} ${what}.`,
+      );
+      setSelectedIds(new Set());
+      setConfirmAll("");
+      setConfirmDelete("");
+      await loadRecords(selectedKey);
+    } catch (error) {
+      setRequestError(
+        error instanceof Error ? error.message : "Delete failed",
       );
     } finally {
       setBusy(false);
@@ -784,6 +825,67 @@ export function BulkDataManager() {
                 </button>
               </div>
             ) : null}
+
+            {/* Removing rows rather than marking them. Its own confirmation,
+                because archiving is reversible in the database and this is
+                not -- and because an operator who meant to archive should
+                not reach this by typing the same thing twice. */}
+            <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-[#E4B9B9] bg-[#FBF0F0] p-3">
+              <div>
+                <label className="text-sm font-semibold" htmlFor="confirm-delete">
+                  Delete permanently
+                </label>
+                <p className="p-sub mt-1">
+                  The rows go, rather than being marked deleted. Type{" "}
+                  <code>delete {selectedKey}</code> to confirm. Anything still
+                  referenced by another record is reported and left alone.
+                </p>
+              </div>
+              <input
+                id="confirm-delete"
+                className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
+                value={confirmDelete}
+                placeholder={`delete ${selectedKey}`}
+                autoComplete="off"
+                onChange={(event) => setConfirmDelete(event.target.value)}
+              />
+              <button
+                type="button"
+                className="p-btn p-btn--danger"
+                disabled={
+                  busy ||
+                  selectedIds.size === 0 ||
+                  confirmDelete.trim() !== `delete ${selectedKey}`
+                }
+                onClick={() =>
+                  void purge({ ids: [...selectedIds] }, "record(s)")
+                }
+              >
+                Delete selected ({selectedIds.size})
+              </button>
+              <button
+                type="button"
+                className="p-btn p-btn--danger"
+                disabled={
+                  busy ||
+                  records.length === 0 ||
+                  confirmDelete.trim() !== `delete ${selectedKey}`
+                }
+                onClick={() => void purge({ all: true }, "record(s)")}
+              >
+                Delete all {records.length}
+              </button>
+              <button
+                type="button"
+                className="p-btn"
+                disabled={busy || confirmDelete.trim() !== `delete ${selectedKey}`}
+                onClick={() =>
+                  void purge({ emptyArchive: true }, "archived record(s)")
+                }
+              >
+                Empty archive
+              </button>
+            </div>
 
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E8ECF3]">
               <table className="p-table u-table">

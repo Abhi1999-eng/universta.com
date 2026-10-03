@@ -201,4 +201,25 @@ export class BulkOperationsController {
       ),
     );
   }
+
+  /**
+   * Removes records outright rather than marking them deleted.
+   *
+   * `ids` for a selection, `all` for every live record, `emptyArchive` for
+   * the ones already archived. Separate from bulk-archive because they are
+   * different promises: one is reversible in the database and this is not.
+   */
+  @Post(':resource/bulk-delete') async bulkDelete(
+    @Req() req: AuthenticatedRequest,
+    @Param('resource') resource: string,
+    @Body() body: { ids?: string[]; all?: boolean; emptyArchive?: boolean },
+  ) {
+    return successEnvelope(
+      req,
+      await this.bulk.purge(resource, body.ids ?? [], req, actorId(req), {
+        all: body.all === true,
+        emptyArchive: body.emptyArchive === true,
+      }),
+    );
+  }
 }
