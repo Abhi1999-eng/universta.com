@@ -5,8 +5,11 @@ import { BulkDataManager } from "./BulkDataManager";
 
 const authFetch = vi.fn();
 
+/* Both arguments forwarded: a test that cares what was sent, rather than
+   only where, has no other way to see the body. */
 vi.mock("@/features/auth/auth-client", () => ({
-  authFetch: (input: RequestInfo | URL) => authFetch(input),
+  authFetch: (input: RequestInfo | URL, init?: RequestInit) =>
+    authFetch(input, init),
 }));
 
 function jsonResponse(data: unknown) {
@@ -151,5 +154,161 @@ describe("selecting records in bulk", () => {
     expect(await screen.findByText("No records yet.")).toBeVisible();
     // The confirmation panel is not offered at all, so it cannot be armed.
     expect(screen.queryByRole("button", { name: /Archive all/ })).toBeNull();
+  });
+});
+
+describe("deleting rather than archiving", () => {
+  it("keeps all three delete controls locked until the phrase is typed", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+
+    const deleteAll = screen.getByRole("button", { name: "Delete all 3" });
+    const emptyArchive = screen.getByRole("button", { name: "Empty archive" });
+    expect(deleteAll).toBeDisabled();
+    expect(emptyArchive).toBeDisabled();
+
+    // The archive confirmation is not the delete confirmation.
+    await user.type(screen.getByLabelText(/Archive every countries record/), "countries");
+    expect(deleteAll).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+    expect(deleteAll).toBeEnabled();
+    expect(emptyArchive).toBeEnabled();
+  });
+
+  it("sends emptyArchive rather than a list of ids", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+
+    const calls: string[] = [];
+    authFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/countries/bulk-delete")) {
+        calls.push(String(init?.body ?? ""));
+        return Promise.resolve(jsonResponse({ deleted: 2, blocked: [] }));
+      }
+      if (url.endsWith("/countries/records")) return Promise.resolve(jsonResponse([]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Empty archive" }));
+    await screen.findByText(/Deleted 2 archived record\(s\)\./);
+    expect(JSON.parse(calls[0])).toEqual({ emptyArchive: true });
+  });
+
+  it("reports what the database would not let go", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/countries/bulk-delete"))
+        return Promise.resolve(
+          jsonResponse({
+            deleted: 1,
+            blocked: [
+              { id: "c-2", reason: "Still referenced by universities_country_id_fkey" },
+            ],
+          }),
+        );
+      if (url.endsWith("/countries/records")) return Promise.resolve(jsonResponse([]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete all 3" }));
+    expect(
+      await screen.findByText(/1 could not go \(Still referenced by universities_country_id_fkey\)/),
+    ).toBeVisible();
+  });
+});
+
+describe("switching to a different entity", () => {
+  /** Two resources, so the screen can be moved between them. */
+  function twoResources() {
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/resources"))
+        return Promise.resolve(
+          jsonResponse([
+            {
+              key: "countries",
+              label: "Countries",
+              columns: ["Name"],
+              requiredColumns: ["Name"],
+              updatableColumns: ["name"],
+              fields: [{ key: "name", label: "Name", required: true }],
+            },
+            {
+              key: "subjects",
+              label: "Subjects",
+              columns: ["Name"],
+              requiredColumns: ["Name"],
+              updatableColumns: ["name"],
+              fields: [{ key: "name", label: "Name", required: true }],
+            },
+          ]),
+        );
+      if (url.endsWith("/countries/records"))
+        return Promise.resolve(jsonResponse([{ id: "c-1", name: "Alpha" }]));
+      if (url.endsWith("/subjects/records"))
+        return Promise.resolve(jsonResponse([{ id: "s-1", name: "Engineering" }]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+  }
+
+  it("drops the selection and both confirmations", async () => {
+    // The ticked ids belong to the table being left, and the phrases were
+    // typed about it. Carrying either across is how the wrong rows go.
+    twoResources();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+
+    await user.click(screen.getByRole("checkbox", { name: "Select all 1" }));
+    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+    await user.type(screen.getByLabelText(/Archive every countries record/), "countries");
+    expect(screen.getByRole("button", { name: "Delete all 1" })).toBeEnabled();
+
+    await user.selectOptions(screen.getByLabelText("Resource"), "subjects");
+    await screen.findByText("Engineering");
+
+    expect(screen.getByRole("button", { name: /Delete selected \(0\)/ })).toBeVisible();
+    expect(screen.getByLabelText("Delete permanently")).toHaveValue("");
+    expect(screen.getByLabelText(/Archive every subjects record/)).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Delete all 1" })).toBeDisabled();
+  });
+
+  it("offers no Delete all when the resource has nothing live", async () => {
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/resources"))
+        return Promise.resolve(
+          jsonResponse([
+            {
+              key: "countries",
+              label: "Countries",
+              columns: ["Name"],
+              requiredColumns: ["Name"],
+              updatableColumns: ["name"],
+              fields: [{ key: "name", label: "Name", required: true }],
+            },
+          ]),
+        );
+      if (url.endsWith("/countries/records")) return Promise.resolve(jsonResponse([]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    render(<BulkDataManager />);
+    await screen.findByText("No records yet.");
+    expect(screen.queryByRole("button", { name: /^Delete all/ })).toBeNull();
+    // Emptying the archive is still the thing you would want here.
+    expect(screen.getByRole("button", { name: "Empty archive" })).toBeVisible();
   });
 });

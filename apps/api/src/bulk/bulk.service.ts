@@ -16,6 +16,7 @@ import {
 import { parseCsv, rowsWithHeader, toCsv } from './csv.util';
 import { createLimiter } from '../courses/courses.service';
 import { changedColumns } from './row-diff';
+import type { PurgeTx } from './bulk-resources';
 import { parseXlsx, toXlsx, toXlsxTemplate } from './xlsx.util';
 
 const MAX_ROWS = 2000;
@@ -23,6 +24,23 @@ const MAX_ROWS = 2000;
    resource, and how many ids go into one UPDATE. */
 const ARCHIVE_CHECK_CONCURRENCY = 8;
 const ARCHIVE_WRITE_CHUNK = 500;
+
+/**
+ * Why the database would not let a record go, in words.
+ *
+ * Prisma reports a foreign-key refusal as P2003 and names the constraint,
+ * which is the one useful thing in it: `courses_subject_id_fkey` says a
+ * course is still filed under the subject somebody is deleting.
+ */
+export function purgeBlockReason(error: unknown): string {
+  const code = (error as { code?: string } | null)?.code;
+  const field = (
+    error as { meta?: { field_name?: string; constraint?: string } } | null
+  )?.meta;
+  if (code === 'P2003')
+    return `Still referenced by ${field?.field_name ?? field?.constraint ?? 'another record'}`;
+  return error instanceof Error ? error.message : 'Could not be deleted';
+}
 
 /** Splits a list into runs of at most `size`. */
 function chunk<T>(rows: T[], size: number): T[][] {
@@ -680,6 +698,115 @@ export class BulkOperationsService {
       `Bulk ${mode} import: ${summary.created} created, ${summary.updated} updated, ${summary.unchanged} unchanged, ${summary.failed} failed`,
     );
     return summary;
+  }
+
+  /**
+   * Removes records outright, rather than marking them deleted.
+   *
+   * Archiving is reversible in the database and invisible everywhere else,
+   * which is the right default and is not what an operator clearing a
+   * catalogue is asking for. This is the other thing: the rows go.
+   *
+   * Three ways to say which: a selection, everything live, or everything
+   * already archived -- `emptyArchive`, which is the one with no way back
+   * at all and also the only one that cannot surprise anybody, because
+   * nothing on the site has been reading those rows since they were
+   * archived.
+   *
+   * What blocks a delete is left blocking it. The joins and owned children
+   * a record drags with it are declared per resource and removed first; a
+   * reference the schema restricts and the resource does not claim -- a
+   * course still filed under a subject, a university still in a country, a
+   * student's application -- comes back as a blocked row with the database's
+   * own reason, not as a silent cascade.
+   */
+  async purge(
+    resourceKey: string,
+    ids: string[],
+    request: AuthenticatedRequest,
+    actorUserId: string,
+    scope: { all?: boolean; emptyArchive?: boolean } = {},
+  ) {
+    const definition = bulkResource(resourceKey);
+    const table = delegate(this.prisma, definition);
+    if (scope.all || scope.emptyArchive) {
+      const rows = (await table.findMany({
+        where: scope.emptyArchive
+          ? { NOT: { deletedAt: null } }
+          : { deletedAt: null },
+        select: { id: true },
+      })) as Array<{ id: string }>;
+      ids = rows.map((row) => row.id);
+      if (ids.length === 0)
+        throw new NotFoundException({
+          code: 'NOTHING_TO_DELETE',
+          message: scope.emptyArchive
+            ? `The ${resourceKey} archive is already empty`
+            : `There are no live ${resourceKey} records to delete`,
+          details: null,
+        });
+    } else if (ids.length === 0 || ids.length > MAX_ROWS)
+      throw new BadRequestException({
+        code: 'INVALID_SELECTION',
+        message: `Select between 1 and ${MAX_ROWS} records`,
+        details: null,
+      });
+
+    let deleted = 0;
+    const blocked: { id: string; reason: string }[] = [];
+    /* One transaction per run of ids rather than one for all of them: a
+       single failing row would otherwise roll back thousands that were
+       fine, and the operator would have no way to find which one. */
+    for (const part of chunk(ids, ARCHIVE_WRITE_CHUNK)) {
+      try {
+        deleted += await this.purgeChunk(definition, part);
+      } catch {
+        /* The run held something the database will not let go. Retry it one
+           at a time so the rest still go and the blocker is named. */
+        for (const id of part) {
+          try {
+            deleted += await this.purgeChunk(definition, [id]);
+          } catch (error) {
+            blocked.push({ id, reason: purgeBlockReason(error) });
+          }
+        }
+      }
+    }
+    await writeAudit(
+      this.prisma,
+      request,
+      actorUserId,
+      'bulk',
+      resourceKey,
+      resourceKey,
+      'BULK_DELETE',
+      null,
+      { deletedCount: deleted, blockedCount: blocked.length },
+      `Permanently deleted ${deleted} ${resourceKey} record(s)${
+        scope.emptyArchive ? ' from the archive' : ''
+      }`,
+    );
+    return { deleted, blocked };
+  }
+
+  /** The owned rows, then the records, in one transaction. */
+  private async purgeChunk(
+    definition: BulkResourceDefinition,
+    ids: string[],
+  ): Promise<number> {
+    return this.prisma.$transaction(async (tx) => {
+      if (definition.purgeChildren)
+        await definition.purgeChildren(tx as unknown as PurgeTx, ids);
+      const scoped = (tx as unknown as Record<string, TransactionalTable>)[
+        definition.model
+      ];
+      const result = await (
+        scoped as unknown as {
+          deleteMany: (args: unknown) => Promise<{ count: number }>;
+        }
+      ).deleteMany({ where: { id: { in: ids } } });
+      return result.count;
+    });
   }
 
   async bulkUpdate(

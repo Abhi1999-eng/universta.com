@@ -107,7 +107,27 @@ export interface BulkResourceDefinition {
    * answer, so nothing pretends otherwise here.
    */
   releasesUniqueKeys?: boolean;
+
+  /**
+   * The rows that exist only to hold this record in place, removed before it
+   * is deleted outright.
+   *
+   * Archiving is a soft delete and never touches them. A hard delete has to,
+   * because the schema restricts the ones it does not cascade: a course is
+   * referenced by its destination mappings, its related-course pairs and the
+   * offerings that teach it, and MySQL refuses the delete while any of them
+   * stand. These are joins and owned children, not independent records --
+   * what is left out of this list is what should legitimately block a
+   * delete, and is reported as blocking rather than quietly removed.
+   */
+  purgeChildren?(tx: PurgeTx, ids: string[]): Promise<void>;
 }
+
+/** The subset of a transaction the purge hooks use. */
+export type PurgeTx = Record<
+  string,
+  { deleteMany: (args: { where: unknown }) => Promise<{ count: number }> }
+>;
 
 const relationLabels: Record<string, string> = {
   continentSlug: 'Continent',
@@ -243,6 +263,18 @@ async function findRef(
 }
 
 const countries: BulkResourceDefinition = {
+  /* A destination's own joins and page furniture. Its universities are not
+     here: an institution is an independent record, and a destination that
+     still has them should block rather than take them with it. */
+  async purgeChildren(tx, ids) {
+    const where = { countryId: { in: ids } };
+    await tx.countrySubject.deleteMany({ where });
+    await tx.countrySubSubject.deleteMany({ where });
+    await tx.countryTagMap.deleteMany({ where });
+    await tx.countryFaq.deleteMany({ where });
+    await tx.countryContentSection.deleteMany({ where });
+    await tx.countryCourse.deleteMany({ where });
+  },
   key: 'countries',
   label: 'Countries',
   model: 'country',
@@ -999,6 +1031,15 @@ type SubSubjectTable = {
 };
 
 const subjects: BulkResourceDefinition = {
+  /* A specialization cannot exist without its subject, so it goes with it.
+     A course referencing the subject is independent and blocks instead. */
+  async purgeChildren(tx, ids) {
+    await tx.countrySubject.deleteMany({ where: { subjectId: { in: ids } } });
+    await tx.countrySubSubject.deleteMany({
+      where: { subSubject: { subjectId: { in: ids } } },
+    });
+    await tx.subSubject.deleteMany({ where: { subjectId: { in: ids } } });
+  },
   key: 'subjects',
   label: 'Subjects',
   model: 'subject',
@@ -1105,6 +1146,20 @@ async function reconcileCourseOfferings(
 }
 
 const courses: BulkResourceDefinition = {
+  /* Everything that only points at the course: its destination mappings,
+     the related-course pairs on both sides, and the offerings that teach
+     it -- an offering is a university's instance of this course and has
+     nothing left to be once the course is gone. */
+  async purgeChildren(tx, ids) {
+    await tx.countryCourse.deleteMany({ where: { courseId: { in: ids } } });
+    await tx.relatedCourse.deleteMany({ where: { courseId: { in: ids } } });
+    await tx.relatedCourse.deleteMany({
+      where: { relatedCourseId: { in: ids } },
+    });
+    await tx.universityCourseOffering.deleteMany({
+      where: { genericCourseId: { in: ids } },
+    });
+  },
   key: 'courses',
   label: 'Generic courses',
   model: 'course',
@@ -1575,6 +1630,10 @@ function universityFigures(
 }
 
 const universities: BulkResourceDefinition = {
+  /* No hook: campuses, offerings and claims all cascade from the
+     university in the schema, so the database takes them. A student
+     application does not cascade and should not -- it is somebody's
+     record, and a university still carrying one is meant to block. */
   key: 'universities',
   label: 'Universities',
   model: 'university',
