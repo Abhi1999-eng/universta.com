@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Country, CountryTestimonial, ProfileSummary } from '@/lib/countries';
 import { monthNames } from '@/lib/study-abroad-view';
+import { inCountry } from '@/lib/country-article';
 import { SectionHead } from './SectionHead';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
@@ -72,6 +73,7 @@ export function countryFigures(
   country: Country,
   profiles: ProfileSummary,
 ): CountryFigure[] {
+  const where = inCountry(country.name, country.iso2Code);
   const stats = country.derived?.statistics;
   const months = country.configuration?.intakeMonths ?? [];
   const intakeCount = months.length;
@@ -88,7 +90,7 @@ export function countryFigures(
     figures.push({
       value: String(stats.universitiesCount),
       label: 'Universities profiled',
-      meaning: `University profiles Universta holds for ${country.name}, each with its own courses, fees and entry requirements. It is what we cover, not a count of every institution in the country.`,
+      meaning: `University profiles Universta holds for ${where}, each with its own courses, fees and entry requirements. It is what we cover, not a count of every institution in the country.`,
     });
   if (stats?.publicUniversitiesCount)
     figures.push({
@@ -118,8 +120,8 @@ export function countryFigures(
       label: 'Tuition from, per year',
       meaning:
         tuitionMax !== null && tuitionMax !== undefined
-          ? `The lowest international rate published for ${country.name}; the range runs to ${money(tuitionMax)}. Your own figure sits somewhere between the two and depends on the university and the programme, not on the destination alone.`
-          : `The lowest international rate published for ${country.name}. Your own figure depends on the university and the programme, not on the destination alone.`,
+          ? `The lowest international rate published for ${where}; the range runs to ${money(tuitionMax)}. Your own figure sits somewhere between the two and depends on the university and the programme, not on the destination alone.`
+          : `The lowest international rate published for ${where}. Your own figure depends on the university and the programme, not on the destination alone.`,
     });
   if (intakeCount)
     figures.push({
@@ -167,17 +169,24 @@ export function CountryNumbers({
         <SplitHead
           index={n}
           eyebrow="By the numbers"
-          title={`Study in ${country.name} by the numbers`}
+          title={`Study in ${inCountry(country.name, country.iso2Code)} by the numbers`}
           lead="The figures that shape a decision, taken from what is published on Universta."
         />
+        {/* Each figure says what it means, here, beside itself.
+            It used to say it in a section of its own further down the page --
+            an accordion of the same five numbers, each one opening on the
+            sentence below. Two bands for one fact, and the sentence only
+            reachable by a click nobody made. Three across rather than five,
+            because a number with a caption under it needs the width. */}
         <div
           className="bignums"
-          style={{ '--cols': Math.min(figures.length, 5) } as React.CSSProperties}
+          style={{ '--cols': Math.min(figures.length, 3) } as React.CSSProperties}
         >
           {figures.map((figure) => (
             <div className="bignum" key={figure.label}>
               <div className="bignum__v">{figure.value}</div>
               <div className="bignum__l">{figure.label}</div>
+              <p className="bignum__m">{figure.meaning}</p>
             </div>
           ))}
         </div>
@@ -243,6 +252,7 @@ export function CountryUniversities({
   n?: string | null;
   alt: boolean;
 }) {
+  const where = inCountry(country.name, country.iso2Code);
   const universities = countryUniversities(country, fallback);
   if (!universities.length) return null;
 
@@ -258,7 +268,7 @@ export function CountryUniversities({
         <SplitHead
           index={n}
           eyebrow="Universities"
-          title={`Explore universities in ${country.name}`}
+          title={`Explore universities in ${where}`}
           lead={
             courses
               ? `${count} ${count === 1 ? 'university' : 'universities'} and ${courses} ${courses === 1 ? 'programme' : 'programmes'} profiled with tuition, entry requirements and deadlines.`
@@ -303,6 +313,7 @@ export function CountrySubjects({
   n?: string | null;
   alt: boolean;
 }) {
+  const where = inCountry(country.name, country.iso2Code);
   const subjects = country.subjects ?? [];
   if (!subjects.length) return null;
 
@@ -328,7 +339,7 @@ export function CountrySubjects({
         <SplitHead
           index={n}
           eyebrow="Find your field"
-          title={`Popular subjects to study in ${country.name}`}
+          title={`Popular subjects to study in ${where}`}
           lead={
             taught.length
               ? 'Explore the fields taught here, then see the courses and specializations inside each one.'
@@ -430,6 +441,7 @@ export function CountryCourses({
   n?: string | null;
   alt: boolean;
 }) {
+  const where = inCountry(country.name, country.iso2Code);
   if (!courses.length) return null;
 
   return (
@@ -438,7 +450,7 @@ export function CountryCourses({
         <SplitHead
           index={n}
           eyebrow="Courses"
-          title={`Explore courses in ${country.name}`}
+          title={`Explore courses in ${where}`}
           lead="Each course page carries its tuition, entry requirements, intakes and deadlines."
           cta={{ href: '/courses', label: 'Search every course' }}
         />
@@ -491,6 +503,7 @@ export function CountryTestimonials({
   n?: string | null;
   alt: boolean;
 }) {
+  const where = inCountry(country.name, country.iso2Code);
   if (!testimonials.length) return null;
 
   return (
@@ -499,7 +512,7 @@ export function CountryTestimonials({
         <SplitHead
           index={n}
           eyebrow="Student voices"
-          title={`What students say about studying in ${country.name}`}
+          title={`What students say about studying in ${where}`}
           lead="Published as given, with the attribution each student agreed to."
         />
         <div className="quotes">
@@ -589,6 +602,7 @@ export function CountryScholarships({
   n?: string | null;
   alt: boolean;
 }) {
+  const where = inCountry(country.name, country.iso2Code);
   if (!scholarships.length) return null;
 
   return (
@@ -597,7 +611,7 @@ export function CountryScholarships({
         <SplitHead
           index={n}
           eyebrow="Funding"
-          title={`Scholarships to study in ${country.name}`}
+          title={`Scholarships to study in ${where}`}
           lead={`Funding open to international students here. ${FUNDING_CAVEAT}`}
           cta={{ href: `/scholarships?country=${country.slug}`, label: 'Find scholarships' }}
         />

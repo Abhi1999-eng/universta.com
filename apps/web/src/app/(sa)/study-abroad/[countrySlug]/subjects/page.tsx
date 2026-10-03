@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
+import { CountryTabs } from '@/components/study-abroad/CountryTabs';
+import { loadCountryTabs } from '@/lib/country-tabs';
 import { partitionSubjects } from '@/lib/country-sub-pages';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 
@@ -49,8 +51,16 @@ export default async function Page({ params }: Params) {
   const subjects = country.subjects ?? [];
   const { taught, editorial } = partitionSubjects(subjects);
 
+  const tabs = await loadCountryTabs(country.slug, subjects.length);
+
   const card = (subject: (typeof subjects)[number]) => (
-    <Link className="h-card" href={`/subjects/${subject.slug}`} key={subject.id}>
+    /* To this field in this destination, not to the field everywhere. The
+       destination is the whole reason the reader is on this page. */
+    <Link
+      className="h-card"
+      href={`/study-abroad/${country.slug}/${subject.slug}`}
+      key={subject.id}
+    >
       <strong className="h-card__t">{subject.name}</strong>
     </Link>
   );
@@ -89,6 +99,8 @@ export default async function Page({ params }: Params) {
 
       <section className="sec sec--white sec--tight">
         <div className="wrap">
+          <CountryTabs tabs={tabs} current="subjects" />
+
           {taught.length ? <div className="h-grid h-grid--4">{taught.map(card)}</div> : null}
 
           {editorial.length ? (

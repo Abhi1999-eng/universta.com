@@ -20,8 +20,12 @@ export function Longform({ label, children }: { label: string; children: React.R
         onClick={() => setOpen(!open)}
       >
         <span>{open ? 'Show less' : label}</span>
+        {/* A plus rotated 45 degrees is a cross, and a cross in a filled
+            circle is the control that dismisses something. Beside the words
+            "Show less" that is the wrong promise, so the glyph becomes a
+            minus instead of turning into an x. */}
         <span className="plus" aria-hidden="true">
-          +
+          {open ? '\u2212' : '+'}
         </span>
       </button>
       <div className="longform__body" id={id} data-open={String(open)}>

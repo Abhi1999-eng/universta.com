@@ -469,6 +469,13 @@
   display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
 }
 .sa .hero__eyebrow b{ color: var(--accent); font-weight: 500; }
+/* An eyebrow that is a trail rather than a label: the destination and the
+   field this page is the intersection of, each a link back to itself. The
+   house eyebrow is uppercase mono, which is right for "COURSE DISCOVERY"
+   and wrong for two proper nouns a reader is meant to click. */
+.sa .hero__eyebrow--links{ text-transform: none; letter-spacing: 0.01em; font-family: var(--font-body); font-size: 14px; }
+.sa .hero__eyebrow--links a{ font-weight: 600; color: var(--text); text-decoration: none; }
+.sa .hero__eyebrow--links a:hover{ color: var(--accent); }
 /* Size scales to the country name so "Germany" and "Saint Vincent and the
    Grenadines" both sit inside the column. --namelen is set per country. */
 .sa .hero__display{
@@ -575,7 +582,7 @@
   letter-spacing: -0.015em; text-align: left;
 }
 .sa .longform__toggle .plus{ flex: none; width: 28px; height: 28px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; transition: transform var(--dur) var(--ease); }
-.sa .longform__toggle[aria-expanded="true"] .plus{ transform: rotate(45deg); background: var(--navy); color: #fff; border-color: var(--navy); }
+.sa .longform__toggle[aria-expanded="true"] .plus{ border-color: var(--line-strong); background: var(--paper); color: var(--text); }
 .sa .longform__body{ display: none; padding-bottom: 30px; max-width: 74ch; }
 .sa .longform__body[data-open="true"]{ display: block; }
 .sa .longform__body h3{ font-size: 19px; margin: 26px 0 10px; }
@@ -838,6 +845,8 @@
   font-variant-numeric: tabular-nums; margin-bottom: 12px;
 }
 .sa .bignum__l{ font-size: 15.5px; color: var(--muted); max-width: 26ch; }
+/* The caption that used to be an accordion of its own further down. */
+.sa .bignum__m{ font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 8px; max-width: 42ch; }
 /* --- What the numbers mean (accordion over the same data) --------------- */
 .sa .meanings{ border-top: 1px solid var(--line); }
 .sa .meaning{ border-bottom: 1px solid var(--line); }
@@ -1663,6 +1672,14 @@
   transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .sa .unitabs a:hover { color: var(--text); }
+/* The count beside a tab's name. The strip was written for in-page anchors,
+   which have nothing to count; used as a destination's four ways in, the
+   number is half of what the tab says. */
+.sa .unitabs a em {
+  font-style: normal; font-weight: 600; font-size: 12px;
+  color: var(--muted); margin-left: 6px;
+}
+.sa .unitabs a[aria-current="true"] em { color: var(--text); }
 .sa .unitabs a[aria-current="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .sa .unisnap { display: grid; gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); overflow: hidden; }
 @media (min-width: 560px) {
