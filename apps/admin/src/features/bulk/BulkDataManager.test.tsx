@@ -312,3 +312,26 @@ describe("switching to a different entity", () => {
     expect(screen.getByRole("button", { name: "Empty archive" })).toBeVisible();
   });
 });
+
+describe("the confirmation boxes", () => {
+  /** A box whose placeholder is the phrase looks already filled in, and the
+   * button beside it looks broken rather than locked. */
+  it("prompt in the box, phrase in the instruction", async () => {
+    threeCountries();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+
+    const archive = screen.getByLabelText(/Archive every countries record/);
+    const del = screen.getByLabelText("Delete permanently");
+
+    expect(archive).toHaveAttribute("placeholder", "Type to confirm");
+    expect(del).toHaveAttribute("placeholder", "Type to confirm");
+    expect(archive).toHaveValue("");
+    expect(del).toHaveValue("");
+
+    // The phrase is still said, where it reads as an instruction.
+    expect(screen.getByText(/to confirm\. They are/)).toBeVisible();
+    expect(screen.getByText(/to confirm\. Anything still referenced/)).toBeVisible();
+    expect(screen.getAllByText("delete countries").length).toBeGreaterThan(0);
+  });
+});
