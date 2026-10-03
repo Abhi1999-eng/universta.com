@@ -7,6 +7,7 @@ import { PRIMARY, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChro
 import { AssessmentDialog } from './AssessmentDialog';
 import { FlagMark } from './FlagMark';
 import { searchDestinations } from '@/lib/study-abroad-view';
+import type { SearchGroup } from '@/lib/search';
 
 /**
  * The interactive frame every Study Abroad page sits inside: the mobile drawer,
@@ -62,6 +63,12 @@ function useEscape(active: boolean, close: () => void) {
     return () => document.removeEventListener('keydown', onKey);
   }, [active, close]);
 }
+
+/* Matches the search API: two letters match half the catalogue and say
+   nothing. Destinations keep matching from the first keystroke -- that list
+   is already in the browser and costs no request. */
+const MIN_SEARCH = 3;
+const SEARCH_DEBOUNCE_MS = 180;
 
 export function StudyAbroadShell({
   destinations,
@@ -147,6 +154,47 @@ export function StudyAbroadShell({
     [destinations],
   );
   const matches = useMemo(() => searchDestinations(all, query).slice(0, 40), [all, query]);
+
+  /* The header's magnifier replaced the "Explore countries" pill, and with it
+     the panel only ever searched countries -- so typing "computer" into the
+     one search control on the page answered "No destination matches that
+     name", while the catalogue search that does answer it sat on the home
+     page and on /search where nobody looked for it.
+     
+     The destinations stay matched in the browser, instantly and without a
+     request, because choosing a destination is what this panel is for. What
+     the catalogue knows is fetched and shown underneath. */
+  const term = query.trim();
+  const tooShort = term.length < MIN_SEARCH;
+  const [fetched, setFetched] = useState<SearchGroup[]>([]);
+  /* Derived during render rather than cleared from inside the effect: setting
+     state synchronously in an effect is a cascading render, and there is
+     nothing to record anyway -- a query this short simply has no results. */
+  const groups = selectorOpen && !tooShort ? fetched : [];
+  useEffect(() => {
+    if (!selectorOpen || tooShort) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/search?q=${encodeURIComponent(term)}`, {
+        signal: controller.signal,
+      })
+        .then((response) => response.json())
+        .then((body: { data?: { groups?: SearchGroup[] } }) =>
+          /* Countries are already on screen, matched locally and with their
+             flags, so the group that repeats them is dropped. */
+          setFetched(
+            (body.data?.groups ?? []).filter((group) => group.type !== 'country'),
+          ),
+        )
+        /* An aborted request is the next keystroke, not a failure; anything
+           else leaves the destinations showing rather than an error. */
+        .catch(() => undefined);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [term, tooShort, selectorOpen]);
   /* The approved selector heads its grid the same way: what the list is before
    * a search, and how much matched after one. */
   const matchesTitle = query.trim()
@@ -201,7 +249,7 @@ export function StudyAbroadShell({
         data-open={String(selectorOpen)}
         role="dialog"
         aria-modal="true"
-        aria-label="Choose a study destination"
+        aria-label="Search Universta"
         aria-hidden={!selectorOpen}
       >
         <div className="cs__scrim" onClick={closeSelector} />
@@ -223,8 +271,8 @@ export function StudyAbroadShell({
               ref={selectorInput}
               className="cs__input"
               type="search"
-              placeholder="Where do you want to study?"
-              aria-label="Search countries"
+              placeholder="Search countries, courses, universities, scholarships…"
+              aria-label="Search Universta"
               autoComplete="off"
               spellCheck={false}
               value={query}
@@ -236,9 +284,14 @@ export function StudyAbroadShell({
           </div>
 
           <div className="cs__body">
-            {matches.length === 0 ? (
-              <p className="cs__empty">No destination matches that name.</p>
-            ) : (
+            {matches.length === 0 && groups.length === 0 ? (
+              <p className="cs__empty">
+                {tooShort
+                  ? 'No destination matches that name.'
+                  : `Nothing in the catalogue matches "${term}".`}
+              </p>
+            ) : null}
+            {matches.length ? (
               <>
                 <p className="cs__grouptitle">{matchesTitle}</p>
                 <div className="cs__grid">
@@ -264,7 +317,28 @@ export function StudyAbroadShell({
                   )}
                 </div>
               </>
-            )}
+            ) : null}
+
+            {groups.map((group) => (
+              <div key={group.type}>
+                <p className="cs__grouptitle">{group.label}</p>
+                <div className="cs__grid">
+                  {group.items.map((item) => (
+                    <Link
+                      className="cs__item"
+                      key={item.id}
+                      href={item.href}
+                      onClick={closeSelector}
+                    >
+                      <span className="cs__item-name">{item.label}</span>
+                      {item.meta ? (
+                        <span className="cs__item-meta">{item.meta}</span>
+                      ) : null}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="cs__foot">

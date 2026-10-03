@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { pagerPages } from './pager-pages';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { Course, CourseFilterOptions } from '@/lib/catalog';
+import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
 import { SearchCombobox } from './SearchCombobox';
 import { intakeRange } from '@/lib/intake-range';
 import { formatNumber } from '@/lib/format';
@@ -35,13 +35,25 @@ import { formatNumber } from '@/lib/format';
 export type CoursesReferenceProps = {
   courses: Course[];
   meta: { page: number; limit: number; total: number; totalPages: number };
+  subjects: Subject[];
   filterOptions: CourseFilterOptions;
   filters: Record<string, string>;
   /** True when the reader asked for a page or a page size themselves, which is
    * what tells the progressive reveal to stand aside for a real pager. */
   paged: boolean;
+  /** Real link clusters; each is empty when the catalogue has no records. */
+  universities: Array<{ name: string; slug: string }>;
+  consultants: Array<{ name: string; slug: string }>;
+  events: Array<{
+    name: string;
+    slug: string;
+    mode: string | null;
+    startAt: string | null;
+  }>;
   heading: string;
   lede: string;
+  ctaHeading: string;
+  ctaBody: string;
 };
 
 const MULTI_KEYS = [
@@ -134,6 +146,67 @@ function byValue(options: Facet[]): Facet[] {
   for (const option of options) if (!seen.has(option.value)) seen.set(option.value, option);
   return [...seen.values()];
 }
+
+const FAQS = [
+  {
+    q: 'How do I choose the right course to study abroad?',
+    a: 'Balance four things: academic fit, affordability, admission chances and career outcomes. Start with your degree level and destination, narrow by tuition and scholarship availability, then shortlist three to five programmes and compare them side by side.',
+  },
+  {
+    q: 'What is the difference between a course and a course offering?',
+    a: 'A course is the programme itself \u2014 its subject, level and duration. An offering is that course as taught by a specific university in a specific country, with its own tuition, intakes and entry requirements. Filtering by destination shows you the offerings available there.',
+  },
+  {
+    q: 'Can I filter courses by intake?',
+    a: 'Yes. Each published offering records the intake window it belongs to, so the intake filter narrows results to programmes actually accepting students for that period.',
+  },
+  {
+    q: 'Which English tests are accepted?',
+    a: 'That is set per destination and per offering. The English test filter lists only the tests the published catalogue actually records, so a test you can filter by is a test something accepts.',
+  },
+];
+
+const WHY = [
+  {
+    ic: '🔍',
+    h: 'Published records only',
+    p: 'Every programme on this page comes from a published catalogue record. Nothing is placeholder content.',
+  },
+  {
+    ic: '⚖️',
+    h: 'Side-by-side comparison',
+    p: 'Shortlist up to three courses and compare tuition, duration, intakes and study modes in one view.',
+  },
+  {
+    ic: '🎯',
+    h: 'Filters that actually filter',
+    p: 'Every facet in the rail is backed by real data, so a result count of zero means zero matching programmes.',
+  },
+  {
+    ic: '🌍',
+    h: 'Destination context',
+    p: 'Each destination page carries the country’s own intake calendar, requirements and cost guidance.',
+  },
+  {
+    ic: '💬',
+    h: 'Talk to a counsellor',
+    p: 'Book a free session when you want a second opinion on a shortlist before you apply.',
+  },
+  {
+    ic: '🔄',
+    h: 'Kept current',
+    p: 'Programme details, intakes and deadlines are maintained in one place and update across the site together.',
+  },
+];
+
+const TOOLS = [
+  { ic: '⚖️', h: 'Compare courses', p: 'Line up to three programmes side by side.', href: '/compare/courses' },
+  { ic: '🏛️', h: 'Compare universities', p: 'Weigh institutions against each other.', href: '/compare/universities' },
+  { ic: '🎓', h: 'Scholarship finder', p: 'Filter published funding by destination and level.', href: '/scholarships' },
+  { ic: '💬', h: 'Free counselling', p: 'Book a session with an advisor.', href: '/counselling' },
+];
+
+/** Dimensions the courses endpoint ORs within, carried comma-joined in the URL. */
 
 export function CoursesReference(props: CoursesReferenceProps) {
   const { courses, meta, filters, filterOptions } = props;
@@ -234,13 +307,17 @@ export function CoursesReference(props: CoursesReferenceProps) {
     return `${pathname}?${params}`;
   }
 
-  const specialisations = byValue(filterOptions.subSubjects);
+  function browseHref(next: Record<string, string>) {
+    return `/courses?${new URLSearchParams(next)}#discovery`;
+  }
+
+  const allSpecialisations = byValue(filterOptions.subSubjects);
 
   const facetGroups = [
     { key: 'country', label: 'Destination', options: filterOptions.countries },
     { key: 'level', label: 'Degree level', options: filterOptions.levels },
     { key: 'subject', label: 'Subject', options: filterOptions.subjects },
-    { key: 'subSubject', label: 'Specialisation', options: specialisations },
+    { key: 'subSubject', label: 'Specialisation', options: allSpecialisations },
     { key: 'studyMode', label: 'Study mode', options: filterOptions.studyModes },
     { key: 'intake', label: 'Intake month', options: filterOptions.intakes },
     { key: 'englishTest', label: 'English test', options: filterOptions.englishTests },
@@ -274,7 +351,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
   /* The template's "Try" row is five hand-written example searches. These are
      the catalogue's own busiest specialisations, so a chip never offers a term
      the search cannot answer. */
-  const tryChips = specialisations.slice(0, 5);
+  const tryChips = allSpecialisations.slice(0, 5);
 
   /* Four facts, inline, as the approved hero has them -- and only the ones
      this catalogue can actually count. A figure with nothing behind it is left
@@ -283,8 +360,15 @@ export function CoursesReference(props: CoursesReferenceProps) {
     { value: meta.total, label: 'Programmes' },
     { value: filterOptions.countries.length, label: 'Destinations' },
     { value: filterOptions.subjects.length, label: 'Subjects' },
-    { value: specialisations.length, label: 'Specialisations' },
+    { value: allSpecialisations.length, label: 'Specialisations' },
   ].filter((stat) => stat.value > 0);
+
+  /* The browse blocks below the listing. They are the page's other way in --
+     a reader who does not know what to filter by starts from a subject, a
+     level or a destination -- so each shows a short, real set. */
+  const topSubjects = props.subjects.slice(0, 8);
+  const topCountries = filterOptions.countries.slice(0, 6);
+  const specialisations = allSpecialisations.slice(0, 8);
 
   const shown = courses.length;
   const revealed = Math.max(meta.limit, shown);
@@ -376,6 +460,71 @@ export function CoursesReference(props: CoursesReferenceProps) {
           </p>
         </div>
       </section>
+
+      {/* SEO INTRO */}
+      <section className="wrap" style={{ padding: '44px 0 0' }}>
+        <div className="prose">
+          <p>
+            Universta brings every published programme into one place so you can compare study abroad
+            courses on the things that decide an application: qualification level, destination, tuition,
+            study mode, intake window and English requirements. Filter down to the programmes you are
+            actually eligible for, shortlist them, then compare them side by side before you apply.
+          </p>
+          <div className="takeaways">
+            <h2>Key takeaways</h2>
+            <ul>
+              <li>Compare up to three courses side by side across tuition, duration, intakes and study modes.</li>
+              <li>Every filter in the rail is backed by real catalogue data — nothing is decorative.</li>
+              <li>Intake windows come from each destination’s own published calendar.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* BROWSE BY SUBJECT */}
+      {topSubjects.length ? (
+        <section className="sec wrap">
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">Explore</span>
+              <h2>Browse courses by subject</h2>
+              <p>Every subject area currently published in the catalogue.</p>
+            </div>
+            <Link href="/subjects" className="link-more">
+              All subjects →
+            </Link>
+          </div>
+          <div className="grid g4">
+            {topSubjects.map((subject) => (
+              <Link key={subject.id} href={`/subjects/${subject.slug}`} className="card subj-card">
+                <span className="subj-ic" aria-hidden="true">
+                  {initials(subject.name)}
+                </span>
+                <h3>{subject.name}</h3>
+                <div className="subj-meta">
+                  {subject.publishedSubSubjectCount ? (
+                    <span>
+                      <b>{subject.publishedSubSubjectCount}</b> specialisations
+                    </span>
+                  ) : null}
+                  {subject.availableCountryCount ? (
+                    <span>
+                      <b>{subject.availableCountryCount}</b> destinations
+                    </span>
+                  ) : null}
+                </div>
+                <div className="subj-foot">
+                  <span className="cnt">
+                    {formatNumber(subject.publishedCourseCount)} course
+                    {subject.publishedCourseCount === 1 ? '' : 's'}
+                  </span>
+                  <span className="go">View →</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* --------------------------------------------------------- RESULTS */}
       <section className="sec sec--white sec--tight" id="discovery">
@@ -775,6 +924,377 @@ export function CoursesReference(props: CoursesReferenceProps) {
             Courses come from universities published in this catalogue. Every course page shows
             when its data was last updated and whether it has been verified.
           </p>
+        </div>
+      </section>
+
+      {/* BROWSE BY DEGREE LEVEL */}
+      {filterOptions.levels.length ? (
+        <section className="sec wrap">
+          <div className="panel">
+            <div className="sec-head left">
+              <span className="eyebrow">By qualification</span>
+              <h2>Browse courses by degree level</h2>
+            </div>
+            <div className="grid g4">
+              {filterOptions.levels.map((level) => (
+                <Link key={level.value} href={browseHref({ level: level.value })} className="card mini-card">
+                  <span className="mini-ic" aria-hidden="true">
+                    {initials(level.label)}
+                  </span>
+                  <div>
+                    <h3>{level.label}</h3>
+                    <div className="mc-sub">
+                      {formatNumber(level.count)} course{level.count === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                  <span className="go" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* BROWSE BY DESTINATION */}
+      {topCountries.length ? (
+        <section className="sec wrap">
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">By destination</span>
+              <h2>Browse courses by study destination</h2>
+              <p>Every destination with published course offerings.</p>
+            </div>
+            <Link href="/" className="link-more">
+              All destinations →
+            </Link>
+          </div>
+          <div className="grid g3">
+            {topCountries.map((country) => (
+              <Link key={country.value} href={browseHref({ country: country.value })} className="card dest-card">
+                <div className="dest-top">
+                  <span className="cc-tile" aria-hidden="true">
+                    {initials(country.label)}
+                  </span>
+                  <div>
+                    <h3>{country.label}</h3>
+                    <div className="unis">
+                      {formatNumber(country.count)} course{country.count === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                </div>
+                {country.currencyCode ? (
+                  <div className="dest-tags">
+                    <span className="pill-mini">Tuition in {country.currencyCode}</span>
+                  </div>
+                ) : null}
+                <div className="dest-foot">
+                  <span className="cnt">Browse courses</span>
+                  <span className="go" aria-hidden="true">
+                    →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* SPECIALISATIONS */}
+      {specialisations.length ? (
+        <section className="sec wrap">
+          <div className="panel">
+            <div className="sec-head left">
+              <span className="eyebrow">Fields of study</span>
+              <h2>Explore by specialisation</h2>
+            </div>
+            <div className="grid g4">
+              {specialisations.map((item) => (
+                <Link
+                  key={item.value}
+                  href={browseHref({ subject: item.subject.slug, subSubject: item.value })}
+                  className="card mini-card"
+                >
+                  <span className="mini-ic" aria-hidden="true">
+                    {initials(item.label)}
+                  </span>
+                  <div>
+                    <h3>{item.label}</h3>
+                    <div className="mc-sub">{item.subject.name}</div>
+                  </div>
+                  <span className="go" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* STUDY MODE + INTAKE */}
+      {filterOptions.studyModes.length || filterOptions.intakes.length ? (
+        <section className="sec wrap">
+          <div className="grid g2" style={{ alignItems: 'start', gap: 26 }}>
+            {filterOptions.studyModes.length ? (
+              <div>
+                <div className="sec-head left">
+                  <span className="eyebrow">Format</span>
+                  <h2 style={{ fontSize: 26 }}>Courses by study mode</h2>
+                </div>
+                <div className="grid g2">
+                  {filterOptions.studyModes.map((mode) => (
+                    <Link
+                      key={mode.value}
+                      href={browseHref({ studyMode: mode.value })}
+                      className="card mini-card"
+                    >
+                      <div>
+                        <h3>{mode.label}</h3>
+                        <div className="mc-sub">
+                          {formatNumber(mode.count)} course{mode.count === 1 ? '' : 's'}
+                        </div>
+                      </div>
+                      <span className="go" aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {filterOptions.intakes.length ? (
+              <div>
+                <div className="sec-head left">
+                  <span className="eyebrow">Timing</span>
+                  <h2 style={{ fontSize: 26 }}>Courses by intake</h2>
+                </div>
+                <div className="grid g2">
+                  {filterOptions.intakes.slice(0, 6).map((intake) => (
+                    <Link
+                      key={intake.value}
+                      href={browseHref({ intake: intake.value })}
+                      className="card mini-card"
+                    >
+                      <div>
+                        <h3>{intake.label}</h3>
+                        <div className="mc-sub">
+                          {intakeRange({
+                            startMonth: intake.startMonth,
+                            endMonth: intake.endMonth,
+                            shortLabel: intake.label,
+                          })}
+                        </div>
+                      </div>
+                      <span className="go" aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* WHY UNIVERSTA */}
+      <section className="sec wrap">
+        <div className="panel">
+          <div className="sec-head">
+            <span className="eyebrow">Why Universta</span>
+            <h2>Everything you need to choose with confidence</h2>
+          </div>
+          <div className="grid g3">
+            {WHY.map((item) => (
+              <div className="card benefit" key={item.h}>
+                <span className="benefit-ic" aria-hidden="true">
+                  {item.ic}
+                </span>
+                <h3>{item.h}</h3>
+                <p>{item.p}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TOOLS */}
+      <section className="sec wrap">
+        <div className="sec-head left">
+          <span className="eyebrow">Free tools</span>
+          <h2>Study abroad tools</h2>
+          <p>Plan every step — from shortlisting to comparing to talking it through.</p>
+        </div>
+        <div className="grid g4">
+          {TOOLS.map((tool) => (
+            <Link key={tool.href} href={tool.href} className="card tool">
+              <span className="tool-ic" aria-hidden="true">
+                {tool.ic}
+              </span>
+              <h3>{tool.h}</h3>
+              <p>{tool.p}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* EVENTS */}
+      {props.events.length ? (
+        <section className="sec wrap">
+          <div className="panel">
+            <div className="sec-head left row-between">
+              <div>
+                <span className="eyebrow">Live &amp; virtual</span>
+                <h2>Upcoming events</h2>
+              </div>
+              <Link href="/events" className="link-more">
+                All events →
+              </Link>
+            </div>
+            <div className="grid g4">
+              {props.events.map((event) => (
+                <Link key={event.slug} href={`/events/${event.slug}`} className="card event">
+                  {event.mode ? <span className="event-type">{event.mode}</span> : null}
+                  <h3>{event.name}</h3>
+                  {event.startAt ? (
+                    <div className="when">
+                      {new Intl.DateTimeFormat('en-GB', {
+                        dateStyle: 'medium',
+                        timeZone: 'UTC',
+                      }).format(new Date(event.startAt))}
+                    </div>
+                  ) : null}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* SEO EXPANDABLE */}
+      <section className="wrap" style={{ padding: '24px 0 48px' }}>
+        <div className="prose">
+          <h3>How to choose the right study abroad course</h3>
+          <p>
+            The best programme balances academic fit, affordability, admission chances and career
+            outcomes. Start by filtering on your target degree level and destination, then narrow by
+            study mode and scholarship availability. Shortlist three courses and use the compare tray
+            to weigh tuition, duration and intakes against each other.
+          </p>
+          <details className="readmore">
+            <summary>Read more about course selection</summary>
+            <div style={{ marginTop: 14 }}>
+              <h3 style={{ marginTop: 0 }}>Popular course and destination combinations</h3>
+              <p>
+                {topSubjects.slice(0, 4).map((subject, index) => (
+                  <span key={subject.id}>
+                    {index > 0 ? ', ' : ''}
+                    <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
+                  </span>
+                ))}
+                {topSubjects.length && topCountries.length ? ' and destinations such as ' : null}
+                {topCountries.slice(0, 4).map((country, index) => (
+                  <span key={country.value}>
+                    {index > 0 ? ', ' : ''}
+                    <Link href={`/study-abroad/${country.value}`}>{country.label}</Link>
+                  </span>
+                ))}
+                {topSubjects.length || topCountries.length
+                  ? ' each open their own filterable listing.'
+                  : 'Browse the filters above to open a filterable listing.'}
+              </p>
+              <h3>English language requirements</h3>
+              <p>
+                Requirements are recorded per programme. Filter by the test you have taken to see only
+                the courses that publish an accepted score for it.
+              </p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="sec wrap" id="faq">
+        <div className="sec-head">
+          <span className="eyebrow">Answers</span>
+          <h2>Frequently asked questions</h2>
+        </div>
+        <div className="faq">
+          {FAQS.map((item, index) => (
+            <details className="qa" key={item.q} open={index === 0}>
+              <summary>
+                {item.q} <span className="plus">+</span>
+              </summary>
+              <p className="ans">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* INTERNAL LINK CLUSTERS */}
+      {props.universities.length || topCountries.length || props.consultants.length ? (
+        <section className="sec wrap">
+          <div className="panel">
+            <div className="link-cols">
+              {props.universities.length ? (
+                <div className="link-col">
+                  <h3>Explore universities</h3>
+                  <ul>
+                    {props.universities.slice(0, 8).map((item) => (
+                      <li key={item.slug}>
+                        <Link href={`/universities/${item.slug}`}>→ {item.name}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {topCountries.length ? (
+                <div className="link-col">
+                  <h3>Explore destinations</h3>
+                  <ul>
+                    {topCountries.map((item) => (
+                      <li key={item.value}>
+                        <Link href={`/study-abroad/${item.value}`}>→ Study in {item.label}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {props.consultants.length ? (
+                <div className="link-col">
+                  <h3>Find a consultant</h3>
+                  <ul>
+                    {props.consultants.slice(0, 8).map((item) => (
+                      <li key={item.slug}>
+                        <Link href={`/study-abroad-consultants/${item.slug}`}>→ {item.name}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* FINAL CTA */}
+      <section className="sec wrap">
+        <div className="final-cta">
+          <h2>{props.ctaHeading}</h2>
+          <p>{props.ctaBody}</p>
+          <div className="hero-ctas">
+            <a href="#discovery" className="btn btn-secondary btn--lg">
+              Browse courses
+            </a>
+            <Link href="/compare/courses" className="btn btn--ghost btn--lg">
+              Compare courses
+            </Link>
+            <Link href="/counselling" className="btn btn--ghost btn--lg">
+              Book free counselling
+            </Link>
+          </div>
         </div>
       </section>
 
