@@ -191,11 +191,40 @@ export function CountryNumbers({
  * curated them, then whatever else is published, so the section is never empty
  * while universities exist.
  */
-export function countryUniversities(country: Country) {
-  return [
+export type CountryUniversityCard = {
+  id: string;
+  name: string;
+  slug: string;
+  institutionType?: string | null;
+  qsRanking?: number | null;
+};
+
+/**
+ * The institutions this band shows.
+ *
+ * It used to read only the two curated lists on `derived`, and both are
+ * empty for every destination in the catalogue: `topRankedUniversities`
+ * asks the database for `qsRanking > 0` and no imported university carries
+ * a ranking, while `popularUniversities` is a table an editor fills by
+ * hand and nobody has. So a destination with 159 universities rendered no
+ * universities section at all -- while the count sitting beside those
+ * lists said 159.
+ *
+ * `fallback` is the destination's own universities, read by the page the
+ * same way its /universities sub-page reads them. It is used when the
+ * curated lists have nothing, which is also what happens when `derived`
+ * fails to arrive: the block comes back null under load, and a timeout
+ * should cost a ranking order, not the whole section.
+ */
+export function countryUniversities(
+  country: Country,
+  fallback: CountryUniversityCard[] = [],
+) {
+  const curated = [
     ...(country.derived?.topRankedUniversities ?? []),
     ...(country.derived?.popularUniversities ?? []),
-  ].filter(
+  ];
+  return (curated.length ? curated : fallback).filter(
     (university, index, all) =>
       all.findIndex((other) => other.id === university.id) === index,
   );
@@ -204,17 +233,23 @@ export function countryUniversities(country: Country) {
 /** "Explore universities in <country>". */
 export function CountryUniversities({
   country,
+  fallback = [],
   n = null,
   alt,
 }: {
   country: Country;
+  /** The destination's own universities, for when nothing is curated. */
+  fallback?: CountryUniversityCard[];
   n?: string | null;
   alt: boolean;
 }) {
-  const universities = countryUniversities(country);
+  const universities = countryUniversities(country, fallback);
   if (!universities.length) return null;
 
-  const count = country.derived?.statistics?.universitiesCount ?? universities.length;
+  /* The derived count where it arrived, the list's own length otherwise --
+     so a destination still states a true number when `derived` timed out. */
+  const count =
+    country.derived?.statistics?.universitiesCount || universities.length;
   const courses = country.derived?.statistics?.coursesCount ?? 0;
 
   return (

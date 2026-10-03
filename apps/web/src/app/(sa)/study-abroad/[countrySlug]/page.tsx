@@ -85,7 +85,8 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   /* The catalogue slices -- courses and scholarships for this destination --
      are read alongside the guide rather than after it, and a failure in either
      leaves its section out rather than taking the guide down with it. */
-  const [page, directory, courseList, scholarshipList] = await Promise.all([
+  const [page, directory, courseList, scholarshipList, universityList] =
+    await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getDestinations().catch(() => null),
     /* More than the six the section shows: an editor's curated courses lead
@@ -95,11 +96,31 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       country: countrySlug,
       limit: '6',
     }).catch(() => null),
+    /* The destination's own universities, so the band below does not
+       depend on a curated list nobody has filled -- nor on `derived`
+       arriving at all, which under load it sometimes does not. */
+    phaseList<AnyRecord>('universities', {
+      country: countrySlug,
+      limit: '6',
+    }).catch(() => null),
   ]);
   if (!page) notFound();
 
   const publishedCourses = (courseList?.data ?? []) as CountryCourseCard[];
   const countryScholarships = toScholarshipCards(scholarshipList?.data);
+  const countryUniversityCards = (universityList?.data ?? []).map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    slug: String(row.slug),
+    institutionType:
+      typeof (row as Record<string, unknown>).institutionType === 'string'
+        ? ((row as Record<string, unknown>).institutionType as string)
+        : null,
+    qsRanking:
+      typeof (row as Record<string, unknown>).qsRanking === 'number'
+        ? ((row as Record<string, unknown>).qsRanking as number)
+        : null,
+  }));
 
   const { country, profiles, sections, faqs, consultantCards } = page;
   const testimonials = page.testimonials ?? [];
@@ -163,7 +184,9 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     country.configuration?.features?.length ? 'why' : null,
     country.overview || overviewLead ? 'overview' : null,
     paths.length ? 'study-paths' : null,
-    countryUniversities(country).length ? 'universities' : null,
+    countryUniversities(country, countryUniversityCards).length
+      ? 'universities'
+      : null,
     country.subjects?.length ? 'subjects' : null,
     courses.length ? 'courses' : null,
     country.documents?.length ? 'documents' : null,
@@ -358,7 +381,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       {/* WHAT THIS DESTINATION HAS: universities, the fields they teach and the
           courses themselves. Each stands down when there is nothing published
           for this country rather than showing an empty shelf. */}
-      <CountryUniversities country={country} n={number('universities')} alt={band('universities')} />
+      <CountryUniversities
+        country={country}
+        fallback={countryUniversityCards}
+        n={number('universities')}
+        alt={band('universities')}
+      />
       <CountrySubjects country={country} n={number('subjects')} alt={band('subjects')} />
       <CountryCourses
         country={country}

@@ -421,4 +421,86 @@ describe('the consultants panel', () => {
         ),
       ).toBe('');
   });
+
+  /** The real catalogue: no ranking on any university and nothing curated. */
+  const uncurated = () =>
+    country({
+      derived: {
+        averageTuition: null,
+        statistics: { universitiesCount: 0, publicUniversitiesCount: 0, coursesCount: 0 },
+        topRankedUniversities: [],
+        popularUniversities: [],
+        popularCourses: [],
+      },
+    });
+
+  /**
+   * A destination with 159 universities showed no universities section.
+   *
+   * The band read only `derived.topRankedUniversities` and
+   * `derived.popularUniversities`. The first asks the database for
+   * `qsRanking > 0` and no imported university carries a ranking; the
+   * second is a table an editor fills by hand and nobody had. Both were
+   * empty for every destination, while the count sitting beside them was
+   * right.
+   */
+  it('falls back to the destination’s own universities when nothing is curated', () => {
+    const html = renderToStaticMarkup(
+      <CountryUniversities
+        alt
+        country={uncurated()}
+        fallback={[
+          { id: 'u1', name: 'Academy of Arts', slug: 'academy-of-arts' },
+          { id: 'u2', name: 'University of Tirana', slug: 'university-of-tirana' },
+        ]}
+      />,
+    );
+    expect(html).toContain('Academy of Arts');
+    expect(html).toContain('University of Tirana');
+    expect(html).toContain('href="/universities/academy-of-arts"');
+  });
+
+  it('prefers the curated list when there is one', () => {
+    const curated = country({
+      derived: {
+        topRankedUniversities: [
+          { id: 'r1', name: 'Ranked University', slug: 'ranked-university', qsRanking: 12 },
+        ],
+        popularUniversities: [],
+        statistics: { universitiesCount: 159 },
+      },
+    } as never);
+    const html = renderToStaticMarkup(
+      <CountryUniversities
+        alt
+        country={curated}
+        fallback={[{ id: 'u1', name: 'Academy of Arts', slug: 'academy-of-arts' }]}
+      />,
+    );
+    expect(html).toContain('Ranked University');
+    expect(html).not.toContain('Academy of Arts');
+  });
+
+  it('still states a true count when derived did not arrive', () => {
+    /* `derived` comes back null under load. That should cost a ranking
+       order, not the whole section and not an honest number. */
+    const html = renderToStaticMarkup(
+      <CountryUniversities
+        alt
+        country={uncurated()}
+        fallback={[
+          { id: 'u1', name: 'Academy of Arts', slug: 'academy-of-arts' },
+          { id: 'u2', name: 'University of Tirana', slug: 'university-of-tirana' },
+        ]}
+      />,
+    );
+    expect(html).toContain('2 universities');
+    expect(html).not.toContain('0 universities');
+  });
+
+  it('stands down when the destination genuinely has none', () => {
+    expect(
+      renderToStaticMarkup(<CountryUniversities alt country={uncurated()} fallback={[]} />),
+    ).toBe('');
+  });
 });
