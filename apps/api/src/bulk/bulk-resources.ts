@@ -1630,13 +1630,10 @@ function universityFigures(
 }
 
 const universities: BulkResourceDefinition = {
-  /* Campuses, offerings and claims cascade in the schema. A student
-     application does not, and should not: it is somebody's record. */
-  async purgeChildren(tx, ids) {
-    await tx.universityCourseOffering.deleteMany({
-      where: { universityId: { in: ids } },
-    });
-  },
+  /* No hook: campuses, offerings and claims all cascade from the
+     university in the schema, so the database takes them. A student
+     application does not cascade and should not -- it is somebody's
+     record, and a university still carrying one is meant to block. */
   key: 'universities',
   label: 'Universities',
   model: 'university',

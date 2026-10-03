@@ -800,11 +800,11 @@ export class BulkOperationsService {
       const scoped = (tx as unknown as Record<string, TransactionalTable>)[
         definition.model
       ];
-      const result = (await (
+      const result = await (
         scoped as unknown as {
           deleteMany: (args: unknown) => Promise<{ count: number }>;
         }
-      ).deleteMany({ where: { id: { in: ids } } })) as { count: number };
+      ).deleteMany({ where: { id: { in: ids } } });
       return result.count;
     });
   }
