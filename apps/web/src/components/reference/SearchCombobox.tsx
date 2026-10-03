@@ -24,6 +24,9 @@ export type SearchComboboxProps = {
   endpoint: string;
   /** Shown when the endpoint answers with nothing, so the silence is explained. */
   emptyMessage: string;
+  /** Appended to the form's own class, for the placements that style it --
+   * the results band wants `cresults__search`, the heroes want nothing. */
+  className?: string;
   style?: CSSProperties;
 };
 
@@ -114,7 +117,7 @@ export function SearchCombobox(props: SearchComboboxProps) {
 
   return (
     <form
-      className="searchwrap"
+      className={props.className ? `searchwrap ${props.className}` : 'searchwrap'}
       ref={formRef}
       style={props.style}
       onSubmit={(event) => {
