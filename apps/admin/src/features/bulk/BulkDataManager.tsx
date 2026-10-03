@@ -340,6 +340,13 @@ export function BulkDataManager() {
   const allSelected =
     records.length > 0 && selectedIds.size === records.length;
 
+  /* The two phrases, named once so the label, the hint and every disabled
+     check read the same string. */
+  const archivePhrase = selectedKey;
+  const deletePhrase = `delete ${selectedKey}`;
+  const archiveArmed = confirmAll.trim() === archivePhrase;
+  const deleteArmed = confirmDelete.trim() === deletePhrase;
+
   /** The header box: everything, or nothing. */
   function toggleAll() {
     setSelectedIds(
@@ -808,29 +815,41 @@ export function BulkDataManager() {
             {records.length ? (
               <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-[#F0C9C9] bg-[#FDF6F6] p-3">
                 <div>
-                  <label className="text-sm font-semibold" htmlFor="confirm-all">
+                  <p className="text-sm font-semibold">
                     Archive every {selectedKey} record ({records.length})
-                  </label>
+                  </p>
                   <p className="p-sub mt-1">
-                    Type <code>{selectedKey}</code> to confirm. They are
-                    soft-deleted, and this screen offers no way back.
+                    They are soft-deleted, and this screen offers no way back.
                   </p>
                 </div>
-                <input
-                  id="confirm-all"
-                  className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
-                  value={confirmAll}
-                  /* Not the phrase itself. A box whose placeholder is the
-                     thing you have to type looks already filled in, and the
-                     button beside it looks broken rather than locked. */
-                  placeholder="Type to confirm"
-                  autoComplete="off"
-                  onChange={(event) => setConfirmAll(event.target.value)}
-                />
+                <div>
+                  <label
+                    className="text-sm font-semibold"
+                    htmlFor="confirm-all"
+                  >
+                    Type <code>{archivePhrase}</code>
+                  </label>
+                  <input
+                    id="confirm-all"
+                    className="mt-1 block rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
+                    value={confirmAll}
+                    /* Not the phrase itself. A box whose placeholder is the
+                       thing you have to type looks already filled in, and the
+                       button beside it looks broken rather than locked. */
+                    placeholder="Type to confirm"
+                    autoComplete="off"
+                    onChange={(event) => setConfirmAll(event.target.value)}
+                  />
+                  <p className="p-sub mt-1" aria-live="polite">
+                    {archiveArmed
+                      ? "Unlocked."
+                      : `Locked until the box reads “${archivePhrase}”.`}
+                  </p>
+                </div>
                 <button
                   type="button"
                   className="p-btn p-btn--danger"
-                  disabled={busy || confirmAll.trim() !== selectedKey}
+                  disabled={busy || !archiveArmed}
                   onClick={() => void archiveEverything()}
                 >
                   Archive all {records.length}
@@ -844,30 +863,42 @@ export function BulkDataManager() {
                 not reach this by typing the same thing twice. */}
             <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-[#E4B9B9] bg-[#FBF0F0] p-3">
               <div>
-                <label className="text-sm font-semibold" htmlFor="confirm-delete">
-                  Delete permanently
-                </label>
+                <p className="text-sm font-semibold">Delete permanently</p>
                 <p className="p-sub mt-1">
-                  The rows go, rather than being marked deleted. Type{" "}
-                  <code>delete {selectedKey}</code> to confirm. Anything still
-                  referenced by another record is reported and left alone.
+                  The rows go, rather than being marked deleted. Anything
+                  still referenced by another record is reported and left
+                  alone.
                 </p>
               </div>
-              <input
-                id="confirm-delete"
-                className="rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
-                value={confirmDelete}
-                placeholder="Type to confirm"
-                autoComplete="off"
-                onChange={(event) => setConfirmDelete(event.target.value)}
-              />
+              {/* The phrase is the field's own label, where somebody looking
+                  at a locked button looks next -- it was a sentence in the
+                  paragraph above and got read past twice. */}
+              <div>
+                <label
+                  className="text-sm font-semibold"
+                  htmlFor="confirm-delete"
+                >
+                  Type <code>{deletePhrase}</code>
+                </label>
+                <input
+                  id="confirm-delete"
+                  className="mt-1 block rounded-xl border border-[#D9E0EA] px-3 py-2 text-sm"
+                  value={confirmDelete}
+                  placeholder="Type to confirm"
+                  autoComplete="off"
+                  onChange={(event) => setConfirmDelete(event.target.value)}
+                />
+                <p className="p-sub mt-1" aria-live="polite">
+                  {deleteArmed
+                    ? "Unlocked."
+                    : `Locked until the box reads “${deletePhrase}”.`}
+                </p>
+              </div>
               <button
                 type="button"
                 className="p-btn p-btn--danger"
                 disabled={
-                  busy ||
-                  selectedIds.size === 0 ||
-                  confirmDelete.trim() !== `delete ${selectedKey}`
+                  busy || selectedIds.size === 0 || !deleteArmed
                 }
                 onClick={() =>
                   void purge({ ids: [...selectedIds] }, "record(s)")
@@ -883,7 +914,7 @@ export function BulkDataManager() {
                   type="button"
                   className="p-btn p-btn--danger"
                   disabled={
-                    busy || confirmDelete.trim() !== `delete ${selectedKey}`
+                    busy || !deleteArmed
                   }
                   onClick={() => void purge({ all: true }, "record(s)")}
                 >
@@ -893,7 +924,7 @@ export function BulkDataManager() {
               <button
                 type="button"
                 className="p-btn"
-                disabled={busy || confirmDelete.trim() !== `delete ${selectedKey}`}
+                disabled={busy || !deleteArmed}
                 onClick={() =>
                   void purge({ emptyArchive: true }, "archived record(s)")
                 }

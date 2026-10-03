@@ -124,10 +124,10 @@ describe("selecting records in bulk", () => {
     const archiveAll = screen.getByRole("button", { name: "Archive all 3" });
     expect(archiveAll).toBeDisabled();
 
-    await user.type(screen.getByLabelText(/Archive every countries record/), "countrie");
+    await user.type(screen.getByLabelText("Type countries"), "countrie");
     expect(archiveAll).toBeDisabled();
 
-    await user.type(screen.getByLabelText(/Archive every countries record/), "s");
+    await user.type(screen.getByLabelText("Type countries"), "s");
     expect(archiveAll).toBeEnabled();
   });
 
@@ -170,10 +170,10 @@ describe("deleting rather than archiving", () => {
     expect(emptyArchive).toBeDisabled();
 
     // The archive confirmation is not the delete confirmation.
-    await user.type(screen.getByLabelText(/Archive every countries record/), "countries");
+    await user.type(screen.getByLabelText("Type countries"), "countries");
     expect(deleteAll).toBeDisabled();
 
-    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
     expect(deleteAll).toBeEnabled();
     expect(emptyArchive).toBeEnabled();
   });
@@ -183,7 +183,7 @@ describe("deleting rather than archiving", () => {
     const user = userEvent.setup();
     render(<BulkDataManager />);
     await screen.findByText("Alpha");
-    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
 
     const calls: string[] = [];
     authFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
@@ -206,7 +206,7 @@ describe("deleting rather than archiving", () => {
     const user = userEvent.setup();
     render(<BulkDataManager />);
     await screen.findByText("Alpha");
-    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
 
     authFetch.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
@@ -273,16 +273,18 @@ describe("switching to a different entity", () => {
     await screen.findByText("Alpha");
 
     await user.click(screen.getByRole("checkbox", { name: "Select all 1" }));
-    await user.type(screen.getByLabelText("Delete permanently"), "delete countries");
-    await user.type(screen.getByLabelText(/Archive every countries record/), "countries");
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
+    await user.type(screen.getByLabelText("Type countries"), "countries");
     expect(screen.getByRole("button", { name: "Delete all 1" })).toBeEnabled();
 
     await user.selectOptions(screen.getByLabelText("Resource"), "subjects");
     await screen.findByText("Engineering");
 
     expect(screen.getByRole("button", { name: /Delete selected \(0\)/ })).toBeVisible();
-    expect(screen.getByLabelText("Delete permanently")).toHaveValue("");
-    expect(screen.getByLabelText(/Archive every subjects record/)).toHaveValue("");
+    // The labels follow the resource, and both boxes come up empty under them.
+    expect(screen.getByLabelText("Type delete subjects")).toHaveValue("");
+    expect(screen.getByLabelText("Type subjects")).toHaveValue("");
+    expect(screen.queryByLabelText("Type delete countries")).toBeNull();
     expect(screen.getByRole("button", { name: "Delete all 1" })).toBeDisabled();
   });
 
@@ -321,17 +323,21 @@ describe("the confirmation boxes", () => {
     render(<BulkDataManager />);
     await screen.findByText("Alpha");
 
-    const archive = screen.getByLabelText(/Archive every countries record/);
-    const del = screen.getByLabelText("Delete permanently");
+    const archive = screen.getByLabelText("Type countries");
+    const del = screen.getByLabelText("Type delete countries");
 
     expect(archive).toHaveAttribute("placeholder", "Type to confirm");
     expect(del).toHaveAttribute("placeholder", "Type to confirm");
     expect(archive).toHaveValue("");
     expect(del).toHaveValue("");
 
-    // The phrase is still said, where it reads as an instruction.
-    expect(screen.getByText(/to confirm\. They are/)).toBeVisible();
-    expect(screen.getByText(/to confirm\. Anything still referenced/)).toBeVisible();
+    // The phrase is on the field's own label, and the lock says so.
     expect(screen.getAllByText("delete countries").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Locked until the box reads .delete countries./),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Locked until the box reads .countries./),
+    ).toBeVisible();
   });
 });
