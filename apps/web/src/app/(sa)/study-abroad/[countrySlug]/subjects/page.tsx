@@ -9,6 +9,7 @@ import {
 } from '@/components/study-abroad/CountrySubjectGrid';
 import { loadCountryTabs } from '@/lib/country-tabs';
 import { partitionSubjects } from '@/lib/country-sub-pages';
+import { subjectsForCountry } from '@/lib/country-subject';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { getSubjects } from '@/lib/catalog';
 import { inCountry } from '@/lib/country-article';
@@ -54,27 +55,42 @@ export default async function Page({ params }: Params) {
   const country = page?.country;
   if (!country) notFound();
 
-  const subjects = country.subjects ?? [];
-  const { taught, editorial } = partitionSubjects(subjects);
+  /* The whole taxonomy, which is also where each field's specialization
+     count comes from -- the same number the field's own page then lists, so
+     "46 specializations" cannot open on a different forty-six. */
+  const catalogue = await getSubjects({ limit: '100' })
+    .then((result) => result.data)
+    .catch(() => []);
+  const counts = new Map(
+    catalogue.map((row) => [row.slug, row.publishedSubSubjectCount]),
+  );
+
+  /* What this destination is recorded as teaching -- and, when nothing is
+     recorded, the catalogue itself.
+
+     The links are derived from the courses published in a destination, so a
+     destination with no courses yet had no subjects, and this page said so
+     and stopped. But the taxonomy is not per-country: the fields Universta
+     knows are the same thirty everywhere, and what varies is which of them
+     have programmes behind them here. Making an editor attach all thirty by
+     hand before the page would show anything was asking them to type out a
+     list the catalogue already had. */
+  const { subjects, listed } = subjectsForCountry({
+    linked: country.subjects ?? [],
+    catalogue,
+  });
+  const { taught, editorial } = listed
+    ? partitionSubjects(subjects)
+    : { taught: [], editorial: [] };
 
   const tabs = await loadCountryTabs(country.slug, subjects.length);
   const where = inCountry(country.name, country.iso2Code);
 
-  /* How many specializations each field holds. The destination's own subject
-     links do not carry it, so it comes from the taxonomy -- the same number
-     the field's own page then lists, which is what keeps "46 specializations"
-     from opening on a different count. A failure drops the line rather than
-     the page. */
-  const counts = await getSubjects({ limit: '100' })
-    .then(
-      (result) =>
-        new Map(
-          result.data.map((row) => [row.slug, row.publishedSubSubjectCount]),
-        ),
-    )
-    .catch(() => new Map<string, number>());
-
-  const toCard = (subject: (typeof subjects)[number]): CountrySubjectCard => ({
+  const toCard = (subject: {
+    id: string;
+    name: string;
+    slug: string;
+  }): CountrySubjectCard => ({
     id: subject.id,
     name: subject.name,
     slug: subject.slug,
@@ -134,10 +150,18 @@ export default async function Page({ params }: Params) {
           </div>
 
           <CountrySubjectGrid
-            taught={taught.map(toCard)}
+            taught={(listed ? taught : subjects).map(toCard)}
             editorial={editorial.map(toCard)}
             countrySlug={country.slug}
             emptyLabel={where}
+            /* Said once, above the grid, when none of these is recorded
+               against the destination yet -- rather than on each of thirty
+               cards. */
+            note={
+              listed
+                ? null
+                : `Universta publishes ${catalogue.length} subjects. Programmes in ${where} are still being added, so a field may open on its specializations and no courses yet.`
+            }
           />
 
           {!subjects.length ? (

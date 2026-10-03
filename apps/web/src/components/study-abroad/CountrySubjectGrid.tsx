@@ -71,6 +71,7 @@ export function CountrySubjectGrid({
   editorial,
   countrySlug,
   emptyLabel,
+  note = null,
 }: {
   /** Fields a published course is actually taught in. */
   taught: CountrySubjectCard[];
@@ -79,6 +80,9 @@ export function CountrySubjectGrid({
   countrySlug: string;
   /** Said when the filter matches nothing, naming what was searched. */
   emptyLabel: string;
+  /** Said once above the grid when none of these is recorded against the
+   * destination -- the list is the catalogue's rather than its own. */
+  note?: string | null;
 }) {
   const [query, setQuery] = useState('');
   const term = query.trim().toLowerCase();
@@ -122,6 +126,8 @@ export function CountrySubjectGrid({
           />
         </div>
       ) : null}
+
+      {note ? <p className="h-more subjnote">{note}</p> : null}
 
       {shownTaught.length ? (
         <div className="h-grid">{shownTaught.map((subject) => card(subject, countrySlug))}</div>

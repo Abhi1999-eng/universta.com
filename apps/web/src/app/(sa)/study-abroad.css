@@ -1181,6 +1181,7 @@
 .sa .h-card--row .h-card__go{ flex: none; color: var(--muted); font-size: 18px; transition: transform var(--dur) var(--ease), color var(--dur) var(--ease); }
 .sa a.h-card--row:hover .h-card__go{ color: var(--accent); transform: translateX(3px); }
 .sa .subjfilter{ margin: 0 0 20px; box-shadow: none; }
+.sa .subjnote{ margin: -4px 0 18px; max-width: 78ch; }
 .sa .h-card__t{ font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: var(--text); text-decoration: none; }
 .sa a.h-card__t:hover{ color: var(--accent); }
 .sa .h-card__d{ font-size: 14px; color: var(--muted); line-height: 1.5; }
