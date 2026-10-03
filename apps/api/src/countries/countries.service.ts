@@ -1073,11 +1073,13 @@ export class CountriesService {
            editor exists to cut down. Countries born after the seed had
            none of it and opened on an empty subject list.
 
-           After the create rather than nested in it: the payload may have
-           named subjects already, and the unique key would fail the whole
-           transaction on the overlap. `skipDuplicates` lets whatever the
-           author chose stand and fills in the rest. */
-        await attachDefaultTaxonomy(tx, { countryId: created.id });
+           Only when the author named none. Ticking two subjects on the
+           new-country form and getting all of them back is the form
+           ignoring what it was told; "by default" is what happens when
+           nothing was said, and an empty list on a create says nothing --
+           it is what the form posts when no box was touched. */
+        if (!dto.subjectIds?.length)
+          await attachDefaultTaxonomy(tx, { countryId: created.id });
         return created;
       });
       await writeAudit(

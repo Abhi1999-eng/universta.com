@@ -64,8 +64,11 @@ async function main() {
 
     console.log(`countries read          : ${countries.length}`);
     console.log(`countries changed       : ${touched}`);
-    console.log(`subjects added          : ${subjectsAdded}`);
-    console.log(`subjects removed        : ${subjectsRemoved}`);
+    /* A subject link is re-marked rather than added or removed: every
+       destination lists every subject, and what is worked out is whether a
+       course stands behind the link. */
+    console.log(`subjects now taught     : ${subjectsAdded}`);
+    console.log(`subjects no longer taught: ${subjectsRemoved}`);
     console.log(`specializations added   : ${specializationsAdded}`);
     console.log(`specializations removed : ${specializationsRemoved}`);
   } finally {

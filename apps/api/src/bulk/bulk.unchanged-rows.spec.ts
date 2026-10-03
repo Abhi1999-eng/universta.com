@@ -68,6 +68,10 @@ function build() {
   };
   const prisma = {
     country,
+    /* The country sheet asks how many subjects there are, once per import,
+       to know whether a destination lists all of them. None, here: these
+       rows carry no subject column. */
+    subject: { count: jest.fn().mockResolvedValue(0) },
     auditLog: { create: jest.fn().mockResolvedValue({}) },
     $transaction: jest.fn(async (fn: unknown) =>
       typeof fn === 'function'

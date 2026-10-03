@@ -66,6 +66,22 @@ describe('a country arriving through the sheet', () => {
     expect(touched).toContain('countrySubject');
   });
 
+  it('takes only what its own `subject` cell names, when it names any', async () => {
+    /* "By default" is what happens when nothing was said. A row that lists
+       two subjects and comes back with thirty has been overruled. */
+    const { touched, client } = tx();
+    await bulkResource('countries').reconcile!(
+      client,
+      'c-1',
+      {
+        ...EMPTY_COUNTRY_RELATIONS,
+        subjects: { kind: 'value', value: ['s-1', 's-2'] },
+      },
+      true,
+    );
+    expect(touched).not.toContain('subject');
+  });
+
   it('takes nothing on a re-import, so a narrowing survives', async () => {
     const { touched, client } = tx();
     await bulkResource('countries').reconcile!(

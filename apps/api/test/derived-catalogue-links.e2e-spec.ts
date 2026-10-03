@@ -262,6 +262,55 @@ describe('derived catalogue links (e2e)', () => {
     });
   }, 60_000);
 
+  it('starts a destination with every subject, and a subject in every destination', async () => {
+    /* Either order: the subject is there when the country is born, or the
+       country is there when the subject is. Neither has a course yet, so
+       both links are listings and nothing more. */
+    const before = await makeSubject('l1');
+    const countryId = await makeCountry('l');
+    const after = await makeSubject('l2');
+
+    expect(await subjectLink(countryId, before)).toMatchObject({
+      source: EDITORIAL,
+    });
+    expect(await subjectLink(countryId, after)).toMatchObject({
+      source: EDITORIAL,
+    });
+  }, 60_000);
+
+  it('brings back a subject an editor unticked, once a course is taught in it', async () => {
+    const countryId = await makeCountry('m');
+    const subjectId = await makeSubject('m');
+    const current = record(
+      await expectStatus(
+        admin('get', `/api/v1/admin/countries/${countryId}`),
+        200,
+      ),
+    );
+    await expectStatus(
+      admin('patch', `/api/v1/admin/countries/${countryId}`, {
+        continentId,
+        name: current.name,
+        slug: current.slug,
+        pageHeading: current.pageHeading,
+        shortDescription: current.shortDescription,
+        subjectIds: [],
+      }),
+      200,
+    );
+    expect(await subjectLink(countryId, subjectId)).toBeNull();
+
+    /* Unticking a box cannot make a course untrue. */
+    const courseId = await makeCourse('m', subjectId);
+    const universityId = await makeUniversity('m', countryId);
+    await makeOffering('m', universityId, courseId);
+    await publishCourse(courseId);
+
+    expect(await subjectLink(countryId, subjectId)).toMatchObject({
+      source: DERIVED,
+    });
+  }, 90_000);
+
   it('gives the destination the subject that course belongs to', async () => {
     const { countryId, subjectId } = await teach('b');
     expect(await subjectLink(countryId, subjectId)).toMatchObject({
@@ -356,12 +405,17 @@ describe('derived catalogue links (e2e)', () => {
       201,
     );
 
-    /* A subject goes with its last course as readily as it arrived with
-       the first. */
+    /* The course goes; the subject does not. Every destination starts out
+       listing every subject, so what the last course takes with it is the
+       claim that something is taught here -- the link is handed back to the
+       editor rather than deleted, or one withdrawn programme would cost a
+       destination a field for good. */
     expect((await mapping(countryId, courseId))?.deletedAt).toBeInstanceOf(
       Date,
     );
-    expect(await subjectLink(countryId, subjectId)).toBeNull();
+    expect(await subjectLink(countryId, subjectId)).toMatchObject({
+      source: EDITORIAL,
+    });
   }, 60_000);
 
   it('moves the course when the university moves country', async () => {
@@ -385,7 +439,10 @@ describe('derived catalogue links (e2e)', () => {
     expect((await mapping(from, courseId))?.deletedAt).toBeInstanceOf(Date);
     expect(await mapping(to, courseId)).toMatchObject({ deletedAt: null });
     expect(await subjectLink(to, subjectId)).toMatchObject({ source: DERIVED });
-    expect(await subjectLink(from, subjectId)).toBeNull();
+    /* Still listed where it left, and no longer claimed as taught there. */
+    expect(await subjectLink(from, subjectId)).toMatchObject({
+      source: EDITORIAL,
+    });
   }, 90_000);
 
   it('withdraws a destination’s courses when the university is unpublished', async () => {
@@ -431,8 +488,11 @@ describe('derived catalogue links (e2e)', () => {
     );
 
     /* The old claim has to go, or the destination keeps teaching a subject
-       nothing of its own covers any more. */
-    expect(await subjectLink(countryId, was)).toBeNull();
+       nothing of its own covers any more. The link itself stays, as the
+       listing it was before the course arrived. */
+    expect(await subjectLink(countryId, was)).toMatchObject({
+      source: EDITORIAL,
+    });
     expect(await subjectLink(countryId, now)).toMatchObject({
       source: DERIVED,
     });

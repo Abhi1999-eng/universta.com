@@ -16,14 +16,26 @@ import { PUBLISHED } from '../catalog/published';
  *
  * What an editor meant on purpose survives all of it. A new market usually
  * has its guide before it has its catalogue, and the one destination filled
- * in by hand must not be emptied by a sweep. Those rows are EDITORIAL and
- * this never touches them -- it adds and removes DERIVED rows only.
+ * in by hand must not be emptied by a sweep. Those rows are EDITORIAL.
+ *
+ * Subjects and specializations part ways on what "survives" means, because
+ * they start in different places. A destination is born listing every
+ * subject (`attachDefaultTaxonomy`), so for a subject the row is nearly
+ * always there already and the only thing left to work out is whether a
+ * course stands behind it: the row is marked DERIVED while one does and
+ * handed back as EDITORIAL when the last one goes. Nothing is deleted --
+ * deleting would take a default link away for good the first time a
+ * programme was published and then withdrawn. Specializations are never
+ * attached by default, so theirs still come and go with the courses.
  */
 export const DERIVED = 'DERIVED';
 export const EDITORIAL = 'EDITORIAL';
 
 export type TaxonomyChange = {
+  /** Subjects that gained a course behind them: written new, or an
+   * existing link marked DERIVED. */
   subjectsAdded: number;
+  /** Subjects whose last course went: the link stays, as EDITORIAL. */
   subjectsRemoved: number;
   specializationsAdded: number;
   specializationsRemoved: number;
@@ -77,8 +89,8 @@ export async function reconcileCountryTaxonomy(
 
   const change = { ...EMPTY };
 
-  /* Already there, whatever put it there: an editor's row is proof enough
-     that the link exists, so it is not duplicated as a derived one. */
+  /* No row at all -- an editor unticked it, or the destination predates the
+     default links. The course is a fact either way, so the link is written. */
   const haveSubject = new Set(storedSubjects.map((row) => row.subjectId));
   const addSubjects = [...wantedSubjects].filter((id) => !haveSubject.has(id));
   if (addSubjects.length) {
@@ -90,19 +102,40 @@ export async function reconcileCountryTaxonomy(
         displayOrder: storedSubjects.length + index,
       })),
     });
-    change.subjectsAdded = addSubjects.length;
   }
 
-  const staleSubjects = storedSubjects
+  /* The usual case now: the link has stood since the destination was born,
+     as EDITORIAL, and a course has arrived under it. Leaving it EDITORIAL
+     is what this used to do, and it meant the page went on saying "no
+     programme in the catalogue yet" about a field with programmes in it --
+     for every subject of every destination, once they all start listed. */
+  const nowTaught = storedSubjects
+    .filter(
+      (row) => row.source !== DERIVED && wantedSubjects.has(row.subjectId),
+    )
+    .map((row) => row.id);
+  if (nowTaught.length) {
+    await prisma.countrySubject.updateMany({
+      where: { id: { in: nowTaught } },
+      data: { source: DERIVED },
+    });
+  }
+  change.subjectsAdded = addSubjects.length + nowTaught.length;
+
+  /* And back again when the last course goes. Handed to the editor rather
+     than deleted: the destination still lists the field, it just no longer
+     has anything to show for it, and from here the editor can untick it. */
+  const noLongerTaught = storedSubjects
     .filter(
       (row) => row.source === DERIVED && !wantedSubjects.has(row.subjectId),
     )
     .map((row) => row.id);
-  if (staleSubjects.length) {
-    await prisma.countrySubject.deleteMany({
-      where: { id: { in: staleSubjects } },
+  if (noLongerTaught.length) {
+    await prisma.countrySubject.updateMany({
+      where: { id: { in: noLongerTaught } },
+      data: { source: EDITORIAL },
     });
-    change.subjectsRemoved = staleSubjects.length;
+    change.subjectsRemoved = noLongerTaught.length;
   }
 
   const haveSpecialization = new Set(
@@ -162,10 +195,10 @@ type AttachClient = {
  * destination until somebody attached it by hand, thirty times or two
  * hundred and five.
  *
- * Written EDITORIAL, which is the only value the editor can then remove:
- * the sweep adds and deletes DERIVED rows and would take these back out on
- * the next course save, and `CountriesService.update` replaces exactly the
- * EDITORIAL slice, so a narrowing sticks.
+ * Written EDITORIAL, which is the value the editor can then remove:
+ * `CountriesService.update` replaces exactly the EDITORIAL slice, so a
+ * narrowing sticks. The sweep above marks a row DERIVED while a course
+ * stands behind it and hands it back when the last one goes.
  *
  * `skipDuplicates` rather than a read-then-write, because the caller may
  * already have written the pairs its own payload asked for, and the unique
@@ -179,19 +212,17 @@ export async function attachDefaultTaxonomy(
   client: AttachClient,
   target: { countryId: string } | { subjectId: string },
 ): Promise<number> {
-  /* Not filtered to PUBLISHED. A draft on either side becomes live later,
-     and a link made now is the only way it reaches what already existed --
-     filtering here would mean a subject published tomorrow never reached a
-     country created today, and the reverse. Nothing leaks: every reader
-     filters the record's own status, so a link to a draft is invisible
-     until the draft publishes, which is exactly the moment it should
-     appear. */
-  const live = { deletedAt: null };
+  /* Not filtered to PUBLISHED, and not to live records either. A draft
+     publishes later and an archived record can be restored, and a link made
+     now is the only way either reaches what already existed -- filtering
+     here would mean a subject published tomorrow never reached a country
+     created today, and a country restored next week came back missing every
+     subject created while it was away. Nothing leaks: every reader filters
+     the record's own status and `deletedAt`, so the link is invisible until
+     the moment it should appear. */
+  const everything = { select: { id: true } };
   if ('countryId' in target) {
-    const subjects = await client.subject.findMany({
-      where: live,
-      select: { id: true },
-    });
+    const subjects = await client.subject.findMany(everything);
     if (!subjects.length) return 0;
     const { count } = await client.countrySubject.createMany({
       data: subjects.map((subject, index) => ({
@@ -204,10 +235,7 @@ export async function attachDefaultTaxonomy(
     });
     return count;
   }
-  const countries = await client.country.findMany({
-    where: live,
-    select: { id: true },
-  });
+  const countries = await client.country.findMany(everything);
   if (!countries.length) return 0;
   const { count } = await client.countrySubject.createMany({
     data: countries.map((country) => ({

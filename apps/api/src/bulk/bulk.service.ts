@@ -328,7 +328,9 @@ export class BulkOperationsService {
       countries: {
         continent: { select: { slug: true, name: true } },
         subjectMaps: {
-          include: { subject: { select: { name: true, slug: true } } },
+          include: {
+            subject: { select: { name: true, slug: true, deletedAt: true } },
+          },
           orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
         },
         tagMaps: {
@@ -409,9 +411,10 @@ export class BulkOperationsService {
   async listRecords(resourceKey: string) {
     const definition = bulkResource(resourceKey);
     const rows = await this.fetchRecords(resourceKey, definition);
+    const context = await definition.exportContext?.(this.prisma);
     return rows.map((row: Record<string, unknown>) => ({
       id: row.id,
-      ...definition.toExportRow(row),
+      ...definition.toExportRow(row, context),
     }));
   }
 
@@ -420,8 +423,9 @@ export class BulkOperationsService {
     const rows = await this.fetchRecords(resourceKey, definition);
     const fields = bulkFields(definition);
     const columns = fields.map((field) => field.label);
+    const context = await definition.exportContext?.(this.prisma);
     const exportRows = rows.map((row: Record<string, unknown>) => {
-      const legacy = definition.toExportRow(row);
+      const legacy = definition.toExportRow(row, context);
       return Object.fromEntries(
         fields.map((field) => [
           field.label,
@@ -504,6 +508,7 @@ export class BulkOperationsService {
     definition: BulkResourceDefinition,
     id: string,
     row: BulkRow,
+    exportContext?: unknown,
   ): Promise<string[] | null> {
     try {
       const stored = (await delegate(this.prisma, definition).findFirst({
@@ -512,7 +517,7 @@ export class BulkOperationsService {
       })) as Record<string, unknown> | null;
       if (!stored) return null;
       const fields = bulkFields(definition);
-      const exported = definition.toExportRow(stored);
+      const exported = definition.toExportRow(stored, exportContext);
       /* What the export download writes for this record: the same projection,
          with relation slugs and codes swapped for display names. A re-uploaded
          export carries those names, so the comparison has to know them. */
@@ -586,6 +591,8 @@ export class BulkOperationsService {
       errors: [],
     };
     const table = delegate(this.prisma, definition);
+    /* Once for the whole sheet: it is the same answer for every row. */
+    const exportContext = await definition.exportContext?.(this.prisma);
     for (const { line, row, parsed } of validated) {
       if (parsed.errors) {
         summary.failed += 1;
@@ -647,6 +654,7 @@ export class BulkOperationsService {
             definition,
             existing.id,
             row,
+            exportContext,
           );
           /* A reconciler can have work the columns cannot describe, so the
              resource gets to say so before the row is written off. */

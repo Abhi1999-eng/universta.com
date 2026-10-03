@@ -60,17 +60,15 @@ describe('a destination being born', () => {
     expect(c.writes[0].data.every((row) => row.countryId === 'c-1')).toBe(true);
   });
 
-  it('takes drafts too, because they are what publishes next', async () => {
+  it('takes drafts and archived subjects too', async () => {
     /* Filtering to PUBLISHED here would mean a subject published tomorrow
-       never reached a country created today. Every reader filters the
-       record's own status, so the link is invisible until it should not
-       be. */
+       never reached a country created today, and filtering to live ones
+       that a restored subject came back reaching nobody. Every reader
+       filters the record's own status, so the link is invisible until it
+       should not be. */
     const c = client(['s-1'], []);
     await attachDefaultTaxonomy(c.api, { countryId: 'c-1' });
-    expect(c.reads[0]).toEqual({
-      where: { deletedAt: null },
-      select: { id: true },
-    });
+    expect(c.reads[0]).toEqual({ select: { id: true } });
   });
 });
 
@@ -88,9 +86,9 @@ describe('a field being born', () => {
 });
 
 describe('how the rows are written', () => {
-  it('marks them EDITORIAL, which is the only value the editor can remove', async () => {
-    // DERIVED rows are deleted by the sweep when no course backs them, and
-    // it runs on every course save -- these would not survive the afternoon.
+  it('marks them EDITORIAL, which is the value the editor can remove', async () => {
+    // DERIVED says a course stands behind the link, which is the sweep's to
+    // work out and not something a record is born knowing.
     const c = client(['s-1'], []);
     await attachDefaultTaxonomy(c.api, { countryId: 'c-1' });
     expect(c.writes[0].data.every((row) => row.source === EDITORIAL)).toBe(
@@ -99,8 +97,8 @@ describe('how the rows are written', () => {
   });
 
   it('skips duplicates rather than failing the transaction', async () => {
-    // The caller may already have written the pairs its own payload named,
-    // and the unique key would otherwise roll back the record's creation.
+    // A pair may already stand -- a subject created while this one was being
+    // written -- and the unique key would otherwise roll the creation back.
     const c = client(['s-1'], []);
     await attachDefaultTaxonomy(c.api, { countryId: 'c-1' });
     expect(c.writes[0].skipDuplicates).toBe(true);
