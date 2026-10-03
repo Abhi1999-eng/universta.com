@@ -132,18 +132,20 @@ function nextIntake(course: Course) {
   return first?.intake ? intakeRange(first.intake) : null;
 }
 
-type Facet = { value: string; label: string; count: number };
-
 /** One row per value the filter can take.
  *
  * A specialization's slug is unique within its subject, so the catalogue holds
  * three separate `artificial-intelligence` records and the endpoint reports one
  * option for each. Filtering by the slug matches all of them -- each row
  * already carries that same total -- so the rail listed "Artificial
- * Intelligence · 5" three times in a row, each ticking the same box. */
-function byValue(options: Facet[]): Facet[] {
-  const seen = new Map<string, Facet>();
-  for (const option of options) if (!seen.has(option.value)) seen.set(option.value, option);
+ * Intelligence · 5" three times in a row, each ticking the same box.
+ *
+ * Generic over the row, because a specialization option carries the subject it
+ * belongs to and the browse block below the listing reads it. */
+function byValue<T extends { value: string }>(options: T[]): T[] {
+  const seen = new Map<string, T>();
+  for (const option of options)
+    if (!seen.has(option.value)) seen.set(option.value, option);
   return [...seen.values()];
 }
 
