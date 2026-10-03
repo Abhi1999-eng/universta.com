@@ -29,7 +29,10 @@ import {
   type ProfileStatisticsRecord,
 } from './profiles/profile.mappers';
 import { PUBLIC_INTAKE_AVAILABILITY } from './profiles/profile.constants';
-import { EDITORIAL } from './country-taxonomy-reconciler';
+import {
+  attachDefaultTaxonomy,
+  EDITORIAL,
+} from './country-taxonomy-reconciler';
 import { CountryDerivedService } from './country-derived.service';
 import {
   parseCalculatorConfig,
@@ -999,7 +1002,7 @@ export class CountriesService {
         await this.ensureSubjects(dto.subjectIds, tx);
         await this.ensureSubSubjects(dto.subSubjectIds, tx);
         await this.ensureTags(dto.tagIds, tx);
-        return tx.country.create({
+        const created = await tx.country.create({
           data: {
             continentId: dto.continentId,
             name,
@@ -1065,6 +1068,19 @@ export class CountriesService {
           },
           include: COUNTRY_INCLUDE,
         });
+        /* A destination nobody has narrowed yet offers every field, which
+           is what the taxonomy seed has always written and what this
+           editor exists to cut down. Countries born after the seed had
+           none of it and opened on an empty subject list.
+
+           Only when the author named none. Ticking two subjects on the
+           new-country form and getting all of them back is the form
+           ignoring what it was told; "by default" is what happens when
+           nothing was said, and an empty list on a create says nothing --
+           it is what the form posts when no box was touched. */
+        if (!dto.subjectIds?.length)
+          await attachDefaultTaxonomy(tx, { countryId: created.id });
+        return created;
       });
       await writeAudit(
         this.prisma,

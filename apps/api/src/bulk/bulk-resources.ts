@@ -5,6 +5,7 @@ import {
 } from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 import {
+  ALL_SUBJECTS_TOKEN,
   CLEAR_TOKEN,
   COUNTRY_SECTION_KEYS,
   cellState,
@@ -18,6 +19,7 @@ import {
   type CountryRelations,
   type SectionColumn,
 } from './country-bulk';
+import { attachDefaultTaxonomy } from '../countries/country-taxonomy-reconciler';
 import {
   asDeriveClient,
   deriveForCourse,
@@ -79,7 +81,15 @@ export interface BulkResourceDefinition {
   parseRow(row: BulkRow, prisma: PrismaService): Promise<BulkParseResult>;
   /** Applies relations and profiles for one row inside that row's own
    * transaction, so scalars and relations succeed or fail together. */
-  reconcile?(tx: unknown, id: string, relations: unknown): Promise<void>;
+  /** `born` is true only when this row was just created. A hook that
+   * attaches defaults must not re-attach them on every re-import -- that
+   * would undo whatever an editor narrowed since. */
+  reconcile?(
+    tx: unknown,
+    id: string,
+    relations: unknown,
+    born?: boolean,
+  ): Promise<void>;
   /** Whether `reconcile` would still have work to do for this record.
    *
    * The unchanged check compares the columns the sheet carries, and a
@@ -93,7 +103,13 @@ export interface BulkResourceDefinition {
     relations: unknown,
     prisma: PrismaService,
   ): Promise<boolean>;
-  toExportRow(record: Record<string, unknown>): Record<string, unknown>;
+  /** Whatever `toExportRow` needs that is not on the record itself, read
+   * once per export rather than once per row. */
+  exportContext?(prisma: PrismaService): Promise<unknown>;
+  toExportRow(
+    record: Record<string, unknown>,
+    context?: unknown,
+  ): Record<string, unknown>;
   /** Returns a human-readable reason the row can't be archived (e.g. "3
    * cities still reference this state"), or null if it's safe to archive. */
   dependencyCheck?(id: string, prisma: PrismaService): Promise<string | null>;
@@ -469,7 +485,7 @@ const countries: BulkResourceDefinition = {
       label: 'subject',
       required: false,
       type: 'relation',
-      description: `Pipe-separated Subjects; "${CLEAR_TOKEN}" removes all.`,
+      description: `Pipe-separated Subjects; "${ALL_SUBJECTS_TOKEN}" lists every one, "${CLEAR_TOKEN}" removes all.`,
     },
     {
       key: 'tag',
@@ -605,12 +621,19 @@ const countries: BulkResourceDefinition = {
       relations,
     };
   },
-  async reconcile(tx, id, relations) {
+  async reconcile(tx, id, relations, born) {
     await reconcileCountry(
       tx as Parameters<typeof reconcileCountry>[0],
       id,
       relations as CountryRelations,
     );
+    /* Only on the row's first import, and only when the sheet left the
+       `subject` cell blank. A destination starts offering every field and
+       the editor narrows it; re-importing the sheet must not put back what
+       was narrowed away, and a row that names its own subjects has said
+       what it wants -- filling in the rest would overrule the cell. */
+    if (born && (relations as CountryRelations).subjects.kind === 'absent')
+      await attachDefaultTaxonomy(tx as never, { countryId: id });
   },
   /* The specializations come out of the `subject` cell, and nothing in the
      sheet spells them out, so the column diff cannot see them. A country
@@ -629,8 +652,18 @@ const countries: BulkResourceDefinition = {
     const have = new Set(stored.map((row) => row.subSubjectId));
     return wanted.some((subSubjectId) => !have.has(subSubjectId));
   },
-  toExportRow(record) {
-    return exportCountryRow(record);
+  /* How many subjects there are, which is what "all of them" is measured
+     against. Archived ones are left out on both sides of that comparison. */
+  async exportContext(prisma) {
+    return {
+      subjectCount: await prisma.subject.count({ where: { deletedAt: null } }),
+    };
+  },
+  toExportRow(record, context) {
+    return exportCountryRow(
+      record,
+      context as { subjectCount?: number } | undefined,
+    );
   },
 };
 
@@ -678,10 +711,13 @@ function decimalText(value: unknown): string {
 
 export function exportCountryRow(
   record: Record<string, unknown>,
+  context?: { subjectCount?: number },
 ): Record<string, unknown> {
   const rel = record as {
     continent?: { slug?: string };
-    subjectMaps?: Array<{ subject?: { name?: string; slug?: string } }>;
+    subjectMaps?: Array<{
+      subject?: { name?: string; slug?: string; deletedAt?: Date | null };
+    }>;
     tagMaps?: Array<{ tag?: { name?: string; slug?: string } }>;
     intakes?: Array<{ intake?: { name?: string } }>;
     faqs?: Array<{
@@ -703,6 +739,15 @@ export function exportCountryRow(
   const work = rel.workProfile ?? {};
   const language = rel.languageRequirements ?? {};
   const statistics = rel.statistics ?? {};
+  /* An archived subject is still linked -- restoring it brings its
+     destinations back -- but the importer will not find it, so naming it
+     here would make the export fail its own re-import. */
+  const subjectSlugs = (rel.subjectMaps ?? [])
+    .filter((row) => !row.subject?.deletedAt)
+    .map((row) => row.subject?.slug ?? '')
+    .filter(Boolean);
+  const listsEverySubject =
+    !!context?.subjectCount && subjectSlugs.length >= context.subjectCount;
   const feeMin = decimalText(cost.applicationFeeMin);
   const feeMax = decimalText(cost.applicationFeeMax);
   return {
@@ -762,11 +807,9 @@ export function exportCountryRow(
         )
       : '',
     continent: rel.continent?.slug ?? '',
-    // Slugs, so an export re-imports without depending on display names.
-    subject: (rel.subjectMaps ?? [])
-      .map((row) => row.subject?.slug ?? '')
-      .filter(Boolean)
-      .join(' | '),
+    // Slugs, so an export re-imports without depending on display names --
+    // or the one phrase that stands for all of them.
+    subject: listsEverySubject ? ALL_SUBJECTS_TOKEN : subjectSlugs.join(' | '),
     tag: (rel.tagMaps ?? [])
       .map((row) => row.tag?.slug ?? '')
       .filter(Boolean)
@@ -1086,8 +1129,9 @@ const subjects: BulkResourceDefinition = {
       },
     };
   },
-  async reconcile(tx, id, relations) {
+  async reconcile(tx, id, relations, born) {
     await reconcileSpecializations(tx, id, relations);
+    if (born) await attachDefaultTaxonomy(tx as never, { subjectId: id });
   },
   toExportRow(record) {
     const children = (record.subSubjects ?? []) as Array<{ name: string }>;

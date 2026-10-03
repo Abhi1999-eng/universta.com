@@ -146,9 +146,18 @@ describe('Bulk templates and exports round-trip (e2e)', () => {
         .buffer(true)
         .expect(200);
       const [header, ...rows] = parseCsv(exported.text);
+      /* A row is this run's own when some cell carries the run's token --
+         except the country sheet's `subject` cell. A subject reaches every
+         destination the moment it is created, so a country an editor has
+         narrowed names this run's subject there beside the ones it kept,
+         and counting that cell claimed countries that are not this run's. */
+      const listed = resource === 'countries' ? header.indexOf('subject') : -1;
       const mine = rows
         .filter((cells) =>
-          cells.some((cell) => cell.toLowerCase().includes(token)),
+          cells.some(
+            (cell, index) =>
+              index !== listed && cell.toLowerCase().includes(token),
+          ),
         )
         .map((cells) =>
           Object.fromEntries(header.map((column, i) => [column, cells[i]])),

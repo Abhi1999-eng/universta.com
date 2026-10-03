@@ -292,6 +292,32 @@ describe('country taxonomy admin (e2e)', () => {
     });
   });
 
+  it('starts a destination that named no subjects with every one of them', async () => {
+    /* The first fixture named two and has exactly those two, above. This
+       one named none, which is what "by default" is for. */
+    const other = record(
+      await admin('get', `/api/v1/admin/countries/${otherCountryId}`).expect(
+        200,
+      ),
+    );
+    expect(other.subjectIds).toEqual(expect.arrayContaining(subjectIds));
+  });
+
+  it('lets an editor narrow that default away, and keeps it narrowed', async () => {
+    const current = record(
+      await admin('get', `/api/v1/admin/countries/${otherCountryId}`).expect(
+        200,
+      ),
+    );
+    const after = record(
+      await admin('patch', `/api/v1/admin/countries/${otherCountryId}`, {
+        ...corePayload(current),
+        subjectIds: [],
+      }).expect(200),
+    );
+    expect(after.subjectIds).toEqual([]);
+  });
+
   it('filters countries by directly assigned subject', async () => {
     const match = await admin(
       'get',

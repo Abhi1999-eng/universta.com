@@ -1266,8 +1266,10 @@ model CountrySubject {
   subjectId    String   @map("subject_id") @db.Char(36)
   displayOrder Int      @default(0) @map("display_order")
   /**
-   * DERIVED: worked out from the courses taught here, and removed again
-   * when they stop being. EDITORIAL: an editor meant it, and it stays.
+   * DERIVED: a published course in this subject is taught here right now.
+   * EDITORIAL: listed, with nothing behind it yet -- every destination
+   * starts out listing every subject, and this is the half an editor can
+   * untick. The row is re-marked as courses come and go, never deleted.
    */
   source       String   @default("EDITORIAL") @db.VarChar(20)
   createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)

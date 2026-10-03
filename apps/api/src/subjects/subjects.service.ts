@@ -1,4 +1,5 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { attachDefaultTaxonomy } from '../countries/country-taxonomy-reconciler';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
@@ -662,6 +663,16 @@ export class SubjectsService {
         },
         include: SUBJECT_INCLUDE,
       });
+      /* A field is taught everywhere until a destination says otherwise,
+         which is what the taxonomy seed wrote for the subjects that
+         existed then. One created afterwards reached no destination until
+         somebody attached it by hand, two hundred and five times.
+
+         Outside the create rather than inside it: the subject exists
+         either way, and a destination list that failed to write is worth
+         less than the subject. The deployment sweep and the country
+         editor both still reach these rows. */
+      await attachDefaultTaxonomy(this.prisma, { subjectId: row.id });
       await writeAudit(
         this.prisma,
         request,

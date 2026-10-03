@@ -1,5 +1,6 @@
 import type { Prisma } from '../generated/prisma/client';
 import { slugify } from '../catalog/catalog.constants';
+import { attachDefaultTaxonomy } from '../countries/country-taxonomy-reconciler';
 import type { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -25,6 +26,26 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 export const CLEAR_TOKEN = '__CLEAR__';
 
+/**
+ * What the `subject` cell says for a destination that lists every subject.
+ *
+ * Every destination starts that way, so spelling the list out put all thirty
+ * subjects in the cell of all two hundred and five rows. That is not just
+ * noise. A bare subject in the cell brings its specializations with it, so
+ * re-importing an untouched export would have looked up some six thousand
+ * subjects one query at a time and then written every specialization
+ * against every country -- about a hundred and ninety thousand rows the
+ * pages do not read -- for a sheet nobody had edited.
+ *
+ * One phrase instead, which reads as what it means and round-trips as
+ * itself. On the way in it attaches whatever is missing and removes
+ * nothing, so it also un-narrows a destination from the sheet.
+ */
+export const ALL_SUBJECTS_TOKEN = 'All subjects';
+
+const isAllSubjects = (raw: string | undefined) =>
+  (raw ?? '').trim().toLowerCase() === ALL_SUBJECTS_TOKEN.toLowerCase();
+
 /** Long-form client fields and the section key each one owns. */
 /* The client's column names on the left, the canonical section keys the Admin
  * editor offers and the public page reads on the right. "admission-process"
@@ -43,7 +64,8 @@ export type CellState<T> =
   { kind: 'absent' } | { kind: 'clear' } | { kind: 'value'; value: T };
 
 export type CountryRelations = {
-  subjects: CellState<string[]>;
+  /** `all` is the `ALL_SUBJECTS_TOKEN` cell: every subject, none removed. */
+  subjects: CellState<string[]> | { kind: 'all' };
   /** Taken from the same cell as `subjects`, and written beside them. */
   subSubjects: CellState<string[]>;
   tags: CellState<string[]>;
@@ -429,7 +451,13 @@ export async function parseCountryRelations(
   prisma: PrismaService,
   errors: string[],
 ): Promise<CountryRelations> {
-  const subjectCell = cellState(row.subject, splitTerms);
+  /* "All subjects" names no subject to look up, and no specialization
+     either: the pages that list a destination's specializations read them
+     from the subject, so the cell leaves those rows as they are. */
+  const everySubject = isAllSubjects(row.subject);
+  const subjectCell: CellState<string[]> = everySubject
+    ? { kind: 'absent' }
+    : cellState(row.subject, splitTerms);
   const tagCell = cellState(row.tag, splitTerms);
 
   let faqCell: CellState<FaqInput[]> = { kind: 'absent' };
@@ -464,9 +492,11 @@ export async function parseCountryRelations(
       : null;
 
   return {
-    subjects: taxonomy
-      ? { kind: 'value', value: taxonomy.subjectIds }
-      : subjectCell,
+    subjects: everySubject
+      ? { kind: 'all' }
+      : taxonomy
+        ? { kind: 'value', value: taxonomy.subjectIds }
+        : subjectCell,
     subSubjects: taxonomy
       ? { kind: 'value', value: taxonomy.subSubjectIds }
       : subjectCell,
@@ -544,7 +574,12 @@ export async function reconcileCountry(
   countryId: string,
   relations: CountryRelations,
 ): Promise<void> {
-  if (relations.subjects.kind !== 'absent') {
+  if (relations.subjects.kind === 'all') {
+    /* Fills in what is missing and removes nothing, so the rows that are
+       already there keep what they know -- which of them a course stands
+       behind, and the order an editor put them in. */
+    await attachDefaultTaxonomy(tx, { countryId });
+  } else if (relations.subjects.kind !== 'absent') {
     const ids =
       relations.subjects.kind === 'clear' ? [] : relations.subjects.value;
     await tx.countrySubject.deleteMany({ where: { countryId } });
