@@ -307,7 +307,19 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                     &rarr;
                   </span>
                 </button>
-                {paths.length ? (
+                {/* The fields taught here, which is the first thing a
+                    student narrows by and had no entry point from the hero. */}
+                {(country.subjects ?? []).length ? (
+                  <Link
+                    className="btn btn--lg btn--ghost"
+                    href={`/study-abroad/${country.slug}/subjects`}
+                  >
+                    Explore subjects{' '}
+                    <span className="btn__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </Link>
+                ) : paths.length ? (
                   <a className="btn btn--lg btn--ghost" href="#study-paths">
                     Explore study paths
                   </a>

@@ -3,9 +3,15 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
+import {
+  CountrySubjectGrid,
+  type CountrySubjectCard,
+} from '@/components/study-abroad/CountrySubjectGrid';
 import { loadCountryTabs } from '@/lib/country-tabs';
 import { partitionSubjects } from '@/lib/country-sub-pages';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
+import { getSubjects } from '@/lib/catalog';
+import { inCountry } from '@/lib/country-article';
 
 /**
  * Every field taught in one destination.
@@ -52,18 +58,28 @@ export default async function Page({ params }: Params) {
   const { taught, editorial } = partitionSubjects(subjects);
 
   const tabs = await loadCountryTabs(country.slug, subjects.length);
+  const where = inCountry(country.name, country.iso2Code);
 
-  const card = (subject: (typeof subjects)[number]) => (
-    /* To this field in this destination, not to the field everywhere. The
-       destination is the whole reason the reader is on this page. */
-    <Link
-      className="h-card"
-      href={`/study-abroad/${country.slug}/${subject.slug}`}
-      key={subject.id}
-    >
-      <strong className="h-card__t">{subject.name}</strong>
-    </Link>
-  );
+  /* How many specializations each field holds. The destination's own subject
+     links do not carry it, so it comes from the taxonomy -- the same number
+     the field's own page then lists, which is what keeps "46 specializations"
+     from opening on a different count. A failure drops the line rather than
+     the page. */
+  const counts = await getSubjects({ limit: '100' })
+    .then(
+      (result) =>
+        new Map(
+          result.data.map((row) => [row.slug, row.publishedSubSubjectCount]),
+        ),
+    )
+    .catch(() => new Map<string, number>());
+
+  const toCard = (subject: (typeof subjects)[number]): CountrySubjectCard => ({
+    id: subject.id,
+    name: subject.name,
+    slug: subject.slug,
+    specializations: counts.get(subject.slug) ?? 0,
+  });
 
   return (
     <>
@@ -88,51 +104,55 @@ export default async function Page({ params }: Params) {
             <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />{' '}
             {country.name}
           </p>
-          <h1 className="hero__title">Subjects to study in {country.name}</h1>
-          <p className="hero__lead">
+          <h1 className="hero__h1">Subjects to study in {where}</h1>
+          <p className="hero__sub">
             {taught.length
               ? `${taught.length} ${taught.length === 1 ? 'field is' : 'fields are'} taught here by a published university. Open one for its specializations and the courses inside them.`
-              : `No field in ${country.name} has a published course behind it yet.`}
+              : `No field in ${where} has a published course behind it yet.`}
           </p>
         </div>
       </section>
 
+      <CountryTabs tabs={tabs} current="subjects" />
+
       <section className="sec sec--white sec--tight">
         <div className="wrap">
-          <CountryTabs tabs={tabs} current="subjects" />
-
-          {taught.length ? <div className="h-grid h-grid--4">{taught.map(card)}</div> : null}
-
-          {editorial.length ? (
-            <>
-              <p className="h-more">
-                <span className="label">
-                  {taught.length
-                    ? 'Also listed here, with no programme in the catalogue yet'
-                    : 'Listed for this destination, with no programme in the catalogue yet'}
-                </span>
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">Fields of study</span>
+              <h2 className="sec-title">All subjects in {where}</h2>
+              <p className="sec-lead">
+                {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
               </p>
-              <div className="h-grid h-grid--4">{editorial.map(card)}</div>
-            </>
-          ) : null}
+            </div>
+            <Link className="linkcta" href={`/study-abroad/${country.slug}`}>
+              Study in {where}{' '}
+              <span className="linkcta__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
+          </div>
+
+          <CountrySubjectGrid
+            taught={taught.map(toCard)}
+            editorial={editorial.map(toCard)}
+            countrySlug={country.slug}
+            emptyLabel={where}
+          />
 
           {!subjects.length ? (
             <p className="dir__none">
-              No subject is recorded for {country.name} yet. A field appears
-              here once a university in this destination publishes a course
-              in it.
+              No subject is recorded for {where} yet. A field appears here once
+              a university in this destination publishes a course in it.
             </p>
           ) : null}
 
           <p className="h-more">
-            <Link href={`/study-abroad/${country.slug}`}>
-              Back to the {country.name} guide
-            </Link>
-            {' · '}
             <Link href="/subjects">Browse the full subject taxonomy</Link>
           </p>
         </div>
       </section>
+
     </>
   );
 }
