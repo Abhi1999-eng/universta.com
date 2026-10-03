@@ -751,7 +751,10 @@ export class CountriesService {
     }));
 
     const comingSoon = comingSoonDestinations(
-      countries.map((country) => country.name),
+      countries.map((country) => ({
+        name: country.name,
+        iso2Code: country.iso2Code,
+      })),
     ).map((entry) => ({
       name: entry.name,
       slug: null,

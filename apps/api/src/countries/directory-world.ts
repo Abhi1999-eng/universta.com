@@ -260,15 +260,27 @@ export type DirectoryDestination = {
   flag: readonly CountryBand[] | null;
 };
 
-/** Every destination, minus the ones already published under a Country record. */
+/** Every destination, minus the ones already published under a Country record.
+ *
+ * Matched on the ISO code as well as the name, because this table and the
+ * catalogue do not always spell a country the same way. `UK` here is
+ * `United Kingdom` there, and `USA` is `United States` -- so a directory that
+ * compared names alone offered both of them a second time, as a destination
+ * coming soon, directly beneath the published guide that already covered it.
+ * The code is the identity; the name is how somebody writes it down. */
 export function comingSoonDestinations(
-  publishedNames: Iterable<string>,
+  published: Iterable<{ name: string; iso2Code?: string | null }>,
 ): DirectoryDestination[] {
-  const taken = new Set(
-    [...publishedNames].map((name) => name.trim().toLowerCase()),
-  );
-  return WORLD.filter(([name]) => !taken.has(name.toLowerCase())).map(
-    ([name, region, iso2Code]) => ({
+  const takenNames = new Set<string>();
+  const takenCodes = new Set<string>();
+  for (const country of published) {
+    takenNames.add(country.name.trim().toLowerCase());
+    if (country.iso2Code) takenCodes.add(country.iso2Code.trim().toUpperCase());
+  }
+  return WORLD.filter(
+    ([name, , iso2Code]) =>
+      !takenNames.has(name.toLowerCase()) && !takenCodes.has(iso2Code),
+  ).map(([name, region, iso2Code]) => ({
       name,
       region,
       iso2Code,
