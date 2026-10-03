@@ -103,9 +103,12 @@ describe('country guide catalogue sections', () => {
     expect(html.match(/href="\/universities\/tum"/g) ?? []).toHaveLength(1);
   });
 
-  it('links each subject taught in the country', () => {
+  it('links each subject taught in the country, keeping the country in the address', () => {
     const html = renderToStaticMarkup(<CountrySubjects country={country()} alt />);
-    expect(html).toContain('href="/subjects/engineering"');
+    /* Reached through a destination, a subject opens as studied there. The
+       general page drops the country and offers no way back to it. */
+    expect(html).toContain('href="/study-abroad/germany/engineering"');
+    expect(html).not.toContain('href="/subjects/engineering"');
     expect(html).toContain('Popular subjects to study in Germany');
   });
 

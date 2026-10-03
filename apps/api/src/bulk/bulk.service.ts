@@ -331,7 +331,11 @@ export class BulkOperationsService {
           include: {
             subject: { select: { name: true, slug: true, deletedAt: true } },
           },
-          orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
+          orderBy: [
+            { displayOrder: 'asc' },
+            { subject: { displayOrder: 'asc' } },
+            { subject: { name: 'asc' } },
+          ],
         },
         tagMaps: {
           include: { tag: { select: { name: true, slug: true } } },
@@ -477,7 +481,7 @@ export class BulkOperationsService {
       else await table.create({ data: parsed.data });
       return;
     }
-    await this.prisma.$transaction(async (tx) => {
+    const written = await this.prisma.$transaction(async (tx) => {
       // Same fixed-registry selection the non-transactional path uses.
       const scoped = (tx as unknown as Record<string, TransactionalTable>)[
         definition.model
@@ -492,7 +496,16 @@ export class BulkOperationsService {
         parsed.relations,
         mode === 'create',
       );
+      return String(record.id);
     });
+    /* After the row is committed, for work that has to see what other
+       transactions committed while this one was open. */
+    await definition.afterCommit?.(
+      this.prisma,
+      written,
+      parsed.relations,
+      mode === 'create',
+    );
   }
 
   /**
@@ -517,14 +530,20 @@ export class BulkOperationsService {
       })) as Record<string, unknown> | null;
       if (!stored) return null;
       const fields = bulkFields(definition);
-      const exported = definition.toExportRow(stored, exportContext);
-      /* What the export download writes for this record: the same projection,
-         with relation slugs and codes swapped for display names. A re-uploaded
-         export carries those names, so the comparison has to know them. */
+      /* Two spellings of the same stored record, and a column that matches
+         either is unchanged. `exported` spells everything out; the
+         download can abbreviate -- a country that lists every subject says
+         "All subjects" -- and swaps relation slugs for display names. A
+         sheet typed by hand names the subjects one by one and a re-uploaded
+         export carries the phrase, and neither is an edit. Comparing
+         against the download alone marked the hand-typed one changed on
+         every import, forever. */
+      const exported = definition.toExportRow(stored);
+      const downloaded = definition.toExportRow(stored, exportContext);
       const asDownloaded = Object.fromEntries(
         fields.map((field) => [
           field.key,
-          this.humanExportValue(field.key, exported, stored),
+          this.humanExportValue(field.key, downloaded, stored),
         ]),
       );
       return changedColumns(fields, row, exported, asDownloaded);

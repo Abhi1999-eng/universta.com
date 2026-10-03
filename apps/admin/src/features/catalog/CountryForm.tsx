@@ -1069,7 +1069,20 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           : null,
         popularUniversityIds: configuration.popularUniversityIds,
         popularCourseIds: configuration.popularCourseIds,
-        ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
+        ...(record
+          ? {
+              expectedUpdatedAt: record.updatedAt,
+              /* Every subject this form could see, ticked or not. The list
+                 above replaces the destination's subjects, and it can only
+                 speak for the ones it knew about: a subject created in
+                 another tab since this form opened is linked here by
+                 default, is not in the picker, and would otherwise be
+                 removed by this save as though it had been unticked. */
+              knownSubjectIds: [
+                ...new Set([...subjects.map((row) => row.id), ...subjectIds]),
+              ],
+            }
+          : {}),
       };
       let saved = record
         ? (await updateCountry(record.id, payload)).data

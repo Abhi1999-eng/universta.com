@@ -327,8 +327,18 @@ export function CountrySubjects({
      rest are named for what they are. */
   const taught = subjects.filter((subject) => subject.source !== 'EDITORIAL');
   const editorial = subjects.filter((subject) => subject.source === 'EDITORIAL');
+  /* The field as studied here, not the field in general. A reader who
+     picked a destination and then a subject has asked a narrower question
+     than "what is Engineering", and the page that answers it is the one
+     with the destination still in its address. The general page is one
+     link away from there; from the general page there is no way back to
+     this country. */
   const card = (subject: (typeof subjects)[number]) => (
-    <Link className="h-card" href={`/subjects/${subject.slug}`} key={subject.id}>
+    <Link
+      className="h-card"
+      href={`/study-abroad/${country.slug}/${subject.slug}`}
+      key={subject.id}
+    >
       <strong className="h-card__t">{subject.name}</strong>
     </Link>
   );

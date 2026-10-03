@@ -89,7 +89,16 @@ const COUNTRY_INCLUDE = {
         },
       },
     },
-    orderBy: [{ displayOrder: 'asc' }, { subjectId: 'asc' }],
+    /* The link's own order first, for a destination an editor has arranged.
+       Where that says nothing -- every link a destination is born with has
+       the same one -- the subject's place in the catalogue decides, so a
+       country lists its subjects the way the subjects page does. Falling
+       back to the id put them in whatever order the rows were generated. */
+    orderBy: [
+      { displayOrder: 'asc' },
+      { subject: { displayOrder: 'asc' } },
+      { subject: { name: 'asc' } },
+    ],
   },
   subSubjectMaps: {
     select: {
@@ -419,6 +428,24 @@ function isAuthoredStatistics(
 ): boolean {
   if (!statistics) return false;
   return statistics.sourceMode !== 'DERIVED';
+}
+
+/**
+ * The subjects a course stands behind, ahead of the ones that are only
+ * listed -- each group in the order it arrived in.
+ *
+ * Every destination lists every subject, so "the first six" of an
+ * undifferentiated list is six arbitrary fields. A reader of the guide's
+ * study paths, or of "more subjects" on a field page, should be handed the
+ * ones with something in them before the ones without.
+ */
+export function taughtFirst<T extends { source: string }>(
+  rows: readonly T[],
+): T[] {
+  return [
+    ...rows.filter((row) => row.source !== EDITORIAL),
+    ...rows.filter((row) => row.source === EDITORIAL),
+  ];
 }
 
 @Injectable()
@@ -1082,6 +1109,13 @@ export class CountriesService {
           await attachDefaultTaxonomy(tx, { countryId: created.id });
         return created;
       });
+      /* Once more, now that the country is committed. A subject being
+         created at the same moment could not see this country, and this
+         transaction could not see that subject, so neither wrote the pair
+         and nothing later would have. Whichever of the two commits second
+         now sees the other. It writes nothing when there was no overlap. */
+      if (!dto.subjectIds?.length)
+        await attachDefaultTaxonomy(this.prisma, { countryId: country.id });
       await writeAudit(
         this.prisma,
         request,
@@ -1194,10 +1228,21 @@ export class CountriesService {
              the reconciler owns those, and wiping them here is what made
              the deployment sweep's work last until the next save. */
           await tx.countrySubject.deleteMany({
-            where: { countryId: id, source: EDITORIAL },
+            where: {
+              countryId: id,
+              source: EDITORIAL,
+              /* And only the ones the editor could see. A subject created
+                 while the form was open is linked here by default and is in
+                 nobody's `subjectIds`; removing it would be an untick that
+                 no one made. */
+              ...(dto.knownSubjectIds
+                ? { subjectId: { in: dto.knownSubjectIds } }
+                : {}),
+            },
           });
-          /* Whatever survived that is derived, and a link that already
-             exists needs no second row -- the pair is unique. */
+          /* Whatever survived that is derived, or was out of the editor's
+             sight, and a link that already exists needs no second row --
+             the pair is unique. */
           const derived = new Set(
             (
               await tx.countrySubject.findMany({
@@ -2075,16 +2120,16 @@ export class CountriesService {
          usually a market the catalogue has not caught up with -- and it may
          have nothing under it yet. The page is free to say which is which
          rather than presenting both as the same claim. */
-      subjects: record.subjectMaps
-        .filter(
+      subjects: taughtFirst(
+        record.subjectMaps.filter(
           ({ subject }) => subject.status === 'PUBLISHED' && !subject.deletedAt,
-        )
-        .map(({ subject, source }) => ({
-          id: subject.id,
-          name: subject.name,
-          slug: subject.slug,
-          source,
-        })),
+        ),
+      ).map(({ subject, source }) => ({
+        id: subject.id,
+        name: subject.name,
+        slug: subject.slug,
+        source,
+      })),
     };
   }
 
