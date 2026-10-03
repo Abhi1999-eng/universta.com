@@ -18,7 +18,6 @@ import {
   CountryCourses,
   countryCourses,
   CountryNumbers,
-  countryFigures,
   countryUniversities,
   hasCountryFigures,
   CountryScholarships,
@@ -29,10 +28,11 @@ import {
 } from '@/components/study-abroad/CountryLinkSections';
 import { FaqAccordion, StudyPaths } from '@/components/study-abroad/CountrySections';
 import { CountryConsultants } from '@/components/study-abroad/CountryConsultants';
-import { CountryNumbersMeaning } from '@/components/study-abroad/CountryNumbersMeaning';
 import { EditorialSection, editorialRenders } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
+import { CountryTabs } from '@/components/study-abroad/CountryTabs';
+import { loadCountryTabs } from '@/lib/country-tabs';
 import { richTextToPlainText } from '@/components/phase1/RichText';
 import { getCourses } from '@/lib/catalog';
 import { phaseList } from '@/lib/phase1';
@@ -123,6 +123,10 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   }));
 
   const { country, profiles, sections, faqs, consultantCards } = page;
+  const tabs = await loadCountryTabs(
+    country.slug,
+    (country.subjects ?? []).length,
+  );
   const testimonials = page.testimonials ?? [];
   const snapshot = countrySnapshot(page);
   const paths = studyPathsFor(page);
@@ -197,7 +201,6 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     hasCountryFigures(country, profiles) ? 'numbers' : null,
     /* The band states the figures; this opens them. It has nothing to say
        without them, so it stands or falls with the band above it. */
-    hasCountryFigures(country, profiles) ? 'numbers-meaning' : null,
     ...editorial.map((section) => `editorial:${section.id}`),
     consultantCards.length ? 'guidance' : null,
     testimonials.length ? 'testimonials' : null,
@@ -363,6 +366,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         </div>
       </section>
 
+      {/* The four ways into this destination. Until this strip existed the
+          guide linked down into its own sections and nowhere across, so the
+          fields taught here and the institutions teaching them were pages a
+          reader had to already know the URL of. */}
+      <CountryTabs tabs={tabs} current="overview" />
+
       <CountryWhy country={country} n={number('why')} alt={band('why')} />
       <CountryOverview
         country={country}
@@ -429,12 +438,6 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
       {/* BY THE NUMBERS — every figure already published for this country. */}
       <CountryNumbers country={country} profiles={profiles} n={number('numbers')} alt={band('numbers')} />
-      <CountryNumbersMeaning
-        figures={countryFigures(country, profiles)}
-        countryName={country.name}
-        n={number('numbers-meaning')}
-        alt={band('numbers-meaning')}
-      />
 
       {/* EDITORIAL SECTIONS — whatever an editor has published, in their order
           and in the shape each one declares. */}

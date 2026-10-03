@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
+import { CountryTabs } from '@/components/study-abroad/CountryTabs';
+import { loadCountryTabs } from '@/lib/country-tabs';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { phaseListAll } from '@/lib/phase1';
 import { rankedFirst } from '@/lib/country-sub-pages';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
@@ -79,6 +82,10 @@ export default async function Page({ params }: Params) {
   const { country, universities } = loaded;
 
   const sorted = rankedFirst(universities);
+  const tabs = await loadCountryTabs(
+    country.slug,
+    (country.subjects ?? []).length,
+  );
 
   return (
     <>
@@ -103,14 +110,16 @@ export default async function Page({ params }: Params) {
             <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />{' '}
             {country.name}
           </p>
-          <h1 className="hero__title">Universities in {country.name}</h1>
-          <p className="hero__lead">
+          <h1 className="hero__h1">Universities in {country.name}</h1>
+          <p className="hero__sub">
             {sorted.length
               ? `${sorted.length} ${sorted.length === 1 ? 'institution' : 'institutions'} published in this destination. Open one to see the programmes it actually teaches.`
               : `No university in ${country.name} is published yet. The destination guide is worth a look in the meantime.`}
           </p>
         </div>
       </section>
+
+      <CountryTabs tabs={tabs} current="universities" />
 
       <section className="sec sec--white sec--tight">
         <div className="wrap">
