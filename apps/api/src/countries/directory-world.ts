@@ -281,13 +281,12 @@ export function comingSoonDestinations(
     ([name, , iso2Code]) =>
       !takenNames.has(name.toLowerCase()) && !takenCodes.has(iso2Code),
   ).map(([name, region, iso2Code]) => ({
-      name,
-      region,
-      iso2Code,
-      bands: bandsFor(name, iso2Code),
-      flag: flagBandsFor(name, iso2Code),
-    }),
-  );
+    name,
+    region,
+    iso2Code,
+    bands: bandsFor(name, iso2Code),
+    flag: flagBandsFor(name, iso2Code),
+  }));
 }
 
 /**

@@ -25,25 +25,27 @@ describe('the destinations still to come', () => {
   });
 
   it('still drops one published under this table’s own name', () => {
-    expect(name(comingSoonDestinations([{ name: 'Japan', iso2Code: 'JP' }]))).not.toContain(
-      'Japan',
-    );
+    expect(
+      name(comingSoonDestinations([{ name: 'Japan', iso2Code: 'JP' }])),
+    ).not.toContain('Japan');
   });
 
   it('keeps one the catalogue does not publish at all', () => {
-    expect(name(comingSoonDestinations([{ name: 'Japan', iso2Code: 'JP' }]))).toContain(
-      'India',
-    );
+    expect(
+      name(comingSoonDestinations([{ name: 'Japan', iso2Code: 'JP' }])),
+    ).toContain('India');
   });
 
   it('matches the code whatever case it arrives in', () => {
-    expect(name(comingSoonDestinations([{ name: 'Britain', iso2Code: 'gb' }]))).not.toContain(
-      'UK',
-    );
+    expect(
+      name(comingSoonDestinations([{ name: 'Britain', iso2Code: 'gb' }])),
+    ).not.toContain('UK');
   });
 
   it('falls back to the name when a record has no code', () => {
-    const soon = name(comingSoonDestinations([{ name: 'India', iso2Code: null }]));
+    const soon = name(
+      comingSoonDestinations([{ name: 'India', iso2Code: null }]),
+    );
     expect(soon).not.toContain('India');
   });
 });
