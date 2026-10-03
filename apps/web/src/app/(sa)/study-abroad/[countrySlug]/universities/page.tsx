@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { loadCountryTabs } from '@/lib/country-tabs';
-import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { phaseListAll } from '@/lib/phase1';
 import { rankedFirst } from '@/lib/country-sub-pages';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
