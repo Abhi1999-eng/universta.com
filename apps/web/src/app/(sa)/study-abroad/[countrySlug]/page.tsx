@@ -127,6 +127,11 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     country.slug,
     (country.subjects ?? []).length,
   );
+  /* Whether the fields page has anything, asked of the strip rather than of
+     the destination's own links -- those can be empty while the page shows
+     the catalogue's thirty, which is how this button came to offer study
+     paths instead on every destination that had no links yet. */
+  const hasSubjectsPage = tabs.some((tab) => tab.key === 'subjects');
   const testimonials = page.testimonials ?? [];
   const snapshot = countrySnapshot(page);
   const paths = studyPathsFor(page);
@@ -309,7 +314,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                 </button>
                 {/* The fields taught here, which is the first thing a
                     student narrows by and had no entry point from the hero. */}
-                {(country.subjects ?? []).length ? (
+                {hasSubjectsPage ? (
                   <Link
                     className="btn btn--lg btn--ghost"
                     href={`/study-abroad/${country.slug}/subjects`}
