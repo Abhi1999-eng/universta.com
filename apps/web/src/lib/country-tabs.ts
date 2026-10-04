@@ -51,3 +51,20 @@ export async function loadCountryTabs(
     scholarships,
   });
 }
+
+/**
+ * The counts the strip was built from, for a page that links to the same
+ * places from somewhere else on it. A tab that is not shown has nothing
+ * behind it, which is exactly when the link should not be offered either.
+ */
+export function tabCounts(tabs: CountryTab[]): {
+  universities: number;
+  scholarships: number;
+} {
+  const count = (key: CountryTab['key']) =>
+    tabs.find((tab) => tab.key === key)?.count ?? 0;
+  return {
+    universities: count('universities'),
+    scholarships: count('scholarships'),
+  };
+}

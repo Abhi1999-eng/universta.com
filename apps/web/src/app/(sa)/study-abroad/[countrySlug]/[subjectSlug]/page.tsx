@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { FlagMark } from '@/components/study-abroad/FlagMark';
+import { CountryTrail } from '@/components/study-abroad/CountryTrail';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
+import { CountryGuideLinks } from '@/components/study-abroad/CountryGuideLinks';
+import { RowCard, countLabel } from '@/components/study-abroad/RowCard';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
-import { loadCountryTabs } from '@/lib/country-tabs';
+import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
+import { guideLinks } from '@/lib/study-abroad-view';
 import { getCourses, getSubject } from '@/lib/catalog';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
@@ -33,7 +36,7 @@ async function load(countrySlug: string, subjectSlug: string) {
     getSubject(subjectSlug).catch(() => null),
   ]);
   if (!page?.country || !subject) return null;
-  return { country: page.country, subject };
+  return { page, country: page.country, subject };
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -61,7 +64,7 @@ export default async function Page({ params }: Params) {
   const { countrySlug, subjectSlug } = await params;
   const loaded = await load(countrySlug, subjectSlug);
   if (!loaded) notFound();
-  const { country, subject } = loaded;
+  const { page, country, subject } = loaded;
   const where = inCountry(country.name, country.iso2Code);
 
   /* Courses first, because they settle whether this page should exist at
@@ -126,12 +129,10 @@ export default async function Page({ params }: Params) {
           {/* Both halves of what this page is, each a link back to itself.
               A reader who arrived from the subject can leave through the
               destination, and the other way round. */}
-          <p className="hero__eyebrow hero__eyebrow--links">
-            <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />
-            <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
-            <b>·</b>
-            <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
-          </p>
+          <CountryTrail
+            country={country}
+            parts={[{ label: subject.name, href: `/subjects/${subject.slug}` }]}
+          />
 
           {subject.shortDescription ? (
             <p className="hero__sub">{subject.shortDescription}</p>
@@ -150,7 +151,7 @@ export default async function Page({ params }: Params) {
         </div>
       </section>
 
-      <CountryTabs tabs={tabs} current="subjects" />
+      <CountryTabs tabs={tabs} current="subjects" below />
 
       {view.specializations.length ? (
         <section className="sec wrap" id="specializations">
@@ -174,15 +175,12 @@ export default async function Page({ params }: Params) {
           </div>
           <div className="h-grid">
             {view.specializations.map((entry) => (
-              <Link className="h-card" href={`${base}/${entry.slug}`} key={entry.id}>
-                <span className="h-card__t">{entry.name}</span>
-                {entry.publishedCourseCount ? (
-                  <span className="h-card__m">
-                    {formatNumber(entry.publishedCourseCount)} course
-                    {entry.publishedCourseCount === 1 ? '' : 's'}
-                  </span>
-                ) : null}
-              </Link>
+              <RowCard
+                key={entry.id}
+                href={`${base}/${entry.slug}`}
+                title={entry.name}
+                meta={countLabel(entry.publishedCourseCount, 'course')}
+              />
             ))}
           </div>
         </section>
@@ -209,14 +207,12 @@ export default async function Page({ params }: Params) {
           </div>
           <div className="h-grid">
             {courses.data.map((course) => (
-              <Link
-                className="h-card"
-                href={`/courses/${course.slug}`}
+              <RowCard
                 key={course.id}
-              >
-                <span className="h-card__t">{course.name}</span>
-                <span className="h-card__m">{course.courseLevel.name}</span>
-              </Link>
+                href={`/courses/${course.slug}`}
+                title={course.name}
+                meta={course.courseLevel.name}
+              />
             ))}
           </div>
         </section>
@@ -241,17 +237,23 @@ export default async function Page({ params }: Params) {
           </div>
           <div className="h-grid">
             {view.others.map((entry) => (
-              <Link
-                className="h-card"
-                href={`/study-abroad/${country.slug}/${entry.slug}`}
+              <RowCard
                 key={entry.id}
-              >
-                <span className="h-card__t">{entry.name}</span>
-              </Link>
+                href={`/study-abroad/${country.slug}/${entry.slug}`}
+                title={entry.name}
+                mark
+              />
             ))}
           </div>
         </section>
       ) : null}
+
+      {/* Out of the subject and into the country it is studied in. */}
+      <CountryGuideLinks
+        countrySlug={country.slug}
+        where={where}
+        links={guideLinks(page, tabCounts(tabs))}
+      />
 
       <PlanBand
         heading={`Thinking about ${subject.name} in ${where}?`}

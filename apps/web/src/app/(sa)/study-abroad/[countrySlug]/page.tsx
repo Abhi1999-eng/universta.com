@@ -34,7 +34,7 @@ import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { loadCountryTabs } from '@/lib/country-tabs';
 import { richTextToPlainText } from '@/components/phase1/RichText';
-import { getCourses } from '@/lib/catalog';
+import { getCourses, getSubjects } from '@/lib/catalog';
 import { phaseList } from '@/lib/phase1';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { toScholarshipCards } from '@/lib/scholarship-card';
@@ -43,10 +43,10 @@ import { siteOrigin } from '@/lib/site-origin';
 import { jsonLdString } from '@/lib/json-ld';
 import {
   alternatingBands,
-  costBreakdown,
+  costRenders,
   countrySnapshot,
   intakeCards,
-  languageRows,
+  languageRenders,
   monthNames,
   sectionNumbers,
   studyPathsFor,
@@ -85,7 +85,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   /* The catalogue slices -- courses and scholarships for this destination --
      are read alongside the guide rather than after it, and a failure in either
      leaves its section out rather than taking the guide down with it. */
-  const [page, directory, courseList, scholarshipList, universityList] =
+  const [page, directory, courseList, scholarshipList, universityList, catalogue] =
     await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getDestinations().catch(() => null),
@@ -103,8 +103,18 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       country: countrySlug,
       limit: '6',
     }).catch(() => null),
+    /* For one number per subject card: how many specializations it holds.
+       The same read the subjects page makes, so the guide and that page
+       cannot state different counts for the same subject. Its failure
+       costs the counts and nothing else. */
+    getSubjects({ limit: '100' })
+      .then((result) => result.data)
+      .catch(() => []),
   ]);
   if (!page) notFound();
+  const specializationCounts = Object.fromEntries(
+    catalogue.map((row) => [row.slug, row.publishedSubSubjectCount]),
+  );
 
   const publishedCourses = (courseList?.data ?? []) as CountryCourseCard[];
   const countryScholarships = toScholarshipCards(scholarshipList?.data);
@@ -160,19 +170,11 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       : 'Explore universities, costs, admission requirements, intakes, language requirements and career pathways — all in one place.';
   const overviewLead = shortText.length > 240 ? shortText : null;
   const editorial = sections.filter(editorialRenders);
-  const language = profiles.language;
-  const languageRenders = Boolean(
-    language &&
-      (languageRows(language).length ||
-        language.generalNotes ||
-        (language.languageWaiverAvailable && language.waiverNotes)),
-  );
-  const costRenders = Boolean(
-    costBreakdown(profiles.cost).rows.length ||
-      calculator ||
-      profiles.cost?.tuitionNotes ||
-      profiles.cost?.livingCostNotes,
-  );
+  /* Asked through the same two functions the pages below this one use to
+     decide whether to link into these sections, so a link is never offered
+     into a section this page then leaves out. */
+  const languageShown = languageRenders(page);
+  const costShown = costRenders(page);
 
   /**
    * What renders, in the design's order, and what each section gets from its
@@ -200,8 +202,8 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
     courses.length ? 'courses' : null,
     country.documents?.length ? 'documents' : null,
     intakes.length || intakeCards(profiles.intakes).length ? 'intakes' : null,
-    costRenders ? 'cost' : null,
-    languageRenders ? 'language' : null,
+    costShown ? 'cost' : null,
+    languageShown ? 'language' : null,
     work.length ? 'work-visa' : null,
     hasCountryFigures(country, profiles) ? 'numbers' : null,
     /* The band states the figures; this opens them. It has nothing to say
@@ -399,7 +401,10 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       <StudyPaths
         paths={paths}
         countryName={country.name}
-        fields={(country.subjects ?? []).slice(0, 6).map((subject) => subject.name)}
+        fields={(country.subjects ?? []).slice(0, 6).map((subject) => ({
+          name: subject.name,
+          href: `/study-abroad/${country.slug}/${subject.slug}`,
+        }))}
         n={number('study-paths')}
         alt={band('study-paths')}
       />
@@ -413,7 +418,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         n={number('universities')}
         alt={band('universities')}
       />
-      <CountrySubjects country={country} n={number('subjects')} alt={band('subjects')} />
+      <CountrySubjects
+        country={country}
+        specializations={specializationCounts}
+        n={number('subjects')}
+        alt={band('subjects')}
+      />
       <CountryCourses
         country={country}
         courses={courses}

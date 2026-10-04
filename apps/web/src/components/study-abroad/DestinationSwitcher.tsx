@@ -28,10 +28,22 @@ export const DESTINATIONS_SHOWN = 6;
 export function DestinationSwitcher({
   countries,
   label,
+  within,
 }: {
   countries: SwitcherCountry[];
   /** What the band is about, for the button and for a screen reader. */
   label: string;
+  /**
+   * The subject, or `subject/specialization`, this band is on the page of.
+   *
+   * A reader on the Engineering page who picks the United Kingdom has asked
+   * about Engineering in the United Kingdom, and there is a page for exactly
+   * that. The chip used to open the country's general guide instead, where
+   * the subject they came from was one card among thirty. A path rather
+   * than a function, because this is a client component and a function does
+   * not cross that boundary.
+   */
+  within?: string;
 }) {
   const [open, setOpen] = useState(false);
   const hidden = countries.length - DESTINATIONS_SHOWN;
@@ -44,7 +56,14 @@ export function DestinationSwitcher({
           <Link
             key={country.id}
             className="switcher__item"
-            href={`/study-abroad/${country.slug}`}
+            href={
+              within
+                ? `/study-abroad/${country.slug}/${within}`
+                : `/study-abroad/${country.slug}`
+            }
+            /* The chip shows the country alone; what it opens is the
+               subject there, and a name on its own no longer says so. */
+            aria-label={within ? `${label} in ${country.name}` : undefined}
           >
             <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />
             <span className="cchip__name">{country.name}</span>

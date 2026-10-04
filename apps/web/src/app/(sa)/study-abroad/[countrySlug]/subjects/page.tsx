@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { FlagMark } from '@/components/study-abroad/FlagMark';
+import { CountryTrail } from '@/components/study-abroad/CountryTrail';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import {
   CountrySubjectGrid,
@@ -119,11 +119,11 @@ export default async function Page({ params }: Params) {
             </span>
             <span aria-current="page">Subjects</span>
           </nav>
-          <p className="hero__eyebrow">
-            <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />{' '}
-            {country.name}
-          </p>
           <h1 className="hero__h1">Subjects to study in {where}</h1>
+          {/* The same line the pages under this one carry, one part long:
+              the country, as a link back to its guide. It was a grey label
+              above the heading that could not be clicked. */}
+          <CountryTrail country={country} parts={[{ label: 'Subjects' }]} />
           <p className="hero__sub">
             {taught.length
               ? `${taught.length} ${taught.length === 1 ? 'field is' : 'fields are'} taught here by a published university. Open one for its specializations and the courses inside them.`
@@ -175,7 +175,12 @@ export default async function Page({ params }: Params) {
           ) : null}
 
           <p className="h-more">
-            <Link href="/subjects">Browse the full subject taxonomy</Link>
+            <Link className="linkcta" href="/subjects">
+              Browse the full subject taxonomy{' '}
+              <span className="linkcta__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
           </p>
         </div>
       </section>

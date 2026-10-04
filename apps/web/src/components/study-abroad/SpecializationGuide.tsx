@@ -134,11 +134,18 @@ export function SpecializationGuide({
               n={n('destinations')}
               eyebrow="Destinations"
               title={`Where you can study ${specialization.name}`}
-              lead={`${countries.length} ${countries.length === 1 ? 'destination lists' : 'destinations list'} this specialization. Open one to see its fees, visa route and intakes.`}
-            />
+              lead={`${countries.length} ${countries.length === 1 ? 'destination lists' : 'destinations list'} this specialization. Open one to see ${specialization.name} there.`}
+            >
+              <p className="sec-lead">
+                <Link href="/study-abroad">
+                  All destinations <span aria-hidden="true">→</span>
+                </Link>
+              </p>
+            </SectionHead>
             <DestinationSwitcher
               countries={countries}
               label={specialization.name}
+              within={`${subject.slug}/${specialization.slug}`}
             />
           </div>
         </section>

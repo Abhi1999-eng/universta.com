@@ -523,3 +523,86 @@ export function featuredDestinations(available: Destination[], limit = 8): Desti
     limit,
   );
 }
+
+/** Whether the guide's cost section has anything in it. */
+export function costRenders(page: CountryPage): boolean {
+  const cost = page.profiles.cost;
+  return Boolean(
+    costBreakdown(cost).rows.length ||
+      page.country.configuration?.calculator ||
+      cost?.tuitionNotes ||
+      cost?.livingCostNotes,
+  );
+}
+
+/** Whether the guide's language section has anything in it. */
+export function languageRenders(page: CountryPage): boolean {
+  const language = page.profiles.language;
+  return Boolean(
+    language &&
+      (languageRows(language).length ||
+        language.generalNotes ||
+        (language.languageWaiverAvailable && language.waiverNotes)),
+  );
+}
+
+export type GuideLink = { key: string; label: string; href: string };
+
+/**
+ * The parts of a destination's guide a page below it can send a reader to.
+ *
+ * A page about one subject in one country knows nothing about that
+ * country's visas, fees or intakes, and should not repeat them -- but a
+ * reader deciding on the subject is deciding on the country too, and the
+ * guide's answers are one click away if somebody offers the click.
+ *
+ * Only what the guide actually shows. Each test here is the one the guide
+ * itself uses to decide whether to render the section, so a link is never
+ * offered into a part of the page that is not there; a destination with
+ * nothing published yet gets a short list rather than a row of dead anchors.
+ * Universities and scholarships have pages of their own and are linked
+ * when the destination has any.
+ */
+export function guideLinks(
+  page: CountryPage,
+  counts: { universities?: number; scholarships?: number } = {},
+): GuideLink[] {
+  const { country, profiles, faqs } = page;
+  const base = `/study-abroad/${country.slug}`;
+  const links: Array<GuideLink | null> = [
+    country.configuration?.features?.length
+      ? { key: 'why', label: 'Why study here', href: `${base}#why` }
+      : null,
+    studyPathsFor(page).length
+      ? { key: 'study-paths', label: 'Study paths', href: `${base}#study-paths` }
+      : null,
+    counts.universities
+      ? { key: 'universities', label: 'Universities', href: `${base}/universities` }
+      : null,
+    country.documents?.length
+      ? { key: 'documents', label: 'Documents', href: `${base}#documents` }
+      : null,
+    monthNames(country.configuration?.intakeMonths ?? []).length ||
+    intakeCards(profiles.intakes).length
+      ? { key: 'intakes', label: 'Intakes', href: `${base}#intakes` }
+      : null,
+    costRenders(page)
+      ? { key: 'cost', label: 'Cost of studying', href: `${base}#cost` }
+      : null,
+    counts.scholarships
+      ? {
+          key: 'scholarships',
+          label: 'Scholarships',
+          href: `/scholarships?country=${country.slug}`,
+        }
+      : null,
+    languageRenders(page)
+      ? { key: 'language', label: 'Language tests', href: `${base}#language` }
+      : null,
+    workSummary(profiles).length
+      ? { key: 'work-visa', label: 'Work and visa', href: `${base}#work-visa` }
+      : null,
+    faqs?.length ? { key: 'faq', label: 'FAQs', href: `${base}#faq` } : null,
+  ];
+  return links.filter((link): link is GuideLink => Boolean(link));
+}
