@@ -370,7 +370,7 @@ export function CountrySubjects({
           }}
         />
         {taught.length ? (
-          <div className="h-grid h-grid--4">{taught.map(card)}</div>
+          <div className="h-grid h-grid--wide">{taught.map(card)}</div>
         ) : null}
         {editorial.length ? (
           <>
@@ -381,7 +381,10 @@ export function CountrySubjects({
                 </span>
               </p>
             ) : null}
-            <div className="h-grid h-grid--4">{editorial.map(card)}</div>
+            {/* Three across, not four: the card carries a mark, a count and
+                an arrow beside the name now, and at four across a long
+                subject wrapped to three lines. */}
+            <div className="h-grid h-grid--wide">{editorial.map(card)}</div>
           </>
         ) : null}
         {/* The way onward, where the reader finishes reading the cards. The
