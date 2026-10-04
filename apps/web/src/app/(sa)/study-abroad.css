@@ -577,6 +577,11 @@
 .sa .hero__sub{ font-size: var(--fs-lead); color: var(--muted); max-width: 56ch; margin-bottom: 12px; text-wrap: pretty; }
 .sa .hero__promise{ font-family: var(--font-display); font-size: clamp(17px, 1.5vw, 21px); font-weight: 600; margin-bottom: 28px; }
 .sa .hero__actions{ margin-bottom: 22px; }
+/* The space above the buttons, held by the buttons. It used to come from the
+   promise line above them, which is no longer there when a country has no
+   tagline -- and the buttons then rode up against the heading. Margins
+   collapse, so with a tagline the gap is what it always was. */
+.sa .hero__main .hero__actions{ margin-top: 28px; }
 .sa .hero__micro{ font-size: 13.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .sa .hero__micro span{ display: inline-flex; align-items: center; gap: 7px; }
 .sa .hero__micro i{ width: 5px; height: 5px; border-radius: 50%; background: var(--ok); font-style: normal; }

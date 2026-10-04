@@ -352,6 +352,10 @@ export class CreateCountryDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(MAX_STUDY_PATHS)
+  /* Each entry is a row, not a list of rows. Without this a list wrapped one
+   * level too deep passed -- its inner objects validate -- and was then read
+   * as no rows at all, which cleared the country's study paths with a 200. */
+  @IsObject({ each: true })
   @ValidateNested({ each: true })
   @Type(() => CountryStudyPathDto)
   studyPaths?: CountryStudyPathDto[];

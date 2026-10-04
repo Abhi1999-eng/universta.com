@@ -172,6 +172,31 @@ describe('country study paths (e2e)', () => {
     }).expect(400);
   });
 
+  it('refuses a list wrapped one level too deep, rather than reading it as no levels', async () => {
+    /* It passed validation -- the inner objects are valid rows -- and was
+       then stored as nothing, which cleared the country's study paths and
+       answered 200. */
+    await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+      ...core(),
+      studyPaths: [[{ name: 'MBA' }]],
+    }).expect(400);
+    const still = record(
+      await admin('get', `/api/v1/admin/countries/${countryId}`).expect(200),
+    );
+    expect(paths(still)).toHaveLength(2);
+  });
+
+  it('stores a name the request accepted, emoji and all', async () => {
+    const name = `${'x'.repeat(59)}🎓`;
+    const saved = record(
+      await admin('patch', `/api/v1/admin/countries/${countryId}`, {
+        ...core(),
+        studyPaths: [{ name }, { name: "Bachelor's" }],
+      }).expect(200),
+    );
+    expect(paths(saved).map((row) => row.name)).toEqual([name, "Bachelor's"]);
+  });
+
   it('refuses more levels than a guide will show', async () => {
     await admin('patch', `/api/v1/admin/countries/${countryId}`, {
       ...core(),

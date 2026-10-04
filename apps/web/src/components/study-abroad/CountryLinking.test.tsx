@@ -135,6 +135,33 @@ describe('the subjects named on a study path', () => {
   });
 });
 
+describe('a study level with only a name', () => {
+  /* The form allows it, so the page has to draw it: a tab, the button, and
+     no empty list ruling a line across the panel. */
+  const named = [
+    { id: 'mba-1', label: 'MBA', duration: null, entry: null, summary: null, note: null, courseCount: null },
+  ];
+
+  it('draws no stats list when there is nothing to put in it', () => {
+    const html = renderToStaticMarkup(
+      <StudyPaths alt={false} countryName="Ireland" paths={named} />,
+    );
+    expect(html).toContain('>MBA<');
+    expect(html).not.toContain('path__stats');
+  });
+
+  it('draws the list as it always did when there is a duration', () => {
+    const html = renderToStaticMarkup(
+      <StudyPaths
+        alt={false}
+        countryName="Ireland"
+        paths={[{ ...named[0], duration: '1–2 years' }]}
+      />,
+    );
+    expect(html).toMatch(/<dl class="path__stats">.*Typical duration.*1–2 years/s);
+  });
+});
+
 describe('a card that is a link', () => {
   it('says what is inside and that it opens', () => {
     const html = renderToStaticMarkup(

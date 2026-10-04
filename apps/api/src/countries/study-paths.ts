@@ -1,3 +1,5 @@
+import { maxLength } from 'class-validator';
+
 /**
  * A destination's study paths: the levels a student can enter at, and what
  * each one asks of them.
@@ -32,10 +34,15 @@ export const STUDY_PATH_LIMITS = {
   summary: 400,
 } as const;
 
+/* Measured the way the DTO measures. The request is checked with
+   class-validator, which counts an emoji as one character; `String.length`
+   counts it as two. Measured differently here, a field the request had just
+   been told was fine was dropped on the way to the database -- and when the
+   field was the name, the level went with it. */
 function text(value: unknown, limit: number): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  if (!trimmed || trimmed.length > limit) return null;
+  if (!trimmed || !maxLength(trimmed, limit)) return null;
   return trimmed;
 }
 

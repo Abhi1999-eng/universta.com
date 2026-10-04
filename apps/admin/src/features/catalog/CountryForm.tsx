@@ -178,6 +178,20 @@ type StudyPathRow = {
 /** How many levels one destination may list; the API refuses more. */
 const MAX_STUDY_PATHS = 8;
 
+/** A level's name as it is compared: letters and digits only. "Bachelor’s"
+ * pasted from a document, "Bachelors" and "Bachelor's" are one level, and
+ * the button must not add a second beside any of them. */
+const studyPathKey = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+const studyPathHasText = (row: StudyPathRow) =>
+  Boolean(
+    row.name.trim() ||
+      row.duration.trim() ||
+      row.entry.trim() ||
+      row.summary.trim(),
+  );
+
 /**
  * The four levels most destinations have, as a starting point.
  *
@@ -462,11 +476,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
      Bachelor's row by hand, must not produce a second Bachelor's. */
   const fillUsualStudyPaths = () => {
     setStudyPaths((rows) => {
-      const have = new Set(rows.map((row) => row.name.trim().toLowerCase()));
+      const have = new Set(rows.map((row) => studyPathKey(row.name)));
       const missing = USUAL_STUDY_PATHS.filter(
-        (row) => !have.has(row.name.toLowerCase()),
+        (row) => !have.has(studyPathKey(row.name)),
       );
-      return [...rows.filter((row) => row.name.trim()), ...missing].slice(
+      /* Only a row with nothing in it at all makes way. One an editor has
+         started -- a duration typed, the name left for last -- stays where
+         it is. */
+      return [...rows.filter(studyPathHasText), ...missing].slice(
         0,
         MAX_STUDY_PATHS,
       );
@@ -476,7 +493,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
   const usualStudyPathsMissing = USUAL_STUDY_PATHS.some(
     (usual) =>
       !studyPaths.some(
-        (row) => row.name.trim().toLowerCase() === usual.name.toLowerCase(),
+        (row) => studyPathKey(row.name) === studyPathKey(usual.name),
       ),
   );
   const [removedSections, setRemovedSections] = useState<SectionRow[]>([]);
@@ -904,6 +921,13 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         !/^\/(?!\/)|^#[a-zA-Z0-9_-]+$|^https:\/\//.test(row.ctaUrl)
       )
         next.push(`Content section ${index + 1}: CTA URL is invalid.`);
+    });
+    /* A level with text in it and no name is not sent -- the name is its
+       tab -- and used to be dropped with "Draft saved." on the screen. A row
+       with nothing in it at all is still simply left out. */
+    studyPaths.forEach((row, index) => {
+      if (!row.name.trim() && studyPathHasText(row))
+        next.push(`Study path ${index + 1}: level name is required.`);
     });
     activeFaqs.forEach((row, index) => {
       if (!row.question.trim() || !row.answer.trim())

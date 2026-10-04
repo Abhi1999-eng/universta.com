@@ -61,6 +61,20 @@ describe('reading a destination’s study paths', () => {
     expect(row.duration).toBeNull();
   });
 
+  it('measures a field the way the request was measured, so nothing accepted is dropped', () => {
+    /* The request is checked with class-validator, which counts an emoji as
+       one character; String.length counts it as two. Sixty characters ending
+       in one is a name the DTO accepts, and it used to be dropped here --
+       taking the level with it. */
+    const name = `${'x'.repeat(59)}🎓`;
+    expect(name.length).toBe(61);
+    expect(parseStudyPaths([{ name }])).toEqual([
+      { name, duration: null, entry: null, summary: null },
+    ]);
+    /* One more and it is over, by either count. */
+    expect(parseStudyPaths([{ name: `${'x'.repeat(60)}🎓` }])).toEqual([]);
+  });
+
   it('is nothing for anything that is not a list', () => {
     for (const value of [null, undefined, 'four', 4, {}, { name: 'MBA' }])
       expect(parseStudyPaths(value)).toEqual([]);

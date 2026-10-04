@@ -201,6 +201,61 @@ describe('the study paths card', () => {
     ]);
   });
 
+  it('refuses to save a level that has text but no name, and says which one', async () => {
+    /* It used to be left out of the save with "Draft saved." on the screen:
+       the name is the tab, so the row could not be sent, and what had been
+       typed in it was gone the next time the country was opened. */
+    await openEditor();
+    await userEvent.click(screen.getByRole('button', { name: '+ Add level' }));
+    await userEvent.type(screen.getByLabelText('Typical duration'), '2 years');
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(await screen.findByText(/Study path 1: level name is required\./)).toBeVisible();
+    expect(mocks.updateCountry).not.toHaveBeenCalled();
+  });
+
+  it('keeps a row the editor has started when the four are filled in around it', async () => {
+    await openEditor();
+    await userEvent.click(screen.getByRole('button', { name: '+ Add level' }));
+    await userEvent.type(screen.getByLabelText('Typical duration'), '9 months');
+    await userEvent.click(screen.getByRole('button', { name: 'Fill the four usual levels' }));
+
+    const durations = screen.getAllByLabelText('Typical duration').map((el) => (el as HTMLInputElement).value);
+    expect(durations).toHaveLength(5);
+    expect(durations[0]).toBe('9 months');
+  });
+
+  it('makes way for a row with nothing in it at all', async () => {
+    await openEditor();
+    await userEvent.click(screen.getByRole('button', { name: '+ Add level' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Fill the four usual levels' }));
+    expect(screen.getAllByLabelText('Level name')).toHaveLength(4);
+  });
+
+  it.each(['Bachelor’s', 'Bachelors', 'BACHELOR\'S'])(
+    'does not add a second Bachelor\'s beside one spelled %s',
+    async (spelling) => {
+      mocks.getCountry.mockResolvedValue({
+        data: {
+          ...country,
+          configuration: {
+            features: [],
+            acceptedTests: [],
+            intakeMonths: [],
+            postStudyWorkPermitMonths: null,
+            calculator: null,
+            studyPaths: [{ name: spelling, duration: '3 years', entry: null, summary: null }],
+          },
+        },
+      });
+      await openEditor();
+      await userEvent.click(screen.getByRole('button', { name: 'Fill the four usual levels' }));
+
+      const names = screen.getAllByLabelText('Level name').map((el) => (el as HTMLInputElement).value);
+      expect(names).toEqual([spelling, "Master's", 'MBA', 'PhD']);
+    },
+  );
+
   it('removes a level', async () => {
     await openEditor();
     await userEvent.click(screen.getByRole('button', { name: 'Fill the four usual levels' }));

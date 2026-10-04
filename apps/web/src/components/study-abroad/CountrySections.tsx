@@ -96,20 +96,25 @@ export function StudyPaths({
             <div className="path">
               <div>
                 {path.summary ? <p className="path__summary">{path.summary}</p> : null}
-                <dl className="path__stats">
-                  {path.duration ? (
-                    <div className="path__stat">
-                      <dt>Typical duration</dt>
-                      <dd>{path.duration}</dd>
-                    </div>
-                  ) : null}
-                  {path.courseCount !== null ? (
-                    <div className="path__stat">
-                      <dt>Courses on Universta</dt>
-                      <dd>{path.courseCount}</dd>
-                    </div>
-                  ) : null}
-                </dl>
+                {/* Only when there is a row to put in it. A level can now be
+                    saved with a name and nothing else, and an empty list
+                    still drew its rule across the panel. */}
+                {path.duration || path.courseCount !== null ? (
+                  <dl className="path__stats">
+                    {path.duration ? (
+                      <div className="path__stat">
+                        <dt>Typical duration</dt>
+                        <dd>{path.duration}</dd>
+                      </div>
+                    ) : null}
+                    {path.courseCount !== null ? (
+                      <div className="path__stat">
+                        <dt>Courses on Universta</dt>
+                        <dd>{path.courseCount}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                ) : null}
                 {fields.length ? (
                   <div className="path__fields">
                     {fields.map((field) =>
