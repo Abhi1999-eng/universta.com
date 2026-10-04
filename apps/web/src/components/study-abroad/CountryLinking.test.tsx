@@ -180,6 +180,27 @@ describe('the way from a subject back into the country’s guide', () => {
     expect(html).toMatch(/href="\/study-abroad\/uk"[^>]*>Study in the United Kingdom/);
   });
 
+  it('names in its lead only what the guide holds', () => {
+    /* It was a fixed sentence, and promised costs, intakes and the visa on
+       a destination whose guide had none of the three. */
+    const only = (keys: string[]) =>
+      renderToStaticMarkup(
+        <CountryGuideLinks
+          countrySlug="uk"
+          where="the United Kingdom"
+          links={keys.map((key) => ({ key, label: key, href: `/study-abroad/uk#${key}` }))}
+        />,
+      );
+    expect(only(['study-paths'])).not.toMatch(/[Cc]osts|[Ii]ntakes|visa/);
+    expect(only(['study-paths'])).toContain('in the guide to the United Kingdom');
+    expect(only(['intakes'])).toContain('Intakes are the same whichever subject you choose.');
+    expect(only(['cost', 'intakes'])).toContain('Costs and intakes are the same');
+    expect(only(['cost', 'intakes', 'work-visa'])).toContain(
+      'Costs, intakes and what the visa allows are the same',
+    );
+    expect(only(['work-visa'])).toContain('What the visa allows is the same');
+  });
+
   it('stands down when the guide has nothing to link into', () => {
     expect(
       renderToStaticMarkup(
@@ -195,6 +216,16 @@ describe('the tab strip', () => {
   it('reads "Subjects 30", with a space a screen reader can hear', () => {
     const html = renderToStaticMarkup(<CountryTabs tabs={tabs} current="subjects" />);
     expect(html).toMatch(/Subjects(<!-- -->)? (<!-- -->)?<em>30<\/em>/);
+  });
+
+  it('marks a tab the page sits under as current, but not as the page', () => {
+    /* On a subject's own page the Subjects tab is a link to a different
+       page. It is highlighted; it is not where the reader is. */
+    const html = renderToStaticMarkup(
+      <CountryTabs tabs={tabs} current="subjects" below />,
+    );
+    expect(html).toMatch(/aria-current="true"[^>]*>Subjects/);
+    expect(html).not.toContain('aria-current="page"');
   });
 
   it('marks the tab being read as the current page', () => {

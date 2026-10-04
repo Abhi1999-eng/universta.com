@@ -151,7 +151,7 @@ export default async function Page({ params }: Params) {
         </div>
       </section>
 
-      <CountryTabs tabs={tabs} current="subjects" />
+      <CountryTabs tabs={tabs} current="subjects" below />
 
       {view.specializations.length ? (
         <section className="sec wrap" id="specializations">

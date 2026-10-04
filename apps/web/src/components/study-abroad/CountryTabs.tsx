@@ -69,10 +69,18 @@ export function countryTabs(
 export function CountryTabs({
   tabs,
   current,
+  below = false,
 }: {
   tabs: CountryTab[];
   /** The tab the reader is on, or none when a page sits below one of them. */
   current?: CountryTabKey;
+  /**
+   * The page being read sits under `current` rather than being it: a
+   * subject's page under Subjects. The tab is still the one to mark, but it
+   * is a link to somewhere else, and "current page" on a link that leaves
+   * the page is a thing a screen reader would say and be wrong.
+   */
+  below?: boolean;
 }) {
   /* One tab is the Overview on its own, which is not a choice. */
   if (tabs.length < 2) return null;
@@ -83,7 +91,9 @@ export function CountryTabs({
           <Link
             key={tab.key}
             href={tab.href}
-            aria-current={tab.key === current ? 'page' : undefined}
+            aria-current={
+              tab.key === current ? (below ? 'true' : 'page') : undefined
+            }
           >
             {tab.label}
             {/* A real space: the gap was a margin, so a screen reader and a

@@ -153,7 +153,7 @@ export default async function Page({ params }: Params) {
           {/* Up one level, and still in this country: the rest of the
               subject as it is studied here. */}
           <div className="btn-row">
-            <Link className="btn btn--lg" href={subjectHref}>
+            <Link className="btn btn--lg btn--wrap" href={subjectHref}>
               {subject.name} in {where}{' '}
               <span className="btn__arrow" aria-hidden="true">
                 &rarr;
@@ -163,7 +163,7 @@ export default async function Page({ params }: Params) {
         </div>
       </section>
 
-      <CountryTabs tabs={tabs} current="subjects" />
+      <CountryTabs tabs={tabs} current="subjects" below />
 
       <section className="sec wrap">
         <div className="sec-head left row-between">

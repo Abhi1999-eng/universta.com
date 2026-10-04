@@ -236,6 +236,11 @@
 .sa .btn:hover .btn__arrow{ transform: translateX(3px); }
 .sa .btn--accent{ --btn-bg: var(--accent); --btn-bd: var(--accent); }
 .sa .btn--ghost{ --btn-bg: transparent; --btn-fg: var(--text); --btn-bd: var(--line-strong); }
+/* A button whose label is somebody's data. "Public Policy, Government &
+   International Studies in the United Kingdom" does not fit on a phone on
+   one line, and a button that cannot wrap is cut off at the screen's edge
+   with its arrow out of sight. */
+.sa .btn--wrap{ white-space: normal; text-align: left; line-height: 1.3; }
 .sa .btn--ghost:hover{ --btn-bd: var(--navy); }
 .sa .btn--onnavy{ --btn-bg: #fff; --btn-fg: var(--navy); --btn-bd: #fff; }
 .sa .btn--onnavy-ghost{ --btn-bg: transparent; --btn-fg: #fff; --btn-bd: var(--on-navy-line); }
