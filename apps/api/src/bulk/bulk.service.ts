@@ -32,15 +32,67 @@ const ARCHIVE_WRITE_CHUNK = 500;
  * which is the one useful thing in it: `courses_subject_id_fkey` says a
  * course is still filed under the subject somebody is deleting.
  */
-export function purgeBlockReason(error: unknown): string {
+/**
+ * Which table MySQL said was still pointing at the row.
+ *
+ * Prisma reports a refused delete as P2003 and, through the driver adapter,
+ * no longer says which relation refused: `field_name` is gone and
+ * `constraint` is an object, so the old reading of it fell through to
+ * "another record" every time. The database's own sentence is still in
+ * there, and it names the table and the column.
+ */
+export function purgeBlocker(
+  error: unknown,
+): { table: string; column: string } | null {
+  const message = (
+    error as {
+      meta?: {
+        driverAdapterError?: { cause?: { originalMessage?: unknown } };
+      };
+    } | null
+  )?.meta?.driverAdapterError?.cause?.originalMessage;
+  if (typeof message !== 'string') return null;
+  /* Identifiers only, and only the characters an identifier here is made
+     of: these are put back into a statement to count the rows. */
+  const match =
+    /constraint fails \(`[^`]+`\.`([A-Za-z0-9_]+)`, CONSTRAINT `[^`]+` FOREIGN KEY \(`([A-Za-z0-9_]+)`\)/.exec(
+      message,
+    );
+  return match ? { table: match[1], column: match[2] } : null;
+}
+
+/** `university_course_offerings`, 1 -> "university course offering". */
+function tableWords(table: string, count: number): string {
+  const words = table.replace(/_/g, ' ');
+  if (count !== 1) return words;
+  if (words.endsWith('ies')) return `${words.slice(0, -3)}y`;
+  if (words.endsWith('sses')) return words.slice(0, -2);
+  return words.endsWith('s') ? words.slice(0, -1) : words;
+}
+
+/**
+ * Why a row could not be deleted, in words an operator can act on.
+ *
+ * "Still referenced by another record" is true and useless: it does not say
+ * what to go and delete first. With the table and how many rows of it there
+ * are, it does -- "40 universities still point to it".
+ */
+export function purgeBlockReason(error: unknown, count?: number): string {
   const code = (error as { code?: string } | null)?.code;
-  const field = (
-    error as { meta?: { field_name?: string; constraint?: string } } | null
-  )?.meta;
-  if (code === 'P2003')
-    return `Still referenced by ${field?.field_name ?? field?.constraint ?? 'another record'}`;
+  if (code === 'P2003') {
+    const blocker = purgeBlocker(error);
+    if (!blocker) return 'Other records still point to it';
+    if (count === undefined || count < 1)
+      return `${tableWords(blocker.table, 2)} still point to it`;
+    return `${count} ${tableWords(blocker.table, count)} still ${
+      count === 1 ? 'points' : 'point'
+    } to it`;
+  }
   return error instanceof Error ? error.message : 'Could not be deleted';
 }
+
+/** How many refused rows are looked up by name for the reply. */
+const BLOCKED_LABEL_LIMIT = 50;
 
 /** Splits a list into runs of at most `size`. */
 function chunk<T>(rows: T[], size: number): T[][] {
@@ -785,7 +837,7 @@ export class BulkOperationsService {
       });
 
     let deleted = 0;
-    const blocked: { id: string; reason: string }[] = [];
+    const blocked: { id: string; label: string; reason: string }[] = [];
     /* One transaction per run of ids rather than one for all of them: a
        single failing row would otherwise roll back thousands that were
        fine, and the operator would have no way to find which one. */
@@ -799,11 +851,19 @@ export class BulkOperationsService {
           try {
             deleted += await this.purgeChunk(definition, [id]);
           } catch (error) {
-            blocked.push({ id, reason: purgeBlockReason(error) });
+            blocked.push({
+              id,
+              label: '',
+              reason: purgeBlockReason(
+                error,
+                await this.countBlockers(error, id),
+              ),
+            });
           }
         }
       }
     }
+    await this.labelBlocked(table, blocked);
     await writeAudit(
       this.prisma,
       request,
@@ -819,6 +879,64 @@ export class BulkOperationsService {
       }`,
     );
     return { deleted, blocked };
+  }
+
+  /**
+   * How many rows are holding a record in place.
+   *
+   * The table and column come out of the database's own error and are
+   * matched as bare identifiers before they are used; the id is bound.
+   * Undefined when the error named nothing or the count itself failed --
+   * the reason is then given without a number rather than not at all.
+   */
+  private async countBlockers(
+    error: unknown,
+    id: string,
+  ): Promise<number | undefined> {
+    const blocker = purgeBlocker(error);
+    if (!blocker) return undefined;
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<
+        Array<{ n: bigint | number }>
+      >(
+        `SELECT COUNT(*) AS n FROM \`${blocker.table}\` WHERE \`${blocker.column}\` = ?`,
+        id,
+      );
+      return Number(rows[0]?.n ?? 0);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Puts a name on each refused row.
+   *
+   * The screen cannot do this itself for the archive, which it never
+   * lists, and "2 could not go" about rows identified only by id sends the
+   * operator off to work out which two. Bounded, because a refused "delete
+   * everything" can run to thousands and nobody reads past the first page.
+   */
+  private async labelBlocked(
+    table: ReturnType<typeof delegate>,
+    blocked: Array<{ id: string; label: string }>,
+  ): Promise<void> {
+    const named = blocked.slice(0, BLOCKED_LABEL_LIMIT);
+    if (!named.length) return;
+    try {
+      const rows = (await table.findMany({
+        where: { id: { in: named.map((row) => row.id) } },
+      })) as Array<Record<string, unknown>>;
+      /* Whichever of these the model has: a country and a course have a
+         name, a scholarship and a job a title. */
+      const text = (row: Record<string, unknown>) =>
+        [row.name, row.title, row.slug].find(
+          (value): value is string => typeof value === 'string' && value !== '',
+        ) ?? '';
+      const labels = new Map(rows.map((row) => [row.id as string, text(row)]));
+      for (const row of named) row.label = labels.get(row.id) ?? '';
+    } catch {
+      /* A name is a courtesy. The delete has already been decided. */
+    }
   }
 
   /** The owned rows, then the records, in one transaction. */

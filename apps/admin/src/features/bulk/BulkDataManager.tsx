@@ -103,6 +103,103 @@ function recordTableValue(field: RecordTableField, row: RecordRow): string {
   return String(value);
 }
 
+/** What an archive or a delete actually did, said where it was asked for. */
+type Outcome = {
+  /** Bumped per result, so a repeat of the same result is still announced. */
+  seq: number;
+  action: "archive" | "delete";
+  /** What the rows are called: emptying the archive deletes archived ones. */
+  noun: "record" | "archived record";
+  /** How many went. */
+  done: number;
+  /** The ones that did not, by name, with what is holding each in place. */
+  blocked: { id: string; label: string; reason: string }[];
+  /** How many of the refused rows are still ticked in the list below. */
+  kept: number;
+  /** The request failing outright, rather than rows being refused. */
+  error?: string;
+};
+
+/** How many refused rows are spelled out before the rest are counted. */
+const OUTCOME_ROWS = 8;
+
+/** The name a row goes by, whichever sheet it is on. */
+function rowLabel(row: RecordRow | undefined): string {
+  if (!row) return "";
+  const value = row.title ?? row.name ?? row.slug;
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * The result of an archive or a delete, under the buttons that asked for it.
+ *
+ * It used to go to the notice at the top of the screen, which is a page and
+ * a half above these buttons on any sheet with rows in it. An operator who
+ * typed the phrase and pressed Delete saw the ticks clear and nothing else:
+ * the sentence explaining that both countries still had universities was
+ * out of sight, and written in the green of a thing that had worked.
+ */
+function OutcomeNote({ outcome }: { outcome: Outcome }) {
+  const done = outcome.action === "delete" ? "deleted" : "archived";
+  const refused = outcome.blocked.length;
+  const wrong = Boolean(outcome.error) || refused > 0;
+  const shown = outcome.blocked.slice(0, OUTCOME_ROWS);
+  const one = refused === 1;
+  return (
+    <div
+      /* Brought into view: a "delete all" is pressed from the top of a
+         list that then reloads, and the answer must not be left behind. */
+      ref={(node) => {
+        node?.scrollIntoView?.({ block: "nearest" });
+      }}
+      role={wrong ? "alert" : "status"}
+      data-testid="bulk-outcome"
+      className={
+        wrong
+          ? "mt-3 rounded-xl border border-[#F3B8B8] bg-[#FFF6F6] px-4 py-3 text-sm text-[#8F1D1D]"
+          : "mt-3 rounded-xl border border-[#B7E4C8] bg-[#F1FBF5] px-4 py-3 text-sm text-[#18794E]"
+      }
+    >
+      <p className="font-semibold">
+        {outcome.error || (refused && !outcome.done)
+          ? `Nothing was ${done}.`
+          : refused
+            ? `${outcome.done} ${done}, ${refused} not.`
+            : `${outcome.done} ${outcome.noun}${outcome.done === 1 ? "" : "s"} ${done}.`}
+      </p>
+      {outcome.error ? <p className="mt-1">{outcome.error}</p> : null}
+      {refused ? (
+        <>
+          <p className="mt-1">
+            {one ? "This record is" : `These ${refused} records are`} still
+            used by other records, so {one ? "it was" : "they were"} left
+            alone:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {shown.map((row) => (
+              <li key={row.id}>
+                <strong>{row.label || row.id}</strong> — {row.reason}
+              </li>
+            ))}
+          </ul>
+          {refused > shown.length ? (
+            <p className="mt-1">…and {refused - shown.length} more.</p>
+          ) : null}
+          <p className="mt-2">
+            {outcome.action === "delete"
+              ? "Delete those first — archived ones count too — and then delete "
+              : "Archive those first, and then archive "}
+            {one ? "this one" : "these"} again.
+            {outcome.kept
+              ? ` ${outcome.kept === 1 ? "It is" : "They are"} still ticked below.`
+              : ""}
+          </p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function RowErrors({
   title,
   errors,
@@ -156,6 +253,9 @@ export function BulkDataManager() {
   const [confirmAll, setConfirmAll] = useState("");
   /** Typed to unlock the two that remove rows rather than mark them. */
   const [confirmDelete, setConfirmDelete] = useState("");
+  /** What the last archive or delete did, shown beside its buttons. */
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const outcomeSeq = useRef(0);
   const [updateField, setUpdateField] = useState("");
   const [updateValue, setUpdateValue] = useState("");
 
@@ -176,17 +276,30 @@ export function BulkDataManager() {
     resources.find((resource) => resource.key === selectedKey) ?? null;
   const visibleRecordFields = selected ? recordTableFields(selected) : [];
 
-  const loadRecords = useCallback(async (key: string) => {
-    if (!key) return;
-    try {
-      setRecords(await api<RecordRow[]>(`/${key}/records`));
-      setSelectedIds(new Set());
-    } catch (error) {
-      setRequestError(
-        error instanceof Error ? error.message : "Unable to load records",
-      );
-    }
-  }, []);
+  /* `keep` is the selection to carry across the reload -- the rows an
+     action refused, so the operator can see which they were. Only the ones
+     still listed: an id that is no longer on the screen must not go on
+     being counted as ticked. Returns how many were kept. */
+  const loadRecords = useCallback(
+    async (key: string, keep?: ReadonlySet<string>): Promise<number> => {
+      if (!key) return 0;
+      try {
+        const rows = await api<RecordRow[]>(`/${key}/records`);
+        const kept = keep
+          ? rows.filter((row) => keep.has(row.id)).map((row) => row.id)
+          : [];
+        setRecords(rows);
+        setSelectedIds(new Set(kept));
+        return kept.length;
+      } catch (error) {
+        setRequestError(
+          error instanceof Error ? error.message : "Unable to load records",
+        );
+        return 0;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -215,6 +328,8 @@ export function BulkDataManager() {
     setSelectedIds(new Set());
     setConfirmAll("");
     setConfirmDelete("");
+    /* And what the last action did: it was about the other sheet. */
+    setOutcome(null);
     resetImportState();
   }
 
@@ -378,6 +493,11 @@ export function BulkDataManager() {
     }
   }
 
+  function report(result: Omit<Outcome, "seq">) {
+    outcomeSeq.current += 1;
+    setOutcome({ ...result, seq: outcomeSeq.current });
+  }
+
   /**
    * Archives a selection of any size, or the whole resource.
    *
@@ -388,6 +508,7 @@ export function BulkDataManager() {
    */
   async function archiveIds(ids: string[] | "all") {
     setRequestError("");
+    setOutcome(null);
     setBusy(true);
     let archived = 0;
     const blocked: { id: string; reason: string }[] = [];
@@ -417,21 +538,37 @@ export function BulkDataManager() {
           archived += result.archived;
           blocked.push(...result.blocked);
         }
-      const reasons = [...new Set(blocked.map((entry) => entry.reason))];
-      setNotice(
-        blocked.length
-          ? `Archived ${archived}; ${blocked.length} blocked (${reasons.join("; ")})`
-          : `Archived ${archived} record(s).`,
-      );
-      setSelectedIds(new Set());
+      /* Named from the list as it stood: archiving only ever acts on rows
+         that are on this screen, and the reload is about to drop them. */
+      const names = new Map(records.map((row) => [row.id, rowLabel(row)]));
+      setNotice("");
       setConfirmAll("");
-      await loadRecords(selectedKey);
+      const kept = await loadRecords(
+        selectedKey,
+        new Set(blocked.map((entry) => entry.id)),
+      );
+      report({
+        action: "archive",
+        noun: "record",
+        done: archived,
+        blocked: blocked.map((entry) => ({
+          ...entry,
+          label: names.get(entry.id) ?? "",
+        })),
+        kept,
+      });
     } catch (error) {
-      setRequestError(
-        `${error instanceof Error ? error.message : "Bulk archive failed"}${
+      setNotice("");
+      report({
+        action: "archive",
+        noun: "record",
+        done: archived,
+        blocked: [],
+        kept: 0,
+        error: `${error instanceof Error ? error.message : "Bulk archive failed"}${
           archived ? ` (${archived} archived before this)` : ""
         }`,
-      );
+      });
     } finally {
       setBusy(false);
     }
@@ -442,35 +579,55 @@ export function BulkDataManager() {
    * stay; this is the other thing, and the server says so plainly when a
    * record is still referenced rather than taking the reference with it.
    */
-  async function purge(
-    body: { ids?: string[]; all?: boolean; emptyArchive?: boolean },
-    what: string,
-  ) {
+  async function purge(body: {
+    ids?: string[];
+    all?: boolean;
+    emptyArchive?: boolean;
+  }) {
     setRequestError("");
+    setOutcome(null);
     setBusy(true);
     try {
       const result = await api<{
         deleted: number;
-        blocked: { id: string; reason: string }[];
+        blocked: { id: string; label?: string; reason: string }[];
       }>(`/${selectedKey}/bulk-delete`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      const reasons = [...new Set(result.blocked.map((row) => row.reason))];
-      setNotice(
-        result.blocked.length
-          ? `Deleted ${result.deleted} ${what}; ${result.blocked.length} could not go (${reasons.join("; ")})`
-          : `Deleted ${result.deleted} ${what}.`,
-      );
-      setSelectedIds(new Set());
+      /* The server names what it refused, because it can refuse rows in
+         the archive that this screen never lists. The list is the fallback
+         for a server that does not. */
+      const names = new Map(records.map((row) => [row.id, rowLabel(row)]));
       setConfirmAll("");
       setConfirmDelete("");
-      await loadRecords(selectedKey);
-    } catch (error) {
-      setRequestError(
-        error instanceof Error ? error.message : "Delete failed",
+      /* The refused rows stay ticked. Clearing every tick was the whole of
+         what an operator saw when nothing had been deleted. */
+      const kept = await loadRecords(
+        selectedKey,
+        new Set(result.blocked.map((row) => row.id)),
       );
+      report({
+        action: "delete",
+        noun: body.emptyArchive ? "archived record" : "record",
+        done: result.deleted,
+        blocked: result.blocked.map((row) => ({
+          id: row.id,
+          label: row.label || names.get(row.id) || "",
+          reason: row.reason,
+        })),
+        kept,
+      });
+    } catch (error) {
+      report({
+        action: "delete",
+        noun: body.emptyArchive ? "archived record" : "record",
+        done: 0,
+        blocked: [],
+        kept: 0,
+        error: error instanceof Error ? error.message : "Delete failed",
+      });
     } finally {
       setBusy(false);
     }
@@ -901,7 +1058,7 @@ export function BulkDataManager() {
                   busy || selectedIds.size === 0 || !deleteArmed
                 }
                 onClick={() =>
-                  void purge({ ids: [...selectedIds] }, "record(s)")
+                  void purge({ ids: [...selectedIds] })
                 }
               >
                 Delete selected ({selectedIds.size})
@@ -916,7 +1073,7 @@ export function BulkDataManager() {
                   disabled={
                     busy || !deleteArmed
                   }
-                  onClick={() => void purge({ all: true }, "record(s)")}
+                  onClick={() => void purge({ all: true })}
                 >
                   Delete all {records.length}
                 </button>
@@ -926,12 +1083,14 @@ export function BulkDataManager() {
                 className="p-btn"
                 disabled={busy || !deleteArmed}
                 onClick={() =>
-                  void purge({ emptyArchive: true }, "archived record(s)")
+                  void purge({ emptyArchive: true })
                 }
               >
                 Empty archive
               </button>
             </div>
+
+            {outcome ? <OutcomeNote key={outcome.seq} outcome={outcome} /> : null}
 
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E8ECF3]">
               <table className="p-table u-table">

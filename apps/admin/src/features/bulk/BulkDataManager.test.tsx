@@ -197,11 +197,76 @@ describe("deleting rather than archiving", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "Empty archive" }));
-    await screen.findByText(/Deleted 2 archived record\(s\)\./);
+    await screen.findByText("2 archived records deleted.");
     expect(JSON.parse(calls[0])).toEqual({ emptyArchive: true });
   });
 
-  it("reports what the database would not let go", async () => {
+  /* What actually happened on production: two countries ticked, the phrase
+     typed, Delete pressed -- and the ticks cleared and nothing else. Both
+     countries still had universities, and the sentence saying so was in the
+     notice at the top of the screen, a page and a half above the button,
+     in green. */
+  it("says under the button which rows were refused and why, and leaves them ticked", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+    await user.click(screen.getByRole("checkbox", { name: "Select all 3" }));
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
+
+    const sent: string[] = [];
+    authFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/countries/bulk-delete")) {
+        sent.push(String(init?.body ?? ""));
+        return Promise.resolve(
+          jsonResponse({
+            deleted: 0,
+            blocked: [
+              { id: "c-1", label: "Alpha", reason: "40 universities still point to it" },
+              { id: "c-2", label: "Beta", reason: "16 universities still point to it" },
+              { id: "c-3", label: "Gamma", reason: "1 university still points to it" },
+            ],
+          }),
+        );
+      }
+      /* Nothing went, so the list comes back as it was. */
+      if (url.endsWith("/countries/records"))
+        return Promise.resolve(
+          jsonResponse([
+            { id: "c-1", name: "Alpha" },
+            { id: "c-2", name: "Beta" },
+            { id: "c-3", name: "Gamma" },
+          ]),
+        );
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete selected (3)" }));
+
+    const note = await screen.findByRole("alert");
+    expect(note).toHaveTextContent("Nothing was deleted.");
+    expect(note).toHaveTextContent("Alpha — 40 universities still point to it");
+    expect(note).toHaveTextContent("Beta — 16 universities still point to it");
+    expect(note).toHaveTextContent("They are still ticked below.");
+    /* Not the green of a thing that worked. */
+    expect(screen.queryByRole("status")).toBeNull();
+
+    /* Where the operator is looking: after the delete buttons, before the
+       table -- not above the whole panel. */
+    const button = screen.getByRole("button", { name: /Delete selected/ });
+    const table = screen.getByRole("table");
+    expect(button.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(note.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    /* Still ticked, so it is plain which rows were meant; and locked again,
+       so a second press is a second decision. */
+    expect(screen.getByRole("button", { name: "Delete selected (3)" })).toBeDisabled();
+    expect(screen.getByLabelText("Type delete countries")).toHaveValue("");
+    expect(JSON.parse(sent[0]).ids).toHaveLength(3);
+  });
+
+  it("counts what went and names what did not", async () => {
     threeCountries();
     const user = userEvent.setup();
     render(<BulkDataManager />);
@@ -213,20 +278,99 @@ describe("deleting rather than archiving", () => {
       if (url.endsWith("/countries/bulk-delete"))
         return Promise.resolve(
           jsonResponse({
-            deleted: 1,
-            blocked: [
-              { id: "c-2", reason: "Still referenced by universities_country_id_fkey" },
-            ],
+            deleted: 2,
+            /* No label: an older server. The list supplies the name. */
+            blocked: [{ id: "c-2", reason: "16 universities still point to it" }],
           }),
         );
+      if (url.endsWith("/countries/records"))
+        return Promise.resolve(jsonResponse([{ id: "c-2", name: "Beta" }]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete all 3" }));
+
+    const note = await screen.findByRole("alert");
+    expect(note).toHaveTextContent("2 deleted, 1 not.");
+    expect(note).toHaveTextContent("Beta — 16 universities still point to it");
+    expect(note).toHaveTextContent("It is still ticked below.");
+    expect(screen.getByRole("button", { name: /Delete selected \(1\)/ })).toBeVisible();
+  });
+
+  it("says so in the same place when everything went", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
+
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/countries/bulk-delete"))
+        return Promise.resolve(jsonResponse({ deleted: 3, blocked: [] }));
       if (url.endsWith("/countries/records")) return Promise.resolve(jsonResponse([]));
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
 
     await user.click(screen.getByRole("button", { name: "Delete all 3" }));
-    expect(
-      await screen.findByText(/1 could not go \(Still referenced by universities_country_id_fkey\)/),
-    ).toBeVisible();
+    expect(await screen.findByRole("status")).toHaveTextContent("3 records deleted.");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("reports a request that failed outright there too", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+    await user.type(screen.getByLabelText("Type delete countries"), "delete countries");
+
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/countries/bulk-delete"))
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ data: null, error: { message: "The server said no" } }),
+        } as Response);
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete all 3" }));
+    const note = await screen.findByTestId("bulk-outcome");
+    expect(note).toHaveTextContent("Nothing was deleted.");
+    expect(note).toHaveTextContent("The server said no");
+  });
+});
+
+describe("archiving, reported where it was asked for", () => {
+  it("names the rows it would not archive", async () => {
+    threeCountries();
+    const user = userEvent.setup();
+    render(<BulkDataManager />);
+    await screen.findByText("Alpha");
+    await user.click(screen.getByRole("checkbox", { name: "Select all 3" }));
+
+    authFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/countries/bulk-archive"))
+        return Promise.resolve(
+          jsonResponse({
+            archived: 2,
+            blocked: [{ id: "c-3", reason: "4 cities still reference this state" }],
+          }),
+        );
+      if (url.endsWith("/countries/records"))
+        return Promise.resolve(jsonResponse([{ id: "c-3", name: "Gamma" }]));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    await user.click(screen.getByRole("button", { name: "Archive selected (3)" }));
+
+    const note = await screen.findByRole("alert");
+    expect(note).toHaveTextContent("2 archived, 1 not.");
+    /* The server sends ids for an archive. The name comes from the list as
+       it stood before the reload. */
+    expect(note).toHaveTextContent("Gamma — 4 cities still reference this state");
+    expect(screen.getByRole("button", { name: "Archive selected (1)" })).toBeVisible();
   });
 });
 
