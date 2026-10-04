@@ -1,19 +1,19 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { matchesSubject } from '@/lib/subject-search';
+import { useSubjectSearch } from './CountrySubjectSearch';
 import { RowCard, countLabel } from './RowCard';
 
 /**
- * Every field taught in one destination, with a box to narrow them.
+ * Every field taught in one destination, narrowed by the search box in the
+ * page's hero.
  *
  * Thirty subjects is past the number anybody scans. The filter runs in the
  * browser because the whole list is already here -- a destination has tens
  * of subjects, not thousands -- so typing costs no request and the result
- * is instant.
- *
- * It is a plain input rather than a form: there is no results page to
- * submit to, and a box that looks like a search and then reloads the page
- * to show the same thirty cards is worse than no box.
+ * is instant. What has been typed lives in `SubjectSearchProvider`, because
+ * the box is above the tabs and these cards are below them.
  */
 
 export type CountrySubjectCard = {
@@ -40,7 +40,6 @@ export function CountrySubjectGrid({
   taught,
   editorial,
   countrySlug,
-  emptyLabel,
   note = null,
 }: {
   /** Fields a published course is actually taught in. */
@@ -48,55 +47,26 @@ export function CountrySubjectGrid({
   /** Fields an editor listed for a market the catalogue has not reached. */
   editorial: CountrySubjectCard[];
   countrySlug: string;
-  /** Said when the filter matches nothing, naming what was searched. */
-  emptyLabel: string;
   /** Said once above the grid when none of these is recorded against the
    * destination -- the list is the catalogue's rather than its own. */
   note?: string | null;
 }) {
-  const [query, setQuery] = useState('');
-  const term = query.trim().toLowerCase();
+  const { query } = useSubjectSearch();
   /* One box over both lists. The two are shown apart -- a derived field
      opens on something, an editorial one may not -- but a reader typing
      "engin" is asking the page a single question. */
-  const match = useCallback(
-    (rows: CountrySubjectCard[]) =>
-      term ? rows.filter((row) => row.name.toLowerCase().includes(term)) : rows,
-    [term],
+  const shownTaught = useMemo(
+    () => taught.filter((row) => matchesSubject(row.name, query)),
+    [taught, query],
   );
-  const shownTaught = useMemo(() => match(taught), [taught, match]);
-  const shownEditorial = useMemo(() => match(editorial), [editorial, match]);
-  const total = taught.length + editorial.length;
+  const shownEditorial = useMemo(
+    () => editorial.filter((row) => matchesSubject(row.name, query)),
+    [editorial, query],
+  );
   const found = shownTaught.length + shownEditorial.length;
 
   return (
     <>
-      {total > 8 ? (
-        <div className="bigsearch bigsearch--sm subjfilter">
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-          <input
-            className="bigsearch__input"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search subjects…"
-            aria-label="Search subjects"
-            autoComplete="off"
-          />
-        </div>
-      ) : null}
-
       {note ? <p className="h-more subjnote">{note}</p> : null}
 
       {shownTaught.length ? (
@@ -118,9 +88,12 @@ export function CountrySubjectGrid({
         </>
       ) : null}
 
+      {/* The reference site's words, and on the left where the cards
+          were: a centred line in the middle of an empty section read as the
+          page having failed rather than the search having found nothing. */}
       {found === 0 ? (
-        <p className="dir__none">
-          No subject in {emptyLabel} matches “{query.trim()}”.
+        <p className="subjnone" role="status">
+          No subjects matched. Try a shorter word.
         </p>
       ) : null}
     </>

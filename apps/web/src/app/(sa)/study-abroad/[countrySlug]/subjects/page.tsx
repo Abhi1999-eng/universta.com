@@ -7,6 +7,11 @@ import {
   CountrySubjectGrid,
   type CountrySubjectCard,
 } from '@/components/study-abroad/CountrySubjectGrid';
+import {
+  SubjectCount,
+  SubjectSearchBox,
+  SubjectSearchProvider,
+} from '@/components/study-abroad/CountrySubjectSearch';
 import { loadCountryTabs } from '@/lib/country-tabs';
 import { partitionSubjects } from '@/lib/country-sub-pages';
 import { subjectsForCountry } from '@/lib/country-subject';
@@ -31,7 +36,11 @@ import { inCountry } from '@/lib/country-article';
  */
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ countrySlug: string }> };
+type Params = {
+  params: Promise<{ countrySlug: string }>;
+  /** `?q=` starts the page already searched. */
+  searchParams?: Promise<{ q?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { countrySlug } = await params;
@@ -49,8 +58,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function Page({ params }: Params) {
+export default async function Page({ params, searchParams }: Params) {
   const { countrySlug } = await params;
+  const asked = (await searchParams)?.q;
+  const initialQuery =
+    (Array.isArray(asked) ? asked[0] : asked)?.slice(0, 100) ?? '';
   const page = await getStudyAbroadCountry(countrySlug);
   const country = page?.country;
   if (!country) notFound();
@@ -101,7 +113,7 @@ export default async function Page({ params }: Params) {
   });
 
   return (
-    <>
+    <SubjectSearchProvider initialQuery={initialQuery}>
       <section className="hero hero--compact">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
@@ -129,6 +141,19 @@ export default async function Page({ params }: Params) {
               ? `${taught.length} ${taught.length === 1 ? 'field is' : 'fields are'} taught here by a published university. Open one for its specializations and the courses inside them.`
               : `No field in ${where} has a published course behind it yet.`}
           </p>
+          {/* In the hero, above the tabs: the first thing under the heading
+              on a page whose whole job is finding one subject among thirty.
+              It was below the section heading, and at a normal window
+              height no card was in view while typing into it. */}
+          {subjects.length ? (
+            <SubjectSearchBox
+              countrySlug={country.slug}
+              subjects={subjects.map((subject) => ({
+                name: subject.name,
+                slug: subject.slug,
+              }))}
+            />
+          ) : null}
         </div>
       </section>
 
@@ -141,7 +166,7 @@ export default async function Page({ params }: Params) {
               <span className="eyebrow">Fields of study</span>
               <h2 className="sec-title">All subjects in {where}</h2>
               <p className="sec-lead">
-                {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
+                <SubjectCount names={subjects.map((subject) => subject.name)} />
               </p>
             </div>
             <Link className="linkcta" href={`/study-abroad/${country.slug}`}>
@@ -156,7 +181,6 @@ export default async function Page({ params }: Params) {
             taught={(listed ? taught : subjects).map(toCard)}
             editorial={editorial.map(toCard)}
             countrySlug={country.slug}
-            emptyLabel={where}
             /* Said once, above the grid, when none of these is recorded
                against the destination yet -- rather than on each of thirty
                cards. */
@@ -185,6 +209,6 @@ export default async function Page({ params }: Params) {
         </div>
       </section>
 
-    </>
+    </SubjectSearchProvider>
   );
 }

@@ -1254,6 +1254,11 @@
 .sa a.h-card--row:hover .h-card__go{ color: var(--accent); transform: translateX(3px); }
 .sa .subjfilter{ margin: 0 0 20px; box-shadow: none; }
 .sa .subjnote{ margin: -4px 0 18px; max-width: 78ch; }
+/* Nothing matched the search. On the left, where the cards were. */
+.sa .subjnone{ padding: 8px 0 28px; color: var(--muted); }
+/* The search bar's own button: the bar is the control, so the button sits
+   inside its edge rather than beside it. */
+.sa .bigsearch .btn{ flex: none; }
 .sa .h-card__t{ font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: var(--text); text-decoration: none; }
 .sa a.h-card__t:hover{ color: var(--accent); }
 .sa .h-card__d{ font-size: 14px; color: var(--muted); line-height: 1.5; }
