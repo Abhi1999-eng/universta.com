@@ -435,7 +435,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: 'POST',
       path: '/api/v1/admin/countries',
       query: [],
-      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'subSubjectIds', 'tagIds', 'documents', 'featureCodes', 'acceptedTests', 'intakeMonths', 'calculatorConfig', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'subSubjectIds', 'tagIds', 'documents', 'featureCodes', 'acceptedTests', 'intakeMonths', 'calculatorConfig', 'studyPaths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds'],
     };
   const safeId = encodeURIComponent(id ?? '');
   if (action === 'curation-options')
@@ -457,7 +457,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: 'PATCH',
       path: `/api/v1/admin/countries/${safeId}`,
       query: [],
-      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'subSubjectIds', 'tagIds', 'documents', 'featureCodes', 'acceptedTests', 'intakeMonths', 'calculatorConfig', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt', 'knownSubjectIds'],
+      body: ['continentId', 'name', 'slug', 'pageHeading', 'shortDescription', 'overview', 'isFeatured', 'displayOrder', 'flagMediaId', 'heroMediaId', 'listingMediaId', 'externalUid', 'officialLanguage', 'tagline', 'capitalCity', 'currencyCode', 'currencyName', 'currencySymbol', 'iso2Code', 'iso3Code', 'subjectIds', 'subSubjectIds', 'tagIds', 'documents', 'featureCodes', 'acceptedTests', 'intakeMonths', 'calculatorConfig', 'studyPaths', 'postStudyWorkPermitMonths', 'popularUniversityIds', 'popularCourseIds', 'expectedUpdatedAt', 'knownSubjectIds'],
     };
   if (action === 'publish')
     return {

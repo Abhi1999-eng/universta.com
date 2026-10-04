@@ -76,6 +76,13 @@ export interface CountryRecord {
     postStudyWorkPermitMonths: number | null;
     /** The budget calculator document, or null when none is configured. */
     calculator: Record<string, unknown> | null;
+    /** The study levels typed for this destination, in order. */
+    studyPaths?: Array<{
+      name: string;
+      duration: string | null;
+      entry: string | null;
+      summary: string | null;
+    }>;
   };
   /** What a student needs in hand to study here, in the order the Admin put
    * them. Empty when none are listed. */

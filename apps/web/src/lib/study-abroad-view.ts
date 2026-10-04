@@ -167,67 +167,33 @@ export function workSummary(profiles: ProfileSummary): WorkCard[] {
 /**
  * The study-path tabs.
  *
- * The levels come from what the catalogue actually publishes for this country,
- * so a destination with no postgraduate courses does not advertise a
- * postgraduate tab. Durations are the conventional ones for the level and are
- * labelled as typical, not as a promise about any particular programme.
+ * What the country's editor typed, in the order they typed it, and nothing
+ * else. There was a list here once -- Bachelor's, Master's, MBA and PhD, with
+ * a duration and an entry requirement each -- printed on every country page
+ * whether or not anybody had said a word about that country. A destination
+ * with no rows has no study-path section.
+ *
+ * The tab id carries the row's position, because two rows may share a name
+ * and an id has to be unique on the page.
  */
-const LEVELS: Array<{ id: string; label: string; duration: string; entry: string; summary: string }> = [
-  {
-    id: 'bachelors',
-    label: "Bachelor's",
-    duration: '3–4 years',
-    entry: 'School leaving qualification',
-    summary: 'Undergraduate study, usually beginning straight after school.',
-  },
-  {
-    id: 'masters',
-    label: "Master's",
-    duration: '1–2 years',
-    entry: "Bachelor's degree",
-    summary: "Postgraduate study after a bachelor's degree, taught or research-led, often ending in a thesis.",
-  },
-  {
-    id: 'mba',
-    label: 'MBA',
-    duration: '1–2 years',
-    entry: "Bachelor's degree, often with experience",
-    summary: 'A postgraduate business degree, usually asking for work experience alongside a first degree.',
-  },
-  {
-    id: 'phd',
-    label: 'PhD',
-    duration: '3–5 years',
-    entry: "Master's degree or equivalent",
-    summary: 'Doctoral research under supervision, leading to a thesis.',
-  },
-];
-
 export function studyPathsFor(page: CountryPage): StudyPath[] {
-  const statistics = page.country.statistics as
-    | Record<string, number | null>
-    | null
-    | undefined;
-  const derived = (page.country as { derived?: { statistics?: Record<string, number | null> } })
-    .derived?.statistics;
-  const counts: Record<string, number | null> = {
-    bachelors: statistics?.ugCoursesCount ?? derived?.ugCoursesCount ?? null,
-    masters: statistics?.pgCoursesCount ?? derived?.pgCoursesCount ?? null,
-    mba: statistics?.mbaCoursesCount ?? derived?.mbaCoursesCount ?? null,
-    phd: statistics?.phdCoursesCount ?? derived?.phdCoursesCount ?? null,
-  };
-
-  /* With no published course counts the tabs still describe the levels, because
-   * the entry requirements and durations are useful on their own. */
-  return LEVELS.map((level) => ({
-    id: level.id,
-    label: level.label,
-    duration: level.duration,
-    entry: level.entry,
-    summary: level.summary,
-    note: null,
-    courseCount: counts[level.id] ?? null,
-  }));
+  const rows = page.country.configuration?.studyPaths ?? [];
+  return rows
+    .filter((row) => typeof row?.name === 'string' && row.name.trim())
+    .map((row, index) => ({
+      id: `${
+        row.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'level'
+      }-${index + 1}`,
+      label: row.name.trim(),
+      duration: row.duration ?? null,
+      entry: row.entry ?? null,
+      summary: row.summary ?? null,
+      note: null,
+      courseCount: null,
+    }));
 }
 
 /**

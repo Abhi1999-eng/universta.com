@@ -168,6 +168,67 @@ export function faqRowChanged(row: FaqRow, pristine: FaqRow | undefined) {
   );
 }
 type DocumentRow = { name: string; details: string; isRequired: boolean };
+type StudyPathRow = {
+  name: string;
+  duration: string;
+  entry: string;
+  summary: string;
+};
+
+/** How many levels one destination may list; the API refuses more. */
+const MAX_STUDY_PATHS = 8;
+
+/** A level's name as it is compared: letters and digits only. "Bachelor’s"
+ * pasted from a document, "Bachelors" and "Bachelor's" are one level, and
+ * the button must not add a second beside any of them. */
+const studyPathKey = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+const studyPathHasText = (row: StudyPathRow) =>
+  Boolean(
+    row.name.trim() ||
+      row.duration.trim() ||
+      row.entry.trim() ||
+      row.summary.trim(),
+  );
+
+/**
+ * The four levels most destinations have, as a starting point.
+ *
+ * These lines used to be printed on every country's public page from a list
+ * in the web app, whether or not anybody had written anything about that
+ * country, and nobody could edit them. They live here now, behind a button:
+ * an editor who wants them presses it and gets four rows to correct for this
+ * destination. Nothing is filled in until they do.
+ */
+const USUAL_STUDY_PATHS: StudyPathRow[] = [
+  {
+    name: "Bachelor's",
+    duration: "3–4 years",
+    entry: "School leaving qualification",
+    summary: "Undergraduate study, usually beginning straight after school.",
+  },
+  {
+    name: "Master's",
+    duration: "1–2 years",
+    entry: "Bachelor's degree",
+    summary:
+      "Postgraduate study after a bachelor's degree, taught or research-led, often ending in a thesis.",
+  },
+  {
+    name: "MBA",
+    duration: "1–2 years",
+    entry: "Bachelor's degree, often with experience",
+    summary:
+      "A postgraduate business degree, usually asking for work experience alongside a first degree.",
+  },
+  {
+    name: "PhD",
+    duration: "3–5 years",
+    entry: "Master's degree or equivalent",
+    summary: "Doctoral research under supervision, leading to a thesis.",
+  },
+];
 
 /* Offered, not applied. These are the papers most destinations ask for, so an
  * author starts from a click rather than a blank list -- but nothing is saved
@@ -392,6 +453,49 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     setDocuments((rows) => rows.filter((_, i) => i !== index));
     setDirty(true);
   };
+  const [studyPaths, setStudyPaths] = useState<StudyPathRow[]>([]);
+  const addStudyPath = () => {
+    setStudyPaths((rows) => [
+      ...rows,
+      { name: "", duration: "", entry: "", summary: "" },
+    ]);
+    setDirty(true);
+  };
+  const updateStudyPath = (index: number, patch: Partial<StudyPathRow>) => {
+    setStudyPaths((rows) =>
+      rows.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+    setDirty(true);
+  };
+  const removeStudyPath = (index: number) => {
+    setStudyPaths((rows) => rows.filter((_, i) => i !== index));
+    setDirty(true);
+  };
+  /* Adds whichever of the four are not already here, by name, and leaves the
+     rows an editor has written alone: pressing it twice, or after typing a
+     Bachelor's row by hand, must not produce a second Bachelor's. */
+  const fillUsualStudyPaths = () => {
+    setStudyPaths((rows) => {
+      const have = new Set(rows.map((row) => studyPathKey(row.name)));
+      const missing = USUAL_STUDY_PATHS.filter(
+        (row) => !have.has(studyPathKey(row.name)),
+      );
+      /* Only a row with nothing in it at all makes way. One an editor has
+         started -- a duration typed, the name left for last -- stays where
+         it is. */
+      return [...rows.filter(studyPathHasText), ...missing].slice(
+        0,
+        MAX_STUDY_PATHS,
+      );
+    });
+    setDirty(true);
+  };
+  const usualStudyPathsMissing = USUAL_STUDY_PATHS.some(
+    (usual) =>
+      !studyPaths.some(
+        (row) => studyPathKey(row.name) === studyPathKey(usual.name),
+      ),
+  );
   const [removedSections, setRemovedSections] = useState<SectionRow[]>([]);
   const [removedFaqs, setRemovedFaqs] = useState<FaqRow[]>([]);
   const [removedCards, setRemovedCards] = useState<CardRow[]>([]);
@@ -566,6 +670,14 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             name: row.name,
             details: row.details ?? "",
             isRequired: row.isRequired,
+          })),
+        );
+        setStudyPaths(
+          (country.configuration?.studyPaths ?? []).map((row) => ({
+            name: row.name,
+            duration: row.duration ?? "",
+            entry: row.entry ?? "",
+            summary: row.summary ?? "",
           })),
         );
         setSubjectIds(country.subjectIds ?? []);
@@ -810,6 +922,13 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       )
         next.push(`Content section ${index + 1}: CTA URL is invalid.`);
     });
+    /* A level with text in it and no name is not sent -- the name is its
+       tab -- and used to be dropped with "Draft saved." on the screen. A row
+       with nothing in it at all is still simply left out. */
+    studyPaths.forEach((row, index) => {
+      if (!row.name.trim() && studyPathHasText(row))
+        next.push(`Study path ${index + 1}: level name is required.`);
+    });
     activeFaqs.forEach((row, index) => {
       if (!row.question.trim() || !row.answer.trim())
         next.push(`FAQ ${index + 1}: question and answer are required.`);
@@ -1052,6 +1171,17 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             name: row.name.trim(),
             details: row.details.trim() || undefined,
             isRequired: row.isRequired,
+          })),
+        /* The whole list every time, so removing the last row clears it:
+           the guide's study-path section is exactly these rows. A row with
+           no name is not a level and is not sent. */
+        studyPaths: studyPaths
+          .filter((row) => row.name.trim())
+          .map((row) => ({
+            name: row.name.trim(),
+            duration: row.duration.trim() || undefined,
+            entry: row.entry.trim() || undefined,
+            summary: row.summary.trim() || undefined,
           })),
         featureCodes: configuration.featureCodes,
         acceptedTests: configuration.acceptedTests,
@@ -1511,6 +1641,94 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                 }
                 disabled={!record}
               />
+            </div>
+          </div>
+        </Card>
+        <Card
+          eyebrow="Admissions"
+          title="Study paths"
+          description="The levels a student can enter at, shown on the guide as “Find your study path”. Only what you add here is shown; with no level, the guide leaves the section out."
+        >
+          <div className="space-y-4">
+            {studyPaths.length ? (
+              studyPaths.map((row, index) => (
+                <div key={index} className="p-panel">
+                  <div className="flex justify-between">
+                    <h4 className="font-semibold">
+                      {row.name.trim() || `Level ${index + 1}`}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => removeStudyPath(index)}
+                      className="p-danger"
+                      aria-label={`Remove ${row.name.trim() || `level ${index + 1}`}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <Input
+                      label="Level name"
+                      value={row.name}
+                      maxLength={60}
+                      onChange={(value) => updateStudyPath(index, { name: value })}
+                    />
+                    <Input
+                      label="Typical duration"
+                      value={row.duration}
+                      maxLength={80}
+                      onChange={(value) =>
+                        updateStudyPath(index, { duration: value })
+                      }
+                    />
+                    <Input
+                      label="What you need to enter"
+                      value={row.entry}
+                      maxLength={200}
+                      onChange={(value) => updateStudyPath(index, { entry: value })}
+                    />
+                    <div className="sm:col-span-3">
+                      <Input
+                        label="Level description"
+                        value={row.summary}
+                        maxLength={400}
+                        textarea
+                        rows={2}
+                        onChange={(value) =>
+                          updateStudyPath(index, { summary: value })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="p-sub">
+                No study paths listed. The public page leaves the section out
+                until you add one.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={addStudyPath}
+                disabled={studyPaths.length >= MAX_STUDY_PATHS}
+                className="p-btn p-btn--ghost p-btn--sm"
+              >
+                + Add level
+              </button>
+              {/* Offered only while one of the four is missing: with all of
+                  them here there is nothing for it to do. */}
+              {usualStudyPathsMissing ? (
+                <button
+                  type="button"
+                  onClick={fillUsualStudyPaths}
+                  disabled={studyPaths.length >= MAX_STUDY_PATHS}
+                  className="p-btn p-btn--ghost p-btn--sm"
+                >
+                  Fill the four usual levels
+                </button>
+              ) : null}
             </div>
           </div>
         </Card>

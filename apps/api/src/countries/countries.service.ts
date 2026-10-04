@@ -34,6 +34,7 @@ import {
   EDITORIAL,
 } from './country-taxonomy-reconciler';
 import { CountryDerivedService } from './country-derived.service';
+import { parseStudyPaths, type StudyPathEntry } from './study-paths';
 import {
   parseCalculatorConfig,
   type CalculatorConfig,
@@ -146,6 +147,7 @@ const emptyDestinationCounts = (): DestinationCounts => ({
 
 type CountryRecord = {
   calculatorConfig?: unknown;
+  studyPaths?: unknown;
   id: string;
   continentId: string | null;
   name: string;
@@ -297,6 +299,9 @@ export interface CountryPublicDto {
     /* Null unless an editor has configured one and the document is sound; a
      * half-valid configuration yields no calculator rather than a wrong one. */
     calculator: CalculatorConfig | null;
+    /* What an editor typed, and nothing else: with none, the guide has no
+     * study-path section. */
+    studyPaths: StudyPathEntry[];
   };
   currency: {
     code: string;
@@ -1887,6 +1892,7 @@ export class CountriesService {
       | 'intakeMonths'
       | 'postStudyWorkPermitMonths'
       | 'calculatorConfig'
+      | 'studyPaths'
     >,
     known: TaxonomySnapshot,
   ): Pick<
@@ -1896,6 +1902,7 @@ export class CountriesService {
     | 'intakeMonths'
     | 'postStudyWorkPermitMonths'
     | 'calculatorConfig'
+    | 'studyPaths'
   > {
     /* Both lists are filtered to codes the taxonomy actually knows, which is
      * what stops a typed or stale code being stored and then rendering as a
@@ -1924,7 +1931,22 @@ export class CountriesService {
       ...(dto.calculatorConfig !== undefined
         ? { calculatorConfig: this.calculatorData(dto.calculatorConfig) }
         : {}),
+      ...(dto.studyPaths !== undefined
+        ? { studyPaths: this.studyPathData(dto.studyPaths) }
+        : {}),
     };
+  }
+
+  /**
+   * Stored through the same parser the page reads through, so what is saved
+   * is exactly what will be shown. An emptied list is stored as nothing at
+   * all rather than as `[]`: the column then says "no study paths" one way.
+   */
+  private studyPathData(
+    value: CreateCountryDto['studyPaths'],
+  ): Prisma.InputJsonValue | typeof Prisma.DbNull {
+    const rows = parseStudyPaths(value);
+    return rows.length ? rows : Prisma.DbNull;
   }
 
   /**
@@ -2085,6 +2107,7 @@ export class CountriesService {
           label: taxonomyLabel(taxonomy.featureLabels, code),
         })),
         calculator: parseCalculatorConfig(record.calculatorConfig),
+        studyPaths: parseStudyPaths(record.studyPaths),
         acceptedTests: this.stringList(
           record.acceptedTests,
           taxonomy.testCodes,
