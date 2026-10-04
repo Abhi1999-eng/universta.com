@@ -3,8 +3,11 @@ import type { CountryPage } from './countries';
 import {
   alternatingBands,
   costBreakdown,
+  costRenders,
   countrySnapshot,
   guideIntakes,
+  guideLinks,
+  languageRenders,
   intakeCards,
   journeyColumns,
   languageRows,
@@ -443,5 +446,74 @@ describe('journeyColumns', () => {
      eight application steps six and two. */
   it('puts up to five steps on one row, and divides longer runs evenly', () => {
     expect([1, 3, 5, 6, 8, 9, 7].map(journeyColumns)).toEqual([1, 3, 5, 3, 4, 3, 4]);
+  });
+});
+
+/**
+ * A page about one subject in one country sends a reader into that
+ * country's guide. It may only offer the parts the guide actually shows:
+ * a link into a section that is not on the page is a link to the top of it,
+ * and a row of those is worse than no row.
+ */
+describe('the parts of a guide a page below it may link to', () => {
+  const bare = { features: [], acceptedTests: [], intakeMonths: [], postStudyWorkPermitMonths: null, calculator: null };
+  const keys = (input: CountryPage, counts = {}) => guideLinks(input, counts).map((link) => link.key);
+
+  it('offers nothing into a guide that has nothing published', () => {
+    const empty = page({ country: { configuration: bare } });
+    expect(keys(empty).filter((key) => key !== 'study-paths')).toEqual([]);
+  });
+
+  it('links to the intakes once the destination has intake months', () => {
+    const links = guideLinks(page({ country: { configuration: { ...bare, intakeMonths: [1, 9] } } }));
+    expect(links.find((link) => link.key === 'intakes')).toEqual({
+      key: 'intakes',
+      label: 'Intakes',
+      href: '/study-abroad/germany#intakes',
+    });
+  });
+
+  it('links to the cost section only when the guide would render one', () => {
+    const none = page({ country: { configuration: bare } });
+    const some = page({ country: { configuration: bare }, cost: { tuitionMin: '12000', tuitionMax: '38000', currencyCode: 'EUR' } });
+    expect(costRenders(none)).toBe(false);
+    expect(keys(none)).not.toContain('cost');
+    expect(costRenders(some)).toBe(true);
+    expect(guideLinks(some).find((link) => link.key === 'cost')?.href).toBe('/study-abroad/germany#cost');
+  });
+
+  it('says there is no language section when no language profile is published', () => {
+    expect(languageRenders(page({}))).toBe(false);
+    expect(keys(page({}))).not.toContain('language');
+  });
+
+  it('links to the reasons to study there when the destination lists any', () => {
+    const withFeatures = page({ country: { configuration: { ...bare, features: [{ code: 'PSW', label: 'Post-study work' }] } } });
+    expect(guideLinks(withFeatures).find((link) => link.key === 'why')?.href).toBe('/study-abroad/germany#why');
+  });
+
+  it('sends universities and scholarships to their own pages, and only when there are some', () => {
+    const base = page({ country: { configuration: bare } });
+    expect(keys(base, { universities: 0, scholarships: 0 })).not.toContain('universities');
+    const links = guideLinks(base, { universities: 12, scholarships: 3 });
+    expect(links.find((link) => link.key === 'universities')?.href).toBe('/study-abroad/germany/universities');
+    expect(links.find((link) => link.key === 'scholarships')?.href).toBe('/scholarships?country=germany');
+  });
+
+  it('links to the questions when the guide has any', () => {
+    const asked = { ...page({ country: { configuration: bare } }), faqs: [{ id: 'f1', question: 'Can I work?', answer: 'Yes.' }] } as unknown as CountryPage;
+    expect(guideLinks(asked).find((link) => link.key === 'faq')?.href).toBe('/study-abroad/germany#faq');
+  });
+
+  it('keeps the guide\'s own order, so the row reads the way the guide does', () => {
+    const full = {
+      ...page({
+        country: { configuration: { ...bare, features: [{ code: 'A', label: 'A' }], intakeMonths: [9] } },
+        cost: { tuitionMin: '1', tuitionMax: '2', currencyCode: 'EUR' },
+      }),
+      faqs: [{ id: 'f1', question: 'Q', answer: 'A' }],
+    } as unknown as CountryPage;
+    const order = keys(full, { universities: 1, scholarships: 1 }).filter((key) => key !== 'study-paths');
+    expect(order).toEqual(['why', 'universities', 'intakes', 'cost', 'scholarships', 'faq']);
   });
 });

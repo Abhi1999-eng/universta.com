@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { FlagMark } from '@/components/study-abroad/FlagMark';
+import { CountryTrail } from '@/components/study-abroad/CountryTrail';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
+import { CountryGuideLinks } from '@/components/study-abroad/CountryGuideLinks';
+import { RowCard } from '@/components/study-abroad/RowCard';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
-import { loadCountryTabs } from '@/lib/country-tabs';
+import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
+import { guideLinks } from '@/lib/study-abroad-view';
 import { getCourses, getSpecialization } from '@/lib/catalog';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
@@ -42,7 +45,7 @@ async function load(
     getSpecialization(subjectSlug, specializationSlug).catch(() => null),
   ]);
   if (!page?.country || !specialization) return null;
-  return { country: page.country, specialization };
+  return { page, country: page.country, specialization };
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -72,7 +75,7 @@ export default async function Page({ params }: Params) {
   const { countrySlug, subjectSlug, specializationSlug } = await params;
   const loaded = await load(countrySlug, subjectSlug, specializationSlug);
   if (!loaded) notFound();
-  const { country, specialization } = loaded;
+  const { page, country, specialization } = loaded;
   const where = inCountry(country.name, country.iso2Code);
   const subject = specialization.subject;
 
@@ -96,9 +99,12 @@ export default async function Page({ params }: Params) {
     (country.subjects ?? []).length,
   );
   const subjectHref = `/study-abroad/${country.slug}/${subject.slug}`;
-  const siblings = specialization.siblings
-    .filter((entry) => entry.slug !== specialization.slug)
-    .slice(0, 8);
+  /* All of them. The API sends a dozen at most and the page showed eight,
+     so a third of a subject's other specializations could not be reached
+     from one of its own. */
+  const siblings = specialization.siblings.filter(
+    (entry) => entry.slug !== specialization.slug,
+  );
 
   return (
     <>
@@ -117,6 +123,10 @@ export default async function Page({ params }: Params) {
             <span className="crumbs__sep" aria-hidden="true">
               /
             </span>
+            <Link href={`/study-abroad/${country.slug}/subjects`}>Subjects</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
+            </span>
             <Link href={subjectHref}>{subject.name}</Link>
             <span className="crumbs__sep" aria-hidden="true">
               /
@@ -128,18 +138,28 @@ export default async function Page({ params }: Params) {
             Study {specialization.name} in {where}
           </h1>
 
-          <p className="hero__eyebrow hero__eyebrow--links">
-            <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />
-            <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
-            <b>·</b>
-            <Link href={subjectHref}>{subject.name}</Link>
-            <b>·</b>
-            <span>{specialization.name}</span>
-          </p>
+          <CountryTrail
+            country={country}
+            parts={[
+              { label: subject.name, href: subjectHref },
+              { label: specialization.name },
+            ]}
+          />
 
           {specialization.shortDescription ? (
             <p className="hero__sub">{specialization.shortDescription}</p>
           ) : null}
+
+          {/* Up one level, and still in this country: the rest of the
+              subject as it is studied here. */}
+          <div className="btn-row">
+            <Link className="btn btn--lg" href={subjectHref}>
+              {subject.name} in {where}{' '}
+              <span className="btn__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -153,9 +173,18 @@ export default async function Page({ params }: Params) {
               {specialization.name} in {where}
             </h2>
             <p className="sec-lead">
-              {courses?.meta.total
-                ? `${formatNumber(courses.meta.total)} published ${courses.meta.total === 1 ? 'programme' : 'programmes'} a student going to ${where} can apply to.`
-                : `No programme in ${specialization.name} is published for ${where} yet. ${subject.name} has more that may fit.`}
+              {courses?.meta.total ? (
+                `${formatNumber(courses.meta.total)} published ${courses.meta.total === 1 ? 'programme' : 'programmes'} a student going to ${where} can apply to.`
+              ) : (
+                <>
+                  No programme in {specialization.name} is published for{' '}
+                  {where} yet.{' '}
+                  <Link className="textlink" href={subjectHref}>
+                    {subject.name}
+                  </Link>{' '}
+                  has more that may fit.
+                </>
+              )}
             </p>
           </div>
           {courses?.meta.total ? (
@@ -173,14 +202,12 @@ export default async function Page({ params }: Params) {
         {courses?.data.length ? (
           <div className="h-grid">
             {courses.data.map((course) => (
-              <Link
-                className="h-card"
-                href={`/courses/${course.slug}`}
+              <RowCard
                 key={course.id}
-              >
-                <span className="h-card__t">{course.name}</span>
-                <span className="h-card__m">{course.courseLevel.name}</span>
-              </Link>
+                href={`/courses/${course.slug}`}
+                title={course.name}
+                meta={course.courseLevel.name}
+              />
             ))}
           </div>
         ) : null}
@@ -204,17 +231,22 @@ export default async function Page({ params }: Params) {
           </div>
           <div className="h-grid">
             {siblings.map((entry) => (
-              <Link
-                className="h-card"
-                href={`${subjectHref}/${entry.slug}`}
+              <RowCard
                 key={entry.id}
-              >
-                <span className="h-card__t">{entry.name}</span>
-              </Link>
+                href={`${subjectHref}/${entry.slug}`}
+                title={entry.name}
+              />
             ))}
           </div>
         </section>
       ) : null}
+
+      {/* Out of the specialization and into the country it is studied in. */}
+      <CountryGuideLinks
+        countrySlug={country.slug}
+        where={where}
+        links={guideLinks(page, tabCounts(tabs))}
+      />
 
       <PlanBand
         heading={`Is ${specialization.name} in ${where} right for you?`}

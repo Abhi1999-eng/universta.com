@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { RowCard, countLabel } from './RowCard';
 import type { Country, CountryTestimonial, ProfileSummary } from '@/lib/countries';
 import { monthNames } from '@/lib/study-abroad-view';
 import { inCountry } from '@/lib/country-article';
@@ -306,10 +307,14 @@ export function CountryUniversities({
 /** "Popular subjects to study in <country>". */
 export function CountrySubjects({
   country,
+  specializations = {},
   n = null,
   alt,
 }: {
   country: Country;
+  /** How many specializations each subject holds, by slug. A subject with
+   * no entry shows its name alone, as every card did before. */
+  specializations?: Readonly<Record<string, number>>;
   n?: string | null;
   alt: boolean;
 }) {
@@ -332,15 +337,19 @@ export function CountrySubjects({
      than "what is Engineering", and the page that answers it is the one
      with the destination still in its address. The general page is one
      link away from there; from the general page there is no way back to
-     this country. */
+     this country.
+
+     And as a card that says what is in it and that it opens: the name was
+     alone in a box, with nothing to tell a reader there were eighteen
+     specializations behind it or that pressing it went anywhere. */
   const card = (subject: (typeof subjects)[number]) => (
-    <Link
-      className="h-card"
-      href={`/study-abroad/${country.slug}/${subject.slug}`}
+    <RowCard
       key={subject.id}
-    >
-      <strong className="h-card__t">{subject.name}</strong>
-    </Link>
+      href={`/study-abroad/${country.slug}/${subject.slug}`}
+      title={subject.name}
+      meta={countLabel(specializations[subject.slug], 'specialization')}
+      mark
+    />
   );
 
   return (
@@ -375,6 +384,16 @@ export function CountrySubjects({
             <div className="h-grid h-grid--4">{editorial.map(card)}</div>
           </>
         ) : null}
+        {/* The way onward, where the reader finishes reading the cards. The
+            button in the head is a screen above them by then. */}
+        <p className="h-more">
+          <Link className="linkcta" href={`/study-abroad/${country.slug}/subjects`}>
+            All {subjects.length} subjects in {where}{' '}
+            <span className="linkcta__arrow" aria-hidden="true">
+              &rarr;
+            </span>
+          </Link>
+        </p>
       </div>
     </section>
   );
@@ -576,6 +595,14 @@ export function CountryConnect({ country, alt }: { country: Country; alt: boolea
                 page sideways at 390px. */}
             <Link className="btn btn--sm" href={`/courses?country=${country.slug}`}>
               Explore courses
+            </Link>
+            {/* The first thing a reader narrows by, and the one way out of
+                this page the band did not offer. */}
+            <Link
+              className="btn btn--sm btn--ghost"
+              href={`/study-abroad/${country.slug}/subjects`}
+            >
+              Browse subjects
             </Link>
             <Link
               className="btn btn--sm btn--ghost"

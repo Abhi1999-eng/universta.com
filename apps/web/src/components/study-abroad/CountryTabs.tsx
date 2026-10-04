@@ -83,11 +83,16 @@ export function CountryTabs({
           <Link
             key={tab.key}
             href={tab.href}
-            aria-current={tab.key === current ? 'true' : undefined}
+            aria-current={tab.key === current ? 'page' : undefined}
           >
             {tab.label}
+            {/* A real space: the gap was a margin, so a screen reader and a
+                search engine both read "Subjects30". */}
             {tab.count === null ? null : (
-              <em>{tab.count.toLocaleString('en-GB')}</em>
+              <>
+                {' '}
+                <em>{tab.count.toLocaleString('en-GB')}</em>
+              </>
             )}
           </Link>
         ))}

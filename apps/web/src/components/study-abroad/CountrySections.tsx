@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useId, useState } from 'react';
 import { SectionHead } from './SectionHead';
 
@@ -31,8 +32,10 @@ export function StudyPaths({
 }: {
   paths: StudyPath[];
   countryName: string;
-  /** Subjects taught in the country, shown on every path as where it leads. */
-  fields?: string[];
+  /** Subjects taught in the country, shown on every path as where it leads.
+   * With an `href` a field is a link to that subject in this country; a
+   * bare name is still accepted and is shown as it always was. */
+  fields?: Array<string | { name: string; href: string }>;
   n?: string | null;
   alt: boolean;
 }) {
@@ -109,11 +112,23 @@ export function StudyPaths({
                 </dl>
                 {fields.length ? (
                   <div className="path__fields">
-                    {fields.map((field) => (
-                      <span className="pill" key={field}>
-                        {field}
-                      </span>
-                    ))}
+                    {fields.map((field) =>
+                      typeof field === 'string' ? (
+                        <span className="pill" key={field}>
+                          {field}
+                        </span>
+                      ) : (
+                        /* A chip with a subject's name on it reads as
+                           something to press. It now goes where a reader
+                           pressing it expects: that subject, studied here. */
+                        <Link className="pill" href={field.href} key={field.href}>
+                          {field.name}
+                          <span className="pill__go" aria-hidden="true">
+                            &rarr;
+                          </span>
+                        </Link>
+                      ),
+                    )}
                   </div>
                 ) : null}
                 <button className="btn" type="button" data-open-assessment data-intent={`path-${path.id}`}>

@@ -199,9 +199,19 @@ export function SubjectGuide({
               n={n('destinations')}
               eyebrow="Destinations"
               title={`Where you can study ${subject.name}`}
-              lead="Open a destination to see its fees, visa route and intakes."
+              lead={`Open a destination to see ${subject.name} there: its specializations and the programmes taught in it.`}
+            >
+              <p className="sec-lead">
+                <Link href="/study-abroad">
+                  All destinations <span aria-hidden="true">→</span>
+                </Link>
+              </p>
+            </SectionHead>
+            <DestinationSwitcher
+              countries={countries}
+              label={subject.name}
+              within={subject.slug}
             />
-            <DestinationSwitcher countries={countries} label={subject.name} />
           </div>
         </section>
       ) : null}

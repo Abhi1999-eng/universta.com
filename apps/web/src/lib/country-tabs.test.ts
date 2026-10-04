@@ -6,7 +6,7 @@ const getSubjects = vi.fn();
 vi.mock('@/lib/phase1', () => ({ phaseList: (...args: unknown[]) => phaseList(...args) }));
 vi.mock('@/lib/catalog', () => ({ getSubjects: (...args: unknown[]) => getSubjects(...args) }));
 
-const { loadCountryTabs } = await import('./country-tabs');
+const { loadCountryTabs, tabCounts } = await import('./country-tabs');
 
 const totals = (universities: number, scholarships: number) =>
   phaseList.mockImplementation((resource: string) =>
@@ -56,5 +56,19 @@ describe('the subject count on a destination’s tabs', () => {
     getSubjects.mockRejectedValue(new Error('down'));
     const tabs = await loadCountryTabs('united-kingdom', 0);
     expect(tabs.map((tab) => tab.key)).toEqual(['overview']);
+  });
+});
+
+describe('the counts a page reads back out of the strip', () => {
+  it('are the ones the tabs were built from', async () => {
+    totals(12, 3);
+    const tabs = await loadCountryTabs('uk', 30);
+    expect(tabCounts(tabs)).toEqual({ universities: 12, scholarships: 3 });
+  });
+
+  it('are zero for a tab that is not shown, which is when a link should not be either', async () => {
+    totals(0, 0);
+    const tabs = await loadCountryTabs('uk', 30);
+    expect(tabCounts(tabs)).toEqual({ universities: 0, scholarships: 0 });
   });
 });

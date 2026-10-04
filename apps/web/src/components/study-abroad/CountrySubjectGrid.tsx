@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { RowCard, countLabel } from './RowCard';
 
 /**
  * Every field taught in one destination, with a box to narrow them.
@@ -24,45 +24,15 @@ export type CountrySubjectCard = {
   specializations: number;
 };
 
-const SKIP = new Set(['of', 'in', 'and', 'the', 'for', 'a', 'an', '&']);
-
-/** "Health & Medicine" reads as HM rather than H&. */
-function initials(value: string) {
-  const words = value
-    .split(/\s+/)
-    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter((word) => word && !SKIP.has(word.toLowerCase()));
-  if (words.length === 0) return value.slice(0, 2).toUpperCase();
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return words
-    .slice(0, 2)
-    .map((word) => word[0].toUpperCase())
-    .join('');
-}
-
 function card(subject: CountrySubjectCard, countrySlug: string) {
   return (
-    <Link
-      className="h-card h-card--row"
-      href={`/study-abroad/${countrySlug}/${subject.slug}`}
+    <RowCard
       key={subject.id}
-    >
-      <span className="unimark unimark--xs" aria-hidden="true">
-        {initials(subject.name)}
-      </span>
-      <span className="h-card__body">
-        <span className="h-card__t">{subject.name}</span>
-        {subject.specializations ? (
-          <span className="h-card__m">
-            {subject.specializations} specialization
-            {subject.specializations === 1 ? '' : 's'}
-          </span>
-        ) : null}
-      </span>
-      <span className="h-card__go" aria-hidden="true">
-        &rarr;
-      </span>
-    </Link>
+      href={`/study-abroad/${countrySlug}/${subject.slug}`}
+      title={subject.name}
+      meta={countLabel(subject.specializations, 'specialization')}
+      mark
+    />
   );
 }
 
