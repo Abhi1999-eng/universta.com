@@ -72,6 +72,14 @@ export interface Country {
     postStudyWorkPermitMonths: number | null;
     /** Null unless an editor has configured a sound calculator document. */
     calculator: CalculatorConfig | null;
+    /** The study levels an editor typed for this destination. Absent on an
+     * API that predates the field, which reads the same as none. */
+    studyPaths?: Array<{
+      name: string;
+      duration: string | null;
+      entry: string | null;
+      summary: string | null;
+    }>;
   };
   derived?: {
     averageTuition: {

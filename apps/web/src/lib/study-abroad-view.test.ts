@@ -12,6 +12,7 @@ import {
   journeyColumns,
   languageRows,
   sectionNumbers,
+  studyPathsFor,
   monthNames,
   searchDestinations,
   workSummary,
@@ -515,5 +516,58 @@ describe('the parts of a guide a page below it may link to', () => {
     } as unknown as CountryPage;
     const order = keys(full, { universities: 1, scholarships: 1 }).filter((key) => key !== 'study-paths');
     expect(order).toEqual(['why', 'universities', 'intakes', 'cost', 'scholarships', 'faq']);
+  });
+});
+
+/**
+ * The study-path tabs used to be four fixed levels printed on every country
+ * page. They are what the country's editor typed, and a country with none
+ * has no such section.
+ */
+describe('a destination’s study paths', () => {
+  const bare = { features: [], acceptedTests: [], intakeMonths: [], postStudyWorkPermitMonths: null, calculator: null };
+  const withPaths = (studyPaths: unknown) =>
+    page({ country: { configuration: { ...bare, studyPaths } } });
+
+  it('are none for a country nobody has filled in', () => {
+    expect(studyPathsFor(page({ country: { configuration: bare } }))).toEqual([]);
+    expect(studyPathsFor(page({ country: { configuration: null } }))).toEqual([]);
+  });
+
+  it('are the rows the editor typed, in their order, word for word', () => {
+    const paths = studyPathsFor(
+      withPaths([
+        { name: 'Foundation year', duration: '1 year', entry: 'GCSEs', summary: 'A bridge into a degree.' },
+        { name: "Bachelor's", duration: '3 years (4 in Scotland)', entry: null, summary: null },
+      ]),
+    );
+    expect(paths.map((path) => path.label)).toEqual(['Foundation year', "Bachelor's"]);
+    expect(paths[0]).toMatchObject({ duration: '1 year', entry: 'GCSEs', summary: 'A bridge into a degree.' });
+    expect(paths[1]).toMatchObject({ duration: '3 years (4 in Scotland)', entry: null, summary: null });
+  });
+
+  it('never invents a duration or a requirement that was not typed', () => {
+    const [path] = studyPathsFor(withPaths([{ name: 'MBA', duration: null, entry: null, summary: null }]));
+    expect(path.duration).toBeNull();
+    expect(path.entry).toBeNull();
+    expect(path.summary).toBeNull();
+    expect(path.courseCount).toBeNull();
+  });
+
+  it('gives each tab its own id, even when two share a name', () => {
+    const ids = studyPathsFor(
+      withPaths([
+        { name: "Master's", duration: null, entry: null, summary: null },
+        { name: "Master's", duration: null, entry: null, summary: null },
+      ]),
+    ).map((path) => path.id);
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  it('takes the section off the list of guide links when there are none', () => {
+    expect(guideLinks(page({ country: { configuration: bare } })).map((link) => link.key)).not.toContain('study-paths');
+    expect(
+      guideLinks(withPaths([{ name: 'MBA', duration: null, entry: null, summary: null }])).map((link) => link.key),
+    ).toContain('study-paths');
   });
 });

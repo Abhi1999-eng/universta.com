@@ -935,6 +935,9 @@ model Country {
   /// stays canonical for the base living figures; this only varies them.
   calculatorConfig          Json? @map("calculator_config")
   postStudyWorkPermitMonths Int?  @map("post_study_work_permit_months")
+  /// The levels a student can enter at, typed in the country form. The guide
+  /// shows these and only these; with none, its study-path section is absent.
+  studyPaths                Json? @map("study_paths")
 
   studentNationalities    StudentProfile[]          @relation("StudentNationality")
   studentCurrentResidents StudentProfile[]          @relation("StudentCurrentCountry")

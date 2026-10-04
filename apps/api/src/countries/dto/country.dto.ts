@@ -21,6 +21,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { MAX_STUDY_PATHS, STUDY_PATH_LIMITS } from '../study-paths';
 import {
   COUNTRY_STATUSES,
   DEFAULT_LIMIT,
@@ -83,6 +84,36 @@ export class CountryDocumentDto {
   @IsOptional()
   @IsBoolean()
   isRequired?: boolean;
+}
+
+/** One level a student can enter at: the tab's name and what goes under it. */
+export class CountryStudyPathDto {
+  @ApiProperty({ example: "Bachelor's" })
+  @Transform(trimValue)
+  @IsString()
+  @Length(1, STUDY_PATH_LIMITS.name)
+  name!: string;
+
+  @ApiPropertyOptional({ example: '3 years (4 in Scotland)' })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(STUDY_PATH_LIMITS.duration)
+  duration?: string;
+
+  @ApiPropertyOptional({ example: 'A-levels or an equivalent qualification' })
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(STUDY_PATH_LIMITS.entry)
+  entry?: string;
+
+  @ApiPropertyOptional()
+  @Transform(trimValue)
+  @IsOptional()
+  @IsString()
+  @MaxLength(STUDY_PATH_LIMITS.summary)
+  summary?: string;
 }
 
 export class CreateCountryDto {
@@ -313,6 +344,17 @@ export class CreateCountryDto {
   @IsOptional()
   @IsObject()
   calculatorConfig?: Record<string, unknown> | null;
+
+  /* Edited as one list, like the documents: a supplied array replaces the
+   * set and an omitted key leaves it alone. An empty array clears it, which
+   * takes the study-path section off the guide. */
+  @ApiPropertyOptional({ type: [CountryStudyPathDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_STUDY_PATHS)
+  @ValidateNested({ each: true })
+  @Type(() => CountryStudyPathDto)
+  studyPaths?: CountryStudyPathDto[];
 
   @Transform(arrayValue)
   @IsOptional()

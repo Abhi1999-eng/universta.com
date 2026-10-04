@@ -162,12 +162,13 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
   /* The hero keeps its lead to a sentence or two, as the design does. A longer
      short description would push the calls to action below the fold, so it
-     opens the overview instead and the hero uses the design's own line. */
+     opens the overview instead and the hero goes without. */
   const shortText = country.shortDescription ? richTextToPlainText(country.shortDescription) : '';
-  const heroSub =
-    shortText && shortText.length <= 240
-      ? shortText
-      : 'Explore universities, costs, admission requirements, intakes, language requirements and career pathways — all in one place.';
+  /* The country's own sentence or none. A stock line stood in here whenever
+     the field was blank or too long for the hero -- "Explore universities,
+     costs, admission requirements..." -- and so a country nobody had written
+     a word about opened on a paragraph about itself. */
+  const heroSub = shortText && shortText.length <= 240 ? shortText : null;
   const overviewLead = shortText.length > 240 ? shortText : null;
   const editorial = sections.filter(editorialRenders);
   /* Asked through the same two functions the pages below this one use to
@@ -304,8 +305,10 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                 </div>
               ) : null}
               <h1 className="hero__h1">{country.pageHeading ?? `Study in ${country.name}`}</h1>
-              <p className="hero__sub">{heroSub}</p>
-              <p className="hero__promise">{country.tagline ?? 'Build your path with clarity.'}</p>
+              {heroSub ? <p className="hero__sub">{heroSub}</p> : null}
+              {country.tagline ? (
+                <p className="hero__promise">{country.tagline}</p>
+              ) : null}
 
               <div className="btn-row hero__actions">
                 <button className="btn btn--lg" type="button" data-open-assessment>
