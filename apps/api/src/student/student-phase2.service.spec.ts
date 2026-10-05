@@ -246,3 +246,71 @@ describe('StudentPhase2Service saved catalogue boundary', () => {
     );
   });
 });
+
+/**
+ * The dashboard's nearest deadline links to the course it is for. A course's
+ * page moved under its university's country, and this link kept the flat
+ * /universities/<u>/courses/<o> address, which now only redirects.
+ */
+describe('StudentPhase2Service dashboard deadline', () => {
+  const profile = { id: '00000000-0000-0000-0000-000000000001' };
+  const intakeFindFirst = jest.fn();
+  const prisma = {
+    studentProfile: {
+      upsert: jest.fn().mockResolvedValue(profile),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ referralCode: 'UNI-X' }),
+    },
+    studentApplication: {
+      count: jest.fn().mockResolvedValue(1),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    studentScholarshipApplication: {
+      count: jest.fn().mockResolvedValue(0),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    studentNotification: { count: jest.fn().mockResolvedValue(0) },
+    studentConsultantAssignment: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    universityCourseIntake: { findFirst: intakeFindFirst },
+  } as never;
+  const service = new StudentPhase2Service(prisma, {} as never);
+
+  it('links the deadline to the course under its university’s country', async () => {
+    jest
+      .spyOn(service, 'recommendations')
+      .mockResolvedValue({ offerings: [] } as never);
+    intakeFindFirst.mockResolvedValue({
+      deadline: new Date('2030-01-15T00:00:00.000Z'),
+      offering: {
+        name: 'MSc Computer Science',
+        slug: 'msc-computer-science',
+        university: {
+          slug: 'university-of-oxford',
+          country: { slug: 'united-kingdom' },
+        },
+      },
+    });
+
+    const dashboard = await service.dashboard('student-user');
+
+    expect(dashboard.nearestDeadline).toEqual({
+      label: 'MSc Computer Science',
+      date: '2030-01-15T00:00:00.000Z',
+      href: '/study-abroad/united-kingdom/universities/university-of-oxford/courses/msc-computer-science',
+    });
+    expect(intakeFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          offering: {
+            select: expect.objectContaining({
+              university: {
+                select: { slug: true, country: { select: { slug: true } } },
+              },
+            }),
+          },
+        }),
+      }),
+    );
+  });
+});

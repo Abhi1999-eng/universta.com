@@ -8,6 +8,7 @@ import {
   listHref,
   listOptions,
   readListState,
+  settleListState,
   toUniversityListRow,
   type UniversityListRow,
 } from './university-list';
@@ -191,6 +192,49 @@ describe('the options a list offers', () => {
     const filters = effectiveFilters(state, listOptions(rows, state.countries));
     expect(filters.cities).toEqual(['aalborg']);
     expect(activeFilterCount(filters)).toBe(2);
+  });
+});
+
+/**
+ * Ticking a destination, then a city, then unticking the destination left
+ * the city in the address, still narrowing the list, with the City group
+ * gone from the panel.
+ */
+describe('a change a reader makes, settled', () => {
+  const rows = [
+    row(),
+    row({
+      id: 'u2',
+      country: { name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB' },
+      city: 'London',
+      cities: ['London'],
+    }),
+  ];
+  const state = (search: string) => readListState(new URLSearchParams(search));
+
+  it('lets go of the cities when the last destination is unticked', () => {
+    const before = state('country=united-kingdom&city=london');
+    const settled = settleListState(rows, before, { ...before, countries: [] });
+    expect(settled.countries).toEqual([]);
+    expect(settled.cities).toEqual([]);
+    expect(listHref('/universities', settled)).toBe('/universities');
+  });
+
+  it('keeps a city that still has its destination', () => {
+    const before = state('country=united-kingdom&city=london');
+    const settled = settleListState(rows, before, {
+      ...before,
+      countries: ['united-kingdom', 'denmark'],
+    });
+    expect(settled.cities).toEqual(['london']);
+  });
+
+  it('leaves a city alone when no destination was ticked to begin with', () => {
+    /* A shared `?city=london` link: the reader ticking a field of study
+       there has not let go of anything. */
+    const before = state('city=london');
+    const settled = settleListState(rows, before, { ...before, subjects: ['law'] });
+    expect(settled.cities).toEqual(['london']);
   });
 });
 

@@ -148,6 +148,7 @@ describe('The universities list for directory cards (e2e)', () => {
       genericCourseId: string,
       name: string,
       status = 'PUBLISHED',
+      window: { publishStartsAt?: Date; publishEndsAt?: Date } = {},
     ) =>
       prisma.universityCourseOffering.create({
         data: {
@@ -158,10 +159,25 @@ describe('The universities list for directory cards (e2e)', () => {
           status,
           publishedAt: status === 'PUBLISHED' ? now : null,
           courseLevelId: level.id,
+          ...window,
         },
       });
+    /* Two hours either side of now: closer than any time-zone offset, so a
+       subject count that compared the window in local time rather than in
+       the time the rows are stored in would count the wrong ones. */
+    const hours = (count: number) =>
+      new Date(now.getTime() + count * 60 * 60 * 1000);
     await offering(historyCourse, 'History One');
     await offering(historyCourse, 'History Two');
+    await offering(historyCourse, 'History Opened', 'PUBLISHED', {
+      publishStartsAt: hours(-2),
+    });
+    await offering(historyCourse, 'History Not Yet', 'PUBLISHED', {
+      publishStartsAt: hours(2),
+    });
+    await offering(historyCourse, 'History Closed', 'PUBLISHED', {
+      publishEndsAt: hours(-2),
+    });
     await offering(lawCourse, 'Law One');
     await offering(lawCourse, 'Law Draft Offering', 'DRAFT');
     await offering(draftCourse, 'Under A Draft Subject');
@@ -213,9 +229,34 @@ describe('The universities list for directory cards (e2e)', () => {
       String(entry.slug).startsWith('aardvark'),
     );
     expect(row?.subjects).toEqual([
-      { name: `History ${suffix}`, slug: `history-${suffix}`, offerings: 2 },
+      /* One, Two and the one whose window has opened; not the one still
+         to open or the one that has closed. */
+      { name: `History ${suffix}`, slug: `history-${suffix}`, offerings: 3 },
       { name: `Law ${suffix}`, slug: `law-${suffix}`, offerings: 1 },
     ]);
+  });
+
+  it('counts subjects over the same programmes as the card’s programme count', async () => {
+    /* The subjects are counted in SQL and the programme figure by Prisma.
+       Both must take the same programmes as live: the four above, plus
+       the one filed under a draft subject, which has a programme but no
+       subject a card may name. */
+    const response = await list({});
+    const row = rows(response).find((entry) =>
+      String(entry.slug).startsWith('aardvark'),
+    );
+    expect((row?._count as RecordValue | undefined)?.offerings).toBe(5);
+  });
+
+  it('finds a university by a subject it teaches', async () => {
+    const slugs = (response: { body: unknown }) =>
+      rows(response).map((entry) => String(entry.slug).split('-')[0]);
+    expect(slugs(await list({ subject: `law-${suffix}` }))).toEqual([
+      'aardvark',
+    ]);
+    expect(
+      (await list({ subject: `law-${suffix}`, limit: '1' })).body,
+    ).toMatchObject({ meta: { total: 1 } });
   });
 
   it('lists ranked universities first, then the unranked by name', async () => {

@@ -122,6 +122,35 @@ describe('SeoManagementService resolver', () => {
     });
   });
 
+  it('gives a course the address it is filed at, under its university’s country', async () => {
+    /* The flat /universities/<u>/courses/<o> address only redirects now,
+       and the admin showed it as the course's canonical URL. */
+    const { service } = createService();
+    const offering = {
+      id: 'offering-1',
+      name: 'MSc Demo Studies',
+      slug: 'msc-demo-studies',
+      university,
+    };
+    await expect(
+      service.resolve('offering', offering, null),
+    ).resolves.toMatchObject({
+      canonicalUrl:
+        '/study-abroad/canada/universities/demo-university/courses/msc-demo-studies',
+    });
+    /* Read without its country, the record can only name the old address,
+       which still redirects to the right page. */
+    await expect(
+      service.resolve(
+        'offering',
+        { ...offering, university: { slug: 'demo-university' } },
+        null,
+      ),
+    ).resolves.toMatchObject({
+      canonicalUrl: '/universities/demo-university/courses/msc-demo-studies',
+    });
+  });
+
   it('renders missing values safely without unresolved tokens or dangling punctuation', async () => {
     const { service } = createService({
       template: {

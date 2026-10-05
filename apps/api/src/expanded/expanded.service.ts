@@ -7,7 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 import { ExperimentsService } from '../experiments/experiments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { sanitizeRichText } from '../common/rich-text';
@@ -522,45 +522,59 @@ export class ExpandedService {
    * cannot disagree, and only under a published subject, so a card never
    * names a field the site does not show. One read for the whole page of
    * universities rather than one per row.
+   *
+   * Counted by the database, one row per university and subject. It used
+   * to read every published offering of the page's universities and tally
+   * them here, and the directory, the destination lists, the scholarships
+   * page and the sitemap each read up to forty pages of fifty: on every
+   * uncached view that was most of the offerings table, to produce a
+   * handful of counts. Every subject is kept, not just the three a card
+   * prints, because the lists' "Field of study" filter matches on all of
+   * them. The conditions are `publishedWhereScheduled` and the published
+   * subject rule written out in SQL, and must stay in step with them.
    */
   private async universitySubjects(
     ids: string[],
     now: Date,
   ): Promise<Map<string, ListedSubject[]>> {
     if (!ids.length) return new Map();
-    /* University id -> subject slug -> that subject's tally. */
-    const byUniversity = new Map<string, Map<string, ListedSubject>>();
-    const offerings = await this.prisma.universityCourseOffering.findMany({
-      where: {
-        ...publishedWhereScheduled(now),
-        universityId: { in: ids },
-        genericCourse: { subject: { status: 'PUBLISHED', deletedAt: null } },
-      },
-      select: {
-        universityId: true,
-        genericCourse: {
-          select: { subject: { select: { name: true, slug: true } } },
-        },
-      },
-    });
-    for (const offering of offerings) {
-      const subject = offering.genericCourse.subject;
-      const counts =
-        byUniversity.get(offering.universityId) ??
-        new Map<string, ListedSubject>();
-      const entry = counts.get(subject.slug) ?? { ...subject, offerings: 0 };
-      entry.offerings += 1;
-      counts.set(subject.slug, entry);
-      byUniversity.set(offering.universityId, counts);
+    const tallies = await this.prisma.$queryRaw<
+      Array<{
+        universityId: string;
+        slug: string;
+        name: string;
+        offerings: bigint | number;
+      }>
+    >(Prisma.sql`
+      SELECT o.university_id AS universityId, s.slug AS slug, s.name AS name,
+             COUNT(*) AS offerings
+      FROM university_course_offerings o
+      JOIN courses g ON g.id = o.generic_course_id
+      JOIN subjects s ON s.id = g.subject_id
+      WHERE o.university_id IN (${Prisma.join(ids)})
+        AND o.status = 'PUBLISHED'
+        AND o.deleted_at IS NULL
+        AND (o.publish_starts_at IS NULL OR o.publish_starts_at <= ${now})
+        AND (o.publish_ends_at IS NULL OR o.publish_ends_at > ${now})
+        AND s.status = 'PUBLISHED'
+        AND s.deleted_at IS NULL
+      GROUP BY o.university_id, s.id, s.slug, s.name
+    `);
+    const byUniversity = new Map<string, ListedSubject[]>();
+    for (const tally of tallies) {
+      const list = byUniversity.get(tally.universityId) ?? [];
+      list.push({
+        name: tally.name,
+        slug: tally.slug,
+        offerings: Number(tally.offerings),
+      });
+      byUniversity.set(tally.universityId, list);
     }
-    return new Map(
-      [...byUniversity].map(([id, counts]) => [
-        id,
-        [...counts.values()].sort(
-          (a, b) => b.offerings - a.offerings || a.name.localeCompare(b.name),
-        ),
-      ]),
-    );
+    for (const list of byUniversity.values())
+      list.sort(
+        (a, b) => b.offerings - a.offerings || a.name.localeCompare(b.name),
+      );
+    return byUniversity;
   }
 
   async list(

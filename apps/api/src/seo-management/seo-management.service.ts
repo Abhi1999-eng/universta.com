@@ -518,8 +518,21 @@ export class SeoManagementService {
         return `/courses/${slug}`;
       case 'university':
         return `/universities/${slug}`;
-      case 'offering':
-        return `/universities/${encodeURIComponent(directString(university, 'slug') ?? '')}/courses/${slug}`;
+      case 'offering': {
+        /* A course's page is filed under its university's country. The flat
+           address only redirects there, so it is the fallback for a record
+           read without its country, not the default. */
+        const universitySlug = encodeURIComponent(
+          directString(university, 'slug') ?? '',
+        );
+        const countrySlug = directString(
+          university ? nested(university, 'country') : null,
+          'slug',
+        );
+        return countrySlug
+          ? `/study-abroad/${encodeURIComponent(countrySlug)}/universities/${universitySlug}/courses/${slug}`
+          : `/universities/${universitySlug}/courses/${slug}`;
+      }
       case 'scholarship':
         return `/scholarships/${slug}`;
       case 'consultant':

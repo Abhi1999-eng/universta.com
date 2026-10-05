@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { formatDate, formatNumber } from '@/lib/format';
+import { universityCoursesHref } from '@/lib/university-links';
 
 /** The client-approved university comparison page.
  *
@@ -19,6 +20,8 @@ export type CompareUniversity = {
   name: string;
   slug: string;
   country: string | null;
+  /** Where its courses are filed: under the country, in the address. */
+  countrySlug: string | null;
   institutionType: string | null;
   shortDescription: string | null;
   campuses: number;
@@ -101,7 +104,17 @@ export function UniversityCompareReference(props: UniversityCompareReferenceProp
       'Published programmes',
       (item) =>
         item.offerings ? (
-          <Link href={`/universities/${item.slug}/courses`} style={{ color: 'var(--blue)' }}>
+          /* Straight to the courses' own address. The flat one answers only
+             with a redirect, and costs the reader a hop and the server a
+             course read to find the country again. */
+          <Link
+            href={
+              item.countrySlug
+                ? universityCoursesHref(item.countrySlug, item.slug)
+                : `/universities/${item.slug}/courses`
+            }
+            style={{ color: 'var(--blue)' }}
+          >
             <b>{formatNumber(item.offerings)}</b>
           </Link>
         ) : (

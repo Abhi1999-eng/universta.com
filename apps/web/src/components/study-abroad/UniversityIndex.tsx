@@ -14,6 +14,7 @@ import {
   listOptions,
   narrows,
   readListState,
+  settleListState,
   type FilterOption,
   type UniversityListRow,
   type UniversityListState,
@@ -80,12 +81,21 @@ export function UniversityIndex({
      one of its boxes is ticked, so a choice that stopped narrowing anything
      can still be unticked where it was made. The city list means something
      only inside a destination: offered on a destination's own list, and on
-     the directory once one is ticked. */
+     the directory once one is ticked.
+     A city ticked with no destination, as a shared `?city=london` link
+     arrives, is still narrowing the list, so the group stays to untick it
+     -- without it only "Clear all", which also drops the search, let it
+     go. Outside a destination it offers just the ticked cities, rather
+     than every city in the catalogue with London somewhere among them. */
+  const inDestination = country !== null || filters.countries.length > 0;
+  const cityOptions = inDestination
+    ? options.cities
+    : options.cities.filter((option) => filters.cities.includes(option.value));
   const groups = {
     destinations: !country && options.destinations.length > 0,
     cities:
-      (country !== null || filters.countries.length > 0) &&
-      (narrows(options.cities, scope) || filters.cities.length > 0),
+      filters.cities.length > 0 ||
+      (inDestination && narrows(options.cities, scope)),
     subjects: narrows(options.subjects, scope) || filters.subjects.length > 0,
     types: narrows(options.types, scope) || filters.types.length > 0,
     ranked: (options.ranked > 0 && options.ranked < scope) || filters.ranked,
@@ -108,10 +118,7 @@ export function UniversityIndex({
     /* Settled against the options the new choice leaves, so unticking a
        destination also lets go of its cities rather than keeping them in
        the address with nothing to match. */
-    const settled = {
-      ...merged,
-      ...effectiveFilters(merged, listOptions(universities, merged.countries)),
-    };
+    const settled = settleListState(universities, filters, merged);
     window.history.replaceState(null, '', listHref(path, settled));
     if (!keepPage) setStatus('');
   };
@@ -217,7 +224,7 @@ export function UniversityIndex({
                 {groups.destinations
                   ? group('Destination', 'countries', options.destinations, options.destinations.length > 8)
                   : null}
-                {groups.cities ? group('City', 'cities', options.cities, options.cities.length > 8) : null}
+                {groups.cities ? group('City', 'cities', cityOptions, cityOptions.length > 8) : null}
                 {groups.subjects
                   ? group('Field of study', 'subjects', options.subjects, options.subjects.length > 8)
                   : null}
