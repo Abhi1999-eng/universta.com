@@ -2893,7 +2893,10 @@
 .sa .coursehero__uni em { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sa .coursehero__uni b { overflow-wrap: anywhere; }
 .sa .topicpath__item > span:last-child { overflow-wrap: anywhere; }
-.sa .hero__eyebrow > span { display: contents; }
+/* Only on the course page's hero, where the eyebrow's parts are plain
+   spans. Written for every hero, it also unboxed the flag's frame on a
+   country's university list, and the flag's stripes filled the hero. */
+.sa .coursehero .hero__eyebrow > span:not(.cchip__mark) { display: contents; }
 .sa .snap__source { font-size: 12.5px; color: var(--muted); }
 .sa .snap__source a { color: var(--text); font-weight: 600; }
 .sa .snap__source + .snap__disclaimer { margin-top: 6px; }
