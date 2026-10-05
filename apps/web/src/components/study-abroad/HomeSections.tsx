@@ -534,7 +534,8 @@ export type HomeUniversity = {
   name: string;
   slug: string;
   country?: { name: string } | null;
-  campuses?: Array<{ city?: { name?: string | null } | null }> | null;
+  /** A campus's city: text from the list endpoint, or the older object. */
+  campuses?: Array<{ city?: string | { name?: string | null } | null }> | null;
   _count?: { offerings?: number } | null;
 };
 
@@ -556,7 +557,9 @@ export function HomeUniversities({
         />
         <div className="h-grid h-grid--six">
           {universities.map((university) => {
-            const city = university.campuses?.find((campus) => campus.city?.name)?.city?.name;
+            const city = university.campuses
+              ?.map((campus) => (typeof campus.city === 'string' ? campus.city : campus.city?.name))
+              .find(Boolean);
             const where = [city, university.country?.name].filter(Boolean).join(', ');
             const offerings = university._count?.offerings ?? 0;
             return (

@@ -52,6 +52,7 @@ import {
   studyPathsFor,
   workSummary,
 } from '@/lib/study-abroad-view';
+import { toUniversityListRow } from '@/lib/university-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,19 +119,12 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
   const publishedCourses = (courseList?.data ?? []) as CountryCourseCard[];
   const countryScholarships = toScholarshipCards(scholarshipList?.data);
-  const countryUniversityCards = (universityList?.data ?? []).map((row) => ({
-    id: String(row.id),
-    name: String(row.name),
-    slug: String(row.slug),
-    institutionType:
-      typeof (row as Record<string, unknown>).institutionType === 'string'
-        ? ((row as Record<string, unknown>).institutionType as string)
-        : null,
-    qsRanking:
-      typeof (row as Record<string, unknown>).qsRanking === 'number'
-        ? ((row as Record<string, unknown>).qsRanking as number)
-        : null,
-  }));
+  /* The list page's own row: the card there and the card here are the same
+     component, and handed only a name and a type this one could say
+     neither where the university is nor what it teaches. */
+  const countryUniversityCards = (universityList?.data ?? []).map(
+    toUniversityListRow,
+  );
 
   const { country, profiles, sections, faqs, consultantCards } = page;
   const tabs = await loadCountryTabs(

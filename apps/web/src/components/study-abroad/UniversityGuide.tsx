@@ -33,6 +33,7 @@ import {
   type UniversityFaq,
 } from './UniversityGuideSections';
 import { UniversityTabs } from './UniversityTabs';
+import { universityInitials } from '@/lib/university-initials';
 
 export type { NearbyUniversity } from './UniversityGuideSections';
 
@@ -127,14 +128,6 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-
-function initials(name: string) {
-  const letters = name
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word[0]!.toUpperCase());
-  return letters.slice(0, 3).join('') || name.slice(0, 2).toUpperCase();
-}
 
 function typeLabel(value: string | null) {
   if (!value) return null;
@@ -513,7 +506,7 @@ export function UniversityGuide({
             <div className="unihero__main">
               <div className="unihero__id">
                 <span className="unimark unimark--lg" aria-hidden="true">
-                  {initials(university.name)}
+                  {universityInitials(university.name)}
                 </span>
                 <div>
                   {type || university.establishedYear ? (

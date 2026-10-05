@@ -6,7 +6,7 @@ import { inCountry } from '@/lib/country-article';
 import { SectionHead } from './SectionHead';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
-import { UniversityCard } from './UniversityCard';
+import { UniversityCard, type UniversityCardData } from './UniversityCard';
 import { countryUniversitiesHref } from '@/lib/university-links';
 
 /**
@@ -203,13 +203,10 @@ export function CountryNumbers({
  * curated them, then whatever else is published, so the section is never empty
  * while universities exist.
  */
-export type CountryUniversityCard = {
-  id: string;
-  name: string;
-  slug: string;
-  institutionType?: string | null;
-  qsRanking?: number | null;
-};
+/** What the band knows about a university: at least a name and an address,
+ * and whatever else of the list's row arrived -- city, programmes, subjects
+ * -- which the card shows when it has it. */
+export type CountryUniversityCard = UniversityCardData;
 
 /**
  * The institutions this band shows.
