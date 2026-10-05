@@ -475,10 +475,10 @@ export function UniversityGuide({
     });
 
   /* Who counted, and when. Without this the numbers above would read as the
-     catalogue's own, which they are not. */
-  const figuresShown = Boolean(
-    students || international || ratio || university.establishedYear,
-  );
+     catalogue's own, which they are not. Student figures only: a founding
+     year is not somebody's count, and with nothing else recorded the page
+     warned about "student figures" it was not showing. */
+  const figuresShown = Boolean(students || international || ratio);
   const figureSource =
     figuresShown && (university.statsSourceName || university.statsYear)
       ? [university.statsSourceName, university.statsYear]

@@ -518,8 +518,24 @@ describe('what the courses record, shown on the page', () => {
       />,
     );
 
-  it('says outright when a course records no fee', () => {
-    expect(html({})).toContain('Not recorded');
+  it('says outright when a course records no fee, in the course pages’ words', () => {
+    expect(html({})).toContain('Not listed');
+    expect(html({})).not.toContain('Not recorded');
+  });
+
+  it('says nothing about student figures when the only figure is the founding year', () => {
+    const markup = renderToStaticMarkup(
+      <UniversityGuide university={university({ establishedYear: 1965 })} />,
+    );
+    expect(markup).toContain('1965');
+    expect(markup).not.toContain('Student figures');
+  });
+
+  it('still says where student figures come from when they are shown', () => {
+    const markup = renderToStaticMarkup(
+      <UniversityGuide university={university({ totalStudents: 29000 })} />,
+    );
+    expect(markup).toContain('Student figures');
   });
 
   it('shows the fee, the study mode and the intake when the course has them', () => {

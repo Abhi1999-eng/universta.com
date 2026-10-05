@@ -162,7 +162,7 @@ export function UniversityIntakes({
                   <dd>
                     {deadlineLabel(intake.deadline)
                       ? `${deadlineLabel(intake.deadline)}${intake.passed ? ' (passed)' : ''}`
-                      : 'Not recorded'}
+                      : 'Not listed'}
                   </dd>
                 </div>
               </dl>
