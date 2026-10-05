@@ -48,16 +48,17 @@ describe('a destination’s tab strip', () => {
     expect(href('universities')).toBe('/study-abroad/united-kingdom/universities');
   });
 
-  it('sends scholarships to the one listing, filtered', () => {
-    // Funding is published once. A second copy of that listing under the
-    // destination's own path would be the same records at another URL.
+  /* Under the destination, as the behaviour reference files it: the tab
+     used to leave for the worldwide finder, which never named the country
+     and had no strip to come back by. */
+  it('keeps scholarships under the destination', () => {
     const tabs = countryTabs('united-kingdom', {
       subjects: 1,
       universities: 1,
       scholarships: 61,
     });
     expect(tabs.find((tab) => tab.key === 'scholarships')?.href).toBe(
-      '/scholarships?country=united-kingdom',
+      '/study-abroad/united-kingdom/scholarships',
     );
   });
 
