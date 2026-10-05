@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import type { Course, SubjectDetail } from '@/lib/catalog';
+import type { Course, CourseLevelGroup, SubjectDetail } from '@/lib/catalog';
+import { levelCoursesHref, levelTotal } from '@/lib/course-levels';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { formatNumber } from '@/lib/format';
 import { CourseCards } from './CourseCards';
+import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import { sparseBandClass } from './switcher';
@@ -30,17 +32,28 @@ export function SubjectGuide({
   subject,
   scholarships,
   universities = [],
+  levels: levelGroups = null,
 }: {
   subject: SubjectDetail;
   scholarships: ScholarshipCard[];
   /** Cross-links only: the reference gives a subject no universities section,
    *  so these close the page in the connect band rather than open one. */
   universities?: Array<{ id: string; name: string; slug: string }>;
+  /** The subject's courses filed under their study levels, in academic
+   *  order. Absent when that read failed; the six mixed courses the subject
+   *  carries are shown instead, as they were before. */
+  levels?: CourseLevelGroup[] | null;
 }) {
   const specializations = subject.subSubjects ?? [];
   const countries = subject.countries ?? [];
   const courses: Course[] = subject.featuredCourses ?? [];
-  const levels = subject.courseCountsByLevel ?? [];
+  const groups = levelGroups ?? [];
+  /* In academic order where the grouped read supplied it; the subject's own
+     counts come in whatever order the database grouped them. */
+  const levels = groups.length
+    ? groups.map((group) => ({ level: group.level, count: group.count }))
+    : (subject.courseCountsByLevel ?? []);
+  const filed = levelTotal(groups);
   const tests = subject.tests ?? [];
   const overview = subject.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview));
@@ -69,7 +82,7 @@ export function SubjectGuide({
   if (hasOverview) order.push('about');
   if (specializations.length) order.push('specializations');
   if (countries.length) order.push('destinations');
-  if (courses.length) order.push('programs');
+  if (groups.length || courses.length) order.push('programs');
   if (tests.length) order.push('tests');
   if (scholarships.length) order.push('scholarship-funding');
 
@@ -222,19 +235,25 @@ export function SubjectGuide({
         </section>
       ) : null}
 
-      {courses.length ? (
+      {groups.length || courses.length ? (
         <section className={band('programs')} id="programs">
           <div className="wrap">
             <SectionHead
               n={n('programs')}
               eyebrow="Programmes"
-              title={`${subject.name} programmes`}
+              title={
+                groups.length
+                  ? `${subject.name} programmes by level`
+                  : `${subject.name} programmes`
+              }
               lead={
-                levels.length
-                  ? levels
-                      .map((row) => `${row.level.name} (${row.count})`)
-                      .join(' · ')
-                  : undefined
+                groups.length
+                  ? `${formatNumber(filed)} ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
+                  : levels.length
+                    ? levels
+                        .map((row) => `${row.level.name} (${row.count})`)
+                        .join(' · ')
+                    : undefined
               }
             >
               <p className="sec-head__cta">
@@ -246,7 +265,16 @@ export function SubjectGuide({
                 </Link>
               </p>
             </SectionHead>
-            <CourseCards courses={courses} />
+            {groups.length ? (
+              <CourseLevels
+                groups={groups}
+                allHref={(level) =>
+                  levelCoursesHref({ subject: subject.slug, level })
+                }
+              />
+            ) : (
+              <CourseCards courses={courses} />
+            )}
           </div>
         </section>
       ) : null}

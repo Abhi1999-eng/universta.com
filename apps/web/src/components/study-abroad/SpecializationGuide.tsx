@@ -1,7 +1,10 @@
 import Link from 'next/link';
-import type { SpecializationDetail } from '@/lib/catalog';
+import type { CourseLevelGroup, SpecializationDetail } from '@/lib/catalog';
+import { levelCoursesHref, levelTotal } from '@/lib/course-levels';
+import { formatNumber } from '@/lib/format';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { CourseCards } from './CourseCards';
+import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import { sparseBandClass } from './switcher';
@@ -25,8 +28,12 @@ import { SectionHead } from './SectionHead';
  */
 export function SpecializationGuide({
   specialization,
+  levels = null,
 }: {
   specialization: SpecializationDetail;
+  /** Its courses filed under their study levels. Absent when that read
+   *  failed; the mixed run of courses is shown instead, as before. */
+  levels?: CourseLevelGroup[] | null;
 }) {
   const { subject, siblings, countries } = specialization;
   const subjectPath = `/subjects/${subject.slug}`;
@@ -35,9 +42,11 @@ export function SpecializationGuide({
 
   /* Numbered in the order they appear, counting only the ones that render. */
   const courses = specialization.courses ?? [];
+  const groups = levels ?? [];
+  const filed = levelTotal(groups);
   const order: string[] = [];
   if (hasOverview) order.push('about');
-  if (courses.length) order.push('programs');
+  if (groups.length || courses.length) order.push('programs');
   if (countries.length) order.push('destinations');
   if (siblings.length) order.push('related');
   const n = (id: string) => {
@@ -118,14 +127,22 @@ export function SpecializationGuide({
         </section>
       ) : null}
 
-      {courses.length ? (
+      {groups.length || courses.length ? (
         <section className={band('programs')} id="programs">
           <div className="wrap">
             <SectionHead
               n={n('programs')}
               eyebrow="Programmes"
-              title={`${specialization.name} programmes`}
-              lead="Published programmes recorded against this specialization."
+              title={
+                groups.length
+                  ? `${specialization.name} programmes by level`
+                  : `${specialization.name} programmes`
+              }
+              lead={
+                groups.length
+                  ? `${formatNumber(filed)} published ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
+                  : 'Published programmes recorded against this specialization.'
+              }
             >
               <p className="sec-head__cta">
                 <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
@@ -136,7 +153,21 @@ export function SpecializationGuide({
                 </Link>
               </p>
             </SectionHead>
-            <CourseCards courses={courses} />
+            {groups.length ? (
+              <CourseLevels
+                groups={groups}
+                branch={false}
+                allHref={(level) =>
+                  levelCoursesHref({
+                    subject: subject.slug,
+                    subSubject: specialization.slug,
+                    level,
+                  })
+                }
+              />
+            ) : (
+              <CourseCards courses={courses} />
+            )}
           </div>
         </section>
       ) : null}

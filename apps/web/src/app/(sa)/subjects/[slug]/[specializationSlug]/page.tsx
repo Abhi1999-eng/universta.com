@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getSpecialization } from '@/lib/catalog';
+import { getCoursesByLevel, getSpecialization } from '@/lib/catalog';
+import { LEVEL_ROWS_FETCHED } from '@/lib/course-levels';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
 import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
 import { jsonLdString } from '@/lib/json-ld';
@@ -44,6 +45,15 @@ export default async function SpecializationDetailPage({ params }: Props) {
   const specialization = await load(slug, specializationSlug);
   if (!specialization) notFound();
 
+  /* Its courses under their levels. Both halves of the pair go with the
+     request: the specialization's slug alone would also match the branch of
+     the same name under another subject. */
+  const levels = await getCoursesByLevel({
+    subject: specialization.subject.slug,
+    subSubject: specialization.slug,
+    perLevel: LEVEL_ROWS_FETCHED,
+  }).catch(() => null);
+
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -76,7 +86,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
         href={`/subjects/${specialization.subject.slug}/${specialization.slug}`}
         title={specialization.name}
       />
-      <SpecializationGuide specialization={specialization} />
+      <SpecializationGuide specialization={specialization} levels={levels} />
     </>
   );
 }

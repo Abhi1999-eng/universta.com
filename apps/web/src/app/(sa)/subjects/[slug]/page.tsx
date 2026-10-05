@@ -1,4 +1,5 @@
-import { getSubject } from "@/lib/catalog";
+import { getCoursesByLevel, getSubject } from "@/lib/catalog";
+import { LEVEL_ROWS_FETCHED } from "@/lib/course-levels";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -45,7 +46,7 @@ export default async function SubjectDetailPage({ params }: Props) {
 
   /* Scholarships are a cross-link, not the point of the page: a failure here
      drops the section rather than the route. */
-  const [scholarships, universities] = await Promise.all([
+  const [scholarships, universities, levels] = await Promise.all([
     phaseList<AnyRecord>("scholarships", { subject: slug, limit: "6" })
       .then((result) => toScholarshipCards(result.data))
       .catch(() => []),
@@ -61,6 +62,11 @@ export default async function SubjectDetailPage({ params }: Props) {
         })),
       )
       .catch(() => []),
+    /* The subject's courses under their levels. A failure leaves the guide
+       with the six mixed courses it always had, not without a section. */
+    getCoursesByLevel({ subject: slug, perLevel: LEVEL_ROWS_FETCHED }).catch(
+      () => null,
+    ),
   ]);
 
   const breadcrumb = {
@@ -93,6 +99,7 @@ export default async function SubjectDetailPage({ params }: Props) {
         subject={subject}
         scholarships={scholarships}
         universities={universities}
+        levels={levels}
       />
     </>
   );
