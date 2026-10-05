@@ -76,6 +76,7 @@ function apiRow(over: Record<string, unknown> = {}) {
       ],
     },
     related: [],
+    elsewhereTotal: 17,
     elsewhere: [
       {
         id: 'o3',
@@ -194,7 +195,9 @@ describe('the course page', () => {
 
   it('builds the section strip and the numbers from the bands that render', () => {
     const html = render();
-    expect(html).toContain('<nav class="unitabs" aria-label="Course sections">');
+    /* The modifier carries the sections' scroll offset, so a tab, or the
+       hero's #eligibility link, lands a section below the sticky strip. */
+    expect(html).toContain('<nav class="unitabs unitabs--sections" aria-label="Course sections">');
     for (const id of ['overview', 'fees', 'intakes', 'eligibility', 'apply', 'careers', 'university', 'more', 'elsewhere'])
       expect(html).toContain(`href="#${id}"`);
     expect(html).not.toContain('href="#similar"');
@@ -224,6 +227,31 @@ describe('the course page', () => {
   it('resolves the overview’s content variables', () => {
     expect(render()).toContain('Taught at University of Oxford.');
   });
+
+  it('writes the country into sentences with its article, and keeps the bare name as a label', () => {
+    const html = render(detail({ genericCourse: { ...generic, careerSummary: 'Research roles.' } }));
+    for (const phrase of [
+      'Studying in the United Kingdom',
+      'Living costs and visa fees in the United Kingdom',
+      'Post-study work rights in the United Kingdom',
+      'Universities in the United Kingdom',
+      'Study in the United Kingdom',
+    ])
+      expect(html).toContain(phrase);
+    expect(html).not.toMatch(/in United Kingdom/);
+    /* The breadcrumb and the facts cell name the country on its own. */
+    expect(html).toContain('href="/study-abroad/united-kingdom">United Kingdom</a>');
+  });
+
+  it('counts each related group in full, not the links it lists', () => {
+    const html = render();
+    expect(html).toMatch(/This course elsewhere <span class="h-count__n">17<\/span>/);
+    expect(html).toMatch(/More at University of Oxford <span class="h-count__n">1<\/span>/);
+    const many = render(
+      detail({ moreAtUniversity: { ...apiRow().moreAtUniversity, total: 40 } }),
+    );
+    expect(many).toMatch(/More at University of Oxford <span class="h-count__n">39<\/span>/);
+  });
 });
 
 describe('the course as data', () => {
@@ -246,6 +274,11 @@ describe('the course as data', () => {
     expect(groups.academic.map((r) => r.title)).toEqual(['a']);
     expect(groups.language.map((r) => r.title)).toEqual(['b']);
     expect(groups.other.map((r) => r.title)).toEqual(['c']);
+  });
+
+  it('reads how many other universities teach the course, never fewer than it lists', () => {
+    expect(detail().elsewhereTotal).toBe(17);
+    expect(detail({ elsewhereTotal: undefined }).elsewhereTotal).toBe(1);
   });
 
   it('refuses a course it cannot file under a country', () => {

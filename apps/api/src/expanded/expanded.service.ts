@@ -24,11 +24,12 @@ import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens
 import {
   courseDeadlines,
   courseFacets,
-  effectiveLevel,
   matchesCourseQuery,
+  NEIGHBOUR_TAKE,
   parseCourseQuery,
   relatedOfferings,
   sortOfferings,
+  UNIVERSITY_CATALOGUE_CAP,
   type OfferingLike,
 } from './university-courses';
 import type {
@@ -1261,14 +1262,25 @@ export class ExpandedService {
       ]);
       return { ...withSeo, ...around };
     }
-    const { page, limit, skip } = pageOf(query);
+    /* The list keeps how far "Load more" has gone in its address, and a
+       reload renders that whole run in one answer, so a page here may be
+       longer than the shared fifty. It is cut from rows read in full below
+       either way, so a longer one costs no more reading. */
+    const page = Math.max(1, Number(query.page ?? 1) || 1);
+    const limit = Math.min(
+      UNIVERSITY_CATALOGUE_CAP,
+      Math.max(1, Number(query.limit ?? PAGE_LIMIT) || PAGE_LIMIT),
+    );
+    const skip = (page - 1) * limit;
     /* The whole published catalogue of this university, read once: the
        counts beside every filter are taken over all of it, the filters and
        the order are applied to it here, and the page is cut from what is
-       left. One read, so a count and the list it leads to cannot disagree. */
+       left. One read, so a count and the list it leads to cannot disagree.
+       In a fixed order, so the read is the same every time. */
     const all = await this.prisma.universityCourseOffering.findMany({
       where,
-      take: FEATURED_FETCH_CAP,
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      take: UNIVERSITY_CATALOGUE_CAP,
       include: OFFERING_ROW_INCLUDE,
     });
     const published = all.filter((row) => isCanonicalPublicSlug(row.slug));
@@ -1302,83 +1314,131 @@ export class ExpandedService {
       id: string;
       slug: string;
       genericCourseId: string;
-      genericCourse: { subjectId: string };
+      courseLevelId: string | null;
+      genericCourse: { subjectId: string; courseLevelId: string };
       university: { countryId: string };
     },
     universityId: string,
     now: Date,
   ) {
-    const liveElsewhere = {
+    const home = row.university.countryId;
+    /* The other university's own page asks for its publishing window as
+       well as its status, so a university scheduled to go live later, or
+       whose window has closed, is not suggested: its link would be a 404. */
+    const liveUniversity = {
       ...publishedWhereScheduled(now),
+      country: { status: 'PUBLISHED', deletedAt: null },
+    };
+    const elsewhere = (
+      choice: Record<string, unknown>,
+      place?: 'home' | 'abroad',
+    ): Prisma.UniversityCourseOfferingWhereInput => ({
+      ...publishedWhereScheduled(now),
+      ...choice,
       universityId: { not: universityId },
       university: {
-        ...publishedWhere(),
-        country: { status: 'PUBLISHED', deletedAt: null },
+        ...liveUniversity,
+        ...(place
+          ? { countryId: place === 'home' ? home : { not: home } }
+          : {}),
       },
+    });
+    /* Which rows a page shows is chosen here, in the query, before any cut:
+       a cut by name and a sort afterwards only ever reorders the names that
+       happen to come first, so a Master's page was offered nothing but
+       Bachelor's ("B" before "M") and a course's own country could fall off
+       the end of its "other universities". Each choice is read in its own
+       order of preference -- the same destination before others, since a
+       student comparing universities usually has the country settled -- and
+       by university within it. */
+    const pick = (where: Prisma.UniversityCourseOfferingWhereInput) =>
+      this.prisma.universityCourseOffering.findMany({
+        where,
+        orderBy: [{ university: { name: 'asc' } }, { name: 'asc' }],
+        take: NEIGHBOUR_TAKE,
+        include: OFFERING_CARD_INCLUDE,
+      });
+    const sameCourse = { genericCourseId: row.genericCourseId };
+    const sameSubject = {
+      genericCourseId: { not: row.genericCourseId },
+      genericCourse: { subjectId: row.genericCourse.subjectId },
     };
-    const [here, sameCourse, sameSubject] = await Promise.all([
+    /* The level a course is taught at is the offering's own where an editor
+       set one, the generic course's otherwise -- effectiveLevel() in the
+       database's terms. Someone on a Master's page wants other Master's. */
+    const level = row.courseLevelId ?? row.genericCourse.courseLevelId;
+    const atLevel = {
+      OR: [
+        { courseLevelId: level },
+        { courseLevelId: null, genericCourse: { courseLevelId: level } },
+      ],
+    };
+    const atOtherLevel = {
+      OR: [
+        { courseLevel: { is: { id: { not: level } } } },
+        {
+          courseLevelId: null,
+          genericCourse: { courseLevelId: { not: level } },
+        },
+      ],
+    };
+    const [
+      here,
+      courseHome,
+      courseAbroad,
+      courseEverywhere,
+      levelHome,
+      levelAbroad,
+      otherHome,
+      otherAbroad,
+    ] = await Promise.all([
       this.prisma.universityCourseOffering.findMany({
         where: {
           ...publishedWhereScheduled(now),
           universityId,
           id: { not: row.id },
         },
-        take: FEATURED_FETCH_CAP,
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: UNIVERSITY_CATALOGUE_CAP,
         include: OFFERING_CARD_INCLUDE,
       }),
+      pick(elsewhere(sameCourse, 'home')),
+      pick(elsewhere(sameCourse, 'abroad')),
+      /* Only to count: the page lists six and says how many there are. */
       this.prisma.universityCourseOffering.findMany({
-        where: { ...liveElsewhere, genericCourseId: row.genericCourseId },
-        take: 24,
-        include: OFFERING_CARD_INCLUDE,
-        orderBy: { name: 'asc' },
+        where: elsewhere(sameCourse),
+        select: { slug: true },
       }),
-      this.prisma.universityCourseOffering.findMany({
-        where: {
-          ...liveElsewhere,
-          genericCourseId: { not: row.genericCourseId },
-          genericCourse: { subjectId: row.genericCourse.subjectId },
-        },
-        take: 24,
-        include: OFFERING_CARD_INCLUDE,
-        orderBy: { name: 'asc' },
-      }),
+      pick(elsewhere({ ...sameSubject, ...atLevel }, 'home')),
+      pick(elsewhere({ ...sameSubject, ...atLevel }, 'abroad')),
+      pick(elsewhere({ ...sameSubject, ...atOtherLevel }, 'home')),
+      pick(elsewhere({ ...sameSubject, ...atOtherLevel }, 'abroad')),
     ]);
     const canonical = <T extends { slug: string }>(rows: T[]) =>
       rows.filter((entry) => isCanonicalPublicSlug(entry.slug));
-    const home = row.university.countryId;
-    const near = (entry: { university: { country: { id: string } } }) =>
-      Number(entry.university.country.id === home);
-    /* The same destination first, then by university: a student comparing
-       universities usually has the country settled already. */
-    const nearFirst = <
-      T extends { university: { name: string; country: { id: string } } },
-    >(
-      rows: T[],
-    ) =>
-      [...rows].sort(
-        (a, b) =>
-          near(b) - near(a) ||
-          a.university.name.localeCompare(b.university.name),
-      );
     const siblings = sortOfferings(canonical(here), 'relevance', now);
-    const elsewhere = nearFirst(canonical(sameCourse)).slice(0, 6);
-    /* Among the same subject elsewhere, the level the reader is looking at
-       comes first: someone on a Master's page wants other Master's. */
-    const level = effectiveLevel(row)?.code;
-    const sameLevel = (entry: OfferingLike) =>
-      Number(Boolean(level) && effectiveLevel(entry)?.code === level);
-    const subjectElsewhere = nearFirst(canonical(sameSubject)).sort(
-      (a, b) => sameLevel(b) - sameLevel(a),
+    const elsewhereRows = canonical([...courseHome, ...courseAbroad]).slice(
+      0,
+      6,
     );
+    const subjectElsewhere = canonical([
+      ...levelHome,
+      ...levelAbroad,
+      ...otherHome,
+      ...otherAbroad,
+    ]);
     const related = relatedOfferings(
       row,
       { here: siblings, elsewhere: subjectElsewhere },
-      elsewhere.map((entry) => entry.slug),
+      elsewhereRows.map((entry) => entry.slug),
     );
     const suggested = new Set(related.map((entry) => entry.slug));
     return {
       related,
-      elsewhere,
+      elsewhere: elsewhereRows,
+      /* How many other universities' versions of this course there are in
+         all, which the six above are the first of. */
+      elsewhereTotal: canonical(courseEverywhere).length,
       moreAtUniversity: {
         /* Every course the university publishes, this one included, which
            is the number the "View all" link promises. */

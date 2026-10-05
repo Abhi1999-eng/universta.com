@@ -19,12 +19,17 @@ export function EligibilityButton({
   intent,
   countrySlug,
   countryName,
+  sourcePagePath,
   children,
 }: {
   className: string;
   intent: string;
   countrySlug: string;
   countryName: string;
+  /** The course page's own address. The lead is filed under it, so a
+   *  counsellor can see which course the student was reading; without it
+   *  the assessment files the lead under the country. */
+  sourcePagePath: string;
   children: React.ReactNode;
 }) {
   const { openAssessment } = useStudyAbroadShell();
@@ -32,7 +37,9 @@ export function EligibilityButton({
     <button
       className={className}
       type="button"
-      onClick={() => openAssessment({ countrySlug, countryName, intent })}
+      onClick={() =>
+        openAssessment({ countrySlug, countryName, intent, sourcePagePath })
+      }
       data-testid={`assessment-cta-${intent}`}
     >
       {children}{' '}
@@ -43,13 +50,17 @@ export function EligibilityButton({
   );
 }
 
+/** How near the foot of a page with no footer the bar stands down: the
+ *  design's own script uses the same distance. */
+const END_ZONE = 360;
+
 export function CourseSticky({
   mark,
   name,
   university,
   countrySlug,
   countryName,
-  /** The element whose passing shows the bar: the page's hero. */
+  sourcePagePath,
   after,
 }: {
   mark: string;
@@ -57,17 +68,33 @@ export function CourseSticky({
   university: string;
   countrySlug: string;
   countryName: string;
+  sourcePagePath: string;
+  /** The element whose passing shows the bar: the page's hero. */
   after: string;
 }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const target = document.getElementById(after);
-    if (!target || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setShow(!entry!.isIntersecting && entry!.boundingClientRect.top < 0),
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
+    if (!target) return;
+    /* Up once the hero has gone, and down again at the end of the page, as
+       the design's script has it. Fixed to the foot of the screen, the bar
+       would otherwise sit over the site's footer for good once a reader
+       reached it, hiding its last line. */
+    const update = () => {
+      const footer = document.querySelector<HTMLElement>('footer.footer');
+      const end = footer
+        ? footer.getBoundingClientRect().top < window.innerHeight
+        : window.innerHeight + window.scrollY >=
+          document.documentElement.scrollHeight - END_ZONE;
+      setShow(target.getBoundingClientRect().bottom < 0 && !end);
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
   }, [after]);
 
   return (
@@ -90,6 +117,7 @@ export function CourseSticky({
           intent="course-sticky"
           countrySlug={countrySlug}
           countryName={countryName}
+          sourcePagePath={sourcePagePath}
         >
           Check my eligibility
         </EligibilityButton>

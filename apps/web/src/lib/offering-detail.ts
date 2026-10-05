@@ -78,6 +78,9 @@ export type OfferingDetail = {
   };
   related: OfferingCardData[];
   elsewhere: OfferingCardData[];
+  /** How many other universities' versions of the course there are in all;
+   *  `elsewhere` holds the first six. */
+  elsewhereTotal: number;
   more: { total: number; rows: OfferingCardData[] };
   seo: ResolvedSeo | null;
 };
@@ -109,6 +112,7 @@ export function toOfferingDetail(raw: unknown): OfferingDetail | null {
   const generic = record(row.genericCourse) ?? {};
   const overview = text(row.overview);
   const more = record(row.moreAtUniversity);
+  const elsewhere = toOfferingCards(row.elsewhere);
   return {
     card,
     fullName: name,
@@ -164,7 +168,8 @@ export function toOfferingDetail(raw: unknown): OfferingDetail | null {
     ),
     university,
     related: toOfferingCards(row.related),
-    elsewhere: toOfferingCards(row.elsewhere),
+    elsewhere,
+    elsewhereTotal: Math.max(whole(row.elsewhereTotal) ?? 0, elsewhere.length),
     more: {
       total: whole(more?.total) ?? 0,
       rows: toOfferingCards(more?.rows, owner),

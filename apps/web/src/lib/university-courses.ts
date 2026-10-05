@@ -51,6 +51,11 @@ export type CourseFilters = Record<CourseFilterKey, string[]> & {
    *  this in its address, so a link that carries it still narrows. */
   scholarship: boolean;
   sort: string;
+  /** How many pages of eighteen the list shows, from the first: "Load
+   *  more" writes it into the address and the link that stands in for the
+   *  button without script carries it, so a reload or Back from a course
+   *  comes to the same place in the list. The university lists read their
+   *  `page` the same way. */
   page: number;
 };
 
@@ -130,7 +135,7 @@ export function courseListSearch(
   return search ? `?${search}` : '';
 }
 
-/** The same filters, as the course API names them. */
+/** The same filters, as the course API names them: one page of eighteen. */
 export function courseApiParams(
   filters: CourseFilters,
   page = filters.page,
@@ -148,6 +153,14 @@ export function courseApiParams(
   return params;
 }
 
+/** Every page the address asks for, from the first, in one answer. */
+export function courseRunParams(filters: CourseFilters): Record<string, string> {
+  return {
+    ...courseApiParams(filters, 1),
+    limit: String(COURSE_PAGE_SIZE * filters.page),
+  };
+}
+
 export type FacetOption = { value: string; label: string; count: number };
 export type CourseFacets = Record<CourseFilterKey, FacetOption[]>;
 
@@ -158,6 +171,26 @@ const text = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
 const count = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+export type CourseListMeta = {
+  /** How many pages of eighteen are shown. */
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+/** The API's count, told in the list's own pages of eighteen. */
+export function courseRunMeta(raw: unknown, filters: CourseFilters): CourseListMeta {
+  const total = count(record(raw)?.total);
+  const totalPages = Math.ceil(total / COURSE_PAGE_SIZE);
+  return {
+    page: Math.max(1, Math.min(filters.page, totalPages)),
+    limit: COURSE_PAGE_SIZE,
+    total,
+    totalPages,
+  };
+}
 
 /** "FULL_TIME" -> "Full time". */
 export function humanise(value: string) {
@@ -453,6 +486,27 @@ export function toOfferingCards(
     const card = toOfferingCard(entry, owner);
     return card ? [card] : [];
   });
+}
+
+/**
+ * Where a redirect sends a request, with the query it arrived with. A link
+ * to an old or misspelt address may carry a list's filters or a campaign's
+ * tags, and neither should be lost on the way to the page that answers it.
+ */
+export function withQuery(
+  path: string,
+  query: Record<string, string | string[] | undefined>,
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query))
+    for (const entry of Array.isArray(value) ? value : value === undefined ? [] : [value])
+      params.append(key, entry);
+  const search = params.toString();
+  if (!search) return path;
+  const [address, hash] = path.split('#', 2);
+  return `${address}${address!.includes('?') ? '&' : '?'}${search}${
+    hash === undefined ? '' : `#${hash}`
+  }`;
 }
 
 /**

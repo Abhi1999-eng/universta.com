@@ -8,7 +8,7 @@ import { phaseList, phaseResolveRedirect } from '@/lib/phase1';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 import { resolvedMetadata } from '@/lib/seo-management';
 import { siteOrigin } from '@/lib/site-origin';
-import { offeringCanonical } from '@/lib/university-courses';
+import { offeringCanonical, withQuery } from '@/lib/university-courses';
 import { loadOffering } from '@/lib/university-courses-server';
 import { offeringHref } from '@/lib/university-links';
 
@@ -20,7 +20,7 @@ import { offeringHref } from '@/lib/university-links';
  * .../courses/msc-computer-science -- where this catalogue's slugs carry the
  * university as well. The short form is tried as "<university>-<course>"
  * and redirected to the full one, so both reach the same page; so is a
- * wrong country.
+ * wrong country. Each redirect keeps the query the link arrived with.
  */
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +30,7 @@ type Props = {
     universitySlug: string;
     offeringSlug: string;
   }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function find(universitySlug: string, offeringSlug: string) {
@@ -85,14 +86,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : meta;
 }
 
-export default async function Page({ params }: Props) {
+export default async function Page({ params, searchParams }: Props) {
   const { countrySlug, universitySlug, offeringSlug } = await params;
+  const query = await searchParams;
   const detail = toOfferingDetail(await find(universitySlug, offeringSlug));
   if (!detail) {
     const moved = await phaseResolveRedirect(
       offeringHref(countrySlug, universitySlug, offeringSlug),
     );
-    if (moved) permanentRedirect(moved.targetPath);
+    if (moved) permanentRedirect(withQuery(moved.targetPath, query));
     notFound();
   }
   if (
@@ -100,7 +102,7 @@ export default async function Page({ params }: Props) {
     detail.university.slug !== universitySlug ||
     detail.card.slug !== offeringSlug
   )
-    permanentRedirect(detail.card.href);
+    permanentRedirect(withQuery(detail.card.href, query));
 
   /* Awards recorded against this course; failing those, the university's
      own. Funding is a cross-link here, so a failure costs the section. */

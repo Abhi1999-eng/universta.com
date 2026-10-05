@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from 'next/navigation';
+import { withQuery } from '@/lib/university-courses';
 import { universityPlace } from '@/lib/university-courses-server';
 import { universityCoursesHref } from '@/lib/university-links';
 
@@ -21,12 +22,10 @@ export default async function UniversityCoursesMoved({ params, searchParams }: P
   const { slug } = await params;
   const university = await universityPlace(slug);
   if (!university) notFound();
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(await searchParams))
-    for (const entry of Array.isArray(value) ? value : value ? [value] : [])
-      query.append(key, entry);
-  const search = query.toString();
   permanentRedirect(
-    `${universityCoursesHref(university.country.slug, university.slug)}${search ? `?${search}` : ''}`,
+    withQuery(
+      universityCoursesHref(university.country.slug, university.slug),
+      await searchParams,
+    ),
   );
 }

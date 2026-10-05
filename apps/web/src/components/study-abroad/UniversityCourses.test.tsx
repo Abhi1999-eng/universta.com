@@ -123,6 +123,51 @@ describe('a university’s course list', () => {
     expect(html).toContain('Showing 18 of 40');
   });
 
+  it('renders as far as the address says “Load more” had gone, with a link one page further for no script', () => {
+    const html = render({
+      filters: readCourseFilters({ level: 'PG', page: '2' }),
+      cards: toOfferingCards(Array.from({ length: 36 }, (_, index) => row(index)), owner),
+      meta: { page: 2, limit: 18, total: 40, totalPages: 3 },
+    });
+    expect((html.match(/class="coursecard"/g) ?? []).length).toBe(36);
+    expect(html).toContain('Showing 36 of 40');
+    expect(html).not.toContain('Showing from course');
+    expect(html).toContain(
+      'href="/study-abroad/united-kingdom/universities/university-of-oxford/courses?level=PG&amp;page=3#courses"',
+    );
+    expect(html).toContain('Show more courses');
+  });
+
+  it('writes the country into sentences with its article', () => {
+    const html = render({
+      scholarships: [
+        {
+          id: 's1',
+          title: 'Oxford Award',
+          slug: 'oxford-award',
+          summary: null,
+          provider: null,
+          benefit: null,
+          award: null,
+          deadline: null,
+          eligibility: null,
+          countries: [],
+          universities: [],
+        },
+      ],
+    });
+    for (const phrase of [
+      'Universities in the United Kingdom',
+      'Study in the United Kingdom',
+      'Scholarships in the United Kingdom',
+      'All scholarships in the United Kingdom',
+      /* A course card's specialization tag. */
+      'Artificial Intelligence in the United Kingdom',
+    ])
+      expect(html).toContain(phrase);
+    expect(html).not.toMatch(/in United Kingdom/);
+  });
+
   it('says “Not listed” on a card rather than leaving a fact out', () => {
     const html = render();
     expect(html).toContain('<dt>Tuition</dt><dd class="coursecard__none">Not listed</dd>');

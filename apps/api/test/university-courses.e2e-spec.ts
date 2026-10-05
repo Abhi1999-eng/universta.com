@@ -51,6 +51,7 @@ type Detail = Row & {
   university: { slug: string; country: { slug: string } };
   related: Row[];
   elsewhere: Row[];
+  elsewhereTotal: number;
   moreAtUniversity: { total: number; rows: Row[] };
 };
 
@@ -273,6 +274,12 @@ describe('a university’s courses (e2e)', () => {
 
     const last = await list('limit=18&page=4');
     expect(last.data).toHaveLength(1);
+
+    /* A reload after "Load more" asks for the first three pages at once,
+       past the fifty other lists stop at. */
+    const run = await list('limit=54');
+    expect(run.data).toHaveLength(54);
+    expect(run.meta.total).toBe(55);
   });
 
   it('orders by study level, then name, by default', async () => {
@@ -337,5 +344,274 @@ describe('a university’s courses (e2e)', () => {
     expect(related).not.toContain(body.elsewhere[0].slug);
     const more = body.moreAtUniversity.rows.map((row) => row.slug);
     expect(more.some((slug) => related.includes(slug))).toBe(false);
+    expect(body.elsewhereTotal).toBe(1);
+  });
+
+  /* The list reads a university's whole catalogue before it filters and
+     counts. It used to stop at 500 rows in whatever order the database gave
+     them, so past that the counts and filters covered an arbitrary subset. */
+  describe('a university with more than five hundred courses', () => {
+    let large = { id: '', slug: '' };
+
+    beforeAll(async () => {
+      large = await prisma.university.create({
+        data: {
+          countryId: countryIds[0],
+          name: `UC E2E Large ${suffix}`,
+          slug: `uc-e2e-large-${suffix}`,
+          status: 'PUBLISHED',
+          publishedAt: new Date(),
+        },
+      });
+      universityIds.push(large.id);
+      await prisma.universityCourseOffering.createMany({
+        data: Array.from({ length: 520 }, (_, index) => ({
+          universityId: large.id,
+          genericCourseId: courseIds[0],
+          name: `UC E2E Large ${String(index).padStart(3, '0')} ${suffix}`,
+          slug: `uc-e2e-large-${index}-${suffix}`,
+          /* The last twenty, by the list's own order, are part time. */
+          studyMode: index >= 500 ? 'PART_TIME' : 'FULL_TIME',
+          status: 'PUBLISHED',
+          publishedAt: new Date(),
+        })),
+      });
+    });
+
+    afterAll(async () => {
+      await prisma.universityCourseOffering.deleteMany({
+        where: { universityId: large.id },
+      });
+    });
+
+    it('counts and filters every course, not the first five hundred read', async () => {
+      const body = (
+        await get(`/universities/${large.slug}/courses?limit=18`).expect(200)
+      ).body.data as List;
+      expect(body.catalogue.total).toBe(520);
+      expect(body.meta.total).toBe(520);
+      expect(
+        body.facets.studyModes.find((o) => o.value === 'PART_TIME')?.count,
+      ).toBe(20);
+      const partTime = (
+        await get(
+          `/universities/${large.slug}/courses?studyMode=PART_TIME&sort=name`,
+        ).expect(200)
+      ).body.data as List;
+      expect(partTime.meta.total).toBe(20);
+      expect(partTime.data[0].name).toBe(`UC E2E Large 500 ${suffix}`);
+    });
+  });
+
+  /* What a course page suggests is chosen in the database. The page used to
+     read the first twenty-four rows by name and only then sort them by
+     level and country, so a Master's page whose subject had more than
+     twenty-four Bachelor's courses elsewhere -- "B" before "M" -- offered
+     nothing but Bachelor's, and the course's own country could fall off the
+     end of "Other universities offering this course". */
+  describe('a course page’s neighbours', () => {
+    const made = {
+      countries: [] as string[],
+      universities: [] as string[],
+      courses: [] as string[],
+      offerings: [] as string[],
+      subject: '',
+    };
+    let reader = { university: '', course: '' };
+    const expected: Record<string, string> = {};
+    const hidden: string[] = [];
+
+    beforeAll(async () => {
+      const low = levels[0];
+      const high = levels[1];
+      /* A subject of its own, so no other course in the database can stand
+         between these and the page. */
+      made.subject = (
+        await prisma.subject.create({
+          data: {
+            name: `UC E2E Neighbours ${suffix}`,
+            slug: `uc-e2e-neighbours-${suffix}`,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+          },
+        })
+      ).id;
+      const country = async (name: string) => {
+        const row = await prisma.country.create({
+          data: {
+            name: `${name} ${suffix}`,
+            slug: `uc-e2e-${name.toLowerCase()}-${suffix}`,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+          },
+        });
+        made.countries.push(row.id);
+        return row.id;
+      };
+      const near = await country('Near');
+      const far = await country('Far');
+      const course = async (tag: string, levelId: string) => {
+        const row = await prisma.course.create({
+          data: {
+            subjectId: made.subject,
+            courseLevelId: levelId,
+            name: `UC E2E ${tag} ${suffix}`,
+            slug: `uc-e2e-${tag.toLowerCase()}-${suffix}`,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+          },
+        });
+        made.courses.push(row.id);
+        return row.id;
+      };
+      /* The reader is on the higher of the two levels. */
+      const read = await course('Reader', high.id);
+      const bachelor = await course('Lower', low.id);
+      const master = await course('Higher', high.id);
+      const raisedHere = await course('Raised', low.id);
+      const loweredHere = await course('Lowered', high.id);
+      const university = async (
+        tag: string,
+        countryId: string,
+        window: Record<string, Date> = {},
+      ) => {
+        const row = await prisma.university.create({
+          data: {
+            countryId,
+            name: `UC E2E ${tag} ${suffix}`,
+            slug: `uc-e2e-uni-${tag.toLowerCase().replace(/ /g, '-')}-${suffix}`,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+            ...window,
+          },
+        });
+        made.universities.push(row.id);
+        return row;
+      };
+      const offer = async (
+        universityId: string,
+        courseId: string,
+        name: string,
+        extra: Record<string, unknown> = {},
+      ) => {
+        const row = await prisma.universityCourseOffering.create({
+          data: {
+            universityId,
+            genericCourseId: courseId,
+            name,
+            slug: `uc-e2e-${name.toLowerCase().replace(/ /g, '-')}-${suffix}`,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+            ...extra,
+          },
+        });
+        made.offerings.push(row.id);
+        return row.slug;
+      };
+
+      const home = await university('Reader', near);
+      reader = {
+        university: home.slug,
+        course: await offer(home.id, read, 'Reader course'),
+      };
+      /* Twenty-five universities abroad, each with this course and a
+         Bachelor's in the subject, all named to sort before anything else. */
+      const abroad = await Promise.all(
+        Array.from({ length: 25 }, (_, index) =>
+          university(`Far ${String(index).padStart(2, '0')}`, far),
+        ),
+      );
+      for (const [index, row] of abroad.entries()) {
+        const tag = String(index).padStart(2, '0');
+        const same = await offer(row.id, read, `A reader abroad ${tag}`);
+        const lower = await offer(row.id, bachelor, `B lower abroad ${tag}`);
+        if (index === 0) expected.firstAbroad = same;
+        if (index === 0) expected.firstLower = lower;
+      }
+      /* The one Master's abroad, at the university and under the name that
+         sort last. */
+      expected.higherAbroad = await offer(
+        abroad[24].id,
+        master,
+        'Z higher abroad',
+      );
+      /* At home: the same course, named to sort last, and two courses whose
+         offering sets its own level over the generic course's. */
+      const neighbour = await university('Near', near);
+      expected.sameAtHome = await offer(neighbour.id, read, 'Z reader at home');
+      expected.raisedAtHome = await offer(
+        neighbour.id,
+        raisedHere,
+        'X raised at home',
+        { courseLevelId: high.id },
+      );
+      expected.loweredAtHome = await offer(
+        neighbour.id,
+        loweredHere,
+        'C lowered at home',
+        { courseLevelId: low.id },
+      );
+      /* Published, but outside their publishing windows: their own pages
+         are 404s, so nothing may lead there. */
+      const day = 24 * 60 * 60 * 1000;
+      const ended = await university('Ended', near, {
+        publishEndsAt: new Date(Date.now() - day),
+      });
+      const later = await university('Later', near, {
+        publishStartsAt: new Date(Date.now() + day),
+      });
+      for (const row of [ended, later]) {
+        hidden.push(
+          await offer(row.id, read, `A reader ${row.id.slice(0, 4)}`),
+          await offer(row.id, master, `A higher ${row.id.slice(0, 4)}`),
+        );
+      }
+    });
+
+    afterAll(async () => {
+      await prisma.universityCourseOffering.deleteMany({
+        where: { id: { in: made.offerings } },
+      });
+      await prisma.course.deleteMany({ where: { id: { in: made.courses } } });
+      await prisma.university.deleteMany({
+        where: { id: { in: made.universities } },
+      });
+      await prisma.country.deleteMany({
+        where: { id: { in: made.countries } },
+      });
+      await prisma.subject.deleteMany({ where: { id: made.subject } });
+    });
+
+    const detail = async () =>
+      (
+        await get(
+          `/universities/${reader.university}/courses/${reader.course}`,
+        ).expect(200)
+      ).body.data as Detail;
+
+    it('suggests the reader’s level first, at home then abroad, then the rest', async () => {
+      const related = (await detail()).related.map((row) => row.slug);
+      expect(related).toHaveLength(6);
+      expect(related.slice(0, 4)).toEqual([
+        expected.raisedAtHome,
+        expected.higherAbroad,
+        expected.loweredAtHome,
+        expected.firstLower,
+      ]);
+    });
+
+    it('lists the same course at home first, and counts every one', async () => {
+      const body = await detail();
+      expect(body.elsewhere).toHaveLength(6);
+      expect(body.elsewhere[0].slug).toBe(expected.sameAtHome);
+      expect(body.elsewhere[1].slug).toBe(expected.firstAbroad);
+      expect(body.elsewhereTotal).toBe(26);
+    });
+
+    it('leaves out universities outside their publishing window', async () => {
+      const body = await detail();
+      const shown = [...body.related, ...body.elsewhere].map((row) => row.slug);
+      for (const slug of hidden) expect(shown).not.toContain(slug);
+    });
   });
 });

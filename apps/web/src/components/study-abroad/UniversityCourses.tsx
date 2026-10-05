@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { counsellingHref } from '@/lib/counselling-link';
+import { inCountry } from '@/lib/country-article';
 import { formatDate } from '@/lib/format';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import {
@@ -84,6 +85,8 @@ export function UniversityCourses(props: UniversityCoursesProps) {
   const { university, facets, catalogueTotal: total } = props;
   const { country } = university;
   const base = universityCoursesHref(country.slug, university.slug);
+  /* The country inside a sentence: "Study in the United Kingdom". */
+  const inWhere = inCountry(country.name, country.iso2Code);
   const counselling = counsellingHref({
     source: 'country',
     country: country.slug,
@@ -362,7 +365,7 @@ export function UniversityCourses(props: UniversityCoursesProps) {
             >
               <p className="h-more">
                 <Link className="linkcta" href={`/scholarships?country=${country.slug}`}>
-                  All scholarships in {country.name}{' '}
+                  All scholarships in {inWhere}{' '}
                   <span className="linkcta__arrow" aria-hidden="true">
                     &rarr;
                   </span>
@@ -412,17 +415,17 @@ export function UniversityCourses(props: UniversityCoursesProps) {
           { href: universityHref(university.slug), label: 'University profile' },
           {
             href: countryUniversitiesHref(country.slug),
-            label: `Universities in ${country.name}`,
+            label: `Universities in ${inWhere}`,
             ghost: true,
           },
           {
             href: `/study-abroad/${country.slug}`,
-            label: `Study in ${country.name}`,
+            label: `Study in ${inWhere}`,
             ghost: true,
           },
           {
             href: `/scholarships?country=${country.slug}`,
-            label: `Scholarships in ${country.name}`,
+            label: `Scholarships in ${inWhere}`,
             ghost: true,
           },
         ]}
