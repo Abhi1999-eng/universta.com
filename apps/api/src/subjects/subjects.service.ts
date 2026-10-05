@@ -16,16 +16,35 @@ import {
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
 import type { AuthenticatedRequest } from '../auth/auth.types';
+import { isCanonicalPublicSlug } from '../common/public-slug';
 import type {
   CreateSubSubjectDto,
   CreateSubjectDto,
   SeoMetadataDto,
+  SpecializationUniversitiesQueryDto,
   SubjectActionDto,
   SubjectListQueryDto,
   SubSubjectListQueryDto,
   UpdateSubSubjectDto,
   UpdateSubjectDto,
 } from './dto/subject.dto';
+
+/**
+ * Live at `now`: published, not deleted, and inside the optional
+ * [publishStartsAt, publishEndsAt) window that universities and their
+ * offerings carry. The university list applies the same rule; nothing
+ * flips the status when a window closes, so it is read here.
+ */
+function liveAt(now: Date) {
+  return {
+    status: 'PUBLISHED',
+    deletedAt: null,
+    AND: [
+      { OR: [{ publishStartsAt: null }, { publishStartsAt: { lte: now } }] },
+      { OR: [{ publishEndsAt: null }, { publishEndsAt: { gt: now } }] },
+    ],
+  };
+}
 
 const MEDIA_SELECT = {
   id: true,
@@ -293,6 +312,111 @@ export class SubjectsService {
       siblings,
       countries: countries.map((row) => row.country),
       courses: courses.map((course) => this.toCourseCard(course)),
+    };
+  }
+
+  /**
+   * The universities that teach one specialization, by name -- in one
+   * destination when `country` is given.
+   *
+   * A course row here is a programme shared across universities, so a
+   * specialization's page could list "BSc Computer Science" and never say
+   * who teaches it. The university list can be narrowed to a subject and
+   * not to a branch of one: asked about Software Engineering in the United
+   * Kingdom it answered with every university there teaching any Computer
+   * Science, eleven where four teach this.
+   *
+   * A university counts when it has a live offering of a course filed under
+   * this specialization -- the rule the university list applies to a
+   * subject, one level down, so the two can be read side by side. Ranked
+   * first and then A to Z, the lists' own order; `meta.total` counts all of
+   * them, not only the ones named.
+   */
+  async publicSpecializationUniversities(
+    subjectSlug: string,
+    slug: string,
+    query: SpecializationUniversitiesQueryDto,
+  ) {
+    const specialization = await this.prisma.subSubject.findFirst({
+      where: {
+        slug: slug.trim().toLowerCase(),
+        status: 'PUBLISHED',
+        deletedAt: null,
+        subject: {
+          slug: subjectSlug.trim().toLowerCase(),
+          status: 'PUBLISHED',
+          deletedAt: null,
+        },
+      },
+      select: { id: true, subjectId: true },
+    });
+    if (!specialization)
+      throw catalogNotFound(
+        'SPECIALIZATION_NOT_FOUND',
+        'Specialization not found',
+      );
+
+    const now = new Date();
+    const where: Prisma.UniversityWhereInput = {
+      ...liveAt(now),
+      /* A university is a destination's only while the destination is
+         published, the same condition the university list applies. */
+      country: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        ...(query.country ? { slug: query.country } : {}),
+      },
+      offerings: {
+        some: {
+          ...liveAt(now),
+          genericCourse: {
+            subjectId: specialization.subjectId,
+            subSubjectId: specialization.id,
+          },
+        },
+      },
+    };
+    const [total, rows] = await Promise.all([
+      this.prisma.university.count({ where }),
+      this.prisma.university.findMany({
+        where,
+        orderBy: [
+          { qsRanking: { sort: 'asc', nulls: 'last' } },
+          { name: 'asc' },
+        ],
+        take: query.limit,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          qsRanking: true,
+          /* The main campus's city, as a list row prints it beside the
+             name: the text an editor wrote, else the catalogue city. */
+          campuses: {
+            where: { status: 'ACTIVE', deletedAt: null },
+            orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+            take: 1,
+            select: { city: true, cityRef: { select: { name: true } } },
+          },
+        },
+      }),
+    ]);
+    return {
+      /* An address the router cannot route is not offered, as on the
+         university list. */
+      data: rows
+        .filter((row) => isCanonicalPublicSlug(row.slug))
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          qsRanking: row.qsRanking,
+          city:
+            row.campuses[0]?.city?.trim() ||
+            row.campuses[0]?.cityRef?.name?.trim() ||
+            null,
+        })),
+      meta: { total, limit: query.limit },
     };
   }
 
