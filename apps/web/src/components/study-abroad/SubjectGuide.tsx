@@ -201,9 +201,15 @@ export function SubjectGuide({
               title={`Where you can study ${subject.name}`}
               lead={`Open a destination to see ${subject.name} there: its specializations and the programmes taught in it.`}
             >
-              <p className="sec-lead">
-                <Link href="/study-abroad">
-                  All destinations <span aria-hidden="true">→</span>
+              {/* The section's link, set as one: it was a second grey
+                  paragraph with no gap, and read as the sentence's last
+                  line. */}
+              <p className="sec-head__cta">
+                <Link className="linkcta" href="/study-abroad">
+                  All destinations{' '}
+                  <span className="linkcta__arrow" aria-hidden="true">
+                    →
+                  </span>
                 </Link>
               </p>
             </SectionHead>
@@ -231,10 +237,12 @@ export function SubjectGuide({
                   : undefined
               }
             >
-              <p className="sec-lead">
-                <Link href={`/courses?subject=${subject.slug}`}>
+              <p className="sec-head__cta">
+                <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
                   Every {subject.name} programme{' '}
-                  <span aria-hidden="true">→</span>
+                  <span className="linkcta__arrow" aria-hidden="true">
+                    →
+                  </span>
                 </Link>
               </p>
             </SectionHead>
