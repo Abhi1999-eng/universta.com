@@ -2810,6 +2810,7 @@
    on a phone they wrap inside the button rather than push past the edge. */
 @media (max-width: 560px){
 .sa .unihero .btn-row .btn{ white-space: normal; text-align: center; line-height: 1.25; }
+}
 
 /* === universities: courses list and course page === */
 /* A university's courses and one course, filed under its country. The parts
