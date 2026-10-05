@@ -259,6 +259,15 @@
 .sa .btn--lg{ padding: 17px 28px; font-size: 16px; }
 .sa .btn--block{ width: 100%; }
 .sa .btn-row{ display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+/* A button named from data -- "All Agriculture & Environmental Sciences
+   courses", "Show all 186 destinations for Electrical and Electronic
+   Engineering" -- wraps onto a second line rather than running past a
+   phone's edge, where the hero clipped it and the page scrolled sideways.
+   On one line it keeps its height: the padding gives back what the line
+   height takes. A desktop sees no change; the labels fit. */
+.sa .hero .btn-row .btn:not(.btn--wrap),
+.sa .h-more--center .btn { white-space: normal; max-width: 100%; text-align: center; line-height: 1.25; padding-block: 12px; }
+.sa .hero .btn-row .btn--lg:not(.btn--wrap) { padding-block: 15px; }
 .sa .linkcta{
   display: inline-flex; align-items: center; gap: 8px;
   font-weight: 600; font-size: 15px; color: var(--text);
@@ -1757,6 +1766,10 @@
 .sa .filters-panel__foot { display: block; }
 }
 .sa .pillrow { display: flex; flex-wrap: wrap; gap: 6px; }
+/* A pill named from data -- "Back to Public Policy, Government &
+   International Studies" -- wraps inside itself rather than pushing the
+   section past a phone's edge. Short pills are unchanged. */
+.sa .pillrow .pill { white-space: normal; max-width: 100%; }
 .sa .pill--sm { padding: 4px 10px; font-size: 12.5px; }
 .sa .iconbtn {
   display: inline-flex; align-items: center; gap: 7px;
@@ -1868,6 +1881,11 @@
 /* --- ported from the reference build: subjects.css --- */
 .sa .subjx__empty { grid-column: 1 / -1; padding: 26px 2px; color: var(--muted); font-size: 14.5px; }
 .sa .subjhero { display: flex; align-items: flex-start; gap: clamp(16px, 2.4vw, 26px); margin-top: clamp(20px, 2.6vw, 32px); }
+/* The text beside the tile may get narrower than its widest line. As a flex
+   item it could not, so a specialization whose subject has a long name --
+   "All Agriculture & Environmental Sciences" on the ghost button -- held the
+   column wider than a phone, and the hero cut the heading off at the right. */
+.sa .subjhero > div { min-width: 0; }
 .sa .subjhero__icon {
   flex: none; display: grid; place-items: center;
   width: clamp(52px, 6vw, 74px); height: clamp(52px, 6vw, 74px);
