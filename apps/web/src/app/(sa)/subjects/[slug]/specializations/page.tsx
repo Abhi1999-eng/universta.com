@@ -49,7 +49,10 @@ export default async function SubjectSpecializationsPage({ params, searchParams 
     getCourses({ subject: slug, pageSize: '6' })
       .then((result) => result.data)
       .catch(() => []),
-    phaseList<AnyRecord>('universities', { limit: '4' })
+    /* The band is titled "Universities teaching <subject>", so it reads the
+       universities that do: unfiltered, it opened on a demo institute that
+       teaches none of it. */
+    phaseList<AnyRecord>('universities', { subject: slug, limit: '4' })
       .then((result) => result.data)
       .catch(() => []),
     phaseList<AnyRecord>('scholarships', { subject: slug, limit: '3' })
@@ -61,13 +64,24 @@ export default async function SubjectSpecializationsPage({ params, searchParams 
   const counts = Object.fromEntries(
     (filterOptions?.subSubjects ?? []).map((entry) => [entry.value, entry.count]),
   );
+  /* The twelve destinations with the most programmes in it. The options
+     arrive in the catalogue's country order, so cutting them first kept
+     Denmark and Finland and dropped the United States. */
+  const countries = [...(filterOptions?.countries ?? [])]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 12);
 
   return (
     <SpecializationsReference
       subject={subject}
       counts={counts}
       query={query}
-      countries={filterOptions?.countries.slice(0, 12) ?? []}
+      countries={countries}
+      /* The subject's own levels arrive in climbing order; each card's
+         levels line follows them. */
+      levelOrder={(subject.courseCountsByLevel ?? []).flatMap((row) =>
+        row.level.code ? [row.level.code] : [],
+      )}
       universities={universities.map((row) => ({
         name: String(row.name),
         slug: String(row.slug),

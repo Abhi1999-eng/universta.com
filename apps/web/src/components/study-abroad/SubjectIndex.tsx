@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type { Subject, SubSubject } from '@/lib/catalog';
-import { SearchCombobox } from '@/components/reference/SearchCombobox';
+import { mergeLevels, sortByLevelOrder } from '@/lib/level-order';
+import { matchCount, searchSubjectIndex } from '@/lib/subject-index-search';
+import { SubjectIndexSearch } from './SubjectIndexSearch';
+
+/** Where the cards begin: the search brings it into view. */
+const RESULTS_ID = 'taxonomy';
 
 export type SubjectIndexRow = Subject & {
   subSubjects?: SubSubject[];
@@ -22,9 +27,10 @@ export type SubjectIndexRow = Subject & {
  * either its own name or one of its branches matches, and the branches it
  * shows narrow to the matches so the reason it survived is visible.
  *
- * The reference also carries a study-level filter across the top. That reads
- * `studyLevels` off each specialization, which is a field the taxonomy we
- * were given does not have, so the bar is left out rather than shipped inert.
+ * The reference also carries a study-level filter across the top. It is
+ * built from the levels each subject's published courses are taught at, in
+ * the order a student climbs them (`levelOrder`, the public course-levels
+ * list); merged in the order they were met, it opened on PhD.
  */
 /** "Explore Arts, Humanities & Social " -- all but the name's last word. */
 function lead(name: string) {
@@ -37,7 +43,14 @@ function lastWord(name: string) {
   return `Explore ${name}`.trim().split(/\s+/).pop() ?? '';
 }
 
-export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
+export function SubjectIndex({
+  subjects,
+  levelOrder = [],
+}: {
+  subjects: SubjectIndexRow[];
+  /** Level codes in academic order. */
+  levelOrder?: string[];
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const urlQuery = params.get('q') ?? '';
@@ -59,43 +72,32 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
     if (term.trim()) next.set('q', term.trim());
     else next.delete('q');
     const search = next.toString();
-    router.push(search ? `/subjects?${search}` : '/subjects');
+    const target = search ? `/subjects?${search}` : '/subjects';
+    /* Clearing a term that never reached the address changes nothing
+       there, so it is not a step for the back button. */
+    if (next.toString() !== params.toString()) router.push(target);
   };
 
   /* The filter offers only the levels the catalogue actually teaches, so it
      never shows a button that can empty the page. */
-  const levels = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const subject of subjects)
-      for (const entry of subject.levels ?? [])
-        if (!seen.has(entry.code)) seen.set(entry.code, entry.name);
-    return [...seen.entries()].map(([code, name]) => ({ code, name }));
-  }, [subjects]);
+  const levels = useMemo(
+    () => mergeLevels(subjects.map((subject) => subject.levels), levelOrder),
+    [subjects, levelOrder],
+  );
 
-  const needle = query.trim().toLowerCase();
-  const rows = useMemo(() => {
-    const atLevel = (subject: SubjectIndexRow) =>
-      level === 'all' ||
-      (subject.levels ?? []).some((entry) => entry.code === level);
-    if (!needle) {
-      return subjects
-        .filter(atLevel)
-        .map((subject) => ({ subject, specs: subject.subSubjects ?? [] }));
-    }
-    return subjects
-      .filter(atLevel)
-      .map((subject) => {
-        const specs = (subject.subSubjects ?? []).filter((spec) =>
-          spec.name.toLowerCase().includes(needle),
-        );
-        const self = subject.name.toLowerCase().includes(needle);
-        if (!self && specs.length === 0) return null;
-        /* A subject matched by its own name keeps its full list; one matched
-           through a branch shows only the branches that matched. */
-        return { subject, specs: self ? (subject.subSubjects ?? []) : specs };
-      })
-      .filter(Boolean) as Array<{ subject: SubjectIndexRow; specs: SubSubject[] }>;
-  }, [subjects, needle, level]);
+  /* The level narrows the subjects first; the search then reads what is
+     left, so the count above the grid is the count of what is shown. */
+  const atLevel = useMemo(
+    () =>
+      subjects.filter(
+        (subject) =>
+          level === 'all' ||
+          (subject.levels ?? []).some((entry) => entry.code === level),
+      ),
+    [subjects, level],
+  );
+  const result = useMemo(() => searchSubjectIndex(atLevel, query), [atLevel, query]);
+  const rows = result.rows as Array<{ subject: SubjectIndexRow; specs: SubSubject[] }>;
 
   const examples = ['Computer Science', 'Artificial Intelligence', 'Engineering', 'Law'];
 
@@ -121,18 +123,12 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
               available in your destination.
             </p>
           </div>
-          {/* No `bigsearch` wrapper here: the combobox draws that bar itself,
-              and nesting one inside another stacked both paddings, which put
-              the field past the edge of the page at 320px. */}
-          <SearchCombobox
-            label="Search subjects"
-            placeholder="Search subjects or specializations"
-            submitLabel="Search"
-            endpoint="/api/subjects/suggestions"
-            emptyMessage="No subjects found."
-            value={query}
-            onValueChange={setQuery}
-            onSubmit={commit}
+          <SubjectIndexSearch
+            query={query}
+            onQueryChange={setQuery}
+            onCommit={commit}
+            result={result}
+            resultsId={RESULTS_ID}
           />
           <p className="bigsearch__ex">
             <span className="label">Try</span>
@@ -150,7 +146,7 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
         </div>
       </section>
 
-      <section className="sec sec--white" id="taxonomy">
+      <section className="sec sec--white" id={RESULTS_ID}>
         <div className="wrap">
           {levels.length > 1 ? (
             <div
@@ -180,7 +176,27 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
               ))}
             </div>
           ) : null}
-          {rows.length === 0 ? (
+          {/* The reference heads a search's answer with the term, how many
+              things answered and the way back to everything. */}
+          {result.searching ? (
+            <div className="subjres">
+              <p className="subjres__t" aria-live="polite">
+                Results for “{query.trim()}”{' '}
+                <span className="h-count__n">{matchCount(result.matches)}</span>
+              </p>
+              <Link
+                className="linkcta"
+                href="/subjects"
+                onClick={() => setQuery('')}
+              >
+                All subjects{' '}
+                <span className="linkcta__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            </div>
+          ) : null}
+          {rows.length === 0 && result.searching ? (
             <p className="sec-lead">No subjects match “{query.trim()}”.</p>
           ) : null}
           <div className="subjindex">
@@ -224,7 +240,7 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                               full titles ("Post Graduate Diploma in
                               Management"), and five of them turned this line
                               into a paragraph. */}
-                          {subject.levels
+                          {sortByLevelOrder(subject.levels, levelOrder)
                             .slice(0, 3)
                             .map((entry) => entry.name)
                             .join(', ')}
@@ -266,9 +282,14 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                       </span>
                     </span>
                   </Link>
-                  <span className="subjcard__count datum">
-                    {subject.publishedCourseCount ?? 0} programmes profiled
-                  </span>
+                  {/* No figure for a subject with none, as the note under the
+                      grid promises and the design does: "0 programmes
+                      profiled" reads as a fact about the subject. */}
+                  {subject.publishedCourseCount ? (
+                    <span className="subjcard__count datum">
+                      {subject.publishedCourseCount} programmes profiled
+                    </span>
+                  ) : null}
                 </div>
               </article>
             ))}

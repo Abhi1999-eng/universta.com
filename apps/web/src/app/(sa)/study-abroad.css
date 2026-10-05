@@ -2944,3 +2944,36 @@
 .sa .coursesticky__id em { max-width: 46vw; }
 .sa .cresults__search { padding-right: 6px; }
 }
+
+/* === completeness: subjects and specializations === */
+/* A subject's overview leads with its opening, as the design sets it; the
+   figures that used to stand in for it follow, quietly. */
+.sa .subjabout__facts { margin-top: 18px; font-size: 12.5px; color: var(--muted); letter-spacing: 0.02em; }
+/* A destination chip's programme count sits beside its arrow, not halfway
+   across the chip: both carried an automatic start margin. */
+.sa .switcher__item .dir__meta + .switcher__arrow { margin-inline-start: 8px; }
+.sa .switcher__item .cchip__name { min-width: 0; overflow-wrap: anywhere; }
+/* "Related subjects": the subject's own mark, at the size of a flag chip. */
+.sa .subjrel__icon { width: 34px; height: 34px; border-radius: 8px; }
+.sa .subjrel__icon svg, .sa .subjrel__icon img { width: 17px; height: 17px; }
+/* The search's answer on the subjects page: the term, its count and the way
+   back to everything, on one line above the cards. */
+.sa .subjres { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 18px; }
+.sa .subjres__t { font-family: var(--font-display); font-size: clamp(18px, 2vw, 22px); font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; min-width: 0; }
+.sa .subjres__t .h-count__n { margin-inline-start: 8px; white-space: nowrap; }
+/* A specialization card's name opens its page, and a second, quieter link
+   opens its courses. */
+.sa .speccard__name a { color: inherit; text-decoration: none; }
+.sa .speccard__name a:hover { color: var(--accent); }
+.sa .speccard__links { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.sa .speccard__alt { font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.sa .speccard__alt:hover { color: var(--text); }
+/* Two ways out of a specialization's programmes: its own, then its
+   subject's. */
+.sa .specprog__ctas { display: flex; flex-wrap: wrap; gap: 10px 24px; }
+/* The specializations filter bar and its list share one band; the count
+   and an empty answer sit just under the filters. */
+.sa .specresults .h-filters { margin-bottom: 18px; }
+.sa .specresults .h-empty { margin-top: 0; }
+/* A card's programme count keeps to one line beside a long levels list. */
+.sa .speccard__foot .speccard__count { flex: none; white-space: nowrap; }
