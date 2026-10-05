@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type, type TransformFnParams } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
@@ -174,6 +175,58 @@ export class UpdateCourseDto extends CourseFieldsDto {
 }
 export class CourseActionDto {
   @ApiPropertyOptional() @IsOptional() @IsISO8601() expectedUpdatedAt?: string;
+}
+
+/** How many courses one level shows before the page links to the rest. */
+export const DEFAULT_PER_LEVEL = 12;
+export const MAX_PER_LEVEL = 50;
+
+/**
+ * A subject's courses filed under their levels, for the pages that show one
+ * section per level.
+ *
+ * The three filters are the list's own, spelled the same way, so a level's
+ * "view all" link -- `/courses?subject=..&level=..` -- opens on exactly the
+ * courses this counted.
+ */
+export class CourseByLevelQueryDto {
+  @ApiProperty()
+  @Transform(csvLower)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(1)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(slug, { each: true })
+  subject!: string[];
+  @ApiPropertyOptional()
+  @Transform(csvLower)
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(slug, { each: true })
+  subSubject?: string[];
+  @ApiPropertyOptional()
+  @Transform(csvLower)
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(255, { each: true })
+  @Matches(slug, { each: true })
+  country?: string[];
+  @ApiPropertyOptional({ default: DEFAULT_PER_LEVEL, maximum: MAX_PER_LEVEL })
+  @Transform(num)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PER_LEVEL)
+  perLevel = DEFAULT_PER_LEVEL;
 }
 
 export class CourseListQueryDto {

@@ -9,7 +9,13 @@ import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
 import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
 import { guideLinks } from '@/lib/study-abroad-view';
-import { getCourses, getSubject } from '@/lib/catalog';
+import { getCourses, getCoursesByLevel, getSubject } from '@/lib/catalog';
+import {
+  LEVEL_ROWS_FETCHED,
+  levelCoursesHref,
+  levelTotal,
+} from '@/lib/course-levels';
+import { CourseLevels } from '@/components/study-abroad/CourseLevels';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
@@ -72,11 +78,22 @@ export default async function Page({ params }: Params) {
      still a page worth having -- an editor put the link there for a market
      the catalogue has not caught up with -- but a destination that neither
      lists it nor teaches it is not. */
-  const courses = await getCourses({
-    country: country.slug,
+  /* Under their levels, and only what this destination teaches. When that
+     read fails the page falls back to the six mixed courses it always
+     showed, rather than to no courses. */
+  const levels = await getCoursesByLevel({
     subject: subject.slug,
-    limit: '6',
+    country: country.slug,
+    perLevel: LEVEL_ROWS_FETCHED,
   }).catch(() => null);
+  const courses = levels
+    ? null
+    : await getCourses({
+        country: country.slug,
+        subject: subject.slug,
+        limit: '6',
+      }).catch(() => null);
+  const filed = levelTotal(levels ?? []);
 
   /* The destination does not have to claim the field. It used to: a page
      rendered only where the country listed the subject or published a
@@ -183,6 +200,46 @@ export default async function Page({ params }: Params) {
               />
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {levels?.length ? (
+        <section className="sec sec--tight wrap" id="programs">
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">Programmes</span>
+              <h2 className="sec-title">
+                {subject.name} courses in {where}, by level
+              </h2>
+              <p className="sec-lead">
+                {formatNumber(filed)} {filed === 1 ? 'course' : 'courses'} a
+                student going to {where} can apply to, each under the level it
+                is taught at.
+              </p>
+            </div>
+            <Link
+              className="linkcta"
+              href={levelCoursesHref({
+                subject: subject.slug,
+                country: country.slug,
+              })}
+            >
+              All {formatNumber(filed)}{' '}
+              <span className="linkcta__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
+          </div>
+          <CourseLevels
+            groups={levels}
+            allHref={(level) =>
+              levelCoursesHref({
+                subject: subject.slug,
+                country: country.slug,
+                level,
+              })
+            }
+          />
         </section>
       ) : null}
 

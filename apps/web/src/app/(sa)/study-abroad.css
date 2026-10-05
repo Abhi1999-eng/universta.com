@@ -2161,6 +2161,48 @@
 .sa .courselist__meta { grid-column: 1; }
 .sa .courselist__row > span[aria-hidden] { display: none; }
 }
+/* Courses under a heading with a count: the design's group. It files a
+   country's courses under subjects; here it files a subject's under study
+   levels. */
+.sa .coursegroups { display: grid; gap: clamp(20px, 2.6vw, 30px); }
+@media (min-width: 1000px) {
+.sa .coursegroups { grid-template-columns: repeat(2, 1fr); column-gap: 40px; }
+}
+.sa .coursegroup__title { margin: 0; font: inherit; }
+.sa .coursegroup__head {
+  display: flex; align-items: center; gap: 11px; padding-bottom: 10px;
+  text-decoration: none; color: inherit;
+}
+.sa .coursegroup__name { font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: -0.022em; }
+.sa .coursegroup__n { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.sa .coursegroup__head:hover .coursegroup__name { color: var(--accent); }
+/* A level holds ten or twenty courses where a subject on the country guide
+   shows three, so levels stack in one column and each is a heading of its
+   own size. The figure at the end of a row gets a fixed track: every row is
+   its own grid, and with `auto` there the middle column started somewhere
+   different on each line. */
+.sa .coursegroups--stack { grid-template-columns: minmax(0, 1fr); gap: clamp(30px, 4vw, 46px); }
+.sa .coursegroups--stack .coursegroup__name { font-size: clamp(19px, 2.2vw, 23px); }
+.sa .coursegroups--stack .coursegroup__n { font-size: 12px; }
+@media (min-width: 760px) {
+.sa .coursegroups--stack .courselist__row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(10.5rem, max-content) auto; }
+.sa .coursegroups--stack .courselist__fee { text-align: end; }
+}
+/* The count on a level's chip, quiet like every other count. */
+.sa .chipbtn__n { margin-inline-start: 4px; font-size: 11.5px; color: var(--muted); }
+/* The rest of a level, opened in place. */
+.sa .courselist--cont { border-top: 0; }
+.sa .coursegroup__more > summary {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; cursor: pointer; list-style: none;
+  font-size: 14.5px; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;
+}
+.sa .coursegroup__more > summary::-webkit-details-marker { display: none; }
+.sa .coursegroup__more > summary::after { content: '+'; font-family: var(--font-mono); text-decoration: none; display: inline-block; }
+.sa .coursegroup__more[open] > summary { margin-bottom: 6px; }
+.sa .coursegroup__more[open] > summary::after { content: '\2212'; }
+.sa .coursegroup__more[open] .coursegroup__open,
+.sa .coursegroup__more:not([open]) .coursegroup__shut { display: none; }
+.sa .coursegroup__more[open] .courselist--cont { border-top: 1px solid var(--line-soft); }
 .sa .coursesticky {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 84;
   background: rgba(255, 255, 255, .96); backdrop-filter: blur(12px);

@@ -33,6 +33,7 @@ import type {
   CreateCourseDto,
   CreateFaqDto,
   CourseActionDto,
+  CourseByLevelQueryDto,
   CourseListQueryDto,
   IntakeReplacementDto,
   RelatedCourseReplacementDto,
@@ -265,6 +266,75 @@ export class CoursesService {
       ),
       meta: paginationMeta(query.page, pageSize, total),
     };
+  }
+
+  /**
+   * A subject's courses -- or one specialization's -- filed under their
+   * levels, each level with its count and its first few courses.
+   *
+   * The pages that show "Bachelor's: these ten, Master's: these twenty" had
+   * two ways to get there and both were wrong. The subject's own payload
+   * counts by level but carries six mixed courses and cannot be asked about
+   * a destination; the list can be asked for one level at a time, which is
+   * a request per level per page. This is one read that answers the page.
+   *
+   * It filters exactly as the list does (`publicWhere`), so a level's count
+   * here is the total `/courses?subject=..&level=..` opens on, and with a
+   * country it is only what is available there. Levels come in academic
+   * order -- `educationOrder`, which an editor sets -- and a level with
+   * nothing in it is not in the answer at all.
+   */
+  async publicByLevel(query: CourseByLevelQueryDto) {
+    const list = {
+      subject: query.subject,
+      subSubject: query.subSubject,
+      country: query.country,
+      page: 1,
+      limit: query.perLevel,
+    } as CourseListQueryDto;
+    await this.validatePublicQuery(list);
+    const where: Prisma.CourseWhereInput = {
+      ...this.publicWhere(list),
+      /* The list refuses an inactive level by name; counting one here would
+         promise courses its own "view all" link then cannot open. */
+      courseLevel: { status: 'ACTIVE' },
+    };
+    const counted = await this.prisma.course.groupBy({
+      by: ['courseLevelId'],
+      where,
+      _count: { _all: true },
+    });
+    if (!counted.length) return [];
+    const totals = new Map(
+      counted.map((row) => [row.courseLevelId, row._count._all]),
+    );
+    const levels = await this.prisma.courseLevel.findMany({
+      where: { id: { in: [...totals.keys()] } },
+      orderBy: [
+        { educationOrder: 'asc' },
+        { displayOrder: 'asc' },
+        { name: 'asc' },
+      ],
+      select: { id: true, code: true, name: true, educationOrder: true },
+    });
+    const include = this.publicInclude(query.country);
+    return Promise.all(
+      levels.map(async (level) => {
+        const rows = await this.prisma.course.findMany({
+          where: { ...where, courseLevelId: level.id },
+          include,
+          orderBy: this.publicOrderBy(),
+          take: query.perLevel,
+        });
+        return {
+          level,
+          count: totals.get(level.id) ?? rows.length,
+          courses: rows.map((row) =>
+            this.toPublicList(row as PublicCourse, query.country),
+          ),
+        };
+      }),
+    );
   }
 
   async suggestions(q: string) {

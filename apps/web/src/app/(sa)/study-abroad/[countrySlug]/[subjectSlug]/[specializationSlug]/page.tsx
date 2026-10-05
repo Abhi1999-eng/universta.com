@@ -9,7 +9,17 @@ import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
 import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
 import { guideLinks } from '@/lib/study-abroad-view';
-import { getCourses, getSpecialization } from '@/lib/catalog';
+import {
+  getCourses,
+  getCoursesByLevel,
+  getSpecialization,
+} from '@/lib/catalog';
+import {
+  LEVEL_ROWS_FETCHED,
+  levelCoursesHref,
+  levelTotal,
+} from '@/lib/course-levels';
+import { CourseLevels } from '@/components/study-abroad/CourseLevels';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
@@ -79,12 +89,23 @@ export default async function Page({ params }: Params) {
   const where = inCountry(country.name, country.iso2Code);
   const subject = specialization.subject;
 
-  const courses = await getCourses({
-    country: country.slug,
+  /* Under their levels, and only what this destination teaches. The mixed
+     run of nine is kept for when that read fails. */
+  const levels = await getCoursesByLevel({
     subject: subject.slug,
     subSubject: specialization.slug,
-    limit: '9',
+    country: country.slug,
+    perLevel: LEVEL_ROWS_FETCHED,
   }).catch(() => null);
+  const courses = levels
+    ? null
+    : await getCourses({
+        country: country.slug,
+        subject: subject.slug,
+        subSubject: specialization.slug,
+        limit: '9',
+      }).catch(() => null);
+  const total = levels ? levelTotal(levels) : (courses?.meta.total ?? 0);
 
   /* The destination does not have to claim the field. It used to: a page
      rendered only where the country listed the subject or published a
@@ -173,8 +194,8 @@ export default async function Page({ params }: Params) {
               {specialization.name} in {where}
             </h2>
             <p className="sec-lead">
-              {courses?.meta.total ? (
-                `${formatNumber(courses.meta.total)} published ${courses.meta.total === 1 ? 'programme' : 'programmes'} a student going to ${where} can apply to.`
+              {total ? (
+                `${formatNumber(total)} published ${total === 1 ? 'programme' : 'programmes'} a student going to ${where} can apply to${levels?.length ? ', each under the level it is taught at' : ''}.`
               ) : (
                 <>
                   No programme in {specialization.name} is published for{' '}
@@ -187,7 +208,7 @@ export default async function Page({ params }: Params) {
               )}
             </p>
           </div>
-          {courses?.meta.total ? (
+          {total ? (
             <Link
               className="linkcta"
               href={`/courses?country=${country.slug}&subject=${subject.slug}&subSubject=${specialization.slug}`}
@@ -199,6 +220,20 @@ export default async function Page({ params }: Params) {
             </Link>
           ) : null}
         </div>
+        {levels?.length ? (
+          <CourseLevels
+            groups={levels}
+            branch={false}
+            allHref={(level) =>
+              levelCoursesHref({
+                subject: subject.slug,
+                subSubject: specialization.slug,
+                country: country.slug,
+                level,
+              })
+            }
+          />
+        ) : null}
         {courses?.data.length ? (
           <div className="h-grid">
             {courses.data.map((course) => (
