@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { phaseListAll } from '@/lib/phase1';
-import {
-  UniversityIndex,
-  type UniversityIndexRow,
-} from '@/components/study-abroad/UniversityIndex';
+import { UniversityIndex } from '@/components/study-abroad/UniversityIndex';
 import {
   UniversityIndexHero,
   type DirectoryDestination,
@@ -14,42 +11,29 @@ import {
   ConnectBand,
   MatchBand,
 } from '@/components/study-abroad/DiscoveryBands';
+import { isNarrowedList, toUniversityListRow } from '@/lib/university-list';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Universities',
-  description:
-    'Every published institution in the Universta catalogue, by destination and type, with the programmes each one offers.',
-  alternates: { canonical: '/universities' },
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-/** The list endpoint carries the campus rows and the offering count under
- * names the shared record shape does not declare. */
-function toRow(row: AnyRecord): UniversityIndexRow {
-  const extra = row as Record<string, unknown>;
-  const counts = extra._count as { offerings?: number } | undefined;
-  const campuses = extra.campuses as unknown[] | undefined;
-  const country = row.country as Record<string, unknown> | undefined;
+/* A searched, filtered or further-loaded view is a slice of this page, which
+   is indexed in full under its bare address. The slice is left out of the
+   index and its links are still followed -- the behaviour reference does
+   the same with its own filtered lists, and like it the slice names no
+   canonical, because "this is a copy of /universities" and "do not index
+   this" are two different instructions and a crawler should get one. */
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const narrowed = isNarrowedList(await searchParams);
   return {
-    id: String(row.id),
-    name: String(row.name),
-    slug: String(row.slug),
-    shortDescription:
-      typeof row.shortDescription === 'string' ? row.shortDescription : null,
-    institutionType:
-      typeof extra.institutionType === 'string' ? extra.institutionType : null,
-    qsRanking: typeof extra.qsRanking === 'number' ? extra.qsRanking : null,
-    programmes: counts?.offerings ?? 0,
-    campuses: Array.isArray(campuses) ? campuses.length : 0,
-    country: country?.name
-      ? {
-          name: String(country.name),
-          slug: String(country.slug ?? ''),
-          iso2Code:
-            typeof country.iso2Code === 'string' ? country.iso2Code : null,
-        }
-      : null,
+    title: 'Universities',
+    description:
+      'Every published institution in the Universta catalogue, by destination and type, with the programmes each one offers.',
+    ...(narrowed
+      ? { robots: { index: false, follow: true } }
+      : { alternates: { canonical: '/universities' } }),
   };
 }
 
@@ -62,11 +46,15 @@ export default async function UniversitiesPage() {
      reads at most forty pages of fifty, so what arrives here is the first
      two thousand -- and the hero is told the catalogue's real size rather
      than the size of what was read, because presenting a ceiling as a
-     total is how this page came to claim nothing was published at all. */
-  const read = await phaseListAll<AnyRecord>('universities').catch(
-    () => null,
-  );
-  const universities = read ? read.data.map(toRow) : [];
+     total is how this page came to claim nothing was published at all.
+
+     Read in the order the list opens in -- ranked first, then A to Z -- so
+     whatever the cap leaves out is the end of the alphabet, never a ranked
+     university the page is meant to lead with. */
+  const read = await phaseListAll<AnyRecord>('universities', {
+    sort: 'ranking',
+  }).catch(() => null);
+  const universities = read ? read.data.map(toUniversityListRow) : [];
   const total = read?.truncated?.total ?? universities.length;
 
   const byCountry = new Map<string, DirectoryDestination>();

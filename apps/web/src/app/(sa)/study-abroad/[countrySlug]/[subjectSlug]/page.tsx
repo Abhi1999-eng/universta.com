@@ -20,6 +20,7 @@ import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
 import { countrySubjectPage } from '@/lib/country-subject';
+import { subjectUniversitiesGroup } from '@/lib/university-related';
 
 /**
  * One field, in one destination.
@@ -344,6 +345,11 @@ export default async function Page({ params }: Params) {
               href: `${base}/${entry.slug}`,
             })),
           },
+          /* The universities that teach this field here, by name, rather
+             than only a link to the country's whole list. Read beside the
+             one block that shows them; a failed read leaves the band
+             without this group and nothing else. */
+          await subjectUniversitiesGroup(country.slug, subject.slug, where),
         ]}
       />
     </>

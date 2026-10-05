@@ -2720,3 +2720,45 @@
 .sa .entrytable tr:last-child th,
 .sa .entrytable tr:last-child td{ border-bottom: 0; }
 .sa .entrytable__note{ display: block; color: var(--muted); font-size: .8125rem; }
+
+/* === universities: lists === */
+/* The worldwide directory, a destination's list and the country guide's
+   universities band share one card and one results block. What follows is
+   only what they needed beyond the rules above: the reference's compact
+   grid, its "Load more" row, and the parts of the card this product adds. */
+
+/* The country guide's six. The rule the reference gives it, made safe for a
+   screen narrower than its 320px minimum. It comes after the plain grid's
+   own breakpoints, so it wins at every width. */
+.sa .unigrid--compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.sa .unigrid__after { margin-top: 28px; }
+
+/* The short description: one muted paragraph between the figures and the
+   subjects, as the behaviour reference's card carries it. */
+.sa .unicard__desc { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+.sa .unicard__where span { min-width: 0; }
+
+/* Compare is a link to the comparison page, drawn as the reference's icon
+   button. */
+.sa a.iconbtn { text-decoration: none; }
+
+/* "Load more": how far the reader is, the button, and the line a screen
+   reader hears when more arrive. The courses list's own "show more" row,
+   so the two lists read alike. */
+.sa .unimore {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding-top: 22px;
+}
+.sa .unimore .btn { white-space: normal; text-align: center; }
+.sa .unimore__end { font-size: 13.5px; color: var(--muted); }
+.sa .unimore__status { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--muted); }
+/* Kept in the page while empty, so it is already listening when the first
+   message arrives, but taking no room. */
+.sa .unimore__status:empty { height: 0; margin-top: -12px; }
+
+/* Nothing matched: the sentence, then the way back. */
+.sa .dir__none p { margin: 0; }
+.sa .dir__none .btn { margin-top: 14px; }
+
+/* A destination's list: the three ways on beneath its search box. */
+.sa .unilinks { margin-top: 20px; }
