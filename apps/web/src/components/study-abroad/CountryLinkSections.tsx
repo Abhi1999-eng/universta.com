@@ -304,6 +304,9 @@ export function CountryUniversities({
   );
 }
 
+/** How many subjects the guide shows before sending the reader to the rest. */
+export const SUBJECTS_SHOWN = 6;
+
 /** "Popular subjects to study in <country>". */
 export function CountrySubjects({
   country,
@@ -327,11 +330,20 @@ export function CountrySubjects({
      in this destination -- open it and there is something behind it. An
      editorial one is here because somebody added it, usually for a market
      the catalogue has not caught up with, and may still be empty. Showing
-     them in one undifferentiated grid is how a reader ends up on a page
-     with nothing on it, so the ones we can stand behind come first and the
-     rest are named for what they are. */
+     them undifferentiated is how a reader ends up on a page with nothing on
+     it, so the ones we can stand behind come first and, when the six mix
+     the two kinds, each of the others says on its own card that it has no
+     programmes yet. */
   const taught = subjects.filter((subject) => subject.source !== 'EDITORIAL');
   const editorial = subjects.filter((subject) => subject.source === 'EDITORIAL');
+  /* Six, in two rows of three, and one button to the rest. Thirty cards
+     made this section ten rows of a guide that has fees, visas and intakes
+     still to come; the page that lists every subject, with a search, is one
+     press away. The ones with programmes behind them fill the six first. */
+  const shown = [...taught, ...editorial].slice(0, SUBJECTS_SHOWN);
+  const listedAmongShown = shown.some(
+    (subject) => subject.source === 'EDITORIAL',
+  );
   /* The field as studied here, not the field in general. A reader who
      picked a destination and then a subject has asked a narrower question
      than "what is Engineering", and the page that answers it is the one
@@ -342,15 +354,28 @@ export function CountrySubjects({
      And as a card that says what is in it and that it opens: the name was
      alone in a box, with nothing to tell a reader there were eighteen
      specializations behind it or that pressing it went anywhere. */
-  const card = (subject: (typeof subjects)[number]) => (
-    <RowCard
-      key={subject.id}
-      href={`/study-abroad/${country.slug}/${subject.slug}`}
-      title={subject.name}
-      meta={countLabel(specializations[subject.slug], 'specialization')}
-      mark
-    />
-  );
+  const card = (subject: (typeof subjects)[number]) => {
+    const count = countLabel(specializations[subject.slug], 'specialization');
+    /* Said on the card, not only in the sentence above the grid: "the rest"
+       pointed at cards nobody could tell from the taught ones. Only when the
+       two kinds are mixed -- with none taught, the sentence covers them all. */
+    const empty = taught.length > 0 && subject.source === 'EDITORIAL';
+    return (
+      <RowCard
+        key={subject.id}
+        href={`/study-abroad/${country.slug}/${subject.slug}`}
+        title={subject.name}
+        meta={
+          empty
+            ? count
+              ? `${count} · no programmes yet`
+              : 'No programmes yet'
+            : count
+        }
+        mark
+      />
+    );
+  };
 
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="subjects">
@@ -361,38 +386,21 @@ export function CountrySubjects({
           title={`Popular subjects to study in ${where}`}
           lead={
             taught.length
-              ? 'Explore the fields taught here, then see the courses and specializations inside each one.'
+              ? listedAmongShown
+                ? 'The fields taught here come first, with the courses and specializations inside each one. The others say so on their card: they are listed with no programme in the catalogue yet.'
+                : 'Explore the fields taught here, then see the courses and specializations inside each one.'
               : 'These fields are listed for this destination. The catalogue has no programmes under them yet.'
           }
-          cta={{
-            href: `/study-abroad/${country.slug}/subjects`,
-            label: 'All subjects here',
-          }}
         />
-        {taught.length ? (
-          <div className="h-grid h-grid--wide">{taught.map(card)}</div>
-        ) : null}
-        {editorial.length ? (
-          <>
-            {taught.length ? (
-              <p className="h-more">
-                <span className="label">
-                  Also listed here, with no programme in the catalogue yet
-                </span>
-              </p>
-            ) : null}
-            {/* Three across, not four: the card carries a mark, a count and
-                an arrow beside the name now, and at four across a long
-                subject wrapped to three lines. */}
-            <div className="h-grid h-grid--wide">{editorial.map(card)}</div>
-          </>
-        ) : null}
-        {/* The way onward, where the reader finishes reading the cards. The
-            button in the head is a screen above them by then. */}
+        {/* Three across, so six make two rows; one column on a phone. */}
+        <div className="h-grid h-grid--wide">{shown.map(card)}</div>
+        {/* One way to the rest, under the cards, where the reader is when
+            they have read them. It is a button because it is the section's
+            action, not an aside. */}
         <p className="h-more">
-          <Link className="linkcta" href={`/study-abroad/${country.slug}/subjects`}>
-            All {subjects.length} subjects in {where}{' '}
-            <span className="linkcta__arrow" aria-hidden="true">
+          <Link className="btn" href={`/study-abroad/${country.slug}/subjects`}>
+            View all subjects{' '}
+            <span className="btn__arrow" aria-hidden="true">
               &rarr;
             </span>
           </Link>
