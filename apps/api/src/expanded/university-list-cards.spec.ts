@@ -14,9 +14,10 @@ import type { ExperimentsService } from '../experiments/experiments.service';
 
 type Row = Record<string, unknown>;
 
-function service(rows: Row[], offerings: Row[] = []) {
+function service(rows: Row[], tallies: Row[] = []) {
   const listArgs: Row[] = [];
-  const offeringArgs: Row[] = [];
+  const subjectReads: Array<{ sql: string; values: unknown[] }> = [];
+  const offeringReads: Row[] = [];
   const prisma = {
     university: {
       findMany: async (args: Row) => {
@@ -27,15 +28,20 @@ function service(rows: Row[], offerings: Row[] = []) {
     },
     universityCourseOffering: {
       findMany: async (args: Row) => {
-        offeringArgs.push(args);
-        return offerings;
+        offeringReads.push(args);
+        return [];
       },
+    },
+    $queryRaw: async (query: { sql: string; values: unknown[] }) => {
+      subjectReads.push({ sql: query.sql, values: query.values });
+      return tallies;
     },
   } as unknown as PrismaService;
   return {
     svc: new ExpandedService(prisma, {} as ExperimentsService),
     listArgs,
-    offeringArgs,
+    subjectReads,
+    offeringReads,
   };
 }
 
@@ -48,10 +54,14 @@ const university = (over: Row = {}): Row => ({
   ...over,
 });
 
-const offering = (universityId: string, name: string, slug: string): Row => ({
-  universityId,
-  genericCourse: { subject: { name, slug } },
-});
+/* One row of the per-university, per-subject count the database returns.
+   MySQL hands COUNT(*) back as a BIGINT. */
+const tally = (
+  universityId: string,
+  name: string,
+  slug: string,
+  offerings: number,
+): Row => ({ universityId, name, slug, offerings: BigInt(offerings) });
 
 describe('the universities list, for a directory card', () => {
   it('reports each campus city, the typed one first and the catalogue city after', async () => {
@@ -83,14 +93,13 @@ describe('the universities list, for a directory card', () => {
   });
 
   it('names the subjects each one teaches, most published programmes first', async () => {
-    const { svc, offeringArgs } = service(
+    const { svc } = service(
       [university(), university({ id: 'u2', slug: 'imperial-college-london' })],
       [
-        offering('u1', 'Law', 'law'),
-        offering('u1', 'History', 'history'),
-        offering('u1', 'History', 'history'),
-        offering('u1', 'Classics', 'classics'),
-        offering('u2', 'Engineering', 'engineering'),
+        tally('u1', 'Law', 'law', 1),
+        tally('u1', 'History', 'history', 2),
+        tally('u1', 'Classics', 'classics', 1),
+        tally('u2', 'Engineering', 'engineering', 1),
       ],
     );
     const result = await svc.list('universities', {
@@ -106,15 +115,32 @@ describe('the universities list, for a directory card', () => {
     expect((result.data[1] as Row).subjects).toEqual([
       { name: 'Engineering', slug: 'engineering', offerings: 1 },
     ]);
-    /* One read for the page, counting only published programmes under a
-       published subject -- the same programmes the card's count is of. */
-    expect(offeringArgs).toHaveLength(1);
-    const where = offeringArgs[0]?.where as Row;
-    expect(where.universityId).toEqual({ in: ['u1', 'u2'] });
-    expect(where.status).toBe('PUBLISHED');
-    expect(where.genericCourse).toEqual({
-      subject: { status: 'PUBLISHED', deletedAt: null },
-    });
+  });
+
+  it('counts the subjects in the database, not by reading every offering', async () => {
+    /* Every page of every list paid for a read of all its universities'
+       published offerings, tallied here. The database now answers with
+       one row per university and subject, in one read for the page. */
+    const { svc, subjectReads, offeringReads } = service([
+      university(),
+      university({ id: 'u2', slug: 'imperial-college-london' }),
+    ]);
+    await svc.list('universities', { page: 1, limit: 12 } as never);
+
+    expect(offeringReads).toHaveLength(0);
+    expect(subjectReads).toHaveLength(1);
+    const { sql, values } = subjectReads[0];
+    expect(sql).toMatch(/COUNT\(\*\)/);
+    expect(sql).toMatch(/GROUP BY o\.university_id, s\.id/);
+    /* Only published programmes inside their window, under a published
+       subject -- the same programmes the card's count is of. */
+    expect(sql).toContain("o.status = 'PUBLISHED'");
+    expect(sql).toContain('o.deleted_at IS NULL');
+    expect(sql).toMatch(/o\.publish_starts_at <= \?/);
+    expect(sql).toMatch(/o\.publish_ends_at > \?/);
+    expect(sql).toContain("s.status = 'PUBLISHED'");
+    expect(sql).toContain('s.deleted_at IS NULL');
+    expect(values.slice(0, 2)).toEqual(['u1', 'u2']);
   });
 
   it('gives a university with no published programme an empty list, not a missing one', async () => {
@@ -127,9 +153,9 @@ describe('the universities list, for a directory card', () => {
   });
 
   it('does not ask about subjects for an empty page', async () => {
-    const { svc, offeringArgs } = service([]);
+    const { svc, subjectReads } = service([]);
     await svc.list('universities', { page: 1, limit: 12 } as never);
-    expect(offeringArgs).toHaveLength(0);
+    expect(subjectReads).toHaveLength(0);
   });
 
   it('orders ranked first, then by name, when asked', async () => {
