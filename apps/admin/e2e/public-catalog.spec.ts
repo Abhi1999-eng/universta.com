@@ -216,7 +216,7 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.getByRole('heading', { level: 1, name: /Find your perfect course/i })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Search courses' })).toHaveValue('computer');
     await expect(page.getByRole('combobox', { name: 'Search courses' })).toBeEditable();
-    await expect(page.getByRole('checkbox', { name: /Undergraduate/ })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: /Bachelor's/ })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: /Canada/ })).toBeChecked();
 
     await page.getByRole('checkbox', { name: /United Kingdom/ }).check();
@@ -237,13 +237,13 @@ test.describe('approved public subject and course discovery', () => {
   test('restores course filter controls with browser back and forward navigation', async ({ page }) => {
     await page.goto(`${courses}?level=UG&country=canada`);
     await page.getByRole('checkbox', { name: /^Diploma / }).check();
-    await page.getByRole('checkbox', { name: /Undergraduate/ }).uncheck();
+    await page.getByRole('checkbox', { name: /Bachelor's/ }).uncheck();
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/level=DIPLOMA/);
 
     await page.goBack();
     await expect(page).toHaveURL(/level=UG/);
-    await expect(page.getByRole('checkbox', { name: /Undergraduate/ })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: /Bachelor's/ })).toBeChecked();
 
     await page.goForward();
     await expect(page).toHaveURL(/level=DIPLOMA/);
@@ -255,7 +255,7 @@ test.describe('approved public subject and course discovery', () => {
 
     await page.getByRole('checkbox', { name: /Canada/ }).check();
     await page.getByRole('checkbox', { name: /Computer Science/ }).check();
-    await page.getByRole('checkbox', { name: /Undergraduate/ }).check();
+    await page.getByRole('checkbox', { name: /Bachelor's/ }).check();
     await page.getByRole('checkbox', { name: /^Diploma / }).check();
     await page.getByRole('checkbox', { name: /IELTS/ }).check();
     await page.getByRole('button', { name: 'Apply filters' }).click();
