@@ -24,6 +24,7 @@ import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens
 import {
   courseDeadlines,
   courseFacets,
+  effectiveLevel,
   matchesCourseQuery,
   parseCourseQuery,
   relatedOfferings,
@@ -1191,9 +1192,17 @@ export class ExpandedService {
       );
     const siblings = sortOfferings(canonical(here), 'relevance', now);
     const elsewhere = nearFirst(canonical(sameCourse)).slice(0, 6);
+    /* Among the same subject elsewhere, the level the reader is looking at
+       comes first: someone on a Master's page wants other Master's. */
+    const level = effectiveLevel(row)?.code;
+    const sameLevel = (entry: OfferingLike) =>
+      Number(Boolean(level) && effectiveLevel(entry)?.code === level);
+    const subjectElsewhere = nearFirst(canonical(sameSubject)).sort(
+      (a, b) => sameLevel(b) - sameLevel(a),
+    );
     const related = relatedOfferings(
       row,
-      { here: siblings, elsewhere: nearFirst(canonical(sameSubject)) },
+      { here: siblings, elsewhere: subjectElsewhere },
       elsewhere.map((entry) => entry.slug),
     );
     const suggested = new Set(related.map((entry) => entry.slug));
