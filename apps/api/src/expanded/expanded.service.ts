@@ -1107,6 +1107,12 @@ export class ExpandedService {
         offerings: {
           where: publishedWhereScheduled(now),
           include: {
+            /* An editor can set a course's level per university, and the
+               course list and the course's own page read that level first
+               (effectiveLevel). The university page has to read it too, or
+               it files the same course under another level and counts its
+               levels differently from the list it links to. */
+            courseLevel: true,
             /* The specialization rides along so a programme's card can name
                the branch of its subject it belongs to, not only the subject. */
             genericCourse: {

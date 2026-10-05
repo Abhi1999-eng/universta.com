@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   UniversityGuide,
@@ -599,5 +599,70 @@ describe('questions the record answers', () => {
 
   it('says plainly when no scholarship is linked', () => {
     expect(html()).toContain('None is linked to Elmswood Polytechnic University in our catalogue yet.');
+  });
+});
+
+/**
+ * A university's intakes, as its courses record them. The snapshot named
+ * the destination's months while the intakes band and the questions on the
+ * same page named the courses' own, and the band gave a deadline already
+ * gone as the one to meet.
+ */
+describe('intakes and deadlines', () => {
+  /* Lakeside's courses: January and May intakes, closing on 15 September,
+     15 October and 15 November, read on 5 October. */
+  const lakeside = (deadlines: string[]) =>
+    university({
+      offerings: deadlines.map((deadline, index) =>
+        offering({
+          id: `o${index}`,
+          slug: `course-${index}`,
+          intakes: [
+            { key: 'jan', name: 'January', month: 1, deadline },
+            { key: 'may', name: 'May', month: 5, deadline },
+          ],
+        }),
+      ) as UniversityRecord['offerings'],
+    });
+  const snapshotOf = (markup: string) =>
+    plain(markup.slice(markup.indexOf('id="snapshot"'), markup.indexOf('class="verifybar"')));
+  const intakesOf = (markup: string) => {
+    const start = markup.indexOf('id="intakes"');
+    return plain(markup.slice(start, markup.indexOf('</section>', start)));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-05T10:00:00.000Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('gives the next deadline still open, not one already gone', () => {
+    const band = intakesOf(render(lakeside(['2026-09-15', '2026-10-15', '2026-11-15'])));
+    expect(band).toContain('Next deadline');
+    expect(band).toContain('15 October 2026');
+    expect(band).not.toContain('15 September 2026');
+    expect(band).not.toContain('(passed)');
+  });
+
+  it('says a deadline has passed when every one in the intake has', () => {
+    const band = intakesOf(render(lakeside(['2026-09-15', '2026-08-01'])));
+    expect(band).toContain('Last deadline');
+    expect(band).toContain('15 September 2026 (passed)');
+    expect(band).not.toContain('Next deadline');
+  });
+
+  it('names the courses’ own intakes in the snapshot, as the band and the questions do', () => {
+    const markup = render(lakeside(['2026-11-15']));
+    expect(snapshotOf(markup)).toContain('Intakes</span><b>January · May</b>');
+    expect(snapshotOf(markup)).not.toContain('April · October');
+    expect(plain(markup)).toContain('Its courses list intakes in January and May.');
+  });
+
+  it('says whose months they are when it can only give the destination’s', () => {
+    const snapshot = snapshotOf(render(university()));
+    expect(snapshot).toContain('Main intakes in Germany</span><b>April · October</b>');
   });
 });

@@ -413,9 +413,24 @@ export function UniversityGuide({
         .filter(Boolean)
         .join(' '),
     });
-  if (country?.intakeMonths?.length)
+  /* The university's own intakes, as its courses list them -- the months the
+     intakes band and the questions further down name -- so the page gives
+     one answer. Only when no course records an intake does the cell fall
+     back on the destination's months, and then it says they are the
+     destination's, not the university's. */
+  const ownIntakes = [
+    ...new Set(
+      intakeSummary(offerings).map((intake) => monthName(intake.month) ?? intake.name),
+    ),
+  ];
+  if (ownIntakes.length)
     snapshot.push({
-      label: country.intakeMonths.length === 1 ? 'Intake' : 'Intakes',
+      label: ownIntakes.length === 1 ? 'Intake' : 'Intakes',
+      value: ownIntakes.join(' · '),
+    });
+  else if (country?.intakeMonths?.length)
+    snapshot.push({
+      label: `Main ${country.intakeMonths.length === 1 ? 'intake' : 'intakes'} in ${where}`,
       value: [...country.intakeMonths]
         .sort((a, b) => a - b)
         .map((month) => MONTHS[month - 1] ?? String(month))

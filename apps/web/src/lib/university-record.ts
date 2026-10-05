@@ -42,7 +42,14 @@ export function toOffering(row: Record<string, unknown>): UniversityOffering {
   const specialization = generic.subSubject as
     | Record<string, unknown>
     | undefined;
-  const level = generic.courseLevel as Record<string, unknown> | undefined;
+  /* The level an editor set on this university's course first, the generic
+     course's otherwise: the rule the course list and the course's own page
+     follow (effectiveLevel in the API), so all three call a course the same
+     level and count the levels the same way. */
+  const level = (row.courseLevel ?? generic.courseLevel) as
+    | Record<string, unknown>
+    | null
+    | undefined;
   /* The offering's own figures where it has them, the generic course's
      otherwise: a university that has not stated its duration still teaches
      the programme the catalogue describes. */

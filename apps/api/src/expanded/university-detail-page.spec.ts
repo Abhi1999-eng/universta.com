@@ -71,6 +71,18 @@ describe('a university’s public record', () => {
     });
   });
 
+  /* An editor can set a course's level per university. The course list and
+     the course page read that level first, so the university page needs it
+     too, or it files the course under the generic course's level. */
+  it('brings the level set on each course, not only the generic course’s', async () => {
+    const { svc, detailArgs } = service();
+    await svc.detail('universities', 'university-of-oxford');
+    const include = detailArgs[0]?.include as Include & {
+      offerings: { include: Record<string, unknown> };
+    };
+    expect(include.offerings.include.courseLevel).toBe(true);
+  });
+
   it('names the city a campus was picked from, not only the city typed on it', async () => {
     const { svc, detailArgs } = service();
     await svc.detail('universities', 'university-of-oxford');

@@ -83,6 +83,7 @@ describe('a university’s public record (e2e)', () => {
 
   let mainSlug = '';
   let subSubjectSlug = '';
+  let ownLevelCode = '';
 
   beforeAll(async () => {
     const fixture = await Test.createTestingModule({
@@ -193,6 +194,16 @@ describe('a university’s public record (e2e)', () => {
       ),
       201,
     );
+    /* An editor files this university's course under another level than
+       the generic course's, as the catalogue lets them. */
+    const ownLevel = await prisma.courseLevel.findFirstOrThrow({
+      where: { status: 'ACTIVE', id: { not: courseLevelId } },
+    });
+    ownLevelCode = ownLevel.code;
+    await prisma.universityCourseOffering.update({
+      where: { id: String(record(offering).id) },
+      data: { courseLevelId: ownLevel.id },
+    });
 
     /* Its neighbours: two ranked (in the wrong order of creation), two not,
        and one still in draft that must not be offered. */
@@ -247,5 +258,19 @@ describe('a university’s public record (e2e)', () => {
       genericCourse: { subSubject: { slug: string } | null };
     }>;
     expect(offerings[0]?.genericCourse.subSubject?.slug).toBe(subSubjectSlug);
+  });
+
+  /* The course list and the course page read the level set on the course
+     first; the university page reads this record, so the level has to be
+     in it for the three pages to agree. */
+  it('carries the level set on each course alongside the generic course’s', async () => {
+    const offerings = (await detail()).offerings as Array<{
+      courseLevel: { code: string } | null;
+      genericCourse: { courseLevel: { code: string } | null };
+    }>;
+    expect(offerings[0]?.courseLevel?.code).toBe(ownLevelCode);
+    expect(offerings[0]?.genericCourse.courseLevel?.code).not.toBe(
+      ownLevelCode,
+    );
   });
 });
