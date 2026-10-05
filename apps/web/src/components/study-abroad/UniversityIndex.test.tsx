@@ -203,6 +203,20 @@ describe('the list in the address', () => {
     expect(html).not.toContain('<span>Aalborg</span>');
   });
 
+  it('keeps a city it is narrowing by on offer, with no destination ticked', () => {
+    /* A shared link, or a destination unticked before the fix that lets
+       go of its cities: the city still narrows the list, so the panel has
+       to show it where it can be unticked. */
+    nav.search = 'city=london';
+    const html = render(mixed());
+    expect(cards(html)).toBe(1);
+    expect(html).toContain('>City<');
+    expect(html).toMatch(/checked=""\/><span>London<\/span>/);
+    /* Only the city ticked, not every city in the catalogue around it. */
+    expect(html).not.toContain('<span>Oxford</span>');
+    expect(html).not.toContain('<span>Aalborg</span>');
+  });
+
   it('narrows to a city', () => {
     nav.search = 'country=united-kingdom&city=oxford';
     const html = render(mixed());

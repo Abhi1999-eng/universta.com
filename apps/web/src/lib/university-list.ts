@@ -279,6 +279,31 @@ export function effectiveFilters(
 
 export type EffectiveFilters = ReturnType<typeof effectiveFilters>;
 
+/**
+ * The list a reader's change leaves, settled against the options that
+ * change leaves, so no choice stays in the address with nothing to match.
+ *
+ * `before` is what was in effect until now. A city is a choice made inside
+ * a destination, so unticking the last destination lets go of its cities
+ * as well. Settling alone did not: with no destination ticked the options
+ * cover the whole catalogue, London is still among them, and the city went
+ * on narrowing the list after the City group had left the panel.
+ */
+export function settleListState(
+  rows: UniversityListRow[],
+  before: Pick<EffectiveFilters, 'countries'>,
+  next: UniversityListState,
+): UniversityListState {
+  const merged =
+    before.countries.length > 0 && next.countries.length === 0
+      ? { ...next, cities: [] }
+      : next;
+  return {
+    ...merged,
+    ...effectiveFilters(merged, listOptions(rows, merged.countries)),
+  };
+}
+
 export function activeFilterCount(filters: EffectiveFilters) {
   return (
     filters.countries.length +
