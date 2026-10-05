@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { counsellingHref } from '@/lib/counselling-link';
 import { inCountry } from '@/lib/country-article';
-import { formatDate } from '@/lib/format';
+import { jsonLdString } from '@/lib/json-ld';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import {
   courseListSearch,
+  dateLabel,
   type CountryRef,
   type CourseFacets,
   type CourseFilters,
   type OfferingCardData,
 } from '@/lib/university-courses';
+import { breadcrumbJsonLd, faqJsonLd, type Crumb } from '@/lib/university-json-ld';
 import {
   countryUniversitiesHref,
   universityCoursesHref,
@@ -113,20 +115,34 @@ export function UniversityCourses(props: UniversityCoursesProps) {
     { label: 'Intakes', value: facets.intake.length },
   ];
 
+  /* The structured data reads the trail the page draws and the questions
+     its last band answers. */
+  const trail: Crumb[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Study abroad', href: '/study-abroad' },
+    { label: country.name, href: `/study-abroad/${country.slug}` },
+    { label: 'Universities', href: countryUniversitiesHref(country.slug) },
+    { label: university.name, href: universityHref(university.slug) },
+    { label: 'Courses' },
+  ];
+  const structured = [
+    breadcrumbJsonLd(trail, base),
+    faqJsonLd(FAQS.map((item) => ({ question: item.q, answer: item.a }))),
+  ].filter((data): data is Record<string, unknown> => Boolean(data));
+
   return (
     <>
+      {structured.map((data) => (
+        <script
+          key={String(data['@type'])}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(data) }}
+        />
+      ))}
+
       <section className="hero hero--compact">
         <div className="wrap">
-          <Crumbs
-            trail={[
-              { label: 'Home', href: '/' },
-              { label: 'Study abroad', href: '/study-abroad' },
-              { label: country.name, href: `/study-abroad/${country.slug}` },
-              { label: 'Universities', href: countryUniversitiesHref(country.slug) },
-              { label: university.name, href: universityHref(university.slug) },
-              { label: 'Courses' },
-            ]}
-          />
+          <Crumbs trail={trail} />
 
           <div className="unihero">
             <div className="unihero__main">
@@ -268,6 +284,9 @@ export function UniversityCourses(props: UniversityCoursesProps) {
               title="Browse by degree level"
               lead="Each opens the list above at that level."
             />
+            {/* No initials tile, unlike the subjects below: a level's
+                initials read as a degree -- "BA" for Bachelor's, "MA" for
+                Master's -- on a page whose courses may be a BSc and an MSc. */}
             <div className="h-grid h-grid--4">
               {facets.level.map((level) => (
                 <RowCard
@@ -284,7 +303,6 @@ export function UniversityCourses(props: UniversityCoursesProps) {
                   })}#courses`}
                   title={level.label}
                   meta={countLabel(level.count, 'course')}
-                  mark
                 />
               ))}
             </div>
@@ -340,11 +358,7 @@ export function UniversityCourses(props: UniversityCoursesProps) {
                 {props.deadlines.map((entry) => (
                   <tr key={`${entry.label}-${entry.deadline ?? ''}`}>
                     <th scope="row">{entry.label}</th>
-                    <td>
-                      {entry.deadline
-                        ? formatDate(entry.deadline)
-                        : 'Deadline not published'}
-                    </td>
+                    <td>{dateLabel(entry.deadline) ?? 'Deadline not published'}</td>
                     <td>{entry.count}</td>
                   </tr>
                 ))}

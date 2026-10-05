@@ -3,18 +3,21 @@ import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { StudentCatalogueActions } from '@/components/student/StudentCatalogueActions';
 import { counsellingHref } from '@/lib/counselling-link';
 import { inCountry } from '@/lib/country-article';
-import { formatDate } from '@/lib/format';
+import { jsonLdString } from '@/lib/json-ld';
 import {
   groupRequirements,
+  teachingLanguage,
   type OfferingDetail,
 } from '@/lib/offering-detail';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
-import { humanise, place } from '@/lib/university-courses';
+import { dateLabel, humanise, place } from '@/lib/university-courses';
+import { breadcrumbJsonLd, faqJsonLd, type Crumb } from '@/lib/university-json-ld';
 import {
   countryUniversitiesHref,
   universityCoursesHref,
   universityHref,
 } from '@/lib/university-links';
+import type { UniversityDestination } from './UniversityGuide';
 import { Crumbs } from './Crumbs';
 import { CompareButton, CompareTray } from './CourseCompare';
 import { ConnectBand } from './DiscoveryBands';
@@ -42,21 +45,22 @@ import { universityInitials } from '@/lib/university-initials';
  * page ends with the same course at other universities, each linking to
  * that university's own version of it.
  *
- * Nothing is invented to fill a gap. The design's curriculum modules,
- * document checklist and course FAQ read records this catalogue does not
- * keep per course, so they are not drawn.
+ * Nothing is invented to fill a gap. The design's curriculum modules and
+ * document checklist read records this catalogue does not keep per course,
+ * so they are not drawn. Its course FAQ is drawn from the questions editors
+ * wrote for the course, and only when there are some.
  */
 
 const NOT_LISTED = 'Not listed';
 
-
-const day = (value: string | null) =>
-  value ? new Date(value).toISOString().slice(0, 10) : null;
+export type OfferingFaq = { id: string; question: string; answer: string };
 
 export function OfferingGuide({
   detail,
   scholarships = [],
   scholarshipScope = 'course',
+  destination = null,
+  faqs = [],
   today = new Date(),
 }: {
   detail: OfferingDetail;
@@ -64,11 +68,32 @@ export function OfferingGuide({
   /** Whether the awards are recorded against this course or, failing that,
    *  against the university as a whole -- the heading says which. */
   scholarshipScope?: 'course' | 'university';
+  /** The destination guide's parts this page links into, when it loaded:
+   *  the sections it renders and the consultants who cover it. */
+  destination?: UniversityDestination | null;
+  /** The questions editors wrote for the course this one is an instance of. */
+  faqs?: OfferingFaq[];
   today?: Date;
 }) {
   const { card, university } = detail;
   const { country } = university;
   const listHref = universityCoursesHref(country.slug, university.slug);
+  /* Each link into the destination's guide lands on the section it names,
+     and only when the guide renders that section; otherwise on the guide
+     itself rather than on an anchor that is not there. Without the guide
+     to ask, the work-rights link keeps the anchor it always had. */
+  const guideHref = `/study-abroad/${country.slug}`;
+  const guideLink = (key: string) =>
+    destination?.links.find((link) => link.key === key)?.href ?? null;
+  const visaHref = guideLink('visa') ?? guideHref;
+  const costHref = destination?.costHref ?? guideHref;
+  const workHref = destination
+    ? (guideLink('work-visa') ?? guideHref)
+    : `${guideHref}#work-visa`;
+  const consultants = destination?.consultants?.total
+    ? destination.consultants
+    : null;
+  const consultantsHref = `/study-abroad-consultants?country=${encodeURIComponent(country.slug)}`;
   const where = place(university.city, country);
   /* The country inside a sentence -- "Studying in the United Kingdom" --
      where a label or a breadcrumb keeps the bare name. */
@@ -106,9 +131,9 @@ export function OfferingGuide({
   const upcoming = deadlines.find((value) => value >= floor) ?? null;
   const lastPassed = deadlines.length ? deadlines[deadlines.length - 1]! : null;
   const deadline = upcoming
-    ? formatDate(upcoming)
+    ? dateLabel(upcoming)
     : lastPassed
-      ? `${formatDate(lastPassed)} (passed)`
+      ? `${dateLabel(lastPassed)} (passed)`
       : null;
   const starts = [
     ...new Set(detail.intakes.map((intake) => intake.start).filter(Boolean)),
@@ -118,8 +143,13 @@ export function OfferingGuide({
   const overview = detail.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview).trim());
   const careers = detail.careerSummary?.trim();
+  const language = teachingLanguage(detail.requirements);
+  const questions = faqs.filter(
+    (faq) => faq.question.trim() && richTextToPlainText(faq.answer).trim(),
+  );
 
-  /* The tabs and the numbers both come from the bands that render. */
+  /* The tabs and the numbers both come from the bands that render. The
+     questions follow the careers band, where the design puts them. */
   const numbered: Array<[string, string]> = [
     ['overview', 'Overview'],
     ['fees', 'Fees'],
@@ -129,6 +159,7 @@ export function OfferingGuide({
   ];
   if (scholarships.length) numbered.push(['scholarships', 'Scholarships']);
   if (careers) numbered.push(['careers', 'Careers']);
+  if (questions.length) numbered.push(['faqs', 'FAQs']);
   numbered.push(['university', 'University']);
   const discovery: Array<[string, string]> = [];
   if (detail.more.rows.length) discovery.push(['more', 'More courses']);
@@ -168,7 +199,13 @@ export function OfferingGuide({
       note: card.qualification,
     },
     { label: 'Duration', value: card.duration, note: card.studyMode },
-    { label: 'Language', value: null, note: null },
+    /* Named only on the course's own evidence, an English test it asks
+       for; never borrowed from the country. */
+    {
+      label: 'Language',
+      value: language?.value ?? null,
+      note: language?.note ?? null,
+    },
     {
       label: 'Tuition',
       value: card.tuition,
@@ -192,21 +229,40 @@ export function OfferingGuide({
     { label: 'Course code', value: card.courseCode },
   ];
 
+  /* The structured data reads the trail the page draws and the questions
+     it shows; the course itself is described by the route. */
+  const trail: Crumb[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Study abroad', href: '/study-abroad' },
+    { label: country.name, href: `/study-abroad/${country.slug}` },
+    { label: 'Universities', href: countryUniversitiesHref(country.slug) },
+    { label: university.name, href: universityHref(university.slug) },
+    { label: 'Courses', href: listHref },
+    { label: card.name },
+  ];
+  const structured = [
+    breadcrumbJsonLd(trail, card.href),
+    faqJsonLd(
+      questions.map((faq) => ({
+        question: faq.question,
+        answer: richTextToPlainText(faq.answer),
+      })),
+    ),
+  ].filter((data): data is Record<string, unknown> => Boolean(data));
+
   return (
     <>
+      {structured.map((data) => (
+        <script
+          key={String(data['@type'])}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(data) }}
+        />
+      ))}
+
       <section className="hero hero--compact coursehero" id="course-hero">
         <div className="wrap">
-          <Crumbs
-            trail={[
-              { label: 'Home', href: '/' },
-              { label: 'Study abroad', href: '/study-abroad' },
-              { label: country.name, href: `/study-abroad/${country.slug}` },
-              { label: 'Universities', href: countryUniversitiesHref(country.slug) },
-              { label: university.name, href: universityHref(university.slug) },
-              { label: 'Courses', href: listHref },
-              { label: card.name },
-            ]}
-          />
+          <Crumbs trail={trail} />
 
           <div className="coursehero__grid">
             <div className="coursehero__main">
@@ -335,15 +391,15 @@ export function OfferingGuide({
                     >
                       the university&rsquo;s own listing &#8599;
                     </a>
-                    {detail.verifiedAt
-                      ? `, checked ${formatDate(detail.verifiedAt)}`
+                    {dateLabel(detail.verifiedAt)
+                      ? `, checked ${dateLabel(detail.verifiedAt)}`
                       : ''}
                     .
                   </p>
                 ) : null}
                 <p className="snap__disclaimer">
-                  {detail.updatedAt
-                    ? `Last updated ${day(detail.updatedAt)}. `
+                  {dateLabel(detail.updatedAt)
+                    ? `Last updated ${dateLabel(detail.updatedAt)}. `
                     : ''}
                   Fees and deadlines change every cycle &mdash; confirm on the
                   official course page before applying.
@@ -453,8 +509,8 @@ export function OfferingGuide({
               </dl>
               <p className="uc-note">
                 Published figure
-                {detail.verifiedAt
-                  ? `, verified ${formatDate(detail.verifiedAt)}`
+                {dateLabel(detail.verifiedAt)
+                  ? `, verified ${dateLabel(detail.verifiedAt)}`
                   : ''}
                 . Confirm the exact fee with {university.name} before you apply.
               </p>
@@ -463,7 +519,9 @@ export function OfferingGuide({
             pointer('Fee information for this course is not listed yet.')
           )}
           <p className="uc-note">
-            <Link href={`/study-abroad/${country.slug}`}>
+            {/* The guide's cost section when it has one, which is where its
+                living costs are. */}
+            <Link href={costHref}>
               {/* One string: the compiler drops the space before an entity
                   that follows an expression. */}
               {`Living costs and visa fees in ${inWhere} →`}
@@ -497,7 +555,7 @@ export function OfferingGuide({
                   <tr key={`${intake.label}-${intake.deadline ?? ''}`}>
                     <th scope="row">{intake.label}</th>
                     <td>
-                      {intake.deadline ? formatDate(intake.deadline) : NOT_LISTED}
+                      {dateLabel(intake.deadline) ?? NOT_LISTED}
                       {intake.notes ? (
                         <span className="entrytable__note">{intake.notes}</span>
                       ) : null}
@@ -668,7 +726,7 @@ export function OfferingGuide({
               <p className="applystep__b">
                 {upcoming ? (
                   <>
-                    Before <b>{formatDate(upcoming)}</b>.
+                    Before <b>{dateLabel(upcoming)}</b>.
                   </>
                 ) : (
                   <>
@@ -692,9 +750,9 @@ export function OfferingGuide({
               <p className="applystep__b">
                 Start the student visa file the day your admission letter
                 arrives.{' '}
-                <Link href={`/study-abroad/${country.slug}#work-visa`}>
-                  {`${country.name} visa steps →`}
-                </Link>
+                {/* The guide's student-visa section, not its work-rights
+                    one: this step is the visa to study. */}
+                <Link href={visaHref}>{`${country.name} visa steps →`}</Link>
               </p>
             </li>
           </ol>
@@ -745,6 +803,10 @@ export function OfferingGuide({
         </section>
       ) : null}
 
+      {/* The design's consultants slot: the destination's consultants and
+          the cities they are in, beside the counselling Universta offers
+          itself. One band, so the course page does not stack two of them;
+          the consultants appear only when the destination has some. */}
       <section className="sec sec--white sec--tight" id="talk">
         <div className="wrap">
           <div className="consultcta">
@@ -756,10 +818,41 @@ export function OfferingGuide({
               <p className="consultcta__d">
                 A counsellor can check your profile against this course&rsquo;s
                 requirements and help you plan the application.
+                {consultants
+                  ? consultants.total === 1
+                    ? ` One consultant on Universta supports students planning to study in ${inWhere}.`
+                    : ` ${consultants.total} consultants on Universta support students planning to study in ${inWhere}.`
+                  : null}
               </p>
+              {consultants?.cities.length ? (
+                <p className="citychips">
+                  <span className="label">Near you</span>
+                  {consultants.cities.map((entry) => (
+                    <Link
+                      className="specchip"
+                      key={entry.city}
+                      href={`${consultantsHref}&city=${encodeURIComponent(entry.city)}`}
+                    >
+                      {entry.city}
+                      <em>{entry.count}</em>
+                    </Link>
+                  ))}
+                </p>
+              ) : null}
             </div>
             <div className="consultcta__actions">
-              <Link className="btn" href={counselling}>
+              {consultants ? (
+                <Link className="btn" href={consultantsHref}>
+                  Find {country.name} consultants{' '}
+                  <span className="btn__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </Link>
+              ) : null}
+              <Link
+                className={consultants ? 'btn btn--ghost' : 'btn'}
+                href={counselling}
+              >
                 Book free counselling{' '}
                 <span className="btn__arrow" aria-hidden="true">
                   &rarr;
@@ -783,12 +876,40 @@ export function OfferingGuide({
               <RichText value={careers} />
             </div>
             <div className="btn-row uc-gap">
-              <Link className="linkcta" href={`/study-abroad/${country.slug}#work-visa`}>
+              <Link className="linkcta" href={workHref}>
                 Post-study work rights in {inWhere}{' '}
                 <span className="linkcta__arrow" aria-hidden="true">
                   &rarr;
                 </span>
               </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {questions.length ? (
+        <section className={band('faqs')} id="faqs">
+          <div className="wrap">
+            <SectionHead
+              n={n('faqs')}
+              eyebrow="Questions"
+              title="About this course"
+              lead="Questions specific to this programme rather than to the university as a whole."
+            />
+            <div className="faq">
+              {questions.map((faq, index) => (
+                <details className="faq__item" key={faq.id} open={index === 0}>
+                  <summary className="faq__q">
+                    <span>{faq.question}</span>
+                    <span className="faq__plus" aria-hidden="true">
+                      +
+                    </span>
+                  </summary>
+                  <div className="faq__a prose">
+                    <RichText value={faq.answer} />
+                  </div>
+                </details>
+              ))}
             </div>
           </div>
         </section>

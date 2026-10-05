@@ -34,6 +34,18 @@ export function cityOf(campuses: unknown): string | null {
   return null;
 }
 
+/** The state or region of that same campus, when it records one: "West
+ * Midlands" for Coventry. Taken from the campus that gave the city, so the
+ * two never describe different places. */
+export function regionOf(campuses: unknown): string | null {
+  if (!Array.isArray(campuses)) return null;
+  for (const campus of campuses as Array<Record<string, unknown>>) {
+    const ref = campus.cityRef as Record<string, unknown> | null | undefined;
+    if (text(campus.city) ?? text(ref?.name)) return text(campus.state);
+  }
+  return null;
+}
+
 /** An offering carries its own name, level and duration, and reaches the
  * subject through the generic course it is an instance of. */
 export function toOffering(row: Record<string, unknown>): UniversityOffering {
@@ -165,6 +177,7 @@ export function toRecord(row: AnyRecord): UniversityRecord {
     verifiedAt: text(extra.verifiedAt),
     campuses: Array.isArray(campuses) ? campuses.length : 0,
     city: cityOf(campuses),
+    region: regionOf(campuses),
     country: country?.name
       ? {
           name: String(country.name),
