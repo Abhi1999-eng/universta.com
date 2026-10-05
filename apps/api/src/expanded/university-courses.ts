@@ -17,6 +17,22 @@
 
 type Numeric = { toString(): string } | string | number | null | undefined;
 
+/**
+ * How many of one university's courses a read takes. The list counts its
+ * filters over the whole catalogue and a course page promises "View all N",
+ * so this is a safety net well above any real university's catalogue, not a
+ * page size: the 500 the reads used to borrow is a number the largest
+ * universities pass, and past it the counts covered whichever 500 rows the
+ * database returned first.
+ */
+export const UNIVERSITY_CATALOGUE_CAP = 5000;
+
+/**
+ * How many rows a course page reads for each kind of neighbour it shows six
+ * of: enough to fill the six after any row without a public address drops.
+ */
+export const NEIGHBOUR_TAKE = 12;
+
 export type LevelLike = {
   code: string;
   name: string;

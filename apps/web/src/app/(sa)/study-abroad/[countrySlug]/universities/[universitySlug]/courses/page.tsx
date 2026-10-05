@@ -6,13 +6,14 @@ import { intakeRange } from '@/lib/intake-range';
 import { phaseList, phaseResolveRedirect } from '@/lib/phase1';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 import {
-  courseApiParams,
-  courseListSearch,
+  courseRunMeta,
+  courseRunParams,
   firstCity,
   readCourseFilters,
   toCountry,
   toCourseFacets,
   toOfferingCards,
+  withQuery,
 } from '@/lib/university-courses';
 import { loadCourseList } from '@/lib/university-courses-server';
 import { universityCoursesHref } from '@/lib/university-links';
@@ -21,10 +22,12 @@ import { universityCoursesHref } from '@/lib/university-links';
  * Every course one university teaches, under its country:
  * /study-abroad/<country>/universities/<university>/courses.
  *
- * The filters, the sort and the page are all in the address, so the server
- * answers each of them and a filtered list can be shared. A wrong country in
- * the address is corrected with a permanent redirect rather than a second
- * copy of the page.
+ * The filters, the sort and how far the list has been loaded are all in the
+ * address, so the server answers each of them and a filtered list can be
+ * shared: ?page=3 is the first three pages of eighteen, which is what "Load
+ * more" had shown when the reader left. A wrong country in the address is
+ * corrected with a permanent redirect rather than a second copy of the
+ * page, keeping the query.
  */
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +39,7 @@ type Props = {
 type Row = Record<string, unknown>;
 
 function apiSearch(raw: Record<string, string | string[] | undefined>) {
-  return new URLSearchParams(courseApiParams(readCourseFilters(raw))).toString();
+  return new URLSearchParams(courseRunParams(readCourseFilters(raw))).toString();
 }
 
 export async function generateMetadata({
@@ -78,28 +81,19 @@ export default async function Page({ params, searchParams }: Props) {
     const moved = await phaseResolveRedirect(
       universityCoursesHref(countrySlug, universitySlug),
     );
-    if (moved) permanentRedirect(moved.targetPath);
+    if (moved) permanentRedirect(withQuery(moved.targetPath, raw));
     notFound();
   }
 
   const slug = String(university.slug);
   if (country.slug !== countrySlug || slug !== universitySlug)
-    permanentRedirect(
-      `${universityCoursesHref(country.slug, slug)}${courseListSearch(filters, {
-        page: filters.page,
-      })}`,
-    );
+    permanentRedirect(withQuery(universityCoursesHref(country.slug, slug), raw));
 
   const city = firstCity(university);
   const owner = { name: String(university.name), slug, country, city };
   const facets = toCourseFacets(result.facets);
   const catalogue = (result.catalogue as Row | undefined) ?? {};
-  const meta = (result.meta as {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  }) ?? { page: 1, limit: 18, total: 0, totalPages: 0 };
+  const meta = courseRunMeta(result.meta, filters);
   const campusFacet = (result.facets as Row | undefined)?.campuses;
 
   /* Funding is a cross-link, not the point of the page: a failure here drops

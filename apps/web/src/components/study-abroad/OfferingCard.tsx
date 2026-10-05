@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { inCountry } from '@/lib/country-article';
 import type { OfferingCardData } from '@/lib/university-courses';
 import { CompareCheck } from './CourseCompare';
 import { universityInitials } from '@/lib/university-initials';
@@ -138,7 +139,7 @@ export function OfferingCard({
               className="tag"
               href={`/study-abroad/${country.slug}/${course.subject.slug}/${course.specialization.slug}`}
             >
-              {course.specialization.name} in {country.name}
+              {course.specialization.name} in {inCountry(country.name, country.iso2Code)}
             </Link>
           ) : null}
           {course.campus ? (

@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useOptimistic, useState, useTransition } from 'react';
-import { pagerPages } from '@/components/reference/pager-pages';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useOptimistic, useState, useTransition } from 'react';
 import {
   activeChips,
   activeFilterCount,
@@ -11,6 +10,7 @@ import {
   COURSE_SORTS,
   courseApiParams,
   courseListSearch,
+  readCourseFilters,
   type CourseFacets,
   type CourseFilterKey,
   type CourseFilters,
@@ -30,8 +30,14 @@ import { OfferingCard } from './OfferingCard';
  * eighteen courses show first and "Load more courses" appends the next
  * eighteen in place; each chip removes one filter and leaves the rest.
  *
- * Without script the panel is still a form that submits, and the pages are
- * still numbered links, so nothing here depends on the browser to work.
+ * How far the list has been loaded is in the address too, as the university
+ * lists keep it: ?page=3 is the first three pages of eighteen. "Load more"
+ * writes it there as it appends, so a reload, or Back from a course, comes
+ * to the same place rather than to the first eighteen.
+ *
+ * Without script the panel is still a form that submits, and "Show more
+ * courses" is a link to the next page of the same run, so nothing here
+ * depends on the browser to work.
  */
 
 export type CourseResultsProps = {
@@ -42,6 +48,7 @@ export type CourseResultsProps = {
   filters: CourseFilters;
   facets: CourseFacets;
   cards: OfferingCardData[];
+  /** `page` is how many pages of eighteen `cards` holds, from the first. */
   meta: { page: number; limit: number; total: number; totalPages: number };
   /** Every course the university publishes, filtered or not. */
   catalogueTotal: number;
@@ -81,8 +88,17 @@ export function UniversityCourseResults(props: CourseResultsProps) {
   const cards = [...props.cards, ...loaded.cards];
   const lastPage = loaded.page;
   const more = lastPage < meta.totalPages;
-  const firstShown = (meta.page - 1) * meta.limit + 1;
-  const lastShown = firstShown + cards.length - 1;
+
+  /* Back from a course can bring the list back as the server first drew
+     it, under an address "Load more" had since moved on, so the page holds
+     fewer courses than its address names. Asked again, the server draws
+     the whole run the address names. A press of the button moves the list
+     and the address together, so it never sets this off. */
+  const inAddress = readCourseFilters(useSearchParams()).page;
+  useEffect(() => {
+    if (!loading && inAddress > lastPage && lastPage < meta.totalPages)
+      router.refresh();
+  }, [inAddress, lastPage, loading, meta.totalPages, router]);
 
   /* What the panel shows while the server answers: a ticked box stays
      ticked at once, and a second tick builds on the first rather than on
@@ -121,6 +137,7 @@ export function UniversityCourseResults(props: CourseResultsProps) {
         meta?: { page: number };
       };
       const next = body.cards ?? [];
+      const reached = body.meta?.page ?? lastPage + 1;
       setLoaded((current) =>
         current.key === listKey
           ? {
@@ -132,9 +149,16 @@ export function UniversityCourseResults(props: CourseResultsProps) {
                     !cards.some((existing) => existing.slug === card.slug),
                 ),
               ],
-              page: body.meta?.page ?? lastPage + 1,
+              page: reached,
             }
           : current,
+      );
+      /* Into the address in place, as the university lists do: no new
+         history entry for each press, and no round trip to the server. */
+      window.history.replaceState(
+        null,
+        '',
+        `${base}${courseListSearch(filters, { page: reached })}${window.location.hash}`,
       );
       setStatus(`${plural(next.length, 'more course')} loaded.`);
     } catch {
@@ -386,15 +410,6 @@ export function UniversityCourseResults(props: CourseResultsProps) {
             </div>
           ) : null}
 
-          {meta.page > 1 ? (
-            <p className="cresults__from">
-              Showing from course {firstShown.toLocaleString('en-GB')}.{' '}
-              <Link href={`${base}${courseListSearch(filters, { page: 1 })}`}>
-                Back to the start of the list
-              </Link>
-            </p>
-          ) : null}
-
           {cards.length ? (
             <div className="coursegrid" data-testid="course-grid">
               {cards.map((card) => (
@@ -421,21 +436,33 @@ export function UniversityCourseResults(props: CourseResultsProps) {
           {cards.length ? (
             <div className="cresults__more">
               <span className="results__count">
-                Showing {firstShown > 1 ? `${firstShown.toLocaleString('en-GB')}–` : ''}
-                {lastShown.toLocaleString('en-GB')} of{' '}
+                Showing {cards.length.toLocaleString('en-GB')} of{' '}
                 {meta.total.toLocaleString('en-GB')}
               </span>
               {more ? (
-                <button
-                  className="btn btn--ghost"
-                  type="button"
-                  onClick={loadMore}
-                  disabled={loading}
-                  data-testid="course-load-more"
-                >
-                  {loading ? 'Loading…' : 'Load more courses'}
-                </button>
-              ) : loaded.cards.length ? (
+                <>
+                  <button
+                    className="btn btn--ghost"
+                    type="button"
+                    onClick={loadMore}
+                    disabled={loading}
+                    data-testid="course-load-more"
+                  >
+                    {loading ? 'Loading…' : 'Load more courses'}
+                  </button>
+                  {/* Without script the button cannot add anything, so a
+                      link to the same run one page longer stands in. */}
+                  <noscript>
+                    <a
+                      className="btn btn--ghost"
+                      rel="nofollow"
+                      href={`${base}${courseListSearch(filters, { page: lastPage + 1 })}#courses`}
+                    >
+                      Show more courses
+                    </a>
+                  </noscript>
+                </>
+              ) : loaded.cards.length || meta.page > 1 ? (
                 <span className="cresults__end">
                   You&rsquo;ve reached the end of the list.
                 </span>
@@ -445,24 +472,6 @@ export function UniversityCourseResults(props: CourseResultsProps) {
           <p className="sr-only" role="status" aria-live="polite">
             {status}
           </p>
-
-          {meta.totalPages > 1 ? (
-            <noscript>
-              <nav className="cpager" aria-label="Course pages">
-                {pagerPages(meta.page, meta.totalPages).map((item) => (
-                  <span key={item.page}>
-                    {item.gapBefore ? <span aria-hidden="true">… </span> : null}
-                    <a
-                      href={`${base}${courseListSearch(filters, { page: item.page })}#courses`}
-                      aria-current={item.page === meta.page ? 'page' : undefined}
-                    >
-                      {item.page}
-                    </a>
-                  </span>
-                ))}
-              </nav>
-            </noscript>
-          ) : null}
         </div>
       </div>
     </div>

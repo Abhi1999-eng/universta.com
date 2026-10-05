@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { StudentCatalogueActions } from '@/components/student/StudentCatalogueActions';
 import { counsellingHref } from '@/lib/counselling-link';
+import { inCountry } from '@/lib/country-article';
 import { formatDate } from '@/lib/format';
 import {
   groupRequirements,
@@ -69,6 +70,14 @@ export function OfferingGuide({
   const { country } = university;
   const listHref = universityCoursesHref(country.slug, university.slug);
   const where = place(university.city, country);
+  /* The country inside a sentence -- "Studying in the United Kingdom" --
+     where a label or a breadcrumb keeps the bare name. */
+  const inWhere = inCountry(country.name, country.iso2Code);
+  /* The assessment files its lead under this page, so the counsellor knows
+     which course the student was reading. The lead's form takes a path of
+     at most 255 characters; a course address longer than that falls back
+     to the university's course list rather than losing the lead. */
+  const leadPath = card.href.length <= 255 ? card.href : listHref;
   const counselling = counsellingHref({
     source: detail.courseSlug ? 'course' : 'country',
     course: detail.courseSlug ?? undefined,
@@ -253,7 +262,7 @@ export function OfferingGuide({
                     className="topicpath__item"
                     href={`/study-abroad/${country.slug}/${card.subject.slug}`}
                   >
-                    <span className="label">In {country.name}</span>
+                    <span className="label">In {inWhere}</span>
                     <span>
                       {card.subject.name} <span aria-hidden="true">&rarr;</span>
                     </span>
@@ -345,7 +354,10 @@ export function OfferingGuide({
         </div>
       </section>
 
-      <nav className="unitabs" aria-label="Course sections">
+      {/* `unitabs--sections` is what gives the sections below their offset,
+          so a link here lands each one under the sticky header and this
+          strip rather than behind them; the hero's #eligibility link too. */}
+      <nav className="unitabs unitabs--sections" aria-label="Course sections">
         <div className="wrap unitabs__inner">
           {tabs.map(([id, label]) => (
             <a key={id} href={`#${id}`}>
@@ -372,7 +384,7 @@ export function OfferingGuide({
                 </span>
               </Link>
               <Link className="linkcta" href={`/study-abroad/${country.slug}`}>
-                Studying in {country.name}{' '}
+                Studying in {inWhere}{' '}
                 <span className="linkcta__arrow" aria-hidden="true">
                   &rarr;
                 </span>
@@ -454,7 +466,7 @@ export function OfferingGuide({
             <Link href={`/study-abroad/${country.slug}`}>
               {/* One string: the compiler drops the space before an entity
                   that follows an expression. */}
-              {`Living costs and visa fees in ${country.name} →`}
+              {`Living costs and visa fees in ${inWhere} →`}
             </Link>
           </p>
         </div>
@@ -617,6 +629,7 @@ export function OfferingGuide({
               intent="course-eligibility"
               countrySlug={country.slug}
               countryName={country.name}
+              sourcePagePath={leadPath}
             >
               Check my eligibility for this course
             </EligibilityButton>
@@ -771,7 +784,7 @@ export function OfferingGuide({
             </div>
             <div className="btn-row uc-gap">
               <Link className="linkcta" href={`/study-abroad/${country.slug}#work-visa`}>
-                Post-study work rights in {country.name}{' '}
+                Post-study work rights in {inWhere}{' '}
                 <span className="linkcta__arrow" aria-hidden="true">
                   &rarr;
                 </span>
@@ -843,7 +856,7 @@ export function OfferingGuide({
               </a>
             ) : null}
             <Link className="btn btn--ghost" href={countryUniversitiesHref(country.slug)}>
-              Universities in {country.name}
+              Universities in {inWhere}
             </Link>
           </div>
         </div>
@@ -1005,12 +1018,15 @@ export function OfferingGuide({
           { href: universityHref(university.slug), label: 'University profile', ghost: true },
           {
             href: countryUniversitiesHref(country.slug),
-            label: `Universities in ${country.name}`,
+            label: `Universities in ${inWhere}`,
             ghost: true,
           },
-          { href: `/study-abroad/${country.slug}`, label: `Study in ${country.name}`, ghost: true },
+          { href: `/study-abroad/${country.slug}`, label: `Study in ${inWhere}`, ghost: true },
         ]}
         groups={[
+          /* Each group says how many there are in all, not how many it
+             lists: the university's other courses, and every other
+             university that teaches this one. */
           {
             title: `More at ${university.name}`,
             items: detail.more.rows.map((row) => ({
@@ -1018,6 +1034,7 @@ export function OfferingGuide({
               name: row.name,
               href: row.href,
             })),
+            total: Math.max(detail.more.total - 1, detail.more.rows.length),
           },
           {
             title: 'This course elsewhere',
@@ -1026,6 +1043,7 @@ export function OfferingGuide({
               name: row.university.name,
               href: row.href,
             })),
+            total: detail.elsewhereTotal,
           },
         ]}
       />
@@ -1039,6 +1057,7 @@ export function OfferingGuide({
         university={university.name}
         countrySlug={country.slug}
         countryName={country.name}
+        sourcePagePath={leadPath}
         after="course-hero"
       />
     </>

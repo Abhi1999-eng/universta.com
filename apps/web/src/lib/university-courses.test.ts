@@ -3,6 +3,8 @@ import {
   activeChips,
   courseApiParams,
   courseListSearch,
+  courseRunMeta,
+  courseRunParams,
   durationText,
   offeringCanonical,
   programmeName,
@@ -10,6 +12,7 @@ import {
   toCourseFacets,
   toOfferingCard,
   tuitionText,
+  withQuery,
 } from './university-courses';
 
 /**
@@ -72,6 +75,24 @@ describe('the list’s address', () => {
       scholarshipAvailable: 'true',
       sort: 'duration',
     });
+  });
+
+  it('reads ?page=N as the first N pages, the way “Load more” leaves it', () => {
+    const filters = readCourseFilters({ level: 'PG', page: '3' });
+    expect(courseRunParams(filters)).toEqual({ limit: '54', page: '1', level: 'PG' });
+    /* "Load more" itself still asks for the one page after. */
+    expect(courseApiParams(filters, 4)).toMatchObject({ limit: '18', page: '4' });
+    expect(courseRunMeta({ page: 1, limit: 54, total: 40, totalPages: 1 }, filters)).toEqual({
+      page: 3,
+      limit: 18,
+      total: 40,
+      totalPages: 3,
+    });
+    /* An address that asks for more pages than there are shows them all. */
+    expect(
+      courseRunMeta({ total: 20 }, readCourseFilters({ page: '9' })).page,
+    ).toBe(2);
+    expect(courseRunMeta(undefined, readCourseFilters({})).page).toBe(1);
   });
 
   it('gives each filter in force a chip that removes only that one', () => {
@@ -192,6 +213,16 @@ describe('a course as a card', () => {
   it('only strips the university’s own name from the end', () => {
     expect(programmeName('BA Law at Leeds', 'Leeds')).toBe('BA Law');
     expect(programmeName('Studies at Leeds Beckett', 'Leeds')).toBe('Studies at Leeds Beckett');
+  });
+});
+
+describe('a redirect’s query', () => {
+  it('travels on with the request, campaign tags and filters alike', () => {
+    expect(withQuery('/universities/oxford', { utm_source: 'x', level: ['UG', 'PG'] })).toBe(
+      '/universities/oxford?utm_source=x&level=UG&level=PG',
+    );
+    expect(withQuery('/universities/oxford', {})).toBe('/universities/oxford');
+    expect(withQuery('/a?b=1#top', { c: '2', d: undefined })).toBe('/a?b=1&c=2#top');
   });
 });
 
