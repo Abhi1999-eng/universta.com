@@ -147,8 +147,10 @@ describe('a university’s guide', () => {
   it('numbers the sections that render, with no gaps', () => {
     const html = render(university({ overview: '<p>About.</p>' }));
     const numbers = [...html.matchAll(/eyebrow__n">(\d+)</g)].map((m) => m[1]);
-    /* Overview, courses, the destination and the questions it answers. */
-    expect(numbers).toEqual(['02', '03', '04', '05']);
+    /* Overview, courses, the destination and the questions it answers,
+       from 01: the snapshot under the hero is not numbered, as in the
+       design's template. */
+    expect(numbers).toEqual(['01', '02', '03', '04']);
   });
 
   it('always says to check with the university before applying', () => {
@@ -163,7 +165,8 @@ describe('a university’s guide', () => {
         sourceReference: 'https://example.org/elmswood',
       }),
     );
-    expect(html).toContain('Last checked 2026-10-01');
+    /* Written the way the page's deadlines are. */
+    expect(html).toContain('Last checked 1 October 2026.');
     expect(html).toContain('https://example.org/elmswood');
   });
 });
@@ -313,13 +316,13 @@ describe('funding at a university', () => {
   });
 
   it('keeps the numbered run sequential with the band in it', () => {
-    /* The snapshot holds place 01 without printing it, so the visible run
-       starts at 02. The band takes its place in that run rather than being
-       appended, and the section after it carries the next number. */
+    /* The snapshot is unnumbered, so the run starts at 01. The band takes
+       its place in that run rather than being appended, and the section
+       after it carries the next number. */
     const markup = html([award]);
-    expect(markup).toContain('>02</span> Courses');
-    expect(markup).toContain('>03</span> Funding');
-    expect(markup).toContain('>04</span> Destination');
+    expect(markup).toContain('>01</span> Courses');
+    expect(markup).toContain('>02</span> Funding');
+    expect(markup).toContain('>03</span> Destination');
   });
 
   it('counts every award, not only the cards it shows, and opens the full list', () => {
@@ -680,5 +683,98 @@ describe('intakes and deadlines', () => {
   it('says whose months they are when it can only give the destination’s', () => {
     const snapshot = snapshotOf(render(university()));
     expect(snapshot).toContain('Main intakes in Germany</span><b>April · October</b>');
+  });
+});
+
+describe('the university as data', () => {
+  const blocks = (markup: string) =>
+    [...markup.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map(
+      (match) => JSON.parse(match[1]!) as Record<string, unknown>,
+    );
+  const ofType = (markup: string, type: string) =>
+    blocks(markup).find((block) => block['@type'] === type);
+  const uk = {
+    name: 'United Kingdom',
+    slug: 'united-kingdom',
+    iso2Code: 'GB',
+    officialLanguage: 'English',
+    currencyCode: 'GBP',
+    currencySymbol: '£',
+    intakeMonths: [9],
+    postStudyWorkPermitMonths: 24,
+  };
+
+  it('describes the institution from its record: its site, its founding and its first campus', () => {
+    const markup = render(
+      university({
+        name: 'University of Warwick',
+        slug: 'university-of-warwick',
+        websiteUrl: 'https://warwick.ac.uk',
+        establishedYear: 1965,
+        city: 'Coventry',
+        region: 'West Midlands',
+        country: uk,
+      }),
+    );
+    expect(ofType(markup, 'CollegeOrUniversity')).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'CollegeOrUniversity',
+      name: 'University of Warwick',
+      url: 'http://localhost:3000/universities/university-of-warwick',
+      sameAs: 'https://warwick.ac.uk',
+      description: 'A polytechnic in Germany.',
+      foundingDate: '1965',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Coventry',
+        addressRegion: 'West Midlands',
+        addressCountry: 'GB',
+      },
+    });
+  });
+
+  it('leaves out what the record does not hold', () => {
+    const institution = ofType(render(university({ shortDescription: null })), 'CollegeOrUniversity');
+    expect(institution).not.toHaveProperty('sameAs');
+    expect(institution).not.toHaveProperty('foundingDate');
+    expect(institution).not.toHaveProperty('description');
+    expect(institution?.address).toEqual({ '@type': 'PostalAddress', addressCountry: 'DE' });
+  });
+
+  it('lists the breadcrumb trail the page draws', () => {
+    const trail = ofType(render(university()), 'BreadcrumbList') as {
+      itemListElement: Array<{ position: number; name: string; item: string }>;
+    };
+    expect(trail.itemListElement.map((step) => [step.position, step.name, step.item])).toEqual([
+      [1, 'Home', 'http://localhost:3000/'],
+      [2, 'Study abroad', 'http://localhost:3000/study-abroad'],
+      [3, 'Germany', 'http://localhost:3000/study-abroad/germany'],
+      [4, 'Universities', 'http://localhost:3000/study-abroad/germany/universities'],
+      [
+        5,
+        'Elmswood Polytechnic University',
+        'http://localhost:3000/universities/elmswood-polytechnic-university-germany',
+      ],
+    ]);
+  });
+
+  it('gives the questions the page answers, as a reader reads them', () => {
+    const faq = ofType(render(university()), 'FAQPage') as {
+      mainEntity: Array<{ name: string; acceptedAnswer: { text: string } }>;
+    };
+    expect(faq.mainEntity[0]!.name).toBe('Where is Elmswood Polytechnic University?');
+    /* The link inside the answer comes through as its words. */
+    expect(faq.mainEntity[0]!.acceptedAnswer.text).toBe(
+      'Elmswood Polytechnic University is in Germany. Fees, the student visa and living costs are set by the destination, and the guide to Germany covers them.',
+    );
+    expect(faq.mainEntity.map((entry) => entry.name)).toContain(
+      'Are there scholarships for studying at Elmswood Polytechnic University?',
+    );
+  });
+
+  it('writes the country into a sentence with its article', () => {
+    const markup = plain(render(university({ country: uk })));
+    expect(markup).toContain('Other universities in the United Kingdom');
+    expect(markup).not.toContain('Other universities in United Kingdom');
   });
 });

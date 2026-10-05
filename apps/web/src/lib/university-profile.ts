@@ -299,18 +299,9 @@ export function intakeSummary(
     );
 }
 
-/** "1 May 2027", fixed to UTC so the server and the browser agree. */
-export function deadlineLabel(value: string | null | undefined) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date);
-}
+/** "1 May 2027", fixed to UTC so the server and the browser agree. The
+ * course list and the course pages write their dates with the same rule. */
+export { dateLabel as deadlineLabel } from './university-courses';
 
 /** "Full time" for FULL_TIME: the catalogue stores the code, not the words. */
 export function studyModeLabel(value: string | null | undefined) {

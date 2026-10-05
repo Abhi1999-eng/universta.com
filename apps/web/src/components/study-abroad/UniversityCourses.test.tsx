@@ -202,9 +202,51 @@ describe('a university’s course list', () => {
     expect(html).toContain('Browse by subject');
     expect(html).toContain('href="/subjects/law"');
     expect(html).toContain('Intakes and deadlines');
-    expect(html).toContain('Jan 15, 2027');
+    /* The way the profile and the course page write the same deadline. */
+    expect(html).toContain('15 January 2027');
+    expect(html).not.toContain('Jan 15, 2027');
     expect(html).toContain('Are these all the courses this university offers?');
     expect(html).toContain('Shortlist your University of Oxford courses');
+  });
+
+  it('names a level rather than marking it with initials that read as a degree', () => {
+    const html = render();
+    const levels = html.slice(html.indexOf('id="levels"'), html.indexOf('id="subjects"'));
+    expect(levels).toContain('Bachelor&#x27;s');
+    expect(levels).not.toContain('unimark');
+    expect(levels).not.toMatch(/>(BA|MA)</);
+    /* The subjects keep their tiles. */
+    const subjects = html.slice(html.indexOf('id="subjects"'));
+    expect(subjects).toContain('<span class="unimark unimark--xs" aria-hidden="true">CS</span>');
+  });
+
+  it('describes its breadcrumb trail and its questions to search engines', () => {
+    const html = render();
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map(
+      (match) => JSON.parse(match[1]!) as Record<string, unknown>,
+    );
+    const trail = blocks.find((block) => block['@type'] === 'BreadcrumbList') as {
+      itemListElement: Array<{ name: string; item: string }>;
+    };
+    expect(trail.itemListElement.map((step) => step.name)).toEqual([
+      'Home',
+      'Study abroad',
+      'United Kingdom',
+      'Universities',
+      'University of Oxford',
+      'Courses',
+    ]);
+    expect(trail.itemListElement.at(-1)!.item).toMatch(
+      /\/study-abroad\/united-kingdom\/universities\/university-of-oxford\/courses$/,
+    );
+    const faq = blocks.find((block) => block['@type'] === 'FAQPage') as {
+      mainEntity: Array<{ name: string }>;
+    };
+    expect(faq.mainEntity.map((entry) => entry.name)).toEqual([
+      'Are these all the courses this university offers?',
+      'Is the tuition figure final?',
+      'What does the intake deadline mean?',
+    ]);
   });
 
   it('carries the destination into counselling and links the official website', () => {

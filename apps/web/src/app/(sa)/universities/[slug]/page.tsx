@@ -3,12 +3,17 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { phaseDetail, phaseList, phaseResolveRedirect } from '@/lib/phase1';
 import { toScholarshipCards } from '@/lib/scholarship-card';
-import { phaseOneMetadata } from '@/lib/phase1-metadata';
+import type { ResolvedSeo } from '@/lib/seo-management';
 import { inCountry } from '@/lib/country-article';
 import { durationLabel } from '@/lib/course-levels';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { toDestination, toRecord, whole } from '@/lib/university-record';
 import { orderOfferings, popularSubjects } from '@/lib/university-profile';
+import {
+  universityDescription,
+  universityPageMetadata,
+  universityTitle,
+} from '@/lib/university-seo';
 import {
   countryUniversitiesHref,
   offeringHref,
@@ -51,17 +56,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: { absolute: 'University not found | Universta' },
       robots: { index: false },
     };
-  const meta = phaseOneMetadata(
-    row,
-    `/universities/${row.slug ?? slug}`,
-    'University',
-  );
-  /* The catalogue's own resolver already ends the title with the site name,
-     and this route group's layout appends it again through its template.
-     Absolute says the title is finished. */
-  return typeof meta.title === 'string'
-    ? { ...meta, title: { absolute: meta.title } }
-    : meta;
+  const record = toRecord(row);
+  const seo = (row as { seo?: ResolvedSeo | null }).seo ?? null;
+  /* The catalogue's defaults are the bare name and the site's description;
+     the page's own title names what it covers, as the behaviour reference's
+     does, and its description is the university's own. */
+  return universityPageMetadata({
+    seo,
+    title: universityTitle(record.name),
+    description: universityDescription({
+      ...record,
+      courses: record.offerings.length,
+    }),
+    canonical: seo?.canonicalUrl ?? universityHref(record.slug),
+    names: [record.name],
+  });
 }
 
 export default async function UniversityPage({ params }: Props) {
