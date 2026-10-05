@@ -5,10 +5,11 @@ import {
   createContext,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { matchesSubject } from '@/lib/subject-search';
+import { isSearching, matchesSubject } from '@/lib/subject-search';
 
 /**
  * The search on a destination's subjects page.
@@ -27,6 +28,9 @@ const SubjectSearchContext = createContext<{
   query: string;
   setQuery: (value: string) => void;
 }>({ query: '', setQuery: () => undefined });
+
+/** Where the list the search narrows begins; the Search button goes here. */
+export const SUBJECT_RESULTS_ID = 'subject-results';
 
 export function useSubjectSearch() {
   return useContext(SubjectSearchContext);
@@ -60,7 +64,7 @@ export function SubjectCount({ names }: { names: string[] }) {
   const { query } = useSubjectSearch();
   const total = names.length;
   const noun = total === 1 ? 'subject' : 'subjects';
-  if (query.trim() === '') return <>{`${total} ${noun}`}</>;
+  if (!isSearching(query)) return <>{`${total} ${noun}`}</>;
   const left = names.filter((name) => matchesSubject(name, query)).length;
   return <>{`${left} of ${total} ${noun}`}</>;
 }
@@ -79,7 +83,8 @@ export function SubjectSearchBox({
     () => subjects.filter((subject) => matchesSubject(subject.name, query)),
     [subjects, query],
   );
-  const searching = query.trim() !== '';
+  const searching = isSearching(query);
+  const box = useRef<HTMLInputElement>(null);
 
   return (
     <form
@@ -91,8 +96,18 @@ export function SubjectSearchBox({
         /* The list is already narrowed; a reload would show the same cards
            after a wait. With one subject left, Enter means "that one". */
         event.preventDefault();
-        if (searching && left.length === 1)
+        if (searching && left.length === 1) {
           router.push(`/study-abroad/${countrySlug}/${left[0].slug}`);
+          return;
+        }
+        /* Otherwise the answer is the list, and it starts a screen below
+           this box. Pressing Search did nothing anybody could see; on a
+           phone the keyboard stayed up over the cards as well. */
+        box.current?.blur();
+        const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document
+          .getElementById(SUBJECT_RESULTS_ID)
+          ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
       }}
     >
       <svg
@@ -112,6 +127,7 @@ export function SubjectSearchBox({
       </label>
       <input
         id="subject-search"
+        ref={box}
         className="bigsearch__input"
         type="search"
         name="q"

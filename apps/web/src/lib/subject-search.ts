@@ -20,8 +20,16 @@ export function foldWords(value: string): string[] {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .split(/[^a-z0-9]+/)
+    /* Letters and digits of any script. Splitting on "not a-z or 0-9" threw
+       a Hindi or Chinese word away whole, and a search for nothing matches
+       everything -- so typing one answered with all thirty subjects. */
+    .split(/[^\p{L}\p{M}\p{N}]+/u)
     .filter(Boolean);
+}
+
+/** Whether anything searchable has been typed: "&" and "  " have not. */
+export function isSearching(query: string): boolean {
+  return foldWords(query).length > 0;
 }
 
 export function matchesSubject(name: string, query: string): boolean {

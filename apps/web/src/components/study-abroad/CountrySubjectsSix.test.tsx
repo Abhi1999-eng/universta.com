@@ -75,6 +75,28 @@ describe('the guide’s subject section', () => {
     expect(html).toContain('no programme in the catalogue yet');
   });
 
+  it('says on each card which of the six have no programmes, when the two kinds are mixed', () => {
+    const html = renderToStaticMarkup(
+      <CountrySubjects country={country(['Science', 'Law'])} alt />,
+    );
+    const metas = [...html.matchAll(/<a class="h-card h-card--row" href="([^"]+)".*?<\/a>/g)].map(
+      (m) => [m[1], /no programmes yet/i.test(m[0])] as const,
+    );
+    expect(metas).toEqual([
+      ['/study-abroad/uk/law', false],
+      ['/study-abroad/uk/science', false],
+      ['/study-abroad/uk/agriculture', true],
+      ['/study-abroad/uk/architecture', true],
+      ['/study-abroad/uk/arts', true],
+      ['/study-abroad/uk/business', true],
+    ]);
+  });
+
+  it('marks no card when none is taught: the sentence above covers them all', () => {
+    const html = renderToStaticMarkup(<CountrySubjects country={country()} alt />);
+    expect(html).not.toMatch(/no programmes yet/i);
+  });
+
   it('shows what there is when there are fewer than six, with the button still there', () => {
     const few = { ...country(), subjects: country().subjects!.slice(0, 2) } as Country;
     const html = renderToStaticMarkup(<CountrySubjects country={few} alt />);
@@ -136,6 +158,34 @@ describe('the page that lists every subject', () => {
     expect(count('')).toBe('10 subjects');
     expect(count('a')).toBe('3 of 10 subjects');
     expect(count('zzzz')).toBe('0 of 10 subjects');
+  });
+
+  it('finds nothing for a word in another script, rather than everything', () => {
+    const html = pageWith('कानून');
+    expect(cards(html)).toEqual([]);
+    expect(html).toMatch(/aria-live="polite"[^>]*>0 matches</);
+    expect(html).toContain('No subjects matched. Try a shorter word.');
+  });
+
+  it('does not call punctuation a search', () => {
+    const html = pageWith(' & ');
+    expect(cards(html)).toHaveLength(NAMES.length);
+    expect(html).toMatch(/aria-live="polite"[^>]*><\/p>/);
+    const count = renderToStaticMarkup(
+      <SubjectSearchProvider initialQuery="--">
+        <SubjectCount names={NAMES} />
+      </SubjectSearchProvider>,
+    );
+    expect(count).toBe('10 subjects');
+  });
+
+  it('keeps the no-match line for a search: a page with no subjects has its own sentence', () => {
+    const html = renderToStaticMarkup(
+      <SubjectSearchProvider initialQuery="">
+        <CountrySubjectGrid taught={[]} editorial={[]} countrySlug="uk" />
+      </SubjectSearchProvider>,
+    );
+    expect(html).not.toContain('No subjects matched');
   });
 
   it('says so, in the reference’s words, when nothing matches', () => {

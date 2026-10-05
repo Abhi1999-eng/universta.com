@@ -330,9 +330,10 @@ export function CountrySubjects({
      in this destination -- open it and there is something behind it. An
      editorial one is here because somebody added it, usually for a market
      the catalogue has not caught up with, and may still be empty. Showing
-     them in one undifferentiated grid is how a reader ends up on a page
-     with nothing on it, so the ones we can stand behind come first and the
-     rest are named for what they are. */
+     them undifferentiated is how a reader ends up on a page with nothing on
+     it, so the ones we can stand behind come first and, when the six mix
+     the two kinds, each of the others says on its own card that it has no
+     programmes yet. */
   const taught = subjects.filter((subject) => subject.source !== 'EDITORIAL');
   const editorial = subjects.filter((subject) => subject.source === 'EDITORIAL');
   /* Six, in two rows of three, and one button to the rest. Thirty cards
@@ -353,15 +354,28 @@ export function CountrySubjects({
      And as a card that says what is in it and that it opens: the name was
      alone in a box, with nothing to tell a reader there were eighteen
      specializations behind it or that pressing it went anywhere. */
-  const card = (subject: (typeof subjects)[number]) => (
-    <RowCard
-      key={subject.id}
-      href={`/study-abroad/${country.slug}/${subject.slug}`}
-      title={subject.name}
-      meta={countLabel(specializations[subject.slug], 'specialization')}
-      mark
-    />
-  );
+  const card = (subject: (typeof subjects)[number]) => {
+    const count = countLabel(specializations[subject.slug], 'specialization');
+    /* Said on the card, not only in the sentence above the grid: "the rest"
+       pointed at cards nobody could tell from the taught ones. Only when the
+       two kinds are mixed -- with none taught, the sentence covers them all. */
+    const empty = taught.length > 0 && subject.source === 'EDITORIAL';
+    return (
+      <RowCard
+        key={subject.id}
+        href={`/study-abroad/${country.slug}/${subject.slug}`}
+        title={subject.name}
+        meta={
+          empty
+            ? count
+              ? `${count} · no programmes yet`
+              : 'No programmes yet'
+            : count
+        }
+        mark
+      />
+    );
+  };
 
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="subjects">
@@ -373,7 +387,7 @@ export function CountrySubjects({
           lead={
             taught.length
               ? listedAmongShown
-                ? 'The fields taught here come first, with the courses and specializations inside each one. The rest are listed with no programme in the catalogue yet.'
+                ? 'The fields taught here come first, with the courses and specializations inside each one. The others say so on their card: they are listed with no programme in the catalogue yet.'
                 : 'Explore the fields taught here, then see the courses and specializations inside each one.'
               : 'These fields are listed for this destination. The catalogue has no programmes under them yet.'
           }

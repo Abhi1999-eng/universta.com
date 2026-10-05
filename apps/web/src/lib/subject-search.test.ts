@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foldWords, matchesSubject } from './subject-search';
+import { foldWords, isSearching, matchesSubject } from './subject-search';
 
 /**
  * The search on a destination's subjects page behaves the way the reference
@@ -57,6 +57,19 @@ describe('searching a destination’s subjects', () => {
 
   it('reads an accented letter as the letter', () => {
     expect(matchesSubject('Études Françaises', 'etudes franc')).toBe(true);
+  });
+
+  it('keeps a word in another script as a word, so it can match its own name and nothing else', () => {
+    expect(foldWords('कानून')).toHaveLength(1);
+    expect(found('कानून')).toEqual([]);
+    expect(found('法律')).toEqual([]);
+    expect(matchesSubject('Право и политика', 'пра')).toBe(true);
+    expect(isSearching('कानून')).toBe(true);
+  });
+
+  it('does not count spaces or punctuation as searching', () => {
+    for (const query of ['', '   ', '&', '--']) expect(isSearching(query)).toBe(false);
+    expect(isSearching('law')).toBe(true);
   });
 
   it('splits a name on anything that is not a letter or a digit', () => {

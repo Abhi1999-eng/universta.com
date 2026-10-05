@@ -1252,8 +1252,10 @@
 .sa .h-card--row .h-card__body{ display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .sa .h-card--row .h-card__go{ flex: none; color: var(--muted); font-size: 18px; transition: transform var(--dur) var(--ease), color var(--dur) var(--ease); }
 .sa a.h-card--row:hover .h-card__go{ color: var(--accent); transform: translateX(3px); }
-.sa .subjfilter{ margin: 0 0 20px; box-shadow: none; }
 .sa .subjnote{ margin: -4px 0 18px; max-width: 78ch; }
+/* Where the Search button lands: clear of the sticky header and the tab
+   strip under it, so the heading it scrolls to is not hidden behind them. */
+.sa .scrollstop{ scroll-margin-top: 150px; }
 /* Nothing matched the search. On the left, where the cards were. */
 .sa .subjnone{ padding: 8px 0 28px; color: var(--muted); }
 /* The search bar's own button: the bar is the control, so the button sits

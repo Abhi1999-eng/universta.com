@@ -8,6 +8,7 @@ import {
   type CountrySubjectCard,
 } from '@/components/study-abroad/CountrySubjectGrid';
 import {
+  SUBJECT_RESULTS_ID,
   SubjectCount,
   SubjectSearchBox,
   SubjectSearchProvider,
@@ -113,7 +114,9 @@ export default async function Page({ params, searchParams }: Params) {
   });
 
   return (
-    <SubjectSearchProvider initialQuery={initialQuery}>
+    /* Keyed on the address, so going back from ?q=law to the bare page
+       empties the box instead of keeping what the last address held. */
+    <SubjectSearchProvider key={initialQuery} initialQuery={initialQuery}>
       <section className="hero hero--compact">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
@@ -161,7 +164,7 @@ export default async function Page({ params, searchParams }: Params) {
 
       <section className="sec sec--white sec--tight">
         <div className="wrap">
-          <div className="sec-head left row-between">
+          <div className="sec-head left row-between scrollstop" id={SUBJECT_RESULTS_ID}>
             <div>
               <span className="eyebrow">Fields of study</span>
               <h2 className="sec-title">All subjects in {where}</h2>

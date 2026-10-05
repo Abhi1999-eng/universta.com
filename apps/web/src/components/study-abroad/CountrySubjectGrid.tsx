@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { matchesSubject } from '@/lib/subject-search';
+import { isSearching, matchesSubject } from '@/lib/subject-search';
 import { useSubjectSearch } from './CountrySubjectSearch';
 import { RowCard, countLabel } from './RowCard';
 
@@ -90,8 +90,10 @@ export function CountrySubjectGrid({
 
       {/* The reference site's words, and on the left where the cards
           were: a centred line in the middle of an empty section read as the
-          page having failed rather than the search having found nothing. */}
-      {found === 0 ? (
+          page having failed rather than the search having found nothing.
+          Only for a search: a destination with no subjects at all has its
+          own sentence on the page, and nothing was searched for there. */}
+      {found === 0 && isSearching(query) ? (
         <p className="subjnone" role="status">
           No subjects matched. Try a shorter word.
         </p>
