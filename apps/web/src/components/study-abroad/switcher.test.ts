@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   SWITCHER_COLUMNS,
+  destinationsLead,
+  programmeCount,
+  rankDestinations,
   sparseBandClass,
   switcherClass,
+  teachingDestinations,
 } from './switcher';
 
 /**
@@ -49,5 +53,84 @@ describe('the band around it', () => {
       'sec sec--white sec--sparse',
     );
     expect('sec sec--white' + sparseBandClass(9)).toBe('sec sec--white');
+  });
+});
+
+/**
+ * "Where you can study Computer Science" opened on Afghanistan, Albania and
+ * Algeria. The record now counts programmes per destination, and the band
+ * opens on the places that teach it.
+ */
+describe('the order the destinations are shown in', () => {
+  const country = (id: string, courseCount?: number | null) => ({
+    id,
+    name: id,
+    slug: id,
+    courseCount,
+  });
+
+  it('puts the places that teach it first, most programmes first', () => {
+    const ranked = rankDestinations([
+      country('afghanistan', 0),
+      country('canada', 5),
+      country('albania', 0),
+      country('united-states', 6),
+    ]);
+    expect(ranked.map((row) => row.id)).toEqual([
+      'united-states',
+      'canada',
+      'afghanistan',
+      'albania',
+    ]);
+  });
+
+  it('keeps the order it was given among equals, and for a record with no counts', () => {
+    expect(
+      rankDestinations([country('b'), country('a'), country('c')]).map((row) => row.id),
+    ).toEqual(['b', 'a', 'c']);
+  });
+
+  it('knows which of them teach it', () => {
+    expect(
+      teachingDestinations([country('a', 2), country('b', 0), country('c')]).map(
+        (row) => row.id,
+      ),
+    ).toEqual(['a']);
+  });
+
+  it('counts programmes in words', () => {
+    expect(programmeCount(1)).toBe('1 programme');
+    expect(programmeCount(6)).toBe('6 programmes');
+  });
+});
+
+describe('what the destinations band says', () => {
+  const lead = (countries: Array<{ courseCount?: number | null }>) =>
+    destinationsLead({
+      name: 'Law',
+      countries: countries.map((row, index) => ({
+        id: String(index),
+        name: String(index),
+        slug: String(index),
+        ...row,
+      })),
+      open: 'Open one.',
+      legacy: 'Open a destination.',
+    });
+
+  it('names how many teach it, and how many only list it', () => {
+    expect(lead([{ courseCount: 3 }, { courseCount: 1 }, { courseCount: 0 }])).toBe(
+      '2 destinations teach Law, and they come first, most programmes first. 1 more list it with no programme published yet. Open one.',
+    );
+  });
+
+  it('says so plainly when none teaches it yet', () => {
+    expect(lead([{ courseCount: 0 }])).toBe(
+      'No destination has a Law programme published yet. Open one.',
+    );
+  });
+
+  it('keeps the sentence it had for a record sent without counts', () => {
+    expect(lead([{}, {}])).toBe('Open a destination.');
   });
 });

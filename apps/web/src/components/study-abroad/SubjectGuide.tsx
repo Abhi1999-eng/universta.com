@@ -1,20 +1,57 @@
 import Link from 'next/link';
-import type { Course, CourseLevelGroup, SubjectDetail } from '@/lib/catalog';
+import type {
+  Course,
+  CourseLevelGroup,
+  Media,
+  SubjectDetail,
+} from '@/lib/catalog';
+import { counsellingHref } from '@/lib/counselling-link';
 import { levelCoursesHref, levelTotal } from '@/lib/course-levels';
+import { universityHref } from '@/lib/university-links';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { formatNumber } from '@/lib/format';
 import { CourseCards } from './CourseCards';
 import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
 import { DestinationSwitcher } from './DestinationSwitcher';
-import { sparseBandClass } from './switcher';
+import { firstSentence, splitLead } from './CountryGuideSections';
+import {
+  destinationsLead,
+  programmeCount,
+  rankDestinations,
+  sparseBandClass,
+  switcherClass,
+  teachingDestinations,
+  type CountedDestination,
+} from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
+import { ConsultantsCta } from './ConsultantsCta';
 import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
 import { SectionHead } from './SectionHead';
 import { SubjectSpecializations } from './SubjectSpecializations';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
+
+/** A neighbouring subject, for the "Related subjects" band. */
+export type RelatedSubject = {
+  id: string;
+  name: string;
+  slug: string;
+  iconMedia?: Media | null;
+};
+
+/** The subject's generic mark, where a record has no icon of its own. */
+function SubjectGlyph({ media, stroke = '1.4' }: { media?: Media | null; stroke?: string }) {
+  return media ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={media.url} alt="" />
+  ) : (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke}>
+      <path d="M4 5h16v14H4z M4 9h16" />
+    </svg>
+  );
+}
 
 /**
  * A subject's guide, in the approved design.
@@ -32,31 +69,61 @@ export function SubjectGuide({
   subject,
   scholarships,
   universities = [],
+  universityTotal,
   levels: levelGroups = null,
+  related = [],
 }: {
   subject: SubjectDetail;
   scholarships: ScholarshipCard[];
   /** Cross-links only: the reference gives a subject no universities section,
    *  so these close the page in the connect band rather than open one. */
   universities?: Array<{ id: string; name: string; slug: string }>;
+  /** How many universities teach it in all. The page reads a handful to
+   *  link to, and its figure used to be the size of that handful. */
+  universityTotal?: number | null;
   /** The subject's courses filed under their study levels, in academic
    *  order. Absent when that read failed; the six mixed courses the subject
    *  carries are shown instead, as they were before. */
   levels?: CourseLevelGroup[] | null;
+  /** Subjects that share a specialization with this one, closest first. */
+  related?: RelatedSubject[];
 }) {
   const specializations = subject.subSubjects ?? [];
-  const countries = subject.countries ?? [];
+  /* The places that teach it first, most programmes first: the band used to
+     open on Afghanistan, Albania and Algeria, which list every subject and
+     teach none of this one. */
+  const countries = rankDestinations(
+    (subject.countries ?? []) as CountedDestination[],
+  );
+  const teaching = teachingDestinations(countries);
+  /* How many destinations teach it, which is the figure the page states.
+     Every destination lists every subject, so the length of the list
+     answered a different question -- and read 205 where 82 teach it. */
+  const destinationCount = subject.availableCountryCount ?? teaching.length;
   const courses: Course[] = subject.featuredCourses ?? [];
   const groups = levelGroups ?? [];
   /* In academic order where the grouped read supplied it; the subject's own
-     counts come in whatever order the database grouped them. */
+     counts arrive in that order too. */
   const levels = groups.length
     ? groups.map((group) => ({ level: group.level, count: group.count }))
     : (subject.courseCountsByLevel ?? []);
+  const levelOrder = levels.flatMap((row) => (row.level.code ? [row.level.code] : []));
   const filed = levelTotal(groups);
   const tests = subject.tests ?? [];
   const overview = subject.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview));
+  /* The design sets the overview's opening on the page, large, and the
+     reference shows the whole of it. Only the opening was hidden behind
+     the toggle before, so the section read as a counts line and a button.
+     The first paragraph leads; anything after it opens under the toggle. */
+  const split = hasOverview ? splitLead(overview!) : null;
+  const opening = split?.lead ? firstSentence(split.lead) : null;
+  const universityCount = universityTotal ?? universities.length;
+  const counselling = counsellingHref({
+    source: 'subject',
+    subject: subject.slug,
+    from: `/subjects/${subject.slug}`,
+  });
 
   /* Only the figures this record actually has: a strip of dashes says less
      than a shorter strip does. */
@@ -70,11 +137,11 @@ export function SubjectGuide({
     subject.publishedCourseCount
       ? { label: 'Programmes profiled', value: formatNumber(subject.publishedCourseCount) }
       : null,
-    universities.length
-      ? { label: 'Universities', value: formatNumber(universities.length) }
+    universityCount
+      ? { label: 'Universities', value: formatNumber(universityCount) }
       : null,
-    countries.length
-      ? { label: 'Destinations', value: formatNumber(countries.length) }
+    destinationCount
+      ? { label: 'Destinations', value: formatNumber(destinationCount) }
       : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>;
 
@@ -85,6 +152,7 @@ export function SubjectGuide({
   if (groups.length || courses.length) order.push('programs');
   if (tests.length) order.push('tests');
   if (scholarships.length) order.push('scholarship-funding');
+  if (related.length) order.push('related-subjects');
 
   const n = (id: string) => {
     const index = order.indexOf(id);
@@ -106,19 +174,7 @@ export function SubjectGuide({
           />
           <div className="subjhero">
             <span className="subjhero__icon" aria-hidden="true">
-              {subject.iconMedia ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={subject.iconMedia.url} alt="" />
-              ) : (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                >
-                  <path d="M4 5h16v14H4z M4 9h16" />
-                </svg>
-              )}
+              <SubjectGlyph media={subject.iconMedia} />
             </span>
             <div>
               <p className="hero__eyebrow">
@@ -139,7 +195,12 @@ export function SubjectGuide({
                     →
                   </span>
                 </Link>
-                <Link className="btn btn--lg btn--ghost" href="/universities">
+                {/* The directory reads `?subject=`, so the button opens the
+                    universities that teach it rather than all of them. */}
+                <Link
+                  className="btn btn--lg btn--ghost"
+                  href={`/universities?subject=${subject.slug}`}
+                >
                   Browse universities
                 </Link>
               </div>
@@ -169,17 +230,22 @@ export function SubjectGuide({
       {hasOverview ? (
         <section className={band('about')} id="about">
           <div className="wrap">
-            <SectionHead
-              n={n('about')}
-              eyebrow="Overview"
-              title={`About ${subject.name}`}
-              lead={`${formatNumber(subject.publishedCourseCount) || '—'} programmes · ${specializations.length || '—'} specializations · ${countries.length || '—'} destinations`}
-            />
-            <Longform label={`More about ${subject.name}`}>
-              <div className="prose">
-                <RichText value={overview!} />
-              </div>
-            </Longform>
+            <SectionHead n={n('about')} eyebrow="Overview" title={`About ${subject.name}`}>
+              {opening ? <p className="ov__lead">{opening.first}</p> : null}
+              {opening?.rest ? <p className="ov__more">{opening.rest}</p> : null}
+              <p className="subjabout__facts datum">
+                {formatNumber(subject.publishedCourseCount) || '—'} programmes ·{' '}
+                {specializations.length || '—'} specializations ·{' '}
+                {destinationCount ? formatNumber(destinationCount) : '—'} destinations
+              </p>
+            </SectionHead>
+            {split?.rest ? (
+              <Longform label={`More about ${subject.name}`}>
+                <div className="prose">
+                  <RichText value={split.rest} />
+                </div>
+              </Longform>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -197,6 +263,7 @@ export function SubjectGuide({
               subjectName={subject.name}
               subjectSlug={subject.slug}
               branches={specializations}
+              levelOrder={levelOrder}
             />
           </div>
         </section>
@@ -212,7 +279,12 @@ export function SubjectGuide({
               n={n('destinations')}
               eyebrow="Destinations"
               title={`Where you can study ${subject.name}`}
-              lead={`Open a destination to see ${subject.name} there: its specializations and the programmes taught in it.`}
+              lead={destinationsLead({
+                name: subject.name,
+                countries,
+                open: `Open one to see ${subject.name} there: its specializations and the programmes taught in it.`,
+                legacy: `Open a destination to see ${subject.name} there: its specializations and the programmes taught in it.`,
+              })}
             >
               {/* The section's link, set as one: it was a second grey
                   paragraph with no gap, and read as the sentence's last
@@ -342,26 +414,59 @@ export function SubjectGuide({
               </div>
               <ScholarshipCards scholarships={scholarships} />
             </div>
-            <div className="consultcta">
-              <div className="consultcta__copy">
-                <p className="eyebrow eyebrow--plain">Consultants</p>
-                <h3 className="consultcta__t">
-                  Consultants who cover {subject.name}
-                </h3>
-                <p className="consultcta__d">
-                  Compare the destinations they work with, the services they
-                  offer and how they are verified.
+            <ConsultantsCta field={subject.name} />
+          </div>
+        </section>
+      ) : null}
+
+      {/* The reference ends a subject with its neighbours, so a reader on the
+          wrong page can step sideways rather than back to the full list. It
+          is as long as the data makes it, and absent when nothing is shared. */}
+      {related.length ? (
+        <section
+          className={`${band('related-subjects')} sec--tight`}
+          id="related-subjects"
+        >
+          <div className="wrap">
+            {/* The compact head the specialization page gives its own
+                "Related" band: a secondary section, not a chapter. */}
+            <div className="sec-head sec-head--compact">
+              <div>
+                <p className="eyebrow">
+                  <span className="eyebrow__n">{n('related-subjects')}</span>{' '}
+                  Related
+                </p>
+                <h2 className="sec-title sec-title--sm">Related subjects</h2>
+                <p className="sec-lead">
+                  Subjects that share specializations with {subject.name}.
                 </p>
               </div>
-              <div className="consultcta__actions">
-                <Link className="btn" href="/study-abroad-consultants">
-                  Find consultants{' '}
-                  <span className="btn__arrow" aria-hidden="true">
-                    →
+            </div>
+            <div className={switcherClass(related.length)}>
+              {related.map((row) => (
+                <Link
+                  key={row.id}
+                  className="switcher__item"
+                  href={`/subjects/${row.slug}`}
+                >
+                  <span className="subjcard__icon subjrel__icon" aria-hidden="true">
+                    <SubjectGlyph media={row.iconMedia} stroke="1.5" />
+                  </span>
+                  <span className="cchip__name">{row.name}</span>
+                  <span className="switcher__arrow" aria-hidden="true">
+                    &rarr;
                   </span>
                 </Link>
-              </div>
+              ))}
             </div>
+            <p className="h-more">
+              <Link className="linkcta" href="/subjects">
+                All subjects{' '}
+                <span className="linkcta__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            </p>
           </div>
         </section>
       ) : null}
@@ -369,6 +474,7 @@ export function SubjectGuide({
       <MatchBand
         heading="Found your field?"
         href={`/courses?subject=${subject.slug}`}
+        talkHref={counselling}
       />
 
       <PlanBand
@@ -385,7 +491,9 @@ export function SubjectGuide({
             label: 'Find scholarships',
             ghost: true,
           },
-          { href: '/contact', label: 'Talk to a Universta advisor', ghost: true },
+          /* The enquiry arrives saying which subject it was about, rather
+             than as a blank contact form. */
+          { href: counselling, label: 'Talk to a Universta advisor', ghost: true },
         ]}
         groups={[
           {
@@ -396,21 +504,26 @@ export function SubjectGuide({
               href: `/subjects/${subject.slug}/${row.slug}`,
             })),
           },
+          /* The same places the band above opens on, each opening the subject
+             there rather than the country's general guide. */
           {
             title: 'Destinations',
-            items: countries.map((row) => ({
+            items: (teaching.length ? teaching : countries).map((row) => ({
               id: row.id,
               name: row.name,
-              href: `/study-abroad/${row.slug}`,
+              href: `/study-abroad/${row.slug}/${subject.slug}`,
+              note: row.courseCount ? programmeCount(row.courseCount) : null,
             })),
+            total: teaching.length || countries.length,
           },
           {
             title: 'Universities',
             items: universities.map((row) => ({
               id: row.id,
               name: row.name,
-              href: `/universities/${row.slug}`,
+              href: universityHref(row.slug),
             })),
+            total: universityCount,
           },
         ]}
       />
