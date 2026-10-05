@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { RequestWithId } from '../common/http.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import {
+  CourseByLevelQueryDto,
   CourseListQueryDto,
   CourseSuggestionsQueryDto,
 } from './dto/course.dto';
@@ -29,6 +30,16 @@ export class CoursesController {
     @Query() query: CourseSuggestionsQueryDto,
   ) {
     return successEnvelope(request, await this.courses.suggestions(query.q));
+  }
+  @Get('by-level')
+  @ApiOperation({
+    summary: "List a subject's published courses under their levels",
+  })
+  async byLevel(
+    @Req() request: RequestWithId,
+    @Query() query: CourseByLevelQueryDto,
+  ) {
+    return successEnvelope(request, await this.courses.publicByLevel(query));
   }
   @Get() @ApiOperation({ summary: 'List published courses' }) async list(
     @Req() request: RequestWithId,
