@@ -29,6 +29,8 @@ function toItem(record: AnyRecord): CompareUniversity {
     name: String(row.name),
     slug: String(row.slug),
     country: country?.name ? String(country.name) : null,
+    countrySlug:
+      typeof country?.slug === 'string' && country.slug ? country.slug : null,
     institutionType: typeof row.institutionType === 'string' ? row.institutionType : null,
     shortDescription: typeof row.shortDescription === 'string' ? row.shortDescription : null,
     campuses: Array.isArray(campuses) ? campuses.length : 0,

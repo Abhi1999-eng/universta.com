@@ -975,7 +975,9 @@ export class StudentPhase2Service {
             select: {
               name: true,
               slug: true,
-              university: { select: { slug: true } },
+              university: {
+                select: { slug: true, country: { select: { slug: true } } },
+              },
             },
           },
         },
@@ -999,7 +1001,9 @@ export class StudentPhase2Service {
         ? {
             label: nextIntake.offering.name,
             date: iso(nextIntake.deadline),
-            href: `/universities/${nextIntake.offering.university.slug}/courses/${nextIntake.offering.slug}`,
+            /* A course's page is filed under its university's country. The
+               flat address only redirects there now. */
+            href: `/study-abroad/${nextIntake.offering.university.country.slug}/universities/${nextIntake.offering.university.slug}/courses/${nextIntake.offering.slug}`,
           }
         : null,
       nextScholarship?.scholarship.deadline
