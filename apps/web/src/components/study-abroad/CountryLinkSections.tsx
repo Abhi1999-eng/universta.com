@@ -8,6 +8,9 @@ import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { UniversityCard, type UniversityCardData } from './UniversityCard';
 import { countryUniversitiesHref } from '@/lib/university-links';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
+import { countryConsultantsHref } from '@/lib/country-consultant-list';
+import type { RelatedGroup } from './DiscoveryBands';
 
 /**
  * The country guide's sections that link out to the rest of the catalogue:
@@ -441,7 +444,9 @@ export type CountryCourseCard = {
   name: string;
   slug: string;
   courseLevel: { name: string } | null;
-  subject: { name: string } | null;
+  /** The slug files the course under its subject's group, and the group's
+   *  head links to that subject in this destination. */
+  subject: { name: string; slug?: string | null } | null;
   /** The fee for this destination, which is the one the card can quote. */
   selectedTuition?: {
     min: string | null;
@@ -495,20 +500,97 @@ function courseFee(course: CountryCourseCard, symbol: string): string | null {
   return `From ${unit}${Math.round(amount).toLocaleString('en-US')}${period}`;
 }
 
+/** How many subject groups the guide shows, and how many courses in each. */
+export const COURSE_GROUPS_SHOWN = 4;
+export const COURSES_PER_GROUP = 3;
+
+export type CountryCourseGroup = {
+  key: string;
+  name: string;
+  /** The subject in this destination, or null for courses filed under none. */
+  href: string | null;
+  /** How many courses the destination has in the subject, when the catalogue
+   *  said; never the number that happened to be read. */
+  count: number | null;
+  courses: CountryCourseCard[];
+};
+
+/**
+ * The courses filed under their subjects, the way the design's country
+ * guide shows them.
+ *
+ * The subjects with the most courses here lead -- the nearest the catalogue
+ * has to the design's "subjects students choose most" -- and within one the
+ * courses keep the order they came in, which puts an editor's curated ones
+ * first. `counts` is the catalogue's own tally for the destination; a group
+ * it has no figure for shows none rather than the size of the slice read.
+ */
+export function countryCourseGroups(
+  countrySlug: string,
+  courses: readonly CountryCourseCard[],
+  counts: ReadonlyMap<string, number> = new Map(),
+): CountryCourseGroup[] {
+  const groups = new Map<string, CountryCourseGroup & { first: number }>();
+  courses.forEach((course, index) => {
+    const slug = course.subject?.slug ?? null;
+    const key = slug ?? '';
+    const group = groups.get(key);
+    if (group) {
+      group.courses.push(course);
+      return;
+    }
+    groups.set(key, {
+      key: key || 'other',
+      name: slug && course.subject ? course.subject.name : 'More courses',
+      href: slug ? `/study-abroad/${countrySlug}/${slug}` : null,
+      count: slug ? (counts.get(slug) ?? null) : null,
+      courses: [course],
+      first: index,
+    });
+  });
+  const weight = (group: CountryCourseGroup) => group.count ?? group.courses.length;
+  return [...groups.values()]
+    .sort(
+      (left, right) =>
+        /* Courses with no subject close the list whatever their number. */
+        Number(left.href === null) - Number(right.href === null) ||
+        weight(right) - weight(left) ||
+        left.first - right.first,
+    )
+    .map(({ key, name, href, count, courses: grouped }) => ({
+      key,
+      name,
+      href,
+      count,
+      courses: grouped,
+    }));
+}
+
 /** "Courses to explore". */
 export function CountryCourses({
   country,
   courses,
+  total = null,
+  subjectCounts,
   n = null,
   alt,
 }: {
   country: Country;
   courses: CountryCourseCard[];
+  /** How many courses the destination's course search holds, for the button
+   *  that opens it. */
+  total?: number | null;
+  /** The catalogue's course count per subject in this destination. */
+  subjectCounts?: ReadonlyMap<string, number>;
   n?: string | null;
   alt: boolean;
 }) {
   const where = inCountry(country.name, country.iso2Code);
   if (!courses.length) return null;
+  const groups = countryCourseGroups(country.slug, courses, subjectCounts).slice(
+    0,
+    COURSE_GROUPS_SHOWN,
+  );
 
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'}`} id="courses">
@@ -517,23 +599,80 @@ export function CountryCourses({
           index={n}
           eyebrow="Courses"
           title={`Explore courses in ${where}`}
-          lead="Each course page carries its tuition, entry requirements, intakes and deadlines."
-          cta={{ href: '/courses', label: 'Search every course' }}
+          lead="Grouped by subject, the fields with the most courses here first. Each course page carries its tuition, entry requirements, intakes and deadlines."
+          /* The destination's own courses: this opened the search over every
+             course in every country, and the reader had to choose the
+             destination they were already reading about. */
+          cta={{
+            href: `/courses?country=${country.slug}`,
+            label: total ? `View all ${total.toLocaleString('en-GB')} courses` : 'View all courses',
+          }}
         />
-        <div className="h-grid h-grid--wide">
-          {courses.slice(0, 6).map((course) => {
-            /* The fee is published in the country's own currency, so the
-               country's symbol is the one to print it with. */
-            const fee = courseFee(course, country.currency?.symbol ?? '');
-            const meta = [course.courseLevel?.name, fee].filter(Boolean).join(' · ');
+        <div className="coursegroups">
+          {groups.map((group) => {
+            const noun = group.count === 1 ? 'course' : 'courses';
+            const head = (
+              <>
+                <span className="coursegroup__name">{group.name}</span>
+                {group.count !== null ? (
+                  <span className="coursegroup__n">
+                    {group.count.toLocaleString('en-GB')} {noun}
+                  </span>
+                ) : null}
+                {group.href ? <span aria-hidden="true">&rarr;</span> : null}
+              </>
+            );
             return (
-              <Link className="h-card" href={`/courses/${course.slug}`} key={course.id}>
-                <strong className="h-card__t">{course.name}</strong>
-                {course.subject ? <span className="h-card__d">{course.subject.name}</span> : null}
-                {meta ? <span className="h-card__m">{meta}</span> : null}
-              </Link>
+              <div className="coursegroup" key={group.key}>
+                <h3 className="coursegroup__title">
+                  {group.href ? (
+                    <Link className="coursegroup__head" href={group.href}>
+                      {head}
+                    </Link>
+                  ) : (
+                    <span className="coursegroup__head">{head}</span>
+                  )}
+                </h3>
+                <div className="courselist">
+                  {group.courses.slice(0, COURSES_PER_GROUP).map((course) => (
+                    <Link
+                      className="courselist__row"
+                      href={`/courses/${course.slug}`}
+                      key={course.id}
+                    >
+                      <span className="courselist__name">{course.name}</span>
+                      <span className="courselist__meta">{course.courseLevel?.name ?? ''}</span>
+                      {/* The fee is published in the country's own currency,
+                          so the country's symbol is the one to print it with. */}
+                      <span className="courselist__fee datum">
+                        {courseFee(course, country.currency?.symbol ?? '') ?? ''}
+                      </span>
+                      <span aria-hidden="true">&rarr;</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             );
           })}
+        </div>
+        <div className="btn-row unigrid__after">
+          <button
+            className="btn btn--ghost btn--wrap"
+            type="button"
+            data-open-assessment
+            data-intent="country-courses"
+          >
+            Find courses for my profile{' '}
+            <span className="btn__arrow" aria-hidden="true">
+              →
+            </span>
+          </button>
+          <Link className="linkcta" href="/compare/courses">
+            Compare courses{' '}
+            <span className="linkcta__arrow" aria-hidden="true">
+              →
+            </span>
+          </Link>
         </div>
       </div>
     </section>
@@ -619,7 +758,25 @@ export function CountryTestimonials({
  * listing already narrowed to the destination they were reading about rather
  * than at the top of an unfiltered catalogue.
  */
-export function CountryConnect({ country, alt }: { country: Country; alt: boolean }) {
+export function CountryConnect({
+  country,
+  alt,
+  groups = [],
+  scholarships = true,
+  consultants = false,
+}: {
+  country: Country;
+  alt: boolean;
+  /** The design's "Related on Universta": the destination's own courses,
+   *  universities, funding, subjects and consultants. A group with nothing
+   *  in it is left out. */
+  groups?: RelatedGroup[];
+  /** Whether the destination has scholarships / consultants pages worth a
+   *  button: one with nothing on it is not offered. */
+  scholarships?: boolean;
+  consultants?: boolean;
+}) {
+  const filled = groups.filter((group) => group.items.length > 0);
   return (
     <section className={`sec ${alt ? 'sec--paper' : 'sec--white'} sec--tight h-connect`} id="connect">
       <div className="wrap">
@@ -641,17 +798,53 @@ export function CountryConnect({ country, alt }: { country: Country; alt: boolea
             >
               Browse subjects
             </Link>
-            <Link
-              className="btn btn--sm btn--ghost"
-              href={`/scholarships?country=${country.slug}`}
-            >
-              Find scholarships
-            </Link>
+            {scholarships ? (
+              <Link
+                className="btn btn--sm btn--ghost"
+                href={countryScholarshipsHref(country.slug)}
+              >
+                Find scholarships
+              </Link>
+            ) : null}
+            {consultants ? (
+              <Link
+                className="btn btn--sm btn--ghost"
+                href={countryConsultantsHref(country.slug)}
+              >
+                Find consultants
+              </Link>
+            ) : null}
             <Link className="btn btn--sm btn--ghost" href="/counselling">
               Talk to a Universta advisor
             </Link>
           </div>
         </div>
+        {/* The grid the subject, university and course pages close with --
+            the same markup -- so the guide is no longer the one page of the
+            family that ends on buttons alone. */}
+        {filled.length ? (
+          <div className="h-related">
+            <h2 className="sec-title h-related__t">Related on Universta</h2>
+            <div className="h-related__grid">
+              {filled.map((group) => (
+                <div className="h-relgroup" key={group.title}>
+                  <h3 className="h-relgroup__t">
+                    {group.title}{' '}
+                    <span className="h-count__n">{group.total ?? group.items.length}</span>
+                  </h3>
+                  <ul className="h-list">
+                    {group.items.slice(0, 6).map((item) => (
+                      <li key={item.id}>
+                        <Link href={item.href}>{item.name}</Link>
+                        {item.note ? <span>{item.note}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -687,7 +880,9 @@ export function CountryScholarships({
           eyebrow="Funding"
           title={`Scholarships to study in ${where}`}
           lead={`Funding open to international students here. ${FUNDING_CAVEAT}`}
-          cta={{ href: `/scholarships?country=${country.slug}`, label: 'Find scholarships' }}
+          /* The destination's own scholarships page, with its search and
+             filters, as the reference's "View all scholarships" opens. */
+          cta={{ href: countryScholarshipsHref(country.slug), label: 'View all scholarships' }}
         />
         <ScholarshipCards
           scholarships={scholarships.slice(0, 6)}

@@ -19,6 +19,13 @@ import { subjectsForCountry } from '@/lib/country-subject';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { getSubjects } from '@/lib/catalog';
 import { inCountry } from '@/lib/country-article';
+import { PlanBand } from '@/components/study-abroad/PlanBand';
+import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { phaseList } from '@/lib/phase1';
+import { countryConsultantsHref } from '@/lib/country-consultant-list';
+import { toUniversityListRow } from '@/lib/university-list';
+import { countryUniversitiesHref, universityHref } from '@/lib/university-links';
 
 /**
  * Every field taught in one destination.
@@ -53,8 +60,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       robots: { index: false },
     };
   return {
-    title: { absolute: `Subjects to study in ${country.name} | Universta` },
-    description: `The fields taught in ${country.name}, and the specializations inside each one.`,
+    title: {
+      absolute: `Subjects to study in ${inCountry(country.name, country.iso2Code)} | Universta`,
+    },
+    description: `The fields taught in ${inCountry(country.name, country.iso2Code)}, and the specializations inside each one.`,
     alternates: { canonical: `/study-abroad/${country.slug}/subjects` },
   };
 }
@@ -96,10 +105,16 @@ export default async function Page({ params, searchParams }: Params) {
     ? partitionSubjects(subjects)
     : { taught: [], editorial: [] };
 
-  const tabs = await loadCountryTabs(
-    country.slug,
-    (country.subjects ?? []).length,
-  );
+  const [tabs, universities] = await Promise.all([
+    loadCountryTabs(country.slug, (country.subjects ?? []).length),
+    /* Six of the destination's institutions for the closing band. Its
+       failure costs that group and nothing else. */
+    phaseList<AnyRecord>('universities', { country: country.slug, limit: '6' })
+      .then((result) => result.data.map(toUniversityListRow))
+      .catch(() => []),
+  ]);
+  const universitiesTab = tabs.find((tab) => tab.key === 'universities');
+  const scholarshipsTab = tabs.find((tab) => tab.key === 'scholarships');
   const where = inCountry(country.name, country.iso2Code);
 
   const toCard = (subject: {
@@ -212,6 +227,56 @@ export default async function Page({ params, searchParams }: Params) {
         </div>
       </section>
 
+      {/* The bands its sibling tab closes with, so the destination's pages
+          end alike: the assessment, then the rest of the destination. */}
+      <PlanBand
+        heading={`Not sure which subject in ${where} fits?`}
+        countrySlug={country.slug}
+        countryName={country.name}
+        secondary={{
+          href: `/study-abroad/${country.slug}`,
+          label: `${country.name} guide`,
+        }}
+      />
+
+      <ConnectBand
+        actions={[
+          { href: `/courses?country=${country.slug}`, label: `Courses in ${where}` },
+          ...(universitiesTab
+            ? [
+                {
+                  href: countryUniversitiesHref(country.slug),
+                  label: 'Universities here',
+                  ghost: true,
+                },
+              ]
+            : []),
+          ...(scholarshipsTab
+            ? [{ href: scholarshipsTab.href, label: 'Scholarships', ghost: true }]
+            : []),
+          ...(page?.consultants?.total
+            ? [
+                {
+                  href: countryConsultantsHref(country.slug),
+                  label: 'Consultants',
+                  ghost: true,
+                },
+              ]
+            : []),
+        ]}
+        groups={[
+          {
+            title: `Universities in ${where}`,
+            total: universitiesTab?.count ?? undefined,
+            items: universities.map((university) => ({
+              id: university.id,
+              name: university.name,
+              href: universityHref(university.slug),
+              note: university.city,
+            })),
+          },
+        ]}
+      />
     </SubjectSearchProvider>
   );
 }
