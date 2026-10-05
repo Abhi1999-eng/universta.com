@@ -18,6 +18,7 @@ import { nextAutoSlug } from '@/lib/slug';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 import { isFutureCalendarDate } from '@/lib/calendar-date';
+import { offeringDurationUnit, rowFieldLabel, singularTitle } from './structured-editor-labels';
 
 type Option = {
   id: string;
@@ -306,6 +307,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       ...(resource === 'universities' ? { campuses: rows.campuses, accreditations: rows.accreditations } : {}),
       ...(resource === 'offerings'
         ? {
+            durationUnit: offeringDurationUnit(values),
             intakes: (selected.intakeIds ?? []).map((intakeId) => ({
               intakeId,
               deadline: values[`deadline-${intakeId}`] ?? '',
@@ -805,7 +807,7 @@ function OfferingFields(p: any) {
         </div>
         <Field label="Duration minimum" type="number" value={p.values.durationMin ?? ''} onChange={(value) => p.set('durationMin', value)} />
         <Field label="Duration maximum" type="number" value={p.values.durationMax ?? ''} onChange={(value) => p.set('durationMax', value)} />
-        <Field label="Duration unit" value={p.values.durationUnit ?? 'YEARS'} onChange={(value) => p.set('durationUnit', value)} helpKey="offerings.durationUnit" />
+        <Field label="Duration unit" value={p.values.durationUnit || 'YEARS'} onChange={(value) => p.set('durationUnit', value)} helpKey="offerings.durationUnit" />
         <Field label="Tuition minimum" type="number" value={p.values.tuitionMin ?? ''} onChange={(value) => p.set('tuitionMin', value)} />
         <Field label="Tuition maximum" type="number" value={p.values.tuitionMax ?? ''} onChange={(value) => p.set('tuitionMax', value)} />
         <Field label="Currency" value={p.values.currencyCode ?? ''} onChange={(value) => p.set('currencyCode', value)} helpKey="offerings.currencyCode" />
@@ -1064,12 +1066,12 @@ function Repeater({ title, rows, fields, add, update, helpPrefix }: { title: str
       {rows.map((row, index) => (
         <div key={index} className="mt-3 grid gap-3 rounded-xl bg-[#F8FAFC] p-3 sm:grid-cols-2">
           {fields.map((field) => (
-            <Field key={field} label={field.replace(/([A-Z])/g, ' $1')} value={row[field] ?? ''} onChange={(value) => update(index, field, value)} helpKey={helpPrefix ? `${helpPrefix}.${field}` : undefined} />
+            <Field key={field} label={rowFieldLabel(field)} value={row[field] ?? ''} onChange={(value) => update(index, field, value)} helpKey={helpPrefix ? `${helpPrefix}.${field}` : undefined} />
           ))}
         </div>
       ))}
       <button type="button" onClick={add} className="mt-3 rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">
-        Add {title.slice(0, -1)}
+        Add {singularTitle(title)}
       </button>
     </fieldset>
   );

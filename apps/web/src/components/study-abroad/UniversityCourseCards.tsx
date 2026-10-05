@@ -50,7 +50,7 @@ function facts(offering: UniversityOffering) {
           value: [fee, tuitionPeriod(tuition?.period)].filter(Boolean).join(' '),
           datum: true,
         }
-      : { label: 'Tuition', value: 'Not recorded', missing: true },
+      : { label: 'Tuition', value: 'Not listed', missing: true },
   );
   const months = [
     ...new Set(

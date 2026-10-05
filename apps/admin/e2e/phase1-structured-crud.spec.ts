@@ -154,15 +154,15 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel('SEO title', { exact: true }).fill(`${universityName} SEO`);
     await form.getByLabel('Meta description', { exact: true }).fill('Fictional local University SEO description.');
     const campuses = form.getByRole('group', { name: 'Campuses' });
-    await campuses.getByRole('button', { name: 'Add Campuse' }).click();
-    await campuses.getByLabel('name', { exact: true }).fill(`${prefix} Campus`);
-    await campuses.getByLabel('city', { exact: true }).fill('Local City');
+    await campuses.getByRole('button', { name: 'Add Campus' }).click();
+    await campuses.getByLabel('Name', { exact: true }).fill(`${prefix} Campus`);
+    await campuses.getByLabel('City', { exact: true }).fill('Local City');
     const accreditations = form.getByRole('group', { name: 'Accreditations' });
     await accreditations.getByRole('button', { name: 'Add Accreditation' }).click();
-    await accreditations.getByLabel('name', { exact: true }).fill('Fictional accreditation');
+    await accreditations.getByLabel('Name', { exact: true }).fill('Fictional accreditation');
     const edit = await saveAndOpenEdit(page, 'universities', universityName);
     await expect(edit.getByLabel('Country', { exact: true })).not.toHaveValue('');
-    await expect(edit.getByRole('group', { name: 'Campuses' }).getByLabel('city', { exact: true })).toHaveValue('Local City');
+    await expect(edit.getByRole('group', { name: 'Campuses' }).getByLabel('City', { exact: true })).toHaveValue('Local City');
     await edit.getByLabel('Short summary', { exact: true }).fill('Updated fictional local university summary.');
     const reloaded = await saveEdit(page, 'universities', universityName);
     await expect(reloaded.getByLabel('Short summary', { exact: true })).toHaveValue('Updated fictional local university summary.');
@@ -187,9 +187,9 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel(/Deadline for/).fill('2030-09-01');
     const requirements = form.getByRole('group', { name: 'Academic and English-test requirements' });
     await requirements.getByRole('button', { name: 'Add Academic and English-test requirement' }).click();
-    await requirements.getByLabel('title', { exact: true }).fill('Academic requirement');
-    await requirements.getByLabel('description', { exact: true }).fill('Fictional academic requirement.');
-    await requirements.getByLabel('minimum Score', { exact: true }).fill('70');
+    await requirements.getByLabel('Title', { exact: true }).fill('Academic requirement');
+    await requirements.getByLabel('Description', { exact: true }).fill('Fictional academic requirement.');
+    await requirements.getByLabel('Minimum score', { exact: true }).fill('70');
     const edit = await saveAndOpenEdit(page, 'offerings', offeringName);
     await expect(edit.getByLabel('Tuition minimum', { exact: true })).toHaveValue('15000');
     await expect(
