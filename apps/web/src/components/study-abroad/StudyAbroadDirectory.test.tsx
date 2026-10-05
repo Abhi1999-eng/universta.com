@@ -55,8 +55,11 @@ describe('destination directory', () => {
     const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
     expect(html).toContain('dir__card--soon');
     expect(html).toContain('Soon');
-    /* The only href on the page belongs to the published one. */
-    expect(html.match(/href="\/study-abroad\//g) ?? []).toHaveLength(1);
+    /* Every guide link on the page is the published one's -- it may appear
+       twice, in the popular row and under its region. */
+    const hrefs = html.match(/href="\/study-abroad\/[^"]*"/g) ?? [];
+    expect(hrefs.length).toBeGreaterThan(0);
+    expect(new Set(hrefs)).toEqual(new Set(['href="/study-abroad/germany"']));
     expect(html).not.toContain('href="/study-abroad/albania"');
   });
 
@@ -71,7 +74,7 @@ describe('destination directory', () => {
      act on, so it is left out rather than printed. */
   it('reports what a destination has linked to it', () => {
     const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
-    expect(html).toContain('4 universities · 10 courses');
+    expect(html).toContain('4 universities · 10 programmes');
   });
 
   it('stops at two facts, so the line never wraps the card taller', () => {
@@ -110,7 +113,7 @@ describe('destination directory', () => {
       />,
     );
     expect(html).toContain('1 university · 2 consultants');
-    expect(html).not.toContain('0 courses');
+    expect(html).not.toContain('0 programmes');
     expect(html).not.toContain('0 scholarships');
     expect(html).not.toContain('· 0 ');
   });

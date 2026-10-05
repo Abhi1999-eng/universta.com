@@ -9,6 +9,7 @@ import {
   courseRunMeta,
   courseRunParams,
   firstCity,
+  isNarrowedCourseList,
   readCourseFilters,
   toCountry,
   toCourseFacets,
@@ -47,7 +48,8 @@ export async function generateMetadata({
   searchParams,
 }: Props): Promise<Metadata> {
   const { universitySlug } = await params;
-  const result = await loadCourseList(universitySlug, apiSearch(await searchParams));
+  const raw = await searchParams;
+  const result = await loadCourseList(universitySlug, apiSearch(raw));
   const university = result?.university as Row | undefined;
   const country = toCountry(university?.country);
   if (!university || !country)
@@ -64,9 +66,17 @@ export async function generateMetadata({
     description: total
       ? `${total} ${total === 1 ? 'course' : 'courses'} at ${name}${city ? `, ${city}` : ''}, ${country.name}: levels, durations, tuition, intakes and entry requirements, searchable and filterable.`
       : `Courses at ${name}, ${country.name}. None is in the Universta catalogue yet.`,
-    alternates: {
-      canonical: universityCoursesHref(country.slug, String(university.slug)),
-    },
+    /* A searched, filtered, sorted or further-loaded view is a slice of a
+       list that is indexed whole: left out of the index, its links still
+       followed, as the university lists do it. Like them, the slice names
+       no canonical, so a crawler gets one instruction rather than two. */
+    ...(isNarrowedCourseList(raw)
+      ? { robots: { index: false, follow: true } }
+      : {
+          alternates: {
+            canonical: universityCoursesHref(country.slug, String(university.slug)),
+          },
+        }),
   };
 }
 

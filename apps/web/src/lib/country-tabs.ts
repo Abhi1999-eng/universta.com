@@ -21,16 +21,8 @@ export async function loadCountryTabs(
   countrySlug: string,
   linkedSubjects: number,
 ): Promise<CountryTab[]> {
-  /* `meta` is untyped on this client, so the total is read defensively:
-     a resource that answers without one counts as zero rather than as NaN,
-     which would render as a tab labelled "NaN". */
   const total = (resource: string) =>
-    phaseList<AnyRecord>(resource, { country: countrySlug, limit: '1' })
-      .then((result) => {
-        const value = Number((result.meta as { total?: unknown } | null)?.total);
-        return Number.isFinite(value) ? value : 0;
-      })
-      .catch(() => 0);
+    destinationTotal(countrySlug, resource).then((value) => value ?? 0);
   const [universities, scholarships, catalogue] = await Promise.all([
     total('universities'),
     total('scholarships'),
@@ -50,6 +42,23 @@ export async function loadCountryTabs(
     universities,
     scholarships,
   });
+}
+
+/**
+ * How many of one resource a destination lists -- universities,
+ * scholarships, consultants -- or null when the catalogue did not say.
+ *
+ * `meta` is untyped on this client, so the total is read defensively: a
+ * resource that answers without one is unknown rather than NaN, which would
+ * render as a tab labelled "NaN".
+ */
+export function destinationTotal(countrySlug: string, resource: string): Promise<number | null> {
+  return phaseList<AnyRecord>(resource, { country: countrySlug, limit: '1' })
+    .then((result) => {
+      const value = Number((result.meta as { total?: unknown } | null)?.total);
+      return Number.isFinite(value) ? value : null;
+    })
+    .catch(() => null);
 }
 
 /**

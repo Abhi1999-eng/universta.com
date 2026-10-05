@@ -122,6 +122,96 @@ describe('SeoManagementService resolver', () => {
     });
   });
 
+  it('reads a stored title or description that only repeats the defaults as not written', async () => {
+    /* The admin's course editor opens on the resolved values and saving it
+       stored "MSc Computer Science" and the site's default description as
+       manual, which gave the course page a bare tab title. */
+    const { service } = createService();
+    const offering = {
+      id: 'offering-1',
+      name: 'MSc Demo Studies',
+      slug: 'msc-demo-studies',
+      shortDescription: 'A fictional course.',
+      university,
+    };
+    const echoed = {
+      seoTitle: 'MSc Demo Studies',
+      metaDescription: ' Global default description. ',
+      ogTitle: 'MSc Demo Studies',
+      ogDescription: 'Global default description.',
+      twitterTitle: 'MSc Demo Studies',
+      twitterDescription: 'Global default description.',
+    };
+    await expect(
+      service.resolve('offering', offering, echoed),
+    ).resolves.toMatchObject({
+      seoTitle: 'MSc Demo Studies',
+      metaDescription: 'Global default description.',
+      source: { title: 'fallback', description: 'default' },
+    });
+    await expect(
+      service.resolve('university', university, {
+        seoTitle: 'Demo University',
+        metaDescription: 'Global default description.',
+      }),
+    ).resolves.toMatchObject({
+      source: { title: 'fallback', description: 'default' },
+    });
+  });
+
+  it('lets a bulk rule through an echoed default, and keeps what an editor wrote', async () => {
+    const { service } = createService({
+      template: {
+        entityType: 'offering',
+        seoTitleTemplate: '{courseName} at {universityName}',
+        metaDescriptionTemplate: 'Study {courseName} at {universityName}.',
+      },
+    });
+    const offering = {
+      id: 'offering-1',
+      name: 'MSc Demo Studies',
+      slug: 'msc-demo-studies',
+      university,
+    };
+    await expect(
+      service.resolve('offering', offering, {
+        seoTitle: 'MSc Demo Studies',
+        metaDescription: 'Global default description.',
+      }),
+    ).resolves.toMatchObject({
+      seoTitle: 'MSc Demo Studies at Demo University',
+      metaDescription: 'Study MSc Demo Studies at Demo University.',
+      ogTitle: 'MSc Demo Studies at Demo University',
+      source: { title: 'bulk', description: 'bulk' },
+    });
+    await expect(
+      service.resolve('offering', offering, {
+        seoTitle: 'Demo Studies, taught in Toronto',
+        metaDescription: 'Written by an editor.',
+      }),
+    ).resolves.toMatchObject({
+      seoTitle: 'Demo Studies, taught in Toronto',
+      metaDescription: 'Written by an editor.',
+      source: { title: 'manual', description: 'manual' },
+    });
+  });
+
+  it('leaves the other types’ stored values as they are', async () => {
+    const { service } = createService();
+    await expect(
+      service.resolve(
+        'scholarship',
+        { id: 's-1', title: 'Demo Award', slug: 'demo-award' },
+        {
+          seoTitle: 'Demo Award',
+          metaDescription: 'Global default description.',
+        },
+      ),
+    ).resolves.toMatchObject({
+      source: { title: 'manual', description: 'manual' },
+    });
+  });
+
   it('gives a course the address it is filed at, under its university’s country', async () => {
     /* The flat /universities/<u>/courses/<o> address only redirects now,
        and the admin showed it as the course's canonical URL. */

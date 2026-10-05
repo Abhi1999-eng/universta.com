@@ -3,13 +3,17 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { FlagMark } from './FlagMark';
-import { switcherClass } from './switcher';
+import { programmeCount, switcherClass } from './switcher';
 
 export type SwitcherCountry = {
   id: string;
   name: string;
   slug: string;
   iso2Code?: string | null;
+  /** Published programmes it teaches there. The design's specialization
+   *  chips carry this figure; a country with none carries no figure rather
+   *  than a zero. */
+  courseCount?: number | null;
 };
 
 /** How many chips the band opens with. */
@@ -24,6 +28,10 @@ export const DESTINATIONS_SHOWN = 6;
  * button the home page uses to reach the full directory, and expands in
  * place rather than sending the reader somewhere else: the ones already on
  * screen stay where they were.
+ *
+ * The six it opens on are the places that teach it most -- the callers hand
+ * the countries over in that order (see `rankDestinations`) -- each with its
+ * programme count, as the design's specialization chips have it.
  */
 export function DestinationSwitcher({
   countries,
@@ -52,26 +60,39 @@ export function DestinationSwitcher({
   return (
     <>
       <div className={switcherClass(shown.length)}>
-        {shown.map((country) => (
-          <Link
-            key={country.id}
-            className="switcher__item"
-            href={
-              within
-                ? `/study-abroad/${country.slug}/${within}`
-                : `/study-abroad/${country.slug}`
-            }
-            /* The chip shows the country alone; what it opens is the
-               subject there, and a name on its own no longer says so. */
-            aria-label={within ? `${label} in ${country.name}` : undefined}
-          >
-            <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />
-            <span className="cchip__name">{country.name}</span>
-            <span className="switcher__arrow" aria-hidden="true">
-              &rarr;
-            </span>
-          </Link>
-        ))}
+        {shown.map((country) => {
+          const count = country.courseCount ?? 0;
+          return (
+            <Link
+              key={country.id}
+              className="switcher__item"
+              href={
+                within
+                  ? `/study-abroad/${country.slug}/${within}`
+                  : `/study-abroad/${country.slug}`
+              }
+              /* The chip shows the country alone; what it opens is the
+                 subject there, and a name on its own no longer says so --
+                 nor does a bare figure say what it counts. */
+              aria-label={
+                within
+                  ? `${label} in ${country.name}${count ? `, ${programmeCount(count)}` : ''}`
+                  : undefined
+              }
+            >
+              <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />
+              <span className="cchip__name">{country.name}</span>
+              {count ? (
+                <span className="dir__meta" aria-hidden="true">
+                  {count}
+                </span>
+              ) : null}
+              <span className="switcher__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
+          );
+        })}
       </div>
       {hidden > 0 ? (
         <p className="h-more h-more--center">

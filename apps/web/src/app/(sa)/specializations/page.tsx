@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getCourseLevels, getSpecializations, getSubjects } from '@/lib/catalog';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { formatNumber } from '@/lib/format';
+import { SpecializationFilters } from './SpecializationFilters';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +40,11 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
   const subjectSlug = first(params.subject).trim();
   const level = first(params.level).trim();
 
+  const filtered = Boolean(search || subjectSlug || level);
+
   /* The dropdowns are decoration around the list: if either lookup fails the
      page still lists specializations, it just cannot offer that filter. */
-  const [result, subjects, levels] = await Promise.all([
+  const [result, subjects, levels, everything] = await Promise.all([
     getSpecializations({
       ...(search ? { search } : {}),
       ...(subjectSlug ? { subject: subjectSlug } : {}),
@@ -53,11 +56,22 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
       .then((response) => response.data)
       .catch(() => []),
     getCourseLevels().catch(() => []),
+    /* How many there are before any filter, which the design keeps in the
+       eyebrow and counts against ("12 of 55 shown"). One row's read: the
+       total is in its meta. Unfiltered, the list itself already says. */
+    filtered
+      ? getSpecializations({ limit: '1' })
+          .then((response) => response.meta?.total ?? null)
+          .catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const rows = result?.data ?? [];
   const total = result?.meta?.total ?? rows.length;
+  const allTotal = everything ?? (filtered ? null : total);
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = from + rows.length - 1;
 
   const qs = (next: number) =>
     `/specializations?${new URLSearchParams({
@@ -83,17 +97,41 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
             <span aria-current="page">Specializations</span>
           </nav>
           <div className="hero__lead">
-            <p className="hero__eyebrow">
-              Narrow down<b>·</b>
-              {formatNumber(total)} specializations
-            </p>
+            {/* The whole catalogue's count, as the design keeps it: the
+                filtered figure is the count line's job, and it read "1
+                specializations". */}
+            {allTotal != null ? (
+              <p className="hero__eyebrow">
+                Narrow down<b>·</b>
+                {formatNumber(allTotal)}{' '}
+                {allTotal === 1 ? 'specialization' : 'specializations'}
+              </p>
+            ) : (
+              <p className="hero__eyebrow">Narrow down</p>
+            )}
             <h1 className="hero__h1">Specializations</h1>
             <p className="hero__sub">
               Every branch across our subjects. Pick one to see where it is
               taught.
             </p>
+            <div className="btn-row hero__actions">
+              <Link className="btn btn--ghost" href="/subjects">
+                Browse by subject{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            </div>
           </div>
-          <form className="h-filters" method="get" role="search">
+        </div>
+      </section>
+
+      {/* The design's filter bar sits with the list it filters, in one
+          tight band under the hero. Inside the hero it left a band of
+          empty white between the filters and the first card. */}
+      <section className="sec sec--white sec--tight specresults" id="specializations">
+        <div className="wrap">
+          <SpecializationFilters>
             <label className="h-filter h-filter--q">
               <span>Search</span>
               <input
@@ -136,23 +174,32 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
                 →
               </span>
             </button>
-          </form>
-        </div>
-      </section>
-
-      <section className="sec sec--white" id="specializations">
-        <div className="wrap">
+          </SpecializationFilters>
           {rows.length === 0 ? (
+            /* A filter that finds nothing is not an empty catalogue. */
             <p className="h-empty">
-              {search
-                ? `No specializations match “${search}”.`
-                : 'No specializations are published yet.'}
+              {filtered ? (
+                <>
+                  {search
+                    ? `No specializations match “${search}”${subjectSlug || level ? ' with those filters' : ''}.`
+                    : 'No specializations match those filters.'}{' '}
+                  <span>
+                    {subjectSlug || level
+                      ? 'Try another subject or level.'
+                      : 'Try another word, or browse by subject.'}
+                  </span>
+                </>
+              ) : (
+                'No specializations are published yet.'
+              )}
             </p>
-          ) : null}
-
-          <p className="h-count">
-            {formatNumber(rows.length)} shown of {formatNumber(total)}
-          </p>
+          ) : (
+            <p className="h-count" aria-live="polite">
+              {pages > 1
+                ? `Showing ${formatNumber(from)}–${formatNumber(to)} of ${formatNumber(total)}`
+                : `${formatNumber(total)} of ${formatNumber(allTotal ?? total)} shown`}
+            </p>
+          )}
           <div className="h-grid">
             {rows.map((row) => (
               <Link

@@ -35,6 +35,7 @@ function prisma(captured: { select?: unknown }) {
     subSubject: {
       findFirst: async () => specialization,
       findMany: async () => [],
+      count: async () => 0,
     },
     countrySubSubject: {
       findMany: async (args: { select?: unknown }) => {
@@ -50,7 +51,10 @@ function prisma(captured: { select?: unknown }) {
         return [{ country }];
       },
     },
-    course: { findMany: async () => [] },
+    countryCourse: { groupBy: async () => [] },
+    country: { findMany: async () => [] },
+    course: { findMany: async () => [], groupBy: async () => [] },
+    university: { findMany: async () => [], count: async () => 0 },
   } as unknown as PrismaService;
 }
 

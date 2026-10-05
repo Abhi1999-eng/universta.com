@@ -2,6 +2,15 @@ import Link from 'next/link';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import type { ConsultantPresence } from '@/lib/countries';
 import { inCountry } from '@/lib/country-article';
+import { jsonLdString } from '@/lib/json-ld';
+import { dateLabel } from '@/lib/university-courses';
+import {
+  breadcrumbJsonLd,
+  faqJsonLd,
+  plainText,
+  universityJsonLd,
+  type Crumb,
+} from '@/lib/university-json-ld';
 import {
   COURSES_SHOWN,
   intakeSummary,
@@ -18,6 +27,7 @@ import {
   universityHref,
 } from '@/lib/university-links';
 import { CountryConsultants } from './CountryConsultants';
+import { Crumbs } from './Crumbs';
 import { FlagMark } from './FlagMark';
 import { SectionHead } from './SectionHead';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
@@ -34,6 +44,7 @@ import {
 } from './UniversityGuideSections';
 import { UniversityTabs } from './UniversityTabs';
 import { universityInitials } from '@/lib/university-initials';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
 
 export type { NearbyUniversity } from './UniversityGuideSections';
 
@@ -97,6 +108,8 @@ export type UniversityRecord = {
   campuses: number;
   /** The city of its first campus that names one. */
   city?: string | null;
+  /** That campus's state or region, when it records one. */
+  region?: string | null;
   country: {
     name: string;
     slug: string;
@@ -249,12 +262,14 @@ function questionsFor({
       </>
     ) : (
       <>
-        None is linked to {name} in our catalogue yet. That reflects the catalogue, not the
-        university&rsquo;s funding.
+        {/* One string: the space after the name went missing in the built
+            page, and "University of Warwickin" reached the FAQ's structured
+            data as well. */}
+        {`None is linked to ${name} in our catalogue yet. That reflects the catalogue, not the university’s funding.`}
         {country ? (
           <>
             {' '}
-            <Link href={`/scholarships?country=${country.slug}`}>
+            <Link href={countryScholarshipsHref(country.slug)}>
               Scholarships for {where ?? country.name}
             </Link>{' '}
             may still apply.
@@ -356,7 +371,9 @@ export function UniversityGuide({
     faqs.length ? 'faqs' : null,
     country && others.length ? 'similar' : null,
   ].filter((id): id is string => Boolean(id));
-  const UNNUMBERED = new Set(['consultants', 'similar']);
+  /* The template numbers from the overview: the snapshot under the hero is
+     unnumbered, and counting it started the run at 02. */
+  const UNNUMBERED = new Set(['snapshot', 'consultants', 'similar']);
   const numbered = run.filter((id) => !UNNUMBERED.has(id));
   const n = (id: string) => {
     const index = numbered.indexOf(id);
@@ -486,36 +503,44 @@ export function UniversityGuide({
           .join(', ')
       : null;
 
-  const sep = (
-    <span className="crumbs__sep" aria-hidden="true">
-      /
-    </span>
+  /* Home / Study abroad / the country / its universities / this one, as the
+     behaviour reference files a university: the way back is to the
+     destination's own list, not the worldwide directory. The structured
+     data reads the same trail, so the two cannot disagree. */
+  const trail: Crumb[] = [
+    { label: 'Home', href: '/' },
+    ...(country
+      ? [
+          { label: 'Study abroad', href: '/study-abroad' },
+          { label: country.name, href: `/study-abroad/${country.slug}` },
+          { label: 'Universities', href: countryUniversitiesHref(country.slug) },
+        ]
+      : [{ label: 'Universities', href: '/universities' }]),
+    { label: university.name },
+  ];
+  /* The answers as a reader sees them, links and all, without the markup. */
+  const faqData = faqJsonLd(
+    faqs.map((faq) => ({ question: faq.question, answer: plainText(faq.answer) })),
   );
+  const structured = [
+    breadcrumbJsonLd(trail, self),
+    universityJsonLd(university),
+    faqData,
+  ].filter((data): data is Record<string, unknown> => Boolean(data));
 
   return (
     <>
+      {structured.map((data) => (
+        <script
+          key={String(data['@type'])}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(data) }}
+        />
+      ))}
+
       <section className="hero hero--compact">
         <div className="wrap">
-          {/* Home / Study abroad / the country / its universities / this one,
-              as the behaviour reference files a university: the way back is
-              to the destination's own list, not the worldwide directory. */}
-          <nav className="crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link>
-            {sep}
-            {country ? (
-              <>
-                <Link href="/study-abroad">Study abroad</Link>
-                {sep}
-                <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
-                {sep}
-                <Link href={countryUniversitiesHref(country.slug)}>Universities</Link>
-              </>
-            ) : (
-              <Link href="/universities">Universities</Link>
-            )}
-            {sep}
-            <span aria-current="page">{university.name}</span>
-          </nav>
+          <Crumbs trail={trail} />
 
           <div className="unihero">
             <div className="unihero__main">
@@ -637,10 +662,8 @@ export function UniversityGuide({
               offer.
               {university.verifiedAt || university.sourceReference ? (
                 <p className="verifybar__note">
-                  {university.verifiedAt
-                    ? `Last checked ${new Date(university.verifiedAt)
-                        .toISOString()
-                        .slice(0, 10)}.`
+                  {dateLabel(university.verifiedAt)
+                    ? `Last checked ${dateLabel(university.verifiedAt)}.`
                     : null}{' '}
                   {university.sourceReference ? (
                     <>
@@ -759,6 +782,7 @@ export function UniversityGuide({
         <CountryConsultants
           countryName={country.name}
           countrySlug={country.slug}
+          iso2Code={country.iso2Code ?? null}
           presence={consultants}
           alt={alt('consultants')}
           heading={`Need help applying to ${university.name}?`}
@@ -886,7 +910,7 @@ export function UniversityGuide({
                 href={countryUniversitiesHref(country.slug)}
               >
                 <span className="cchip__name">
-                  Other universities in {country.name}
+                  Other universities in {where ?? country.name}
                 </span>
                 <span className="switcher__arrow" aria-hidden="true">
                   &rarr;

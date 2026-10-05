@@ -306,3 +306,25 @@ export class SeoMetadataDto {
   @IsUUID()
   expectedUpdatedAt?: string;
 }
+
+/** The universities that teach one specialization, narrowed to one
+ *  destination when the page asking is about one. */
+export class SpecializationUniversitiesQueryDto {
+  /** A destination, by slug. Absent means every published destination. */
+  @ApiPropertyOptional({ example: 'united-kingdom' })
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  country?: string;
+
+  /** How many to name. `meta.total` counts all of them. */
+  @ApiPropertyOptional({ default: 6, minimum: 1, maximum: 50 })
+  @Transform(num)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit = 6;
+}

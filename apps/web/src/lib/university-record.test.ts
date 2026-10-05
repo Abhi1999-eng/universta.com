@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import type { CountryPage } from '@/lib/countries';
-import { cityOf, toDestination, toOffering, toRecord } from './university-record';
+import { cityOf, regionOf, toDestination, toOffering, toRecord } from './university-record';
 
 /**
  * The detail endpoint's record is loose JSON. What the page needs from it
@@ -116,6 +116,19 @@ describe('reading a university', () => {
     expect(toRecord(row).city).toBe('Oxford');
     expect(cityOf([{ city: '  ' }, { city: 'London' }])).toBe('London');
     expect(cityOf(undefined)).toBeNull();
+  });
+
+  it('takes the region from the campus that gave the city, never another', () => {
+    expect(
+      regionOf([
+        { city: null, state: 'Elsewhere' },
+        { city: 'Coventry', state: 'West Midlands' },
+      ]),
+    ).toBe('West Midlands');
+    /* The campus with the city records no state: none is borrowed. */
+    expect(regionOf([{ city: 'Coventry' }, { city: 'Leamington', state: 'Warwickshire' }])).toBeNull();
+    expect(regionOf(undefined)).toBeNull();
+    expect(toRecord(row).region ?? null).toBeNull();
   });
 
   it('carries the other universities in its country and how many there are', () => {

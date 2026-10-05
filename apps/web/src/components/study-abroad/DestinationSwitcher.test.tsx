@@ -68,3 +68,33 @@ describe('the destinations a specialization is taught in', () => {
     expect(render(205)).toContain('aria-expanded="false"');
   });
 });
+
+describe('a destination chip’s programme count', () => {
+  const chips = (courseCount: number | null) =>
+    renderToStaticMarkup(
+      <DestinationSwitcher
+        countries={[
+          { id: 'gb', name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB', courseCount },
+        ]}
+        label="Software Engineering"
+        within="computer-science/software-engineering"
+      />,
+    );
+
+  it('shows how many programmes it teaches there, as the design’s chips do', () => {
+    expect(chips(6)).toContain('<span class="dir__meta" aria-hidden="true">6</span>');
+  });
+
+  it('says what the figure counts to a screen reader', () => {
+    expect(chips(6)).toContain(
+      'aria-label="Software Engineering in United Kingdom, 6 programmes"',
+    );
+    expect(chips(1)).toContain('1 programme"');
+  });
+
+  it('shows no figure, rather than a zero, where nothing is taught yet', () => {
+    expect(chips(0)).not.toContain('dir__meta');
+    expect(chips(null)).not.toContain('dir__meta');
+    expect(chips(0)).toContain('aria-label="Software Engineering in United Kingdom"');
+  });
+});
