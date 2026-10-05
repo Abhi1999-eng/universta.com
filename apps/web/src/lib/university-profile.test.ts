@@ -182,15 +182,62 @@ describe('what the courses say about intakes', () => {
     deadline,
   });
 
-  it('counts the courses in each intake and keeps the earliest deadline', () => {
-    const summary = intakeSummary([
-      course('A', UG, { intakes: [intake('September', 9, '2027-03-01'), intake('January', 1, null)] }),
-      course('B', UG, { intakes: [intake('September', 9, '2027-01-15')] }),
-    ]);
+  const today = new Date('2026-10-05T09:30:00.000Z');
+
+  it('counts the courses in each intake and keeps the earliest deadline still to come', () => {
+    const summary = intakeSummary(
+      [
+        course('A', UG, { intakes: [intake('September', 9, '2027-03-01'), intake('January', 1, null)] }),
+        course('B', UG, { intakes: [intake('September', 9, '2027-01-15')] }),
+      ],
+      today,
+    );
     expect(summary).toEqual([
-      { key: 'January', name: 'January', month: 1, courses: 1, deadline: null },
-      { key: 'September', name: 'September', month: 9, courses: 2, deadline: '2027-01-15' },
+      { key: 'January', name: 'January', month: 1, courses: 1, deadline: null, passed: false },
+      {
+        key: 'September',
+        name: 'September',
+        month: 9,
+        courses: 2,
+        deadline: '2027-01-15',
+        passed: false,
+      },
     ]);
+  });
+
+  /* Lakeside's January intake: one course closed on 15 September, two are
+     open until 15 October and 15 November. Taking the earliest of the three
+     showed the intake as closing on a date already gone, and hid the two
+     still open. */
+  it('passes over a deadline that has gone by when a later one is still open', () => {
+    const [january] = intakeSummary(
+      [
+        course('A', UG, { intakes: [intake('January', 1, '2026-09-15T00:00:00.000Z')] }),
+        course('B', UG, { intakes: [intake('January', 1, '2026-11-15T00:00:00.000Z')] }),
+        course('C', UG, { intakes: [intake('January', 1, '2026-10-15T00:00:00.000Z')] }),
+      ],
+      today,
+    );
+    expect(january).toMatchObject({ courses: 3, deadline: '2026-10-15T00:00:00.000Z', passed: false });
+  });
+
+  it('keeps a deadline of today as open, whatever the hour', () => {
+    const [entry] = intakeSummary(
+      [course('A', UG, { intakes: [intake('January', 1, '2026-10-05T00:00:00.000Z')] })],
+      new Date('2026-10-05T23:59:00.000Z'),
+    );
+    expect(entry).toMatchObject({ deadline: '2026-10-05T00:00:00.000Z', passed: false });
+  });
+
+  it('marks the last deadline as passed only when every one has gone by', () => {
+    const [entry] = intakeSummary(
+      [
+        course('A', UG, { intakes: [intake('January', 1, '2026-09-15')] }),
+        course('B', UG, { intakes: [intake('January', 1, '2026-08-01')] }),
+      ],
+      today,
+    );
+    expect(entry).toMatchObject({ deadline: '2026-09-15', passed: true });
   });
 
   it('writes a deadline as a date, the same on the server and in the browser', () => {

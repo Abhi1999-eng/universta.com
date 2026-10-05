@@ -247,12 +247,30 @@ export function tuitionByLevel(offerings: readonly ProfileOffering[]) {
 
 /**
  * The intakes a university's courses list, one entry per intake, with how
- * many courses start in it and the earliest deadline any of them records.
+ * many courses start in it and the next deadline any of them records.
+ *
+ * The next deadline is the earliest one still to come. A deadline that has
+ * gone by is not a date anyone can still apply to, and taking the earliest
+ * of all of them hid the courses still open behind one already closed. Only
+ * when every deadline in the intake has passed is the last of them kept,
+ * marked as passed -- the rule the course's own page follows.
  */
-export function intakeSummary(offerings: readonly ProfileOffering[]) {
+export function intakeSummary(
+  offerings: readonly ProfileOffering[],
+  today: Date = new Date(),
+) {
+  /* Deadlines are dates; compared as YYYY-MM-DD, a deadline of today is
+     still open, whatever time of day the record was stamped with. */
+  const floor = today.toISOString().slice(0, 10);
   const intakes = new Map<
     string,
-    { key: string; name: string; month: number | null; courses: number; deadline: string | null }
+    {
+      key: string;
+      name: string;
+      month: number | null;
+      courses: number;
+      deadlines: string[];
+    }
   >();
   for (const offering of offerings) {
     for (const intake of offering.intakes ?? []) {
@@ -261,18 +279,24 @@ export function intakeSummary(offerings: readonly ProfileOffering[]) {
         name: intake.name,
         month: intake.month,
         courses: 0,
-        deadline: null,
+        deadlines: [],
       };
       entry.courses += 1;
-      if (intake.deadline && (!entry.deadline || intake.deadline < entry.deadline))
-        entry.deadline = intake.deadline;
+      if (intake.deadline) entry.deadlines.push(intake.deadline);
       intakes.set(intake.key, entry);
     }
   }
-  return [...intakes.values()].sort(
-    (left, right) =>
-      (left.month ?? 13) - (right.month ?? 13) || left.name.localeCompare(right.name),
-  );
+  return [...intakes.values()]
+    .map(({ deadlines, ...entry }) => {
+      const sorted = [...deadlines].sort();
+      const upcoming = sorted.find((value) => value.slice(0, 10) >= floor);
+      const deadline = upcoming ?? sorted[sorted.length - 1] ?? null;
+      return { ...entry, deadline, passed: Boolean(deadline && !upcoming) };
+    })
+    .sort(
+      (left, right) =>
+        (left.month ?? 13) - (right.month ?? 13) || left.name.localeCompare(right.name),
+    );
 }
 
 /** "1 May 2027", fixed to UTC so the server and the browser agree. */

@@ -114,7 +114,7 @@ export function UniversityFees({
 
 /**
  * "Intakes & deadlines": one card per intake the courses list, with how
- * many courses start in it and the earliest deadline any of them records.
+ * many courses start in it and the next deadline any of them records.
  * The zip's card also gives a decision window and a start date, which the
  * catalogue does not record per institution, so the card leaves them out
  * rather than guessing.
@@ -155,8 +155,15 @@ export function UniversityIntakes({
                   <dd>{intake.courses}</dd>
                 </div>
                 <div className="intake__row">
-                  <dt>Earliest deadline</dt>
-                  <dd>{deadlineLabel(intake.deadline) ?? 'Not recorded'}</dd>
+                  {/* The next deadline still open; when every one has gone
+                      by, the last of them, said to have passed rather than
+                      left to read as a date that can still be met. */}
+                  <dt>{intake.passed ? 'Last deadline' : 'Next deadline'}</dt>
+                  <dd>
+                    {deadlineLabel(intake.deadline)
+                      ? `${deadlineLabel(intake.deadline)}${intake.passed ? ' (passed)' : ''}`
+                      : 'Not recorded'}
+                  </dd>
                 </div>
               </dl>
             </article>

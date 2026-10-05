@@ -39,6 +39,31 @@ describe('reading an offering', () => {
     expect(offering.courseLevel).toEqual({ code: 'UG', name: "Bachelor's", order: 303 });
   });
 
+  /* An editor can file one university's course under another level than the
+     catalogue's course (Sterling's MEng is Master's there; its generic course
+     is a pathway). The course list and the course page read the course's
+     own level first, so the university page has to as well, or the three
+     pages call the course different levels and count the levels apart. */
+  it('takes the level set on the course first, the generic course’s otherwise', () => {
+    const own = { code: 'PG', name: "Master's", displayOrder: 4, educationOrder: 4 };
+    const pathway = {
+      code: 'PATHWAY',
+      name: 'Pathway Program',
+      displayOrder: 2,
+      educationOrder: 2,
+    };
+    const generic = offeringRow().genericCourse;
+    expect(
+      toOffering(offeringRow({ courseLevel: own, genericCourse: { ...generic, courseLevel: pathway } }))
+        .courseLevel,
+    ).toEqual({ code: 'PG', name: "Master's", order: 404 });
+    expect(toOffering(offeringRow({ courseLevel: null })).courseLevel).toEqual({
+      code: 'UG',
+      name: "Bachelor's",
+      order: 303,
+    });
+  });
+
   it('reads a fee only when the offering states one', () => {
     expect(toOffering(offeringRow()).tuition).toBeNull();
     expect(
