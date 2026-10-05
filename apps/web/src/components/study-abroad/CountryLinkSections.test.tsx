@@ -170,7 +170,10 @@ describe('country guide catalogue sections', () => {
         ]}
       />,
     );
-    expect(html).toContain('Postgraduate · From €18,000 a year');
+    /* The design's course row: name, level and fee side by side. */
+    expect(html).toMatch(
+      /courselist__meta">Postgraduate<\/span><span class="courselist__fee datum">From €18,000 a year</,
+    );
   });
 
   /* What an editor marked popular for the destination leads the section; the
@@ -383,7 +386,9 @@ describe('what a figure means', () => {
 describe('the consultants panel', () => {
   const presence = { total: 3, cities: [{ city: 'Delhi', count: 2 }, { city: 'Dubai', count: 1 }] };
 
-  it('carries the destination into the directory it links to', () => {
+  /* The destination's own consultants page, as the reference's "View all
+     consultants" opens, with a city chip ticking that city in its list. */
+  it('sends the reader to the destination\'s own consultants page', () => {
     const html = renderToStaticMarkup(
       <CountryConsultants
         countryName="Germany"
@@ -392,11 +397,27 @@ describe('the consultants panel', () => {
         alt={false}
       />,
     );
-    expect(html).toContain('href="/study-abroad-consultants?country=germany"');
+    expect(html).toContain('href="/study-abroad/germany/consultants"');
+    expect(html).toContain('View all consultants');
     expect(html).toContain(
-      'href="/study-abroad-consultants?country=germany&amp;city=Delhi"',
+      'href="/study-abroad/germany/consultants?city=delhi#consultants"',
     );
+    expect(html).not.toContain('/study-abroad-consultants?');
     expect(html).toContain('3 consultants on Universta');
+  });
+
+  it('names the destination with its article in a sentence', () => {
+    const html = renderToStaticMarkup(
+      <CountryConsultants
+        countryName="United Kingdom"
+        countrySlug="united-kingdom"
+        iso2Code="GB"
+        presence={presence}
+        alt={false}
+      />,
+    );
+    expect(html).toContain('Need help applying to the United Kingdom?');
+    expect(html).toContain('planning to study in the United Kingdom.');
   });
 
   it('counts one consultant as one, not as 1 consultants', () => {

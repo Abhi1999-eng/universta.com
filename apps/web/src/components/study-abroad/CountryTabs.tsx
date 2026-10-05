@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
+import { CurrentTabInView } from './CurrentTabInView';
 
 /**
  * The strip under a destination's hero: the four ways into it.
@@ -54,12 +56,11 @@ export function countryTabs(
       count: counts.universities,
     },
     {
-      /* The only one that leaves the destination's own path. Funding is
-         listed once, for every destination, and a second copy of that
-         listing filtered to one country would be the same records under a
-         different URL. */
+      /* Under the destination, as the behaviour reference files it. This
+         tab used to leave for the worldwide finder in the older design,
+         which never named the country and had no strip to come back by. */
       key: 'scholarships',
-      href: `/scholarships?country=${countrySlug}`,
+      href: countryScholarshipsHref(countrySlug),
       label: 'Scholarships',
       count: counts.scholarships,
     },
@@ -105,6 +106,67 @@ export function CountryTabs({
               </>
             )}
           </Link>
+        ))}
+      </div>
+      {current ? <CurrentTabInView /> : null}
+    </nav>
+  );
+}
+
+/**
+ * What each of the guide's sections is called in the "On this page" row.
+ * A section missing here -- an editor's own, the closing bands -- is not
+ * offered as a jump, rather than offered under a made-up name.
+ */
+const SECTION_LABELS: Readonly<Record<string, string>> = {
+  why: 'Why study here',
+  overview: 'Overview',
+  'study-paths': 'Study paths',
+  universities: 'Universities',
+  subjects: 'Subjects',
+  courses: 'Courses',
+  documents: 'Documents',
+  intakes: 'Intakes',
+  cost: 'Costs',
+  language: 'Language',
+  'work-visa': 'Visa and work',
+  numbers: 'In numbers',
+  testimonials: 'Student voices',
+  faq: 'FAQs',
+  'scholarship-funding': 'Scholarships',
+  consultants: 'Consultants',
+};
+
+/** The jumps the row offers, in the page's order, for the sections that
+ * actually render. */
+export function sectionJumps(rendered: readonly string[]) {
+  return rendered.flatMap((id) =>
+    SECTION_LABELS[id] ? [{ id, label: SECTION_LABELS[id]! }] : [],
+  );
+}
+
+/**
+ * "On this page": the guide's sections, as links to themselves.
+ *
+ * The behaviour reference puts this row under a destination's tabs. The
+ * guide runs to some twenty thousand pixels on a desktop and thirty on a
+ * phone, and a reader who came for the visa had to scroll past fees,
+ * intakes and documents to find out whether there was a visa section at
+ * all. Built from the list of sections the page renders, so it never
+ * offers a jump to one that is not there.
+ */
+export function CountrySectionJumps({ rendered }: { rendered: readonly string[] }) {
+  const jumps = sectionJumps(rendered);
+  /* Two sections are a page a reader can see the whole of. */
+  if (jumps.length < 3) return null;
+  return (
+    <nav className="pagetoc" aria-label="On this page">
+      <div className="wrap pagetoc__inner">
+        <span className="pagetoc__label">On this page</span>
+        {jumps.map((jump) => (
+          <a className="chipbtn chipbtn--sm" href={`#${jump.id}`} key={jump.id}>
+            {jump.label}
+          </a>
         ))}
       </div>
     </nav>

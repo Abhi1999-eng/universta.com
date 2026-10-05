@@ -17,6 +17,7 @@ import { FlagMark } from './FlagMark';
 import { switcherClass } from './switcher';
 import { Longform } from './Longform';
 import { SectionHead } from './SectionHead';
+import { inCountry } from '@/lib/country-article';
 
 /**
  * The country guide's sections, built on the approved design's markup.
@@ -31,6 +32,14 @@ import { SectionHead } from './SectionHead';
 
 type Country = CountryPage['country'];
 type Profiles = CountryPage['profiles'];
+
+/* The destination as it reads inside a sentence: "the United Kingdom",
+   "Germany". The headings below read "Why study in United Kingdom?" beside
+   others on the same page that already said "the". */
+const where = (country: Country) => inCountry(country.name, country.iso2Code);
+
+/** "the United Kingdom runs..." opens a sentence as "The United Kingdom". */
+const sentenceStart = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 function Section({
   id,
@@ -74,8 +83,8 @@ export function CountryWhy({ country, n, alt }: { country: Country; n: string | 
       <SectionHead
         n={n}
         eyebrow="Why this destination"
-        title={`Why study in ${country.name}?`}
-        lead={`What sets ${country.name} apart for international students, at a glance.`}
+        title={`Why study in ${where(country)}?`}
+        lead={`What sets ${where(country)} apart for international students, at a glance.`}
       >
         <AssessmentLink intent="why">Check My Options</AssessmentLink>
       </SectionHead>
@@ -136,12 +145,12 @@ export function CountryOverview({
   const body = lead ? country.overview : (split?.rest ?? null);
   return (
     <Section id="overview" alt={alt}>
-      <SectionHead n={n} eyebrow="Overview" title={`About studying in ${country.name}`}>
+      <SectionHead n={n} eyebrow="Overview" title={`About studying in ${where(country)}`}>
         {sentence ? <p className="ov__lead">{sentence.first}</p> : null}
         {sentence?.rest ? <p className="ov__more">{sentence.rest}</p> : null}
       </SectionHead>
       {body ? (
-        <Longform label={`Read more about studying in ${country.name}`}>
+        <Longform label={`Read more about studying in ${where(country)}`}>
           <RichText value={body} />
         </Longform>
       ) : null}
@@ -165,7 +174,7 @@ export function CountryDocuments({
       <SectionHead
         n={n}
         eyebrow="Documents"
-        title={`Documents required to study in ${country.name}`}
+        title={`Documents required to study in ${where(country)}`}
         lead="Get organised before you apply. Most delays come from translations and certification, not from the application itself."
       />
       <DocumentChecklist
@@ -208,8 +217,8 @@ export function CountryIntakes({
       <SectionHead
         n={n}
         eyebrow="Intakes"
-        title={`When can you apply to ${country.name}?`}
-        lead={`${country.name} runs ${count} ${count === 1 ? 'intake' : 'intakes'} a year.${
+        title={`When can you apply to ${where(country)}?`}
+        lead={`${sentenceStart(where(country))} runs ${count} ${count === 1 ? 'intake' : 'intakes'} a year.${
           primaryName
             ? ` The ${primaryName}${/intake/i.test(primaryName) ? '' : ' intake'} is the main one.`
             : ''
@@ -319,7 +328,7 @@ export function CountryCost({
       <SectionHead
         n={n}
         eyebrow="Cost"
-        title={`What does it cost to study in ${country.name}?`}
+        title={`What does it cost to study in ${where(country)}?`}
         lead={`Indicative ranges for international students${
           currency ? `, in ${currency}` : ''
         }. Treat every figure here as a starting point, not a quote.`}
@@ -436,13 +445,13 @@ export function CountryLanguage({
       <SectionHead
         n={n}
         eyebrow="Language"
-        title={`Language requirements for ${country.name}`}
+        title={`Language requirements for ${where(country)}`}
         lead="Requirements are set per programme. Use these as the usual range, and confirm the exact score with each university."
       />
       {rows.length ? (
         <div className="tablewrap">
           <table className="data">
-            <caption className="sr-only">English tests accepted in {country.name}</caption>
+            <caption className="sr-only">English tests accepted in {where(country)}</caption>
             <thead>
               <tr>
                 <th scope="col">Test</th>
@@ -527,7 +536,7 @@ export function CountryWorkVisa({
       <SectionHead
         n={n}
         eyebrow="Work & visa"
-        title={`Study, work and stay in ${country.name}`}
+        title={`Study, work and stay in ${where(country)}`}
         lead="The pathway from your first semester to work after graduation, and the visa conditions attached to each stage."
       />
       {journey.length ? (
@@ -660,10 +669,13 @@ export function CountryGuidance({
 export function CountryOtherDestinations({
   country,
   others,
+  total = null,
   alt,
 }: {
   country: Country;
   others: Destination[];
+  /** Every destination the directory holds, for the way to all of them. */
+  total?: number | null;
   alt: boolean;
 }) {
   if (!others.length) return null;
@@ -688,10 +700,21 @@ export function CountryOtherDestinations({
             </Link>
           ))}
         </div>
+        {/* The design's switcher ends on the whole directory. Six
+            destinations are a suggestion, not the list, and nothing inside
+            the guide led back to the other two hundred. */}
+        <p className="h-more switcher__all">
+          <Link className="linkcta" href="/study-abroad">
+            {total ? `Explore all ${total.toLocaleString('en-GB')} countries` : 'Explore all countries'}{' '}
+            <span className="linkcta__arrow" aria-hidden="true">
+              &rarr;
+            </span>
+          </Link>
+        </p>
         <div className="compare">
           <div>
             <div className="compare__t">
-              Not sure between {country.name} and {first.name}?
+              Not sure between {where(country)} and {inCountry(first.name, first.iso2Code)}?
             </div>
             <p className="snap__n">Put both against your own profile instead of against each other.</p>
           </div>

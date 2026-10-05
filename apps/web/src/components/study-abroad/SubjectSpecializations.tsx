@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { SubjectBranch } from '@/lib/catalog';
 import { formatNumber } from '@/lib/format';
+import { mergeLevels, sortByLevelOrder } from '@/lib/level-order';
 
 /**
  * A subject's specializations, filtered by the level they are taught at.
@@ -12,23 +13,33 @@ import { formatNumber } from '@/lib/format';
  * is built from the levels that actually appear across these branches: it can
  * never offer a level that would empty the grid, and it stands down entirely
  * when the catalogue has not recorded a level for any of them.
+ *
+ * Levels read in the order a student climbs them, on the bar and on each
+ * card. Merged in the order they were met, the bar opened "PhD, Diploma,
+ * Bachelor's".
  */
 export function SubjectSpecializations({
   subjectName,
   subjectSlug,
   branches,
+  levelOrder = [],
 }: {
   subjectName: string;
   subjectSlug: string;
   branches: SubjectBranch[];
+  /** Level codes in academic order: the subject's own levels, which the
+   *  page already has in that order. */
+  levelOrder?: string[];
 }) {
-  const levels = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const branch of branches)
-      for (const level of branch.levels ?? [])
-        if (!seen.has(level.id)) seen.set(level.id, level.name);
-    return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [branches]);
+  const levels = useMemo(
+    () =>
+      mergeLevels(
+        branches.map((branch) => branch.levels),
+        levelOrder,
+        (level) => level.id,
+      ).map(({ id, name }) => ({ id, name })),
+    [branches, levelOrder],
+  );
 
   const [level, setLevel] = useState('all');
   const shown =
@@ -78,7 +89,9 @@ export function SubjectSpecializations({
               {row.levels?.length || row.publishedCourseCount ? (
                 <span className="speccard__foot">
                   <span className="speccard__levels">
-                    {(row.levels ?? []).map((item) => item.name).join(', ')}
+                    {sortByLevelOrder(row.levels ?? [], levelOrder)
+                      .map((item) => item.name)
+                      .join(', ')}
                   </span>
                   {row.publishedCourseCount ? (
                     <span className="speccard__count datum">

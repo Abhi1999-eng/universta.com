@@ -2,9 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getCoursesByLevel, getSpecialization } from '@/lib/catalog';
 import { LEVEL_ROWS_FETCHED } from '@/lib/course-levels';
+import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
 import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
 import { jsonLdString } from '@/lib/json-ld';
+import { phaseList } from '@/lib/phase1';
+import { toScholarshipCards } from '@/lib/scholarship-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,14 +48,25 @@ export default async function SpecializationDetailPage({ params }: Props) {
   const specialization = await load(slug, specializationSlug);
   if (!specialization) notFound();
 
-  /* Its courses under their levels. Both halves of the pair go with the
-     request: the specialization's slug alone would also match the branch of
-     the same name under another subject. */
-  const levels = await getCoursesByLevel({
-    subject: specialization.subject.slug,
-    subSubject: specialization.slug,
-    perLevel: LEVEL_ROWS_FETCHED,
-  }).catch(() => null);
+  const [levels, scholarships] = await Promise.all([
+    /* Its courses under their levels. Both halves of the pair go with the
+       request: the specialization's slug alone would also match the branch
+       of the same name under another subject. */
+    getCoursesByLevel({
+      subject: specialization.subject.slug,
+      subSubject: specialization.slug,
+      perLevel: LEVEL_ROWS_FETCHED,
+    }).catch(() => null),
+    /* Awards are recorded against subjects, so the specialization shows its
+       subject's, as the subject page does. A failure drops the section, not
+       the page. */
+    phaseList<AnyRecord>('scholarships', {
+      subject: specialization.subject.slug,
+      limit: '6',
+    })
+      .then((result) => toScholarshipCards(result.data))
+      .catch(() => []),
+  ]);
 
   const breadcrumb = {
     '@context': 'https://schema.org',
@@ -86,7 +100,11 @@ export default async function SpecializationDetailPage({ params }: Props) {
         href={`/subjects/${specialization.subject.slug}/${specialization.slug}`}
         title={specialization.name}
       />
-      <SpecializationGuide specialization={specialization} levels={levels} />
+      <SpecializationGuide
+        specialization={specialization}
+        levels={levels}
+        scholarships={scholarships}
+      />
     </>
   );
 }

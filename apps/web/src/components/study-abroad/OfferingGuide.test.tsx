@@ -135,7 +135,7 @@ describe('the course page', () => {
       'Location',
     ]);
     expect(html).toContain('Needs verification');
-    expect(html).toContain('Last updated 2026-10-05');
+    expect(html).toContain('Last updated 5 October 2026');
   });
 
   it('always shows fees, intakes and eligibility, pointing somewhere when they are empty', () => {
@@ -186,10 +186,13 @@ describe('the course page', () => {
       }),
     );
     expect(html).toContain('<th scope="col">Course start</th>');
-    expect(html).toContain('Jan 15, 2027');
-    expect(html).toContain('Before <b>Jan 15, 2027</b>');
+    /* The same deadline written the same way as on the university's
+       profile and its course list. */
+    expect(html).toContain('15 January 2027');
+    expect(html).toContain('Before <b>15 January 2027</b>');
+    expect(html).not.toContain('Jan 15, 2027');
     expect(html).toContain('GBP 30,000/yr');
-    expect(html).toContain('Published figure, verified Sep 1, 2026');
+    expect(html).toContain('Published figure, verified 1 September 2026');
     expect(html).toContain('>Verified<');
   });
 
@@ -283,5 +286,170 @@ describe('the course as data', () => {
 
   it('refuses a course it cannot file under a country', () => {
     expect(toOfferingDetail(apiRow({ university: { name: 'X', slug: 'x' } }))).toBeNull();
+  });
+});
+
+describe('what the course page reads from its destination and its course', () => {
+  const ukGuide = {
+    consultants: {
+      total: 4,
+      cities: [
+        { city: 'London', count: 3 },
+        { city: 'Manchester', count: 1 },
+      ],
+    },
+    links: [
+      { key: 'visa', label: 'Student visa', href: '/study-abroad/united-kingdom#country-visa-process' },
+      { key: 'work-visa', label: 'Work after study', href: '/study-abroad/united-kingdom#work-visa' },
+    ],
+    costHref: '/study-abroad/united-kingdom#cost' as string | null,
+  };
+  const withGuide = (destination: typeof ukGuide | null, value = detail()) =>
+    renderToStaticMarkup(
+      <OfferingGuide
+        detail={value}
+        destination={destination}
+        today={new Date('2026-10-05T00:00:00Z')}
+      />,
+    );
+
+  it('sends the visa step to the student-visa section and living costs to the cost section', () => {
+    const html = withGuide(ukGuide);
+    expect(html).toContain(
+      'href="/study-abroad/united-kingdom#country-visa-process">United Kingdom visa steps →</a>',
+    );
+    expect(html).toContain(
+      'href="/study-abroad/united-kingdom#cost">Living costs and visa fees in the United Kingdom →</a>',
+    );
+    expect(html).not.toContain('#work-visa">United Kingdom visa steps');
+  });
+
+  it('falls back on the guide itself for a section the guide does not render', () => {
+    const html = withGuide({ ...ukGuide, links: [], costHref: null });
+    expect(html).toContain('href="/study-abroad/united-kingdom">United Kingdom visa steps →</a>');
+    expect(html).toContain(
+      'href="/study-abroad/united-kingdom">Living costs and visa fees in the United Kingdom →</a>',
+    );
+    expect(html).not.toContain('#country-visa-process');
+    expect(html).not.toContain('#cost"');
+    /* The default record has careers: its work-rights link lands on the
+       guide too, rather than on an anchor that is not there. */
+    expect(html).toContain('href="/study-abroad/united-kingdom">Post-study work rights');
+  });
+
+  it('keeps the post-study work link on the guide’s work section', () => {
+    expect(withGuide(ukGuide)).toContain(
+      'href="/study-abroad/united-kingdom#work-visa">Post-study work rights',
+    );
+    /* Without the guide to ask, the anchor it always had. */
+    expect(withGuide(null)).toContain(
+      'href="/study-abroad/united-kingdom#work-visa">Post-study work rights',
+    );
+  });
+
+  it('leads the talk band to the destination’s consultants and their cities, keeping counselling', () => {
+    const html = withGuide(ukGuide);
+    const talk = html.slice(html.indexOf('id="talk"'), html.indexOf('id="careers"'));
+    expect(talk).toContain(
+      'href="/study-abroad/united-kingdom/consultants">Find United Kingdom consultants',
+    );
+    expect(talk).toContain(
+      '4 consultants on Universta support students planning to study in the United Kingdom.',
+    );
+    expect(talk).toContain('Near you');
+    expect(talk).toContain('href="/study-abroad/united-kingdom/consultants?city=London"');
+    expect(talk).toContain('Book free counselling');
+    /* One band in the slot, not a second consultants band beside it. */
+    expect(html).not.toContain('id="consultants"');
+  });
+
+  it('offers only counselling when the destination has no consultants', () => {
+    const html = withGuide({ ...ukGuide, consultants: { total: 0, cities: [] } });
+    const talk = html.slice(html.indexOf('id="talk"'), html.indexOf('id="careers"'));
+    /* No link to a consultants page, old address or new. */
+    expect(talk).not.toMatch(/href="[^"]*consultants/);
+    expect(talk).not.toContain('Near you');
+    expect(talk).toContain('class="btn" href="/counselling');
+  });
+
+  it('names English in the panel from the course’s English test, with its score', () => {
+    const html = render(
+      detail({
+        requirements: [
+          { category: 'ENGLISH_TEST', title: 'IELTS', minimumScore: '6.50' },
+          { category: 'ACADEMIC', title: 'Degree' },
+        ],
+      }),
+    );
+    expect(html).toMatch(
+      /snap__k">Language<\/span><span class="snap__v">English<\/span><span class="snap__n">IELTS 6.5 minimum</,
+    );
+  });
+
+  it('leaves the language unlisted without an English test, whatever else the course asks', () => {
+    const html = render(
+      detail({ requirements: [{ category: 'LANGUAGE_TEST', title: 'TestDaF', minimumScore: '4' }] }),
+    );
+    expect(html).toMatch(/snap__k">Language<\/span><span class="snap__v uc-none">Not listed</);
+  });
+
+  it('shows the questions editors wrote for the course, after careers, numbered and in the strip', () => {
+    const html = renderToStaticMarkup(
+      <OfferingGuide
+        detail={detail()}
+        faqs={[
+          { id: 'f1', question: 'Do I need a computing degree?', answer: '<p>Usually, or strong maths.</p>' },
+          { id: 'f2', question: 'Empty one', answer: '<p> </p>' },
+        ]}
+        today={new Date('2026-10-05T00:00:00Z')}
+      />,
+    );
+    expect(html).toContain('<a href="#faqs">FAQs</a>');
+    expect(html).toMatch(/eyebrow__n">07<\/span>(?:\s|<!-- -->)*Questions/);
+    expect(html).toContain('About this course');
+    expect(html).toContain('Do I need a computing degree?');
+    expect(html).not.toContain('Empty one');
+    expect(html.indexOf('id="careers"')).toBeLessThan(html.indexOf('id="faqs"'));
+    expect(html.indexOf('id="faqs"')).toBeLessThan(html.indexOf('id="university"'));
+    expect(html).toContain('"@type":"FAQPage"');
+    expect(html).toContain('"text":"Usually, or strong maths."');
+  });
+
+  it('draws no questions band when the course has none', () => {
+    const html = render();
+    expect(html).not.toContain('id="faqs"');
+    expect(html).not.toContain('FAQPage');
+  });
+
+  it('describes its breadcrumb trail to search engines, ending on the course', () => {
+    const html = render();
+    const match = html.match(
+      /<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"BreadcrumbList".*?)<\/script>/,
+    );
+    const crumbs = JSON.parse(match![1]!) as {
+      itemListElement: Array<{ name: string; item: string }>;
+    };
+    expect(crumbs.itemListElement.map((step) => step.name)).toEqual([
+      'Home',
+      'Study abroad',
+      'United Kingdom',
+      'Universities',
+      'University of Oxford',
+      'Courses',
+      'MSc Computer Science',
+    ]);
+    expect(crumbs.itemListElement.at(-1)!.item).toMatch(
+      /\/study-abroad\/united-kingdom\/universities\/university-of-oxford\/courses\/university-of-oxford-msc-computer-science$/,
+    );
+  });
+
+  it('says the course is taught in English only when it asks for an English test', () => {
+    expect(offeringJsonLd(detail(), 'https://universta.example').inLanguage).toBeUndefined();
+    expect(
+      offeringJsonLd(
+        detail({ requirements: [{ category: 'ENGLISH_TEST', title: 'IELTS', minimumScore: '6.5' }] }),
+        'https://universta.example',
+      ).inLanguage,
+    ).toBe('en');
   });
 });

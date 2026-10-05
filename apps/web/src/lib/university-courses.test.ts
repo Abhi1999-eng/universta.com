@@ -5,7 +5,9 @@ import {
   courseListSearch,
   courseRunMeta,
   courseRunParams,
+  dateLabel,
   durationText,
+  isNarrowedCourseList,
   offeringCanonical,
   programmeName,
   readCourseFilters,
@@ -23,6 +25,41 @@ import {
  */
 
 const uk = { name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB' };
+
+describe('which addresses are a slice of the list', () => {
+  it('keeps searched, filtered, sorted and further-loaded views out of the index', () => {
+    for (const query of [
+      { q: 'msc' },
+      { level: 'PG' },
+      { subject: 'computer-science' },
+      { specialization: 'artificial-intelligence' },
+      { duration: '1' },
+      { intake: 'september' },
+      { studyMode: 'FULL_TIME' },
+      { scholarship: 'true' },
+      { sort: 'fee' },
+      { page: '2' },
+      /* The old list's names, which still narrow. */
+      { courseLevel: 'UG' },
+      { subSubject: 'ai' },
+    ])
+      expect(isNarrowedCourseList(query)).toBe(true);
+  });
+
+  it('treats the bare list under another spelling as the bare list', () => {
+    for (const query of [{}, { sort: 'relevance' }, { page: '1' }, { utm_source: 'mail' }, { q: '  ' }])
+      expect(isNarrowedCourseList(query)).toBe(false);
+  });
+});
+
+describe('a date on a university’s pages', () => {
+  it('is written in full, the British way, the same on the server and in the browser', () => {
+    expect(dateLabel('2027-08-02')).toBe('2 August 2027');
+    expect(dateLabel('2026-10-05T23:30:00.000Z')).toBe('5 October 2026');
+    expect(dateLabel(null)).toBeNull();
+    expect(dateLabel('not a date')).toBeNull();
+  });
+});
 
 describe('the list’s address', () => {
   it('reads several values per filter, and the names the old list used', () => {
@@ -179,7 +216,9 @@ describe('a course as a card', () => {
     expect(card.studyMode).toBe('Full time');
     expect(card.level).toEqual({ code: 'PG', name: "Master's" });
     expect(card.intakes).toEqual(['September', 'January']);
-    expect(card.nextDeadline).toBe('Jun 30, 2099');
+    /* "Apply by 30 June 2099": the way the university's profile and the
+       course page write the same deadline. */
+    expect(card.nextDeadline).toBe('30 June 2099');
   });
 
   it('takes the university from the row when none is handed over', () => {

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
+import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
 import {
   CountryCost,
   CountryDocuments,
@@ -31,10 +32,13 @@ import { CountryConsultants } from '@/components/study-abroad/CountryConsultants
 import { EditorialSection, editorialRenders } from '@/components/study-abroad/EditorialSection';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
-import { CountryTabs } from '@/components/study-abroad/CountryTabs';
-import { loadCountryTabs } from '@/lib/country-tabs';
+import { CountrySectionJumps, CountryTabs } from '@/components/study-abroad/CountryTabs';
+import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
 import { richTextToPlainText } from '@/components/phase1/RichText';
-import { getCourses, getSubjects } from '@/lib/catalog';
+import { getCourseFilterOptions, getCourses, getSubjects } from '@/lib/catalog';
+import { inCountry } from '@/lib/country-article';
+import { countryConsultantsHref } from '@/lib/country-consultant-list';
+import { universityHref } from '@/lib/university-links';
 import { phaseList } from '@/lib/phase1';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { toScholarshipCards } from '@/lib/scholarship-card';
@@ -52,7 +56,7 @@ import {
   studyPathsFor,
   workSummary,
 } from '@/lib/study-abroad-view';
-import { toUniversityListRow } from '@/lib/university-list';
+import { cityKey, toUniversityListRow } from '@/lib/university-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +67,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const page = await getStudyAbroadCountry(countrySlug);
   if (!page) return { title: 'Destination not found' };
   const { country, seo } = page;
-  const title = seo?.seoTitle ?? `${country.pageHeading ?? `Study in ${country.name}`}`;
+  const title =
+    seo?.seoTitle ??
+    `${country.pageHeading ?? `Study in ${inCountry(country.name, country.iso2Code)}`}`;
   const description =
     seo?.metaDescription ??
     (country.shortDescription ? richTextToPlainText(country.shortDescription).slice(0, 300) : '');
@@ -86,13 +92,26 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   /* The catalogue slices -- courses and scholarships for this destination --
      are read alongside the guide rather than after it, and a failure in either
      leaves its section out rather than taking the guide down with it. */
-  const [page, directory, courseList, scholarshipList, universityList, catalogue] =
-    await Promise.all([
+  const [
+    page,
+    directory,
+    courseList,
+    courseFilters,
+    scholarshipList,
+    universityList,
+    catalogue,
+  ] = await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getDestinations().catch(() => null),
-    /* More than the six the section shows: an editor's curated courses lead
-       it, and they have to be in hand to be put first. */
-    getCourses({ country: countrySlug, limit: '24' }).catch(() => null),
+    /* Enough to file them under their subjects: the section groups the
+       destination's courses by subject, and a first page of twenty-four
+       could be one subject's alone. An editor's curated courses lead
+       within their subject, so they have to be in hand too. */
+    getCourses({ country: countrySlug, limit: '100' }).catch(() => null),
+    /* The catalogue's own count per subject here, for each group's head --
+       the size of the slice read above is not the subject's size. Its
+       failure costs the counts and nothing else. */
+    getCourseFilterOptions({ country: countrySlug }).catch(() => null),
     phaseList<AnyRecord>('scholarships', {
       country: countrySlug,
       limit: '6',
@@ -127,6 +146,17 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   );
 
   const { country, profiles, sections, faqs, consultantCards } = page;
+  /* "the United Kingdom", "Germany": every sentence on the page that names
+     the destination reads it this way. */
+  const where = inCountry(country.name, country.iso2Code);
+  const subjectCounts = new Map(
+    (courseFilters?.subjects ?? []).map((subject) => [subject.value, subject.count]),
+  );
+  const listedCourses = Number(
+    (courseList?.meta as { total?: unknown } | null | undefined)?.total,
+  );
+  const courseTotal =
+    Number.isFinite(listedCourses) && listedCourses > 0 ? listedCourses : null;
   const tabs = await loadCountryTabs(
     country.slug,
     (country.subjects ?? []).length,
@@ -136,6 +166,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
      the catalogue's thirty, which is how this button came to offer study
      paths instead on every destination that had no links yet. */
   const hasSubjectsPage = tabs.some((tab) => tab.key === 'subjects');
+  const counts = tabCounts(tabs);
   const testimonials = page.testimonials ?? [];
   const snapshot = countrySnapshot(page);
   const paths = studyPathsFor(page);
@@ -224,13 +255,19 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
   const breadcrumbs = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    /* Two items, matching the crumbs on the page: the destination listing is
-       the homepage now, so a third "Study Abroad" item would name `/` twice. */
+    /* Three items, matching the crumbs on the page: the destination
+       directory has its own page again, between home and the guide. */
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteOrigin}/` },
       {
         '@type': 'ListItem',
         position: 2,
+        name: 'Study abroad',
+        item: `${siteOrigin}/study-abroad`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
         name: country.name,
         item: `${siteOrigin}/study-abroad/${country.slug}`,
       },
@@ -260,15 +297,23 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
           dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
         />
       ) : null}
+      {/* Remembered in this browser only, so the directory's "Continue your
+          journey" can offer the destinations a reader was comparing. */}
+      <RecordVisit kind="country" href={`/study-abroad/${country.slug}`} title={country.name} />
 
       {/* HERO */}
       <section className="hero">
         <div className="wrap">
-          {/* Two crumbs, not three: the destination listing that used to sit
-              between home and a country guide is the homepage now, so a
-              "Study Abroad" crumb would point at the same page as "Home". */}
+          {/* Home / Study abroad / the destination, as the design and the
+              reference both have it, and as the guide's own tab pages do:
+              the directory is a page of its own, and the crumb is the way
+              back to it from inside the guide. */}
           <nav className="crumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>
+            <span className="crumbs__sep" aria-hidden="true">
+              /
+            </span>
+            <Link href="/study-abroad">Study abroad</Link>
             <span className="crumbs__sep" aria-hidden="true">
               /
             </span>
@@ -298,7 +343,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
                   ))}
                 </div>
               ) : null}
-              <h1 className="hero__h1">{country.pageHeading ?? `Study in ${country.name}`}</h1>
+              <h1 className="hero__h1">{country.pageHeading ?? `Study in ${where}`}</h1>
               {heroSub ? <p className="hero__sub">{heroSub}</p> : null}
               {country.tagline ? (
                 <p className="hero__promise">{country.tagline}</p>
@@ -387,6 +432,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
           fields taught here and the institutions teaching them were pages a
           reader had to already know the URL of. */}
       <CountryTabs tabs={tabs} current="overview" />
+      <CountrySectionJumps rendered={[...run, ...closing]} />
 
       <CountryWhy country={country} n={number('why')} alt={band('why')} />
       <CountryOverview
@@ -397,7 +443,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       />
       <StudyPaths
         paths={paths}
-        countryName={country.name}
+        countryName={where}
         fields={(country.subjects ?? []).slice(0, 6).map((subject) => ({
           name: subject.name,
           href: `/study-abroad/${country.slug}/${subject.slug}`,
@@ -424,6 +470,8 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       <CountryCourses
         country={country}
         courses={courses}
+        total={courseTotal}
+        subjectCounts={subjectCounts}
         n={number('courses')}
         alt={band('courses')}
       />
@@ -483,7 +531,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       />
       <FaqAccordion
         faqs={faqs.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer }))}
-        countryName={country.name}
+        countryName={where}
         n={number('faq')}
         alt={band('faq')}
       />
@@ -500,26 +548,88 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
       <CountryConsultants
         countryName={country.name}
         countrySlug={country.slug}
+        iso2Code={country.iso2Code ?? null}
         presence={page.consultants}
         alt={band('consultants')}
       />
 
       <PlanBand
-        heading={`Ready to plan your move to ${country.name}?`}
+        heading={`Ready to plan your move to ${where}?`}
         body="Tell us about your academic profile, goals and budget, and a counsellor will match it against live programmes."
         countrySlug={country.slug}
         countryName={country.name}
-        secondary={{ href: '/', label: 'Browse all destinations' }}
+        /* The directory, not the homepage: every destination is a page of
+           its own, and this button used to land a reader on `/`. */
+        secondary={{ href: '/study-abroad', label: 'Explore all countries' }}
       />
 
       <CountryOtherDestinations
         country={country}
         others={others}
+        total={directory?.counts.total ?? null}
         alt={band('other-destinations')}
       />
 
       {/* EXPLORE NEXT */}
-      <CountryConnect country={country} alt={band('connect')} />
+      <CountryConnect
+        country={country}
+        alt={band('connect')}
+        scholarships={counts.scholarships > 0}
+        consultants={Boolean(page.consultants?.total)}
+        groups={[
+          {
+            title: `Courses in ${where}`,
+            total: courseTotal ?? undefined,
+            items: courses.slice(0, 6).map((course) => ({
+              id: course.id,
+              name: course.name,
+              href: `/courses/${course.slug}`,
+              note: course.courseLevel?.name ?? null,
+            })),
+          },
+          {
+            title: `Universities in ${where}`,
+            total: counts.universities || undefined,
+            items: countryUniversities(country, countryUniversityCards)
+              .slice(0, 6)
+              .map((university) => ({
+                id: university.id,
+                name: university.name,
+                href: universityHref(university.slug),
+                note: 'city' in university ? (university.city ?? null) : null,
+              })),
+          },
+          {
+            title: 'Scholarships',
+            total: counts.scholarships || undefined,
+            items: countryScholarships.slice(0, 6).map((scholarship) => ({
+              id: scholarship.id,
+              name: scholarship.title,
+              href: `/scholarships/${scholarship.slug}`,
+              note: scholarship.provider,
+            })),
+          },
+          {
+            title: `Subjects in ${where}`,
+            total: (country.subjects ?? []).length,
+            items: (country.subjects ?? []).slice(0, 6).map((subject) => ({
+              id: subject.id,
+              name: subject.name,
+              href: `/study-abroad/${country.slug}/${subject.slug}`,
+            })),
+          },
+          {
+            title: 'Consultants',
+            total: page.consultants?.total || undefined,
+            items: (page.consultants?.cities ?? []).slice(0, 6).map((entry) => ({
+              id: entry.city,
+              name: `In ${entry.city}`,
+              href: `${countryConsultantsHref(country.slug)}?city=${encodeURIComponent(cityKey(entry.city))}#consultants`,
+              note: `${entry.count} ${entry.count === 1 ? 'consultant' : 'consultants'}`,
+            })),
+          },
+        ]}
+      />
     </>
   );
 }

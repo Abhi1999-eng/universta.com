@@ -4,6 +4,7 @@ import type { RequestWithId } from '../common/http.types';
 import { successEnvelope } from '../catalog/catalog.responses';
 import {
   SpecializationListQueryDto,
+  SpecializationUniversitiesQueryDto,
   SubjectListQueryDto,
 } from './dto/subject.dto';
 import { SubjectsService } from './subjects.service';
@@ -20,6 +21,26 @@ export class SubjectsController {
     @Query() query: SubjectListQueryDto,
   ) {
     const result = await this.subjects.publicList(query);
+    return successEnvelope(request, result.data, result.meta);
+  }
+
+  /* Declared before the specialization itself, like the route below it is
+     declared before ':slug', so the longer address is matched first. */
+  @Get(':subjectSlug/specializations/:slug/universities')
+  @ApiOperation({
+    summary: 'List the universities that teach a specialization',
+  })
+  async specializationUniversities(
+    @Req() request: RequestWithId,
+    @Param('subjectSlug') subjectSlug: string,
+    @Param('slug') slug: string,
+    @Query() query: SpecializationUniversitiesQueryDto,
+  ) {
+    const result = await this.subjects.publicSpecializationUniversities(
+      subjectSlug,
+      slug,
+      query,
+    );
     return successEnvelope(request, result.data, result.meta);
   }
 

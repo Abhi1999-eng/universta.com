@@ -29,6 +29,10 @@ const TEMPLATE_LIMITS: Record<
 };
 const SAFE_CANONICAL = /^(\/(?!\/)[^\s]*|https:\/\/[^\s]+)$/;
 const GOOGLE_TOKEN = /^[A-Za-z0-9._-]{6,255}$/;
+/* The types whose stored values are checked for echoes of the defaults:
+   see `resolve`. A university's and a course's page build a better title
+   and description of their own when nothing was written for them. */
+const ECHO_CHECKED = new Set<SeoBulkEntityType>(['university', 'offering']);
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -232,11 +236,33 @@ export class SeoManagementService {
       defaultSeo.defaultOgImageMediaId,
     );
 
-    const manualTitle = text(manual?.seoTitle);
-    const manualDescription = text(manual?.metaDescription);
+    /* The admin's editor opens on the values this resolver fills in -- the
+       record's own name as its title, the site's default description -- and
+       saving the form stores them back as though an editor had written
+       them. A stored value that only repeats what would be shown without it
+       says nothing an editor chose, so for a university or a course it is
+       read as not written: the source then says "fallback" or "default",
+       and the page builds its own title and description in its place. */
+    const defaultDescription = text(defaultSeo.defaultDescription);
+    const written = (value: unknown, ...echoes: Array<string | null>) => {
+      const stored = text(value);
+      if (!stored || !ECHO_CHECKED.has(entityType)) return stored;
+      const same = (echo: string | null) =>
+        echo !== null &&
+        echo.replace(/\s+/g, ' ') === stored.replace(/\s+/g, ' ');
+      return echoes.some(same) ? null : stored;
+    };
+    const manualTitle = written(manual?.seoTitle, fallbackTitle);
+    const manualDescription = written(
+      manual?.metaDescription,
+      defaultDescription,
+    );
     const manualCanonical = text(manual?.canonicalUrl);
-    const manualOgTitle = text(manual?.ogTitle);
-    const manualOgDescription = text(manual?.ogDescription);
+    const manualOgTitle = written(manual?.ogTitle, fallbackTitle);
+    const manualOgDescription = written(
+      manual?.ogDescription,
+      defaultDescription,
+    );
     return {
       seoTitle: manualTitle ?? renderedTitle ?? fallbackTitle,
       metaDescription:
@@ -264,13 +290,13 @@ export class SeoManagementService {
         fallbackDescription,
       ogMedia: media(manual?.ogMedia) ?? defaultImage,
       twitterTitle:
-        text(manual?.twitterTitle) ??
+        written(manual?.twitterTitle, fallbackTitle) ??
         manualOgTitle ??
         renderedOgTitle ??
         renderedTitle ??
         fallbackTitle,
       twitterDescription:
-        text(manual?.twitterDescription) ??
+        written(manual?.twitterDescription, defaultDescription) ??
         manualOgDescription ??
         renderedOgDescription ??
         renderedDescription ??
