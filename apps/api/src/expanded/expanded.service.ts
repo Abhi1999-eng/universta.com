@@ -7,7 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 import { ExperimentsService } from '../experiments/experiments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { sanitizeRichText } from '../common/rich-text';
@@ -21,6 +21,17 @@ import {
   deriveQuietly,
 } from '../catalog/derive-links';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import {
+  courseDeadlines,
+  courseFacets,
+  matchesCourseQuery,
+  NEIGHBOUR_TAKE,
+  parseCourseQuery,
+  relatedOfferings,
+  sortOfferings,
+  UNIVERSITY_CATALOGUE_CAP,
+  type OfferingLike,
+} from './university-courses';
 import type {
   SeoBulkEntityType,
   SeoResolver,
@@ -144,6 +155,58 @@ function contains(value: string | undefined) {
  */
 const FEATURED_FETCH_CAP = 500;
 
+/**
+ * A course as a card needs it: its level, campus and intakes, and enough of
+ * the course it is an instance of -- subject, specialization, qualification,
+ * the catalogue's duration -- to file it and describe it. The generic
+ * course's long copy and its subject's are left behind; a list of eighteen
+ * cards has no use for eighteen subject essays.
+ */
+const OFFERING_ROW_INCLUDE = {
+  campus: { select: { name: true, slug: true, city: true } },
+  courseLevel: true,
+  genericCourse: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      shortName: true,
+      qualificationName: true,
+      durationMin: true,
+      durationMax: true,
+      durationUnit: true,
+      subjectId: true,
+      subject: { select: { id: true, name: true, slug: true } },
+      subSubject: { select: { id: true, name: true, slug: true } },
+      courseLevel: true,
+    },
+  },
+  intakes: {
+    where: { status: 'ACTIVE' },
+    include: { intake: true },
+  },
+  _count: { select: { scholarships: true } },
+} satisfies Prisma.UniversityCourseOfferingInclude;
+
+/** The same, with the university it belongs to, for courses shown away
+ * from their own university's list. */
+const OFFERING_CARD_INCLUDE = {
+  ...OFFERING_ROW_INCLUDE,
+  university: {
+    select: {
+      name: true,
+      slug: true,
+      country: { select: { id: true, name: true, slug: true, iso2Code: true } },
+      campuses: {
+        where: { status: 'ACTIVE', deletedAt: null },
+        orderBy: { displayOrder: 'asc' },
+        select: { name: true, slug: true, city: true },
+        take: 3,
+      },
+    },
+  },
+} satisfies Prisma.UniversityCourseOfferingInclude;
+
 type FeaturedRow = {
   isFeatured: boolean;
   featuredFrom: Date | null;
@@ -258,9 +321,33 @@ function universityOrder(sort: string | undefined) {
       return [{ name: 'desc' as const }];
     case 'newest':
       return [{ publishedAt: 'desc' as const }, { createdAt: 'desc' as const }];
+    /* Published QS position first, then the unranked by name -- the order
+       the public directories show. It is asked for here, not only applied
+       in the browser, because a directory reads a capped number of rows:
+       ordered any other way, a ranked university past the cap would never
+       reach the page that is meant to put it first. */
+    case 'ranking':
+      return [
+        { qsRanking: { sort: 'asc' as const, nulls: 'last' as const } },
+        { name: 'asc' as const },
+      ];
     default:
       return [{ displayOrder: 'asc' as const }, { name: 'asc' as const }];
   }
+}
+
+/** A subject a listed university teaches, with how many of its published
+ * programmes sit under it. */
+type ListedSubject = { name: string; slug: string; offerings: number };
+
+/** A campus's city as the list reports it: the text an editor wrote for the
+ * campus, else the name of the catalogue city it is filed under. */
+function campusCity(campus: {
+  city: string | null;
+  cityRef: { name: string } | null;
+}) {
+  const typed = campus.city?.trim();
+  return typed || campus.cityRef?.name?.trim() || null;
 }
 
 function idFrom(actor: { sub?: string } | undefined) {
@@ -426,6 +513,71 @@ export class ExpandedService {
     );
   }
 
+  /**
+   * The subjects each listed university teaches, most programmes first.
+   *
+   * A directory card names what an institution is strong in, and the only
+   * honest source for that here is the catalogue itself: how many published
+   * programmes it lists in each subject. Counted from the same offerings as
+   * `_count.offerings`, so the pills and the programme figure on one card
+   * cannot disagree, and only under a published subject, so a card never
+   * names a field the site does not show. One read for the whole page of
+   * universities rather than one per row.
+   *
+   * Counted by the database, one row per university and subject. It used
+   * to read every published offering of the page's universities and tally
+   * them here, and the directory, the destination lists, the scholarships
+   * page and the sitemap each read up to forty pages of fifty: on every
+   * uncached view that was most of the offerings table, to produce a
+   * handful of counts. Every subject is kept, not just the three a card
+   * prints, because the lists' "Field of study" filter matches on all of
+   * them. The conditions are `publishedWhereScheduled` and the published
+   * subject rule written out in SQL, and must stay in step with them.
+   */
+  private async universitySubjects(
+    ids: string[],
+    now: Date,
+  ): Promise<Map<string, ListedSubject[]>> {
+    if (!ids.length) return new Map();
+    const tallies = await this.prisma.$queryRaw<
+      Array<{
+        universityId: string;
+        slug: string;
+        name: string;
+        offerings: bigint | number;
+      }>
+    >(Prisma.sql`
+      SELECT o.university_id AS universityId, s.slug AS slug, s.name AS name,
+             COUNT(*) AS offerings
+      FROM university_course_offerings o
+      JOIN courses g ON g.id = o.generic_course_id
+      JOIN subjects s ON s.id = g.subject_id
+      WHERE o.university_id IN (${Prisma.join(ids)})
+        AND o.status = 'PUBLISHED'
+        AND o.deleted_at IS NULL
+        AND (o.publish_starts_at IS NULL OR o.publish_starts_at <= ${now})
+        AND (o.publish_ends_at IS NULL OR o.publish_ends_at > ${now})
+        AND s.status = 'PUBLISHED'
+        AND s.deleted_at IS NULL
+      GROUP BY o.university_id, s.id, s.slug, s.name
+    `);
+    const byUniversity = new Map<string, ListedSubject[]>();
+    for (const tally of tallies) {
+      const list = byUniversity.get(tally.universityId) ?? [];
+      list.push({
+        name: tally.name,
+        slug: tally.slug,
+        offerings: Number(tally.offerings),
+      });
+      byUniversity.set(tally.universityId, list);
+    }
+    for (const list of byUniversity.values())
+      list.sort(
+        (a, b) => b.offerings - a.offerings || a.name.localeCompare(b.name),
+      );
+    return byUniversity;
+  }
+
   async list(
     resource: Exclude<
       Resource,
@@ -498,9 +650,18 @@ export class ExpandedService {
             /* `iso2Code` draws the flag on the directory card, the same way
                it does on every other country chip on the site. */
             country: { select: { name: true, slug: true, iso2Code: true } },
+            /* The city is what a directory card prints beside the country
+               and what its city filter offers. It was left out, so a card
+               could only say "United Kingdom" about Oxford. In display
+               order, so the first campus is the main one. */
             campuses: {
               where: { status: 'ACTIVE', deletedAt: null },
-              select: { id: true },
+              orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+              select: {
+                id: true,
+                city: true,
+                cityRef: { select: { name: true } },
+              },
             },
             _count: {
               select: { offerings: { where: publishedWhereScheduled(now) } },
@@ -514,7 +675,19 @@ export class ExpandedService {
          URL it would advertise is one the router cannot route. It is not
          folded into `total`: counting it would mean reading every row,
          which is the thing this change exists to stop doing. */
-      const data = rows.filter((row) => isCanonicalPublicSlug(row.slug));
+      const listed = rows.filter((row) => isCanonicalPublicSlug(row.slug));
+      const subjects = await this.universitySubjects(
+        listed.map((row) => row.id),
+        now,
+      );
+      const data = listed.map((row) => ({
+        ...row,
+        campuses: row.campuses.map((campus) => ({
+          id: campus.id,
+          city: campusCity(campus),
+        })),
+        subjects: subjects.get(row.id) ?? [],
+      }));
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'scholarships') {
@@ -937,6 +1110,10 @@ export class ExpandedService {
         campuses: {
           where: { status: 'ACTIVE', deletedAt: null },
           orderBy: { displayOrder: 'asc' },
+          /* The page says which city the university is in. A campus picked
+             from the location lists carries the city as a reference rather
+             than as typed text, so the name comes along with it. */
+          include: { cityRef: { select: { name: true, slug: true } } },
         },
         accreditations: {
           where: { status: 'ACTIVE', deletedAt: null },
@@ -945,7 +1122,17 @@ export class ExpandedService {
         offerings: {
           where: publishedWhereScheduled(now),
           include: {
-            genericCourse: { include: { subject: true, courseLevel: true } },
+            /* An editor can set a course's level per university, and the
+               course list and the course's own page read that level first
+               (effectiveLevel). The university page has to read it too, or
+               it files the same course under another level and counts its
+               levels differently from the list it links to. */
+            courseLevel: true,
+            /* The specialization rides along so a programme's card can name
+               the branch of its subject it belongs to, not only the subject. */
+            genericCourse: {
+              include: { subject: true, subSubject: true, courseLevel: true },
+            },
             campus: true,
             intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
           },
@@ -953,7 +1140,73 @@ export class ExpandedService {
         },
       },
     });
-    return this.withSeo('universities', row ?? this.notFound('universities'));
+    if (!row) return this.notFound('universities');
+    const record = {
+      ...row,
+      otherUniversities: await this.otherUniversitiesInCountry(row, now),
+    };
+    return this.withSeo('universities', record);
+  }
+
+  /**
+   * A few other universities in the same destination, for the foot of a
+   * university's page.
+   *
+   * The behaviour reference closes a university with three more from its
+   * country, best-ranked first, so a reader comparing Oxford is offered
+   * Cambridge rather than whichever institution was added last. The public
+   * listing cannot sort by ranking, and reading a whole country to sort it
+   * in the browser costs a page of requests per view, so the three are
+   * picked here. Ranked institutions come first in rank order and the rest
+   * follow A to Z: an unranked university is unmeasured, not last.
+   */
+  private async otherUniversitiesInCountry(
+    university: { id: string; countryId: string },
+    now: Date,
+  ) {
+    const where = {
+      ...publishedWhereScheduled(now),
+      countryId: university.countryId,
+      id: { not: university.id },
+    };
+    const [total, rows] = await Promise.all([
+      this.prisma.university.count({ where }),
+      this.prisma.university.findMany({
+        where,
+        orderBy: [
+          { qsRanking: { sort: 'asc', nulls: 'last' } },
+          { name: 'asc' },
+        ],
+        /* A few spare, for the rare hand-typed slug the router cannot
+           reach; the list endpoint leaves those out the same way. */
+        take: 6,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          institutionType: true,
+          qsRanking: true,
+          shortDescription: true,
+          totalStudents: true,
+          internationalStudentsPercent: true,
+          campuses: {
+            where: { status: 'ACTIVE', deletedAt: null },
+            orderBy: { displayOrder: 'asc' },
+            select: {
+              city: true,
+              cityRef: { select: { name: true } },
+            },
+          },
+          _count: {
+            select: { offerings: { where: publishedWhereScheduled(now) } },
+          },
+        },
+      }),
+    ]);
+    return {
+      total,
+      data: rows.filter((row) => isCanonicalPublicSlug(row.slug)).slice(0, 3),
+    };
   }
 
   async universityOfferings(
@@ -963,8 +1216,32 @@ export class ExpandedService {
   ) {
     const now = new Date();
     const university = await this.prisma.university.findFirst({
-      where: { slug: universitySlug, ...publishedWhereScheduled(now) },
-      select: { id: true, name: true, slug: true },
+      /* The profile's own rule: no live country, no public page. The course
+         pages now sit under the country in their address, so a university
+         whose destination is gone has nowhere to file them either. */
+      where: {
+        slug: universitySlug,
+        ...publishedWhereScheduled(now),
+        country: { status: 'PUBLISHED', deletedAt: null },
+      },
+      /* Enough of the institution for the pages under it to say where they
+         are -- the country for the address and the breadcrumb, the campus
+         cities for "City, Country" -- and to point at its own site when the
+         catalogue has nothing to show. */
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        websiteUrl: true,
+        qsRanking: true,
+        institutionType: true,
+        country: { select: { name: true, slug: true, iso2Code: true } },
+        campuses: {
+          where: { status: 'ACTIVE', deletedAt: null },
+          orderBy: { displayOrder: 'asc' },
+          select: { name: true, slug: true, city: true },
+        },
+      },
     });
     if (!university) return this.notFound('universities');
     const where: any = {
@@ -976,8 +1253,18 @@ export class ExpandedService {
       const row = await this.prisma.universityCourseOffering.findFirst({
         where,
         include: {
-          university: { include: { country: true } },
+          university: {
+            include: {
+              country: true,
+              campuses: {
+                where: { status: 'ACTIVE', deletedAt: null },
+                orderBy: { displayOrder: 'asc' },
+                select: { name: true, slug: true, city: true },
+              },
+            },
+          },
           campus: true,
+          courseLevel: true,
           genericCourse: {
             include: { subject: true, subSubject: true, courseLevel: true },
           },
@@ -988,55 +1275,199 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo('offerings', row ?? this.notFound('offerings'));
+      if (!row) return this.notFound('offerings');
+      const [withSeo, around] = await Promise.all([
+        this.withSeo('offerings', row),
+        this.offeringNeighbours(row, university.id, now),
+      ]);
+      return { ...withSeo, ...around };
     }
-    const { page, limit, skip } = pageOf(query);
-    const listingWhere: any = {
-      ...where,
-      ...(query.courseLevel
-        ? { courseLevel: { code: query.courseLevel } }
-        : {}),
-      ...(query.studyMode ? { studyMode: query.studyMode } : {}),
-      ...(query.intake
-        ? { intakes: { some: { intake: { slug: query.intake } } } }
-        : {}),
-      ...(query.scholarshipAvailable === 'true'
-        ? { scholarships: { some: {} } }
-        : {}),
-      ...(query.tuitionMin
-        ? {
-            OR: [
-              { tuitionMax: null },
-              { tuitionMax: { gte: Number(query.tuitionMin) } },
-            ],
-          }
-        : {}),
-      ...(query.tuitionMax
-        ? {
-            AND: [
-              {
-                OR: [
-                  { tuitionMin: null },
-                  { tuitionMin: { lte: Number(query.tuitionMax) } },
-                ],
-              },
-            ],
-          }
-        : {}),
-    };
+    /* The list keeps how far "Load more" has gone in its address, and a
+       reload renders that whole run in one answer, so a page here may be
+       longer than the shared fifty. It is cut from rows read in full below
+       either way, so a longer one costs no more reading. */
+    const page = Math.max(1, Number(query.page ?? 1) || 1);
+    const limit = Math.min(
+      UNIVERSITY_CATALOGUE_CAP,
+      Math.max(1, Number(query.limit ?? PAGE_LIMIT) || PAGE_LIMIT),
+    );
+    const skip = (page - 1) * limit;
+    /* The whole published catalogue of this university, read once: the
+       counts beside every filter are taken over all of it, the filters and
+       the order are applied to it here, and the page is cut from what is
+       left. One read, so a count and the list it leads to cannot disagree.
+       In a fixed order, so the read is the same every time. */
     const all = await this.prisma.universityCourseOffering.findMany({
-      where: listingWhere,
-      take: FEATURED_FETCH_CAP,
-      include: {
-        campus: true,
-        genericCourse: { include: { subject: true, courseLevel: true } },
-        intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
+      where,
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      take: UNIVERSITY_CATALOGUE_CAP,
+      include: OFFERING_ROW_INCLUDE,
+    });
+    const published = all.filter((row) => isCanonicalPublicSlug(row.slug));
+    const parsed = parseCourseQuery(query);
+    const matching = sortOfferings(
+      published.filter((row) => matchesCourseQuery(row, parsed)),
+      parsed.sort,
+      now,
+    );
+    const data = matching.slice(skip, skip + limit);
+    return {
+      university,
+      data,
+      meta: meta(page, limit, matching.length),
+      facets: courseFacets(published),
+      catalogue: {
+        total: published.length,
+        deadlines: courseDeadlines(published),
+      },
+    };
+  }
+
+  /**
+   * What a course page offers after the course itself: the university's
+   * other courses, the same course at other universities, and a short run
+   * of related ones built from both. Other universities count only while
+   * they and their country are live, the same rule their own pages keep.
+   */
+  private async offeringNeighbours(
+    row: OfferingLike & {
+      id: string;
+      slug: string;
+      genericCourseId: string;
+      courseLevelId: string | null;
+      genericCourse: { subjectId: string; courseLevelId: string };
+      university: { countryId: string };
+    },
+    universityId: string,
+    now: Date,
+  ) {
+    const home = row.university.countryId;
+    /* The other university's own page asks for its publishing window as
+       well as its status, so a university scheduled to go live later, or
+       whose window has closed, is not suggested: its link would be a 404. */
+    const liveUniversity = {
+      ...publishedWhereScheduled(now),
+      country: { status: 'PUBLISHED', deletedAt: null },
+    };
+    const elsewhere = (
+      choice: Record<string, unknown>,
+      place?: 'home' | 'abroad',
+    ): Prisma.UniversityCourseOfferingWhereInput => ({
+      ...publishedWhereScheduled(now),
+      ...choice,
+      universityId: { not: universityId },
+      university: {
+        ...liveUniversity,
+        ...(place
+          ? { countryId: place === 'home' ? home : { not: home } }
+          : {}),
       },
     });
-    const sorted = sortByFeatured(all, now, (row) => row.name);
-    const total = sorted.length;
-    const data = sorted.slice(skip, skip + limit);
-    return { university, data, meta: meta(page, limit, total) };
+    /* Which rows a page shows is chosen here, in the query, before any cut:
+       a cut by name and a sort afterwards only ever reorders the names that
+       happen to come first, so a Master's page was offered nothing but
+       Bachelor's ("B" before "M") and a course's own country could fall off
+       the end of its "other universities". Each choice is read in its own
+       order of preference -- the same destination before others, since a
+       student comparing universities usually has the country settled -- and
+       by university within it. */
+    const pick = (where: Prisma.UniversityCourseOfferingWhereInput) =>
+      this.prisma.universityCourseOffering.findMany({
+        where,
+        orderBy: [{ university: { name: 'asc' } }, { name: 'asc' }],
+        take: NEIGHBOUR_TAKE,
+        include: OFFERING_CARD_INCLUDE,
+      });
+    const sameCourse = { genericCourseId: row.genericCourseId };
+    const sameSubject = {
+      genericCourseId: { not: row.genericCourseId },
+      genericCourse: { subjectId: row.genericCourse.subjectId },
+    };
+    /* The level a course is taught at is the offering's own where an editor
+       set one, the generic course's otherwise -- effectiveLevel() in the
+       database's terms. Someone on a Master's page wants other Master's. */
+    const level = row.courseLevelId ?? row.genericCourse.courseLevelId;
+    const atLevel = {
+      OR: [
+        { courseLevelId: level },
+        { courseLevelId: null, genericCourse: { courseLevelId: level } },
+      ],
+    };
+    const atOtherLevel = {
+      OR: [
+        { courseLevel: { is: { id: { not: level } } } },
+        {
+          courseLevelId: null,
+          genericCourse: { courseLevelId: { not: level } },
+        },
+      ],
+    };
+    const [
+      here,
+      courseHome,
+      courseAbroad,
+      courseEverywhere,
+      levelHome,
+      levelAbroad,
+      otherHome,
+      otherAbroad,
+    ] = await Promise.all([
+      this.prisma.universityCourseOffering.findMany({
+        where: {
+          ...publishedWhereScheduled(now),
+          universityId,
+          id: { not: row.id },
+        },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: UNIVERSITY_CATALOGUE_CAP,
+        include: OFFERING_CARD_INCLUDE,
+      }),
+      pick(elsewhere(sameCourse, 'home')),
+      pick(elsewhere(sameCourse, 'abroad')),
+      /* Only to count: the page lists six and says how many there are. */
+      this.prisma.universityCourseOffering.findMany({
+        where: elsewhere(sameCourse),
+        select: { slug: true },
+      }),
+      pick(elsewhere({ ...sameSubject, ...atLevel }, 'home')),
+      pick(elsewhere({ ...sameSubject, ...atLevel }, 'abroad')),
+      pick(elsewhere({ ...sameSubject, ...atOtherLevel }, 'home')),
+      pick(elsewhere({ ...sameSubject, ...atOtherLevel }, 'abroad')),
+    ]);
+    const canonical = <T extends { slug: string }>(rows: T[]) =>
+      rows.filter((entry) => isCanonicalPublicSlug(entry.slug));
+    const siblings = sortOfferings(canonical(here), 'relevance', now);
+    const elsewhereRows = canonical([...courseHome, ...courseAbroad]).slice(
+      0,
+      6,
+    );
+    const subjectElsewhere = canonical([
+      ...levelHome,
+      ...levelAbroad,
+      ...otherHome,
+      ...otherAbroad,
+    ]);
+    const related = relatedOfferings(
+      row,
+      { here: siblings, elsewhere: subjectElsewhere },
+      elsewhereRows.map((entry) => entry.slug),
+    );
+    const suggested = new Set(related.map((entry) => entry.slug));
+    return {
+      related,
+      elsewhere: elsewhereRows,
+      /* How many other universities' versions of this course there are in
+         all, which the six above are the first of. */
+      elsewhereTotal: canonical(courseEverywhere).length,
+      moreAtUniversity: {
+        /* Every course the university publishes, this one included, which
+           is the number the "View all" link promises. */
+        total: siblings.length + 1,
+        rows: siblings
+          .filter((entry) => !suggested.has(entry.slug))
+          .slice(0, 6),
+      },
+    };
   }
 
   async consultantLocation(slug: string) {

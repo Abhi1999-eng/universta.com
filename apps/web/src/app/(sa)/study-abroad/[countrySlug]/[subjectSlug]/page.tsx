@@ -20,6 +20,10 @@ import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
 import { countrySubjectPage } from '@/lib/country-subject';
+import {
+  subjectUniversitiesGroup,
+  subjectUniversitiesHref,
+} from '@/lib/university-related';
 
 /**
  * One field, in one destination.
@@ -114,6 +118,12 @@ export default async function Page({ params }: Params) {
     (country.subjects ?? []).length,
   );
   const base = `/study-abroad/${country.slug}/${subject.slug}`;
+
+  /* The universities that teach this field here, by name, rather than only
+     a link to the country's whole list. Read once, for the closing band's
+     group and for its link to the rest of them; a failed read leaves the
+     band without either and nothing else. */
+  const universities = await subjectUniversitiesGroup(country.slug, subject, where);
 
   return (
     <>
@@ -328,6 +338,19 @@ export default async function Page({ params }: Params) {
             href: `/courses?country=${country.slug}&subject=${subject.slug}`,
             label: 'Browse these courses',
           },
+          /* The group below names six. This is the rest of them: the
+             country's list, opened on this field. Only when there is
+             one, since the list sets aside a field nothing there teaches
+             and would open on every university instead. */
+          ...(universities.total
+            ? [
+                {
+                  href: subjectUniversitiesHref(country.slug, subject.slug),
+                  label: `Universities teaching ${subject.name}`,
+                  ghost: true,
+                },
+              ]
+            : []),
           {
             href: `/study-abroad/${country.slug}/universities`,
             label: `Universities in ${where}`,
@@ -344,6 +367,7 @@ export default async function Page({ params }: Params) {
               href: `${base}/${entry.slug}`,
             })),
           },
+          universities,
         ]}
       />
     </>

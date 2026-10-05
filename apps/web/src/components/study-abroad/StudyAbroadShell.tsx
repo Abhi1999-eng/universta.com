@@ -30,6 +30,10 @@ export type AssessmentContext = {
   countryName?: string;
   /** Which control opened it, for the counsellor's context. */
   intent?: string;
+  /** The page the lead is filed under, when it is not the country's guide:
+   *  a university's page, so the counsellor sees which institution the
+   *  student was reading about. */
+  sourcePagePath?: string;
 };
 
 const ShellContext = createContext<ShellApi | null>(null);

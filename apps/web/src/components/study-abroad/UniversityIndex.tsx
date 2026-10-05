@@ -1,147 +1,186 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
-import { FlagMark } from './FlagMark';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { UniversityCard } from './UniversityCard';
+import {
+  PAGE_STEP,
+  UNIVERSITY_SORTS,
+  activeFilterCount,
+  effectiveFilters,
+  filterUniversities,
+  listHref,
+  listOptions,
+  narrows,
+  readListState,
+  settleListState,
+  type FilterOption,
+  type UniversityListRow,
+  type UniversityListState,
+  type UniversitySort,
+} from '@/lib/university-list';
 
-export type UniversityIndexRow = {
-  id: string;
-  name: string;
-  slug: string;
-  shortDescription: string | null;
-  institutionType: string | null;
-  qsRanking: number | null;
-  programmes: number;
-  campuses: number;
-  country: { name: string; slug: string; iso2Code: string | null } | null;
-};
+export type UniversityIndexRow = UniversityListRow;
 
 /**
- * The university directory, in the approved build's own markup.
+ * A list of universities: the filters, the results bar and the cards, in
+ * the approved build's markup, behaving the way the behaviour reference's
+ * lists do.
  *
- * That build filters and sorts in the browser over the whole catalogue and
- * has no pager at all, which is why this one loads every published
- * institution and does the same: the counts beside each filter are then
- * true, and narrowing never costs a round trip.
+ * One block for both lists -- the worldwide directory and a destination's
+ * own -- so the two cannot drift apart. On a destination's list the
+ * destination is already chosen, so it is not offered again and the city
+ * group is there from the start.
  *
- * Two things the reference card carries are left out rather than shipped
- * inert. Its "profile fit" badge is scored against a student profile this
- * product does not collect yet, and its tuition and language figures are
- * recorded per course offering here, not per institution -- a number in
- * that slot would have to be invented. What a card shows is what the
- * catalogue actually holds about an institution.
+ * It narrows in the browser over the rows the page read, so every count
+ * beside a filter is true and no tick costs a round trip. Every choice is
+ * written into the address as it is made: a shared link, a refresh and the
+ * back button from a university all come back to the same list, scrolled
+ * as far as the reader had loaded it.
+ *
+ * Eighteen cards first, then "Load more" adds eighteen at a time -- the
+ * reference's step. The whole catalogue on one page made the directory
+ * 49,000 pixels tall and put a quarter of a megabyte of cards in front of a
+ * reader who wanted one.
  */
-const SORTS = [
-  { value: 'name', label: 'Name A-Z' },
-  { value: 'programs', label: 'Most programmes' },
-  { value: 'ranking', label: 'Ranked first' },
-] as const;
-
-type Sort = (typeof SORTS)[number]['value'];
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter((word) => /^[A-Za-z]/.test(word))
-    .slice(0, 2)
-    .map((word) => word[0]!.toUpperCase())
-    .join('') || name.slice(0, 2).toUpperCase();
-
-const typeLabel = (value: string | null) =>
-  value
-    ? value
-        .toLowerCase()
-        .split('_')
-        .map((word) => word[0]!.toUpperCase() + word.slice(1))
-        .join(' ')
-    : null;
-
 export function UniversityIndex({
   universities,
+  country = null,
+  footer = null,
 }: {
   universities: UniversityIndexRow[];
+  /** Set on a destination's own list. `name` is the name as it reads in a
+   * sentence: "the United Kingdom". */
+  country?: { slug: string; name: string } | null;
+  /** Under the notes, inside the results column. */
+  footer?: React.ReactNode;
 }) {
+  const path = usePathname();
   const params = useSearchParams();
-  const urlQuery = params.get('q') ?? '';
-  const [query, setQuery] = useState(urlQuery);
-  const [countries, setCountries] = useState<string[]>([]);
-  const [types, setTypes] = useState<string[]>([]);
-  const [sort, setSort] = useState<Sort>('name');
+  const state = readListState(params);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [status, setStatus] = useState('');
 
-  /* The field follows the URL, so a shared link, a refresh and the back
-     button all land on the same filtered page rather than an empty one. */
-  const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
-  if (seenUrlQuery !== urlQuery) {
-    setSeenUrlQuery(urlQuery);
-    setQuery(urlQuery);
-  }
+  /* Worked out afresh from the address on every render. It runs when the
+     reader does something, over a list the page already holds, and a
+     cached copy is one more thing that could disagree with the address. */
+  const options = listOptions(universities, country ? [] : state.countries);
+  const filters = effectiveFilters(
+    country ? { ...state, countries: [] } : state,
+    options,
+  );
+  const shown = filterUniversities(universities, filters, state.q, state.sort);
 
-  /* Built from the catalogue, so a filter can never offer a value that
-     would empty the grid. */
-  const countryOptions = useMemo(() => {
-    const seen = new Map<
-      string,
-      { slug: string; name: string; iso2Code: string | null; count: number }
-    >();
-    for (const row of universities) {
-      if (!row.country) continue;
-      const entry = seen.get(row.country.slug) ?? {
-        ...row.country,
-        count: 0,
-      };
-      entry.count += 1;
-      seen.set(row.country.slug, entry);
-    }
-    return [...seen.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  }, [universities]);
+  const active = activeFilterCount(filters);
+  const narrowed = active > 0 || state.q !== '';
+  const visible = Math.min(shown.length, state.page * PAGE_STEP);
+  const scope = options.scope.length;
 
-  const typeOptions = useMemo(() => {
-    const seen = new Map<string, number>();
-    for (const row of universities)
-      if (row.institutionType)
-        seen.set(row.institutionType, (seen.get(row.institutionType) ?? 0) + 1);
-    return [...seen.entries()]
-      .map(([value, count]) => ({ value, label: typeLabel(value)!, count }))
-      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-  }, [universities]);
+  /* A group is offered when it would change the list -- and always while
+     one of its boxes is ticked, so a choice that stopped narrowing anything
+     can still be unticked where it was made. The city list means something
+     only inside a destination: offered on a destination's own list, and on
+     the directory once one is ticked.
+     A city ticked with no destination, as a shared `?city=london` link
+     arrives, is still narrowing the list, so the group stays to untick it
+     -- without it only "Clear all", which also drops the search, let it
+     go. Outside a destination it offers just the ticked cities, rather
+     than every city in the catalogue with London somewhere among them. */
+  const inDestination = country !== null || filters.countries.length > 0;
+  const cityOptions = inDestination
+    ? options.cities
+    : options.cities.filter((option) => filters.cities.includes(option.value));
+  const groups = {
+    destinations: !country && options.destinations.length > 0,
+    cities:
+      filters.cities.length > 0 ||
+      (inDestination && narrows(options.cities, scope)),
+    subjects: narrows(options.subjects, scope) || filters.subjects.length > 0,
+    types: narrows(options.types, scope) || filters.types.length > 0,
+    ranked: (options.ranked > 0 && options.ranked < scope) || filters.ranked,
+  };
+  /* Nothing to narrow by -- no destination holds an institution and no
+     group would change the list. The panel and its toggle both hang off
+     this. */
+  const hasFilters = Object.values(groups).some(Boolean);
 
-  const shown = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    const rows = universities.filter((row) => {
-      if (countries.length && !countries.includes(row.country?.slug ?? '')) return false;
-      if (types.length && !types.includes(row.institutionType ?? '')) return false;
-      if (!term) return true;
-      return (
-        row.name.toLowerCase().includes(term) ||
-        (row.country?.name ?? '').toLowerCase().includes(term) ||
-        (row.shortDescription ?? '').toLowerCase().includes(term)
-      );
+  /** Write a new state into the address without a server round trip. A
+   * changed filter, search or order starts again from the first cards. */
+  const commit = (next: Partial<UniversityListState>, keepPage = false) => {
+    const merged: UniversityListState = {
+      ...state,
+      ...filters,
+      ...next,
+      ...(keepPage ? {} : { page: 1 }),
+    };
+    if (country) merged.countries = [];
+    /* Settled against the options the new choice leaves, so unticking a
+       destination also lets go of its cities rather than keeping them in
+       the address with nothing to match. */
+    const settled = settleListState(universities, filters, merged);
+    window.history.replaceState(null, '', listHref(path, settled));
+    if (!keepPage) setStatus('');
+  };
+
+  const toggle = (key: 'countries' | 'types' | 'cities' | 'subjects', value: string) => {
+    const list = filters[key];
+    commit({
+      [key]: list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
     });
-    const sorted = [...rows];
-    if (sort === 'programs') sorted.sort((a, b) => b.programmes - a.programmes || a.name.localeCompare(b.name));
-    else if (sort === 'ranking')
-      /* Unranked institutions are not worst, they are unmeasured, so they
-         follow the ranked ones in their own order rather than being given
-         a position they do not have. */
-      sorted.sort((a, b) => {
-        if (a.qsRanking && b.qsRanking) return a.qsRanking - b.qsRanking;
-        if (a.qsRanking) return -1;
-        if (b.qsRanking) return 1;
-        return a.name.localeCompare(b.name);
-      });
-    else sorted.sort((a, b) => a.name.localeCompare(b.name));
-    return sorted;
-  }, [universities, query, countries, types, sort]);
+  };
 
-  const toggle = (list: string[], value: string) =>
-    list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+  const clear = () => {
+    window.history.replaceState(null, '', path);
+    setStatus('');
+  };
 
-  const active = countries.length + types.length;
-  /* Nothing to narrow by: no destination carries an institution and no type
-     is recorded. The panel and its toggle both hang off this. */
-  const hasFilters = countryOptions.length > 0 || typeOptions.length > 1;
+  const loadMore = () => {
+    const added = Math.min(PAGE_STEP, shown.length - visible);
+    commit({ page: state.page + 1 }, true);
+    setStatus(`${added} more ${added === 1 ? 'university' : 'universities'} loaded`);
+  };
+
+  const noun = (count: number) => (count === 1 ? 'university' : 'universities');
+  const anyRanked = shown.some((row) => row.qsRanking);
+
+  const group = (
+    title: string,
+    key: 'countries' | 'types' | 'cities' | 'subjects',
+    list: FilterOption[],
+    scroll = false,
+  ) => (
+    <div className="fgroup">
+      <p className="fgroup__t">{title}</p>
+      <div className={scroll ? 'fgroup__opts fgroup__opts--scroll' : 'fgroup__opts'}>
+        {list.map((option) => (
+          <label className="fcheck" key={option.value}>
+            <input
+              type="checkbox"
+              checked={filters[key].includes(option.value)}
+              onChange={() => toggle(key, option.value)}
+            />
+            <span>{option.label}</span>
+            <em>{option.count}</em>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+
+  const clearLink = (label: string, className: string) => (
+    <Link
+      className={className}
+      href={path}
+      scroll={false}
+      onClick={(event) => {
+        event.preventDefault();
+        clear();
+      }}
+    >
+      {label}
+    </Link>
+  );
 
   return (
     <section
@@ -155,100 +194,75 @@ export function UniversityIndex({
             one between the page's h1 and the cards' h3 names, and a screen
             reader needs the region named. */}
         <h2 className="sr-only" id="results-heading">
-          All universities
+          {country ? `Universities in ${country.name}` : 'All universities'}
         </h2>
         <div className={hasFilters ? 'results' : 'results results--open'}>
-          {/* Both groups are built from the catalogue, so an empty catalogue
-              offers nothing to narrow by and the panel is a titled box around
-              nothing. It stands down with its groups rather than framing the
-              absence of them. */}
+          {/* Every group is built from the rows, so a list with nothing to
+              narrow by offers nothing, and the panel stands down with its
+              groups rather than framing the absence of them. */}
           {hasFilters ? (
-          <aside
-            className="filters-panel filters-panel--live"
-            id="uni-filters"
-            data-open={String(filtersOpen)}
-            aria-label="University filters"
-          >
-            <div className="filters-panel__head">
-              <span className="filters-panel__title">Filters</span>
-              {active ? (
+            <aside
+              className="filters-panel filters-panel--live"
+              id="uni-filters"
+              data-open={String(filtersOpen)}
+              aria-label="University filters"
+            >
+              <div className="filters-panel__head">
+                <span className="filters-panel__title">Filters</span>
+                {narrowed ? clearLink('Clear all', 'linkbtn') : null}
                 <button
-                  className="linkbtn"
+                  className="cs__close filters-panel__close"
                   type="button"
-                  onClick={() => {
-                    setCountries([]);
-                    setTypes([]);
-                  }}
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label="Close filters"
                 >
-                  Clear all
+                  &times;
                 </button>
-              ) : null}
-              <button
-                className="cs__close filters-panel__close"
-                type="button"
-                onClick={() => setFiltersOpen(false)}
-                aria-label="Close filters"
-              >
-                &times;
-              </button>
-            </div>
+              </div>
 
-            <div className="filters-panel__body">
-              {countryOptions.length ? (
-                <div className="fgroup">
-                  <p className="fgroup__t">Destination</p>
-                  <div className="fgroup__opts">
-                    {countryOptions.map((option) => (
-                      <label className="fcheck" key={option.slug}>
+              <div className="filters-panel__body">
+                {groups.destinations
+                  ? group('Destination', 'countries', options.destinations, options.destinations.length > 8)
+                  : null}
+                {groups.cities ? group('City', 'cities', cityOptions, cityOptions.length > 8) : null}
+                {groups.subjects
+                  ? group('Field of study', 'subjects', options.subjects, options.subjects.length > 8)
+                  : null}
+                {groups.types ? group('Institution type', 'types', options.types) : null}
+                {groups.ranked ? (
+                  <div className="fgroup">
+                    <p className="fgroup__t">Ranking</p>
+                    <div className="fgroup__opts">
+                      <label className="fcheck">
                         <input
                           type="checkbox"
-                          checked={countries.includes(option.slug)}
-                          onChange={() => setCountries(toggle(countries, option.slug))}
+                          checked={filters.ranked}
+                          onChange={() => commit({ ranked: !filters.ranked })}
                         />
-                        <span>{option.name}</span>
-                        <em>{option.count}</em>
+                        <span>Ranked by QS</span>
+                        <em>{options.ranked}</em>
                       </label>
-                    ))}
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
 
-              {typeOptions.length > 1 ? (
-                <div className="fgroup">
-                  <p className="fgroup__t">Institution type</p>
-                  <div className="fgroup__opts">
-                    {typeOptions.map((option) => (
-                      <label className="fcheck" key={option.value}>
-                        <input
-                          type="checkbox"
-                          checked={types.includes(option.value)}
-                          onChange={() => setTypes(toggle(types, option.value))}
-                        />
-                        <span>{option.label}</span>
-                        <em>{option.count}</em>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="filters-panel__foot">
-              <button
-                className="btn btn--sm btn--block"
-                type="button"
-                onClick={() => setFiltersOpen(false)}
-              >
-                Show {shown.length} {shown.length === 1 ? 'university' : 'universities'}
-              </button>
-            </div>
-          </aside>
+              <div className="filters-panel__foot">
+                <button
+                  className="btn btn--sm btn--block"
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  Show {shown.length} {noun(shown.length)}
+                </button>
+              </div>
+            </aside>
           ) : null}
 
           <div className="results__main">
             <div className="results__bar">
-              <span className="results__count">
-                {shown.length} {shown.length === 1 ? 'university' : 'universities'}
+              <span className="results__count" aria-live="polite">
+                {shown.length} {noun(shown.length)}
               </span>
               <div className="results__tools">
                 {hasFilters ? (
@@ -259,13 +273,29 @@ export function UniversityIndex({
                     aria-expanded={filtersOpen}
                     onClick={() => setFiltersOpen(true)}
                   >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 6h18M7 12h10M11 18h2" />
+                    </svg>
                     Filters {active ? <em>{active}</em> : null}
                   </button>
                 ) : null}
                 <label className="sortsel">
                   <span className="sr-only">Sort universities</span>
-                  <select value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
-                    {SORTS.map((option) => (
+                  <select
+                    value={state.sort}
+                    onChange={(event) =>
+                      commit({ sort: event.target.value as UniversitySort })
+                    }
+                  >
+                    {UNIVERSITY_SORTS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -277,81 +307,76 @@ export function UniversityIndex({
 
             {shown.length ? (
               <div className="unigrid">
-                {shown.map((row) => (
-                  <article className="unicard" key={row.id}>
-                    <div className="unicard__head">
-                      <span className="unimark" aria-hidden="true">
-                        {initials(row.name)}
-                      </span>
-                      <div className="unicard__id">
-                        <h3 className="unicard__name">
-                          <Link href={`/universities/${row.slug}`}>{row.name}</Link>
-                        </h3>
-                        {row.country ? (
-                          <p className="unicard__where">
-                            <FlagMark iso2Code={row.country.iso2Code} bands={null} />
-                            {row.country.name}
-                          </p>
-                        ) : null}
-                        {typeLabel(row.institutionType) ? (
-                          <p className="unicard__type">{typeLabel(row.institutionType)}</p>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <dl className="unicard__stats">
-                      <div>
-                        <dt>Programmes</dt>
-                        <dd>{row.programmes}</dd>
-                      </div>
-                      <div>
-                        <dt>Campuses</dt>
-                        <dd>{row.campuses || 1}</dd>
-                      </div>
-                    </dl>
-
-                    {row.shortDescription ? (
-                      <p className="unicard__fields">{row.shortDescription}</p>
-                    ) : null}
-
-                    <div className="unicard__foot">
-                      <Link className="btn btn--sm" href={`/universities/${row.slug}`}>
-                        View university{' '}
-                        <span className="btn__arrow" aria-hidden="true">
-                          &rarr;
-                        </span>
-                      </Link>
-                      {row.country ? (
-                        <Link className="btn btn--sm btn--ghost" href={`/study-abroad/${row.country.slug}`}>
-                          {row.country.name} guide
-                        </Link>
-                      ) : null}
-                      {row.qsRanking ? (
-                        <span className="unicard__rank">
-                          Ranked #{row.qsRanking} · one factor among many
-                        </span>
-                      ) : null}
-                    </div>
-                  </article>
+                {shown.slice(0, visible).map((row) => (
+                  <UniversityCard key={row.id} university={row} guide={!country} />
                 ))}
               </div>
             ) : (
-              <p className="dir__none">
+              <div className="dir__none">
                 {/* Telling a reader to clear a filter they have not set, or
                     to search a catalogue that holds nothing, is advice they
                     cannot take. Each case says only what is true of it. */}
-                {universities.length === 0
-                  ? 'No university is published yet. Destinations and subjects are worth a look in the meantime.'
-                  : active || query.trim()
-                    ? 'No university matches that. Clear a filter, or try a different search.'
-                    : 'No university matches that.'}
-              </p>
+                <p>
+                  {universities.length === 0
+                    ? country
+                      ? `No university in ${country.name} is published yet.`
+                      : 'No university is published yet. Destinations and subjects are worth a look in the meantime.'
+                    : narrowed
+                      ? 'No university matches that. Try a shorter name, or clear the filters.'
+                      : 'No university matches that.'}
+                </p>
+                {narrowed ? clearLink('Clear filters', 'btn btn--sm btn--ghost') : null}
+              </div>
             )}
+
+            {shown.length > PAGE_STEP ? (
+              <div className="unimore">
+                <span className="results__count">
+                  Showing {visible} of {shown.length}
+                </span>
+                {visible < shown.length ? (
+                  <>
+                    <button className="btn btn--ghost" type="button" onClick={loadMore}>
+                      Load more universities
+                    </button>
+                    {/* Without script the button cannot add anything, so a
+                        link to the next step stands in for it. */}
+                    <noscript>
+                      <a
+                        className="btn btn--ghost"
+                        rel="nofollow"
+                        href={`${listHref(path, { ...state, page: state.page + 1 })}#results`}
+                      >
+                        Show more universities
+                      </a>
+                    </noscript>
+                  </>
+                ) : (
+                  <span className="unimore__end">You’ve reached the end of the list.</span>
+                )}
+                <p className="unimore__status" role="status" aria-live="polite">
+                  {status}
+                </p>
+              </div>
+            ) : null}
+
+            {state.sort === 'ranking' && shown.length ? (
+              <p className="trust__note">
+                {anyRanked
+                  ? 'Universities with a published QS ranking come first, in that order, and the rest follow A to Z. This is display order only, not a Universta ranking.'
+                  : 'None of these universities has a published QS ranking on its profile, so they are listed A to Z.'}
+              </p>
+            ) : null}
+            <p className="trust__note">
+              Only universities with a published Universta profile are listed.
+              A rank shown on a card is the QS World University Rankings
+              position, one factor among many; Universta does not rank
+              universities itself.
+            </p>
+            {footer ? <div className="unilist__foot">{footer}</div> : null}
           </div>
         </div>
       </div>
     </section>
   );
 }
-
-export { SORTS as UNIVERSITY_SORTS, initials as universityInitials };

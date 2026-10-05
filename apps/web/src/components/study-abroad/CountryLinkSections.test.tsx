@@ -54,7 +54,7 @@ describe('country guide catalogue sections', () => {
     const html = renderToStaticMarkup(<CountryUniversities country={country()} alt />);
     expect(html).toContain('Explore universities in Germany');
     expect(html).toContain('href="/universities/tum"');
-    expect(html).toContain('QS #28');
+    expect(html).toContain('Ranked #28');
     expect(html).toContain('5 universities and 10 programmes');
   });
 
@@ -100,7 +100,9 @@ describe('country guide catalogue sections', () => {
         })}
       />,
     );
-    expect(html.match(/href="\/universities\/tum"/g) ?? []).toHaveLength(1);
+    /* One card -- which links the university twice, by its name and by
+       its "View university" button. */
+    expect(html.match(/class="unicard"/g) ?? []).toHaveLength(1);
   });
 
   it('links each subject taught in the country, keeping the country in the address', () => {
@@ -505,5 +507,71 @@ describe('the consultants panel', () => {
     expect(
       renderToStaticMarkup(<CountryUniversities alt country={uncurated()} fallback={[]} />),
     ).toBe('');
+  });
+});
+
+/**
+ * The guide's universities band used to be six grey name tiles while the
+ * list one click on drew full cards. The approved build uses the list's own
+ * card here, in its compact grid, with a way into the profile match and the
+ * comparison underneath.
+ */
+describe('the country guide’s universities band', () => {
+  const uk = () =>
+    country({
+      name: 'United Kingdom',
+      slug: 'united-kingdom',
+      iso2Code: 'GB',
+      derived: {
+        averageTuition: null,
+        statistics: { universitiesCount: 0, publicUniversitiesCount: 0, coursesCount: 0 },
+        topRankedUniversities: [],
+        popularUniversities: [],
+        popularCourses: [],
+      },
+    });
+  const render = () =>
+    renderToStaticMarkup(
+      <CountryUniversities
+        alt
+        country={uk()}
+        fallback={[
+          { id: 'u1', name: 'University of Oxford', slug: 'university-of-oxford', institutionType: 'PUBLIC' },
+          { id: 'u2', name: 'University of Cambridge', slug: 'university-of-cambridge' },
+        ]}
+      />,
+    );
+
+  it('draws the list’s card in the compact grid', () => {
+    const html = render();
+    expect(html).toContain('class="unigrid unigrid--compact"');
+    expect(html.match(/class="unicard"/g) ?? []).toHaveLength(2);
+    expect(html).toContain('Public');
+  });
+
+  it('gives each card a mark of its own', () => {
+    const html = render();
+    expect(html).toContain('>OXF<');
+    expect(html).toContain('>CAM<');
+  });
+
+  it('names the destination on each card from the guide it is on', () => {
+    const html = render();
+    expect(html).toContain('/flags/gb.svg');
+    expect(html).toContain('<span>United Kingdom</span>');
+  });
+
+  it('shows no figure the guide was not handed', () => {
+    /* The guide knows a name, a type and a rank -- not a programme count. */
+    expect(render()).not.toContain('Programmes');
+  });
+
+  it('keeps the way to the whole list, and adds the match and the comparison', () => {
+    const html = render();
+    expect(html).toContain('href="/study-abroad/united-kingdom/universities"');
+    expect(html).toContain('data-open-assessment');
+    expect(html).toContain('Find universities that match my profile');
+    expect(html).toContain('href="/compare/universities"');
+    expect(html).toContain('href="/compare/universities?items=university-of-oxford"');
   });
 });

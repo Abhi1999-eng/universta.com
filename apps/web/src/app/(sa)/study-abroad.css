@@ -2720,3 +2720,227 @@
 .sa .entrytable tr:last-child th,
 .sa .entrytable tr:last-child td{ border-bottom: 0; }
 .sa .entrytable__note{ display: block; color: var(--muted); font-size: .8125rem; }
+
+/* === universities: lists === */
+/* The worldwide directory, a destination's list and the country guide's
+   universities band share one card and one results block. What follows is
+   only what they needed beyond the rules above: the reference's compact
+   grid, its "Load more" row, and the parts of the card this product adds. */
+
+/* The country guide's six. The rule the reference gives it, made safe for a
+   screen narrower than its 320px minimum. It comes after the plain grid's
+   own breakpoints, so it wins at every width. */
+.sa .unigrid--compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.sa .unigrid__after { margin-top: 28px; }
+
+/* The short description: one muted paragraph between the figures and the
+   subjects, as the behaviour reference's card carries it. */
+.sa .unicard__desc { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+.sa .unicard__where span { min-width: 0; }
+
+/* Compare is a link to the comparison page, drawn as the reference's icon
+   button. */
+.sa a.iconbtn { text-decoration: none; }
+
+/* "Load more": how far the reader is, the button, and the line a screen
+   reader hears when more arrive. The courses list's own "show more" row,
+   so the two lists read alike. */
+.sa .unimore {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding-top: 22px;
+}
+.sa .unimore .btn { white-space: normal; text-align: center; }
+.sa .unimore__end { font-size: 13.5px; color: var(--muted); }
+.sa .unimore__status { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--muted); }
+/* Kept in the page while empty, so it is already listening when the first
+   message arrives, but taking no room. */
+.sa .unimore__status:empty { height: 0; margin-top: -12px; }
+
+/* Nothing matched: the sentence, then the way back. */
+.sa .dir__none p { margin: 0; }
+.sa .dir__none .btn { margin-top: 14px; }
+
+/* A destination's list: the three ways on beneath its search box. */
+.sa .unilinks { margin-top: 20px; }
+
+/* === universities: a university's own page === */
+/* The zip's university template, for the parts of it the page did not
+   carry yet. Rules the template takes from its own stylesheets are ported
+   from them; the rest only space the zip's blocks the way its inline
+   styles do. */
+
+/* The strip of section links sticks under the header, so a jump to a
+   section would land with its heading behind the strip. */
+.sa .unitabs--sections ~ section[id]{ scroll-margin-top: calc(var(--nav-h) + 62px); }
+
+/* The snapshot states only the cells a record fills, so its last row is
+   often short, and the grid's grey -- which draws the lines between cells
+   -- showed through as an empty block. Each cell draws the line above it
+   and the one to its left instead (a later cell paints over an earlier
+   one, so the line shows), the frame's own border draws the outside, and
+   the space after the last cell is white like the rest. */
+.sa .unisnap--uni{ background: var(--white); gap: 0; }
+.sa .unisnap--uni .unisnap__cell{ box-shadow: -1px -1px 0 var(--line-soft); }
+
+/* "Popular subjects here", under the courses lead (zip courses.css). */
+.sa .specchips{ margin-top: 18px; }
+.sa .specchips .label{ display: block; margin-bottom: 9px; }
+.sa .specchips__row{ display: flex; flex-wrap: wrap; gap: 6px; }
+.sa .specchips__row .specchip{ max-width: 100%; white-space: normal; text-align: left; }
+
+/* The overview's numbered highlights, set apart from the opening prose. */
+.sa .uniguide__highlights{ margin-top: clamp(28px, 3.4vw, 44px); }
+.sa .rulegrid__b .rich-text > * + *{ margin-top: 0.6em; }
+
+/* A row of calls to action after a block, as the template spaces them. */
+.sa .uniguide__after{ margin-top: 26px; }
+
+/* A fee the course does not record says so, quietly. */
+.sa .coursecard__facts dd.coursecard__missing{ color: var(--muted); font-weight: 500; }
+
+/* The compact grid the similar-universities block uses (zip
+   universities.css). Floored at the column, not at 320px, so a phone
+   narrower than the card does not scroll sideways. */
+.sa .unigrid--compact{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.sa .uniguide__simhead{ margin-bottom: 26px; }
+.sa .uniguide__simhead .sec-title{ font-size: clamp(23px, 2.6vw, 32px); }
+.sa a.iconbtn{ text-decoration: none; }
+
+/* The hero's buttons are named from data -- "United Kingdom guide" -- so
+   on a phone they wrap inside the button rather than push past the edge. */
+@media (max-width: 560px){
+.sa .unihero .btn-row .btn{ white-space: normal; text-align: center; line-height: 1.25; }
+}
+
+/* === universities: courses list and course page === */
+/* A university's courses and one course, filed under its country. The parts
+   are the reference build's; what it styled from script, or in sheets this
+   route family does not load, is restated here, scoped like the rest. */
+
+/* The chips for the filters in force. The reference builds them as buttons
+   from script; here each is a link to the list without that one filter. */
+.sa .activechip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px;
+  border-radius: var(--radius-pill); background: var(--navy); color: #fff;
+  font-size: 12px; font-weight: 600; border: 0; cursor: pointer;
+  font-family: var(--font-body); text-decoration: none;
+  max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+}
+.sa .activechip span { opacity: .7; font-size: 14px; line-height: 1; }
+.sa .activechip:hover span { opacity: 1; }
+.sa .activechips { align-items: center; }
+.sa .activechips__clear { margin-left: 4px; }
+
+/* "Popular subjects here", from courses.css. */
+.sa .specchips { margin-top: 20px; }
+.sa .specchips .label { display: block; margin-bottom: 9px; }
+.sa .specchips__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.sa .specchips__row .specchip { max-width: 100%; white-space: normal; }
+
+/* Six figures where the listing strip carries four. */
+@media (min-width: 700px) {
+.sa .statstrip--6 { grid-template-columns: repeat(3, 1fr); }
+.sa .statstrip--6 div:nth-child(3n + 1) { padding-left: 0; border-left: 0; }
+}
+@media (min-width: 1000px) {
+.sa .statstrip--6 { grid-template-columns: repeat(6, 1fr); }
+.sa .statstrip--6 div:nth-child(3n + 1) { padding-left: 18px; border-left: 1px solid var(--line-soft); }
+.sa .statstrip--6 div:first-child { padding-left: 0; border-left: 0; }
+}
+
+/* The search bar carries a submit, so it works as a form without script. */
+.sa .cresults__search .btn { flex: none; }
+.sa .cresults__from { font-size: 13.5px; color: var(--muted); margin: -6px 0 16px; }
+.sa .cresults__from a, .sa .dir__none a { color: var(--text); font-weight: 600; }
+.sa .cresults__end { font-size: 13.5px; color: var(--muted); }
+.sa .results__main[aria-busy="true"] .coursegrid { opacity: .55; transition: opacity var(--dur) var(--ease); }
+
+/* The numbered pages, for a reader without script. */
+.sa .cpager { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 18px; font-size: 14px; }
+.sa .cpager a {
+  display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: 6px; text-decoration: none; color: var(--text);
+}
+.sa .cpager a[aria-current] { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+/* "Not listed" reads as an absence, not as a value. */
+.sa .coursecard__facts dd.coursecard__none,
+.sa .uc-none { color: var(--muted); font-weight: 500; }
+.sa .coursecard__tags .tag { max-width: 100%; overflow-wrap: anywhere; }
+
+/* The hero's second row: the student portal's Save and Apply, drawn as the
+   design's icon buttons beside "Add to comparison". */
+.sa .uc-hero-actions { margin-top: 24px; }
+.sa .uc-hero-actions .btn { white-space: normal; text-align: center; line-height: 1.25; }
+.sa .uc-hero-tools { margin-top: 12px; }
+.sa .uc-hero-tools .student-catalogue-actions { gap: 12px; }
+.sa .uc-hero-tools .student-catalogue-actions .button {
+  min-height: 0; display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 13px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--white); color: var(--text);
+  font-family: var(--font-body); font-size: 13.5px; font-weight: 600;
+}
+.sa .uc-hero-tools .student-catalogue-actions .button:hover { border-color: var(--navy); }
+.sa .uc-hero-tools .student-catalogue-actions .button:disabled { opacity: .6; cursor: progress; }
+.sa .uc-hero-tools .student-catalogue-status { font-size: 13px; color: var(--ok); }
+.sa .iconbtn--check input:disabled + span { opacity: .6; }
+
+/* The hero's university line carries the flag beside its place. */
+.sa .coursehero__main { min-width: 0; }
+.sa .coursehero__name { overflow-wrap: anywhere; }
+.sa .coursehero__uni { margin-bottom: 4px; }
+.sa .coursehero__uni > span { min-width: 0; }
+.sa .coursehero__uni em { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sa .coursehero__uni b { overflow-wrap: anywhere; }
+.sa .topicpath__item > span:last-child { overflow-wrap: anywhere; }
+/* Only on the course page's hero, where the eyebrow's parts are plain
+   spans. Written for every hero, it also unboxed the flag's frame on a
+   country's university list, and the flag's stripes filled the hero. */
+.sa .coursehero .hero__eyebrow > span:not(.cchip__mark) { display: contents; }
+.sa .snap__source { font-size: 12.5px; color: var(--muted); }
+.sa .snap__source a { color: var(--text); font-weight: 600; }
+.sa .snap__source + .snap__disclaimer { margin-top: 6px; }
+.sa .snap__foot .snap__disclaimer:first-child { margin-top: 0; }
+.sa .coursefacts .snap__v { overflow-wrap: anywhere; }
+
+/* The bands' small parts. */
+.sa .uc-links { margin-top: 16px; gap: 10px 22px; }
+.sa .uc-gap { margin-top: 26px; }
+.sa .uc-subhead {
+  margin: clamp(26px, 3vw, 36px) 0 14px; font-family: var(--font-mono); font-size: 11px;
+  font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+}
+.sa .uc-missing {
+  margin: 0 0 22px; padding: 16px 18px; background: var(--surface-sunken);
+  border-left: 2px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 14.5px; color: var(--muted); max-width: 72ch;
+}
+.sa .uc-missing a { color: var(--text); font-weight: 600; }
+.sa .uc-note { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
+.sa .uc-note a { color: var(--text); font-weight: 600; }
+.sa .uc-plainhead { margin-bottom: 22px; }
+.sa .uc-plainhead .sec-title { font-size: clamp(22px, 2.4vw, 30px); }
+@media (min-width: 900px) {
+.sa .uc-keyfacts { grid-template-columns: repeat(3, 1fr); }
+}
+.sa .unisnap__cell b { overflow-wrap: anywhere; }
+.sa .unisnap__cell b a { color: inherit; }
+.sa .uc-intakes { max-width: 760px; }
+.sa .uc-intakes + .uc-missing { margin-top: 18px; }
+.sa .admgrid__col { min-width: 0; }
+.sa .admgrid + .btn-row .btn { white-space: normal; text-align: center; line-height: 1.25; }
+.sa .path__h.uc-gap { margin-top: 26px; }
+.sa .eligrid__row dd > span:first-child { overflow-wrap: anywhere; }
+.sa #apply .applystep__b a { text-decoration: underline; text-underline-offset: 3px; }
+.sa .applyfoot .btn { white-space: normal; text-align: center; line-height: 1.25; }
+.sa #fees .eligrid { max-width: 640px; }
+.sa .uc-elsewhere .unicard__stats dd { overflow-wrap: anywhere; }
+.sa .uc-elsewhere .unicard__where { flex-wrap: wrap; }
+.sa .consultcta__actions .btn { white-space: normal; text-align: center; }
+/* The sticky bar and the comparison tray share the foot of the screen; the
+   tray, which the reader asked for, wins. */
+.sa .tray--courses[data-open="true"] ~ .coursesticky { display: none; }
+@media (max-width: 559px) {
+.sa .coursesticky__id em { max-width: 46vw; }
+.sa .cresults__search { padding-right: 6px; }
+}

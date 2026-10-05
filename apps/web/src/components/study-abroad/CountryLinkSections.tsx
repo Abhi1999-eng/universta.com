@@ -6,6 +6,8 @@ import { inCountry } from '@/lib/country-article';
 import { SectionHead } from './SectionHead';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
+import { UniversityCard, type UniversityCardData } from './UniversityCard';
+import { countryUniversitiesHref } from '@/lib/university-links';
 
 /**
  * The country guide's sections that link out to the rest of the catalogue:
@@ -201,13 +203,10 @@ export function CountryNumbers({
  * curated them, then whatever else is published, so the section is never empty
  * while universities exist.
  */
-export type CountryUniversityCard = {
-  id: string;
-  name: string;
-  slug: string;
-  institutionType?: string | null;
-  qsRanking?: number | null;
-};
+/** What the band knows about a university: at least a name and an address,
+ * and whatever else of the list's row arrived -- city, programmes, subjects
+ * -- which the card shows when it has it. */
+export type CountryUniversityCard = UniversityCardData;
 
 /**
  * The institutions this band shows.
@@ -279,25 +278,52 @@ export function CountryUniversities({
              of this destination's institutions -- not the global directory,
              which would drop the reader back into every country. */
           cta={{
-            href: `/study-abroad/${country.slug}/universities`,
+            href: countryUniversitiesHref(country.slug),
             /* The heading above already names the destination, and a label
                carrying it too overflows a 390px screen the moment the name
                is as long as "United Arab Emirates". */
             label: 'All universities here',
           }}
         />
-        <div className="h-grid h-grid--wide">
+        {/* The list page's own card, so a university looks the same here as
+            one click on. What the guide is handed about each one is less
+            than the list holds -- a name, a type, a rank -- and the card
+            shows what it has; the destination it does not need to be told. */}
+        <div className="unigrid unigrid--compact">
           {universities.slice(0, 6).map((university) => (
-            <Link className="h-card" href={`/universities/${university.slug}`} key={university.id}>
-              <strong className="h-card__t">{university.name}</strong>
-              {university.institutionType ? (
-                <span className="h-card__d">{university.institutionType}</span>
-              ) : null}
-              {university.qsRanking ? (
-                <span className="h-card__m">QS #{university.qsRanking}</span>
-              ) : null}
-            </Link>
+            <UniversityCard
+              key={university.id}
+              university={{
+                ...university,
+                country: {
+                  name: country.name,
+                  slug: country.slug,
+                  iso2Code: country.iso2Code ?? null,
+                },
+              }}
+            />
           ))}
+        </div>
+        <div className="btn-row unigrid__after">
+          {/* Opens the same assessment as every other entry point; the
+              shell reads the destination off this page's address. */}
+          <button
+            className="btn btn--ghost btn--wrap"
+            type="button"
+            data-open-assessment
+            data-intent="country-universities"
+          >
+            Find universities that match my profile{' '}
+            <span className="btn__arrow" aria-hidden="true">
+              →
+            </span>
+          </button>
+          <Link className="linkcta" href="/compare/universities">
+            Compare universities{' '}
+            <span className="linkcta__arrow" aria-hidden="true">
+              →
+            </span>
+          </Link>
         </div>
       </div>
     </section>

@@ -1,9 +1,7 @@
-'use client';
-
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 import { FlagMark } from './FlagMark';
+import { UniversitySearch } from './UniversitySearch';
+import { countryUniversitiesHref } from '@/lib/university-links';
 
 export type DirectoryDestination = {
   slug: string;
@@ -20,6 +18,10 @@ export type DirectoryDestination = {
  * There is no such list here, so the row beneath the box is the destinations
  * the catalogue has, with their counts -- the same job, built from data
  * rather than from a copy deck nobody has written yet.
+ *
+ * Each destination opens that country's own university list, which is what
+ * its count is a count of. It used to open the country guide, so the number
+ * on the chip promised a list the click did not deliver.
  */
 export function UniversityIndexHero({
   total,
@@ -28,25 +30,6 @@ export function UniversityIndexHero({
   total: number;
   destinations: DirectoryDestination[];
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const urlQuery = params.get('q') ?? '';
-  const [query, setQuery] = useState(urlQuery);
-
-  const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
-  if (seenUrlQuery !== urlQuery) {
-    setSeenUrlQuery(urlQuery);
-    setQuery(urlQuery);
-  }
-
-  const commit = (term: string) => {
-    const next = new URLSearchParams(params.toString());
-    if (term.trim()) next.set('q', term.trim());
-    else next.delete('q');
-    const search = next.toString();
-    router.push(search ? `/universities?${search}` : '/universities');
-  };
-
   return (
     <section className="hero hero--compact">
       <div className="wrap">
@@ -72,29 +55,10 @@ export function UniversityIndexHero({
           </p>
         </div>
 
-        <form
-          className="bigsearch"
-          onSubmit={(event) => {
-            event.preventDefault();
-            commit(query);
-          }}
-        >
-          <input
-            className="bigsearch__input"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search universities or destinations"
-            aria-label="Search universities or destinations"
-            autoComplete="off"
-          />
-          <button className="btn btn--sm" type="submit">
-            Search{' '}
-            <span className="btn__arrow" aria-hidden="true">
-              &rarr;
-            </span>
-          </button>
-        </form>
+        <UniversitySearch
+          placeholder="Search universities, cities or destinations"
+          label="Search universities, cities or destinations"
+        />
 
         {destinations.length ? (
           <div className="destrow">
@@ -104,7 +68,7 @@ export function UniversityIndexHero({
                 <Link
                   className="destchip"
                   key={entry.slug}
-                  href={`/study-abroad/${entry.slug}`}
+                  href={countryUniversitiesHref(entry.slug)}
                 >
                   <FlagMark iso2Code={entry.iso2Code} bands={null} />
                   <span>{entry.name}</span>

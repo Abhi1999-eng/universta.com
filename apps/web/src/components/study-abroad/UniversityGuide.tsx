@@ -1,11 +1,41 @@
 import Link from 'next/link';
-import type { Course } from '@/lib/catalog';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
-import { CourseCards } from './CourseCards';
+import type { ConsultantPresence } from '@/lib/countries';
+import { inCountry } from '@/lib/country-article';
+import {
+  COURSES_SHOWN,
+  intakeSummary,
+  levelsTaught,
+  monthName,
+  orderOfferings,
+  popularSubjects,
+  splitOverview,
+  tuitionByLevel,
+} from '@/lib/university-profile';
+import {
+  countryUniversitiesHref,
+  universityCoursesHref,
+  universityHref,
+} from '@/lib/university-links';
+import { CountryConsultants } from './CountryConsultants';
 import { FlagMark } from './FlagMark';
 import { SectionHead } from './SectionHead';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
+import { UniversityAssessmentButton } from './UniversityAssessmentButton';
+import { UniversityCourseCards } from './UniversityCourseCards';
+import {
+  MoreUniversities,
+  UniversityFaqs,
+  UniversityFees,
+  UniversityIntakes,
+  type NearbyUniversity,
+  type UniversityFaq,
+} from './UniversityGuideSections';
+import { UniversityTabs } from './UniversityTabs';
+import { universityInitials } from '@/lib/university-initials';
+
+export type { NearbyUniversity } from './UniversityGuideSections';
 
 export type UniversityOffering = {
   id: string;
@@ -15,8 +45,29 @@ export type UniversityOffering = {
   qualificationName: string | null;
   subject: { name: string; slug: string } | null;
   specialization: { name: string; slug: string } | null;
-  courseLevel: { code: string | null; name: string } | null;
+  courseLevel: {
+    code: string | null;
+    name: string;
+    /** The level's place in the catalogue's order of levels. */
+    order?: number | null;
+  } | null;
   duration: { min: string | null; max: string | null; unit: string | null };
+  /* What a student compares one university's courses on. Each is recorded
+     per course, and each is optional: most courses in the catalogue state
+     none of them yet. */
+  studyMode?: string | null;
+  tuition?: {
+    min: string | null;
+    max: string | null;
+    currencyCode: string | null;
+    period: string | null;
+  } | null;
+  intakes?: Array<{
+    key: string;
+    name: string;
+    month: number | null;
+    deadline: string | null;
+  }>;
 };
 
 export type UniversityRecord = {
@@ -44,6 +95,8 @@ export type UniversityRecord = {
   sourceReference: string | null;
   verifiedAt: string | null;
   campuses: number;
+  /** The city of its first campus that names one. */
+  city?: string | null;
   country: {
     name: string;
     slug: string;
@@ -55,20 +108,26 @@ export type UniversityRecord = {
     postStudyWorkPermitMonths: number | null;
   } | null;
   offerings: UniversityOffering[];
+  /** A few others in the same country, best ranked first, and how many
+   *  others there are in all. */
+  otherUniversities?: NearbyUniversity[];
+  otherUniversityTotal?: number;
+};
+
+/** What the destination's guide holds that a university's page links into. */
+export type UniversityDestination = {
+  consultants?: ConsultantPresence;
+  /** Sections of the country guide, each offered only when the guide
+   *  renders it: the visa route, documents, language tests, work rights. */
+  links: Array<{ key: string; label: string; href: string }>;
+  /** The guide's cost section, when it has one. */
+  costHref: string | null;
 };
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-
-function initials(name: string) {
-  const letters = name
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word[0]!.toUpperCase());
-  return letters.slice(0, 3).join('') || name.slice(0, 2).toUpperCase();
-}
 
 function typeLabel(value: string | null) {
   if (!value) return null;
@@ -89,77 +148,260 @@ export function programmeName(name: string, university: string): string {
   return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
 }
 
-/** An offering wearing enough of a course's shape for the shared card. */
-function asCourse(offering: UniversityOffering, university: string): Course {
-  return {
-    id: offering.id,
-    name: programmeName(offering.name, university),
-    slug: offering.slug,
-    shortName: offering.qualificationName,
-    subject: offering.subject ?? { name: 'Programme', slug: '' },
-    subSubject: offering.specialization,
-    courseLevel: offering.courseLevel,
-    duration: offering.duration,
-  } as unknown as Course;
+/** "a, b and c", as a list reads inside a sentence. */
+function listOf(parts: string[]) {
+  return parts.length > 1
+    ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+    : (parts[0] ?? '');
+}
+
+/**
+ * The questions a university's record can answer, each answered from it.
+ * A question the record has nothing for is left out rather than answered
+ * with a guess -- except funding, where "none is linked yet" is itself the
+ * true answer and the one a student needs.
+ */
+function questionsFor({
+  university,
+  where,
+  coursesHref,
+  scholarshipTotal,
+}: {
+  university: UniversityRecord;
+  where: string | null;
+  coursesHref: string;
+  scholarshipTotal: number;
+}): UniversityFaq[] {
+  const { country, offerings, name } = university;
+  const faqs: UniversityFaq[] = [];
+  if (country && where)
+    faqs.push({
+      id: 'where',
+      question: `Where is ${name}?`,
+      answer: (
+        <>
+          {university.city
+            ? `${name} is in ${university.city}, in ${where}.`
+            : `${name} is in ${where}.`}{' '}
+          Fees, the student visa and living costs are set by the destination, and{' '}
+          <Link href={`/study-abroad/${country.slug}`}>the guide to {where}</Link> covers them.
+        </>
+      ),
+    });
+  const type = typeLabel(university.institutionType);
+  if (type || university.establishedYear)
+    faqs.push({
+      id: 'kind',
+      question: `What kind of institution is ${name}?`,
+      answer: [
+        type ? `The catalogue records it as a ${type.toLowerCase()} institution.` : null,
+        university.establishedYear ? `It was founded in ${university.establishedYear}.` : null,
+      ]
+        .filter(Boolean)
+        .join(' '),
+    });
+  if (offerings.length) {
+    const levels = levelsTaught(offerings).map(
+      (level) => `${level.count} at ${level.name} level`,
+    );
+    faqs.push({
+      id: 'courses',
+      question: `What can I study at ${name}?`,
+      answer: (
+        <>
+          Universta profiles {offerings.length}{' '}
+          {offerings.length === 1 ? 'course' : 'courses'} here
+          {levels.length ? `: ${listOf(levels)}` : ''}. A university usually teaches more than
+          a catalogue carries.{' '}
+          <Link href={coursesHref}>
+            See all {offerings.length} {offerings.length === 1 ? 'course' : 'courses'}
+          </Link>
+          .
+        </>
+      ),
+    });
+  }
+  const intakes = intakeSummary(offerings).map(
+    (intake) => monthName(intake.month) ?? intake.name,
+  );
+  const countryMonths = [...(country?.intakeMonths ?? [])]
+    .sort((left, right) => left - right)
+    .map((month) => MONTHS[month - 1])
+    .filter((month): month is string => Boolean(month));
+  if (intakes.length || countryMonths.length)
+    faqs.push({
+      id: 'intakes',
+      question: `When does ${name} take new students?`,
+      answer: intakes.length
+        ? `Its courses list ${intakes.length === 1 ? 'an intake' : 'intakes'} in ${listOf([...new Set(intakes)])}. Each course sets its own deadline, so check the course before you plan around one.`
+        : `The courses here do not record their own intakes yet. In ${where ?? 'this destination'} the main ${countryMonths.length === 1 ? 'intake is' : 'intakes are'} ${listOf(countryMonths)}; check the course for its own dates.`,
+    });
+  faqs.push({
+    id: 'funding',
+    question: `Are there scholarships for studying at ${name}?`,
+    answer: scholarshipTotal ? (
+      <>
+        {scholarshipTotal === 1
+          ? `One scholarship is recorded against ${name}.`
+          : `${scholarshipTotal} scholarships are recorded against ${name}.`}{' '}
+        <Link href={`/scholarships?university=${university.slug}`}>See every one</Link>, and
+        check each award&rsquo;s own terms: being eligible is not a guarantee of an award.
+      </>
+    ) : (
+      <>
+        None is linked to {name} in our catalogue yet. That reflects the catalogue, not the
+        university&rsquo;s funding.
+        {country ? (
+          <>
+            {' '}
+            <Link href={`/scholarships?country=${country.slug}`}>
+              Scholarships for {where ?? country.name}
+            </Link>{' '}
+            may still apply.
+          </>
+        ) : null}
+      </>
+    ),
+  });
+  return faqs;
 }
 
 /**
  * A university's guide, at /universities/<slug>.
  *
- * The approved build's template carries twelve sections. Most of them read a
- * record this catalogue does not keep per institution: admission thresholds,
- * a fee table, scholarships, campus life and graduate outcomes are all
- * recorded against a programme or a destination here, not against the
- * university, and its profile-fit panel is scored against a student profile
- * this product does not collect. Those sections are left in the reference
- * rather than filled with figures nobody has verified.
+ * The approved build's template carries a long run of sections. Some read a
+ * record this catalogue does not keep per institution -- admission
+ * thresholds, living costs, campus life and graduate outcomes are recorded
+ * against a programme or a destination here, not against the university --
+ * and its profile-fit panel is scored against a student profile this product
+ * does not collect. Those are left in the reference rather than filled with
+ * figures nobody has verified.
  *
- * What is left is what the catalogue actually holds about an institution:
- * who it is, where it is, what it teaches, and where each of those
- * programmes goes. Sections stand down rather than render empty, and the
- * numbered run is built from the ones that render, so the numbering never
- * skips.
+ * What is here is what the catalogue holds about an institution, laid out in
+ * the template's order: who it is and where, what it teaches (six courses
+ * and the way to the rest, as the behaviour reference shows them), what its
+ * courses say about fees and intakes, the people who can help, the
+ * destination it sits in, the questions its record answers, and the other
+ * universities in that destination. Sections stand down rather than render
+ * empty; the numbered run and the strip of section links are both built
+ * from the ones that render, so neither skips nor points at nothing.
  */
 export function UniversityGuide({
   university,
   scholarships = [],
+  scholarshipTotal,
+  destination = null,
 }: {
   university: UniversityRecord;
   /** Awards the catalogue records against this institution. Read on the
    *  page rather than carried on the record, because a failure to reach the
    *  funding list should cost a section, not the university. */
   scholarships?: ScholarshipCard[];
+  /** How many awards there are in all; the cards are the first few. */
+  scholarshipTotal?: number;
+  /** The destination guide's parts this page links into, when it loaded. */
+  destination?: UniversityDestination | null;
 }) {
   const { country, offerings } = university;
   const overview = university.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview));
+  const split = hasOverview
+    ? splitOverview(overview!, university.shortDescription)
+    : { intro: null, highlights: [] };
   const type = typeLabel(university.institutionType);
+  const where = country ? inCountry(country.name, country.iso2Code) : null;
+  const self = universityHref(university.slug);
+  const coursesHref = country
+    ? universityCoursesHref(country.slug, university.slug)
+    : `/universities/${university.slug}/courses`;
+  const compareHref = `/compare/universities?items=${university.slug}`;
+  const assessment = {
+    countrySlug: country?.slug,
+    countryName: country?.name,
+    sourcePagePath: self,
+  };
+  const fundingTotal = Math.max(scholarshipTotal ?? 0, scholarships.length);
+  const others = university.otherUniversities ?? [];
+  const consultants = destination?.consultants?.total ? destination.consultants : undefined;
+  const guideLinks = destination?.links ?? [];
 
-  const order: string[] = ['snapshot'];
-  if (hasOverview) order.push('about');
-  if (offerings.length) order.push('programmes');
-  if (scholarships.length) order.push('funding');
+  const nameOf = (offering: UniversityOffering) =>
+    programmeName(offering.name, university.name);
+  const ordered = orderOfferings(offerings, nameOf);
+  const shown = ordered.slice(0, COURSES_SHOWN);
+  const subjects = country ? popularSubjects(offerings) : [];
+  const faqs = questionsFor({
+    university,
+    where,
+    coursesHref,
+    scholarshipTotal: fundingTotal,
+  });
+
+  /* What renders, in the template's order. The bands alternate along this
+     run; the numbers count only the sections the template numbers, which
+     leaves out the consultants band and the closing list of universities. */
   const hasContact = Boolean(
     university.websiteUrl || university.admissionsEmail || university.phone,
   );
-  if (hasContact) order.push('contact');
-  if (country) order.push('destination');
+  const run = [
+    'snapshot',
+    hasOverview ? 'about' : null,
+    offerings.length ? 'programmes' : null,
+    country && consultants ? 'consultants' : null,
+    tuitionByLevel(offerings).length ? 'fees' : null,
+    scholarships.length ? 'funding' : null,
+    intakeSummary(offerings).length ? 'intakes' : null,
+    hasContact ? 'contact' : null,
+    country ? 'destination' : null,
+    faqs.length ? 'faqs' : null,
+    country && others.length ? 'similar' : null,
+  ].filter((id): id is string => Boolean(id));
+  const UNNUMBERED = new Set(['consultants', 'similar']);
+  const numbered = run.filter((id) => !UNNUMBERED.has(id));
   const n = (id: string) => {
-    const index = order.indexOf(id);
+    const index = numbered.indexOf(id);
     return index < 0 ? null : String(index + 1).padStart(2, '0');
   };
-  const band = (id: string) =>
-    `sec ${order.indexOf(id) % 2 === 0 ? 'sec--white' : 'sec--paper'}`;
+  const alt = (id: string) => run.indexOf(id) % 2 === 1;
+  const band = (id: string) => `sec ${alt(id) ? 'sec--paper' : 'sec--white'}`;
+
+  const TAB_LABELS: Record<string, string> = {
+    about: 'Overview',
+    programmes: 'Courses',
+    fees: 'Fees',
+    funding: 'Scholarships',
+    intakes: 'Intakes',
+    contact: 'Contact',
+    destination: 'Destination',
+    faqs: 'FAQs',
+    similar: 'More universities',
+  };
+  const tabs = run
+    .filter((id) => TAB_LABELS[id])
+    .map((id) => ({ id, label: TAB_LABELS[id]! }));
 
   /* Only the cells this record can fill. A snapshot with "—" in half of it
      says less than a shorter one that is entirely true. */
   const snapshot: Array<{ label: string; value: string }> = [];
-  if (country) snapshot.push({ label: 'Destination', value: country.name });
+  /* The zip opens on where the university is, city and country. Without a
+     recorded city the cell names the destination, as it always has. */
+  if (country)
+    snapshot.push(
+      university.city
+        ? { label: 'Location', value: `${university.city}, ${country.name}` }
+        : { label: 'Destination', value: country.name },
+    );
   if (type) snapshot.push({ label: 'Type', value: type });
   snapshot.push({
     label: 'Programmes',
     value: String(offerings.length),
   });
+  const levels = levelsTaught(offerings);
+  if (levels.length)
+    snapshot.push({
+      label: levels.length === 1 ? 'Degree level' : 'Degree levels',
+      value: levels.map((level) => level.name).join(' · '),
+    });
   if (university.campuses)
     snapshot.push({ label: 'Campuses', value: String(university.campuses) });
   if (country?.officialLanguage)
@@ -171,9 +413,24 @@ export function UniversityGuide({
         .filter(Boolean)
         .join(' '),
     });
-  if (country?.intakeMonths?.length)
+  /* The university's own intakes, as its courses list them -- the months the
+     intakes band and the questions further down name -- so the page gives
+     one answer. Only when no course records an intake does the cell fall
+     back on the destination's months, and then it says they are the
+     destination's, not the university's. */
+  const ownIntakes = [
+    ...new Set(
+      intakeSummary(offerings).map((intake) => monthName(intake.month) ?? intake.name),
+    ),
+  ];
+  if (ownIntakes.length)
     snapshot.push({
-      label: country.intakeMonths.length === 1 ? 'Intake' : 'Intakes',
+      label: ownIntakes.length === 1 ? 'Intake' : 'Intakes',
+      value: ownIntakes.join(' · '),
+    });
+  else if (country?.intakeMonths?.length)
+    snapshot.push({
+      label: `Main ${country.intakeMonths.length === 1 ? 'intake' : 'intakes'} in ${where}`,
       value: [...country.intakeMonths]
         .sort((a, b) => a - b)
         .map((month) => MONTHS[month - 1] ?? String(month))
@@ -229,29 +486,34 @@ export function UniversityGuide({
           .join(', ')
       : null;
 
+  const sep = (
+    <span className="crumbs__sep" aria-hidden="true">
+      /
+    </span>
+  );
+
   return (
     <>
       <section className="hero hero--compact">
         <div className="wrap">
+          {/* Home / Study abroad / the country / its universities / this one,
+              as the behaviour reference files a university: the way back is
+              to the destination's own list, not the worldwide directory. */}
           <nav className="crumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>
-            <span className="crumbs__sep" aria-hidden="true">
-              /
-            </span>
-            <Link href="/universities">Universities</Link>
+            {sep}
             {country ? (
               <>
-                <span className="crumbs__sep" aria-hidden="true">
-                  /
-                </span>
-                <Link href={`/study-abroad/${country.slug}`}>
-                  {country.name}
-                </Link>
+                <Link href="/study-abroad">Study abroad</Link>
+                {sep}
+                <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
+                {sep}
+                <Link href={countryUniversitiesHref(country.slug)}>Universities</Link>
               </>
-            ) : null}
-            <span className="crumbs__sep" aria-hidden="true">
-              /
-            </span>
+            ) : (
+              <Link href="/universities">Universities</Link>
+            )}
+            {sep}
             <span aria-current="page">{university.name}</span>
           </nav>
 
@@ -259,15 +521,26 @@ export function UniversityGuide({
             <div className="unihero__main">
               <div className="unihero__id">
                 <span className="unimark unimark--lg" aria-hidden="true">
-                  {initials(university.name)}
+                  {universityInitials(university.name)}
                 </span>
                 <div>
-                  {type ? <p className="hero__eyebrow">{type}</p> : null}
+                  {type || university.establishedYear ? (
+                    <p className="hero__eyebrow">
+                      {type}
+                      {type && university.establishedYear ? <b> · </b> : null}
+                      {university.establishedYear
+                        ? `Founded ${university.establishedYear}`
+                        : null}
+                    </p>
+                  ) : null}
                   <h1 className="unihero__name">{university.name}</h1>
                   {country ? (
                     <p className="unihero__where">
                       <FlagMark iso2Code={country.iso2Code} bands={null} />
-                      {country.name}
+                      <span>
+                        {university.city ? `${university.city}, ` : null}
+                        <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
+                      </span>
                     </p>
                   ) : null}
                 </div>
@@ -278,12 +551,19 @@ export function UniversityGuide({
               ) : null}
 
               <div className="btn-row">
+                <UniversityAssessmentButton
+                  className="btn btn--lg"
+                  intent="university"
+                  {...assessment}
+                >
+                  Check my eligibility{' '}
+                  <span className="btn__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </UniversityAssessmentButton>
                 {offerings.length ? (
-                  <Link className="btn btn--lg" href="#programmes">
-                    See its programmes{' '}
-                    <span className="btn__arrow" aria-hidden="true">
-                      &rarr;
-                    </span>
+                  <Link className="btn btn--lg btn--ghost" href="#programmes">
+                    See its programmes
                   </Link>
                 ) : null}
                 {country ? (
@@ -294,6 +574,9 @@ export function UniversityGuide({
                     {country.name} guide
                   </Link>
                 ) : null}
+                <Link className="btn btn--lg btn--ghost" href={compareHref}>
+                  Compare
+                </Link>
               </div>
 
               {university.qsRanking ? (
@@ -312,9 +595,11 @@ export function UniversityGuide({
         </div>
       </section>
 
+      <UniversityTabs tabs={tabs} />
+
       <section className={`${band('snapshot')} sec--tight`} id="snapshot">
         <div className="wrap">
-          <div className="unisnap">
+          <div className="unisnap unisnap--uni">
             {snapshot.map((cell) => (
               <div className="unisnap__cell" key={cell.label}>
                 <span className="label">{cell.label}</span>
@@ -386,9 +671,30 @@ export function UniversityGuide({
               title="About this university"
               lead={university.shortDescription ?? undefined}
             />
-            <div className="prose">
-              <RichText value={overview!} />
-            </div>
+            {split.intro ? (
+              <div className="prose">
+                <RichText value={split.intro} />
+              </div>
+            ) : null}
+            {split.highlights.length ? (
+              <div
+                className={`rulegrid rulegrid--2${split.intro ? ' uniguide__highlights' : ''}`}
+              >
+                {split.highlights.map((highlight, index) => (
+                  <article className="rulegrid__item" key={`${index}-${highlight.title}`}>
+                    <span className="rulegrid__n">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <h3 className="rulegrid__t">{highlight.title}</h3>
+                    {highlight.body ? (
+                      <div className="rulegrid__b">
+                        <RichText value={highlight.body} />
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -401,18 +707,70 @@ export function UniversityGuide({
               eyebrow="Courses"
               title={`Programmes at ${university.name}`}
               lead={`${offerings.length} ${offerings.length === 1 ? 'programme is' : 'programmes are'} profiled here, each with its own page. A university usually lists more than a catalogue carries, so treat this as a starting point rather than its full prospectus.`}
+            >
+              {subjects.length && country ? (
+                <div className="specchips">
+                  <span className="label">Popular subjects here</span>
+                  <div className="specchips__row">
+                    {subjects.map((subject) => (
+                      <Link
+                        className="specchip specchip--live"
+                        key={subject.slug}
+                        href={`/study-abroad/${country.slug}/${subject.slug}`}
+                      >
+                        {subject.name}
+                        <em>{subject.count}</em>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </SectionHead>
+            <UniversityCourseCards
+              offerings={shown}
+              universitySlug={university.slug}
+              countrySlug={country?.slug ?? null}
+              countryName={country?.name ?? null}
+              countryWhere={where}
+              nameOf={nameOf}
             />
-            <CourseCards
-              courses={offerings.map((offering) =>
-                asCourse(offering, university.name),
-              )}
-              hrefFor={(course) =>
-                `/universities/${university.slug}/courses/${course.slug}`
-              }
-            />
+            {/* Always there, even when every course already fits above: the
+                full list is where a student filters and sorts, and the
+                behaviour reference offers it whatever the count. */}
+            <div className="cresults__more">
+              <span className="results__count">
+                {shown.length === offerings.length
+                  ? `Showing all ${offerings.length}`
+                  : `Showing ${shown.length} of ${offerings.length}`}
+              </span>
+              <Link className="btn btn--ghost" href={coursesHref}>
+                View all {offerings.length}{' '}
+                {offerings.length === 1 ? 'course' : 'courses'}{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
+              </Link>
+            </div>
           </div>
         </section>
       ) : null}
+
+      {country && consultants ? (
+        <CountryConsultants
+          countryName={country.name}
+          countrySlug={country.slug}
+          presence={consultants}
+          alt={alt('consultants')}
+          heading={`Need help applying to ${university.name}?`}
+        />
+      ) : null}
+
+      <UniversityFees
+        offerings={offerings}
+        n={n('fees')}
+        band={band('fees')}
+        costHref={destination?.costHref ?? null}
+      />
 
       {scholarships.length ? (
         <section className={band('funding')} id="funding">
@@ -421,12 +779,41 @@ export function UniversityGuide({
               n={n('funding')}
               eyebrow="Funding"
               title={`Scholarships at ${university.name}`}
-              lead={`${scholarships.length} ${scholarships.length === 1 ? 'award is' : 'awards are'} recorded against this institution. ${FUNDING_CAVEAT}`}
+              lead={`${fundingTotal} ${fundingTotal === 1 ? 'award is' : 'awards are'} recorded against this institution. ${FUNDING_CAVEAT}`}
             />
             <ScholarshipCards scholarships={scholarships} showCountries={false} />
+            <div className="btn-row uniguide__after">
+              <Link
+                className="btn"
+                href={`/scholarships?university=${university.slug}`}
+              >
+                View all {fundingTotal}{' '}
+                {fundingTotal === 1 ? 'scholarship' : 'scholarships'}{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
+              </Link>
+              <UniversityAssessmentButton
+                className="btn btn--ghost"
+                intent="scholarships"
+                {...assessment}
+              >
+                Find scholarships for my profile{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
+              </UniversityAssessmentButton>
+            </div>
           </div>
         </section>
       ) : null}
+
+      <UniversityIntakes
+        offerings={offerings}
+        n={n('intakes')}
+        band={band('intakes')}
+        assessment={assessment}
+      />
 
       {hasContact ? (
         <section className={`${band('contact')} sec--tight`} id="contact">
@@ -480,7 +867,7 @@ export function UniversityGuide({
             <SectionHead
               n={n('destination')}
               eyebrow="Destination"
-              title={`Studying in ${country.name}`}
+              title={`Studying in ${where ?? country.name}`}
               lead="Fees, visa route, intakes and living costs are set by the destination rather than the institution, so they live on its guide."
             />
             <div className="switcher switcher--few">
@@ -496,7 +883,7 @@ export function UniversityGuide({
               </Link>
               <Link
                 className="switcher__item"
-                href={`/universities?q=${encodeURIComponent(country.name)}`}
+                href={countryUniversitiesHref(country.slug)}
               >
                 <span className="cchip__name">
                   Other universities in {country.name}
@@ -505,9 +892,39 @@ export function UniversityGuide({
                   &rarr;
                 </span>
               </Link>
+              {guideLinks.map((link) => (
+                <Link className="switcher__item" href={link.href} key={link.key}>
+                  <span className="cchip__name">{link.label}</span>
+                  <span className="switcher__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
         </section>
+      ) : null}
+
+      <UniversityFaqs
+        name={university.name}
+        faqs={faqs}
+        n={n('faqs')}
+        band={band('faqs')}
+      />
+
+      {country && where ? (
+        <MoreUniversities
+          university={university}
+          country={{
+            name: country.name,
+            slug: country.slug,
+            iso2Code: country.iso2Code,
+            where,
+          }}
+          others={others}
+          total={university.otherUniversityTotal ?? others.length}
+          band={band('similar')}
+        />
       ) : null}
     </>
   );
