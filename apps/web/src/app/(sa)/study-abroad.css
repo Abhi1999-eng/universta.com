@@ -3086,3 +3086,35 @@
 .sa #scholarships .filters-panel--live,
 .sa #consultants .filters-panel--live{ top: auto; }
 }
+
+/* === completeness: a subject and a specialization in one destination === */
+/* The destination's flag in the hero's eyebrow, at the size the design
+   draws it there (zip universities.css .cchip__mark--xs): beside an
+   uppercase label it is a mark, not a picture. */
+.sa .fieldhero__eyebrow .cchip__mark { width: 24px; height: 17px; border-radius: 3px; }
+.sa .fieldhero__eyebrow a { color: var(--text); text-decoration: none; }
+.sa .fieldhero__eyebrow a:hover { color: var(--accent); }
+/* The trail and the buttons sit in the tile's column here, under the
+   heading, so the column brings its own gap before the figures. */
+.sa .fieldhero .btn-row { margin-top: 18px; }
+/* The figures strip states only the figures a destination has, so it can
+   hold one, two or three where the design's holds four; the columns follow,
+   and a short strip does not leave an empty quarter ruled off. */
+@media (min-width: 700px) {
+.sa .statstrip--field.statstrip--n1 { grid-template-columns: minmax(0, 1fr); }
+.sa .statstrip--field.statstrip--n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sa .statstrip--field.statstrip--n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.sa .statstrip--field div { min-width: 0; }
+.sa .statstrip--field b { overflow-wrap: anywhere; }
+/* "Why study…" and "Studying…": the paragraph read straight away, with the
+   rest under the design's read-more. */
+.sa .fieldwhy__lead { max-width: 74ch; }
+.sa .fieldwhy__lead > p,
+.sa .fieldwhy__lead .rich-text p { color: var(--muted); margin-bottom: 13px; }
+.sa .fieldwhy__lead .rich-text h3 { font-size: 19px; margin: 0 0 10px; }
+.sa .fieldwhy__lead + .longform { margin-top: 18px; }
+/* Nothing taught here: the design's callout, then the two ways on. */
+.sa .fieldnone { max-width: 760px; }
+.sa .fieldnone__links { margin-top: 18px; gap: 10px 22px; }
+.sa .fieldnone__links .linkcta { white-space: normal; }
