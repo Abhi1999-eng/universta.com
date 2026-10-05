@@ -21,6 +21,16 @@ import {
   deriveQuietly,
 } from '../catalog/derive-links';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import {
+  courseDeadlines,
+  courseFacets,
+  effectiveLevel,
+  matchesCourseQuery,
+  parseCourseQuery,
+  relatedOfferings,
+  sortOfferings,
+  type OfferingLike,
+} from './university-courses';
 import type {
   SeoBulkEntityType,
   SeoResolver,
@@ -143,6 +153,58 @@ function contains(value: string | undefined) {
  * bounded query plus in-memory sort is safe and avoids raw SQL.
  */
 const FEATURED_FETCH_CAP = 500;
+
+/**
+ * A course as a card needs it: its level, campus and intakes, and enough of
+ * the course it is an instance of -- subject, specialization, qualification,
+ * the catalogue's duration -- to file it and describe it. The generic
+ * course's long copy and its subject's are left behind; a list of eighteen
+ * cards has no use for eighteen subject essays.
+ */
+const OFFERING_ROW_INCLUDE = {
+  campus: { select: { name: true, slug: true, city: true } },
+  courseLevel: true,
+  genericCourse: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      shortName: true,
+      qualificationName: true,
+      durationMin: true,
+      durationMax: true,
+      durationUnit: true,
+      subjectId: true,
+      subject: { select: { id: true, name: true, slug: true } },
+      subSubject: { select: { id: true, name: true, slug: true } },
+      courseLevel: true,
+    },
+  },
+  intakes: {
+    where: { status: 'ACTIVE' },
+    include: { intake: true },
+  },
+  _count: { select: { scholarships: true } },
+} satisfies Prisma.UniversityCourseOfferingInclude;
+
+/** The same, with the university it belongs to, for courses shown away
+ * from their own university's list. */
+const OFFERING_CARD_INCLUDE = {
+  ...OFFERING_ROW_INCLUDE,
+  university: {
+    select: {
+      name: true,
+      slug: true,
+      country: { select: { id: true, name: true, slug: true, iso2Code: true } },
+      campuses: {
+        where: { status: 'ACTIVE', deletedAt: null },
+        orderBy: { displayOrder: 'asc' },
+        select: { name: true, slug: true, city: true },
+        take: 3,
+      },
+    },
+  },
+} satisfies Prisma.UniversityCourseOfferingInclude;
 
 type FeaturedRow = {
   isFeatured: boolean;
@@ -1133,8 +1195,32 @@ export class ExpandedService {
   ) {
     const now = new Date();
     const university = await this.prisma.university.findFirst({
-      where: { slug: universitySlug, ...publishedWhereScheduled(now) },
-      select: { id: true, name: true, slug: true },
+      /* The profile's own rule: no live country, no public page. The course
+         pages now sit under the country in their address, so a university
+         whose destination is gone has nowhere to file them either. */
+      where: {
+        slug: universitySlug,
+        ...publishedWhereScheduled(now),
+        country: { status: 'PUBLISHED', deletedAt: null },
+      },
+      /* Enough of the institution for the pages under it to say where they
+         are -- the country for the address and the breadcrumb, the campus
+         cities for "City, Country" -- and to point at its own site when the
+         catalogue has nothing to show. */
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        websiteUrl: true,
+        qsRanking: true,
+        institutionType: true,
+        country: { select: { name: true, slug: true, iso2Code: true } },
+        campuses: {
+          where: { status: 'ACTIVE', deletedAt: null },
+          orderBy: { displayOrder: 'asc' },
+          select: { name: true, slug: true, city: true },
+        },
+      },
     });
     if (!university) return this.notFound('universities');
     const where: any = {
@@ -1146,8 +1232,18 @@ export class ExpandedService {
       const row = await this.prisma.universityCourseOffering.findFirst({
         where,
         include: {
-          university: { include: { country: true } },
+          university: {
+            include: {
+              country: true,
+              campuses: {
+                where: { status: 'ACTIVE', deletedAt: null },
+                orderBy: { displayOrder: 'asc' },
+                select: { name: true, slug: true, city: true },
+              },
+            },
+          },
           campus: true,
+          courseLevel: true,
           genericCourse: {
             include: { subject: true, subSubject: true, courseLevel: true },
           },
@@ -1158,55 +1254,140 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo('offerings', row ?? this.notFound('offerings'));
+      if (!row) return this.notFound('offerings');
+      const [withSeo, around] = await Promise.all([
+        this.withSeo('offerings', row),
+        this.offeringNeighbours(row, university.id, now),
+      ]);
+      return { ...withSeo, ...around };
     }
     const { page, limit, skip } = pageOf(query);
-    const listingWhere: any = {
-      ...where,
-      ...(query.courseLevel
-        ? { courseLevel: { code: query.courseLevel } }
-        : {}),
-      ...(query.studyMode ? { studyMode: query.studyMode } : {}),
-      ...(query.intake
-        ? { intakes: { some: { intake: { slug: query.intake } } } }
-        : {}),
-      ...(query.scholarshipAvailable === 'true'
-        ? { scholarships: { some: {} } }
-        : {}),
-      ...(query.tuitionMin
-        ? {
-            OR: [
-              { tuitionMax: null },
-              { tuitionMax: { gte: Number(query.tuitionMin) } },
-            ],
-          }
-        : {}),
-      ...(query.tuitionMax
-        ? {
-            AND: [
-              {
-                OR: [
-                  { tuitionMin: null },
-                  { tuitionMin: { lte: Number(query.tuitionMax) } },
-                ],
-              },
-            ],
-          }
-        : {}),
-    };
+    /* The whole published catalogue of this university, read once: the
+       counts beside every filter are taken over all of it, the filters and
+       the order are applied to it here, and the page is cut from what is
+       left. One read, so a count and the list it leads to cannot disagree. */
     const all = await this.prisma.universityCourseOffering.findMany({
-      where: listingWhere,
+      where,
       take: FEATURED_FETCH_CAP,
-      include: {
-        campus: true,
-        genericCourse: { include: { subject: true, courseLevel: true } },
-        intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
-      },
+      include: OFFERING_ROW_INCLUDE,
     });
-    const sorted = sortByFeatured(all, now, (row) => row.name);
-    const total = sorted.length;
-    const data = sorted.slice(skip, skip + limit);
-    return { university, data, meta: meta(page, limit, total) };
+    const published = all.filter((row) => isCanonicalPublicSlug(row.slug));
+    const parsed = parseCourseQuery(query);
+    const matching = sortOfferings(
+      published.filter((row) => matchesCourseQuery(row, parsed)),
+      parsed.sort,
+      now,
+    );
+    const data = matching.slice(skip, skip + limit);
+    return {
+      university,
+      data,
+      meta: meta(page, limit, matching.length),
+      facets: courseFacets(published),
+      catalogue: {
+        total: published.length,
+        deadlines: courseDeadlines(published),
+      },
+    };
+  }
+
+  /**
+   * What a course page offers after the course itself: the university's
+   * other courses, the same course at other universities, and a short run
+   * of related ones built from both. Other universities count only while
+   * they and their country are live, the same rule their own pages keep.
+   */
+  private async offeringNeighbours(
+    row: OfferingLike & {
+      id: string;
+      slug: string;
+      genericCourseId: string;
+      genericCourse: { subjectId: string };
+      university: { countryId: string };
+    },
+    universityId: string,
+    now: Date,
+  ) {
+    const liveElsewhere = {
+      ...publishedWhereScheduled(now),
+      universityId: { not: universityId },
+      university: {
+        ...publishedWhere(),
+        country: { status: 'PUBLISHED', deletedAt: null },
+      },
+    };
+    const [here, sameCourse, sameSubject] = await Promise.all([
+      this.prisma.universityCourseOffering.findMany({
+        where: {
+          ...publishedWhereScheduled(now),
+          universityId,
+          id: { not: row.id },
+        },
+        take: FEATURED_FETCH_CAP,
+        include: OFFERING_CARD_INCLUDE,
+      }),
+      this.prisma.universityCourseOffering.findMany({
+        where: { ...liveElsewhere, genericCourseId: row.genericCourseId },
+        take: 24,
+        include: OFFERING_CARD_INCLUDE,
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.universityCourseOffering.findMany({
+        where: {
+          ...liveElsewhere,
+          genericCourseId: { not: row.genericCourseId },
+          genericCourse: { subjectId: row.genericCourse.subjectId },
+        },
+        take: 24,
+        include: OFFERING_CARD_INCLUDE,
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+    const canonical = <T extends { slug: string }>(rows: T[]) =>
+      rows.filter((entry) => isCanonicalPublicSlug(entry.slug));
+    const home = row.university.countryId;
+    const near = (entry: { university: { country: { id: string } } }) =>
+      Number(entry.university.country.id === home);
+    /* The same destination first, then by university: a student comparing
+       universities usually has the country settled already. */
+    const nearFirst = <
+      T extends { university: { name: string; country: { id: string } } },
+    >(
+      rows: T[],
+    ) =>
+      [...rows].sort(
+        (a, b) =>
+          near(b) - near(a) ||
+          a.university.name.localeCompare(b.university.name),
+      );
+    const siblings = sortOfferings(canonical(here), 'relevance', now);
+    const elsewhere = nearFirst(canonical(sameCourse)).slice(0, 6);
+    /* Among the same subject elsewhere, the level the reader is looking at
+       comes first: someone on a Master's page wants other Master's. */
+    const level = effectiveLevel(row)?.code;
+    const sameLevel = (entry: OfferingLike) =>
+      Number(Boolean(level) && effectiveLevel(entry)?.code === level);
+    const subjectElsewhere = nearFirst(canonical(sameSubject)).sort(
+      (a, b) => sameLevel(b) - sameLevel(a),
+    );
+    const related = relatedOfferings(
+      row,
+      { here: siblings, elsewhere: subjectElsewhere },
+      elsewhere.map((entry) => entry.slug),
+    );
+    const suggested = new Set(related.map((entry) => entry.slug));
+    return {
+      related,
+      elsewhere,
+      moreAtUniversity: {
+        /* Every course the university publishes, this one included, which
+           is the number the "View all" link promises. */
+        total: siblings.length + 1,
+        rows: siblings
+          .filter((entry) => !suggested.has(entry.slug))
+          .slice(0, 6),
+      },
+    };
   }
 
   async consultantLocation(slug: string) {
