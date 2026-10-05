@@ -149,6 +149,45 @@ describe('Bulk data import/export (e2e)', () => {
     expect(after).toBe(before);
   });
 
+  it('reads a study level by the name it had before the levels were renamed', async () => {
+    /* A downloaded sheet writes a level by its name, so every sheet saved
+       before the rename says "Undergraduate" where the level is now
+       "Bachelor's". It has to keep importing. */
+    const subject = await prisma.subject.findFirstOrThrow({
+      where: { deletedAt: null, status: 'PUBLISHED' },
+      select: { slug: true },
+    });
+    const levels = [
+      'Undergraduate',
+      'postgraduate',
+      'Doctor of Philosophy',
+      'Master of Business Administration',
+      "Bachelor's",
+      'UG',
+      'Not a level',
+    ];
+    const csv =
+      'name,subjectSlug,courseLevelCode\n' +
+      levels
+        .map(
+          (level, index) =>
+            `Level alias ${suffix} ${index},${subject.slug},"${level}"`,
+        )
+        .join('\n');
+    const before = await prisma.course.count();
+    const response = await admin('post', '/api/v1/admin/bulk/courses/dry-run')
+      .attach('file', Buffer.from(csv, 'utf8'), 'courses.csv')
+      .expect(201);
+    const errors = data(response).errors as {
+      line: number;
+      errors: string[];
+    }[];
+    expect(errors.map((row) => row.errors.join(' '))).toEqual([
+      expect.stringMatching(/courseLevelCode "Not a level" was not found/),
+    ]);
+    expect(await prisma.course.count()).toBe(before);
+  });
+
   it('parses XLSX uploads during dry-run without writing anything', async () => {
     const before = await prisma.job.count({ where: { slug: jobSlugA } });
     const workbook = await toXlsx(

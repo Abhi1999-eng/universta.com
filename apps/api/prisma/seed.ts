@@ -147,20 +147,36 @@ async function main() {
     });
   }
 
+  /* What a new database starts with: the client's six levels in the order a
+     student meets them, then the three other qualifications. An existing
+     database was brought to the same names and order by the migration
+     20261005090000_course_level_names; after that, names and order are an
+     editor's (Admin, Course levels), so this only ever creates. */
   const courseLevels = [
-    ['DIPLOMA', 'Diploma', 1],
-    ['UG', 'Undergraduate', 2],
-    ['PGDM', 'Post Graduate Diploma in Management', 3],
-    ['PG', 'Postgraduate', 4],
-    ['MBA', 'Master of Business Administration', 5],
-    ['PHD', 'Doctor of Philosophy', 6],
-    ['CERTIFICATE', 'Certificate', 0],
+    ['FOUNDATION', 'Foundation Program', 1],
+    ['PATHWAY', 'Pathway Program', 2],
+    ['UG', "Bachelor's", 3],
+    ['PG', "Master's", 4],
+    ['MBA', 'MBA', 5],
+    ['PHD', 'PhD', 6],
+    ['DIPLOMA', 'Diploma', 7],
+    ['PGDM', 'Post Graduate Diploma in Management', 8],
+    ['CERTIFICATE', 'Certificate', 9],
   ] as const;
   for (const [code, name, educationOrder] of courseLevels) {
-    await prisma.courseLevel.upsert({
-      where: { code },
-      update: {},
-      create: { code, name, educationOrder, status: 'ACTIVE' },
+    if (await prisma.courseLevel.findUnique({ where: { code } })) continue;
+    /* Names are unique. A level an editor already made with this name, under
+       a code of their own, is this level; creating a second would fail and
+       stop the deploy this seed runs in. */
+    if (await prisma.courseLevel.findUnique({ where: { name } })) continue;
+    await prisma.courseLevel.create({
+      data: {
+        code,
+        name,
+        educationOrder,
+        displayOrder: educationOrder,
+        status: 'ACTIVE',
+      },
     });
   }
 

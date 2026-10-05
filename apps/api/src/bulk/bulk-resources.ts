@@ -25,6 +25,7 @@ import {
   deriveForCourse,
   deriveForUniversity,
 } from '../catalog/derive-links';
+import { formerLevelCode } from '../course-levels/former-level-names';
 
 export type BulkRow = Record<string, string>;
 export type BulkField = {
@@ -265,6 +266,30 @@ type RefTable = {
  * names across countries, and guessing between them would attach the row to
  * the wrong parent without a word. Returns `null` when nothing matches, and
  * `false` when the name is ambiguous, having said so in `errors`. */
+/**
+ * A level by its code or name, then by the name it had before the levels
+ * were renamed -- so a sheet downloaded before then still imports.
+ */
+async function findLevel(
+  table: unknown,
+  term: string,
+  errors: string[],
+): Promise<RefRecord | null | false> {
+  const found = await findRef(
+    table,
+    term,
+    'courseLevelCode',
+    errors,
+    {},
+    'code',
+  );
+  if (found !== null) return found;
+  const code = formerLevelCode(term);
+  return code
+    ? findRef(table, code, 'courseLevelCode', errors, {}, 'code')
+    : null;
+}
+
 async function findRef(
   table: unknown,
   term: string,
@@ -1377,14 +1402,7 @@ const courses: BulkResourceDefinition = {
     const courseLevel = row.__courseLevelId
       ? { id: row.__courseLevelId }
       : row.courseLevelCode?.trim()
-        ? await findRef(
-            prisma.courseLevel,
-            row.courseLevelCode,
-            'courseLevelCode',
-            errors,
-            {},
-            'code',
-          )
+        ? await findLevel(prisma.courseLevel, row.courseLevelCode, errors)
         : null;
     if (courseLevel === null)
       errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);
@@ -2117,13 +2135,10 @@ const offerings: BulkResourceDefinition = {
     }
     let courseLevelId: string | null = null;
     if (row.courseLevelCode?.trim()) {
-      const courseLevel = await findRef(
+      const courseLevel = await findLevel(
         prisma.courseLevel,
         row.courseLevelCode,
-        'courseLevelCode',
         errors,
-        {},
-        'code',
       );
       if (courseLevel === null)
         errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);

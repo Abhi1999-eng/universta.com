@@ -265,20 +265,37 @@ async function main() {
     }
   }
 
+  /* The same levels, names and order as the foundation seed. This one
+     rewrites them on every run, so it has to agree with that seed and with
+     the migration that renamed them, or a demo database would show the old
+     names. */
   const courseLevels = [
-    ['DIPLOMA', 'Diploma', 1],
-    ['UG', 'Undergraduate', 2],
-    ['PGDM', 'Post Graduate Diploma in Management', 3],
-    ['PG', 'Postgraduate', 4],
-    ['MBA', 'Master of Business Administration', 5],
-    ['PHD', 'Doctor of Philosophy', 6],
-    ['CERTIFICATE', 'Certificate', 0],
+    ['FOUNDATION', 'Foundation Program', 1],
+    ['PATHWAY', 'Pathway Program', 2],
+    ['UG', "Bachelor's", 3],
+    ['PG', "Master's", 4],
+    ['MBA', 'MBA', 5],
+    ['PHD', 'PhD', 6],
+    ['DIPLOMA', 'Diploma', 7],
+    ['PGDM', 'Post Graduate Diploma in Management', 8],
+    ['CERTIFICATE', 'Certificate', 9],
   ] as const;
   for (const [code, name, educationOrder] of courseLevels) {
     await prisma.courseLevel.upsert({
       where: { code },
-      update: { name, educationOrder, status: 'ACTIVE' },
-      create: { code, name, educationOrder, status: 'ACTIVE' },
+      update: {
+        name,
+        educationOrder,
+        displayOrder: educationOrder,
+        status: 'ACTIVE',
+      },
+      create: {
+        code,
+        name,
+        educationOrder,
+        displayOrder: educationOrder,
+        status: 'ACTIVE',
+      },
     });
   }
 
@@ -871,7 +888,10 @@ async function main() {
       featured: true,
       specializations: [
         ['Civil Engineering', 'civil-engineering'],
-        ['Electrical and Electronic Engineering', 'electrical-and-electronic-engineering'],
+        [
+          'Electrical and Electronic Engineering',
+          'electrical-and-electronic-engineering',
+        ],
         ['Mechanical Engineering', 'mechanical-engineering'],
       ],
     },
@@ -891,7 +911,10 @@ async function main() {
       description: 'Design, creativity and digital experiences.',
       featured: false,
       specializations: [
-        ['Graphic and Communication Design', 'graphic-and-communication-design'],
+        [
+          'Graphic and Communication Design',
+          'graphic-and-communication-design',
+        ],
         [
           'Interaction and User Experience Design',
           'interaction-and-user-experience-design',
@@ -919,8 +942,14 @@ async function main() {
        this afterwards replaced them with "Fictional subject data for local
        discovery testing." All this seed needs from a subject that already
        exists is that it be published and not deleted. */
-    const { name, shortDescription, overview, isFeatured, displayOrder, ...standing } =
-      subjectData;
+    const {
+      name,
+      shortDescription,
+      overview,
+      isFeatured,
+      displayOrder,
+      ...standing
+    } = subjectData;
     const subject = await prisma.subject.upsert({
       where: { slug: item.slug },
       update: standing,
@@ -1931,10 +1960,28 @@ async function main() {
     orderBy: { displayOrder: 'asc' },
     take: 7,
   });
-  const demoLevels = await prisma.courseLevel.findMany({
-    where: { status: 'ACTIVE' },
-    orderBy: { educationOrder: 'asc' },
-  });
+  /* By code, in the order these demo offerings were first given them. They
+     take a level by position, so reading the list in academic order meant
+     that adding a level or reordering them moved every demo offering to a
+     different one -- and the tests that read them with it. */
+  const DEMO_OFFERING_LEVELS = [
+    'CERTIFICATE',
+    'DIPLOMA',
+    'UG',
+    'PGDM',
+    'PG',
+    'MBA',
+    'PHD',
+  ];
+  const demoLevels = (
+    await prisma.courseLevel.findMany({
+      where: { status: 'ACTIVE', code: { in: DEMO_OFFERING_LEVELS } },
+    })
+  ).sort(
+    (a, b) =>
+      DEMO_OFFERING_LEVELS.indexOf(a.code) -
+      DEMO_OFFERING_LEVELS.indexOf(b.code),
+  );
   if (demoCountries.length >= 2 && demoCourses.length >= 1) {
     const universitySpecs = [
       [

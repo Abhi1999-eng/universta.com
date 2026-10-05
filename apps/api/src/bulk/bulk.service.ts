@@ -16,6 +16,7 @@ import {
 import { parseCsv, rowsWithHeader, toCsv } from './csv.util';
 import { createLimiter } from '../courses/courses.service';
 import { changedColumns } from './row-diff';
+import { formerLevelNames } from '../course-levels/former-level-names';
 import type { PurgeTx } from './bulk-resources';
 import { parseXlsx, toXlsx, toXlsxTemplate } from './xlsx.util';
 
@@ -251,7 +252,16 @@ export class BulkOperationsService {
         }),
       ]);
       const subjectsByName = new Map(match(subjects, values('subjectSlug')));
-      const levelsByName = new Map(match(levels, values('courseLevelCode')));
+      /* A sheet downloaded before the levels were renamed says
+         "Undergraduate". The former names go in first, so a level that
+         really has one of those names now still wins. */
+      const formerly = formerLevelNames().flatMap(({ name, code }) => {
+        const level = levels.find((row) => row.code === code);
+        return level ? [{ ...level, name }] : [];
+      });
+      const levelsByName = new Map(
+        match([...formerly, ...levels], values('courseLevelCode')),
+      );
       for (const row of rows) {
         const subject = subjectsByName.get(
           row.subjectSlug?.trim().toLowerCase(),
