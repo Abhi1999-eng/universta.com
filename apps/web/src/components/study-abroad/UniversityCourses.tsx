@@ -23,6 +23,7 @@ import { countLabel, RowCard } from './RowCard';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
 import { UniversityCourseResults } from './UniversityCourseResults';
+import { universityInitials } from '@/lib/university-initials';
 
 /**
  * Every course one university teaches, filed under its country at
@@ -76,13 +77,6 @@ const FAQS = [
   },
 ];
 
-function initials(name: string) {
-  const letters = name
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word[0]!.toUpperCase());
-  return letters.slice(0, 3).join('') || name.slice(0, 2).toUpperCase();
-}
 
 const figure = (value: number) => (value ? value.toLocaleString('en-GB') : '—');
 
@@ -135,7 +129,7 @@ export function UniversityCourses(props: UniversityCoursesProps) {
             <div className="unihero__main">
               <div className="unihero__id">
                 <span className="unimark unimark--lg" aria-hidden="true">
-                  {initials(university.name)}
+                  {universityInitials(university.name)}
                 </span>
                 <div>
                   <p className="hero__eyebrow">Courses offered</p>

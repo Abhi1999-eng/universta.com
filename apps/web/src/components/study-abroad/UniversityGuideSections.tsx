@@ -13,6 +13,7 @@ import { countryUniversitiesHref, universityHref } from '@/lib/university-links'
 import { FlagMark } from './FlagMark';
 import { SectionHead } from './SectionHead';
 import { UniversityAssessmentButton } from './UniversityAssessmentButton';
+import { universityInitials } from '@/lib/university-initials';
 
 /**
  * The sections of a university's page that read more than its own record:
@@ -44,13 +45,6 @@ function typeLabel(value: string | null) {
     .join(' ');
 }
 
-function initials(name: string) {
-  const letters = name
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word[0]!.toUpperCase());
-  return letters.slice(0, 3).join('') || name.slice(0, 2).toUpperCase();
-}
 
 const arrow = (
   <span className="linkcta__arrow" aria-hidden="true">
@@ -283,7 +277,7 @@ export function MoreUniversities({
               <article className="unicard" key={other.id}>
                 <div className="unicard__head">
                   <span className="unimark" aria-hidden="true">
-                    {initials(other.name)}
+                    {universityInitials(other.name)}
                   </span>
                   <div className="unicard__id">
                     <h3 className="unicard__name">

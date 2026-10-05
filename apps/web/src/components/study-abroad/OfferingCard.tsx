@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { OfferingCardData } from '@/lib/university-courses';
 import { CompareCheck } from './CourseCompare';
+import { universityInitials } from '@/lib/university-initials';
 
 /**
  * One university's course, as the design's course card.
@@ -78,7 +79,7 @@ export function OfferingCard({
       {show === 'university' ? (
         <Link className="coursecard__uni" href={course.university.href}>
           <span className="unimark unimark--xs" aria-hidden="true">
-            {initials(course.university.name)}
+            {universityInitials(course.university.name)}
           </span>
           <span>
             <b>{course.university.name}</b>

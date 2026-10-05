@@ -23,6 +23,7 @@ import { OfferingCard } from './OfferingCard';
 import { PlanBand } from './PlanBand';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
+import { universityInitials } from '@/lib/university-initials';
 
 /**
  * One course at one university, at
@@ -47,13 +48,6 @@ import { SectionHead } from './SectionHead';
 
 const NOT_LISTED = 'Not listed';
 
-function initials(name: string) {
-  const letters = name
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word[0]!.toUpperCase());
-  return letters.slice(0, 3).join('') || name.slice(0, 2).toUpperCase();
-}
 
 const day = (value: string | null) =>
   value ? new Date(value).toISOString().slice(0, 10) : null;
@@ -221,7 +215,7 @@ export function OfferingGuide({
 
               <Link className="coursehero__uni" href={universityHref(university.slug)}>
                 <span className="unimark" aria-hidden="true">
-                  {initials(university.name)}
+                  {universityInitials(university.name)}
                 </span>
                 <span>
                   <b>{university.name}</b>
@@ -940,7 +934,7 @@ export function OfferingGuide({
                 <article className="unicard" key={row.slug}>
                   <div className="unicard__head">
                     <span className="unimark" aria-hidden="true">
-                      {initials(row.university.name)}
+                      {universityInitials(row.university.name)}
                     </span>
                     <div className="unicard__id">
                       <h3 className="unicard__name">
@@ -1040,7 +1034,7 @@ export function OfferingGuide({
           down, rather than the two stacking over the page's foot. */}
       <CompareTray />
       <CourseSticky
-        mark={initials(university.name)}
+        mark={universityInitials(university.name)}
         name={card.name}
         university={university.name}
         countrySlug={country.slug}
