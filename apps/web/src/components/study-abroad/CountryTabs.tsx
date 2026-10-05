@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
+import { CurrentTabInView } from './CurrentTabInView';
 
 /**
  * The strip under a destination's hero: the four ways into it.
@@ -107,6 +108,7 @@ export function CountryTabs({
           </Link>
         ))}
       </div>
+      {current ? <CurrentTabInView /> : null}
     </nav>
   );
 }

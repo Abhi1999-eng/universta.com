@@ -121,6 +121,25 @@ describe('a subject’s page', () => {
     expect(html).toContain('Algorithms and systems.');
   });
 
+  it('does not open the overview on the sentence the hero has just printed', () => {
+    const repeated = renderToStaticMarkup(
+      <SubjectGuide
+        subject={
+          {
+            ...subject,
+            shortDescription: 'Computer science is the study of computation itself.',
+          } as SubjectDetail
+        }
+        scholarships={[]}
+        universities={[]}
+        universityTotal={0}
+        related={[]}
+      />,
+    );
+    expect(repeated.match(/Computer science is the study of computation itself\./g)).toHaveLength(1);
+    expect(repeated).toContain('<p class="ov__lead">It asks what can be computed and how well.</p>');
+  });
+
   it('lists the specialization’s levels in climbing order', () => {
     expect(html).toContain('Diploma, Bachelor&#x27;s, PhD');
   });

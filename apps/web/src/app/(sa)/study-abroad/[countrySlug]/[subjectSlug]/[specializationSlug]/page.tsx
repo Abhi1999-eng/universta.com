@@ -359,6 +359,11 @@ export default async function Page({ params }: Params) {
           <NothingListedHere
             field={specialization.name}
             where={where}
+            teaching={
+              teaching.total
+                ? { total: teaching.total, items: teaching.group.items }
+                : undefined
+            }
             links={[
               {
                 href: `/subjects/${subject.slug}/${specialization.slug}#destinations`,
@@ -377,7 +382,7 @@ export default async function Page({ params }: Params) {
         heading={`Find ${specialization.name} courses for your profile`}
         lead={
           shown === 'none'
-            ? `None is listed in ${where} yet, so the search opens on ${specialization.name} in every destination.`
+            ? `The course search has no ${specialization.name} course in ${where} yet, so it opens on ${specialization.name} in every destination.`
             : `Now find the ${specialization.name} programmes in ${where} that match your academic profile, budget and intake.`
         }
         href={shown === 'none' ? searchEverywhere : searchHere}
@@ -456,7 +461,7 @@ export default async function Page({ params }: Params) {
             title: `More in ${subject.name}`,
             /* It names six; the count is of all of them. It printed 6 over
                a subject with eleven others. */
-            total: siblings.length,
+            total: Math.max(specialization.siblingTotal ?? 0, siblings.length),
             items: siblings.slice(0, 6).map((entry) => ({
               id: entry.id,
               name: entry.name,

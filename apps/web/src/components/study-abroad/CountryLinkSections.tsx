@@ -529,29 +529,48 @@ export function countryCourseGroups(
   countrySlug: string,
   courses: readonly CountryCourseCard[],
   counts: ReadonlyMap<string, number> = new Map(),
+  /** The ids an editor curated as this destination's popular courses, in
+   *  their order. */
+  curated: readonly string[] = [],
 ): CountryCourseGroup[] {
-  const groups = new Map<string, CountryCourseGroup & { first: number }>();
+  /* An editor's picks lead, as they did before the courses were grouped:
+     ordered by size alone, a curated course showed only if its subject was
+     among the four largest here, and one the catalogue read did not return
+     -- so known by name only, with no subject -- fell into "More courses",
+     which always closes the list and was cut. */
+  const picked = new Map(curated.map((id, index) => [id, index]));
+  const unpicked = picked.size;
+  const groups = new Map<string, CountryCourseGroup & { first: number; pick: number }>();
   courses.forEach((course, index) => {
     const slug = course.subject?.slug ?? null;
-    const key = slug ?? '';
+    const pick = picked.get(course.id) ?? unpicked;
+    const key = slug ?? (pick < unpicked ? 'popular' : '');
     const group = groups.get(key);
     if (group) {
       group.courses.push(course);
+      group.pick = Math.min(group.pick, pick);
       return;
     }
     groups.set(key, {
       key: key || 'other',
-      name: slug && course.subject ? course.subject.name : 'More courses',
+      name:
+        slug && course.subject
+          ? course.subject.name
+          : key === 'popular'
+            ? 'Popular courses'
+            : 'More courses',
       href: slug ? `/study-abroad/${countrySlug}/${slug}` : null,
       count: slug ? (counts.get(slug) ?? null) : null,
       courses: [course],
       first: index,
+      pick,
     });
   });
   const weight = (group: CountryCourseGroup) => group.count ?? group.courses.length;
   return [...groups.values()]
     .sort(
       (left, right) =>
+        left.pick - right.pick ||
         /* Courses with no subject close the list whatever their number. */
         Number(left.href === null) - Number(right.href === null) ||
         weight(right) - weight(left) ||
@@ -587,7 +606,8 @@ export function CountryCourses({
 }) {
   const where = inCountry(country.name, country.iso2Code);
   if (!courses.length) return null;
-  const groups = countryCourseGroups(country.slug, courses, subjectCounts).slice(
+  const curated = (country.derived?.popularCourses ?? []).map((course) => course.id);
+  const groups = countryCourseGroups(country.slug, courses, subjectCounts, curated).slice(
     0,
     COURSE_GROUPS_SHOWN,
   );
@@ -599,7 +619,7 @@ export function CountryCourses({
           index={n}
           eyebrow="Courses"
           title={`Explore courses in ${where}`}
-          lead="Grouped by subject, the fields with the most courses here first. Each course page carries its tuition, entry requirements, intakes and deadlines."
+          lead={`${curated.length ? 'Grouped by subject: the fields of the courses picked as popular here lead, then those with the most courses.' : 'Grouped by subject, the fields with the most courses here first.'} Each course page carries its tuition, entry requirements, intakes and deadlines.`}
           /* The destination's own courses: this opened the search over every
              course in every country, and the reader had to choose the
              destination they were already reading about. */

@@ -453,8 +453,8 @@ export function CountryConsultantIndex({
             {/* The directory's own words for both, so the two pages cannot
                 describe the same badge differently. */}
             <p className="trust__note">
-              Listed in the catalogue&rsquo;s order: there is no paid placement and
-              no ranking. &ldquo;Verified&rdquo; means an administrator has checked the
+              &ldquo;Recommended&rdquo; is the catalogue&rsquo;s own order: there is no
+              paid placement and no ranking. &ldquo;Verified&rdquo; means an administrator has checked the
               record against a source and dated that check; an unverified profile is
               still published, just not yet checked.
             </p>

@@ -103,7 +103,7 @@ export function SubjectIndex({
 
   return (
     <>
-      <section className="hero hero--compact">
+      <section className="hero hero--compact hero--suggests">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>

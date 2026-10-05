@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { Media } from '@/lib/catalog';
 import type { Figure } from '@/lib/country-subject';
 import { FlagMark } from './FlagMark';
@@ -78,6 +78,9 @@ export function FiguresStrip({ figures }: { figures: Figure[] }) {
   );
 }
 
+/** How many universities the "nothing listed" callout names before "and N more". */
+const NAMED_IN_CALLOUT = 3;
+
 /**
  * What a field's page in one destination says where the catalogue lists
  * nothing there: the design's callout, then the ways on.
@@ -85,16 +88,27 @@ export function FiguresStrip({ figures }: { figures: Figure[] }) {
  * The courses band used to vanish, and a reader could not tell "none
  * listed" from "not loaded". The sentence is about Universta's catalogue,
  * not about the country's universities, because that is all the page knows.
+ *
+ * Except where the page does know of universities here that teach it: the
+ * course list counts what has been filed under the destination, and a
+ * university's own programmes can be published before that is done. The
+ * callout said "no Law course in the United Kingdom is listed" above three
+ * UK universities whose pages list Law degrees, so then it names them.
  */
 export function NothingListedHere({
   field,
   where,
   links,
+  teaching,
 }: {
   field: string;
   where: string;
   links: Array<{ href: string; label: string }>;
+  /** The universities here with a published programme in the field. */
+  teaching?: { total: number; items: Array<{ id: string; name: string; href: string }> };
 }) {
+  const named = teaching?.total ? teaching.items.slice(0, NAMED_IN_CALLOUT) : [];
+  const unnamed = named.length ? Math.max(teaching!.total - named.length, 0) : 0;
   return (
     <>
       <div className="callout fieldnone">
@@ -110,10 +124,26 @@ export function NothingListedHere({
           <circle cx="12" cy="12" r="9" />
           <path d="M12 8h.01M11 12h1v4h1" />
         </svg>
-        <span>
-          No {field} course in {where} is listed on Universta yet. That
-          reflects our catalogue, not what {where} offers.
-        </span>
+        {named.length ? (
+          <span>
+            {`No ${field} course in ${where} is in the course search yet, but ${teaching!.total.toLocaleString('en-GB')} ${teaching!.total === 1 ? 'university here teaches' : 'universities here teach'} it: `}
+            {named.map((item, index) => (
+              <Fragment key={item.id}>
+                {index ? (index === named.length - 1 && !unnamed ? ' and ' : ', ') : null}
+                <Link className="textlink" href={item.href}>
+                  {item.name}
+                </Link>
+              </Fragment>
+            ))}
+            {unnamed ? `, and ${unnamed.toLocaleString('en-GB')} more` : null}
+            {`. ${named.length === 1 && !unnamed ? 'Its page lists' : 'Each one’s page lists'} what it teaches.`}
+          </span>
+        ) : (
+          <span>
+            No {field} course in {where} is listed on Universta yet. That
+            reflects our catalogue, not what {where} offers.
+          </span>
+        )}
       </div>
       {links.length ? (
         <div className="btn-row fieldnone__links">

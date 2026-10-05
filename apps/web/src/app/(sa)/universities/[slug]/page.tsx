@@ -160,12 +160,18 @@ export default async function UniversityPage({ params }: Props) {
                 href: countryUniversitiesHref(country.slug),
                 note: null,
               },
-              {
-                id: 'consultants',
-                name: `Consultants for ${where}`,
-                href: countryConsultantsHref(country.slug),
-                note: 'Independent providers',
-              },
+              /* Only where the destination has some: the page it opens
+                 says "none listed" and nothing else. */
+              ...(guide?.consultants?.total
+                ? [
+                    {
+                      id: 'consultants',
+                      name: `Consultants for ${where}`,
+                      href: countryConsultantsHref(country.slug),
+                      note: 'Independent providers',
+                    },
+                  ]
+                : []),
             ],
           },
         ]

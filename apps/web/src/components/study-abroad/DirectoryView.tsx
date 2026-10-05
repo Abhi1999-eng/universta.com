@@ -112,6 +112,11 @@ export function DirectoryView({
     [directory],
   );
   const popular = useMemo(() => popularDestinations(everything), [everything]);
+  /* The row holds a dozen; the Popular chip lists every one marked. */
+  const popularTotal = useMemo(
+    () => everything.filter((entry) => entry.isPopular && entry.slug).length,
+    [everything],
+  );
 
   const matches = useMemo(() => {
     return everything.filter((entry) => {
@@ -158,6 +163,12 @@ export function DirectoryView({
     setRegion(value);
     try {
       const params = new URLSearchParams(window.location.search);
+      /* The search as it stands, not as the page opened with it: a cleared
+         box kept `?q=france` beside the new region, and the reload opened
+         on no countries at all. */
+      const typed = query.trim();
+      if (typed) params.set('q', typed);
+      else params.delete('q');
       if (value === 'all') params.delete('region');
       else params.set('region', regionKey(value));
       const search = params.toString();
@@ -290,7 +301,9 @@ export function DirectoryView({
             <div className="dir__grouphead">
               <h2 className="dir__groupname">Popular destinations</h2>
               <span className="dir__groupn">
-                {popular.length} {popular.length === 1 ? 'country' : 'countries'}
+                {popularTotal > popular.length
+                  ? `${popular.length} of ${popularTotal} countries`
+                  : `${popular.length} ${popular.length === 1 ? 'country' : 'countries'}`}
               </span>
             </div>
             <div className="dir__grid">

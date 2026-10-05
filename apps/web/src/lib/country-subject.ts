@@ -178,10 +178,22 @@ export function figuresHere(input: {
 }): Figure[] {
   const count = (value: number | null | undefined) =>
     value && value > 0 ? value.toLocaleString('en-GB') : null;
+  /* "1 Programmes" read as a typo. */
+  const label = (value: number | null | undefined, one: string, many: string) =>
+    value === 1 ? one : many;
   return [
-    { label: 'Programmes', value: count(input.programmes) },
-    { label: 'Universities', value: count(input.universities) },
-    { label: 'Specializations taught', value: count(input.specializations) },
+    {
+      label: label(input.programmes, 'Programme', 'Programmes'),
+      value: count(input.programmes),
+    },
+    {
+      label: label(input.universities, 'University', 'Universities'),
+      value: count(input.universities),
+    },
+    {
+      label: label(input.specializations, 'Specialization taught', 'Specializations taught'),
+      value: count(input.specializations),
+    },
     { label: 'Intakes', value: input.intakes },
   ].filter((row): row is Figure => Boolean(row.value));
 }

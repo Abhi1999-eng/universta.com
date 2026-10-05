@@ -105,4 +105,35 @@ describe('nothing listed in a destination', () => {
     expect(html).toContain('href="/subjects/computer-science#destinations"');
     expect(html).toContain('href="/study-abroad/afghanistan/subjects"');
   });
+
+  it('names the universities here that teach it, rather than saying nothing is listed', () => {
+    const uni = (n: number) => ({ id: `u${n}`, name: `University ${n}`, href: `/universities/u${n}` });
+    const html = (total: number, count: number) =>
+      renderToStaticMarkup(
+        <NothingListedHere
+          field="Law"
+          where="the United Kingdom"
+          links={[]}
+          teaching={{ total, items: Array.from({ length: count }, (_, i) => uni(i + 1)) }}
+        />,
+      ).replace(/<[^>]+>/g, '');
+    expect(html(3, 3)).toContain(
+      'No Law course in the United Kingdom is in the course search yet, but 3 universities here teach it: University 1, University 2 and University 3. Each one’s page lists what it teaches.',
+    );
+    expect(html(3, 3)).not.toContain('is listed on Universta yet');
+    expect(html(1, 1)).toContain('but 1 university here teaches it: University 1. Its page lists what it teaches.');
+    expect(html(8, 6)).toContain('University 1, University 2, University 3, and 5 more.');
+    const links = renderToStaticMarkup(
+      <NothingListedHere field="Law" where="the United Kingdom" links={[]} teaching={{ total: 2, items: [uni(1), uni(2)] }} />,
+    );
+    expect(links).toContain('href="/universities/u1"');
+    expect(links).toContain('href="/universities/u2"');
+  });
+
+  it('keeps the plain sentence when no university here teaches it', () => {
+    const html = renderToStaticMarkup(
+      <NothingListedHere field="Law" where="Chad" links={[]} teaching={{ total: 0, items: [] }} />,
+    );
+    expect(html).toContain('No Law course in Chad is listed on Universta yet.');
+  });
 });

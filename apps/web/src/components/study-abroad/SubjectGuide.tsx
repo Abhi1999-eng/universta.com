@@ -117,7 +117,15 @@ export function SubjectGuide({
      the toggle before, so the section read as a counts line and a button.
      The first paragraph leads; anything after it opens under the toggle. */
   const split = hasOverview ? splitLead(overview!) : null;
-  const opening = split?.lead ? firstSentence(split.lead) : null;
+  /* The overview usually opens on the short description the hero has just
+     printed, and the lead then said it a second time, word for word. */
+  const said = subject.shortDescription?.replace(/\s+/g, ' ').trim();
+  const leadText = split?.lead?.replace(/\s+/g, ' ').trim();
+  const unsaid =
+    leadText && said && leadText.startsWith(said)
+      ? leadText.slice(said.length).trim()
+      : leadText;
+  const opening = unsaid ? firstSentence(unsaid) : null;
   const universityCount = universityTotal ?? universities.length;
   const counselling = counsellingHref({
     source: 'subject',

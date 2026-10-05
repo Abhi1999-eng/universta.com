@@ -265,6 +265,16 @@ describe('the figures strip', () => {
     ).toEqual([{ label: 'Programmes', value: '2' }]);
   });
 
+  it('says one of each in the singular', () => {
+    expect(
+      figuresHere({ programmes: 1, universities: 1, specializations: 1, intakes: null }),
+    ).toEqual([
+      { label: 'Programme', value: '1' },
+      { label: 'University', value: '1' },
+      { label: 'Specialization taught', value: '1' },
+    ]);
+  });
+
   it('is empty where the destination has nothing to count', () => {
     expect(figuresHere({ programmes: 0, universities: 0, intakes: null })).toEqual([]);
   });

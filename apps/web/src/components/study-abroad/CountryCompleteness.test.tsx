@@ -99,6 +99,27 @@ describe('the guide\'s courses, filed under their subjects', () => {
     expect(groups[0]?.courses.map((course) => course.slug)).toEqual(['b', 'd']);
   });
 
+  it('leads with the subjects of the courses an editor picked, in the order picked', () => {
+    const groups = countryCourseGroups(
+      'united-kingdom',
+      /* As countryCourses hands them over: the picks first. "z" was picked
+         but the catalogue read did not return it, so it has no subject. */
+      [card('z', null), card('a', computing), card('b', engineering), card('c', null), card('d', engineering)],
+      new Map([
+        ['engineering', 35],
+        ['computer-science', 6],
+      ]),
+      ['z', 'a'],
+    );
+    expect(groups.map((group) => [group.name, group.count, group.href])).toEqual([
+      ['Popular courses', null, null],
+      ['Computer Science', 6, '/study-abroad/united-kingdom/computer-science'],
+      ['Engineering', 35, '/study-abroad/united-kingdom/engineering'],
+      ['More courses', null, null],
+    ]);
+    expect(groups[0]?.courses.map((course) => course.slug)).toEqual(['z']);
+  });
+
   it('never prints the size of the slice read as the subject\'s size', () => {
     const [group] = countryCourseGroups('germany', [card('a', engineering)]);
     expect(group?.count).toBeNull();

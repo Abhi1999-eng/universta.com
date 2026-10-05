@@ -49,6 +49,15 @@ export function universityPageMetadata({
     null;
   const finalTitle = ownTitle ?? title;
   const finalDescription = ownDescription ?? description;
+  /* A sharing field the catalogue sent that differs from its title or
+     description is one an editor wrote for the card itself, and stays even
+     when the title and description were only saved-back defaults. One that
+     repeats them is the resolver's own fill, and gives way to what the page
+     builds. */
+  const sharing = (value: string | null | undefined, echo: string | undefined, built: string) => {
+    const own = value?.trim();
+    return own && own !== echo?.trim() ? own : built;
+  };
   const meta = resolvedMetadata(
     seo
       ? {
@@ -58,10 +67,22 @@ export function universityPageMetadata({
           canonicalUrl: canonical,
           /* The sharing card follows the page's own title and description
              when those are built here; what an editor wrote for it stays. */
-          ...(ownTitle ? {} : { ogTitle: finalTitle, twitterTitle: finalTitle }),
+          ...(ownTitle
+            ? {}
+            : {
+                ogTitle: sharing(seo.ogTitle, seo.seoTitle, finalTitle),
+                twitterTitle: sharing(seo.twitterTitle, seo.seoTitle, finalTitle),
+              }),
           ...(ownDescription
             ? {}
-            : { ogDescription: finalDescription, twitterDescription: finalDescription }),
+            : {
+                ogDescription: sharing(seo.ogDescription, seo.metaDescription, finalDescription),
+                twitterDescription: sharing(
+                  seo.twitterDescription,
+                  seo.metaDescription,
+                  finalDescription,
+                ),
+              }),
         }
       : null,
     finalTitle,

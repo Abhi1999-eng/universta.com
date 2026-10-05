@@ -17,7 +17,7 @@ import {
   toConsultantRows,
 } from '@/lib/country-consultant-list';
 import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
-import { loadCountryTabs } from '@/lib/country-tabs';
+import { destinationTotal, loadCountryTabs } from '@/lib/country-tabs';
 import { formatNumber } from '@/lib/format';
 import { phaseListAll } from '@/lib/phase1';
 import { getDestinations, getStudyAbroadCountry } from '@/lib/study-abroad';
@@ -78,7 +78,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   return {
     title: { absolute: `Study abroad consultants for ${where} | Universta` },
     description: `Consultants on Universta who support students planning to study in ${where}: where they are, what they help with and the languages they work in.`,
-    ...(narrowed
+    /* An empty list is not a page to send a search engine to, and its
+       description would promise what is not there. */
+    ...(narrowed || (await destinationTotal(country.slug, 'consultants')) === 0
       ? { robots: { index: false, follow: true } }
       : { alternates: { canonical: countryConsultantsHref(country.slug) } }),
   };

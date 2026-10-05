@@ -408,7 +408,20 @@ export default async function Page({ params }: Params) {
           <NothingListedHere
             field={subject.name}
             where={where}
+            teaching={
+              universities.total
+                ? { total: universities.total, items: universities.items }
+                : undefined
+            }
             links={[
+              ...(universities.total
+                ? [
+                    {
+                      href: subjectUniversitiesHref(country.slug, subject.slug),
+                      label: `Universities teaching ${subject.name} in ${where}`,
+                    },
+                  ]
+                : []),
               {
                 href: `/subjects/${subject.slug}#destinations`,
                 label: `${subject.name} in other destinations`,
@@ -430,7 +443,7 @@ export default async function Page({ params }: Params) {
         heading={`Find ${subject.name} courses for your profile`}
         lead={
           shown === 'none'
-            ? `None is listed in ${where} yet, so the search opens on ${subject.name} in every destination. Narrow it by level, budget and intake.`
+            ? `The course search has no ${subject.name} course in ${where} yet, so it opens on ${subject.name} in every destination. Narrow it by level, budget and intake.`
             : `Now find the ${subject.name} programmes in ${where} that match your academic profile, budget and intake.`
         }
         href={shown === 'none' ? `/courses?subject=${subject.slug}` : searchHere}

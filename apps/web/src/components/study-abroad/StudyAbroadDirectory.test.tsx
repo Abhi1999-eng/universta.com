@@ -74,7 +74,7 @@ describe('destination directory', () => {
      act on, so it is left out rather than printed. */
   it('reports what a destination has linked to it', () => {
     const html = renderToStaticMarkup(<DirectoryView directory={directory()} />);
-    expect(html).toContain('4 universities · 10 courses');
+    expect(html).toContain('4 universities · 10 programmes');
   });
 
   it('stops at two facts, so the line never wraps the card taller', () => {
@@ -113,7 +113,7 @@ describe('destination directory', () => {
       />,
     );
     expect(html).toContain('1 university · 2 consultants');
-    expect(html).not.toContain('0 courses');
+    expect(html).not.toContain('0 programmes');
     expect(html).not.toContain('0 scholarships');
     expect(html).not.toContain('· 0 ');
   });

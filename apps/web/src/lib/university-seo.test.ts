@@ -78,6 +78,27 @@ describe('a university page’s title and description', () => {
     });
   });
 
+  it('keeps a sharing card an editor wrote when the title and description are only defaults', () => {
+    const meta = build({
+      ...defaults,
+      ogTitle: 'Warwick, shared',
+      ogDescription: 'Written for the card.',
+      twitterTitle: 'Warwick, shared',
+      twitterDescription: 'Written for the card.',
+    });
+    expect(meta.title).toEqual({
+      absolute: 'University of Warwick | Courses, Fees & Admissions | Universta',
+    });
+    expect(meta.openGraph).toMatchObject({
+      title: 'Warwick, shared',
+      description: 'Written for the card.',
+    });
+    expect(meta.twitter).toMatchObject({
+      title: 'Warwick, shared',
+      description: 'Written for the card.',
+    });
+  });
+
   it('still has a title and description without any SEO record', () => {
     const meta = build(null);
     expect(meta.title).toEqual({

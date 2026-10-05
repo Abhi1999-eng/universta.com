@@ -262,8 +262,10 @@ function questionsFor({
       </>
     ) : (
       <>
-        None is linked to {name} in our catalogue yet. That reflects the catalogue, not the
-        university&rsquo;s funding.
+        {/* One string: the space after the name went missing in the built
+            page, and "University of Warwickin" reached the FAQ's structured
+            data as well. */}
+        {`None is linked to ${name} in our catalogue yet. That reflects the catalogue, not the university’s funding.`}
         {country ? (
           <>
             {' '}

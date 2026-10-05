@@ -3118,3 +3118,16 @@
 .sa .fieldnone { max-width: 760px; }
 .sa .fieldnone__links { margin-top: 18px; gap: 10px 22px; }
 .sa .fieldnone__links .linkcta { white-space: normal; }
+/* === completeness: review fixes === */
+/* A hero's one column on a phone. The implicit track sized itself to the
+   search box's minimum width, so on the consultants page the heading, the
+   box and the "At a glance" card ran past the gutter and off a 360px
+   screen. */
+@media (max-width: 999.98px){ .sa .hero__grid{ grid-template-columns: minmax(0, 1fr); } }
+/* The subjects search's suggestions hang below the hero; it clipped them at
+   its bottom edge, specializations and all. Sideways it still clips. */
+.sa .hero--suggests{ overflow-x: clip; overflow-y: visible; }
+/* A chip that opens a filtered slice of these lists lands on the results
+   bar, not under the header and the tab strip. */
+.sa #scholarships,
+.sa #consultants{ scroll-margin-top: calc(var(--nav-h) + 62px); }
