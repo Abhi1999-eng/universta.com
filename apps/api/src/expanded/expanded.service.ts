@@ -258,9 +258,33 @@ function universityOrder(sort: string | undefined) {
       return [{ name: 'desc' as const }];
     case 'newest':
       return [{ publishedAt: 'desc' as const }, { createdAt: 'desc' as const }];
+    /* Published QS position first, then the unranked by name -- the order
+       the public directories show. It is asked for here, not only applied
+       in the browser, because a directory reads a capped number of rows:
+       ordered any other way, a ranked university past the cap would never
+       reach the page that is meant to put it first. */
+    case 'ranking':
+      return [
+        { qsRanking: { sort: 'asc' as const, nulls: 'last' as const } },
+        { name: 'asc' as const },
+      ];
     default:
       return [{ displayOrder: 'asc' as const }, { name: 'asc' as const }];
   }
+}
+
+/** A subject a listed university teaches, with how many of its published
+ * programmes sit under it. */
+type ListedSubject = { name: string; slug: string; offerings: number };
+
+/** A campus's city as the list reports it: the text an editor wrote for the
+ * campus, else the name of the catalogue city it is filed under. */
+function campusCity(campus: {
+  city: string | null;
+  cityRef: { name: string } | null;
+}) {
+  const typed = campus.city?.trim();
+  return typed || campus.cityRef?.name?.trim() || null;
 }
 
 function idFrom(actor: { sub?: string } | undefined) {
@@ -426,6 +450,57 @@ export class ExpandedService {
     );
   }
 
+  /**
+   * The subjects each listed university teaches, most programmes first.
+   *
+   * A directory card names what an institution is strong in, and the only
+   * honest source for that here is the catalogue itself: how many published
+   * programmes it lists in each subject. Counted from the same offerings as
+   * `_count.offerings`, so the pills and the programme figure on one card
+   * cannot disagree, and only under a published subject, so a card never
+   * names a field the site does not show. One read for the whole page of
+   * universities rather than one per row.
+   */
+  private async universitySubjects(
+    ids: string[],
+    now: Date,
+  ): Promise<Map<string, ListedSubject[]>> {
+    if (!ids.length) return new Map();
+    /* University id -> subject slug -> that subject's tally. */
+    const byUniversity = new Map<string, Map<string, ListedSubject>>();
+    const offerings = await this.prisma.universityCourseOffering.findMany({
+      where: {
+        ...publishedWhereScheduled(now),
+        universityId: { in: ids },
+        genericCourse: { subject: { status: 'PUBLISHED', deletedAt: null } },
+      },
+      select: {
+        universityId: true,
+        genericCourse: {
+          select: { subject: { select: { name: true, slug: true } } },
+        },
+      },
+    });
+    for (const offering of offerings) {
+      const subject = offering.genericCourse.subject;
+      const counts =
+        byUniversity.get(offering.universityId) ??
+        new Map<string, ListedSubject>();
+      const entry = counts.get(subject.slug) ?? { ...subject, offerings: 0 };
+      entry.offerings += 1;
+      counts.set(subject.slug, entry);
+      byUniversity.set(offering.universityId, counts);
+    }
+    return new Map(
+      [...byUniversity].map(([id, counts]) => [
+        id,
+        [...counts.values()].sort(
+          (a, b) => b.offerings - a.offerings || a.name.localeCompare(b.name),
+        ),
+      ]),
+    );
+  }
+
   async list(
     resource: Exclude<
       Resource,
@@ -498,9 +573,18 @@ export class ExpandedService {
             /* `iso2Code` draws the flag on the directory card, the same way
                it does on every other country chip on the site. */
             country: { select: { name: true, slug: true, iso2Code: true } },
+            /* The city is what a directory card prints beside the country
+               and what its city filter offers. It was left out, so a card
+               could only say "United Kingdom" about Oxford. In display
+               order, so the first campus is the main one. */
             campuses: {
               where: { status: 'ACTIVE', deletedAt: null },
-              select: { id: true },
+              orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+              select: {
+                id: true,
+                city: true,
+                cityRef: { select: { name: true } },
+              },
             },
             _count: {
               select: { offerings: { where: publishedWhereScheduled(now) } },
@@ -514,7 +598,19 @@ export class ExpandedService {
          URL it would advertise is one the router cannot route. It is not
          folded into `total`: counting it would mean reading every row,
          which is the thing this change exists to stop doing. */
-      const data = rows.filter((row) => isCanonicalPublicSlug(row.slug));
+      const listed = rows.filter((row) => isCanonicalPublicSlug(row.slug));
+      const subjects = await this.universitySubjects(
+        listed.map((row) => row.id),
+        now,
+      );
+      const data = listed.map((row) => ({
+        ...row,
+        campuses: row.campuses.map((campus) => ({
+          id: campus.id,
+          city: campusCity(campus),
+        })),
+        subjects: subjects.get(row.id) ?? [],
+      }));
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'scholarships') {

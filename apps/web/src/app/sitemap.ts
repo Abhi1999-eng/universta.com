@@ -5,6 +5,7 @@ import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
 import { getCourses, getSubjects } from "@/lib/catalog";
 import { siteOrigin } from "@/lib/site-origin";
+import { countryUniversitiesHref } from "@/lib/university-links";
 
 const base = siteOrigin;
 // Testimonials remain listing-only. Published success stories have a public
@@ -74,6 +75,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       /* The canonical country guide lives under /study-abroad; /countries/<slug>
          permanently redirects there, so only the target is listed. */
       ...countries.data.map((row) => `/study-abroad/${row.slug}`),
+      /* Each destination's own list of universities -- but only where a
+         published university says there is one, so no empty list is
+         announced. Read off the universities already loaded above. */
+      ...[
+        ...new Set(
+          universities.data
+            .map((row) => (row.country as { slug?: unknown } | undefined)?.slug)
+            .filter((slug): slug is string => typeof slug === "string" && slug !== ""),
+        ),
+      ].map((slug) => countryUniversitiesHref(slug)),
       ...countries.data.flatMap((country, index) =>
         citiesByCountry[index].data.map(
           (city) => `/study-in-${country.slug}/${city.slug}`,
