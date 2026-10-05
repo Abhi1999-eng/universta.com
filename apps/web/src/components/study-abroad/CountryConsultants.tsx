@@ -19,11 +19,15 @@ export function CountryConsultants({
   countrySlug,
   presence,
   alt,
+  heading,
 }: {
   countryName: string;
   countrySlug: string;
   presence: ConsultantPresence | undefined;
   alt: boolean;
+  /** The band's question, when the page is about something narrower than
+   *  the destination: "Need help applying to the University of Oxford?" */
+  heading?: string;
 }) {
   if (!presence?.total) return null;
   const all = `/study-abroad-consultants?country=${encodeURIComponent(countrySlug)}`;
@@ -37,7 +41,9 @@ export function CountryConsultants({
         <div className="consultcta">
           <div className="consultcta__copy">
             <p className="eyebrow eyebrow--plain">Consultants</p>
-            <h2 className="consultcta__t">Need help applying to {countryName}?</h2>
+            <h2 className="consultcta__t">
+              {heading ?? `Need help applying to ${countryName}?`}
+            </h2>
             <p className="consultcta__d">
               {presence.total === 1
                 ? `One consultant on Universta supports students planning to study in ${countryName}.`

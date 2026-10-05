@@ -14,11 +14,16 @@ export function MatchBand({
   heading = 'Found your field?',
   lead = 'Now find universities and programmes that match your academic profile, budget and intake.',
   href,
+  talkHref = '/contact',
 }: {
   heading?: string;
   lead?: string;
   /** Where "Find my programmes" goes, already filtered where we can. */
   href: string;
+  /** Where "Talk to a consultant" goes. The counselling form when the page
+   *  knows what the student is reading about, so the request arrives with
+   *  that context instead of as a blank enquiry. */
+  talkHref?: string;
 }) {
   return (
     <section className="sec sec--navy sec--tight" id="find-programs">
@@ -40,7 +45,7 @@ export function MatchBand({
             </Link>
             <Link
               className="btn btn--onnavy-ghost btn--block"
-              href="/contact"
+              href={talkHref}
               style={{ marginTop: 10 }}
             >
               Talk to a consultant{' '}
@@ -61,7 +66,12 @@ export function MatchBand({
 
 export type RelatedGroup = {
   title: string;
-  items: Array<{ id: string; name: string; href: string }>;
+  /** `note` is the row's quiet second line, as the design gives it: a
+   *  course's "Master's · 1 year", a university's city. */
+  items: Array<{ id: string; name: string; href: string; note?: string | null }>;
+  /** How many there are in all, when the group shows only some of them.
+   *  Counted from the items, a group of nine courses cut to six said 6. */
+  total?: number;
 };
 
 /** "Explore next" — the closing band of cross-links. */
@@ -98,12 +108,15 @@ export function ConnectBand({
                 <div className="h-relgroup" key={group.title}>
                   <h3 className="h-relgroup__t">
                     {group.title}{' '}
-                    <span className="h-count__n">{group.items.length}</span>
+                    <span className="h-count__n">
+                      {group.total ?? group.items.length}
+                    </span>
                   </h3>
                   <ul className="h-list">
                     {group.items.slice(0, 6).map((item) => (
                       <li key={item.id}>
                         <Link href={item.href}>{item.name}</Link>
+                        {item.note ? <span>{item.note}</span> : null}
                       </li>
                     ))}
                   </ul>
