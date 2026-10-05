@@ -26,6 +26,17 @@ export type SubjectIndexRow = Subject & {
  * `studyLevels` off each specialization, which is a field the taxonomy we
  * were given does not have, so the bar is left out rather than shipped inert.
  */
+/** "Explore Arts, Humanities & Social " -- all but the name's last word. */
+function lead(name: string) {
+  const words = `Explore ${name}`.trim().split(/\s+/);
+  return `${words.slice(0, -1).join(' ')} `;
+}
+
+/** "Sciences" -- the word the arrow stays with. */
+function lastWord(name: string) {
+  return `Explore ${name}`.trim().split(/\s+/).pop() ?? '';
+}
+
 export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -243,9 +254,16 @@ export function SubjectIndex({ subjects }: { subjects: SubjectIndexRow[] }) {
                 ) : null}
                 <div className="subjcard__foot">
                   <Link className="linkcta" href={`/subjects/${subject.slug}`}>
-                    Explore {subject.name}{' '}
-                    <span className="linkcta__arrow" aria-hidden="true">
-                      →
+                    {/* The last word and the arrow are held together, so
+                        the arrow goes onto the next line with that word and
+                        never by itself. A no-break space was not enough: a
+                        browser still breaks before an inline block. */}
+                    {lead(subject.name)}
+                    <span className="linkcta__end">
+                      {lastWord(subject.name)}{'\u00a0'}
+                      <span className="linkcta__arrow" aria-hidden="true">
+                        →
+                      </span>
                     </span>
                   </Link>
                   <span className="subjcard__count datum">
