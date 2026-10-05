@@ -1033,6 +1033,10 @@ export class ExpandedService {
         campuses: {
           where: { status: 'ACTIVE', deletedAt: null },
           orderBy: { displayOrder: 'asc' },
+          /* The page says which city the university is in. A campus picked
+             from the location lists carries the city as a reference rather
+             than as typed text, so the name comes along with it. */
+          include: { cityRef: { select: { name: true, slug: true } } },
         },
         accreditations: {
           where: { status: 'ACTIVE', deletedAt: null },
@@ -1041,7 +1045,11 @@ export class ExpandedService {
         offerings: {
           where: publishedWhereScheduled(now),
           include: {
-            genericCourse: { include: { subject: true, courseLevel: true } },
+            /* The specialization rides along so a programme's card can name
+               the branch of its subject it belongs to, not only the subject. */
+            genericCourse: {
+              include: { subject: true, subSubject: true, courseLevel: true },
+            },
             campus: true,
             intakes: { where: { status: 'ACTIVE' }, include: { intake: true } },
           },
@@ -1049,7 +1057,73 @@ export class ExpandedService {
         },
       },
     });
-    return this.withSeo('universities', row ?? this.notFound('universities'));
+    if (!row) return this.notFound('universities');
+    const record = {
+      ...row,
+      otherUniversities: await this.otherUniversitiesInCountry(row, now),
+    };
+    return this.withSeo('universities', record);
+  }
+
+  /**
+   * A few other universities in the same destination, for the foot of a
+   * university's page.
+   *
+   * The behaviour reference closes a university with three more from its
+   * country, best-ranked first, so a reader comparing Oxford is offered
+   * Cambridge rather than whichever institution was added last. The public
+   * listing cannot sort by ranking, and reading a whole country to sort it
+   * in the browser costs a page of requests per view, so the three are
+   * picked here. Ranked institutions come first in rank order and the rest
+   * follow A to Z: an unranked university is unmeasured, not last.
+   */
+  private async otherUniversitiesInCountry(
+    university: { id: string; countryId: string },
+    now: Date,
+  ) {
+    const where = {
+      ...publishedWhereScheduled(now),
+      countryId: university.countryId,
+      id: { not: university.id },
+    };
+    const [total, rows] = await Promise.all([
+      this.prisma.university.count({ where }),
+      this.prisma.university.findMany({
+        where,
+        orderBy: [
+          { qsRanking: { sort: 'asc', nulls: 'last' } },
+          { name: 'asc' },
+        ],
+        /* A few spare, for the rare hand-typed slug the router cannot
+           reach; the list endpoint leaves those out the same way. */
+        take: 6,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          institutionType: true,
+          qsRanking: true,
+          shortDescription: true,
+          totalStudents: true,
+          internationalStudentsPercent: true,
+          campuses: {
+            where: { status: 'ACTIVE', deletedAt: null },
+            orderBy: { displayOrder: 'asc' },
+            select: {
+              city: true,
+              cityRef: { select: { name: true } },
+            },
+          },
+          _count: {
+            select: { offerings: { where: publishedWhereScheduled(now) } },
+          },
+        },
+      }),
+    ]);
+    return {
+      total,
+      data: rows.filter((row) => isCanonicalPublicSlug(row.slug)).slice(0, 3),
+    };
   }
 
   async universityOfferings(

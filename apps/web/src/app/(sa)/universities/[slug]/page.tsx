@@ -4,20 +4,36 @@ import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { phaseDetail, phaseList, phaseResolveRedirect } from '@/lib/phase1';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
+import { inCountry } from '@/lib/country-article';
+import { durationLabel } from '@/lib/course-levels';
+import { getStudyAbroadCountry } from '@/lib/study-abroad';
+import { toDestination, toRecord, whole } from '@/lib/university-record';
+import { orderOfferings, popularSubjects } from '@/lib/university-profile';
+import {
+  countryUniversitiesHref,
+  offeringHref,
+  universityCoursesHref,
+  universityHref,
+} from '@/lib/university-links';
 import {
   UniversityGuide,
+  programmeName,
   type UniversityOffering,
-  type UniversityRecord,
 } from '@/components/study-abroad/UniversityGuide';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import {
   ConnectBand,
   MatchBand,
+  type RelatedGroup,
 } from '@/components/study-abroad/DiscoveryBands';
 
 export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ slug: string }> };
+
+/** How many scholarships the page shows before "View all": the behaviour
+ * reference shows four. */
+const SCHOLARSHIPS_SHOWN = 4;
 
 async function university(slug: string) {
   try {
@@ -48,97 +64,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : meta;
 }
 
-const text = (value: unknown) =>
-  typeof value === 'string' && value.trim() ? value : null;
-const whole = (value: unknown) =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null;
-
-/** An offering carries its own name, level and duration, and reaches the
- * subject through the generic course it is an instance of. */
-function toOffering(row: Record<string, unknown>): UniversityOffering {
-  const generic = (row.genericCourse ?? {}) as Record<string, unknown>;
-  const subject = generic.subject as Record<string, unknown> | undefined;
-  const specialization = generic.subSubject as
-    | Record<string, unknown>
-    | undefined;
-  const level = generic.courseLevel as Record<string, unknown> | undefined;
-  /* The offering's own figures where it has them, the generic course's
-     otherwise: a university that has not stated its duration still teaches
-     the programme the catalogue describes. */
-  const pick = (key: string) => row[key] ?? generic[key];
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    slug: String(row.slug),
-    shortDescription: text(row.shortDescription ?? generic.shortDescription),
-    qualificationName: text(generic.qualificationName ?? generic.shortName),
-    subject: subject?.name
-      ? { name: String(subject.name), slug: String(subject.slug ?? '') }
-      : null,
-    specialization: specialization?.name
-      ? {
-          name: String(specialization.name),
-          slug: String(specialization.slug ?? ''),
-        }
-      : null,
-    courseLevel: level?.name
-      ? { code: text(level.code), name: String(level.name) }
-      : null,
-    duration: {
-      min: pick('durationMin') == null ? null : String(pick('durationMin')),
-      max: pick('durationMax') == null ? null : String(pick('durationMax')),
-      unit: text(pick('durationUnit')),
-    },
-  };
-}
-
-function toRecord(row: AnyRecord): UniversityRecord {
-  const extra = row as Record<string, unknown>;
-  const country = extra.country as Record<string, unknown> | undefined;
-  const campuses = extra.campuses as unknown[] | undefined;
-  const offerings = (extra.offerings as Array<Record<string, unknown>>) ?? [];
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    slug: String(row.slug),
-    shortDescription: text(row.shortDescription),
-    overview: text(extra.overview),
-    institutionType: text(extra.institutionType),
-    qsRanking: whole(extra.qsRanking),
-    totalStudents: whole(extra.totalStudents),
-    internationalStudentsPercent: text(extra.internationalStudentsPercent),
-    studentFacultyRatio: text(extra.studentFacultyRatio),
-    establishedYear: whole(extra.establishedYear),
-    campusSetting: text(extra.campusSetting),
-    websiteUrl: text(extra.websiteUrl),
-    admissionsEmail: text(extra.admissionsEmail),
-    phone: text(extra.phone),
-    statsSourceName: text(extra.statsSourceName),
-    statsSourceUrl: text(extra.statsSourceUrl),
-    statsYear: whole(extra.statsYear),
-    sourceReference: text(extra.sourceReference),
-    verifiedAt: text(extra.verifiedAt),
-    campuses: Array.isArray(campuses) ? campuses.length : 0,
-    country: country?.name
-      ? {
-          name: String(country.name),
-          slug: String(country.slug ?? ''),
-          iso2Code: text(country.iso2Code),
-          officialLanguage: text(country.officialLanguage),
-          currencyCode: text(country.currencyCode),
-          currencySymbol: text(country.currencySymbol),
-          intakeMonths: Array.isArray(country.intakeMonths)
-            ? (country.intakeMonths as unknown[])
-                .map((month) => Number(month))
-                .filter((month) => Number.isInteger(month))
-            : [],
-          postStudyWorkPermitMonths: whole(country.postStudyWorkPermitMonths),
-        }
-      : null,
-    offerings: offerings.map(toOffering),
-  };
-}
-
 export default async function UniversityPage({ params }: Props) {
   const { slug } = await params;
   const row = await university(slug);
@@ -148,51 +73,164 @@ export default async function UniversityPage({ params }: Props) {
     notFound();
   }
   const record = toRecord(row);
+  const { country } = record;
 
-  /* Funding is a cross-link, not the point of the page: a failure here drops
-     the section rather than the route. */
-  const scholarships = await phaseList<AnyRecord>('scholarships', {
-    university: record.slug,
-    limit: '6',
-  })
-    .then((result) => toScholarshipCards(result.data))
-    .catch(() => []);
+  /* Funding and the destination's guide are cross-links, not the point of
+     the page: a failure reaching either drops what it feeds rather than the
+     route. */
+  const [funding, guide] = await Promise.all([
+    phaseList<AnyRecord>('scholarships', {
+      university: record.slug,
+      limit: String(SCHOLARSHIPS_SHOWN),
+    })
+      .then((result) => ({
+        cards: toScholarshipCards(result.data),
+        total: whole((result.meta as { total?: unknown } | null)?.total),
+      }))
+      .catch(() => ({ cards: [], total: null })),
+    country ? getStudyAbroadCountry(country.slug) : Promise.resolve(null),
+  ]);
+
+  const where = country ? inCountry(country.name, country.iso2Code) : null;
+  const self = universityHref(record.slug);
+  const nameOf = (offering: UniversityOffering) =>
+    programmeName(offering.name, record.name);
+  const ordered = orderOfferings(record.offerings, nameOf);
+  const others = record.otherUniversities ?? [];
+
+  const groups: RelatedGroup[] = [
+    {
+      title: `Courses at ${record.name}`,
+      total: record.offerings.length,
+      items: ordered.slice(0, 6).map((offering) => ({
+        id: offering.id,
+        name: nameOf(offering),
+        href: country
+          ? offeringHref(country.slug, record.slug, offering.slug)
+          : `/universities/${record.slug}/courses/${offering.slug}`,
+        note:
+          [offering.courseLevel?.name, durationLabel(offering)]
+            .filter(Boolean)
+            .join(' · ') || null,
+      })),
+    },
+    ...(country
+      ? [
+          {
+            title: 'Subjects taught here',
+            items: popularSubjects(record.offerings).map((subject) => ({
+              id: subject.slug,
+              name: subject.name,
+              href: `/study-abroad/${country.slug}/${subject.slug}`,
+              note: `${subject.count} ${subject.count === 1 ? 'course' : 'courses'} here`,
+            })),
+          },
+          {
+            title: `Other universities in ${where}`,
+            total: record.otherUniversityTotal || others.length,
+            items: others.map((other) => ({
+              id: other.id,
+              name: other.name,
+              href: universityHref(other.slug),
+              note: other.city,
+            })),
+          },
+          {
+            title: 'Destination',
+            items: [
+              {
+                id: 'guide',
+                name: `Study in ${where}`,
+                href: `/study-abroad/${country.slug}`,
+                note: 'Costs, intakes, visas',
+              },
+              {
+                id: 'universities',
+                name: `Universities in ${where}`,
+                href: countryUniversitiesHref(country.slug),
+                note: null,
+              },
+              {
+                id: 'consultants',
+                name: `Consultants for ${where}`,
+                href: `/study-abroad-consultants?country=${country.slug}`,
+                note: 'Independent providers',
+              },
+            ],
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
-      <UniversityGuide university={record} scholarships={scholarships} />
+      <UniversityGuide
+        university={record}
+        scholarships={funding.cards}
+        scholarshipTotal={funding.total ?? funding.cards.length}
+        destination={toDestination(guide)}
+      />
 
       <MatchBand
         heading={`Interested in ${record.name}?`}
         href={
-          record.country
-            ? `/courses?country=${record.country.slug}`
+          country
+            ? `/courses?country=${country.slug}`
             : '/courses'
+        }
+        talkHref={
+          country
+            ? `/counselling?source=country&country=${country.slug}&from=${self}`
+            : `/counselling?from=${self}`
         }
       />
 
       <PlanBand
         heading="Not sure this is the right institution?"
         body="Tell us about your academic profile, goals and budget. We'll help you understand your options across every destination we cover."
-        secondary={{ href: '/universities', label: 'Browse all universities' }}
+        countrySlug={country?.slug}
+        countryName={country?.name}
+        secondary={
+          country
+            ? {
+                href: countryUniversitiesHref(country.slug),
+                label: `Browse all universities in ${where}`,
+              }
+            : { href: '/universities', label: 'Browse all universities' }
+        }
       />
 
       <ConnectBand
         actions={[
-          { href: '/universities', label: 'All universities' },
+          ...(record.offerings.length
+            ? [
+                {
+                  href: country
+                    ? universityCoursesHref(country.slug, record.slug)
+                    : `/universities/${record.slug}/courses`,
+                  label: 'View courses',
+                },
+              ]
+            : []),
+          {
+            href: `/compare/universities?items=${record.slug}`,
+            label: 'Compare',
+            ghost: true,
+          },
+          {
+            href: `/scholarships?university=${record.slug}`,
+            label: 'Find scholarships',
+            ghost: true,
+          },
+          {
+            href: country ? countryUniversitiesHref(country.slug) : '/universities',
+            label: country ? `All universities in ${where}` : 'All universities',
+            ghost: true,
+          },
           { href: '/courses', label: 'Explore courses', ghost: true },
           { href: '/subjects', label: 'Browse subjects', ghost: true },
         ]}
-        groups={[
-          {
-            title: 'Programmes',
-            items: record.offerings.slice(0, 6).map((offering) => ({
-              id: offering.id,
-              name: offering.name,
-              href: `/universities/${record.slug}/courses/${offering.slug}`,
-            })),
-          },
-        ]}
+        groups={groups}
       />
     </>
   );

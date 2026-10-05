@@ -140,9 +140,11 @@ export function AssessmentDialog({
           consent: true,
           companyWebsite: form.companyWebsite,
           countrySlug: destination ?? context.countrySlug,
-          sourcePagePath: context.countrySlug
-            ? `/study-abroad/${context.countrySlug}`
-            : '/study-abroad',
+          sourcePagePath:
+            context.sourcePagePath ??
+            (context.countrySlug
+              ? `/study-abroad/${context.countrySlug}`
+              : '/study-abroad'),
           answers: rest,
         }),
       });
