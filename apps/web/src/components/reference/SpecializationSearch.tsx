@@ -78,7 +78,11 @@ export function SpecializationSearch({ query, subject }: { query: string; subjec
         {/* The arrow is decoration, so the button is still named
             "Find specializations" to anything reading the page. */}
         <button type="submit" className="btn btn--sm">
-          Find specializations{' '}
+          {/* The second word folds away on a phone, where it left the box
+              beside it room for eleven letters; the button keeps its name. */}
+          <span>
+            Find<span className="btn__long"> specializations</span>
+          </span>{' '}
           <span className="btn__arrow" aria-hidden="true">
             →
           </span>

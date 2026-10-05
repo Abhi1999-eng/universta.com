@@ -165,7 +165,7 @@ export default async function Page({ params }: Params) {
 
       <CountryTabs tabs={tabs} current="subjects" below />
 
-      <section className="sec wrap">
+      <section className="sec sec--tight wrap">
         <div className="sec-head left row-between">
           <div>
             <span className="eyebrow">Programmes</span>
@@ -214,7 +214,7 @@ export default async function Page({ params }: Params) {
       </section>
 
       {siblings.length ? (
-        <section className="sec wrap">
+        <section className="sec sec--tight wrap">
           <div className="sec-head left row-between">
             <div>
               <span className="eyebrow">Explore next</span>

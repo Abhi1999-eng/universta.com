@@ -179,12 +179,22 @@
    the full width: its underline then read as a rule across the page rather
    than as part of a link. It keeps to its own text. */
 .sa .sec-head.row-between > a:last-child{ justify-self: start; }
+/* The sentence under a section title, where a head stacks label, title and
+   sentence in one block: it began on the title's own bottom edge. */
+.sa .sec-head .sec-title + .sec-lead{ margin-top: 10px; }
+/* A section that is only its head -- a title and a sentence saying there is
+   nothing here yet -- does not also carry the gap that separates a head
+   from the cards under it. */
+.sa .sec > .sec-head:last-child{ margin-bottom: 0; }
 @media (min-width: 760px){
   .sa .sec-head.row-between{
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end; column-gap: 32px;
   }
-  .sa .sec-head.row-between > :last-child{ justify-self: end; }
+  /* The link at the end of the row, not a title block that happens to be
+     alone in it: with no link, the heading was the last child too and sat
+     89px in from everything else on the page. */
+  .sa .sec-head.row-between > :last-child:not(:first-child){ justify-self: end; }
 }
 @media (min-width: 940px){.sa .sec-head--split{
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
@@ -249,6 +259,15 @@
 .sa .btn--lg{ padding: 17px 28px; font-size: 16px; }
 .sa .btn--block{ width: 100%; }
 .sa .btn-row{ display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+/* A button named from data -- "All Agriculture & Environmental Sciences
+   courses", "Show all 186 destinations for Electrical and Electronic
+   Engineering" -- wraps onto a second line rather than running past a
+   phone's edge, where the hero clipped it and the page scrolled sideways.
+   On one line it keeps its height: the padding gives back what the line
+   height takes. A desktop sees no change; the labels fit. */
+.sa .hero .btn-row .btn:not(.btn--wrap),
+.sa .h-more--center .btn { white-space: normal; max-width: 100%; text-align: center; line-height: 1.25; padding-block: 12px; }
+.sa .hero .btn-row .btn--lg:not(.btn--wrap) { padding-block: 15px; }
 .sa .linkcta{
   display: inline-flex; align-items: center; gap: 8px;
   font-weight: 600; font-size: 15px; color: var(--text);
@@ -510,10 +529,14 @@
 .sa .hero > *{ position: relative; }
 .sa .hero__grid{ display: grid; gap: clamp(36px, 4.5vw, 56px); margin-top: clamp(22px, 3vw, 38px); }
 @media (min-width: 1000px){.sa .hero__grid{ grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr); gap: clamp(40px, 5vw, 76px); align-items: start; }}
+/* A page heading straight after the breadcrumb, with no label between
+   them: the breadcrumb has no bottom gap of its own -- the block after it
+   normally brings one -- so on these pages it sat on the heading. */
+.sa .crumbs + .hero__h1{ margin-top: clamp(20px, 2.6vw, 32px); }
 .sa .hero__eyebrow{
   font-family: var(--font-mono); font-size: var(--fs-micro);
   letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
-  display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; margin-bottom: 18px;
 }
 .sa .hero__eyebrow b{ color: var(--accent); font-weight: 500; }
 /* An eyebrow that is a trail rather than a label: the destination and the
@@ -1031,6 +1054,10 @@
 .sa .final__h{ font-size: clamp(30px, 4.4vw, 58px); color: #fff; letter-spacing: -0.035em; margin-bottom: 18px; max-width: 20ch; margin-inline: auto; }
 .sa .final__s{ font-size: var(--fs-lead); color: var(--on-navy-muted); max-width: 60ch; margin: 0 auto 32px; }
 .sa .final__actions{ justify-content: center; }
+/* A button here is named from data -- "Agriculture & Environmental Sciences
+   in the United Kingdom" -- and one that cannot wrap ran off both sides of
+   a phone and let the whole page scroll sideways. */
+.sa .final__actions .btn{ white-space: normal; max-width: 100%; text-align: center; line-height: 1.25; padding-block: 15px; }
 .sa .final__micro{ display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; margin-top: 26px; font-size: 13.5px; color: var(--on-navy-muted); }
 .sa .final__micro span{ display: inline-flex; align-items: center; gap: 8px; }
 .sa .final__micro i{ width: 5px; height: 5px; border-radius: 50%; background: var(--accent-on-navy); font-style: normal; }
@@ -1232,6 +1259,9 @@
 .sa .h-head .sec-lead{ margin: 0; }
 .sa .h-sec .sec-title{ font-size: clamp(24px, 2.8vw, 36px); }
 .sa .h-more{ display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 22px; }
+/* The same row used as a label over a grid, rather than as links under
+   one: it touched the first row of cards. */
+.sa .h-more + .h-grid{ margin-top: 12px; }
 /* `auto-fit`, not the design's `auto-fill`. Both lay out the same when a grid
    is full; they differ when it is not, and on a country guide it often is not
    -- a destination with two scholarships was leaving a third column standing
@@ -1736,6 +1766,10 @@
 .sa .filters-panel__foot { display: block; }
 }
 .sa .pillrow { display: flex; flex-wrap: wrap; gap: 6px; }
+/* A pill named from data -- "Back to Public Policy, Government &
+   International Studies" -- wraps inside itself rather than pushing the
+   section past a phone's edge. Short pills are unchanged. */
+.sa .pillrow .pill { white-space: normal; max-width: 100%; }
 .sa .pill--sm { padding: 4px 10px; font-size: 12.5px; }
 .sa .iconbtn {
   display: inline-flex; align-items: center; gap: 7px;
@@ -1757,8 +1791,10 @@
 .sa .unitabs {
   position: sticky; top: var(--nav-h); z-index: 70;
   background: rgba(255, 255, 255, 0.94);
+  /* Unprefixed only, as on the header: with both listed the build kept the
+     prefixed one, which Chrome ignores, and card titles scrolled past as
+     ghost text behind the tab names. */
   backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
   border-block: 1px solid var(--line);
 }
 .sa .unitabs__inner { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
@@ -1845,6 +1881,11 @@
 /* --- ported from the reference build: subjects.css --- */
 .sa .subjx__empty { grid-column: 1 / -1; padding: 26px 2px; color: var(--muted); font-size: 14.5px; }
 .sa .subjhero { display: flex; align-items: flex-start; gap: clamp(16px, 2.4vw, 26px); margin-top: clamp(20px, 2.6vw, 32px); }
+/* The text beside the tile may get narrower than its widest line. As a flex
+   item it could not, so a specialization whose subject has a long name --
+   "All Agriculture & Environmental Sciences" on the ghost button -- held the
+   column wider than a phone, and the hero cut the heading off at the right. */
+.sa .subjhero > div { min-width: 0; }
 .sa .subjhero__icon {
   flex: none; display: grid; place-items: center;
   width: clamp(52px, 6vw, 74px); height: clamp(52px, 6vw, 74px);
@@ -1885,10 +1926,26 @@
 }
 .sa .specpill:hover { border-color: var(--navy); background: var(--white); }
 .sa .specpill[hidden] { display: none !important; }
+/* The link, then the count under it, on every card. Side by side they
+   fitted on some cards and wrapped on others, so two cards in one row had
+   their last lines at different heights. */
 .sa .subjcard__foot {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  display: flex; flex-direction: column; align-items: flex-start;
   gap: 12px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft);
 }
+/* A link that runs to two lines keeps its arrow after the last word and
+   its underline under the words, not across the card. */
+.sa .subjcard__foot .linkcta {
+  display: inline; border-bottom: 0; padding-bottom: 0;
+  text-decoration: underline; text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px; text-underline-offset: 6px;
+}
+/* The same hover as every other such link: the underline turns red and the
+   arrow moves. An inline arrow cannot be moved, so it is an inline block. */
+.sa .subjcard__foot .linkcta { transition: color var(--dur) var(--ease), text-decoration-color var(--dur) var(--ease); }
+.sa .subjcard__foot .linkcta:hover { text-decoration-color: var(--accent); }
+.sa .subjcard__foot .linkcta__arrow { display: inline-block; }
+.sa .subjcard__foot .linkcta__end { white-space: nowrap; }
 .sa .subjcard__count { font-size: 12px; color: var(--muted); }
 
 /* --- ported from the reference build: courses.css --- */
@@ -2269,6 +2326,9 @@
 @media (min-width: 620px){ .sa .h-related .h-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sa .h-list li { display: grid; gap: 1px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
 .sa .h-list li:last-child { border-bottom: 0; }
+/* In two columns the last row is two items, and only one of them is the
+   last child. */
+@media (min-width: 620px){ .sa .h-related .h-list li:nth-last-child(2):nth-child(odd) { border-bottom: 0; } }
 .sa .h-list a { font-weight: 600; font-size: 14.5px; color: var(--text); text-decoration: none; }
 .sa .h-list a:hover { color: var(--accent); }
 .sa .h-list span { font-size: 12.5px; color: var(--muted); }
@@ -2278,12 +2338,25 @@
 .sa .h-filter input, .sa .h-filter select {
   font: inherit; font-family: var(--font-body); text-transform: none; letter-spacing: 0; font-size: 14.5px; color: var(--text);
   padding: 10px 12px; min-height: 42px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--white); min-width: 170px; max-width: 100%;
+  /* One height for the text box and the selects, which otherwise each took
+     their own from their line height and sat 2.5px apart. */
+  height: 44px; line-height: 1.2;
+}
+.sa .h-filters > .btn { min-height: 44px; }
+/* The part of a button's label a phone has no room for: still in its name,
+   not on the screen. */
+@media (max-width: 560px) {
+.sa .btn__long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 .sa .h-filter--q { flex: 1 1 240px; }
 .sa .h-filter--q input { width: 100%; }
 .sa .h-count { font-size: 13px; color: var(--muted); margin: 0 0 12px; min-height: 1em; }
 .sa .h-empty { display: grid; gap: 4px; padding: 26px; text-align: center; border: 1px dashed var(--line-strong); border-radius: 12px; margin-top: 12px; }
 .sa .h-empty span { color: var(--muted); }
+.sa .h-empty--box { justify-items: center; gap: 10px; padding: 44px 28px; }
+.sa .h-empty--box h3 { font-size: 20px; }
+.sa .h-empty--box p { color: var(--muted); }
+.sa .h-empty--box .btn { margin-top: 8px; }
 .sa .h-related__t { font-size: clamp(22px, 2.4vw, 30px); margin-bottom: 16px; }
 /* One card per row, each as tall as its own list, with the list itself in
    two columns. Side by side the groups were two tall narrow strips of six

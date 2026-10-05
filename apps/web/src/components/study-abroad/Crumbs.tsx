@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Fragment } from 'react';
 
 /**
  * The reference's breadcrumb: slash-separated, the last step not a link.
@@ -12,7 +13,10 @@ export function Crumbs({
   return (
     <nav className="crumbs" aria-label="Breadcrumb">
       {trail.map((step, index) => (
-        <span key={step.label + index}>
+        /* Each slash and each step a child of the nav itself, so the nav's
+           gap falls on both sides of a slash. Wrapped together, the gap
+           came before the slash only and the slash sat on the next word. */
+        <Fragment key={step.label + index}>
           {index > 0 ? (
             <span className="crumbs__sep" aria-hidden="true">
               /
@@ -23,7 +27,7 @@ export function Crumbs({
           ) : (
             <span aria-current="page">{step.label}</span>
           )}
-        </span>
+        </Fragment>
       ))}
     </nav>
   );

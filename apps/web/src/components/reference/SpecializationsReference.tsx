@@ -100,7 +100,11 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
     `sec ${order.indexOf(key) % 2 === 0 ? 'sec--paper' : 'sec--white'}`;
 
   return (
-    <div className="cref cref-subj">
+    /* No older stylesheet on top of this one. The wrapper carried the
+       classes of the page this replaced, and they centred every heading in
+       a narrow column, centred the search bar under a left-aligned title
+       and drew the small labels as pale pills. */
+    <div>
       <section className="hero hero--compact">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
@@ -134,7 +138,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
 
           <SpecializationSearch query={query} subject={subject.name} />
 
-          <div className="btn-row">
+          <div className="btn-row" style={{ marginTop: 22 }}>
             <a href="#all" className="btn btn--lg">
               Explore specialisations{' '}
               <span className="btn__arrow" aria-hidden="true">
@@ -230,7 +234,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
           </div>
 
           {specialisations.length === 0 ? (
-            <div className="cref-empty" data-testid="specialization-empty">
+            <div className="h-empty h-empty--box" data-testid="specialization-empty">
               <h3>
                 {term
                   ? 'No specialisations match that search'

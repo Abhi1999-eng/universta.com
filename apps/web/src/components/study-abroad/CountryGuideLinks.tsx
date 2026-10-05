@@ -43,7 +43,7 @@ export function CountryGuideLinks({
     ? `${list[0].toUpperCase()}${list.slice(1)} ${named.length === 1 && named[0] === 'what the visa allows' ? 'is' : 'are'} the same whichever subject you choose. ${named.length === 1 && named[0] === 'what the visa allows' ? 'It is' : 'They are'} in the guide to ${where}.`
     : `What does not change with the subject is in the guide to ${where}.`;
   return (
-    <section className="sec wrap" id="country-guide">
+    <section className="sec sec--tight wrap" id="country-guide">
       <div className="sec-head left row-between">
         <div>
           <span className="eyebrow">The destination</span>

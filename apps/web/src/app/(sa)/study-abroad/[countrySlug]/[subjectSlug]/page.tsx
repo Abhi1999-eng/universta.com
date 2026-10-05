@@ -154,7 +154,7 @@ export default async function Page({ params }: Params) {
       <CountryTabs tabs={tabs} current="subjects" below />
 
       {view.specializations.length ? (
-        <section className="sec wrap" id="specializations">
+        <section className="sec sec--tight wrap" id="specializations">
           <div className="sec-head left row-between">
             <div>
               <span className="eyebrow">Fields of study</span>
@@ -187,7 +187,7 @@ export default async function Page({ params }: Params) {
       ) : null}
 
       {courses?.data.length ? (
-        <section className="sec wrap">
+        <section className="sec sec--tight wrap">
           <div className="sec-head left row-between">
             <div>
               <span className="eyebrow">Programmes</span>
@@ -219,7 +219,7 @@ export default async function Page({ params }: Params) {
       ) : null}
 
       {view.others.length ? (
-        <section className="sec wrap">
+        <section className="sec sec--tight wrap">
           <div className="sec-head left row-between">
             <div>
               <span className="eyebrow">Explore next</span>

@@ -61,7 +61,21 @@ export function SpecializationGuide({
               { label: specialization.name },
             ]}
           />
-          <div className="hero__lead">
+          {/* The subject page's hero, tile and all, as the design draws a
+              specialization: this page had the text alone, starting at the
+              page edge, and did not look like the page one step above it. */}
+          <div className="subjhero">
+            <span className="subjhero__icon" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              >
+                <path d="M4 5h16v14H4z M4 9h16" />
+              </svg>
+            </span>
+            <div>
             <p className="hero__eyebrow">
               Specialization<b>·</b>
               <Link href={subjectPath}>{subject.name}</Link>
@@ -83,6 +97,7 @@ export function SpecializationGuide({
               <Link className="btn btn--lg btn--ghost" href={subjectPath}>
                 All {subject.name}
               </Link>
+            </div>
             </div>
           </div>
         </div>
@@ -112,10 +127,12 @@ export function SpecializationGuide({
               title={`${specialization.name} programmes`}
               lead="Published programmes recorded against this specialization."
             >
-              <p className="sec-lead">
-                <Link href={`/courses?subject=${subject.slug}`}>
+              <p className="sec-head__cta">
+                <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
                   Every {subject.name} programme{' '}
-                  <span aria-hidden="true">→</span>
+                  <span className="linkcta__arrow" aria-hidden="true">
+                    →
+                  </span>
                 </Link>
               </p>
             </SectionHead>
@@ -136,9 +153,15 @@ export function SpecializationGuide({
               title={`Where you can study ${specialization.name}`}
               lead={`${countries.length} ${countries.length === 1 ? 'destination lists' : 'destinations list'} this specialization. Open one to see ${specialization.name} there.`}
             >
-              <p className="sec-lead">
-                <Link href="/study-abroad">
-                  All destinations <span aria-hidden="true">→</span>
+              {/* The section's link, set as one: it was a second grey
+                  paragraph with no gap, and read as the sentence's last
+                  line. */}
+              <p className="sec-head__cta">
+                <Link className="linkcta" href="/study-abroad">
+                  All destinations{' '}
+                  <span className="linkcta__arrow" aria-hidden="true">
+                    →
+                  </span>
                 </Link>
               </p>
             </SectionHead>
@@ -152,14 +175,27 @@ export function SpecializationGuide({
       ) : null}
 
       {siblings.length ? (
-        <section className={band('related')} id="related">
+        <section className={`${band('related')} sec--tight`} id="related">
           <div className="wrap">
-            <SectionHead
-              n={n('related')}
-              eyebrow="Related"
-              title={`Other ${subject.name} specializations`}
-              lead="The rest of this subject, if this one is not quite the fit."
-            />
+            {/* The design's compact head for this one. With the full split
+                head, a secondary section carried a three-line 48px title
+                under a main section whose title was 29px. */}
+            <div className="sec-head sec-head--compact">
+              <div>
+                <p className="eyebrow">
+                  {n('related') ? (
+                    <span className="eyebrow__n">{n('related')}</span>
+                  ) : null}{' '}
+                  Related
+                </p>
+                <h2 className="sec-title sec-title--sm">
+                  Other {subject.name} specializations
+                </h2>
+                <p className="sec-lead">
+                  The rest of this subject, if this one is not quite the fit.
+                </p>
+              </div>
+            </div>
             <div className="specgrid">
               {siblings.map((sibling) => (
                 <article className="speccard" key={sibling.id}>
@@ -178,6 +214,16 @@ export function SpecializationGuide({
                 </article>
               ))}
             </div>
+            {/* The page is sent a dozen of them and some subjects have
+                more: the rest are on the subject's own list. */}
+            <p className="h-more">
+              <Link className="linkcta" href={`${subjectPath}/specializations`}>
+                All {subject.name} specializations{' '}
+                <span className="linkcta__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            </p>
           </div>
         </section>
       ) : null}
