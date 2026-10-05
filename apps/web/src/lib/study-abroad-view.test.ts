@@ -498,7 +498,7 @@ describe('the parts of a guide a page below it may link to', () => {
     expect(keys(base, { universities: 0, scholarships: 0 })).not.toContain('universities');
     const links = guideLinks(base, { universities: 12, scholarships: 3 });
     expect(links.find((link) => link.key === 'universities')?.href).toBe('/study-abroad/germany/universities');
-    expect(links.find((link) => link.key === 'scholarships')?.href).toBe('/scholarships?country=germany');
+    expect(links.find((link) => link.key === 'scholarships')?.href).toBe('/study-abroad/germany/scholarships');
   });
 
   it('links to the questions when the guide has any', () => {

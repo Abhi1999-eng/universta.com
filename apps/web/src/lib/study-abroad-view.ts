@@ -1,6 +1,7 @@
 import type { CountryPage, ProfileSummary } from './countries';
 import type { Destination } from './study-abroad';
 import type { StudyPath } from '@/components/study-abroad/CountrySections';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
 
 /**
  * Turning the country bundle into the rows and cards the approved design shows.
@@ -559,7 +560,7 @@ export function guideLinks(
       ? {
           key: 'scholarships',
           label: 'Scholarships',
-          href: `/scholarships?country=${country.slug}`,
+          href: countryScholarshipsHref(country.slug),
         }
       : null,
     languageRenders(page)

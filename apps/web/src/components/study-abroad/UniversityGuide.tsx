@@ -44,6 +44,7 @@ import {
 } from './UniversityGuideSections';
 import { UniversityTabs } from './UniversityTabs';
 import { universityInitials } from '@/lib/university-initials';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
 
 export type { NearbyUniversity } from './UniversityGuideSections';
 
@@ -266,7 +267,7 @@ function questionsFor({
         {country ? (
           <>
             {' '}
-            <Link href={`/scholarships?country=${country.slug}`}>
+            <Link href={countryScholarshipsHref(country.slug)}>
               Scholarships for {where ?? country.name}
             </Link>{' '}
             may still apply.
@@ -779,6 +780,7 @@ export function UniversityGuide({
         <CountryConsultants
           countryName={country.name}
           countrySlug={country.slug}
+          iso2Code={country.iso2Code ?? null}
           presence={consultants}
           alt={alt('consultants')}
           heading={`Need help applying to ${university.name}?`}

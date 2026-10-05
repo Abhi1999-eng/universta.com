@@ -28,6 +28,7 @@ import { PlanBand } from './PlanBand';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
 import { universityInitials } from '@/lib/university-initials';
+import { countryConsultantsHref } from '@/lib/country-consultant-list';
 
 /**
  * One course at one university, at
@@ -93,7 +94,8 @@ export function OfferingGuide({
   const consultants = destination?.consultants?.total
     ? destination.consultants
     : null;
-  const consultantsHref = `/study-abroad-consultants?country=${encodeURIComponent(country.slug)}`;
+  /* The destination's own consultants page, which also reads ?city=. */
+  const consultantsHref = countryConsultantsHref(country.slug);
   const where = place(university.city, country);
   /* The country inside a sentence -- "Studying in the United Kingdom" --
      where a label or a breadcrumb keeps the bare name. */
@@ -831,7 +833,7 @@ export function OfferingGuide({
                     <Link
                       className="specchip"
                       key={entry.city}
-                      href={`${consultantsHref}&city=${encodeURIComponent(entry.city)}`}
+                      href={`${consultantsHref}?city=${encodeURIComponent(entry.city)}`}
                     >
                       {entry.city}
                       <em>{entry.count}</em>

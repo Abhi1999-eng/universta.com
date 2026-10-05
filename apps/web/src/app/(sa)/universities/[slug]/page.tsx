@@ -31,6 +31,7 @@ import {
   MatchBand,
   type RelatedGroup,
 } from '@/components/study-abroad/DiscoveryBands';
+import { countryConsultantsHref } from '@/lib/country-consultant-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -162,7 +163,7 @@ export default async function UniversityPage({ params }: Props) {
               {
                 id: 'consultants',
                 name: `Consultants for ${where}`,
-                href: `/study-abroad-consultants?country=${country.slug}`,
+                href: countryConsultantsHref(country.slug),
                 note: 'Independent providers',
               },
             ],

@@ -27,6 +27,7 @@ import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
 import { UniversityCourseResults } from './UniversityCourseResults';
 import { universityInitials } from '@/lib/university-initials';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
 
 /**
  * Every course one university teaches, filed under its country at
@@ -378,7 +379,7 @@ export function UniversityCourses(props: UniversityCoursesProps) {
               lead={FUNDING_CAVEAT}
             >
               <p className="h-more">
-                <Link className="linkcta" href={`/scholarships?country=${country.slug}`}>
+                <Link className="linkcta" href={countryScholarshipsHref(country.slug)}>
                   All scholarships in {inWhere}{' '}
                   <span className="linkcta__arrow" aria-hidden="true">
                     &rarr;
@@ -438,7 +439,7 @@ export function UniversityCourses(props: UniversityCoursesProps) {
             ghost: true,
           },
           {
-            href: `/scholarships?country=${country.slug}`,
+            href: countryScholarshipsHref(country.slug),
             label: `Scholarships in ${inWhere}`,
             ghost: true,
           },

@@ -351,13 +351,13 @@ describe('what the course page reads from its destination and its course', () =>
     const html = withGuide(ukGuide);
     const talk = html.slice(html.indexOf('id="talk"'), html.indexOf('id="careers"'));
     expect(talk).toContain(
-      'href="/study-abroad-consultants?country=united-kingdom">Find United Kingdom consultants',
+      'href="/study-abroad/united-kingdom/consultants">Find United Kingdom consultants',
     );
     expect(talk).toContain(
       '4 consultants on Universta support students planning to study in the United Kingdom.',
     );
     expect(talk).toContain('Near you');
-    expect(talk).toContain('href="/study-abroad-consultants?country=united-kingdom&amp;city=London"');
+    expect(talk).toContain('href="/study-abroad/united-kingdom/consultants?city=London"');
     expect(talk).toContain('Book free counselling');
     /* One band in the slot, not a second consultants band beside it. */
     expect(html).not.toContain('id="consultants"');
@@ -366,7 +366,8 @@ describe('what the course page reads from its destination and its course', () =>
   it('offers only counselling when the destination has no consultants', () => {
     const html = withGuide({ ...ukGuide, consultants: { total: 0, cities: [] } });
     const talk = html.slice(html.indexOf('id="talk"'), html.indexOf('id="careers"'));
-    expect(talk).not.toContain('study-abroad-consultants');
+    /* No link to a consultants page, old address or new. */
+    expect(talk).not.toMatch(/href="[^"]*consultants/);
     expect(talk).not.toContain('Near you');
     expect(talk).toContain('class="btn" href="/counselling');
   });
