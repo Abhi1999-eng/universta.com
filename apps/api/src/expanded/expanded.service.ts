@@ -214,6 +214,11 @@ const ENGLISH_REQUIREMENTS = {
  * Its scholarships are counted only while they are live: the count is what
  * the "with scholarships" filter reads, and a draft or an expired award
  * leaves a student nothing to apply for.
+ *
+ * The generic course comes with what its own page is answered on -- its
+ * state, its subject's and its level's -- because a card links "Course
+ * guide" to that page, and a guide an editor has taken down answers 404
+ * while the programmes filed under it stay live.
  */
 function offeringRowInclude(now: Date) {
   return {
@@ -224,13 +229,23 @@ function offeringRowInclude(now: Date) {
         id: true,
         name: true,
         slug: true,
+        status: true,
+        deletedAt: true,
         shortName: true,
         qualificationName: true,
         durationMin: true,
         durationMax: true,
         durationUnit: true,
         subjectId: true,
-        subject: { select: { id: true, name: true, slug: true } },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            deletedAt: true,
+          },
+        },
         subSubject: { select: { id: true, name: true, slug: true } },
         courseLevel: true,
       },
@@ -2172,10 +2187,19 @@ export class ExpandedService {
               },
               campus: true,
               courseLevel: true,
+              /* With the state its guide page is answered on, as a card's
+                 row carries it. */
               genericCourse: {
                 include: {
                   courseLevel: true,
-                  subject: { select: { name: true, slug: true } },
+                  subject: {
+                    select: {
+                      name: true,
+                      slug: true,
+                      status: true,
+                      deletedAt: true,
+                    },
+                  },
                   subSubject: { select: { name: true, slug: true } },
                 },
               },

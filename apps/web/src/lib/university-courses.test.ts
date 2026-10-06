@@ -287,17 +287,41 @@ describe('a course as a card', () => {
     expect(silent.englishTests).toEqual([]);
   });
 
+  /* The guide's page answers a published course under a published subject
+     at an active level; the card is handed the guide only then. */
+  const guide = {
+    ...row.genericCourse,
+    name: 'MSc Computer Science',
+    slug: 'msc-computer-science',
+    status: 'PUBLISHED',
+    deletedAt: null,
+    subject: { ...row.genericCourse.subject, status: 'PUBLISHED', deletedAt: null },
+    courseLevel: { ...row.genericCourse.courseLevel, status: 'ACTIVE' },
+  };
+
   it('carries its own id, for a saved list, and the course guide it is an instance of', () => {
-    const card = toOfferingCard(
-      {
-        ...row,
-        genericCourse: { ...row.genericCourse, name: 'MSc Computer Science', slug: 'msc-computer-science' },
-      },
-      owner,
-    )!;
+    const card = toOfferingCard({ ...row, genericCourse: guide }, owner)!;
     expect(card.offeringId).toBe('o1');
     expect(card.genericCourse).toEqual({ name: 'MSc Computer Science', slug: 'msc-computer-science' });
     expect(toOfferingCard({ ...row, id: undefined }, owner)!.offeringId).toBeNull();
+  });
+
+  it('links no course guide whose page would answer 404', () => {
+    const guideOf = (genericCourse: Record<string, unknown>) =>
+      toOfferingCard({ ...row, genericCourse }, owner)!.genericCourse;
+    expect(guideOf({ ...guide, status: 'DRAFT' })).toBeNull();
+    expect(guideOf({ ...guide, deletedAt: '2026-10-01T00:00:00.000Z' })).toBeNull();
+    expect(guideOf({ ...guide, subject: { ...guide.subject, status: 'DRAFT' } })).toBeNull();
+    expect(
+      guideOf({ ...guide, subject: { ...guide.subject, deletedAt: '2026-10-01T00:00:00.000Z' } }),
+    ).toBeNull();
+    expect(guideOf({ ...guide, courseLevel: { ...guide.courseLevel, status: 'INACTIVE' } })).toBeNull();
+    /* A row that does not say is not taken on trust. */
+    expect(guideOf({ name: 'MSc Computer Science', slug: 'msc-computer-science' })).toBeNull();
+    /* What the card still reads from the course is unchanged. */
+    const card = toOfferingCard({ ...row, genericCourse: { ...guide, status: 'DRAFT' } }, owner)!;
+    expect(card.subject).toEqual({ name: 'Computer Science', slug: 'computer-science' });
+    expect(card.qualification).toBe('Master of Science');
   });
 });
 

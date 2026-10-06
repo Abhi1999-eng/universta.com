@@ -160,4 +160,22 @@ describe('the programme finder’s reads', () => {
     expect(result.meta.sort).toBe('relevance');
     expect(result.meta.ignored).toEqual(['level=nope', 'sort=fee']);
   });
+
+  /* A card links "Course guide" to the generic course's own page, which
+     answers only a published course under a published subject at an
+     active level; the card is read with all three, so it can leave the
+     link out when the guide would answer 404. */
+  it('reads with each card the state its course guide is answered on', async () => {
+    const { service, findMany } = build([scanned({})]);
+    await service.programmes({});
+    const full = findMany.find((args) => args.where?.id);
+    const generic = full?.include.genericCourse.select;
+    expect(generic).toMatchObject({ status: true, deletedAt: true });
+    expect(generic.subject.select).toMatchObject({
+      status: true,
+      deletedAt: true,
+    });
+    /* The whole level, its status with it. */
+    expect(generic.courseLevel).toBe(true);
+  });
 });

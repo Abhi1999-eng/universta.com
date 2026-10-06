@@ -24,6 +24,10 @@ type List = {
   data: Array<{
     slug: string;
     university: { slug: string; country: { slug: string } };
+    genericCourse: Record<string, unknown> & {
+      subject: Record<string, unknown>;
+      courseLevel: Record<string, unknown>;
+    };
   }>;
   meta: { total: number; sort: string; ignored: string[] };
   facets: Record<string, Option[]>;
@@ -274,6 +278,18 @@ describe('programmes across universities (e2e)', () => {
     expect((await list(`q=${suffix}&sort=fee&country=${home}`)).meta.sort).toBe(
       'fee',
     );
+  });
+
+  /* The card links "Course guide" only while the guide's page answers,
+     which it reads from these. */
+  it('carries the state each card’s course guide is answered on', async () => {
+    const [row] = (await list(`q=${suffix}&limit=1`)).data;
+    expect(row.genericCourse).toMatchObject({
+      status: 'PUBLISHED',
+      deletedAt: null,
+      subject: { status: expect.any(String), deletedAt: null },
+      courseLevel: { status: expect.any(String) },
+    });
   });
 
   it('compares live programmes only, with their university’s country', async () => {

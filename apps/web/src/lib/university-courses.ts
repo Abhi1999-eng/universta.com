@@ -718,7 +718,8 @@ export type OfferingCardData = {
   language: { value: string; note: string | null } | null;
   /** The English tests it lists, for the card's entry line. */
   englishTests: EnglishTestEntry[];
-  /** The course guide it is an instance of. */
+  /** The course guide it is an instance of, while that guide's page is
+   *  public; null otherwise. */
   genericCourse: { name: string; slug: string } | null;
   university: {
     name: string;
@@ -760,6 +761,26 @@ function slugName(value: unknown) {
   const name = text(entry?.name);
   const slug = text(entry?.slug);
   return name && slug ? { name, slug } : null;
+}
+
+/**
+ * The course guide a card links to, only while its page answers. The guide
+ * page shows a course that is published and not deleted, filed under a
+ * published subject at an active level, and answers 404 otherwise; an
+ * editor can take a guide down while the programmes filed under it stay
+ * live, and every one of their cards would then link to that 404. A row
+ * that does not say what state its guide is in gets no link either.
+ */
+function publicGuide(generic: Row) {
+  const subject = record(generic.subject);
+  const level = record(generic.courseLevel);
+  const live =
+    generic.status === 'PUBLISHED' &&
+    !generic.deletedAt &&
+    subject?.status === 'PUBLISHED' &&
+    !subject.deletedAt &&
+    level?.status === 'ACTIVE';
+  return live ? slugName(generic) : null;
 }
 
 /** The requirements a row lists, as the card reads them. */
@@ -880,7 +901,7 @@ export function toOfferingCard(
     courseCode: text(row.courseCode),
     language: teachingLanguage(requirements),
     englishTests: englishTestsOf(requirements),
-    genericCourse: slugName(generic),
+    genericCourse: publicGuide(generic),
     university: {
       name: uni.name,
       slug: uni.slug,
