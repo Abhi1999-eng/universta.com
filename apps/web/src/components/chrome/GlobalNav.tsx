@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
+import { ownsItsChrome } from '@/lib/own-chrome';
 import type { NavNode, SiteChrome } from '@/lib/site-chrome';
 import { useStudentSession } from '@/components/student/StudentSession';
 import {
@@ -235,6 +236,12 @@ export function GlobalHeader({ chrome }: { chrome: SiteChrome }) {
     if (drawerOpen) setDrawerOpen(false);
   }
 
+  // A route that wears its own header, reached by a link or router.push from
+  // a page wearing this one. The root layout is not rendered again on a
+  // client navigation, so the server's check never runs for it; without
+  // this the route showed two headers.
+  if (ownsItsChrome(pathname)) return null;
+
   // A page/template override refines the global settings; it never replaces
   // this component. `undefined` on an override field means "no opinion", so
   // the global value stands.
@@ -415,6 +422,10 @@ function SiteWordmark({ chrome }: { chrome: SiteChrome }) {
 }
 
 export function GlobalFooter({ chrome }: { chrome: SiteChrome }) {
+  // As the header: a route with its own footer, reached without a full load,
+  // would otherwise show this one under it.
+  const pathname = usePathname();
+  if (ownsItsChrome(pathname)) return null;
   const { footer, contact, social, general } = chrome.settings;
   const override = chrome.chrome?.footer;
   const counsellingVisible =
