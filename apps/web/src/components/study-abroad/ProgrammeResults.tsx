@@ -338,7 +338,7 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
          history entry for each press, and no round trip to the server.
          Where the reader is goes with it, for the way back. */
       window.history.replaceState(
-        { [SCROLL_KEY]: window.scrollY },
+        { ...window.history.state, [SCROLL_KEY]: window.scrollY },
         '',
         `${base}${courseListSearch(filters, { page: reached })}${window.location.hash}`,
       );
