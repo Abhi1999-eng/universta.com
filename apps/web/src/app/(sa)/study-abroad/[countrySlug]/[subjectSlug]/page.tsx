@@ -144,8 +144,12 @@ export default async function Page({ params }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
-  const levelBlock = everyLevel(levels, allLevels);
-  const emptyLevel = `No ${subject.name} programme in ${where} is listed at this level yet.`;
+  const levelBlock = everyLevel(
+    /* A failed grouped read whose fallback list came back empty also knows
+       nothing is listed, and still shows the levels. */
+    levels ?? (shown === 'none' ? [] : null),
+    allLevels,
+  );
   const filed =
     shown === 'levels'
       ? levelTotal(levels ?? [])
@@ -358,7 +362,6 @@ export default async function Page({ params }: Params) {
           </div>
           <CourseLevels
             groups={levelBlock ?? levels}
-            emptyNote={emptyLevel}
             allHref={(level) =>
               levelCoursesHref({
                 subject: subject.slug,
@@ -448,7 +451,6 @@ export default async function Page({ params }: Params) {
             <div className="fieldnone__levels">
               <CourseLevels
                 groups={levelBlock}
-                emptyNote={emptyLevel}
                 allHref={(level) =>
                   levelCoursesHref({
                     subject: subject.slug,

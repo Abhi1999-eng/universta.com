@@ -249,7 +249,6 @@ export function SpecializationGuide({
               <CourseLevels
                 groups={groups}
                 branch={false}
-                emptyNote={`No ${specialization.name} programme is listed at this level yet.`}
                 allHref={(level) =>
                   levelCoursesHref({
                     subject: subject.slug,

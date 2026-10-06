@@ -3132,11 +3132,11 @@
 .sa #scholarships,
 .sa #consultants{ scroll-margin-top: calc(var(--nav-h) + 62px); }
 /* === levels: every level shown, listed or not === */
-/* A level with nothing listed: its name, "0 courses" and one line, without
-   the arrow or the hover of a level that opens a list. */
+/* A level with nothing listed: its name and "0 courses", without the arrow
+   or the hover of a level that opens a list. */
 .sa .coursegroup--empty .coursegroup__head{ border-bottom: 1px solid var(--line-soft); }
 .sa .coursegroup--empty .coursegroup__name{ color: var(--muted); }
 .sa .coursegroup--empty .coursegroup__head:hover .coursegroup__name{ color: var(--muted); }
-.sa .coursegroup__none{ margin: 12px 0 0; color: var(--muted); font-size: 14.5px; }
-.sa .chipbtn--none{ color: var(--muted); border-style: dashed; }
+.sa .coursegroup__noarrow{ visibility: hidden; }
+.sa a.chipbtn--none{ color: var(--muted); border-style: dashed; }
 .sa .fieldnone__levels{ margin-top: clamp(28px, 3.4vw, 40px); }

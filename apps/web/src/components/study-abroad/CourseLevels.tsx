@@ -23,21 +23,20 @@ import { formatNumber } from '@/lib/format';
  * country's courses under subjects this way; this is the same block with
  * levels as the groups.
  *
- * The six levels the client named are always here, each saying so where
- * nothing is listed at it (see `everyLevel`); any other level shows only
- * where something is. An empty level has no link to a list, because the
- * list it would open is empty too.
+ * The six levels the client named are always here (see `everyLevel`); any
+ * other level shows only where something is. An empty level is its name and
+ * "0 courses" and nothing more: the section's lead, or the notice above it,
+ * says once why nothing is listed, and a line under each level said it six
+ * times over. It has no link either, because the list it would open is
+ * empty too.
  */
 export function CourseLevels({
   groups,
   allHref,
   courseHref = (course) => `/courses/${course.slug}`,
   branch = true,
-  emptyNote = 'Nothing is listed at this level yet.',
 }: {
   groups: CourseLevelGroup[];
-  /** What a level with nothing listed says under its name. */
-  emptyNote?: string;
   /** Where a level's whole list is: the course search, filtered to it. */
   allHref: (levelCode: string) => string;
   courseHref?: (course: Course) => string;
@@ -64,7 +63,9 @@ export function CourseLevels({
     <div className="courselevels">
       {/* Straight to a level, for a page that now has several lists on it.
           Links, not filters: every level stays on the page. */}
-      {groups.length > 1 ? (
+      {/* Not when every level is empty: six chips reading 0, each jumping a
+          few lines down to say so again, are no way in. */}
+      {groups.length > 1 && groups.some((group) => group.count) ? (
         <nav className="levelbar levelbar--wide" aria-label="Study levels">
           <span className="filters__label">Study level</span>
           {groups.map((group) => (
@@ -97,9 +98,12 @@ export function CourseLevels({
                   <span className="coursegroup__head">
                     <span className="coursegroup__name">{group.level.name}</span>
                     <span className="coursegroup__n">0 courses</span>
+                    {/* The listed levels' arrow's room, so the counts line up. */}
+                    <span className="coursegroup__noarrow" aria-hidden="true">
+                      &rarr;
+                    </span>
                   </span>
                 </h3>
-                <p className="coursegroup__none">{emptyNote}</p>
               </section>
             );
           const first = group.courses.slice(0, LEVEL_ROWS_SHOWN);

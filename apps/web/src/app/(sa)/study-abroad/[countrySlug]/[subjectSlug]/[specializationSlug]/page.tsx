@@ -153,7 +153,12 @@ export default async function Page({ params }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
-  const levelBlock = everyLevel(levels, allLevels);
+  const levelBlock = everyLevel(
+    /* A failed grouped read whose fallback list came back empty also knows
+       nothing is listed, and still shows the levels. */
+    levels ?? (shown === 'none' ? [] : null),
+    allLevels,
+  );
   const total = levels ? levelTotal(levels) : (courses?.meta.total ?? 0);
 
   /* The destination does not have to claim the field. It used to: a page
@@ -204,7 +209,6 @@ export default async function Page({ params }: Params) {
   const courseHref = (slug: string) => `/courses/${slug}?country=${country.slug}`;
   const levelBlockProps = {
     branch: false,
-    emptyNote: `No ${specialization.name} programme in ${where} is listed at this level yet.`,
     allHref: (level: string) =>
       levelCoursesHref({
         subject: subject.slug,

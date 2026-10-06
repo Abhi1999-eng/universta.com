@@ -127,14 +127,17 @@ describe('the edges', () => {
  * each saying when nothing is listed at it.
  */
 describe('every level the client named, listed or not', () => {
+  /* Not in the order a student climbs them, as the catalogue may send them:
+     the order is the levels' own. */
   const catalogue = [
-    { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
-    { id: 'p', code: 'PATHWAY', name: 'Pathway Program', educationOrder: 2 },
-    { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 },
-    { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 },
-    { id: 'm', code: 'MBA', name: 'MBA', educationOrder: 5 },
     { id: 'h', code: 'PHD', name: 'PhD', educationOrder: 6 },
     { id: 'd', code: 'DIPLOMA', name: 'Diploma', educationOrder: 7 },
+    { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 },
+    { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
+    { id: 'm', code: 'MBA', name: 'MBA', educationOrder: 5 },
+    /* Without an education order, its display order ranks it. */
+    { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: null, displayOrder: 3 },
+    { id: 'p', code: 'PATHWAY', name: 'Pathway Program', educationOrder: 2 },
   ];
 
   it('adds the six as empty levels, in the order a student climbs them', () => {
@@ -171,11 +174,10 @@ describe('every level the client named, listed or not', () => {
     expect(everyLevel(groups, null)).toBe(groups);
   });
 
-  it('draws an empty level as its name, "0 courses" and one line, with no link to an empty list', () => {
+  it('draws an empty level as its name and "0 courses", with no sentence and no link to an empty list', () => {
     const html = renderToStaticMarkup(
       <CourseLevels
         groups={everyLevel([group('PG', "Master's", 2)], catalogue)!}
-        emptyNote="No Agriculture programme is listed at this level yet."
         allHref={(level) => `/courses?subject=agriculture&level=${level}`}
       />,
     );
@@ -190,12 +192,21 @@ describe('every level the client named, listed or not', () => {
     const empty = /<section class="coursegroup coursegroup--empty[^"]*" id="level-foundation".*?<\/section>/.exec(html)?.[0] ?? '';
     expect(empty).toContain('Foundation Program');
     expect(empty).toContain('0 courses');
-    expect(empty).toContain('No Agriculture programme is listed at this level yet.');
+    expect(empty).not.toContain('<p');
     expect(empty).not.toContain('href=');
     expect(html).toContain('href="/courses?subject=agriculture&amp;level=PG"');
     expect(html).not.toContain('level=FOUNDATION');
     /* The chip bar names every level, the empty ones marked as such. */
     expect(html).toMatch(/<a class="chipbtn chipbtn--none" href="#level-foundation">/);
     expect(html).toMatch(/<a class="chipbtn" href="#level-pg">/);
+  });
+
+  it('has no chip bar when nothing is listed at any level', () => {
+    const html = renderToStaticMarkup(
+      <CourseLevels groups={everyLevel([], catalogue)!} allHref={() => '/courses'} />,
+    );
+    expect(sections(html)).toHaveLength(6);
+    expect(html).not.toContain('levelbar');
+    expect(html).not.toContain('href=');
   });
 });

@@ -357,7 +357,6 @@ export function SubjectGuide({
             {groups.length ? (
               <CourseLevels
                 groups={groups}
-                emptyNote={`No ${subject.name} programme is listed at this level yet.`}
                 allHref={(level) =>
                   levelCoursesHref({ subject: subject.slug, level })
                 }
