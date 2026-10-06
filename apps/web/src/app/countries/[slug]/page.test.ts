@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countryFaqJsonLd } from './page';
+import { countryFaqJsonLd } from '@/lib/country-faq';
 
 describe('country FAQ JSON-LD', () => {
   it('keeps FAQ JSON-LD valid and answer content plain when an editor uses HTML', () => {

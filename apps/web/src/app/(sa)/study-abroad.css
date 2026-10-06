@@ -1487,7 +1487,7 @@
   font-size: 20px; letter-spacing: -0.02em; margin-bottom: 14px;
 }
 .sa .srch__n{ font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
-.sa .srch__grid{ display: grid; gap: 10px; grid-template-columns: 1fr; margin-bottom: 14px; }
+.sa .srch__grid{ display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
 @media (min-width: 640px){ .sa .srch__grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1040px){ .sa .srch__grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .sa .srch__card{
@@ -1781,7 +1781,8 @@
 .sa .iconbtn:hover { border-color: var(--navy); }
 .sa .iconbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); color: #A81F1F; }
 .sa .iconbtn[aria-pressed="true"] svg { fill: currentColor; }
-.sa .matchband { display: grid; gap: clamp(24px, 3vw, 44px); }
+.sa .matchband { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 3vw, 44px); }
+.sa .matchband__cta .btn { white-space: normal; }
 @media (min-width: 900px) {
 .sa .matchband { grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr); align-items: center; }
 }
@@ -3140,3 +3141,307 @@
 .sa .coursegroup__noarrow{ visibility: hidden; }
 .sa a.chipbtn--none{ color: var(--muted); border-style: dashed; }
 .sa .fieldnone__levels{ margin-top: clamp(28px, 3.4vw, 40px); }
+/* ===== courses slice A: programme results ===== */
+/* The results block every list of programmes draws -- the course finder,
+   a destination's subject pages, a university's own list. Its parts are
+   the design's (course-results); what the design left to script, or did
+   not need with a dozen options, is drawn here. */
+/* A long group shows its first options and keeps the rest behind "Show
+   all", a native disclosure so it opens without script; its own search
+   box above (the design's .fsearch) finds any of them. */
+.sa .fgroup__more{ margin-top: 2px; }
+.sa .fgroup__more > summary{
+  display: inline-block; padding: 5px 0; list-style: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.sa .fgroup__more > summary::-webkit-details-marker{ display: none; }
+.sa .fgroup__more > summary:focus-visible{ outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 4px; }
+.sa .fgroup__fewer,
+.sa .fgroup__more[open] .fgroup__all{ display: none; }
+.sa .fgroup__more[open] .fgroup__fewer{ display: inline; }
+.sa .fgroup__more > .fgroup__opts{ margin-top: 4px; }
+/* The fee range and the English scores: small fields in the panel's own
+   type, two or three to a row, never wider than the sheet on a phone. */
+.sa .pfees{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.sa .pfees .btn{ grid-column: 1 / -1; justify-self: start; }
+.sa .pscores{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sa .pfees__field,
+.sa .pscores__field{ display: grid; gap: 5px; min-width: 0; font-size: 12.5px; color: var(--muted); }
+.sa .pfees__field > span,
+.sa .pscores__field > span{ font-size: 12px; line-height: 1.3; }
+.sa .pfees__field input,
+.sa .pscores__field select{
+  width: 100%; min-width: 0; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--white);
+  font-family: var(--font-body); font-size: 13.5px; color: var(--text);
+}
+.sa .pfees__field input:focus,
+.sa .pscores__field select:focus{ outline: 0; border-color: var(--navy); }
+/* The design's sort chevron, so a score reads as the same kind of choice. */
+.sa .pscores__field select{
+  appearance: none; padding-right: 26px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+/* The empty list's sentence, and what a page says under it. */
+.sa .dir__none > * + *{ margin-top: 12px; }
+/* ===== courses slice B: /courses, the programme finder and its course guides ===== */
+/* /courses lists programmes, with the course search it used to be kept
+   beside them as "Course guides". The parts are the design's; what it
+   never needed -- two lists on one page, a panel whose ticks wait for
+   "Apply", the blocks kept below the matching band -- is drawn here,
+   scoped to the finder's own classes. */
+
+/* The switcher between the two lists: side by side at every width, the
+   one on show marked as the page. */
+.sa .cf-switch{ grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 18px; }
+@media (min-width: 560px){ .sa .cf-switch{ grid-template-columns: repeat(2, minmax(0, 240px)); } }
+.sa .cf-switch .switcher__item{ padding: 11px 12px; gap: 6px; font-size: 14px; font-weight: 600; }
+.sa .cf-switch__name{ white-space: nowrap; }
+.sa .cf-switch .switcher__item:hover{ transform: none; box-shadow: none; }
+.sa .cf-switch__n{ font-style: normal; font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--muted); }
+.sa .cf-switch .switcher__item[aria-current="page"]{ border-color: var(--navy); box-shadow: inset 0 0 0 1px var(--navy); }
+.sa .cf-switch .switcher__item[aria-current="page"] .cf-switch__n{ color: var(--text); }
+/* A search, a filter or a browse link lands on the results with their top
+   below the sticky header: the scroll padding above is set on .sa, which
+   is not the element that scrolls, so the page's anchors ran under it. */
+.sa #discovery{ scroll-margin-top: var(--nav-h); }
+
+/* The course guides' search: the design's small search bar, with its
+   suggestions hanging below it. */
+.sa .coursefinder .searchwrap{ position: relative; }
+.sa .coursefinder .searchwrap .bigsearch{ margin-top: 0; box-shadow: none; padding-left: 14px; }
+.sa .coursefinder .searchwrap .bigsearch__input{ font-size: 15.5px; padding: 8px 0; }
+.sa .coursefinder .suggest{
+  position: absolute; z-index: 60; inset-inline: 0; top: calc(100% + 6px);
+  margin: 0; padding: 6px; list-style: none; max-height: min(60vh, 420px); overflow-y: auto;
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+}
+.sa .coursefinder .suggest li{ padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: 14.5px; }
+.sa .coursefinder .suggest li.on,
+.sa .coursefinder .suggest li:hover{ background: var(--surface-sunken); }
+.sa .coursefinder .suggest-empty{ padding: 12px 14px; font-size: 14px; color: var(--muted); }
+.sa .coursefinder .suggest__kind{
+  margin-inline-start: 6px; font-family: var(--font-mono); font-size: 10.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+
+/* On a phone the search field keeps the width its placeholder needs: the
+   magnifier in front goes and the button is its icon alone. Its words stay
+   in the markup, so it is still named "Search" or "Find courses". */
+@media (max-width: 640px){
+  .sa .coursefinder .bigsearch--sm,
+  .sa .coursefinder .searchwrap--iconsubmit .bigsearch{ gap: 8px; padding: 4px 4px 4px 12px; }
+  .sa .coursefinder .bigsearch--sm > svg,
+  .sa .coursefinder .searchwrap--iconsubmit .bigsearch > svg{ display: none; }
+  .sa .coursefinder .bigsearch--sm > .btn,
+  .sa .coursefinder .searchwrap--iconsubmit .btn{ width: 40px; height: 40px; padding: 0; gap: 0; }
+  .sa .coursefinder .bigsearch--sm > .btn{ font-size: 0; }
+  .sa .coursefinder .bigsearch--sm > .btn::after{
+    content: ''; width: 17px; height: 17px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  .sa .coursefinder .searchwrap__label{
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .sa .coursefinder .searchwrap--iconsubmit .btn__arrow{ font-size: 17px; }
+  /* The count, Filters and the order on one line, as the design's phone
+     bar has them: the count gives way and wraps inside its own cell. */
+  .sa .coursefinder .results__bar{ flex-wrap: nowrap; gap: 8px; }
+  .sa .coursefinder .results__count{ flex: 1 1 auto; min-width: 0; font-size: 12px; }
+  .sa .coursefinder .results__tools{ flex: none; gap: 6px; }
+  .sa .coursefinder .filters-toggle{ padding: 7px 11px; font-size: 13px; }
+  .sa .coursefinder .sortsel select{
+    max-width: 128px; padding: 7px 24px 7px 10px; font-size: 13px; text-overflow: ellipsis;
+    background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+  }
+}
+
+/* The course guides' panel stages its ticks until "Apply filters", so its
+   foot is there at every width; the design shows it on a phone only. */
+.sa .filters-panel--staged .filters-panel__foot{ display: block; }
+/* Behind the guides' open sheet the page dims, and a tap on it closes the
+   sheet. On a wide screen the panel is the rail and there is nothing to
+   dim. */
+.sa .cref-overlay{ display: none; }
+@media (max-width: 999px){
+  .sa .cref-overlay{
+    display: block; position: fixed; inset: 0; z-index: 105;
+    padding: 0; border: 0; background: rgba(7, 20, 38, 0.42); cursor: pointer;
+  }
+}
+/* The guides' fee range, in the panel's own small fields. */
+.sa .coursefinder .frange-field{ display: grid; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.sa .coursefinder .frange-field input{
+  width: 100%; min-width: 0; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--white);
+  font-family: var(--font-body); font-size: 13.5px; color: var(--text);
+}
+.sa .coursefinder .frange-field input:focus{ outline: 0; border-color: var(--navy); }
+.sa .coursefinder .fhelp{ font-size: 12.5px; color: var(--muted); }
+/* The guides' numbered pages, past the reveal's ceiling. */
+.sa .coursefinder .pager{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 22px; font-size: 14px; }
+.sa .coursefinder .pager a,
+.sa .coursefinder .pager button,
+.sa .coursefinder .pager .cur{
+  display: inline-grid; place-items: center; min-width: 36px; height: 36px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--white);
+  font: inherit; color: var(--text); text-decoration: none; cursor: pointer;
+}
+.sa .coursefinder .pager a:hover{ border-color: var(--navy); }
+.sa .coursefinder .pager .cur{ background: var(--navy); border-color: var(--navy); color: #fff; }
+.sa .coursefinder .pager button:disabled{ opacity: 0.4; cursor: default; }
+.sa .coursefinder .pager-status{ margin-inline-start: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+/* A course guide's way to its programmes, where a programme card has its
+   Compare tick. */
+.sa .coursecard__compare{
+  display: inline-flex; align-items: center; padding: 5px 9px; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: 6px; text-decoration: none;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+}
+.sa .coursecard__compare:hover{ color: var(--text); border-color: var(--navy); }
+/* "Run the assessment" inside the empty list's sentence reads at the
+   sentence's size, not as the panel's small link. */
+.sa .coursefinder .dir__none .linkbtn{ font-size: inherit; }
+
+/* The blocks kept below the matching band. Subjects four to a row on a
+   wide screen: their cards carry no description here. */
+.sa .cf-subjects{ grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px){ .sa .cf-subjects{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px){ .sa .cf-subjects{ grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sa .cf-subjects .subjcard{ padding: 18px 20px; gap: 12px; }
+.sa .cf-subjects__mark{ font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
+/* Study mode and intake: two short lists side by side. */
+.sa .cf-pair{ display: grid; gap: clamp(34px, 4vw, 52px); }
+@media (min-width: 900px){ .sa .cf-pair{ grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+.sa .cf-pair .sec-head{ gap: 10px; margin-bottom: 18px; }
+.sa .cf-pair__t{ font-size: clamp(22px, 2.4vw, 28px); }
+.sa .cf-pair__grid{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+/* "Read more about course selection", opened in place. */
+.sa .cf-readmore{ margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sa .cf-readmore > summary{
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;
+  font-size: 15px; font-weight: 600;
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;
+}
+.sa .cf-readmore > summary::-webkit-details-marker{ display: none; }
+.sa .cf-readmore > summary::after{ content: '+'; font-family: var(--font-mono); }
+.sa .cf-readmore[open] > summary::after{ content: '\2212'; }
+.sa .cf-readmore > summary:focus-visible{ outline: 2px solid var(--navy); outline-offset: 3px; border-radius: 4px; }
+.sa .cf-readmore > div{ margin-top: 14px; }
+.sa .cf-readmore h3{ font-size: 18px; margin: 18px 0 6px; }
+.sa .cf-readmore h3:first-child{ margin-top: 0; }
+/* The closing call to action, its three ways on in a row that wraps. */
+.sa .cf-final .btn-row{ display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 640px){ .sa .cf-final .btn-row .btn{ flex: 1 1 100%; } }
+/* ===== courses slice D: course guide, subject and destination programmes ===== */
+/* The universities a course guide names after its cards, a line each, set
+   off from the grid above them. */
+.sa .progsample__rows{ margin-top: clamp(24px, 3vw, 34px); }
+.sa .progsample__rows .path__h{ margin-bottom: 10px; }
+/* The phase-one course list, kept for its old addresses: its trail draws
+   its own "/" between the steps and the stylesheet it shares draws a "›"
+   as well, so it read "Home › / › Courses". The drawn one is enough. */
+.sa .legacydisc .crumbs li.sep{ display: none; }
+/* A field's figures in a destination gain the design's Cities where its
+   programmes are listed, so the strip can hold five: three to a row on a
+   tablet, all five in one on a desktop, as the six-figure strip does. */
+@media (min-width: 700px){
+  .sa .statstrip--field.statstrip--n5{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sa .statstrip--field.statstrip--n5 div:nth-child(3n + 1){ padding-left: 0; border-left: 0; }
+}
+@media (min-width: 1000px){
+  .sa .statstrip--field.statstrip--n5{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .sa .statstrip--field.statstrip--n5 div:nth-child(3n + 1){ padding-left: 18px; border-left: 1px solid var(--line-soft); }
+  .sa .statstrip--field.statstrip--n5 div:first-child{ padding-left: 0; border-left: 0; }
+}
+/* The programmes under a destination's tab strip: on a phone their filter
+   sheet is sized from the bottom, as the scholarships' and consultants'
+   are, or the rule that pins the panel under the tabs gives it a top edge
+   and its border shows along the foot of the screen. */
+@media (max-width: 999px){
+  .sa .unitabs ~ #courses .filters-panel--live{ top: auto; }
+}
+/* ===== courses slice C: compare + card ===== */
+/* The comparison's "Add a course…" row, from the design's universities
+   sheet (comparepick, comparetable, cmphead, cmpremove), which this file
+   had not taken in. The old chooser's search field stays beside the list:
+   a catalogue of a thousand programmes is too long to scroll. */
+.sa .comparehero .comparepick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: clamp(20px, 2.6vw, 30px); max-width: 860px; }
+.sa .comparepick__search,
+.sa .comparepick__select {
+  min-width: 0; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--white);
+  font-family: var(--font-body); font-size: 15px; color: var(--text);
+}
+.sa .comparepick__search { flex: 1 1 200px; }
+.sa .comparepick__select { flex: 2 1 280px; cursor: pointer; text-overflow: ellipsis; }
+.sa .comparepick__search:focus,
+.sa .comparepick__select:focus { outline: 0; border-color: var(--navy); }
+.sa .comparepick__search:disabled,
+.sa .comparepick__select:disabled { cursor: not-allowed; color: var(--muted); }
+/* On a phone each control takes the row, the design's stacked picker. */
+@media (max-width: 599.98px) {
+.sa .comparehero .comparepick > * { flex: 1 1 100%; }
+}
+
+.sa .compare-empty { padding: clamp(10px, 2vw, 24px) 0; }
+.sa .compare-empty .sec-lead { margin-top: 10px; max-width: 60ch; }
+.sa .compare-empty__actions { margin-top: 22px; }
+.sa .compare-stored { margin-top: 10px; }
+.sa .compare-stored a { color: var(--text); font-weight: 600; }
+.sa .compare-invalid { max-width: none; }
+.sa .compare-invalid p { margin: 0 0 6px; }
+.sa .compare-invalid ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.sa .compare-invalid code { font-family: var(--font-mono); font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+
+.sa .comparetable { min-width: 720px; }
+.sa .comparetable th[scope="row"] { width: 190px; color: var(--muted); font-weight: 500; font-size: 13.5px; }
+.sa .comparetable thead th { vertical-align: bottom; }
+.sa .comparetable td { min-width: 150px; font-size: 14px; overflow-wrap: anywhere; }
+.sa .comparetable td a { color: var(--text); text-underline-offset: 3px; }
+.sa .comparetable .cmphead { display: grid; gap: 8px; justify-items: start; }
+.sa .comparetable .cmphead__name { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: -0.02em; text-transform: none; color: var(--text); overflow-wrap: anywhere; }
+.sa .comparetable .cmphead__meta { font-family: var(--font-body); font-size: 12px; color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sa .comparetable td.is-best { background: var(--ok-soft); }
+.sa .comparetable td.is-best b { color: var(--ok); font-weight: 600; }
+.sa .cmpnote { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.sa .cmpremove {
+  background: none; border: 0; cursor: pointer; color: var(--muted); padding: 0;
+  font-family: var(--font-body); font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.sa .cmpremove:hover { color: var(--accent); }
+/* The table scrolls inside its frame on a phone, as the design's does; the
+   row names stay pinned so a value is never read without its row. */
+@media (max-width: 799.98px) {
+.sa .comparetable th[scope="row"] {
+  position: sticky; left: 0; z-index: 1; width: 112px; min-width: 112px;
+  background: var(--white); box-shadow: 1px 0 0 var(--line-soft);
+}
+.sa .comparetable thead th:first-child { position: sticky; left: 0; z-index: 2; }
+}
+.sa #comparison .magnet { margin-top: 30px; }
+.sa #comparison .magnet .btn { white-space: normal; text-align: center; }
+
+/* The course card: the design's heart beside the Compare tick, the language
+   with the test that evidences it, and a third way on in the foot. */
+.sa .coursecard__tools .student-catalogue-actions { gap: 6px; flex-wrap: nowrap; }
+.sa .tinybtn:disabled { opacity: .6; cursor: progress; }
+.sa .coursecard__note { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+/* The two links stack at the right of "View course", so a narrow card keeps
+   the button and its links on one band rather than wrapping a link under. */
+.sa .coursecard__links { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; text-align: right; }
+.sa .coursecard__guide { color: var(--text); }
+.sa .coursecard__guide:hover { color: var(--accent); }
+
+/* The course page: Save as the design's heart, Apply beside it, and the
+   curriculum band, which holds only its note. */
+.sa .uc-hero-tools .student-catalogue-actions .iconbtn:disabled { opacity: .6; cursor: progress; }
+.sa .uc-curriculum .sec-head { margin-bottom: 0; }
+.sa .uc-modnote { margin-top: 0; max-width: 62ch; font-size: 15px; }
+.sa .uc-modnote a { color: var(--text); }

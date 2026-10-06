@@ -1,4 +1,5 @@
 import {
+  courseCity,
   courseDeadlines,
   courseFacets,
   durationBands,
@@ -143,6 +144,37 @@ describe('narrowing the list', () => {
     expect(run({ q: 'phd' })).toEqual(['PhD Computing']);
   });
 
+  /* The box promises the university and the country, and the reference's
+     finds the city as well: "Warwick" found nothing even on Warwick's own
+     list. The city is the campus's, else the university's own. */
+  it('searches the university, its country and the city it is taught in', () => {
+    const warwick = {
+      name: 'University of Warwick',
+      slug: 'university-of-warwick',
+      country: { name: 'United Kingdom', slug: 'united-kingdom' },
+      campuses: [{ city: null }, { city: 'Coventry' }],
+    };
+    const atWarwick = catalogue.map((row) => ({ ...row, university: warwick }));
+    const found = (q: string) =>
+      atWarwick
+        .filter((row) => matchesCourseQuery(row, parseCourseQuery({ q })))
+        .map((row) => row.name);
+    expect(found('warwick')).toHaveLength(4);
+    expect(found('united kingdom msc')).toEqual(['MSc Computer Science']);
+    expect(found('coventry business')).toEqual(['BA Business']);
+    const inLondon = {
+      ...atWarwick[0],
+      campus: { name: 'London campus', slug: 'london', city: 'London' },
+    };
+    expect(courseCity(inLondon)).toBe('London');
+    expect(courseCity(atWarwick[0])).toBe('Coventry');
+    expect(
+      matchesCourseQuery(inLondon, parseCourseQuery({ q: 'london' })),
+    ).toBe(true);
+    /* Without its university the row is searched as it always was. */
+    expect(run({ q: 'warwick' })).toEqual([]);
+  });
+
   it('files a course under its own level, or its course’s when it has none', () => {
     expect(run({ level: 'UG' })).toEqual([
       'BSc Computer Science',
@@ -219,6 +251,24 @@ describe('ordering the list', () => {
       'PhD Computing',
     ]);
     expect(names('duration')[0]).toBe('MSc Computer Science');
+  });
+
+  it('puts the most recently published first for "newest"', () => {
+    const dated = catalogue.map((row, index) => ({
+      ...row,
+      publishedAt: index === 3 ? null : `2026-0${index + 1}-01T00:00:00Z`,
+      createdAt: '2025-12-01T00:00:00Z',
+    }));
+    expect(
+      sortOfferings(dated, parseCourseQuery({ sort: 'newest' }).sort).map(
+        (row) => row.name,
+      ),
+    ).toEqual([
+      'BA Business',
+      'BSc Computer Science',
+      'MSc Computer Science',
+      'PhD Computing',
+    ]);
   });
 
   it('reads the next deadline that has not passed', () => {

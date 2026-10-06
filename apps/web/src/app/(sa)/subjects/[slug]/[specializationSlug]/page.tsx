@@ -7,6 +7,7 @@ import { SpecializationGuide } from '@/components/study-abroad/SpecializationGui
 import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
 import { jsonLdString } from '@/lib/json-ld';
 import { phaseList } from '@/lib/phase1';
+import { programmeSample } from '@/lib/programme-sample';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
   const specialization = await load(slug, specializationSlug);
   if (!specialization) notFound();
 
-  const [levels, scholarships, allLevels] = await Promise.all([
+  const [levels, scholarships, allLevels, programmes] = await Promise.all([
     /* Its courses under their levels. Both halves of the pair go with the
        request: the specialization's slug alone would also match the branch
        of the same name under another subject. */
@@ -69,6 +70,13 @@ export default async function SpecializationDetailPage({ params }: Props) {
     /* Every study level, so the six the page always shows are there even
        where nothing is listed at them yet. */
     getCourseLevels().catch(() => null),
+    /* The first few of the universities' programmes in it, and how many
+       in all; the pair again, for the same reason. None, or a failed
+       read, leaves the section out. */
+    programmeSample({
+      subject: [specialization.subject.slug],
+      specialization: [specialization.slug],
+    }),
   ]);
 
   const breadcrumb = {
@@ -107,6 +115,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
         specialization={specialization}
         levels={everyLevel(levels, allLevels)}
         scholarships={scholarships}
+        programmes={programmes}
       />
     </>
   );

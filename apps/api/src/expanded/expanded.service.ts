@@ -32,6 +32,20 @@ import {
   UNIVERSITY_CATALOGUE_CAP,
   type OfferingLike,
 } from './university-courses';
+import {
+  matchesProgramme,
+  measurableFees,
+  nameChoices,
+  parseProgrammeQuery,
+  PROGRAMME_SCAN_CAP,
+  programmeFacets,
+  programmeScope,
+  programmeSummary,
+  unnamedChoices,
+  type ProgrammeFacets,
+  type ProgrammeQuery,
+  type ProgrammeRow,
+} from './programmes';
 import type {
   SeoBulkEntityType,
   SeoResolver,
@@ -156,60 +170,265 @@ function contains(value: string | undefined) {
 const FEATURED_FETCH_CAP = 500;
 
 /**
+ * A university whose programmes may be listed: live in its own publishing
+ * window, in a destination that is itself published. A programme at a
+ * university that is not would link to a page that answers 404.
+ */
+function liveUniversityWhere(now: Date) {
+  return {
+    ...publishedWhereScheduled(now),
+    country: { status: 'PUBLISHED', deletedAt: null },
+  };
+}
+
+/** A programme any public list may show: live itself, at a live
+ * university. The same rule a course page's neighbours always kept. */
+function liveProgrammeWhere(
+  now: Date,
+): Prisma.UniversityCourseOfferingWhereInput {
+  return {
+    ...publishedWhereScheduled(now),
+    university: liveUniversityWhere(now),
+  };
+}
+
+/**
+ * The English-language requirements a course lists. A card says what the
+ * course is taught in on the same evidence its own page does -- an English
+ * requirement, with the score it asks for -- and the score filters read
+ * them too.
+ */
+const ENGLISH_REQUIREMENTS = {
+  where: {
+    status: 'ACTIVE',
+    deletedAt: null,
+    category: { contains: 'ENGLISH' },
+  },
+  orderBy: { displayOrder: 'asc' },
+  select: { category: true, title: true, minimumScore: true },
+} satisfies Prisma.UniversityCourseOffering$requirementsArgs;
+
+/**
  * A course as a card needs it: its level, campus and intakes, and enough of
  * the course it is an instance of -- subject, specialization, qualification,
  * the catalogue's duration -- to file it and describe it. The generic
  * course's long copy and its subject's are left behind; a list of eighteen
  * cards has no use for eighteen subject essays.
+ *
+ * Its scholarships are counted only while they are live: the count is what
+ * the "with scholarships" filter reads, and a draft or an expired award
+ * leaves a student nothing to apply for.
+ *
+ * The generic course comes with what its own page is answered on -- its
+ * state, its subject's and its level's -- because a card links "Course
+ * guide" to that page, and a guide an editor has taken down answers 404
+ * while the programmes filed under it stay live.
  */
-const OFFERING_ROW_INCLUDE = {
-  campus: { select: { name: true, slug: true, city: true } },
-  courseLevel: true,
-  genericCourse: {
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      shortName: true,
-      qualificationName: true,
-      durationMin: true,
-      durationMax: true,
-      durationUnit: true,
-      subjectId: true,
-      subject: { select: { id: true, name: true, slug: true } },
-      subSubject: { select: { id: true, name: true, slug: true } },
-      courseLevel: true,
+function offeringRowInclude(now: Date) {
+  return {
+    campus: { select: { name: true, slug: true, city: true } },
+    courseLevel: true,
+    genericCourse: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        deletedAt: true,
+        shortName: true,
+        qualificationName: true,
+        durationMin: true,
+        durationMax: true,
+        durationUnit: true,
+        subjectId: true,
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            deletedAt: true,
+          },
+        },
+        subSubject: { select: { id: true, name: true, slug: true } },
+        courseLevel: true,
+      },
     },
-  },
-  intakes: {
-    where: { status: 'ACTIVE' },
-    include: { intake: true },
-  },
-  requirements: {
-    where: { status: 'ACTIVE', deletedAt: null },
-    orderBy: { displayOrder: 'asc' },
-  },
-  _count: { select: { scholarships: true } },
-} satisfies Prisma.UniversityCourseOfferingInclude;
+    intakes: {
+      where: { status: 'ACTIVE' },
+      include: { intake: true },
+    },
+    requirements: ENGLISH_REQUIREMENTS,
+    _count: {
+      select: {
+        scholarships: { where: { scholarship: publishedWhereScheduled(now) } },
+      },
+    },
+  } satisfies Prisma.UniversityCourseOfferingInclude;
+}
 
 /** The same, with the university it belongs to, for courses shown away
  * from their own university's list. */
-const OFFERING_CARD_INCLUDE = {
-  ...OFFERING_ROW_INCLUDE,
-  university: {
-    select: {
-      name: true,
-      slug: true,
-      country: { select: { id: true, name: true, slug: true, iso2Code: true } },
-      campuses: {
-        where: { status: 'ACTIVE', deletedAt: null },
-        orderBy: { displayOrder: 'asc' },
-        select: { name: true, slug: true, city: true },
-        take: 3,
+function offeringCardInclude(now: Date) {
+  return {
+    ...offeringRowInclude(now),
+    university: {
+      select: {
+        name: true,
+        slug: true,
+        country: {
+          select: { id: true, name: true, slug: true, iso2Code: true },
+        },
+        campuses: {
+          where: { status: 'ACTIVE', deletedAt: null },
+          orderBy: { displayOrder: 'asc' },
+          select: { name: true, slug: true, city: true },
+          take: 3,
+        },
       },
     },
-  },
-} satisfies Prisma.UniversityCourseOfferingInclude;
+  } satisfies Prisma.UniversityCourseOfferingInclude;
+}
+
+/**
+ * What the programme finder reads of every live programme to filter, count
+ * and order them: the fields its filters and sorts test, and no more. The
+ * long copy and the full card are read afterwards for the page's eighteen.
+ */
+function programmeScanSelect(now: Date) {
+  const level = { select: { code: true, name: true, educationOrder: true } };
+  const city = { city: true, cityRef: { select: { name: true } } };
+  return {
+    id: true,
+    name: true,
+    slug: true,
+    courseCode: true,
+    studyMode: true,
+    durationMin: true,
+    durationMax: true,
+    durationUnit: true,
+    tuitionMin: true,
+    tuitionMax: true,
+    currencyCode: true,
+    tuitionPeriod: true,
+    publishedAt: true,
+    createdAt: true,
+    courseLevel: level,
+    campus: { select: { name: true, slug: true, ...city } },
+    genericCourse: {
+      select: {
+        name: true,
+        slug: true,
+        shortName: true,
+        qualificationName: true,
+        durationMin: true,
+        durationMax: true,
+        durationUnit: true,
+        subject: { select: { name: true, slug: true } },
+        subSubject: { select: { name: true, slug: true } },
+        courseLevel: level,
+      },
+    },
+    intakes: {
+      where: { status: 'ACTIVE' },
+      select: {
+        deadline: true,
+        intake: {
+          select: {
+            name: true,
+            slug: true,
+            startMonth: true,
+            endMonth: true,
+            shortLabel: true,
+          },
+        },
+      },
+    },
+    requirements: ENGLISH_REQUIREMENTS,
+    university: {
+      select: {
+        name: true,
+        slug: true,
+        country: {
+          select: {
+            name: true,
+            slug: true,
+            iso2Code: true,
+            workProfile: { select: { postStudyWorkAvailable: true } },
+          },
+        },
+        campuses: {
+          where: { status: 'ACTIVE', deletedAt: null },
+          orderBy: { displayOrder: 'asc' },
+          select: city,
+        },
+      },
+    },
+    _count: {
+      select: {
+        scholarships: { where: { scholarship: publishedWhereScheduled(now) } },
+      },
+    },
+  } satisfies Prisma.UniversityCourseOfferingSelect;
+}
+
+/** How long the finder's counts and headline figures are kept. They are
+ * taken over the whole catalogue, which changes when an editor publishes,
+ * not between one reader's clicks. The programmes they are counted from
+ * are kept as long, for the same reason. */
+const PROGRAMME_OVERVIEW_TTL_MS = 60_000;
+
+/**
+ * The most programmes the finder keeps read at once, across every part of
+ * the catalogue it keeps: two whole catalogues at the scan's cap. The whole
+ * catalogue, which every unfiltered visit and every plain search reads,
+ * fits beside the narrower reads of the moment, and a crawler asking for a
+ * thousand different narrowings cannot make it hold a thousand copies.
+ */
+const PROGRAMME_SCAN_KEEP_ROWS = 2 * PROGRAMME_SCAN_CAP;
+
+/** And the most parts of the catalogue, however few programmes each holds. */
+const PROGRAMME_SCAN_KEEP = 200;
+
+/** How many programmes one comparison holds, as both references allow. */
+export const COURSE_COMPARE_LIMIT = 4;
+
+/** The most programme addresses one sitemap read takes. */
+const PROGRAMME_ADDRESS_LIMIT = 5000;
+
+/** The finder's query as it arrives: a parameter given twice is a list. */
+type ProgrammeParams = Record<string, string | string[] | undefined>;
+
+type ProgrammeOverview = {
+  facets: ReturnType<typeof programmeFacets>;
+  summary: ReturnType<typeof programmeSummary>;
+  truncated: boolean;
+};
+
+/** The live programmes one narrowing of the catalogue holds, as read. */
+type ProgrammeScan = {
+  key: string;
+  rows: ProgrammeRow[];
+  truncated: boolean;
+};
+
+/** The choices a programme read can be narrowed by in the database. */
+type ProgrammeNarrowing = Pick<
+  ProgrammeQuery,
+  'countries' | 'universities' | 'subjects' | 'specializations' | 'courses'
+>;
+
+/** The same, in a fixed order, so two equal narrowings compare equal. */
+function narrowingOf(query: ProgrammeNarrowing): ProgrammeNarrowing {
+  const sorted = (list: string[]) => [...new Set(list)].sort();
+  return {
+    countries: sorted(query.countries),
+    universities: sorted(query.universities),
+    subjects: sorted(query.subjects),
+    specializations: sorted(query.specializations),
+    courses: sorted(query.courses),
+  };
+}
 
 type FeaturedRow = {
   isFeatured: boolean;
@@ -371,6 +590,21 @@ function leadNumber() {
 @Injectable()
 export class ExpandedService {
   private readonly contactAttempts = new Map<string, number>();
+  private readonly programmeOverviews = new Map<
+    string,
+    { at: number; value: ProgrammeOverview }
+  >();
+  private readonly programmeScans = new Map<
+    string,
+    { at: number; value: ProgrammeScan }
+  >();
+  /** How many programmes `programmeScans` holds across its entries. */
+  private programmeScanRows = 0;
+  private catalogueCodes: {
+    at: number;
+    levels: string[];
+    studyModes: string[];
+  } | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -1305,12 +1539,17 @@ export class ExpandedService {
       where,
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       take: UNIVERSITY_CATALOGUE_CAP,
-      include: OFFERING_ROW_INCLUDE,
+      include: offeringRowInclude(now),
     });
     const published = all.filter((row) => isCanonicalPublicSlug(row.slug));
     const parsed = parseCourseQuery(query);
+    /* Searched with the university beside each row, so its name and city
+       find its courses here as they do in the finder; the rows go out as
+       they always have, without it. */
     const matching = sortOfferings(
-      published.filter((row) => matchesCourseQuery(row, parsed)),
+      published.filter((row) =>
+        matchesCourseQuery({ ...row, university }, parsed),
+      ),
       parsed.sort,
       now,
     );
@@ -1349,10 +1588,7 @@ export class ExpandedService {
     /* The other university's own page asks for its publishing window as
        well as its status, so a university scheduled to go live later, or
        whose window has closed, is not suggested: its link would be a 404. */
-    const liveUniversity = {
-      ...publishedWhereScheduled(now),
-      country: { status: 'PUBLISHED', deletedAt: null },
-    };
+    const liveUniversity = liveUniversityWhere(now);
     const elsewhere = (
       choice: Record<string, unknown>,
       place?: 'home' | 'abroad',
@@ -1380,7 +1616,7 @@ export class ExpandedService {
         where,
         orderBy: [{ university: { name: 'asc' } }, { name: 'asc' }],
         take: NEIGHBOUR_TAKE,
-        include: OFFERING_CARD_INCLUDE,
+        include: offeringCardInclude(now),
       });
     const sameCourse = { genericCourseId: row.genericCourseId };
     const sameSubject = {
@@ -1424,7 +1660,7 @@ export class ExpandedService {
         },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         take: UNIVERSITY_CATALOGUE_CAP,
-        include: OFFERING_CARD_INCLUDE,
+        include: offeringCardInclude(now),
       }),
       pick(elsewhere(sameCourse, 'home')),
       pick(elsewhere(sameCourse, 'abroad')),
@@ -1474,6 +1710,503 @@ export class ExpandedService {
     };
   }
 
+  /**
+   * Every live programme at every university, searched, narrowed, counted
+   * and ordered the way the behaviour reference's "Find a Course" does it:
+   * the one list the course finder, a destination's subject pages and a
+   * university's own list can all draw.
+   *
+   * Each live programme the request could match is read once in a light
+   * shape, the filters and the order are applied here by the rules a
+   * university's own list already uses, and only the page's rows are then
+   * read in full for their cards. The counts beside the filters and the
+   * headline figures are taken over the whole live catalogue -- or the part
+   * a list is fixed to with `within` -- and they and the programmes they
+   * are counted from are kept for a minute.
+   */
+  async programmes(query: ProgrammeParams) {
+    const now = new Date();
+    const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
+    const scan = await this.scanProgrammes(parsed, now);
+    /* The overview first: the tuition range it offers is the currency the
+       fees are filtered and ordered in. */
+    const overview = await this.programmeOverview(parsed, scan, now);
+    const matching = sortOfferings(
+      measurableFees(scan.rows, overview.facets.tuition).filter((row) =>
+        matchesProgramme(row, parsed, now),
+      ),
+      parsed.sort,
+      now,
+    );
+    const skip = (parsed.page - 1) * parsed.limit;
+    const [data, facets] = await Promise.all([
+      this.programmeCards(
+        matching.slice(skip, skip + parsed.limit).map((row) => row.id),
+        now,
+      ),
+      this.namedFacets(overview.facets, parsed),
+    ]);
+    return {
+      data,
+      meta: {
+        ...meta(parsed.page, parsed.limit, matching.length),
+        /* What was applied, which is not always what was asked: "lowest
+           tuition" across several countries is answered by relevance. */
+        sort: parsed.sort,
+        ignored: parsed.ignored,
+        ...(scan.truncated || overview.truncated ? { truncated: true } : {}),
+      },
+      facets,
+      summary: overview.summary,
+    };
+  }
+
+  /**
+   * The finder's options with every destination, subject and course chosen
+   * named, the ones nothing is listed under included: those are read from
+   * the catalogue by slug, published only, and only when there are any.
+   */
+  private async namedFacets(facets: ProgrammeFacets, parsed: ProgrammeQuery) {
+    const unnamed = unnamedChoices(facets, parsed);
+    if (
+      !unnamed.countries.length &&
+      !unnamed.subjects.length &&
+      !unnamed.courses.length
+    )
+      return facets;
+    const published = { status: 'PUBLISHED', deletedAt: null };
+    const named = { name: true, slug: true } as const;
+    const [countries, subjects, courses] = await Promise.all([
+      unnamed.countries.length
+        ? this.prisma.country.findMany({
+            where: { slug: { in: unnamed.countries }, ...published },
+            select: { ...named, iso2Code: true },
+          })
+        : [],
+      unnamed.subjects.length
+        ? this.prisma.subject.findMany({
+            where: { slug: { in: unnamed.subjects }, ...published },
+            select: named,
+          })
+        : [],
+      unnamed.courses.length
+        ? this.prisma.course.findMany({
+            where: { slug: { in: unnamed.courses }, ...published },
+            select: named,
+          })
+        : [],
+    ]);
+    return nameChoices(facets, { countries, subjects, courses });
+  }
+
+  /**
+   * The live programmes a request could match, in the light shape the
+   * finder filters on. The choices the database can test cheaply --
+   * destination, university, subject, specialization, course -- narrow the
+   * read; everything else is tested in memory by `matchesProgramme`, which
+   * tests these again, so the two can never disagree about a row.
+   *
+   * Each narrowing's read is kept for a minute. Every unfiltered visit to
+   * the finder and every plain search reads the same whole catalogue, and
+   * reading all of it again for each of them was most of what each cost.
+   */
+  private async scanProgrammes(
+    narrow: ProgrammeNarrowing,
+    now: Date,
+  ): Promise<ProgrammeScan> {
+    const pick = narrowingOf(narrow);
+    const key = JSON.stringify(pick);
+    const kept = this.programmeScans.get(key);
+    if (kept && now.getTime() - kept.at < PROGRAMME_OVERVIEW_TTL_MS) {
+      /* To the back of the queue: the whole catalogue, which every
+         narrower list's counts are taken over, is the last to go. */
+      this.programmeScans.delete(key);
+      this.programmeScans.set(key, kept);
+      return kept.value;
+    }
+    const generic = {
+      ...(pick.courses.length ? { slug: { in: pick.courses } } : {}),
+      ...(pick.subjects.length
+        ? { subject: { slug: { in: pick.subjects } } }
+        : {}),
+      ...(pick.specializations.length
+        ? { subSubject: { slug: { in: pick.specializations } } }
+        : {}),
+    };
+    const university = liveUniversityWhere(now);
+    const where: Prisma.UniversityCourseOfferingWhereInput = {
+      ...publishedWhereScheduled(now),
+      ...(Object.keys(generic).length ? { genericCourse: generic } : {}),
+      university: {
+        ...university,
+        ...(pick.universities.length
+          ? { slug: { in: pick.universities } }
+          : {}),
+        country: {
+          ...university.country,
+          ...(pick.countries.length ? { slug: { in: pick.countries } } : {}),
+        },
+      },
+    };
+    const raw = await this.prisma.universityCourseOffering.findMany({
+      where,
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: PROGRAMME_SCAN_CAP,
+      select: programmeScanSelect(now),
+    });
+    /* A programme's address carries its country's, its university's and
+       its own slug, so a hand-typed slug in any of the three is a card the
+       router could not open. */
+    const rows: ProgrammeRow[] = raw
+      .filter(
+        (row) =>
+          isCanonicalPublicSlug(row.slug) &&
+          isCanonicalPublicSlug(row.university.slug) &&
+          isCanonicalPublicSlug(row.university.country.slug),
+      )
+      .map((row) => ({
+        ...row,
+        campus: row.campus
+          ? {
+              name: row.campus.name,
+              slug: row.campus.slug,
+              city: campusCity(row.campus),
+            }
+          : null,
+        university: {
+          name: row.university.name,
+          slug: row.university.slug,
+          country: {
+            name: row.university.country.name,
+            slug: row.university.country.slug,
+            iso2Code: row.university.country.iso2Code,
+            postStudyWork: Boolean(
+              row.university.country.workProfile?.postStudyWorkAvailable,
+            ),
+          },
+          campuses: row.university.campuses.map((campus) => ({
+            city: campusCity(campus),
+          })),
+        },
+      }));
+    const value = { key, rows, truncated: raw.length >= PROGRAMME_SCAN_CAP };
+    this.keepScan(value, now);
+    return value;
+  }
+
+  /**
+   * Keeps a read, then lets go of the others least recently asked for
+   * until what is kept is back inside both bounds. A Map holds its keys in
+   * the order they were set, and a read is set again whenever it is asked
+   * for, so its first keys are the reads least recently asked for and the
+   * read just kept is its last.
+   */
+  private keepScan(scan: ProgrammeScan, now: Date) {
+    const forget = (key: string) => {
+      const entry = this.programmeScans.get(key);
+      if (!entry) return;
+      this.programmeScanRows -= entry.value.rows.length;
+      this.programmeScans.delete(key);
+    };
+    forget(scan.key);
+    this.programmeScans.set(scan.key, { at: now.getTime(), value: scan });
+    this.programmeScanRows += scan.rows.length;
+    for (const key of this.programmeScans.keys()) {
+      if (
+        key === scan.key ||
+        (this.programmeScans.size <= PROGRAMME_SCAN_KEEP &&
+          this.programmeScanRows <= PROGRAMME_SCAN_KEEP_ROWS)
+      )
+        break;
+      forget(key);
+    }
+  }
+
+  /**
+   * The counts beside the finder's filters and its headline figures, over
+   * the catalogue the list is fixed to. The list's own read is reused when
+   * it covers exactly that; a narrower list reads the wider catalogue once
+   * and keeps the answer for a minute, per part of the catalogue and per
+   * choice of countries (which narrows the University and City lists).
+   */
+  private async programmeOverview(
+    parsed: ProgrammeQuery,
+    scan: ProgrammeScan,
+    now: Date,
+  ) {
+    const scope = programmeScope(parsed);
+    const key = JSON.stringify({
+      scope: narrowingOf(scope),
+      cities: scope.cities,
+      levels: scope.levels,
+      countries: parsed.countries,
+      courses: parsed.courses,
+    });
+    const cached = this.programmeOverviews.get(key);
+    if (cached && now.getTime() - cached.at < PROGRAMME_OVERVIEW_TTL_MS)
+      return cached.value;
+    const read =
+      JSON.stringify(narrowingOf(scope)) === scan.key
+        ? scan
+        : await this.scanProgrammes(scope, now);
+    const rows = read.rows.filter((row) => matchesProgramme(row, scope, now));
+    const value = {
+      facets: programmeFacets(rows, parsed, now),
+      summary: programmeSummary(rows),
+      truncated: read.truncated,
+    };
+    /* A bound on the memory this holds: every combination of countries is
+       a key, and a crawler can ask for a great many. */
+    if (this.programmeOverviews.size >= 500) this.programmeOverviews.clear();
+    this.programmeOverviews.set(key, { at: now.getTime(), value });
+    return value;
+  }
+
+  /** The page's programmes in full, for their cards, in the list's order.
+   * The ids come from a read kept for up to a minute, so the live rule is
+   * asked again: a programme taken down since is left off the page rather
+   * than drawn with a link that answers 404. */
+  private async programmeCards(ids: string[], now: Date) {
+    if (!ids.length) return [];
+    const rows = await this.prisma.universityCourseOffering.findMany({
+      where: { id: { in: ids }, ...liveProgrammeWhere(now) },
+      /* A card never prints the long overview, and a reload of a long run
+         asks for hundreds of rows at once. */
+      omit: { overview: true },
+      include: offeringCardInclude(now),
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return ids.flatMap((id) => byId.get(id) ?? []);
+  }
+
+  /** The level and study-mode codes the catalogue knows, which those
+   * filters are checked against: a code outside them is left out rather
+   * than matching nothing. */
+  private async knownCodes(now: Date) {
+    const cached = this.catalogueCodes;
+    if (cached && now.getTime() - cached.at < PROGRAMME_OVERVIEW_TTL_MS)
+      return cached;
+    const [levels, studyModes] = await Promise.all([
+      this.prisma.courseLevel.findMany({ select: { code: true } }),
+      this.prisma.studyMode.findMany({ select: { code: true } }),
+    ]);
+    const codes = (rows: Array<{ code: string }>) =>
+      rows.map((row) => row.code.toUpperCase());
+    this.catalogueCodes = {
+      at: now.getTime(),
+      levels: codes(levels),
+      studyModes: codes(studyModes),
+    };
+    return this.catalogueCodes;
+  }
+
+  /**
+   * What the finder's search box suggests while someone types: programmes,
+   * universities and course codes, eight in all. Each leads somewhere --
+   * a programme or a code to its page, a university to the finder narrowed
+   * to it -- rather than only filling the box, as the reference's list does.
+   */
+  async programmeSuggestions(raw: string | undefined) {
+    const q = (raw ?? '').trim().slice(0, 100);
+    if (q.length < 2) return [];
+    const now = new Date();
+    const live = liveProgrammeWhere(now);
+    const programme = {
+      name: true,
+      slug: true,
+      courseCode: true,
+      university: {
+        select: { name: true, slug: true, country: { select: { slug: true } } },
+      },
+    } as const;
+    const [programmes, codes, universities] = await Promise.all([
+      this.prisma.universityCourseOffering.findMany({
+        where: { ...live, name: { contains: q } },
+        select: programme,
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        take: 40,
+      }),
+      this.prisma.universityCourseOffering.findMany({
+        where: { ...live, courseCode: { startsWith: q } },
+        select: programme,
+        orderBy: [{ courseCode: 'asc' }, { id: 'asc' }],
+        take: 4,
+      }),
+      this.prisma.university.findMany({
+        where: {
+          ...liveUniversityWhere(now),
+          name: { contains: q },
+          offerings: { some: publishedWhereScheduled(now) },
+        },
+        select: { name: true, slug: true },
+        orderBy: { name: 'asc' },
+        take: 20,
+      }),
+    ]);
+    const href = (row: (typeof programmes)[number]) =>
+      `/study-abroad/${row.university.country.slug}/universities/${row.university.slug}/courses/${row.slug}`;
+    const addressable = (row: (typeof programmes)[number]) =>
+      isCanonicalPublicSlug(row.slug) &&
+      isCanonicalPublicSlug(row.university.slug) &&
+      isCanonicalPublicSlug(row.university.country.slug);
+    /* What opens with the typed text before what merely contains it. */
+    const opensFirst = <T>(rows: T[], label: (row: T) => string) => {
+      const needle = q.toLowerCase();
+      const opens = rows.filter((row) =>
+        label(row).toLowerCase().startsWith(needle),
+      );
+      return [...opens, ...rows.filter((row) => !opens.includes(row))];
+    };
+    const seen = new Set<string>();
+    const once = <T extends { label: string }>(items: T[]) =>
+      items.filter((item) => !seen.has(item.label) && seen.add(item.label));
+    const universityItems = once(
+      opensFirst(
+        universities.filter((row) => isCanonicalPublicSlug(row.slug)),
+        (row) => row.name,
+      ).map((row) => ({
+        label: row.name,
+        kind: 'university' as const,
+        href: `/courses?university=${row.slug}`,
+      })),
+    );
+    const codeItems = once(
+      codes.filter(addressable).map((row) => ({
+        label: `${row.courseCode} · ${row.name}`,
+        kind: 'code' as const,
+        href: href(row),
+      })),
+    );
+    const programmeItems = once(
+      opensFirst(programmes.filter(addressable), (row) => row.name).map(
+        (row) => ({
+          label: row.name.endsWith(` at ${row.university.name}`)
+            ? row.name
+            : `${row.name} · ${row.university.name}`,
+          kind: 'programme' as const,
+          href: href(row),
+        }),
+      ),
+    );
+    /* A few of each kind first, so a university is not buried under forty
+       programmes that carry its name; then whatever is left fills the
+       eight. */
+    const picked = [
+      ...universityItems.slice(0, 3),
+      ...codeItems.slice(0, 2),
+      ...programmeItems.slice(0, 8),
+    ].slice(0, 8);
+    for (const item of [...universityItems, ...codeItems])
+      if (picked.length < 8 && !picked.includes(item)) picked.push(item);
+    return picked;
+  }
+
+  /**
+   * Every live programme's address, a page at a time, for the sitemap: the
+   * slugs its address is built from and when it last changed.
+   */
+  async programmeAddresses(query: Query) {
+    const now = new Date();
+    const page = Math.max(1, Number(query.page ?? 1) || 1);
+    const limit = Math.min(
+      PROGRAMME_ADDRESS_LIMIT,
+      Math.max(1, Number(query.limit ?? 1000) || 1000),
+    );
+    const where = liveProgrammeWhere(now);
+    const [total, rows] = await Promise.all([
+      this.prisma.universityCourseOffering.count({ where }),
+      this.prisma.universityCourseOffering.findMany({
+        where,
+        orderBy: [{ slug: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          slug: true,
+          updatedAt: true,
+          university: {
+            select: { slug: true, country: { select: { slug: true } } },
+          },
+        },
+      }),
+    ]);
+    const data = rows
+      .filter(
+        (row) =>
+          isCanonicalPublicSlug(row.slug) &&
+          isCanonicalPublicSlug(row.university.slug) &&
+          isCanonicalPublicSlug(row.university.country.slug),
+      )
+      .map((row) => ({
+        slug: row.slug,
+        universitySlug: row.university.slug,
+        countrySlug: row.university.country.slug,
+        updatedAt: row.updatedAt,
+      }));
+    return { data, meta: meta(page, limit, total) };
+  }
+
+  /**
+   * Where a bare /courses/<slug> that is not a course guide should go.
+   *
+   * The reference sends /courses/<slug>/ to whatever carries that slug: a
+   * programme to its page, a subject or a specialization to theirs. Here
+   * that happens only when exactly one live thing carries it -- a slug
+   * shared by a subject and a specialization names neither, and stays a
+   * 404 rather than a guess.
+   */
+  async resolveCourseSlug(raw: string) {
+    const slug = raw.trim().toLowerCase();
+    if (!isCanonicalPublicSlug(slug)) return this.notFound('Course');
+    const now = new Date();
+    const published = { status: 'PUBLISHED', deletedAt: null };
+    const [programmes, subjects, specializations] = await Promise.all([
+      this.prisma.universityCourseOffering.findMany({
+        where: { slug, ...liveProgrammeWhere(now) },
+        select: {
+          slug: true,
+          university: {
+            select: { slug: true, country: { select: { slug: true } } },
+          },
+        },
+        take: 2,
+      }),
+      this.prisma.subject.findMany({
+        where: { slug, ...published },
+        select: { slug: true },
+        take: 2,
+      }),
+      this.prisma.subSubject.findMany({
+        where: { slug, ...published, subject: published },
+        select: { slug: true, subject: { select: { slug: true } } },
+        take: 2,
+      }),
+    ]);
+    const matches = [
+      ...programmes
+        .filter(
+          (row) =>
+            isCanonicalPublicSlug(row.university.slug) &&
+            isCanonicalPublicSlug(row.university.country.slug),
+        )
+        .map((row) => ({
+          kind: 'programme' as const,
+          path: `/study-abroad/${row.university.country.slug}/universities/${row.university.slug}/courses/${row.slug}`,
+        })),
+      ...subjects.map((row) => ({
+        kind: 'subject' as const,
+        path: `/subjects/${row.slug}`,
+      })),
+      ...specializations
+        .filter((row) => isCanonicalPublicSlug(row.subject.slug))
+        .map((row) => ({
+          kind: 'specialization' as const,
+          path: `/subjects/${row.subject.slug}/${row.slug}`,
+        })),
+    ];
+    if (matches.length !== 1) return this.notFound('Course');
+    return matches[0];
+  }
+
   async consultantLocation(slug: string) {
     const location = await this.prisma.consultantLocation.findFirst({
       where: { slug, status: 'ACTIVE', deletedAt: null },
@@ -1513,11 +2246,13 @@ export class ExpandedService {
     type: 'countries' | 'universities' | 'courses' | 'consultants',
     items: string[],
   ) {
+    /* Both references compare up to four courses side by side; the other
+       comparisons keep their three. */
     const slugs = [
       ...new Set(
         items.map((item) => item.trim().toLowerCase()).filter(Boolean),
       ),
-    ].slice(0, 3);
+    ].slice(0, type === 'courses' ? COURSE_COMPARE_LIMIT : 3);
     if (!slugs.length) return { items: [], invalid: [] };
     const now = new Date();
     if (type === 'countries') {
@@ -1550,19 +2285,69 @@ export class ExpandedService {
           })
         ).filter((row) => isCanonicalPublicSlug(row.slug)),
       );
+    /* A programme compares only while its university and destination are
+       live, the rule every programme list keeps: otherwise its column
+       would link to a page that answers 404. Each comes with what the
+       comparison prints and links by -- the university's country for the
+       programme's address, the subject and specialization it is filed
+       under, its level, and only the intakes and requirements that are
+       current. */
     if (type === 'courses')
       return this.ordered(
         slugs,
-        await this.prisma.universityCourseOffering.findMany({
-          where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
-          include: {
-            university: true,
-            campus: true,
-            genericCourse: { include: { courseLevel: true } },
-            intakes: { include: { intake: true } },
-            requirements: true,
-          },
-        }),
+        (
+          await this.prisma.universityCourseOffering.findMany({
+            where: { slug: { in: slugs }, ...liveProgrammeWhere(now) },
+            include: {
+              university: {
+                select: {
+                  name: true,
+                  slug: true,
+                  websiteUrl: true,
+                  country: {
+                    select: { name: true, slug: true, iso2Code: true },
+                  },
+                  campuses: {
+                    where: { status: 'ACTIVE', deletedAt: null },
+                    orderBy: { displayOrder: 'asc' },
+                    select: { name: true, slug: true, city: true },
+                  },
+                },
+              },
+              campus: true,
+              courseLevel: true,
+              /* With the state its guide page is answered on, as a card's
+                 row carries it. */
+              genericCourse: {
+                include: {
+                  courseLevel: true,
+                  subject: {
+                    select: {
+                      name: true,
+                      slug: true,
+                      status: true,
+                      deletedAt: true,
+                    },
+                  },
+                  subSubject: { select: { name: true, slug: true } },
+                },
+              },
+              intakes: {
+                where: { status: 'ACTIVE' },
+                include: { intake: true },
+              },
+              requirements: {
+                where: { status: 'ACTIVE', deletedAt: null },
+                orderBy: { displayOrder: 'asc' },
+              },
+            },
+          })
+        ).filter(
+          (row) =>
+            isCanonicalPublicSlug(row.slug) &&
+            isCanonicalPublicSlug(row.university.slug) &&
+            isCanonicalPublicSlug(row.university.country.slug),
+        ),
       );
     return this.ordered(
       slugs,
@@ -1599,14 +2384,25 @@ export class ExpandedService {
           orderBy: { name: 'asc' },
         })
       ).filter((row) => isCanonicalPublicSlug(row.slug));
+    /* The live programmes only, each with its university's name: forty
+       universities teach "MSc Computer Science", and the picker has to
+       tell them apart. */
     if (type === 'courses')
       return (
         await this.prisma.universityCourseOffering.findMany({
-          where: publishedWhereScheduled(now),
-          select: { slug: true, name: true },
-          orderBy: { name: 'asc' },
+          where: liveProgrammeWhere(now),
+          select: {
+            slug: true,
+            name: true,
+            university: { select: { name: true, slug: true } },
+          },
+          orderBy: [{ name: 'asc' }, { slug: 'asc' }],
         })
-      ).filter((row) => isCanonicalPublicSlug(row.slug));
+      ).filter(
+        (row) =>
+          isCanonicalPublicSlug(row.slug) &&
+          isCanonicalPublicSlug(row.university.slug),
+      );
     return (
       await this.prisma.consultant.findMany({
         where: publishedWhereScheduled(now),

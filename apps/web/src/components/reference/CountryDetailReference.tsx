@@ -708,8 +708,10 @@ export function CountryDetailReference(props: CountryDetailReferenceProps) {
             <Link href={counselling} className="btn btn-primary btn-lg">
               Get free counselling
             </Link>
+            {/* A count of courses opens the finder's course guides, which
+                list that many. */}
             <Link
-              href={`/courses?country=${country.slug}`}
+              href={`/courses?country=${country.slug}${props.courseTotal ? "&view=guides" : ""}`}
               className="btn btn-ghost btn-lg"
             >
               Browse {props.courseTotal ? formatNumber(props.courseTotal) : ""}{" "}

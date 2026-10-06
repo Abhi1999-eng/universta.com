@@ -30,8 +30,15 @@ import {
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
   levelTotal,
+  programmesHref,
 } from '@/lib/course-levels';
 import { CourseLevels } from '@/components/study-abroad/CourseLevels';
+import { DestinationProgrammes } from '@/components/study-abroad/DestinationProgrammes';
+import { programmeList } from '@/lib/programme-sample';
+import {
+  isNarrowedCourseList,
+  readCourseFilters,
+} from '@/lib/university-courses';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
@@ -40,10 +47,13 @@ import {
   countrySubjectPage,
   figuresHere,
   intakeFigure,
+  listedIntakes,
   overviewParts,
+  programmeCountsHere,
   programmesHere,
   specializationCountsHere,
 } from '@/lib/country-subject';
+import { PROGRAMME_MAX_PAGES } from '@/lib/courses-params';
 import {
   subjectUniversitiesGroup,
   subjectUniversitiesHref,
@@ -68,7 +78,11 @@ import {
  */
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ countrySlug: string; subjectSlug: string }> };
+type Params = {
+  params: Promise<{ countrySlug: string; subjectSlug: string }>;
+  /** The programme list's search, filters, sort and how far it is loaded. */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 async function load(countrySlug: string, subjectSlug: string) {
   const [page, subject] = await Promise.all([
@@ -79,7 +93,10 @@ async function load(countrySlug: string, subjectSlug: string) {
   return { page, country: page.country, subject };
 }
 
-export async function generateMetadata({ params }: Params): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Params): Promise<Metadata> {
   const { countrySlug, subjectSlug } = await params;
   const loaded = await load(countrySlug, subjectSlug);
   if (!loaded)
@@ -94,26 +111,42 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description:
       subject.shortDescription ??
       `The specializations, universities and programmes available in ${subject.name} for students going to ${where}.`,
-    alternates: {
-      canonical: `/study-abroad/${country.slug}/${subject.slug}`,
-    },
+    /* A searched, filtered, sorted or further-loaded programme list is a
+       slice of the page, which is indexed whole: left out of the index,
+       its links still followed, and naming no canonical, as the university
+       lists do it. */
+    ...(isNarrowedCourseList(await searchParams)
+      ? { robots: { index: false, follow: true } }
+      : {
+          alternates: {
+            canonical: `/study-abroad/${country.slug}/${subject.slug}`,
+          },
+        }),
   };
 }
 
-export default async function Page({ params }: Params) {
+export default async function Page({ params, searchParams }: Params) {
   const { countrySlug, subjectSlug } = await params;
   const loaded = await load(countrySlug, subjectSlug);
   if (!loaded) notFound();
   const { page, country, subject } = loaded;
   const where = inCountry(country.name, country.iso2Code);
   const base = `/study-abroad/${country.slug}/${subject.slug}`;
+  const read = readCourseFilters(await searchParams);
+  /* No further than the finder loads. Past it the run asks for more rows
+     than the API serves in one answer, which then sends the first page
+     alone and leaves no way on to the rest. */
+  const asked = { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
+  /* What the programme list is fixed to: this country, this field. */
+  const scope = { country: [country.slug], subject: [subject.slug] };
 
   /* Courses under their levels, and only what this destination teaches;
      the course filters for the same pair, which count this destination's
-     courses per specialization and name its intakes; the tab strip; and
-     the universities that teach the field here. Read together, and each
-     failure costs only what it feeds. */
-  const [levels, filters, tabs, universities, allLevels] = await Promise.all([
+     courses per specialization and name its intakes; the tab strip; the
+     universities that teach the field here; and their programmes here, as
+     the address filters them. Read together, and each failure costs only
+     what it feeds. */
+  const [levels, filters, tabs, universities, allLevels, programmes] = await Promise.all([
     getCoursesByLevel({
       subject: subject.slug,
       country: country.slug,
@@ -131,7 +164,11 @@ export default async function Page({ params }: Params) {
     /* Every study level, so the six the page always shows are there even
        where nothing is listed at them here yet. */
     getCourseLevels().catch(() => null),
+    programmeList(asked, scope),
   ]);
+  /* Drawn only where something is listed here; an empty catalogue leaves
+     the page as it was. */
+  const listed = programmes && programmes.summary.programmes > 0 ? programmes : null;
   /* When the grouped read fails the page falls back to the six mixed
      courses it always showed, rather than to no courses. */
   const courses = levels
@@ -171,12 +208,32 @@ export default async function Page({ params }: Params) {
     subjectSlug: subject.slug,
     countsHere: specializationCountsHere(filters, subject.slug),
   });
-  const taught = view.specializations.filter((entry) => (entry.here ?? 0) > 0);
+  /* The hero sits over the programme list where there is one, so its
+     specializations are counted from that list too: which of this
+     subject's are taught here, and how many programmes each. The course
+     guides' counts stay with the specialization cards below, which say
+     they count courses. */
+  const hero = listed
+    ? countrySubjectPage({
+        specializations: subject.subSubjects,
+        others: [],
+        subjectSlug: subject.slug,
+        countsHere: programmeCountsHere(listed.facets.specialization),
+      })
+    : view;
+  const taught = hero.specializations.filter((entry) => (entry.here ?? 0) > 0);
+  /* The design's strip counts programmes, universities, cities and
+     intakes. Where the universities' programmes are listed here every
+     figure is theirs, counted together so they describe the same list;
+     where none are, the strip says what it always said. */
   const figures = figuresHere({
-    programmes: filed,
-    universities: universities.total ?? null,
-    specializations: view.taughtHere,
-    intakes: intakeFigure(filters?.intakes ?? []),
+    programmes: listed ? listed.summary.programmes : filed,
+    universities: listed ? listed.summary.universities : (universities.total ?? null),
+    cities: listed?.summary.cities ?? null,
+    specializations: hero.taughtHere,
+    intakes: intakeFigure(
+      listed ? listedIntakes(listed.facets.intake) : (filters?.intakes ?? []),
+    ),
   });
 
   /* The reference opens the page on why the field is worth studying, from
@@ -189,7 +246,13 @@ export default async function Page({ params }: Params) {
     country: country.slug,
     from: base,
   });
-  const searchHere = `/courses?country=${country.slug}&subject=${subject.slug}`;
+  /* The finder, narrowed to the same pair, landing on its results. */
+  const searchHere = programmesHref(
+    { country: country.slug, subject: subject.slug },
+    '#discovery',
+  );
+  /* Nothing listed here at all: no course, and no university's programme. */
+  const none = shown === 'none' && !listed;
   /* A course opened from here stays in this destination: the course page
      narrows to one country when it is told which. */
   const courseHref = (slug: string) => `/courses/${slug}?country=${country.slug}`;
@@ -333,11 +396,36 @@ export default async function Page({ params }: Params) {
         </section>
       ) : null}
 
+      {listed ? (
+        <DestinationProgrammes
+          base={base}
+          scope={scope}
+          filters={asked}
+          list={listed}
+          title={`${subject.name} programmes in ${where}`}
+          where={`in ${where}`}
+          searchHref={searchHere}
+          empty={
+            <p>
+              Or see{' '}
+              <Link className="textlink" href={`/subjects/${subject.slug}#destinations`}>
+                {subject.name} in other destinations
+              </Link>
+              .
+            </p>
+          }
+        />
+      ) : null}
+
+      {/* The catalogue's courses, each a guide to what the universities'
+          programmes above are instances of. Their counts are of courses,
+          so their links open the finder's course guides, which list that
+          many. */}
       {shown === 'levels' && levels ? (
         <section className="sec sec--tight wrap" id="programs">
           <div className="sec-head left row-between">
             <div>
-              <span className="eyebrow">Programmes</span>
+              <span className="eyebrow">{listed ? 'Courses by level' : 'Programmes'}</span>
               <h2 className="sec-title">
                 {subject.name} courses in {where}, by level
               </h2>
@@ -383,7 +471,13 @@ export default async function Page({ params }: Params) {
                 {subject.name} courses in {where}
               </h2>
             </div>
-            <Link className="linkcta" href={searchHere}>
+            <Link
+              className="linkcta"
+              href={levelCoursesHref({
+                subject: subject.slug,
+                country: country.slug,
+              })}
+            >
               All {formatNumber(courses.meta.total)}{' '}
               <span className="linkcta__arrow" aria-hidden="true">
                 &rarr;
@@ -418,37 +512,40 @@ export default async function Page({ params }: Params) {
               </h2>
             </div>
           </div>
-          <NothingListedHere
-            field={subject.name}
-            where={where}
-            teaching={
-              universities.total
-                ? { total: universities.total, items: universities.items }
-                : undefined
-            }
-            links={[
-              ...(universities.total
-                ? [
-                    {
-                      href: subjectUniversitiesHref(country.slug, subject.slug),
-                      label: `Universities teaching ${subject.name} in ${where}`,
-                    },
-                  ]
-                : []),
-              {
-                href: `/subjects/${subject.slug}#destinations`,
-                label: `${subject.name} in other destinations`,
-              },
-              {
-                href: `/study-abroad/${country.slug}/subjects`,
-                label: `Other subjects in ${where}`,
-              },
-            ]}
-          />
+          {/* Not said over programmes listed above it. */}
+          {none ? (
+            <NothingListedHere
+              field={subject.name}
+              where={where}
+              teaching={
+                universities.total
+                  ? { total: universities.total, items: universities.items }
+                  : undefined
+              }
+              links={[
+                ...(universities.total
+                  ? [
+                      {
+                        href: subjectUniversitiesHref(country.slug, subject.slug),
+                        label: `Universities teaching ${subject.name} in ${where}`,
+                      },
+                    ]
+                  : []),
+                {
+                  href: `/subjects/${subject.slug}#destinations`,
+                  label: `${subject.name} in other destinations`,
+                },
+                {
+                  href: `/study-abroad/${country.slug}/subjects`,
+                  label: `Other subjects in ${where}`,
+                },
+              ]}
+            />
+          ) : null}
           {/* The levels still show, each saying it has nothing here yet,
               so the page reads the same shape whatever is listed. */}
           {levelBlock?.length ? (
-            <div className="fieldnone__levels">
+            <div className={none ? 'fieldnone__levels' : undefined}>
               <CourseLevels
                 groups={levelBlock}
                 allHref={(level) =>
@@ -472,11 +569,11 @@ export default async function Page({ params }: Params) {
       <MatchBand
         heading={`Find ${subject.name} courses for your profile`}
         lead={
-          shown === 'none'
+          none
             ? `The course search has no ${subject.name} course in ${where} yet, so it opens on ${subject.name} in every destination. Narrow it by level, budget and intake.`
             : `Now find the ${subject.name} programmes in ${where} that match your academic profile, budget and intake.`
         }
-        href={shown === 'none' ? `/courses?subject=${subject.slug}` : searchHere}
+        href={none ? `/courses?subject=${subject.slug}` : searchHere}
         talkHref={counselling}
       />
 
@@ -542,7 +639,7 @@ export default async function Page({ params }: Params) {
         actions={[
           /* With nothing listed here, "these courses" would open an empty
              search; the field everywhere is the useful next step. */
-          shown === 'none'
+          none
             ? {
                 href: `/courses?subject=${subject.slug}`,
                 label: `Browse ${subject.name} courses`,

@@ -19,7 +19,15 @@ export function levelAnchor(code: string) {
   return `level-${code.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 }
 
-/** The course list, filtered to what this section counted. */
+/**
+ * The course list, filtered to what this section counted.
+ *
+ * A level's count is of course guides -- the catalogue's generic courses --
+ * and the finder opens on programmes, a course as one university teaches it,
+ * which number differently. So the link opens the guides view, where the
+ * list is the size the section said it was. The specialization is written
+ * as the finder spells it; its old name is still read.
+ */
 export function levelCoursesHref({
   subject,
   subSubject,
@@ -34,10 +42,41 @@ export function levelCoursesHref({
   const query = new URLSearchParams({
     ...(country ? { country } : {}),
     subject,
-    ...(subSubject ? { subSubject } : {}),
+    ...(subSubject ? { specialization: subSubject } : {}),
     ...(level ? { level } : {}),
+    view: 'guides',
   });
   return `/courses?${query.toString()}`;
+}
+
+/**
+ * The finder's programmes, narrowed to what a page is about: a course, a
+ * subject or one of its specializations, in a destination or everywhere.
+ * For a link that prints no count, or a programme count read from the same
+ * query, so the list it opens is the one it describes. Without a subject
+ * a specialization's slug is not unique, so the two travel together.
+ */
+export function programmesHref(
+  {
+    country,
+    course,
+    subject,
+    specialization,
+  }: {
+    country?: string;
+    course?: string;
+    subject?: string;
+    specialization?: string;
+  },
+  anchor = '',
+) {
+  const query = new URLSearchParams({
+    ...(course ? { course } : {}),
+    ...(country ? { country } : {}),
+    ...(subject ? { subject } : {}),
+    ...(subject && specialization ? { specialization } : {}),
+  }).toString();
+  return `/courses${query ? `?${query}` : ''}${anchor}`;
 }
 
 /** "3 years", "3–5 years", or nothing when no length is recorded. */

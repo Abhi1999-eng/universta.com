@@ -220,7 +220,9 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
                   <Link
                     key={entry.level.id}
                     className="card mini-card"
-                    href={`/courses?subject=${subject.slug}${entry.level.code ? `&level=${entry.level.code}` : ''}#discovery`}
+                    /* The card counts courses, so it opens the finder's
+                       course guides, which list that many. */
+                    href={`/courses?subject=${subject.slug}${entry.level.code ? `&level=${entry.level.code}` : ''}&view=guides#discovery`}
                   >
                     <span className="mini-ic" aria-hidden="true">
                       {initials(entry.level.name)}
@@ -286,7 +288,7 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
                     <Link
                       key={country.value}
                       className="dest-flag"
-                      href={`/courses?subject=${subject.slug}&country=${country.value}#discovery`}
+                      href={`/courses?subject=${subject.slug}&country=${country.value}&view=guides#discovery`}
                     >
                       <span className="cc">{initials(country.label)}</span>
                       {country.label}

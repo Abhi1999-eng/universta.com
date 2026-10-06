@@ -622,9 +622,11 @@ export function CountryCourses({
           lead={`${curated.length ? 'Grouped by subject: the fields of the courses picked as popular here lead, then those with the most courses.' : 'Grouped by subject, the fields with the most courses here first.'} Each course page carries its tuition, entry requirements, intakes and deadlines.`}
           /* The destination's own courses: this opened the search over every
              course in every country, and the reader had to choose the
-             destination they were already reading about. */
+             destination they were already reading about. The count is of
+             courses, so it opens the finder's course guides, which list
+             that many rather than the universities' programmes. */
           cta={{
-            href: `/courses?country=${country.slug}`,
+            href: `/courses?country=${country.slug}${total ? '&view=guides' : ''}`,
             label: total ? `View all ${total.toLocaleString('en-GB')} courses` : 'View all courses',
           }}
         />

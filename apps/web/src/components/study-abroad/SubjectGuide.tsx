@@ -6,7 +6,12 @@ import type {
   SubjectDetail,
 } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
-import { levelCoursesHref, levelTotal } from '@/lib/course-levels';
+import {
+  levelCoursesHref,
+  levelTotal,
+  programmesHref,
+} from '@/lib/course-levels';
+import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import { universityHref } from '@/lib/university-links';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { formatNumber } from '@/lib/format';
@@ -17,7 +22,6 @@ import { DestinationSwitcher } from './DestinationSwitcher';
 import { firstSentence, splitLead } from './CountryGuideSections';
 import {
   destinationsLead,
-  programmeCount,
   rankDestinations,
   sparseBandClass,
   switcherClass,
@@ -28,6 +32,7 @@ import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { ConsultantsCta } from './ConsultantsCta';
 import { Longform } from './Longform';
 import { PlanBand } from './PlanBand';
+import { allProgrammes, ProgrammeSample } from './ProgrammeSample';
 import { SectionHead } from './SectionHead';
 import { SubjectSpecializations } from './SubjectSpecializations';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
@@ -72,6 +77,7 @@ export function SubjectGuide({
   universityTotal,
   levels: levelGroups = null,
   related = [],
+  programmes = null,
 }: {
   subject: SubjectDetail;
   scholarships: ScholarshipCard[];
@@ -87,6 +93,9 @@ export function SubjectGuide({
   levels?: CourseLevelGroup[] | null;
   /** Subjects that share a specialization with this one, closest first. */
   related?: RelatedSubject[];
+  /** The first of the universities' programmes in it, and how many there
+   *  are. Null when there are none or they could not be read. */
+  programmes?: Programmes | null;
 }) {
   const specializations = subject.subSubjects ?? [];
   /* The places that teach it first, most programmes first: the band used to
@@ -137,6 +146,19 @@ export function SubjectGuide({
     from: `/subjects/${subject.slug}`,
   });
 
+  /* The universities' programmes in it, where any are listed. The design
+     counts those as "Programmes profiled"; while there are none the figure
+     is the catalogue's courses, as it always was, and once there are the
+     courses keep a figure of their own. */
+  const sampled = programmes?.cards.length ? programmes : null;
+  /* Every other count on the page is of the catalogue's courses: the
+     specializations', the destinations' and the facts line's. Beside the
+     programmes they are called courses, as the level block's are, or a
+     chip saying "6 programmes" opens a page listing 15. */
+  const noun = sampled ? 'course' : 'programme';
+  const counted = (count: number) =>
+    `${formatNumber(count)} ${count === 1 ? noun : `${noun}s`}`;
+
   /* Only the figures this record actually has: a strip of dashes says less
      than a shorter strip does. */
   const stats = [
@@ -146,8 +168,14 @@ export function SubjectGuide({
     levels.length
       ? { label: 'Study levels', value: levels.map((row) => row.level.name).join(', ') }
       : null,
+    sampled
+      ? { label: 'Programmes profiled', value: formatNumber(sampled.total) }
+      : null,
     subject.publishedCourseCount
-      ? { label: 'Programmes profiled', value: formatNumber(subject.publishedCourseCount) }
+      ? {
+          label: sampled ? 'Courses' : 'Programmes profiled',
+          value: formatNumber(subject.publishedCourseCount),
+        }
       : null,
     universityCount
       ? { label: 'Universities', value: formatNumber(universityCount) }
@@ -161,6 +189,7 @@ export function SubjectGuide({
   if (hasOverview) order.push('about');
   if (specializations.length) order.push('specializations');
   if (countries.length) order.push('destinations');
+  if (sampled) order.push('courses');
   if (groups.length || courses.length) order.push('programs');
   if (tests.length) order.push('tests');
   if (scholarships.length) order.push('scholarship-funding');
@@ -245,8 +274,13 @@ export function SubjectGuide({
             <SectionHead n={n('about')} eyebrow="Overview" title={`About ${subject.name}`}>
               {opening ? <p className="ov__lead">{opening.first}</p> : null}
               {opening?.rest ? <p className="ov__more">{opening.rest}</p> : null}
+              {/* One kind of count throughout: the destinations are the
+                  ones its courses are taught in, so the first figure is
+                  its courses too. Beside 82 destinations, 136 programmes
+                  read as taught in all of them; they are in 20. */}
               <p className="subjabout__facts datum">
-                {formatNumber(subject.publishedCourseCount) || '—'} programmes ·{' '}
+                {formatNumber(subject.publishedCourseCount) || '—'}{' '}
+                {noun}s ·{' '}
                 {specializations.length || '—'} specializations ·{' '}
                 {destinationCount ? formatNumber(destinationCount) : '—'} destinations
               </p>
@@ -276,6 +310,7 @@ export function SubjectGuide({
               subjectSlug={subject.slug}
               branches={specializations}
               levelOrder={levelOrder}
+              noun={noun}
             />
           </div>
         </section>
@@ -314,6 +349,37 @@ export function SubjectGuide({
               countries={countries}
               label={subject.name}
               within={subject.slug}
+              noun={noun}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {/* The design's programmes band: the universities' programmes in
+          the subject, each naming where it is taught, and the way to all
+          of them. Its count is taken from the very list the link opens. */}
+      {sampled ? (
+        <section className={band('courses')} id="courses">
+          <div className="wrap">
+            <SectionHead
+              n={n('courses')}
+              eyebrow="Programmes"
+              /* The design's specialization page's title for the same
+                 band; its subject page's ("courses in the catalogue")
+                 would read as the course guides below. */
+              title={`Where to study ${subject.name}`}
+              lead={`${formatNumber(sampled.total)} ${sampled.total === 1 ? 'programme' : 'programmes'}${
+                sampled.universities
+                  ? ` at ${formatNumber(sampled.universities)} ${sampled.universities === 1 ? 'university' : 'universities'}`
+                  : ''
+              }, each as the university teaches it. This is our catalogue, not the whole sector.`}
+            />
+            <ProgrammeSample
+              cards={sampled.cards}
+              link={{
+                href: programmesHref({ subject: subject.slug }),
+                label: allProgrammes('View', sampled.total),
+              }}
             />
           </div>
         </section>
@@ -322,19 +388,30 @@ export function SubjectGuide({
       {groups.length || courses.length ? (
         <section className={band('programs')} id="programs">
           <div className="wrap">
+            {/* Beside the programmes above, these are the catalogue's
+                courses, and are called that; on their own they keep the
+                name they always had. Either way their counts are of
+                courses, so their links open the finder's course guides,
+                which list that many. */}
             <SectionHead
               n={n('programs')}
-              eyebrow="Programmes"
+              eyebrow={sampled ? 'Courses' : 'Programmes'}
               title={
                 groups.length
-                  ? `${subject.name} programmes by level`
-                  : `${subject.name} programmes`
+                  ? `${subject.name} ${sampled ? 'courses' : 'programmes'} by level`
+                  : `${subject.name} ${sampled ? 'courses' : 'programmes'}`
               }
               lead={
                 groups.length
                   ? filed
-                    ? `${formatNumber(filed)} ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
-                    : `No ${subject.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
+                    ? `${formatNumber(filed)} ${
+                        sampled
+                          ? filed === 1 ? 'course' : 'courses'
+                          : filed === 1 ? 'programme' : 'programmes'
+                      }, each under the level it is taught at.`
+                    : sampled
+                      ? `No ${subject.name} course is listed yet. Courses are filed under these study levels as they are added.`
+                      : `No ${subject.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
                   : levels.length
                     ? levels
                         .map((row) => `${row.level.name} (${row.count})`)
@@ -345,8 +422,11 @@ export function SubjectGuide({
               {/* A search with nothing in it is not a way on. */}
               {filed || courses.length ? (
                 <p className="sec-head__cta">
-                  <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
-                    Every {subject.name} programme{' '}
+                  <Link
+                    className="linkcta"
+                    href={levelCoursesHref({ subject: subject.slug })}
+                  >
+                    Every {subject.name} {sampled ? 'course' : 'programme'}{' '}
                     <span className="linkcta__arrow" aria-hidden="true">
                       →
                     </span>
@@ -529,7 +609,7 @@ export function SubjectGuide({
               id: row.id,
               name: row.name,
               href: `/study-abroad/${row.slug}/${subject.slug}`,
-              note: row.courseCount ? programmeCount(row.courseCount) : null,
+              note: row.courseCount ? counted(row.courseCount) : null,
             })),
             total: teaching.length || countries.length,
           },

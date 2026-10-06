@@ -14,6 +14,7 @@ type Rows = {
   countries?: unknown[];
   subjects?: unknown[];
   courses?: unknown[];
+  programmes?: unknown[];
   universities?: unknown[];
   scholarships?: unknown[];
 };
@@ -23,6 +24,9 @@ function build(rows: Rows = {}) {
     country: { findMany: jest.fn().mockResolvedValue(rows.countries ?? []) },
     subject: { findMany: jest.fn().mockResolvedValue(rows.subjects ?? []) },
     course: { findMany: jest.fn().mockResolvedValue(rows.courses ?? []) },
+    universityCourseOffering: {
+      findMany: jest.fn().mockResolvedValue(rows.programmes ?? []),
+    },
     university: {
       findMany: jest.fn().mockResolvedValue(rows.universities ?? []),
     },
@@ -125,6 +129,96 @@ describe('catalogue search', () => {
           }),
         }),
       );
+  });
+
+  /* A programme -- a course at one university -- is what the course
+     finder lists, so the search offers them under their own heading, each
+     opening its page under its country, and "all" opens the finder on the
+     same word. The course guides' "all" keeps the word too. */
+  it('offers programmes, each at its own address, and keeps the word in "all"', async () => {
+    const { prisma, service } = build({
+      courses: [
+        {
+          id: 'c1',
+          name: 'MSc Computer Science',
+          slug: 'msc-cs',
+          subject: null,
+        },
+      ],
+      programmes: [
+        {
+          id: 'o1',
+          name: 'MSc Computer Science',
+          slug: 'warwick-msc-cs',
+          university: {
+            name: 'University of Warwick',
+            slug: 'university-of-warwick',
+            country: { slug: 'united-kingdom' },
+          },
+        },
+      ],
+    });
+    const results = await service.search('Computer Science');
+    expect(results.groups.map((group) => group.type)).toEqual([
+      'course',
+      'programme',
+    ]);
+    const [courses, programmes] = results.groups;
+    expect(courses.href).toBe('/courses?view=guides&q=Computer+Science');
+    expect(programmes.label).toBe('Programmes');
+    expect(programmes.href).toBe('/courses?q=Computer+Science');
+    expect(programmes.items[0]).toEqual({
+      id: 'o1',
+      label: 'MSc Computer Science',
+      href: '/study-abroad/united-kingdom/universities/university-of-warwick/courses/warwick-msc-cs',
+      meta: 'University of Warwick',
+    });
+    /* Only live programmes, at live universities in published countries. */
+    expect(prisma.universityCourseOffering.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'PUBLISHED',
+          university: expect.objectContaining({
+            status: 'PUBLISHED',
+            country: { status: 'PUBLISHED', deletedAt: null },
+          }),
+        }),
+      }),
+    );
+  });
+
+  /* Warwick's programmes are "MSc Computer Science" and "BSc Computer
+     Science", without the university, so a search for "Warwick" asked of
+     the name alone found none of them. Each word may be in the programme's
+     name or its university's, as in the finder, and every word has to be
+     found somewhere. */
+  it('finds a programme by its university, word by word', async () => {
+    const { prisma, service } = build();
+    await service.search('  computer science   warwick ');
+    const [args] = prisma.universityCourseOffering.findMany.mock.calls[0] as [
+      { where: { AND: unknown[]; name?: unknown } },
+    ];
+    expect(args.where.name).toBeUndefined();
+    const word = (value: string) => ({
+      OR: [
+        { name: { contains: value } },
+        { university: { name: { contains: value } } },
+      ],
+    });
+    expect(args.where.AND).toEqual([
+      /* The publishing window stays, ahead of the words. */
+      expect.objectContaining({ OR: expect.any(Array) }),
+      expect.objectContaining({ OR: expect.any(Array) }),
+      word('computer'),
+      word('science'),
+      word('warwick'),
+    ]);
+    expect(args.where.AND[0]).toEqual({
+      OR: [
+        { publishStartsAt: null },
+        { publishStartsAt: { lte: expect.any(Date) } },
+      ],
+    });
   });
 
   it('leaves out a kind that matched nothing', async () => {

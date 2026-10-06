@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SubjectDetail } from '@/lib/catalog';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { everyLevel } from '@/lib/course-levels';
+import { toOfferingCard } from '@/lib/university-courses';
 
 const searchParams = { current: new URLSearchParams() };
 vi.mock('next/navigation', () => ({
@@ -168,6 +169,161 @@ describe('a subject’s page', () => {
     const alone = renderToStaticMarkup(<SubjectGuide subject={subject} scholarships={[]} />);
     expect(alone).not.toContain('Related subjects');
   });
+
+  it('sends "Every Computer Science programme" to the course guides its count is of', () => {
+    const levelled = renderToStaticMarkup(
+      <SubjectGuide
+        subject={subject}
+        scholarships={[]}
+        levels={[{ level: PG, count: 14, courses: [] } as never]}
+      />,
+    );
+    expect(levelled).toContain('14 programmes, each under the level it is taught at.');
+    expect(levelled).toMatch(
+      /href="\/courses\?subject=computer-science&amp;view=guides">Every Computer Science programme/,
+    );
+    expect(levelled).toContain('href="/courses?subject=computer-science&amp;level=PG&amp;view=guides"');
+  });
+});
+
+/**
+ * The reference's subject page shows programmes -- a course as one
+ * university teaches it -- and a "View all" into the finder; ours listed
+ * only the catalogue's course guides. The programmes now lead, each card
+ * naming its university and opening its own page, and the course guides
+ * keep their levels below, called courses so the two counts are not
+ * mistaken for each other.
+ */
+describe('programmes on a subject’s and a specialization’s page', () => {
+  const uk = { name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB' };
+  const programme = (slug: string, university: string) =>
+    toOfferingCard({
+      id: slug,
+      slug,
+      name: 'MSc Computer Science',
+      genericCourse: {
+        name: 'MSc Computer Science',
+        slug: 'msc-computer-science',
+        courseLevel: { code: 'PG', name: "Master's" },
+      },
+      university: {
+        name: university,
+        slug: university.toLowerCase().replace(/\s+/g, '-'),
+        country: uk,
+        campuses: [{ city: 'Coventry' }],
+      },
+    })!;
+  const sample = {
+    cards: [
+      programme('university-of-warwick-msc-computer-science', 'University of Warwick'),
+      programme('university-of-oxford-msc-computer-science', 'University of Oxford'),
+    ],
+    total: 136,
+    universities: 105,
+    cities: 38,
+  };
+  const levelled = [{ level: PG, count: 14, courses: [] } as never];
+
+  it('draws the programmes as cards, each opening its own page', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={subject} scholarships={[]} levels={levelled} programmes={sample} />,
+    );
+    expect(html).toContain('id="courses"');
+    expect(html).toContain('Where to study Computer Science');
+    expect(html.match(/class="coursecard"/g)).toHaveLength(2);
+    expect(html).toContain(
+      'href="/study-abroad/united-kingdom/universities/university-of-warwick/courses/university-of-warwick-msc-computer-science"',
+    );
+    expect(html).toContain('136 programmes at 105 universities');
+  });
+
+  it('opens all of them in the finder, with the count the finder will show', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={subject} scholarships={[]} levels={levelled} programmes={sample} />,
+    );
+    expect(html).toMatch(/<a class="linkcta" href="\/courses\?subject=computer-science">View all 136 programmes/);
+  });
+
+  it('keeps the levels, called courses beside the programmes, with their links on the course guides', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={subject} scholarships={[]} levels={levelled} programmes={sample} />,
+    );
+    expect(html).toContain('Computer Science courses by level');
+    expect(html).toContain('14 courses, each under the level it is taught at.');
+    expect(html).toContain('href="/courses?subject=computer-science&amp;level=PG&amp;view=guides"');
+    expect(html).toMatch(/<span class="label">Programmes profiled<\/span><b>136<\/b>/);
+    expect(html).toMatch(/<span class="label">Courses<\/span><b>36<\/b>/);
+  });
+
+  it('stands the section down, and keeps the old names, with no programme listed', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={subject} scholarships={[]} levels={levelled} programmes={null} />,
+    );
+    expect(html).not.toContain('id="courses"');
+    expect(html).not.toContain('class="coursecard"');
+    expect(html).toContain('Computer Science programmes by level');
+    expect(html).toMatch(/<span class="label">Programmes profiled<\/span><b>36<\/b>/);
+    /* Every other count keeps the name it always had, too. */
+    expect(html).toMatch(/<p class="subjabout__facts datum">36 programmes ·.* 3 destinations<\/p>/);
+    expect(html).toContain('<span class="speccard__count datum">6 programmes</span>');
+    expect(html).toContain('aria-label="Computer Science in United Kingdom, 6 programmes"');
+    expect(html).toContain('<a href="/study-abroad/united-states/computer-science">United States</a><span>6 programmes</span>');
+  });
+
+  /* Beside the programmes, a chip saying "6 programmes" opened a page
+     listing 15, and a card saying "6 programmes" opened one listing 34:
+     those counts are of the catalogue's courses, and are called that. */
+  it('calls the course counts courses beside the programmes, so they match the pages they open', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={subject} scholarships={[]} levels={levelled} programmes={sample} />,
+    );
+    const specs = html.slice(html.indexOf('id="specializations"'), html.indexOf('id="destinations"'));
+    expect(specs).toContain('<span class="speccard__count datum">6 courses</span>');
+    expect(specs).not.toContain('programmes');
+    expect(html).toContain('aria-label="Computer Science in United Kingdom, 6 courses"');
+    expect(html).toContain('<a href="/study-abroad/united-states/computer-science">United States</a><span>6 courses</span>');
+    /* The facts line is all one kind of count: the destinations are the
+       ones its courses are taught in, so the first figure is its courses. */
+    expect(html).toMatch(/<p class="subjabout__facts datum">36 courses ·.* 3 destinations<\/p>/);
+    expect(html).not.toContain('136 programmes ·');
+  });
+
+  it('calls a specialization’s related and destination counts courses beside its programmes', () => {
+    const render = (programmes: typeof sample | null) =>
+      renderToStaticMarkup(
+        <SpecializationGuide
+          specialization={specialization as never}
+          scholarships={[]}
+          levels={levelled}
+          programmes={programmes}
+        />,
+      );
+    const listed = render({ ...sample, total: 34, universities: 32 });
+    expect(listed).toContain('<span class="speccard__count datum">4 courses</span>');
+    expect(listed).toContain('aria-label="Software Engineering in Canada, 3 courses"');
+    expect(listed).toContain('Software Engineering in Canada</a><span>3 courses</span>');
+    const none = render(null);
+    expect(none).toContain('<span class="speccard__count datum">4 programmes</span>');
+    expect(none).toContain('aria-label="Software Engineering in Canada, 3 programmes"');
+    expect(none).toContain('Software Engineering in Canada</a><span>3 programmes</span>');
+  });
+
+  it('shows a specialization’s programmes and opens all of them with both halves of the pair', () => {
+    const html = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={specialization as never}
+        scholarships={[]}
+        levels={levelled}
+        programmes={{ ...sample, total: 34, universities: 32 }}
+      />,
+    );
+    expect(html).toContain('Where to study Software Engineering');
+    expect(html.match(/class="coursecard"/g)).toHaveLength(2);
+    expect(html).toMatch(
+      /<a class="linkcta" href="\/courses\?subject=computer-science&amp;specialization=software-engineering">View all 34 programmes/,
+    );
+    expect(html).toContain('Software Engineering courses by level');
+  });
 });
 
 const specialization = {
@@ -244,11 +400,22 @@ describe('a specialization’s page', () => {
   });
 
   it('opens this specialization’s courses, not the whole subject’s', () => {
-    const own = '/courses?subject=computer-science&amp;subSubject=software-engineering';
-    /* The hero, the "view all" link, the match band and the connect band. */
-    expect(html.split(`href="${own}"`).length - 1).toBe(4);
-    expect(html).toContain('View all 6 Software Engineering programmes');
+    const own = '/courses?subject=computer-science&amp;specialization=software-engineering';
+    /* The hero, the match band and the connect band print no count, so
+       they open its programmes. */
+    expect(html.split(`href="${own}"`).length - 1).toBe(3);
+    /* "View all 6" counts courses, so it opens the course guides, which
+       list six. */
+    expect(html).toMatch(
+      new RegExp(`href="${own.replace(/[?]/g, '\\?')}&amp;view=guides">View all 6 Software Engineering programmes`),
+    );
     expect(html).toMatch(/href="\/courses\?subject=computer-science">Every Computer Science programme/);
+  });
+
+  it('opens each level’s count on the course guides', () => {
+    expect(html).toContain(
+      'href="/courses?subject=computer-science&amp;specialization=software-engineering&amp;level=UG&amp;view=guides"',
+    );
   });
 
   it('names its destinations as the design does, each opening it there', () => {
@@ -313,9 +480,10 @@ describe('a subject’s specializations page', () => {
     );
   });
 
-  it('keeps a way into the filtered courses', () => {
+  it('keeps a way into the filtered courses, opening the list its count describes', () => {
+    /* The card says "6 courses", so the link opens the course guides. */
     expect(html).toContain(
-      'href="/courses?subject=computer-science&amp;subSubject=software-engineering"',
+      'href="/courses?subject=computer-science&amp;specialization=software-engineering&amp;view=guides"',
     );
   });
 

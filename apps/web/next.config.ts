@@ -56,6 +56,13 @@ const nextConfig: NextConfig = {
          a working page to a 404. Nothing links to the short forms yet, and an
          editor who wants one can add it in the Admin's Redirects table, which
          matches exact paths and is the right tool for a one-off. */
+      /* The behaviour reference compares programmes at /compare-courses and
+         the design's course finder lived at /course-finder; both answer on
+         this site's own addresses. A config redirect carries the query on,
+         so the reference's `?ids=` reaches the comparison (which reads it)
+         and a finder's filters reach /courses. */
+      { source: '/compare-courses', destination: '/compare/courses', permanent: true },
+      { source: '/course-finder', destination: '/courses', permanent: true },
     ];
   },
   // The App Router's file-system matcher does not register a route for a

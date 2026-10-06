@@ -15,7 +15,8 @@
  * Kept free of Prisma and Nest so the rules can be tested as plain data.
  */
 
-type Numeric = { toString(): string } | string | number | null | undefined;
+export type Numeric =
+  { toString(): string } | string | number | null | undefined;
 
 /**
  * How many of one university's courses a read takes. The list counts its
@@ -49,9 +50,37 @@ export type IntakeLike = {
 
 export type NamedLike = { name: string; slug: string };
 
+/** A requirement a course lists, as far as the lists read one: what kind it
+ * is, what it names and the score it asks for. */
+export type RequirementLike = {
+  category: string;
+  title: string;
+  minimumScore?: Numeric;
+};
+
 export type OfferingLike = {
   name: string;
   slug: string;
+  /* Where a course is listed away from its own university's list -- the
+     programme finder, the destination pages -- the row carries its
+     university, so a search for "Warwick", "United Kingdom" or "Coventry"
+     can find it. A university's own list adds it before searching. */
+  university?: {
+    name: string;
+    slug: string;
+    country?:
+      | (NamedLike & {
+          iso2Code?: string | null;
+          /** Whether the country lets graduates stay on to work. */
+          postStudyWork?: boolean | null;
+        })
+      | null;
+    campuses?: Array<{ city?: string | null }>;
+  } | null;
+  /** The English-language requirements, which the score filters read. */
+  requirements?: RequirementLike[];
+  publishedAt?: Date | string | null;
+  createdAt?: Date | string | null;
   courseCode?: string | null;
   studyMode?: string | null;
   durationMin?: Numeric;
@@ -62,6 +91,7 @@ export type OfferingLike = {
   courseLevel?: LevelLike | null;
   campus?: (NamedLike & { city?: string | null }) | null;
   genericCourse?: {
+    slug?: string | null;
     name?: string | null;
     shortName?: string | null;
     qualificationName?: string | null;
@@ -79,15 +109,19 @@ export type OfferingLike = {
   _count?: { scholarships?: number };
 };
 
-type Query = Record<string, string | string[] | undefined>;
+export type Query = Record<string, string | string[] | undefined>;
 
-export type CourseSort = 'relevance' | 'name' | 'fee' | 'deadline' | 'duration';
-const SORTS: readonly CourseSort[] = [
+export type CourseSort =
+  'relevance' | 'name' | 'fee' | 'deadline' | 'duration' | 'newest';
+/* "Newest" is the course list's "Recently added", kept because the course
+   finder offered it before it listed programmes. */
+export const COURSE_SORTS: readonly CourseSort[] = [
   'relevance',
   'name',
   'fee',
   'deadline',
   'duration',
+  'newest',
 ];
 
 /**
@@ -117,14 +151,14 @@ export type CourseQuery = {
 
 export type FacetOption = { value: string; label: string; count: number };
 
-const number = (value: Numeric): number | null => {
+export const number = (value: Numeric): number | null => {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(String(value));
   return Number.isFinite(parsed) ? parsed : null;
 };
 
 /** "accounting, finance" and ?subject=a&subject=b both mean two subjects. */
-function values(query: Query, ...keys: string[]): string[] {
+export function values(query: Query, ...keys: string[]): string[] {
   const seen = new Set<string>();
   for (const key of keys) {
     const raw = query[key];
@@ -136,7 +170,7 @@ function values(query: Query, ...keys: string[]): string[] {
   return [...seen];
 }
 
-const fold = (value: string) =>
+export const fold = (value: string) =>
   value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /**
@@ -172,7 +206,7 @@ export function parseCourseQuery(query: Query): CourseQuery {
       first('scholarship') === 'true',
     tuitionMin: money('tuitionMin'),
     tuitionMax: money('tuitionMax'),
-    sort: SORTS.includes(sort) ? sort : 'relevance',
+    sort: COURSE_SORTS.includes(sort) ? sort : 'relevance',
   };
 }
 
@@ -271,6 +305,25 @@ export function nextDeadline(
   return best === null ? null : new Date(best);
 }
 
+/**
+ * The city a course is taught in: its campus's, else the first city its
+ * university records. A course filed under no campus is still taught
+ * somewhere, and the university's own city is the honest answer to where.
+ */
+export function courseCity(row: OfferingLike): string | null {
+  const own = row.campus?.city?.trim();
+  if (own) return own;
+  for (const campus of row.university?.campuses ?? []) {
+    const city = campus.city?.trim();
+    if (city) return city;
+  }
+  return null;
+}
+
+/* The search box promises course, subject, specialization, university and
+   country, and the reference's matches the city too. The university, its
+   country and the city were left out, so "Warwick" found nothing even on
+   Warwick's own list. */
 function searchable(row: OfferingLike) {
   const generic = row.genericCourse;
   return fold(
@@ -283,6 +336,9 @@ function searchable(row: OfferingLike) {
       generic?.subject?.name,
       generic?.subSubject?.name,
       effectiveLevel(row)?.name,
+      row.university?.name,
+      row.university?.country?.name,
+      courseCity(row),
     ]
       .filter(Boolean)
       .join(' '),
@@ -350,6 +406,13 @@ function nullsLast(a: number | null, b: number | null) {
   return a - b;
 }
 
+function addedAt(row: OfferingLike): number | null {
+  const value = row.publishedAt ?? row.createdAt;
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
 /**
  * The list's order. Relevance is the reference's default: by study level in
  * academic order, Bachelor's before Master's, then by name -- a student
@@ -392,6 +455,12 @@ export function sortOfferings<T extends OfferingLike>(
             durationMonths(b)?.low ?? null,
           ) || byName(a, b),
       );
+    /* Most recently published first; a row never published counts from
+       when it was created. */
+    case 'newest':
+      return sorted.sort(
+        (a, b) => nullsLast(addedAt(b), addedAt(a)) || byName(a, b),
+      );
     default:
       return sorted.sort(
         (a, b) => nullsLast(levelOrder(a), levelOrder(b)) || byName(a, b),
@@ -399,16 +468,16 @@ export function sortOfferings<T extends OfferingLike>(
   }
 }
 
-const humanise = (value: string) =>
+export const humanise = (value: string) =>
   value
     .toLowerCase()
     .replace(/_/g, ' ')
     .replace(/^\w/, (c) => c.toUpperCase());
 
-function tally<E extends FacetOption>(
-  rows: OfferingLike[],
-  pick: (row: OfferingLike) => Array<Omit<E, 'count'>>,
-): E[] {
+export function tally<
+  E extends FacetOption,
+  R extends OfferingLike = OfferingLike,
+>(rows: R[], pick: (row: R) => Array<Omit<E, 'count'>>): E[] {
   const map = new Map<string, E>();
   for (const row of rows)
     for (const option of pick(row)) {
@@ -419,7 +488,7 @@ function tally<E extends FacetOption>(
   return [...map.values()];
 }
 
-const mostFirst = (a: FacetOption, b: FacetOption) =>
+export const mostFirst = (a: FacetOption, b: FacetOption) =>
   b.count - a.count || a.label.localeCompare(b.label);
 
 /**
