@@ -287,7 +287,13 @@ describe('what a search engine is told', () => {
   });
 
   it('keeps a filtered, searched or sorted list out of the index, its links followed', async () => {
-    for (const query of [{ university: 'university-of-warwick' }, { q: 'data' }, { sort: 'name' }, { page: '2' }]) {
+    const narrowed: Array<Record<string, string>> = [
+      { university: 'university-of-warwick' },
+      { q: 'data' },
+      { sort: 'name' },
+      { page: '2' },
+    ];
+    for (const query of narrowed) {
       const meta = await metadata(query);
       expect(meta.robots).toEqual({ index: false, follow: true });
       expect(meta.alternates).toBeUndefined();

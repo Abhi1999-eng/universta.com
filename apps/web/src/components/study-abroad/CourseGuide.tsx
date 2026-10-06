@@ -111,7 +111,9 @@ export function CourseGuide({
      not hold says so rather than dropping its row. */
   const duration = durationLabel(course);
   const modes = (course.studyModes ?? []).map((mode) => mode.name).join(', ');
-  const intakesHere = atHere ? intakeRows(atHere).map((row) => row.name) : [];
+  const intakesHere = [
+    ...new Set(atHere ? intakeRows(atHere).map((row) => row.name) : []),
+  ];
   const glance: Array<{ label: string; value: string | null; note?: string | null }> = [
     {
       label: 'Level',
@@ -140,7 +142,7 @@ export function CourseGuide({
           },
           {
             label: intakesHere.length > 1 ? 'Intakes' : 'Intake',
-            value: [...new Set(intakesHere)].join(' · ') || null,
+            value: intakesHere.join(' · ') || null,
           },
         ]
       : []),

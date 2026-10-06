@@ -148,16 +148,8 @@ export default async function Page({ params, searchParams }: Params) {
      band's groups; and the universities' programmes here, as the address
      filters them. Read together, and each failure costs only what it
      feeds. */
-  const [
-    levels,
-    filters,
-    tabs,
-    teaching,
-    scholarships,
-    consultants,
-    allLevels,
-    programmes,
-  ] = await Promise.all([
+  const [levels, filters, tabs, teaching, scholarships, consultants, allLevels, programmes] =
+    await Promise.all([
       getCoursesByLevel({
         subject: subject.slug,
         subSubject: specialization.slug,
