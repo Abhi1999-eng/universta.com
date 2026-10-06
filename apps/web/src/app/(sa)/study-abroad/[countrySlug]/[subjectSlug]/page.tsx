@@ -20,11 +20,13 @@ import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
 import { guideLinks } from '@/lib/study-abroad-view';
 import {
   getCourseFilterOptions,
+  getCourseLevels,
   getCourses,
   getCoursesByLevel,
   getSubject,
 } from '@/lib/catalog';
 import {
+  everyLevel,
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
   levelTotal,
@@ -111,7 +113,7 @@ export default async function Page({ params }: Params) {
      courses per specialization and name its intakes; the tab strip; and
      the universities that teach the field here. Read together, and each
      failure costs only what it feeds. */
-  const [levels, filters, tabs, universities] = await Promise.all([
+  const [levels, filters, tabs, universities, allLevels] = await Promise.all([
     getCoursesByLevel({
       subject: subject.slug,
       country: country.slug,
@@ -126,6 +128,9 @@ export default async function Page({ params }: Params) {
        once, for the figures, the closing band's group and its link to the
        rest of them. */
     subjectUniversitiesGroup(country.slug, subject, where),
+    /* Every study level, so the six the page always shows are there even
+       where nothing is listed at them here yet. */
+    getCourseLevels().catch(() => null),
   ]);
   /* When the grouped read fails the page falls back to the six mixed
      courses it always showed, rather than to no courses. */
@@ -137,6 +142,10 @@ export default async function Page({ params }: Params) {
         limit: '6',
       }).catch(() => null);
   const shown = programmesHere(levels, courses);
+  /* What the level block draws: the levels with courses here, and the
+     always-shown ones that have none. `levels` stays what is listed. */
+  const levelBlock = everyLevel(levels, allLevels);
+  const emptyLevel = `No ${subject.name} programme in ${where} is listed at this level yet.`;
   const filed =
     shown === 'levels'
       ? levelTotal(levels ?? [])
@@ -348,7 +357,8 @@ export default async function Page({ params }: Params) {
             </Link>
           </div>
           <CourseLevels
-            groups={levels}
+            groups={levelBlock ?? levels}
+            emptyNote={emptyLevel}
             allHref={(level) =>
               levelCoursesHref({
                 subject: subject.slug,
@@ -432,6 +442,24 @@ export default async function Page({ params }: Params) {
               },
             ]}
           />
+          {/* The levels still show, each saying it has nothing here yet,
+              so the page reads the same shape whatever is listed. */}
+          {levelBlock?.length ? (
+            <div className="fieldnone__levels">
+              <CourseLevels
+                groups={levelBlock}
+                emptyNote={emptyLevel}
+                allHref={(level) =>
+                  levelCoursesHref({
+                    subject: subject.slug,
+                    country: country.slug,
+                    level,
+                  })
+                }
+                courseHref={(course) => courseHref(course.slug)}
+              />
+            </div>
+          ) : null}
         </section>
       ) : null}
 

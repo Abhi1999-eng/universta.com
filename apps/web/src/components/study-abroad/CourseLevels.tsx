@@ -23,17 +23,21 @@ import { formatNumber } from '@/lib/format';
  * country's courses under subjects this way; this is the same block with
  * levels as the groups.
  *
- * A level with no courses is not here -- the catalogue does not send one --
- * and with no courses at all the block is not rendered, like every other
- * section on these pages.
+ * The six levels the client named are always here, each saying so where
+ * nothing is listed at it (see `everyLevel`); any other level shows only
+ * where something is. An empty level has no link to a list, because the
+ * list it would open is empty too.
  */
 export function CourseLevels({
   groups,
   allHref,
   courseHref = (course) => `/courses/${course.slug}`,
   branch = true,
+  emptyNote = 'Nothing is listed at this level yet.',
 }: {
   groups: CourseLevelGroup[];
+  /** What a level with nothing listed says under its name. */
+  emptyNote?: string;
   /** Where a level's whole list is: the course search, filtered to it. */
   allHref: (levelCode: string) => string;
   courseHref?: (course: Course) => string;
@@ -65,7 +69,7 @@ export function CourseLevels({
           <span className="filters__label">Study level</span>
           {groups.map((group) => (
             <a
-              className="chipbtn"
+              className={`chipbtn${group.count ? '' : ' chipbtn--none'}`}
               href={`#${levelAnchor(group.level.code)}`}
               key={group.level.id}
             >
@@ -78,6 +82,26 @@ export function CourseLevels({
 
       <div className="coursegroups coursegroups--stack">
         {groups.map((group) => {
+          if (!group.count)
+            return (
+              <section
+                className="coursegroup coursegroup--empty scrollstop"
+                id={levelAnchor(group.level.code)}
+                key={group.level.id}
+                aria-labelledby={`${levelAnchor(group.level.code)}-h`}
+              >
+                <h3
+                  className="coursegroup__title"
+                  id={`${levelAnchor(group.level.code)}-h`}
+                >
+                  <span className="coursegroup__head">
+                    <span className="coursegroup__name">{group.level.name}</span>
+                    <span className="coursegroup__n">0 courses</span>
+                  </span>
+                </h3>
+                <p className="coursegroup__none">{emptyNote}</p>
+              </section>
+            );
           const first = group.courses.slice(0, LEVEL_ROWS_SHOWN);
           const rest = group.courses.slice(LEVEL_ROWS_SHOWN);
           const beyond = group.count - group.courses.length;

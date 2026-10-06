@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getCoursesByLevel, getSpecialization } from '@/lib/catalog';
-import { LEVEL_ROWS_FETCHED } from '@/lib/course-levels';
+import { getCourseLevels, getCoursesByLevel, getSpecialization } from '@/lib/catalog';
+import { everyLevel, LEVEL_ROWS_FETCHED } from '@/lib/course-levels';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
 import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
@@ -48,7 +48,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
   const specialization = await load(slug, specializationSlug);
   if (!specialization) notFound();
 
-  const [levels, scholarships] = await Promise.all([
+  const [levels, scholarships, allLevels] = await Promise.all([
     /* Its courses under their levels. Both halves of the pair go with the
        request: the specialization's slug alone would also match the branch
        of the same name under another subject. */
@@ -66,6 +66,9 @@ export default async function SpecializationDetailPage({ params }: Props) {
     })
       .then((result) => toScholarshipCards(result.data))
       .catch(() => []),
+    /* Every study level, so the six the page always shows are there even
+       where nothing is listed at them yet. */
+    getCourseLevels().catch(() => null),
   ]);
 
   const breadcrumb = {
@@ -102,7 +105,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
       />
       <SpecializationGuide
         specialization={specialization}
-        levels={levels}
+        levels={everyLevel(levels, allLevels)}
         scholarships={scholarships}
       />
     </>

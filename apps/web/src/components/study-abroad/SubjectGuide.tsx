@@ -102,10 +102,14 @@ export function SubjectGuide({
   const destinationCount = subject.availableCountryCount ?? teaching.length;
   const courses: Course[] = subject.featuredCourses ?? [];
   const groups = levelGroups ?? [];
+  /* The levels with something listed. `groups` also holds the levels the
+     page always shows, empty ones included, which the block draws and the
+     figures must not count as taught. */
+  const taught = groups.filter((group) => group.count > 0);
   /* In academic order where the grouped read supplied it; the subject's own
      counts arrive in that order too. */
-  const levels = groups.length
-    ? groups.map((group) => ({ level: group.level, count: group.count }))
+  const levels = taught.length
+    ? taught.map((group) => ({ level: group.level, count: group.count }))
     : (subject.courseCountsByLevel ?? []);
   const levelOrder = levels.flatMap((row) => (row.level.code ? [row.level.code] : []));
   const filed = levelTotal(groups);
@@ -328,7 +332,9 @@ export function SubjectGuide({
               }
               lead={
                 groups.length
-                  ? `${formatNumber(filed)} ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
+                  ? filed
+                    ? `${formatNumber(filed)} ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
+                    : `No ${subject.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
                   : levels.length
                     ? levels
                         .map((row) => `${row.level.name} (${row.count})`)
@@ -336,18 +342,22 @@ export function SubjectGuide({
                     : undefined
               }
             >
-              <p className="sec-head__cta">
-                <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
-                  Every {subject.name} programme{' '}
-                  <span className="linkcta__arrow" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-              </p>
+              {/* A search with nothing in it is not a way on. */}
+              {filed || courses.length ? (
+                <p className="sec-head__cta">
+                  <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
+                    Every {subject.name} programme{' '}
+                    <span className="linkcta__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </Link>
+                </p>
+              ) : null}
             </SectionHead>
             {groups.length ? (
               <CourseLevels
                 groups={groups}
+                emptyNote={`No ${subject.name} programme is listed at this level yet.`}
                 allHref={(level) =>
                   levelCoursesHref({ subject: subject.slug, level })
                 }
