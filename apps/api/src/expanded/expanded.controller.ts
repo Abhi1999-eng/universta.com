@@ -133,6 +133,34 @@ export class ExpandedPublicController {
       await this.service.universityOfferings(slug, offeringSlug),
     );
   }
+  /* Programmes across every university, for the course finder. Declared
+     before `:resource`, which would otherwise take "programmes" for an
+     unknown kind of content and answer 404. */
+  @Get('programmes') async programmes(
+    @Req() req: RequestWithId,
+    @Query() query: Record<string, string | string[]>,
+  ) {
+    return successEnvelope(req, await this.service.programmes(query));
+  }
+  @Get('programmes/suggestions') async programmeSuggestions(
+    @Req() req: RequestWithId,
+    @Query('q') q?: string,
+  ) {
+    return successEnvelope(req, await this.service.programmeSuggestions(q));
+  }
+  @Get('programmes/addresses') async programmeAddresses(
+    @Req() req: RequestWithId,
+    @Query() query: Record<string, string>,
+  ) {
+    const result = await this.service.programmeAddresses(query);
+    return successEnvelope(req, result.data, result.meta);
+  }
+  @Get('course-slugs/:slug') async courseSlug(
+    @Req() req: RequestWithId,
+    @Param('slug') slug: string,
+  ) {
+    return successEnvelope(req, await this.service.resolveCourseSlug(slug));
+  }
   @Get('consultant-locations/:slug') async location(
     @Req() req: RequestWithId,
     @Param('slug') slug: string,
