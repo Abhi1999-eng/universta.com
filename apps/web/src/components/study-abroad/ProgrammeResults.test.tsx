@@ -164,7 +164,7 @@ describe('the programme results block', () => {
     });
     expect(html).toContain('No programme matches these filters. Remove a filter to see more.');
     expect(html).toContain('3 course guides match');
-    expect(html).toContain('aria-label="Remove atlantis"');
+    expect(html).toContain('aria-label="Remove Atlantis"');
     /* A value nothing carries is still a box to untick. */
     expect(html).toContain('name="country" checked="" value="atlantis"');
   });

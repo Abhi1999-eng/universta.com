@@ -37,7 +37,9 @@ const OWN_CHROME_PREFIXES = [
  * page are still the older template and need the site chrome, so these match
  * a path rather than the family. The course comparison has moved into the
  * design; the other comparisons have not. */
-const OWN_CHROME_PATHS = ['/universities', '/compare/courses'];
+/* Search also lives in the Study Abroad layout, so its own navigation must
+   replace the global header on first load and after a client navigation. */
+const OWN_CHROME_PATHS = ['/universities', '/compare/courses', '/search'];
 const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/];
 
 export function ownsItsChrome(path: string | null | undefined): boolean {

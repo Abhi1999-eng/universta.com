@@ -364,7 +364,7 @@ describe('/courses, the programme finder', () => {
       '/courses?view=guides#discovery',
     );
     const chip = page.querySelector('.activechip')!;
-    expect(chip.textContent).toContain('atlantis');
+    expect(chip.textContent).toContain('Atlantis');
     expect(chip.getAttribute('rel')).toBe('nofollow');
   });
 

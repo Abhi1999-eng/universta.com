@@ -247,7 +247,7 @@ describe('/courses', () => {
     const html = await page({ course: 'ba-law-15' });
     expect(html).toContain('aria-label="Remove BA Law"');
     /* A slug that is no guide stays as it was written. */
-    expect(await page({ course: 'no-such-course' })).toContain('aria-label="Remove no-such-course"');
+    expect(await page({ course: 'no-such-course' })).toContain('aria-label="Remove No Such Course"');
   });
 
   it('still lists programmes when only the course guides are down', async () => {

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-/* The address as the router reports it, and its refresh, which the list
-   asks for when it holds fewer pages than the address names. */
+/* Back restores missing pages in place, keeping the router's own state and
+   the reader's scroll position. */
 const address = { search: '' };
 const refresh = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -45,9 +45,14 @@ const cards = (from: number, count: number) =>
 let host: HTMLDivElement;
 let root: Root;
 const replaceState = vi.spyOn(window.history, 'replaceState');
+const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+const routerState = { __NA: true, tree: ['router-state'] };
 
 beforeEach(() => {
+  window.history.replaceState(routerState, '', base);
+  Object.defineProperty(window, 'scrollY', { value: 1750, configurable: true });
   replaceState.mockClear();
+  scrollTo.mockClear();
   refresh.mockClear();
   address.search = '';
   host = document.createElement('div');
@@ -96,11 +101,15 @@ describe('Load more courses', () => {
 
     await act(async () => button()!.click());
     expect(host.querySelectorAll('.coursecard')).toHaveLength(36);
-    expect(replaceState).toHaveBeenLastCalledWith(null, '', `${base}?level=PG&page=2`);
+    expect(replaceState).toHaveBeenLastCalledWith(
+      { ...routerState, programmeListScroll: 1750 }, '', `${base}?level=PG&page=2`,
+    );
 
     await act(async () => button()!.click());
     expect(host.querySelectorAll('.coursecard')).toHaveLength(40);
-    expect(replaceState).toHaveBeenLastCalledWith(null, '', `${base}?level=PG&page=3`);
+    expect(replaceState).toHaveBeenLastCalledWith(
+      { ...routerState, programmeListScroll: 1750 }, '', `${base}?level=PG&page=3`,
+    );
     expect(button()).toBeNull();
     expect(host.textContent).toContain('Showing 40 of 40');
     expect(refresh).not.toHaveBeenCalled();
@@ -108,10 +117,24 @@ describe('Load more courses', () => {
 
   it('asks the server again when Back brings the list back shorter than its address', async () => {
     address.search = 'level=PG&page=2';
+    window.history.replaceState(
+      { ...routerState, programmeListScroll: 2500 }, '', `${base}?level=PG&page=2`,
+    );
     await act(async () => {
       root.render(results(1));
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const requested = new URL(vi.mocked(fetch).mock.calls[0][0] as string, 'http://localhost');
+    expect(requested.pathname).toBe('/api/university-courses');
+    expect(requested.searchParams.get('university')).toBe('university-of-oxford');
+    expect(requested.searchParams.get('level')).toBe('PG');
+    expect(requested.searchParams.get('page')).toBe('2');
+    expect(host.querySelectorAll('.coursecard')).toHaveLength(36);
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 2500);
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it('leaves a list alone that already holds what its address names', async () => {
@@ -120,6 +143,7 @@ describe('Load more courses', () => {
       root.render(results(2));
     });
     expect(host.querySelectorAll('.coursecard')).toHaveLength(36);
+    expect(fetch).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
 });

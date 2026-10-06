@@ -23,6 +23,8 @@ describe('which routes wear their own header and footer', () => {
   it('owns the course comparison, the directory and a university guide, and no deeper', () => {
     expect(ownsItsChrome('/compare/courses')).toBe(true);
     expect(ownsItsChrome('/universities')).toBe(true);
+    expect(ownsItsChrome('/search')).toBe(true);
+    expect(ownsItsChrome('/search/other')).toBe(false);
     expect(ownsItsChrome('/universities/university-of-warwick')).toBe(true);
     expect(ownsItsChrome('/universities/university-of-warwick/claim')).toBe(false);
     expect(ownsItsChrome('/compare/universities')).toBe(false);
