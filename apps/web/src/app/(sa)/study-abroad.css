@@ -1487,7 +1487,7 @@
   font-size: 20px; letter-spacing: -0.02em; margin-bottom: 14px;
 }
 .sa .srch__n{ font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
-.sa .srch__grid{ display: grid; gap: 10px; grid-template-columns: 1fr; margin-bottom: 14px; }
+.sa .srch__grid{ display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
 @media (min-width: 640px){ .sa .srch__grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1040px){ .sa .srch__grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .sa .srch__card{
