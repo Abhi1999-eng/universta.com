@@ -201,11 +201,14 @@ describe('the course page', () => {
     /* The modifier carries the sections' scroll offset, so a tab, or the
        hero's #eligibility link, lands a section below the sticky strip. */
     expect(html).toContain('<nav class="unitabs unitabs--sections" aria-label="Course sections">');
-    for (const id of ['overview', 'fees', 'intakes', 'eligibility', 'apply', 'careers', 'university', 'more', 'elsewhere'])
+    for (const id of ['overview', 'curriculum', 'fees', 'intakes', 'eligibility', 'apply', 'careers', 'university', 'more', 'elsewhere'])
       expect(html).toContain(`href="#${id}"`);
     expect(html).not.toContain('href="#similar"');
     expect(html).not.toContain('href="#scholarships"');
-    expect(html).toMatch(/eyebrow__n">06<\/span>(?:\s|<!-- -->)*Careers/);
+    /* The curriculum is second, where the design puts it, so careers is
+       seventh. */
+    expect(html).toMatch(/eyebrow__n">02<\/span>(?:\s|<!-- -->)*Curriculum/);
+    expect(html).toMatch(/eyebrow__n">07<\/span>(?:\s|<!-- -->)*Careers/);
   });
 
   it('ends with the university’s other courses and this course at other universities', () => {
@@ -225,6 +228,62 @@ describe('the course page', () => {
     expect(html).toContain('course=msc-computer-science');
     expect(html).toContain('Apply with Universta');
     expect(html).toContain('Add to comparison');
+  });
+
+  it('draws Save as the design’s heart, “Save course”, beside Apply and the comparison', () => {
+    const html = render();
+    const tools = html.slice(html.indexOf('uc-hero-tools'), html.indexOf('</aside>'));
+    expect(tools).toMatch(
+      /<button type="button" class="iconbtn" aria-pressed="false"><svg[^>]*><path d="M20\.8 5\.6[^"]*"><\/path><\/svg><span>Save course<\/span><\/button>/,
+    );
+    /* The phase-1 button it replaces is gone; Apply stays beside it. */
+    expect(tools).not.toContain('class="button secondary"');
+    expect(tools).toContain('Apply with Universta');
+    expect(tools).toContain('Add to comparison');
+  });
+
+  it('says what will be studied is not in our data, and links the course’s official page', () => {
+    const html = render(
+      detail({
+        sourceReference: 'https://example.invalid/msc',
+        applicationUrl: 'https://example.invalid/apply',
+      }),
+    );
+    const curriculum = html.slice(html.indexOf('id="curriculum"'), html.indexOf('id="fees"'));
+    expect(curriculum).toContain('What will you study?');
+    expect(curriculum).toContain('A semester-by-semester structure is not in our data for this course.');
+    expect(curriculum).toContain(
+      '<a href="https://example.invalid/msc" rel="nofollow noopener" target="_blank">Official course page ↗</a>',
+    );
+    expect(html).toContain('<a href="#curriculum">Curriculum</a>');
+  });
+
+  it('falls back on the application page, then the university’s site, for the modules', () => {
+    const apply = render(detail({ applicationUrl: 'https://example.invalid/apply' }));
+    expect(apply.slice(apply.indexOf('id="curriculum"'), apply.indexOf('id="fees"'))).toContain(
+      'href="https://example.invalid/apply"',
+    );
+    const site = render(
+      detail({ university: { ...apiRow().university, websiteUrl: 'https://www.ox.ac.uk' } }),
+    );
+    const block = site.slice(site.indexOf('id="curriculum"'), site.indexOf('id="fees"'));
+    expect(block).toContain('Check the official university website for the current module sequence.');
+    expect(block).toContain('Official university website ↗');
+  });
+
+  it('points to a counsellor for the modules when there is no official page to link', () => {
+    const html = render();
+    const curriculum = html.slice(html.indexOf('id="curriculum"'), html.indexOf('id="fees"'));
+    expect(curriculum).not.toContain('target="_blank"');
+    expect(curriculum).toContain('Talk to a counsellor</a>, who can confirm the modules with the university.');
+  });
+
+  it('keeps every section and tab it had before the curriculum', () => {
+    const html = render(detail({ genericCourse: { ...generic, careerSummary: 'Research roles.' } }));
+    for (const id of ['overview', 'fees', 'intakes', 'eligibility', 'apply', 'talk', 'careers', 'university', 'more', 'elsewhere'])
+      expect(html).toContain(`id="${id}"`);
+    for (const label of ['Overview', 'Fees', 'Intakes', 'Eligibility', 'How to apply', 'Careers', 'University', 'More courses', 'Other universities'])
+      expect(html).toContain(`>${label}</a>`);
   });
 
   it('resolves the overview’s content variables', () => {
@@ -405,7 +464,7 @@ describe('what the course page reads from its destination and its course', () =>
       />,
     );
     expect(html).toContain('<a href="#faqs">FAQs</a>');
-    expect(html).toMatch(/eyebrow__n">07<\/span>(?:\s|<!-- -->)*Questions/);
+    expect(html).toMatch(/eyebrow__n">08<\/span>(?:\s|<!-- -->)*Questions/);
     expect(html).toContain('About this course');
     expect(html).toContain('Do I need a computing degree?');
     expect(html).not.toContain('Empty one');

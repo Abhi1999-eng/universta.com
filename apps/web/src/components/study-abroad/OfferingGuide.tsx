@@ -46,10 +46,13 @@ import { countryConsultantsHref } from '@/lib/country-consultant-list';
  * page ends with the same course at other universities, each linking to
  * that university's own version of it.
  *
- * Nothing is invented to fill a gap. The design's curriculum modules and
- * document checklist read records this catalogue does not keep per course,
- * so they are not drawn. Its course FAQ is drawn from the questions editors
- * wrote for the course, and only when there are some.
+ * Nothing is invented to fill a gap. The design's curriculum lists modules
+ * this catalogue does not keep per course, so its "What will you study?"
+ * section is drawn the way the design draws a course without them: it says
+ * the structure is not in our data and points to the official page. The
+ * design's document checklist reads records the catalogue does not keep
+ * either, and is not drawn. Its course FAQ is drawn from the questions
+ * editors wrote for the course, and only when there are some.
  */
 
 const NOT_LISTED = 'Not listed';
@@ -122,6 +125,18 @@ export function OfferingGuide({
       : detail.sourceReference
         ? { href: detail.sourceReference, label: 'The university’s course page' }
         : null;
+  /* For the modules, the course's own page before the university's site:
+     that is where a module list lives. */
+  const modulesPage = detail.sourceReference ?? detail.applicationUrl;
+  const modulesSource = modulesPage
+    ? { href: modulesPage, label: 'Official course page', named: 'the official course page' }
+    : university.websiteUrl
+      ? {
+          href: university.websiteUrl,
+          label: 'Official university website',
+          named: 'the official university website',
+        }
+      : null;
 
   /* The next deadline still to come; failing that, the last one recorded,
      marked as passed rather than presented as open. */
@@ -154,6 +169,7 @@ export function OfferingGuide({
      questions follow the careers band, where the design puts them. */
   const numbered: Array<[string, string]> = [
     ['overview', 'Overview'],
+    ['curriculum', 'Curriculum'],
     ['fees', 'Fees'],
     ['intakes', 'Intakes'],
     ['eligibility', 'Eligibility'],
@@ -357,6 +373,7 @@ export function OfferingGuide({
                   kind="offerings"
                   entityId={card.id}
                   offeringId={card.id}
+                  variant="heart"
                 />
                 <CompareButton
                   item={{ slug: card.slug, name: `${card.name} · ${university.name}` }}
@@ -476,6 +493,31 @@ export function OfferingGuide({
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* The design's module list, for a course without one: what it says
+          then, with the way to the page that does have it. */}
+      <section className={`${band('curriculum')} uc-curriculum`} id="curriculum">
+        <div className="wrap">
+          <SectionHead n={n('curriculum')} eyebrow="Curriculum" title="What will you study?">
+            <p className="modnote uc-modnote">
+              A semester-by-semester structure is not in our data for this course.{' '}
+              {modulesSource ? (
+                <>
+                  Check {modulesSource.named} for the current module sequence.{' '}
+                  <a href={modulesSource.href} rel="nofollow noopener" target="_blank">
+                    {`${modulesSource.label} ↗`}
+                  </a>
+                </>
+              ) : (
+                <>
+                  <Link href={counselling}>Talk to a counsellor</Link>, who can
+                  confirm the modules with the university.
+                </>
+              )}
+            </p>
+          </SectionHead>
         </div>
       </section>
 

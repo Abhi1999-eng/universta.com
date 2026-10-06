@@ -38,8 +38,9 @@ const OWN_CHROME_PREFIXES = [
  * moved. The university directory and a university's own guide are built on
  * the approved design and ship its chrome; the claim form and an offering's
  * page are still the older template and need the site chrome, so these match
- * a path rather than the family. */
-const OWN_CHROME_PATHS = ['/universities'];
+ * a path rather than the family. The course comparison has moved into the
+ * design; the other comparisons have not. */
+const OWN_CHROME_PATHS = ['/universities', '/compare/courses'];
 const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/];
 
 function ownsItsChrome(path: string | undefined) {
