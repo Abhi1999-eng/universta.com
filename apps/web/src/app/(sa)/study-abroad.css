@@ -3212,3 +3212,10 @@
 .sa .coursecard__links { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; text-align: right; }
 .sa .coursecard__guide { color: var(--text); }
 .sa .coursecard__guide:hover { color: var(--accent); }
+
+/* The course page: Save as the design's heart, Apply beside it, and the
+   curriculum band, which holds only its note. */
+.sa .uc-hero-tools .student-catalogue-actions .iconbtn:disabled { opacity: .6; cursor: progress; }
+.sa .uc-curriculum .sec-head { margin-bottom: 0; }
+.sa .uc-modnote { margin-top: 0; max-width: 62ch; font-size: 15px; }
+.sa .uc-modnote a { color: var(--text); }
