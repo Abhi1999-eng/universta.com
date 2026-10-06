@@ -47,10 +47,13 @@ import {
   countrySubjectPage,
   figuresHere,
   intakeFigure,
+  listedIntakes,
   overviewParts,
+  programmeCountsHere,
   programmesHere,
   specializationCountsHere,
 } from '@/lib/country-subject';
+import { PROGRAMME_MAX_PAGES } from '@/lib/courses-params';
 import {
   subjectUniversitiesGroup,
   subjectUniversitiesHref,
@@ -129,7 +132,11 @@ export default async function Page({ params, searchParams }: Params) {
   const { page, country, subject } = loaded;
   const where = inCountry(country.name, country.iso2Code);
   const base = `/study-abroad/${country.slug}/${subject.slug}`;
-  const asked = readCourseFilters(await searchParams);
+  const read = readCourseFilters(await searchParams);
+  /* No further than the finder loads. Past it the run asks for more rows
+     than the API serves in one answer, which then sends the first page
+     alone and leaves no way on to the rest. */
+  const asked = { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
   /* What the programme list is fixed to: this country, this field. */
   const scope = { country: [country.slug], subject: [subject.slug] };
 
@@ -201,17 +208,32 @@ export default async function Page({ params, searchParams }: Params) {
     subjectSlug: subject.slug,
     countsHere: specializationCountsHere(filters, subject.slug),
   });
-  const taught = view.specializations.filter((entry) => (entry.here ?? 0) > 0);
+  /* The hero sits over the programme list where there is one, so its
+     specializations are counted from that list too: which of this
+     subject's are taught here, and how many programmes each. The course
+     guides' counts stay with the specialization cards below, which say
+     they count courses. */
+  const hero = listed
+    ? countrySubjectPage({
+        specializations: subject.subSubjects,
+        others: [],
+        subjectSlug: subject.slug,
+        countsHere: programmeCountsHere(listed.facets.specialization),
+      })
+    : view;
+  const taught = hero.specializations.filter((entry) => (entry.here ?? 0) > 0);
   /* The design's strip counts programmes, universities, cities and
-     intakes. Where the universities' programmes are listed here the first
-     three are theirs, counted together so they describe the same list;
+     intakes. Where the universities' programmes are listed here every
+     figure is theirs, counted together so they describe the same list;
      where none are, the strip says what it always said. */
   const figures = figuresHere({
     programmes: listed ? listed.summary.programmes : filed,
     universities: listed ? listed.summary.universities : (universities.total ?? null),
     cities: listed?.summary.cities ?? null,
-    specializations: view.taughtHere,
-    intakes: intakeFigure(filters?.intakes ?? []),
+    specializations: hero.taughtHere,
+    intakes: intakeFigure(
+      listed ? listedIntakes(listed.facets.intake) : (filters?.intakes ?? []),
+    ),
   });
 
   /* The reference opens the page on why the field is worth studying, from

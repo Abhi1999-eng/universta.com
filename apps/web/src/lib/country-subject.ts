@@ -78,6 +78,29 @@ export function specializationCountsHere(
   );
 }
 
+/**
+ * How many programmes one destination lists under each specialization, by
+ * slug, from the programme list's own specialization options.
+ *
+ * Where the universities' programmes are listed, the hero sits straight
+ * above their list, so it has to count what the list counts. It counted the
+ * course guides instead: "Software Engineering 2" over a list whose filter
+ * said Software Engineering 4, and the chip opened a page saying 4
+ * Programmes. The options are counted over the part the list is fixed to --
+ * this country, this subject -- and not over what a reader has ticked, as
+ * the strip's other figures are. Which of them are this subject's own is
+ * the page's to say, from its taxonomy, as it does for the guides' counts.
+ */
+export function programmeCountsHere(
+  options: ReadonlyArray<{ value: string; count: number }>,
+): CountsHere {
+  return new Map(
+    options
+      .filter((option) => option.count > 0)
+      .map((option) => [option.value, option.count]),
+  );
+}
+
 export function countrySubjectPage<
   S extends Specialization,
   O extends SubjectLink,
@@ -160,6 +183,36 @@ export function intakeFigure(
     .sort((a, b) => a[1] - b[1])
     .map(([label]) => label)
     .join(', ');
+}
+
+const MONTH_NAMES = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
+
+/**
+ * The programme list's intakes, as the intakes figure reads them.
+ *
+ * The list labels each intake option for a reader, the way `intakeRange`
+ * writes it -- "September", "September – November" -- and keeps no month
+ * number, so the month an intake opens in is read back from the label's
+ * first word. A label that names no month stands as itself, as an intake
+ * without a month always has.
+ */
+export function listedIntakes(
+  options: ReadonlyArray<{ label: string; count: number }>,
+): Array<{ label: string; startMonth: number | null; count: number }> {
+  return options.map((option) => {
+    const word = option.label.trim().split(/[\s–-]+/)[0]?.toLowerCase() ?? '';
+    const month = MONTH_NAMES.findIndex(
+      (name) => name === word || name.slice(0, 3) === word,
+    );
+    return {
+      label: option.label,
+      startMonth: month < 0 ? null : month + 1,
+      count: option.count,
+    };
+  });
 }
 
 /** One cell of the figures strip under a destination-and-field heading. */

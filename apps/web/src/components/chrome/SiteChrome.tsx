@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { ownsItsChrome } from '@/lib/own-chrome';
 import { getSiteChrome } from '@/lib/site-chrome';
 import { GlobalFooter, GlobalHeader } from './GlobalNav';
 
@@ -12,46 +13,12 @@ import { GlobalFooter, GlobalHeader } from './GlobalNav';
  * The current path comes from a request header set in middleware, because an
  * App Router layout cannot read the pathname directly. It is used only to ask
  * the API which Page/Template override applies -- the chrome components
- * themselves stay single and canonical. */
-
-/** Study Abroad is the one route family that ships its own header and footer
- * as part of the client-approved design, so the site chrome stands down for it
- * rather than stacking a second navigation on top. Every other route is
- * untouched.
+ * themselves stay single and canonical.
  *
- * The homepage is part of that family: the destination listing the approved
- * design published at `/study-abroad` and `/countries` is now the homepage
- * itself, and it arrives wearing the same header and footer as the country
- * guides it links to. */
-const OWN_CHROME_PREFIXES = [
-  '/study-abroad',
-  /* Subjects and specializations are part of the same approved design: the
-     reference builds them from the same stylesheet and the same section
-     bands as the country guides, and they now live in the (sa) route group
-     that ships its header and footer. */
-  '/subjects',
-  '/specializations',
-  '/courses',
-];
-
-/** The same, for the routes under a family whose other children have not
- * moved. The university directory and a university's own guide are built on
- * the approved design and ship its chrome; the claim form and an offering's
- * page are still the older template and need the site chrome, so these match
- * a path rather than the family. The course comparison has moved into the
- * design; the other comparisons have not. */
-const OWN_CHROME_PATHS = ['/universities', '/compare/courses'];
-const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/];
-
-function ownsItsChrome(path: string | undefined) {
-  if (path === '/') return true;
-  if (!path) return false;
-  if (OWN_CHROME_PATHS.includes(path)) return true;
-  if (OWN_CHROME_PATTERNS.some((pattern) => pattern.test(path))) return true;
-  return OWN_CHROME_PREFIXES.some(
-    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
-  );
-}
+ * Which routes wear their own header and footer, so the site chrome stands
+ * down for them, is decided once in `ownsItsChrome`: the header and footer
+ * ask the same question on the client, after a navigation these wrappers
+ * are not rendered again for. */
 
 async function currentPath() {
   try {

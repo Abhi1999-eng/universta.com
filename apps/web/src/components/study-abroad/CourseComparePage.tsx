@@ -241,9 +241,13 @@ export function CourseComparePage({
           ) : (
             <div className="compare-empty">
               <p className="ov__lead">No courses selected yet.</p>
+              {/* With nothing to add, the list above is disabled and no
+                  card carries a Compare tick, so the page says why rather
+                  than asking for either. */}
               <p className="sec-lead">
-                Tick Compare on any course card, or add courses above. Your
-                selection is remembered on this device.
+                {options.length
+                  ? 'Tick Compare on any course card, or add courses above. Your selection is remembered on this device.'
+                  : 'No programmes are listed to compare yet.'}
               </p>
               {/* Only on the bare address: one that names programmes is
                   answered by them, found or not. */}

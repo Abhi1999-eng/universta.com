@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { FlagMark } from './FlagMark';
-import { programmeCount, switcherClass } from './switcher';
+import { switcherClass } from './switcher';
 
 export type SwitcherCountry = {
   id: string;
@@ -37,6 +37,7 @@ export function DestinationSwitcher({
   countries,
   label,
   within,
+  noun = 'programme',
 }: {
   countries: SwitcherCountry[];
   /** What the band is about, for the button and for a screen reader. */
@@ -52,6 +53,11 @@ export function DestinationSwitcher({
    * not cross that boundary.
    */
   within?: string;
+  /** What each chip's count is called, for a screen reader. The counts are
+   *  of the catalogue's courses; beside the universities' programmes they
+   *  are called that, so a chip does not say "6 programmes" and open a page
+   *  that lists 15. */
+  noun?: 'programme' | 'course';
 }) {
   const [open, setOpen] = useState(false);
   const hidden = countries.length - DESTINATIONS_SHOWN;
@@ -76,7 +82,7 @@ export function DestinationSwitcher({
                  nor does a bare figure say what it counts. */
               aria-label={
                 within
-                  ? `${label} in ${country.name}${count ? `, ${programmeCount(count)}` : ''}`
+                  ? `${label} in ${country.name}${count ? `, ${count} ${count === 1 ? noun : `${noun}s`}` : ''}`
                   : undefined
               }
             >

@@ -46,6 +46,21 @@ vi.mock('@/lib/university-related', () => ({
   subjectUniversitiesHref: (country: string, subject: string) =>
     `/study-abroad/${country}/universities?subjects=${subject}`,
 }));
+/* The course guides' own figures for the pair, which the strip and the
+   chips used before any programme was listed: Software Engineering 2 and
+   Machine Learning 1, opening in July, August and September. */
+const guides = vi.hoisted(() => ({
+  subSubjects: [] as Array<{ id: string; name: string; slug: string }>,
+  filters: { intakes: [] as unknown[], subSubjects: [] as unknown[] },
+}));
+const branch = (name: string, slug: string) => ({ id: slug, name, slug });
+const guideOption = (slug: string, count: number) => ({
+  value: slug,
+  label: slug,
+  count,
+  subject: { slug: 'computer-science' },
+});
+const guideIntake = (label: string, startMonth: number) => ({ value: label, label, startMonth, count: 1 });
 vi.mock('@/lib/catalog', () => ({
   getSubject: async () => ({
     id: 'cs',
@@ -54,7 +69,7 @@ vi.mock('@/lib/catalog', () => ({
     shortDescription: null,
     overview: null,
     iconMedia: null,
-    subSubjects: [],
+    subSubjects: guides.subSubjects,
   }),
   getSpecialization: async () => ({
     id: 'se',
@@ -86,7 +101,7 @@ vi.mock('@/lib/catalog', () => ({
       ],
     },
   ],
-  getCourseFilterOptions: async () => ({ intakes: [], subSubjects: [] }),
+  getCourseFilterOptions: async () => guides.filters,
   getCourseLevels: async () => [level],
   getCourses: async () => ({ data: [], meta: { total: 0 } }),
 }));
@@ -132,6 +147,9 @@ vi.mock('@/lib/phase1', () => ({
           { value: 'coventry', label: 'Coventry', count: 1 },
           { value: 'manchester', label: 'Manchester', count: 1 },
         ],
+        intakes: total
+          ? [{ value: 'september', label: 'September', startMonth: 9, endMonth: 9, shortLabel: 'Sep', count: 2 }]
+          : [],
       },
       summary: { programmes: total, universities: total, cities: total ? 3 : 0, intakeMonths: 1, countries: 1 },
     };
@@ -156,6 +174,8 @@ const render = async (query: Record<string, string> = {}) =>
 beforeEach(() => {
   api.reads = [];
   api.programmes = 4;
+  guides.subSubjects = [];
+  guides.filters = { intakes: [], subSubjects: [] };
 });
 
 /**
@@ -271,6 +291,97 @@ describe('a subject in one destination', () => {
       searchParams: Promise.resolve({ level: 'UG' }),
     });
     expect(meta.robots).toEqual({ index: false, follow: true });
+  });
+
+  /* The strip and the chips sit straight above the programme list, so they
+     count what it counts. They counted the course guides: "Software
+     Engineering 2" over a list offering Software Engineering 4, and the
+     chip opened a page saying 4 Programmes. */
+  describe('its hero, over the programme list', () => {
+    const strip = (html: string) =>
+      [...(/<div class="statstrip[^"]*">(.*?)<\/div><\/div>/.exec(html)?.[1] ?? '').matchAll(
+        /<b[^>]*>([^<]+)<\/b><span>([^<]+)<\/span>/g,
+      )].map((cell) => `${cell[1]} ${cell[2]}`);
+    const chips = (html: string) =>
+      [...html.matchAll(/<a class="specchip specchip--live" href="([^"]+)">([^<]+)<em>(\d+)<\/em><\/a>/g)].map(
+        (chip) => `${chip[2]} ${chip[3]} ${chip[1]}`,
+      );
+
+    beforeEach(() => {
+      guides.subSubjects = [
+        branch('Software Engineering', 'software-engineering'),
+        branch('Artificial Intelligence', 'artificial-intelligence'),
+        branch('Machine Learning', 'machine-learning'),
+      ];
+      guides.filters = {
+        intakes: [guideIntake('Jul', 7), guideIntake('Aug', 8), guideIntake('Sep', 9)],
+        subSubjects: [guideOption('software-engineering', 2), guideOption('machine-learning', 1)],
+      };
+    });
+
+    it('counts its specializations, their chips and its intakes from the programmes', async () => {
+      const html = await renderSubject();
+      expect(strip(html)).toEqual([
+        '4 Programmes',
+        '4 Universities',
+        '3 Cities',
+        '2 Specializations taught',
+        'Sep Intakes',
+      ]);
+      expect(chips(html)).toEqual([
+        'Software Engineering 4 /study-abroad/united-kingdom/computer-science/software-engineering',
+        'Artificial Intelligence 1 /study-abroad/united-kingdom/computer-science/artificial-intelligence',
+      ]);
+    });
+
+    it('keeps the course guides’ counts on the specialization cards, which say they count courses', async () => {
+      const html = await renderSubject();
+      const section = html.slice(html.indexOf('id="specializations"'), html.indexOf('id="courses"'));
+      expect(section).toContain('2 courses');
+      expect(section).toContain('1 course');
+    });
+
+    it('counts the course guides, as it always did, where no programme is listed', async () => {
+      api.programmes = 0;
+      const html = await renderSubject();
+      expect(strip(html)).toEqual([
+        '2 Programmes',
+        '11 Universities',
+        '2 Specializations taught',
+        'Jul, Aug, Sep Intakes',
+      ]);
+      expect(chips(html)).toEqual([
+        'Software Engineering 2 /study-abroad/united-kingdom/computer-science/software-engineering',
+        'Machine Learning 1 /study-abroad/united-kingdom/computer-science/machine-learning',
+      ]);
+    });
+  });
+
+  it('asks for no further than the finder loads, as /courses does', async () => {
+    await renderSubject({ page: '25' });
+    expect(api.reads[0]).toMatchObject({ page: '1', limit: '360' });
+  });
+});
+
+describe('a specialization in one destination, its intakes', () => {
+  it('takes them from the programmes listed', async () => {
+    guides.filters = { intakes: [guideIntake('Jul', 7), guideIntake('Sep', 9)], subSubjects: [] };
+    expect(await render()).toMatch(/<b>Sep<\/b><span>Intakes<\/span>/);
+    api.programmes = 0;
+    expect(await render()).toMatch(/<b>Jul, Sep<\/b><span>Intakes<\/span>/);
+  });
+});
+
+/* Past the twentieth page the run asked for more rows than the API serves
+   at once; it answered the first page alone, and the list showed eighteen
+   with no way on to the rest. */
+describe('a specialization in one destination, loaded further', () => {
+  it('asks for no further than the finder loads, as /courses does', async () => {
+    await render({ page: '25' });
+    expect(api.reads[0]).toMatchObject({ page: '1', limit: '360' });
+    api.reads = [];
+    await render({ page: '3' });
+    expect(api.reads[0]).toMatchObject({ limit: '54' });
   });
 });
 

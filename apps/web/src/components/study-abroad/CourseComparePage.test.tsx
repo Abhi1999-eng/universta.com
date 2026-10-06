@@ -270,9 +270,24 @@ describe('the course comparison', () => {
   it('shows the design’s empty state, leading to the course search rather than home', () => {
     const html = render([]);
     expect(html).toContain('No courses selected yet.');
+    expect(html).toContain('Tick Compare on any course card, or add courses above.');
     expect(html).toContain('class="btn" href="/courses"');
     expect(html).not.toContain('href="/">Browse countries');
     expect(html).not.toContain('<table');
+  });
+
+  it('says no programmes are listed, rather than asking for a tick no card has, while there are none', () => {
+    /* Production lists no programmes yet: the list above is disabled and
+       no card anywhere carries a Compare tick. */
+    const html = renderToStaticMarkup(
+      <CourseComparePage requested={[]} columns={[]} invalid={[]} options={[]} />,
+    );
+    expect(html).toContain('No programmes are listed to compare yet.');
+    expect(html).not.toContain('Tick Compare');
+    expect(html).not.toContain('add courses above');
+    expect(html).toContain('No courses to add yet');
+    /* The way on to the course search stays. */
+    expect(html).toContain('class="btn" href="/courses"');
   });
 });
 

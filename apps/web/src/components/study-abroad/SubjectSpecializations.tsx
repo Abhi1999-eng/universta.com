@@ -23,6 +23,7 @@ export function SubjectSpecializations({
   subjectSlug,
   branches,
   levelOrder = [],
+  noun = 'programme',
 }: {
   subjectName: string;
   subjectSlug: string;
@@ -30,6 +31,10 @@ export function SubjectSpecializations({
   /** Level codes in academic order: the subject's own levels, which the
    *  page already has in that order. */
   levelOrder?: string[];
+  /** What each card's count is called. The counts are of the catalogue's
+   *  courses; beside the universities' programmes they are called that, so
+   *  "6 programmes" does not open a page that lists 34. */
+  noun?: 'programme' | 'course';
 }) {
   const levels = useMemo(
     () =>
@@ -96,7 +101,7 @@ export function SubjectSpecializations({
                   {row.publishedCourseCount ? (
                     <span className="speccard__count datum">
                       {formatNumber(row.publishedCourseCount)}{' '}
-                      {row.publishedCourseCount === 1 ? 'programme' : 'programmes'}
+                      {row.publishedCourseCount === 1 ? noun : `${noun}s`}
                     </span>
                   ) : null}
                 </span>

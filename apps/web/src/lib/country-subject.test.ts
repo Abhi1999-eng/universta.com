@@ -3,7 +3,9 @@ import {
   countrySubjectPage,
   figuresHere,
   intakeFigure,
+  listedIntakes,
   overviewParts,
+  programmeCountsHere,
   programmesHere,
   rankSpecializations,
   specializationCountsHere,
@@ -140,6 +142,57 @@ describe("a destination's own counts per specialization", () => {
   });
 });
 
+/* The programme list's specialization options, labelled for a reader as the
+   finder's rail draws them. */
+describe("a destination's programme counts per specialization", () => {
+  const facet = (value: string, count: number) => ({ value, label: value, count });
+
+  it('reads them from the programme list, by slug', () => {
+    const counts = programmeCountsHere([
+      facet('software-engineering', 4),
+      facet('artificial-intelligence', 4),
+    ]);
+    expect(counts?.get('software-engineering')).toBe(4);
+    expect(counts?.get('artificial-intelligence')).toBe(4);
+  });
+
+  it('counts only the ones something is listed under', () => {
+    const counts = programmeCountsHere([facet('machine-learning', 0)]);
+    expect(counts?.has('machine-learning')).toBe(false);
+    expect(programmeCountsHere([])?.size).toBe(0);
+  });
+
+  it("ranks and counts this subject's specializations by them, the rest left out", () => {
+    /* The guides count Software Engineering 2 in the UK; the programmes
+       the hero sits over count 4, and the chip opens a page saying 4. A
+       specialization this subject does not have gets no chip: it would
+       open no page under it. */
+    const view = countrySubjectPage({
+      specializations: [
+        spec('Software Engineering', 'software-engineering', 6),
+        spec('Artificial Intelligence', 'artificial-intelligence', 4),
+        spec('Data Science', 'data-science', 1),
+      ],
+      others: [],
+      subjectSlug: 'computer-science',
+      countsHere: programmeCountsHere([
+        facet('artificial-intelligence', 4),
+        facet('software-engineering', 4),
+        facet('agronomy', 1),
+      ]),
+    });
+    expect(
+      view.specializations
+        .filter((row) => (row.here ?? 0) > 0)
+        .map((row) => [row.slug, row.here]),
+    ).toEqual([
+      ['artificial-intelligence', 4],
+      ['software-engineering', 4],
+    ]);
+    expect(view.taughtHere).toBe(2);
+  });
+});
+
 describe('the specializations ranked by what one destination teaches', () => {
   // Worldwide, Strategic Communication has the most; in the UK it has none.
   const worldwide = [
@@ -244,6 +297,33 @@ describe('the intakes figure', () => {
 
   it("keeps an intake's own label when it has no month", () => {
     expect(intakeFigure([intake('Rolling', null)])).toBe('Rolling');
+  });
+});
+
+describe("the programme list's intakes, as the figure reads them", () => {
+  const option = (label: string, count = 1) => ({ value: label.toLowerCase(), label, count });
+
+  it('reads the month each opens in back from its label', () => {
+    expect(listedIntakes([option('September', 2)])).toEqual([
+      { label: 'September', startMonth: 9, count: 2 },
+    ]);
+    /* A range opens in its first month; a short label names it too. */
+    expect(listedIntakes([option('January – March'), option('May')]).map((row) => row.startMonth)).toEqual([1, 5]);
+    expect(listedIntakes([option('Sep')])[0]?.startMonth).toBe(9);
+  });
+
+  it('gives the strip the same months the list offers', () => {
+    /* The guides' intakes read "Jul, Aug, Sep"; the programmes the strip
+       sits over open in September alone. */
+    expect(intakeFigure(listedIntakes([option('September', 2)]))).toBe('Sep');
+    expect(
+      intakeFigure(listedIntakes([option('September'), option('January'), option('May')])),
+    ).toBe('Jan, May, Sep');
+  });
+
+  it('keeps a label that names no month as itself', () => {
+    expect(listedIntakes([option('Rolling admission')])[0]?.startMonth).toBeNull();
+    expect(intakeFigure(listedIntakes([option('Rolling admission')]))).toBe('Rolling admission');
   });
 });
 

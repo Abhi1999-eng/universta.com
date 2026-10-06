@@ -44,11 +44,13 @@ import { counsellingHref } from '@/lib/counselling-link';
 import {
   figuresHere,
   intakeFigure,
+  listedIntakes,
   overviewParts,
   programmesHere,
   rankSpecializations,
   specializationCountsHere,
 } from '@/lib/country-subject';
+import { PROGRAMME_MAX_PAGES } from '@/lib/courses-params';
 import {
   consultantsGroup,
   scholarshipsGroup,
@@ -134,7 +136,11 @@ export default async function Page({ params, searchParams }: Params) {
   const subject = specialization.subject;
   const subjectHref = `/study-abroad/${country.slug}/${subject.slug}`;
   const self = `${subjectHref}/${specialization.slug}`;
-  const asked = readCourseFilters(await searchParams);
+  const read = readCourseFilters(await searchParams);
+  /* No further than the finder loads. Past it the run asks for more rows
+     than the API serves in one answer, which then sends the first page
+     alone and leaves no way on to the rest. */
+  const asked = { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
   /* What the programme list is fixed to: this country, this field. */
   const scope = {
     country: [country.slug],
@@ -212,14 +218,16 @@ export default async function Page({ params, searchParams }: Params) {
     (entry) => countsHere?.get(entry.slug) ?? 0,
   );
   /* The design's strip counts programmes, universities, cities and
-     intakes. Where the universities' programmes are listed here the first
-     three are theirs, counted together so they describe the same list;
+     intakes. Where the universities' programmes are listed here every
+     figure is theirs, counted together so they describe the same list;
      where none are, the strip says what it always said. */
   const figures = figuresHere({
     programmes: listed ? listed.summary.programmes : total,
     universities: listed ? listed.summary.universities : teaching.total,
     cities: listed?.summary.cities ?? null,
-    intakes: intakeFigure(filters?.intakes ?? []),
+    intakes: intakeFigure(
+      listed ? listedIntakes(listed.facets.intake) : (filters?.intakes ?? []),
+    ),
   });
 
   /* What the specialization is, said for this destination: the reference
