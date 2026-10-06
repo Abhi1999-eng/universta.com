@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeChips,
+  activeFilterCount,
   courseApiParams,
   courseListSearch,
   courseRunMeta,
@@ -13,7 +14,10 @@ import {
   readCourseFilters,
   toCourseFacets,
   toOfferingCard,
+  toProgrammeList,
+  toProgrammeSummary,
   tuitionText,
+  withoutScope,
   withQuery,
 } from './university-courses';
 
@@ -252,6 +256,214 @@ describe('a course as a card', () => {
   it('only strips the university’s own name from the end', () => {
     expect(programmeName('BA Law at Leeds', 'Leeds')).toBe('BA Law');
     expect(programmeName('Studies at Leeds Beckett', 'Leeds')).toBe('Studies at Leeds Beckett');
+  });
+
+  /* The language is read the way the programme's own page reads it: an
+     English requirement means English, with the score as its evidence.
+     Without one the card says nothing about language, which reads "Not
+     listed" -- never an assumption from the country. */
+  it('names its language only from an English requirement, with that evidence', () => {
+    const listed = toOfferingCard(
+      {
+        ...row,
+        requirements: [
+          { category: 'ACADEMIC', title: 'A levels', minimumScore: null },
+          { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '6.50' },
+          { category: 'ENGLISH_TEST', title: 'Placeholder', minimumScore: '5' },
+        ],
+      },
+      owner,
+    )!;
+    expect(listed.language).toEqual({
+      value: 'English',
+      note: 'IELTS Academic 6.5 minimum · Placeholder 5 minimum',
+    });
+    expect(listed.englishTests).toEqual([
+      { test: 'IELTS', title: 'IELTS Academic', minimum: '6.5' },
+      { test: null, title: 'Placeholder', minimum: '5' },
+    ]);
+    const silent = toOfferingCard(row, owner)!;
+    expect(silent.language).toBeNull();
+    expect(silent.englishTests).toEqual([]);
+  });
+
+  it('carries its own id, for a saved list, and the course guide it is an instance of', () => {
+    const card = toOfferingCard(
+      {
+        ...row,
+        genericCourse: { ...row.genericCourse, name: 'MSc Computer Science', slug: 'msc-computer-science' },
+      },
+      owner,
+    )!;
+    expect(card.offeringId).toBe('o1');
+    expect(card.genericCourse).toEqual({ name: 'MSc Computer Science', slug: 'msc-computer-science' });
+    expect(toOfferingCard({ ...row, id: undefined }, owner)!.offeringId).toBeNull();
+  });
+});
+
+describe('the course finder’s address', () => {
+  it('reads the reference’s names and words as ours', () => {
+    const filters = readCourseFilters({
+      level: 'masters,undergraduate',
+      specialization: 'software-engineering',
+      study_mode: 'full-time',
+      pg: '2',
+      sort: 'title',
+    });
+    expect(filters.level).toEqual(['PG', 'UG']);
+    expect(filters.studyMode).toEqual(['FULL_TIME']);
+    expect(filters.page).toBe(2);
+    expect(filters.sort).toBe('name');
+    expect(readCourseFilters({ sort: 'tuition-low' }).sort).toBe('fee');
+    expect(readCourseFilters({ sort: 'featured' }).sort).toBe('relevance');
+    expect(readCourseFilters({ sort: 'newest' }).sort).toBe('newest');
+  });
+
+  it('reads the finder’s filters, and the course list’s old names for them', () => {
+    const filters = readCourseFilters({
+      country: 'united-kingdom',
+      university: 'university-of-warwick',
+      city: 'coventry,london',
+      course: 'msc-computer-science',
+      englishTest: 'ielts',
+      status: 'open,maybe',
+      postStudyWorkAvailable: 'true',
+      ielts: '6.5',
+      toefl: '500',
+      minTuition: '1000',
+      maxTuition: 'lots',
+    });
+    expect(filters.country).toEqual(['united-kingdom']);
+    expect(filters.university).toEqual(['university-of-warwick']);
+    expect(filters.city).toEqual(['coventry', 'london']);
+    expect(filters.course).toEqual(['msc-computer-science']);
+    expect(filters.englishTest).toEqual(['IELTS']);
+    expect(filters.status).toEqual(['open']);
+    expect(filters.postStudyWork).toBe(true);
+    expect(filters.ielts).toBe('6.5');
+    /* A score no test is marked on, and a fee that is not a number, are
+       typos rather than filters. */
+    expect(filters.toefl).toBe('');
+    expect(filters.tuitionMin).toBe('1000');
+    expect(filters.tuitionMax).toBe('');
+  });
+
+  it('writes one canonical spelling for every filter, in the order the address keeps', () => {
+    const filters = readCourseFilters({
+      sort: 'fee',
+      status: 'closed',
+      pte: '60',
+      scholarshipAvailable: 'true',
+      postStudyWorkAvailable: 'true',
+      studyMode: 'PART_TIME',
+      level: 'PG',
+      course: 'mba',
+      country: 'japan',
+      q: 'data',
+      minTuition: '500',
+    });
+    expect(courseListSearch(filters)).toBe(
+      '?q=data&country=japan&course=mba&level=PG&studyMode=PART_TIME&scholarship=true&postStudyWork=true&pte=60&status=closed&tuitionMin=500&sort=fee',
+    );
+    expect(isNarrowedCourseList({ ielts: '6' })).toBe(true);
+    expect(isNarrowedCourseList({ status: 'nope' })).toBe(false);
+  });
+
+  it('sends what a list is fixed to, and names it in `within`, without writing it into the address', () => {
+    const filters = withoutScope(
+      readCourseFilters({ country: 'japan', level: 'PG' }),
+      { country: ['united-kingdom'] },
+    );
+    expect(filters.country).toEqual([]);
+    expect(courseListSearch(filters)).toBe('?level=PG');
+    expect(
+      courseApiParams(filters, 1, { country: ['united-kingdom'], subject: ['law'] }),
+    ).toEqual({
+      limit: '18',
+      page: '1',
+      country: 'united-kingdom',
+      level: 'PG',
+      subject: 'law',
+      within: 'country,subject',
+    });
+    expect(courseRunParams(readCourseFilters({ page: '2' }), { university: ['x'] })).toEqual({
+      limit: '36',
+      page: '1',
+      university: 'x',
+      within: 'university',
+    });
+  });
+
+  it('gives the finder’s filters chips, a slug nothing carries included', () => {
+    const filters = readCourseFilters({
+      country: 'atlantis',
+      course: 'msc-computer-science',
+      status: 'open',
+      postStudyWork: 'true',
+      ielts: '6.5',
+      tuitionMax: '20000',
+      country2: 'x',
+    });
+    const facets = toCourseFacets({
+      courses: [{ value: 'msc-computer-science', label: 'MSc Computer Science', count: 4 }],
+      status: [{ value: 'open', label: 'Upcoming deadline', count: 6 }],
+      tuition: { currencyCode: 'GBP', count: 3 },
+    });
+    expect(activeChips(filters, facets).map((chip) => chip.label)).toEqual([
+      'atlantis',
+      'MSc Computer Science',
+      'Upcoming deadline',
+      'Post-study work',
+      'IELTS score 6.5',
+      'Tuition up to GBP 20,000',
+    ]);
+    expect(activeFilterCount(filters)).toBe(6);
+    expect(activeChips(filters, facets)[0]!.search).toBe(
+      '?course=msc-computer-science&postStudyWork=true&ielts=6.5&status=open&tuitionMax=20000',
+    );
+  });
+
+  it('reads the API’s answer as a results block draws it', () => {
+    const list = toProgrammeList(
+      {
+        data: [
+          {
+            id: 'o1',
+            name: 'MSc Robotics',
+            slug: 'tokyo-msc-robotics',
+            university: {
+              name: 'University of Tokyo',
+              slug: 'university-of-tokyo',
+              country: { name: 'Japan', slug: 'japan', iso2Code: 'JP' },
+            },
+          },
+        ],
+        meta: { page: 1, limit: 18, total: 40, totalPages: 3, sort: 'relevance', ignored: ['sort=fee'] },
+        facets: {
+          countries: [{ value: 'japan', label: 'Japan', count: 40 }],
+          extras: [{ value: 'scholarship', label: 'With scholarships', count: 2 }],
+          tuition: null,
+        },
+        summary: { programmes: 40, universities: 3, cities: 2, intakeMonths: 2, countries: 1 },
+      },
+      readCourseFilters({}),
+    );
+    expect(list.cards.map((card) => card.href)).toEqual([
+      '/study-abroad/japan/universities/university-of-tokyo/courses/tokyo-msc-robotics',
+    ]);
+    expect(list.meta).toEqual({ page: 1, limit: 18, total: 40, totalPages: 3 });
+    expect(list.facets.country).toEqual([{ value: 'japan', label: 'Japan', count: 40 }]);
+    expect(list.facets.extras).toHaveLength(1);
+    expect(list.facets.tuition).toBeNull();
+    expect(list.summary.programmes).toBe(40);
+    expect(list.ignored).toEqual(['sort=fee']);
+    expect(toProgrammeSummary(undefined)).toEqual({
+      programmes: 0,
+      universities: 0,
+      cities: 0,
+      intakeMonths: 0,
+      countries: 0,
+    });
   });
 });
 

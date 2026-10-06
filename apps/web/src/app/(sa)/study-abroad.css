@@ -3140,3 +3140,49 @@
 .sa .coursegroup__noarrow{ visibility: hidden; }
 .sa a.chipbtn--none{ color: var(--muted); border-style: dashed; }
 .sa .fieldnone__levels{ margin-top: clamp(28px, 3.4vw, 40px); }
+/* ===== courses slice A: programme results ===== */
+/* The results block every list of programmes draws -- the course finder,
+   a destination's subject pages, a university's own list. Its parts are
+   the design's (course-results); what the design left to script, or did
+   not need with a dozen options, is drawn here. */
+/* A long group shows its first options and keeps the rest behind "Show
+   all", a native disclosure so it opens without script; its own search
+   box above (the design's .fsearch) finds any of them. */
+.sa .fgroup__more{ margin-top: 2px; }
+.sa .fgroup__more > summary{
+  display: inline-block; padding: 5px 0; list-style: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.sa .fgroup__more > summary::-webkit-details-marker{ display: none; }
+.sa .fgroup__more > summary:focus-visible{ outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 4px; }
+.sa .fgroup__fewer,
+.sa .fgroup__more[open] .fgroup__all{ display: none; }
+.sa .fgroup__more[open] .fgroup__fewer{ display: inline; }
+.sa .fgroup__more > .fgroup__opts{ margin-top: 4px; }
+/* The fee range and the English scores: small fields in the panel's own
+   type, two or three to a row, never wider than the sheet on a phone. */
+.sa .pfees{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.sa .pfees .btn{ grid-column: 1 / -1; justify-self: start; }
+.sa .pscores{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sa .pfees__field,
+.sa .pscores__field{ display: grid; gap: 5px; min-width: 0; font-size: 12.5px; color: var(--muted); }
+.sa .pfees__field > span,
+.sa .pscores__field > span{ font-size: 12px; line-height: 1.3; }
+.sa .pfees__field input,
+.sa .pscores__field select{
+  width: 100%; min-width: 0; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--white);
+  font-family: var(--font-body); font-size: 13.5px; color: var(--text);
+}
+.sa .pfees__field input:focus,
+.sa .pscores__field select:focus{ outline: 0; border-color: var(--navy); }
+/* The design's sort chevron, so a score reads as the same kind of choice. */
+.sa .pscores__field select{
+  appearance: none; padding-right: 26px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+/* The empty list's sentence, and what a page says under it. */
+.sa .dir__none > * + *{ margin-top: 12px; }

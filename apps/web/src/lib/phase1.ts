@@ -124,6 +124,71 @@ export function phaseUniversityCourses<T>(
     `/universities/${encodeURIComponent(slug)}${suffix}${q ? `?${q}` : ""}`,
   ).then((result) => result.data);
 }
+/**
+ * Programmes across every university, as the course finder lists them:
+ * `{ data, meta, facets, summary }`. Read it with `toProgrammeList`. A list
+ * fixed to part of the catalogue -- a destination's subject -- passes that
+ * part with `within`, which `courseApiParams` writes from a scope.
+ */
+export function phaseProgrammes<T>(params: Record<string, string> = {}) {
+  const q = new URLSearchParams(params).toString();
+  return request<T>(`/programmes${q ? `?${q}` : ""}`).then(
+    (result) => result.data,
+  );
+}
+
+export type ProgrammeSuggestion = {
+  label: string;
+  kind: "programme" | "university" | "code";
+  href: string;
+};
+
+/** Up to eight suggestions for what has been typed into the finder. */
+export function phaseProgrammeSuggestions(q: string) {
+  return request<ProgrammeSuggestion[]>(
+    `/programmes/suggestions?${new URLSearchParams({ q })}`,
+  ).then((result) => result.data);
+}
+
+export type ProgrammeAddress = {
+  slug: string;
+  universitySlug: string;
+  countrySlug: string;
+  updatedAt: string;
+};
+
+/** Every live programme's address, a page at a time (up to 5,000), for
+ *  the sitemap; `meta.totalPages` says how many pages there are. */
+export function phaseProgrammeAddresses(params: Record<string, string> = {}) {
+  const q = new URLSearchParams(params).toString();
+  return request<ProgrammeAddress[]>(
+    `/programmes/addresses${q ? `?${q}` : ""}`,
+  );
+}
+
+export type CourseSlugMatch = {
+  kind: "programme" | "subject" | "specialization";
+  path: string;
+};
+
+/**
+ * Where a bare /courses/<slug> that is not a course guide belongs: the one
+ * live programme, subject or specialization that carries the slug. Null
+ * when none or several do -- the page then answers 404 -- and when the
+ * question cannot be asked, which must not turn a 404 into an error page.
+ */
+export async function phaseCourseSlug(
+  slug: string,
+): Promise<CourseSlugMatch | null> {
+  try {
+    return (
+      await request<CourseSlugMatch>(`/course-slugs/${encodeURIComponent(slug)}`)
+    ).data;
+  } catch {
+    return null;
+  }
+}
+
 export function phaseLocation<T>(slug: string) {
   return request<T>(`/consultant-locations/${encodeURIComponent(slug)}`).then(
     (result) => result.data,
