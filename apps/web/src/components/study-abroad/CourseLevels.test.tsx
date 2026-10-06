@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Course, CourseLevelGroup } from '@/lib/catalog';
-import { everyLevel, LEVEL_ROWS_SHOWN } from '@/lib/course-levels';
+import { everyLevel, LEVEL_ROWS_SHOWN, levelCoursesHref } from '@/lib/course-levels';
 import { CourseLevels } from './CourseLevels';
 
 /**
@@ -34,12 +34,14 @@ const group = (
   courses: Array.from({ length: sent }, (_, index) => course(code, index + 1)),
 });
 
+/* As the pages build it: a level's count is of course guides, so its link
+   opens the finder's guides view, which lists exactly that many. */
 const render = (groups: CourseLevelGroup[], branch = true) =>
   renderToStaticMarkup(
     <CourseLevels
       groups={groups}
       branch={branch}
-      allHref={(level) => `/courses?subject=agriculture&level=${level}`}
+      allHref={(level) => levelCoursesHref({ subject: 'agriculture', level })}
     />,
   );
 
@@ -55,9 +57,9 @@ describe('courses filed under their levels', () => {
 
   it('heads each one with the level, its whole count, and a way to the full list', () => {
     expect(html).toMatch(
-      /<h3[^>]*id="level-ug-h"[^>]*><a class="coursegroup__head" href="\/courses\?subject=agriculture&amp;level=UG">.*?Bachelor&#x27;s.*?10 courses/,
+      /<h3[^>]*id="level-ug-h"[^>]*><a class="coursegroup__head" href="\/courses\?subject=agriculture&amp;level=UG&amp;view=guides">.*?Bachelor&#x27;s.*?10 courses/,
     );
-    expect(html).toMatch(/href="\/courses\?subject=agriculture&amp;level=PG">.*?Master&#x27;s.*?20 courses/);
+    expect(html).toMatch(/href="\/courses\?subject=agriculture&amp;level=PG&amp;view=guides">.*?Master&#x27;s.*?20 courses/);
   });
 
   it("puts all ten of the Bachelor's courses in the Bachelor's section, and none of the Master's", () => {
@@ -96,7 +98,7 @@ describe('the edges', () => {
     const html = render([group('PG', "Master's", 73, 30)]);
     expect([...html.matchAll(/class="courselist__row"/g)]).toHaveLength(30);
     expect(html).toMatch(
-      /<a class="linkcta" href="\/courses\?subject=agriculture&amp;level=PG">All 73 Master&#x27;s courses/,
+      /<a class="linkcta" href="\/courses\?subject=agriculture&amp;level=PG&amp;view=guides">All 73 Master&#x27;s courses/,
     );
   });
 
@@ -178,7 +180,7 @@ describe('every level the client named, listed or not', () => {
     const html = renderToStaticMarkup(
       <CourseLevels
         groups={everyLevel([group('PG', "Master's", 2)], catalogue)!}
-        allHref={(level) => `/courses?subject=agriculture&level=${level}`}
+        allHref={(level) => levelCoursesHref({ subject: 'agriculture', level })}
       />,
     );
     expect(sections(html)).toEqual([
@@ -194,7 +196,7 @@ describe('every level the client named, listed or not', () => {
     expect(empty).toContain('0 courses');
     expect(empty).not.toContain('<p');
     expect(empty).not.toContain('href=');
-    expect(html).toContain('href="/courses?subject=agriculture&amp;level=PG"');
+    expect(html).toContain('href="/courses?subject=agriculture&amp;level=PG&amp;view=guides"');
     expect(html).not.toContain('level=FOUNDATION');
     /* The chip bar names every level, the empty ones marked as such. */
     expect(html).toMatch(/<a class="chipbtn chipbtn--none" href="#level-foundation">/);

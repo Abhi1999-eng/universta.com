@@ -136,12 +136,27 @@ describe('the guide\'s courses, filed under their subjects', () => {
         alt={false}
       />,
     );
-    expect(html).toContain('href="/courses?country=united-kingdom"');
+    /* 53 is a count of courses, so the link opens the finder's course
+       guides, which list 53; its programmes would number differently. */
+    expect(html).toContain('href="/courses?country=united-kingdom&amp;view=guides"');
     expect(html).toContain('View all 53 courses');
     expect(html).not.toContain('href="/courses"');
     expect(html).toContain('href="/study-abroad/united-kingdom/engineering"');
     expect(html).toContain('35 courses');
     expect(html).toContain('href="/compare/courses"');
+  });
+
+  it('opens the destination\'s programmes when it prints no count', () => {
+    const html = renderToStaticMarkup(
+      <CountryCourses
+        country={uk}
+        courses={[card('msc-robotics', engineering)]}
+        alt={false}
+      />,
+    );
+    expect(html).toContain('href="/courses?country=united-kingdom"');
+    expect(html).toContain('View all courses');
+    expect(html).not.toContain('view=guides');
   });
 });
 

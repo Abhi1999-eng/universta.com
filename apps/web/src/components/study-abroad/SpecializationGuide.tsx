@@ -2,8 +2,13 @@ import Link from 'next/link';
 import type { CourseLevelGroup, SpecializationDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
 import { inCountry } from '@/lib/country-article';
-import { levelCoursesHref, levelTotal } from '@/lib/course-levels';
+import {
+  levelCoursesHref,
+  levelTotal,
+  programmesHref,
+} from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
+import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { universityHref } from '@/lib/university-links';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
@@ -22,6 +27,7 @@ import {
 } from './switcher';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { PlanBand } from './PlanBand';
+import { allProgrammes, ProgrammeSample } from './ProgrammeSample';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
 
@@ -76,6 +82,7 @@ export function SpecializationGuide({
   specialization: record,
   levels = null,
   scholarships = [],
+  programmes = null,
 }: {
   specialization: SpecializationDetail | SpecializationRecord;
   /** Its courses filed under their study levels. Absent when that read
@@ -84,6 +91,9 @@ export function SpecializationGuide({
   /** Awards recorded against its subject. Scholarships are recorded per
    *  subject, not per specialization, and the section says so. */
   scholarships?: ScholarshipCard[];
+  /** The first of the universities' programmes in it, and how many there
+   *  are. Null when there are none or they could not be read. */
+  programmes?: Programmes | null;
 }) {
   const specialization = record as SpecializationRecord;
   const { subject, siblings } = specialization;
@@ -96,11 +106,19 @@ export function SpecializationGuide({
   const selfPath = `${subjectPath}/${specialization.slug}`;
   const overview = specialization.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview));
-  /* This specialization's programmes, not its subject's. */
-  const coursesHref = levelCoursesHref({
+  /* This specialization's programmes, not its subject's: for the links
+     that print no count, the finder's programmes. */
+  const coursesHref = programmesHref({
+    subject: subject.slug,
+    specialization: specialization.slug,
+  });
+  /* The courses the level block counts, in the finder's guides view,
+     which lists that many. */
+  const guidesHref = levelCoursesHref({
     subject: subject.slug,
     subSubject: specialization.slug,
   });
+  const taught = programmes?.cards.length ? programmes : null;
   /* The enquiry says which specialization the student was reading about. */
   const counselling = counsellingHref({
     source: 'specialization',
@@ -121,6 +139,7 @@ export function SpecializationGuide({
   const filed = levelTotal(groups);
   const order: string[] = [];
   if (hasOverview) order.push('about');
+  if (taught) order.push('courses');
   if (groups.length || courses.length) order.push('programs');
   if (countries.length) order.push('destinations');
   if (siblings.length) order.push('related');
@@ -203,23 +222,62 @@ export function SpecializationGuide({
         </section>
       ) : null}
 
+      {/* The design's "Where to study" band: the universities' programmes
+          in the specialization, each naming where it is taught, and the
+          way to all of them. Its count is taken from the very list the
+          link opens. */}
+      {taught ? (
+        <section className={band('courses')} id="courses">
+          <div className="wrap">
+            <SectionHead
+              n={n('courses')}
+              eyebrow="Programmes"
+              title={`Where to study ${specialization.name}`}
+              lead={`${formatNumber(taught.total)} ${taught.total === 1 ? 'programme' : 'programmes'}${
+                taught.universities
+                  ? ` at ${formatNumber(taught.universities)} ${taught.universities === 1 ? 'university' : 'universities'}`
+                  : ''
+              } tagged to this specialization, with the university and destination for each.`}
+            />
+            <ProgrammeSample
+              cards={taught.cards}
+              link={{
+                href: coursesHref,
+                label: allProgrammes('View', taught.total),
+              }}
+            />
+          </div>
+        </section>
+      ) : null}
+
       {groups.length || courses.length ? (
         <section className={band('programs')} id="programs">
           <div className="wrap">
+            {/* Beside the programmes above, these are the catalogue's
+                courses, and are called that; on their own they keep the
+                name they always had. Either way their counts are of
+                courses, so their links open the finder's course guides,
+                which list that many. */}
             <SectionHead
               n={n('programs')}
-              eyebrow="Programmes"
+              eyebrow={taught ? 'Courses' : 'Programmes'}
               title={
                 groups.length
-                  ? `${specialization.name} programmes by level`
-                  : `${specialization.name} programmes`
+                  ? `${specialization.name} ${taught ? 'courses' : 'programmes'} by level`
+                  : `${specialization.name} ${taught ? 'courses' : 'programmes'}`
               }
               lead={
                 groups.length
                   ? filed
-                    ? `${formatNumber(filed)} published ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
-                    : `No ${specialization.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
-                  : 'Published programmes recorded against this specialization.'
+                    ? `${formatNumber(filed)} published ${
+                        taught
+                          ? filed === 1 ? 'course' : 'courses'
+                          : filed === 1 ? 'programme' : 'programmes'
+                      }, each under the level it is taught at.`
+                    : taught
+                      ? `No ${specialization.name} course is listed yet. Courses are filed under these study levels as they are added.`
+                      : `No ${specialization.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
+                  : `Published ${taught ? 'courses' : 'programmes'} recorded against this specialization.`
               }
             >
               {/* The reference ends its course list with "View all N
@@ -228,15 +286,23 @@ export function SpecializationGuide({
               {/* A search with nothing in it is not a way on. */}
               {filed || courses.length ? (
                 <p className="sec-head__cta specprog__ctas">
-                  <Link className="linkcta" href={coursesHref}>
+                  <Link className="linkcta" href={guidesHref}>
                     {filed
-                      ? `View all ${formatNumber(filed)} ${specialization.name} ${filed === 1 ? 'programme' : 'programmes'}`
-                      : `View all ${specialization.name} programmes`}{' '}
+                      ? `View all ${formatNumber(filed)} ${specialization.name} ${
+                          taught
+                            ? filed === 1 ? 'course' : 'courses'
+                            : filed === 1 ? 'programme' : 'programmes'
+                        }`
+                      : `View all ${specialization.name} ${taught ? 'courses' : 'programmes'}`}{' '}
                     <span className="linkcta__arrow" aria-hidden="true">
                       →
                     </span>
                   </Link>
-                  <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
+                  {/* No count here, so it opens the subject's programmes. */}
+                  <Link
+                    className="linkcta"
+                    href={programmesHref({ subject: subject.slug })}
+                  >
                     Every {subject.name} programme{' '}
                     <span className="linkcta__arrow" aria-hidden="true">
                       →

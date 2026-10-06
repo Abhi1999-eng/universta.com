@@ -3186,3 +3186,31 @@
 }
 /* The empty list's sentence, and what a page says under it. */
 .sa .dir__none > * + *{ margin-top: 12px; }
+/* ===== courses slice D: course guide, subject and destination programmes ===== */
+/* The universities a course guide names after its cards, a line each, set
+   off from the grid above them. */
+.sa .progsample__rows{ margin-top: clamp(24px, 3vw, 34px); }
+.sa .progsample__rows .path__h{ margin-bottom: 10px; }
+/* The phase-one course list, kept for its old addresses: its trail draws
+   its own "/" between the steps and the stylesheet it shares draws a "›"
+   as well, so it read "Home › / › Courses". The drawn one is enough. */
+.sa .legacydisc .crumbs li.sep{ display: none; }
+/* A field's figures in a destination gain the design's Cities where its
+   programmes are listed, so the strip can hold five: three to a row on a
+   tablet, all five in one on a desktop, as the six-figure strip does. */
+@media (min-width: 700px){
+  .sa .statstrip--field.statstrip--n5{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sa .statstrip--field.statstrip--n5 div:nth-child(3n + 1){ padding-left: 0; border-left: 0; }
+}
+@media (min-width: 1000px){
+  .sa .statstrip--field.statstrip--n5{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .sa .statstrip--field.statstrip--n5 div:nth-child(3n + 1){ padding-left: 18px; border-left: 1px solid var(--line-soft); }
+  .sa .statstrip--field.statstrip--n5 div:first-child{ padding-left: 0; border-left: 0; }
+}
+/* The programmes under a destination's tab strip: on a phone their filter
+   sheet is sized from the bottom, as the scholarships' and consultants'
+   are, or the rule that pins the panel under the tabs gives it a top edge
+   and its border shows along the foot of the screen. */
+@media (max-width: 999px){
+  .sa .unitabs ~ #courses .filters-panel--live{ top: auto; }
+}
