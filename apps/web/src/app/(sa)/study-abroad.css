@@ -3140,3 +3140,64 @@
 .sa .coursegroup__noarrow{ visibility: hidden; }
 .sa a.chipbtn--none{ color: var(--muted); border-style: dashed; }
 .sa .fieldnone__levels{ margin-top: clamp(28px, 3.4vw, 40px); }
+/* ===== courses slice C: compare + card ===== */
+/* The comparison's "Add a course…" row, from the design's universities
+   sheet (comparepick, comparetable, cmphead, cmpremove), which this file
+   had not taken in. The old chooser's search field stays beside the list:
+   a catalogue of a thousand programmes is too long to scroll. */
+.sa .comparehero .comparepick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: clamp(20px, 2.6vw, 30px); max-width: 860px; }
+.sa .comparepick__search,
+.sa .comparepick__select {
+  min-width: 0; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--white);
+  font-family: var(--font-body); font-size: 15px; color: var(--text);
+}
+.sa .comparepick__search { flex: 1 1 200px; }
+.sa .comparepick__select { flex: 2 1 280px; cursor: pointer; text-overflow: ellipsis; }
+.sa .comparepick__search:focus,
+.sa .comparepick__select:focus { outline: 0; border-color: var(--navy); }
+.sa .comparepick__search:disabled,
+.sa .comparepick__select:disabled { cursor: not-allowed; color: var(--muted); }
+/* On a phone each control takes the row, the design's stacked picker. */
+@media (max-width: 599.98px) {
+.sa .comparehero .comparepick > * { flex: 1 1 100%; }
+}
+
+.sa .compare-empty { padding: clamp(10px, 2vw, 24px) 0; }
+.sa .compare-empty .sec-lead { margin-top: 10px; max-width: 60ch; }
+.sa .compare-empty__actions { margin-top: 22px; }
+.sa .compare-stored { margin-top: 10px; }
+.sa .compare-stored a { color: var(--text); font-weight: 600; }
+.sa .compare-invalid { max-width: none; }
+.sa .compare-invalid p { margin: 0 0 6px; }
+.sa .compare-invalid ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.sa .compare-invalid code { font-family: var(--font-mono); font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+
+.sa .comparetable { min-width: 720px; }
+.sa .comparetable th[scope="row"] { width: 190px; color: var(--muted); font-weight: 500; font-size: 13.5px; }
+.sa .comparetable thead th { vertical-align: bottom; }
+.sa .comparetable td { min-width: 150px; font-size: 14px; overflow-wrap: anywhere; }
+.sa .comparetable td a { color: var(--text); text-underline-offset: 3px; }
+.sa .comparetable .cmphead { display: grid; gap: 8px; justify-items: start; }
+.sa .comparetable .cmphead__name { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: -0.02em; text-transform: none; color: var(--text); overflow-wrap: anywhere; }
+.sa .comparetable .cmphead__meta { font-family: var(--font-body); font-size: 12px; color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sa .comparetable td.is-best { background: var(--ok-soft); }
+.sa .comparetable td.is-best b { color: var(--ok); font-weight: 600; }
+.sa .cmpnote { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.sa .cmpremove {
+  background: none; border: 0; cursor: pointer; color: var(--muted); padding: 0;
+  font-family: var(--font-body); font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.sa .cmpremove:hover { color: var(--accent); }
+/* The table scrolls inside its frame on a phone, as the design's does; the
+   row names stay pinned so a value is never read without its row. */
+@media (max-width: 799.98px) {
+.sa .comparetable th[scope="row"] {
+  position: sticky; left: 0; z-index: 1; width: 112px; min-width: 112px;
+  background: var(--white); box-shadow: 1px 0 0 var(--line-soft);
+}
+.sa .comparetable thead th:first-child { position: sticky; left: 0; z-index: 2; }
+}
+.sa #comparison .magnet { margin-top: 30px; }
+.sa #comparison .magnet .btn { white-space: normal; text-align: center; }
