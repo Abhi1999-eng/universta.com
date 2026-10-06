@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
@@ -419,11 +420,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
             {eyebrow.length ? (
               <p className="hero__eyebrow">
                 Course discovery
+                {/* Fragments, so the dot and the figure are the eyebrow's
+                    own flex items and keep its gap between them. */}
                 {eyebrow.map((part) => (
-                  <span key={part}>
+                  <Fragment key={part}>
                     <b>·</b>
                     {part}
-                  </span>
+                  </Fragment>
                 ))}
               </p>
             ) : null}

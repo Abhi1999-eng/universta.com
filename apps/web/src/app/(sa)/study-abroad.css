@@ -3303,6 +3303,9 @@
   font-size: 12px; font-weight: 600; color: var(--muted);
 }
 .sa .coursecard__compare:hover{ color: var(--text); border-color: var(--navy); }
+/* "Run the assessment" inside the empty list's sentence reads at the
+   sentence's size, not as the panel's small link. */
+.sa .coursefinder .dir__none .linkbtn{ font-size: inherit; }
 
 /* The blocks kept below the matching band. Subjects four to a row on a
    wide screen: their cards carry no description here. */
