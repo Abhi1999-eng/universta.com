@@ -57,6 +57,9 @@ function build(rows: Array<Record<string, unknown>>) {
     courseLevel: {
       findMany: async () => [{ code: 'UG' }, { code: 'PG' }],
     },
+    studyMode: {
+      findMany: async () => [{ code: 'FULL_TIME' }, { code: 'PART_TIME' }],
+    },
     universityCourseOffering: {
       findMany: async (args: Args) => {
         findMany.push(args);
@@ -159,6 +162,21 @@ describe('the programme finder’s reads', () => {
     const result = await service.programmes({ sort: 'fee', level: 'nope' });
     expect(result.meta.sort).toBe('relevance');
     expect(result.meta.ignored).toEqual(['level=nope', 'sort=fee']);
+  });
+
+  /* "NOPE ×" over an empty list, before; now the catalogue's study-mode
+     codes decide, as its level codes do. */
+  it('leaves out a study mode the catalogue has no code for', async () => {
+    const { service } = build([
+      scanned({}),
+      scanned({ id: 'o-p', slug: 'p', studyMode: 'PART_TIME' }),
+    ]);
+    const odd = await service.programmes({ studyMode: 'nope' });
+    expect(odd.meta.total).toBe(2);
+    expect(odd.meta.ignored).toEqual(['studyMode=nope']);
+    const part = await service.programmes({ study_mode: 'part-time' });
+    expect(part.data.map((row) => row.id)).toEqual(['o-p']);
+    expect(part.meta.ignored).toEqual([]);
   });
 
   /* A card links "Course guide" to the generic course's own page, which

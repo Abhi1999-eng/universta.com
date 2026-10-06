@@ -569,7 +569,11 @@ export class ExpandedService {
     string,
     { at: number; value: ProgrammeOverview }
   >();
-  private levelCodes: { at: number; codes: string[] } | null = null;
+  private catalogueCodes: {
+    at: number;
+    levels: string[];
+    studyModes: string[];
+  } | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -1690,9 +1694,7 @@ export class ExpandedService {
    */
   async programmes(query: ProgrammeParams) {
     const now = new Date();
-    const parsed = parseProgrammeQuery(query, {
-      levels: await this.courseLevelCodes(now),
-    });
+    const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
     const scan = await this.scanProgrammes(parsed, now);
     const matching = sortOfferings(
       scan.rows.filter((row) => matchesProgramme(row, parsed, now)),
@@ -1857,18 +1859,25 @@ export class ExpandedService {
     return ids.flatMap((id) => byId.get(id) ?? []);
   }
 
-  /** The level codes the catalogue knows, which a level filter is checked
-   * against: a code outside them is left out rather than matching nothing. */
-  private async courseLevelCodes(now: Date) {
-    const cached = this.levelCodes;
+  /** The level and study-mode codes the catalogue knows, which those
+   * filters are checked against: a code outside them is left out rather
+   * than matching nothing. */
+  private async knownCodes(now: Date) {
+    const cached = this.catalogueCodes;
     if (cached && now.getTime() - cached.at < PROGRAMME_OVERVIEW_TTL_MS)
-      return cached.codes;
-    const rows = await this.prisma.courseLevel.findMany({
-      select: { code: true },
-    });
-    const codes = rows.map((row) => row.code.toUpperCase());
-    this.levelCodes = { at: now.getTime(), codes };
-    return codes;
+      return cached;
+    const [levels, studyModes] = await Promise.all([
+      this.prisma.courseLevel.findMany({ select: { code: true } }),
+      this.prisma.studyMode.findMany({ select: { code: true } }),
+    ]);
+    const codes = (rows: Array<{ code: string }>) =>
+      rows.map((row) => row.code.toUpperCase());
+    this.catalogueCodes = {
+      at: now.getTime(),
+      levels: codes(levels),
+      studyModes: codes(studyModes),
+    };
+    return this.catalogueCodes;
   }
 
   /**

@@ -267,10 +267,17 @@ describe('programmes across universities (e2e)', () => {
   });
 
   it('answers without what it does not know, and narrows to nothing for a slug nothing carries', async () => {
-    const odd = await list(`q=${suffix}&sort=bogus&level=nope&pageSize=500`);
+    const odd = await list(
+      `q=${suffix}&sort=bogus&level=nope&pageSize=500&studyMode=nope`,
+    );
     expect(odd.meta.total).toBe(4);
     expect(odd.meta.ignored).toEqual(
-      expect.arrayContaining(['sort=bogus', 'level=nope', 'pageSize=500']),
+      expect.arrayContaining([
+        'sort=bogus',
+        'level=nope',
+        'pageSize=500',
+        'studyMode=nope',
+      ]),
     );
     expect((await list('country=atlantis')).meta.total).toBe(0);
     const fee = await list(`q=${suffix}&sort=fee`);

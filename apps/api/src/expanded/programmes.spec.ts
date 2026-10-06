@@ -222,6 +222,24 @@ describe('reading the reference’s addresses and the site’s old ones', () => 
     );
   });
 
+  /* A study mode is one of the catalogue's codes, as a level is: one it
+     does not have can never match, and kept, it narrowed the list to
+     nothing under a chip that read "NOPE". */
+  it('leaves out a study mode the catalogue has no code for, and says so', () => {
+    const modes = { levels: LEVELS, studyModes: ['FULL_TIME', 'PART_TIME'] };
+    const query = parseProgrammeQuery(
+      { studyMode: 'nope,PART_TIME', study_mode: 'full-time' },
+      modes,
+    );
+    expect(query.studyModes).toEqual(['PART_TIME', 'FULL_TIME']);
+    expect(query.ignored).toEqual(['studyMode=nope']);
+    const unknown = parseProgrammeQuery({ studyMode: 'nope' }, modes);
+    expect(unknown.studyModes).toEqual([]);
+    expect(
+      catalogue.filter((row) => matchesProgramme(row, unknown, today)),
+    ).toHaveLength(3);
+  });
+
   /* A slug that matches nothing is a question whose answer is none, as on
      the reference, not something to drop. */
   it('narrows to nothing for a slug nothing carries', () => {

@@ -166,13 +166,16 @@ export function citySlug(name: string) {
 /**
  * The filters a request asks for, read under both spellings.
  *
- * `levels` is the list of level codes the catalogue knows; a level outside
- * it is left out rather than matched against nothing, since no programme
- * could ever answer it.
+ * `levels` and `studyModes` are the codes the catalogue knows; a level or a
+ * study mode outside them is left out rather than matched against nothing,
+ * since no programme could ever answer it.
  */
 export function parseProgrammeQuery(
   query: Query,
-  known: { levels?: readonly string[] } = {},
+  known: {
+    levels?: readonly string[];
+    studyModes?: readonly string[];
+  } = {},
 ): ProgrammeQuery {
   const ignored: string[] = [];
   const first = (...keys: string[]) => {
@@ -210,10 +213,16 @@ export function parseProgrammeQuery(
     } else intakes.push(raw.toLowerCase());
   }
 
-  /* "full-time", as the reference writes it, is our FULL_TIME. */
-  const studyModes = values(query, 'studyMode', 'study_mode').map((raw) =>
-    raw.toUpperCase().replace(/[\s-]+/g, '_'),
-  );
+  /* "full-time", as the reference writes it, is our FULL_TIME. A mode the
+     catalogue has no code for is dropped the way an unknown level is: kept,
+     it narrowed the list to nothing under a chip that read "NOPE". */
+  const studyModes: string[] = [];
+  for (const raw of values(query, 'studyMode', 'study_mode')) {
+    const code = raw.toUpperCase().replace(/[\s-]+/g, '_');
+    if (known.studyModes && !known.studyModes.includes(code))
+      ignored.push(`studyMode=${raw}`);
+    else if (!studyModes.includes(code)) studyModes.push(code);
+  }
 
   const englishTests: EnglishTest[] = [];
   for (const raw of values(query, 'englishTest')) {
