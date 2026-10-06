@@ -185,6 +185,10 @@ const OFFERING_ROW_INCLUDE = {
     where: { status: 'ACTIVE' },
     include: { intake: true },
   },
+  requirements: {
+    where: { status: 'ACTIVE', deletedAt: null },
+    orderBy: { displayOrder: 'asc' },
+  },
   _count: { select: { scholarships: true } },
 } satisfies Prisma.UniversityCourseOfferingInclude;
 

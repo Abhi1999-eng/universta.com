@@ -1,6 +1,7 @@
 import {
   COUNTRY_STATUSES,
   COURSE_DURATION_UNITS,
+  COURSE_TUITION_PERIODS,
   slugify,
 } from '../catalog/catalog.constants';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +27,16 @@ import {
   deriveForUniversity,
 } from '../catalog/derive-links';
 import { formerLevelCode } from '../course-levels/former-level-names';
+import {
+  exportOfferingDetails,
+  OFFERING_EXTRA_COLUMNS,
+  OFFERING_DURATION_UNITS,
+  offeringRelationsChanged,
+  offeringNumberCell,
+  parseOfferingDetails,
+  reconcileOfferingDetails,
+  type OfferingRelations,
+} from './offerings-bulk';
 
 export type BulkRow = Record<string, string>;
 export type BulkField = {
@@ -200,11 +211,20 @@ export function bulkFields(definition: BulkResourceDefinition): BulkField[] {
                     ? 'status'
                     : 'text',
       }));
-  return fields.map((field) =>
-    field.key === 'status' && !field.allowedValues
+  return fields.map((field) => {
+    if (definition.key === 'offerings') {
+      if (field.key === 'durationUnit')
+        return { ...field, allowedValues: OFFERING_DURATION_UNITS };
+      if (field.key === 'tuitionPeriod')
+        return { ...field, allowedValues: COURSE_TUITION_PERIODS };
+      if (/^(duration|tuition)(Min|Max)$|Minimum$/.test(field.key))
+        return { ...field, type: 'number' };
+      if (field.key === 'courseCode') return { ...field, type: 'text' };
+    }
+    return field.key === 'status' && !field.allowedValues
       ? { ...field, allowedValues: definition.statusAllowedValues }
-      : field,
-  );
+      : field;
+  });
 }
 
 /** Validates any field-level constrained value for CSV and XLSX alike. */
@@ -2071,6 +2091,7 @@ const offerings: BulkResourceDefinition = {
     'tuitionMin',
     'tuitionMax',
     'status',
+    ...OFFERING_EXTRA_COLUMNS,
   ],
   statusAllowedValues: PUBLISH_STATUSES,
   requiredColumns: ['name', 'universitySlug', 'genericCourseSlug'],
@@ -2086,6 +2107,21 @@ const offerings: BulkResourceDefinition = {
     tuitionMin: '18000',
     tuitionMax: '22000',
     status: 'DRAFT',
+    courseCode: '',
+    shortDescription: 'A programme in demo studies.',
+    overview: '',
+    durationMin: '3',
+    durationMax: '3',
+    durationUnit: 'YEARS',
+    tuitionPeriod: 'PER_YEAR',
+    applicationUrl: 'https://example.edu/programmes/demo',
+    sourceReference: 'https://example.edu/programmes/demo',
+    verifiedAt: '2026-10-06',
+    intakes: '9:2027-01-15;1',
+    ieltsMinimum: '6.5',
+    toeflMinimum: '90',
+    pteMinimum: '60',
+    academicRequirement: 'A relevant prior qualification.',
   },
   updatableColumns: [
     'name',
@@ -2094,6 +2130,7 @@ const offerings: BulkResourceDefinition = {
     'tuitionMin',
     'tuitionMax',
     'status',
+    ...OFFERING_EXTRA_COLUMNS,
   ],
   async parseRow(row, prisma) {
     const errors: string[] = [];
@@ -2144,12 +2181,21 @@ const offerings: BulkResourceDefinition = {
         errors.push(`courseLevelCode "${row.courseLevelCode}" was not found`);
       else if (courseLevel) courseLevelId = courseLevel.id;
     }
-    const tuitionMin = row.tuitionMin?.trim() ? Number(row.tuitionMin) : null;
-    if (row.tuitionMin?.trim() && Number.isNaN(tuitionMin))
-      errors.push('tuitionMin must be a number');
-    const tuitionMax = row.tuitionMax?.trim() ? Number(row.tuitionMax) : null;
-    if (row.tuitionMax?.trim() && Number.isNaN(tuitionMax))
-      errors.push('tuitionMax must be a number');
+    const tuitionMin = offeringNumberCell(
+      row,
+      'tuitionMin',
+      9999999999.99,
+      errors,
+    );
+    const tuitionMax = offeringNumberCell(
+      row,
+      'tuitionMax',
+      9999999999.99,
+      errors,
+    );
+    if (tuitionMin !== null && tuitionMax !== null && tuitionMin > tuitionMax)
+      errors.push('tuitionMax must be greater than or equal to tuitionMin');
+    const details = await parseOfferingDetails(row, prisma, errors);
     if (errors.length) return { errors };
     return {
       data: {
@@ -2165,7 +2211,9 @@ const offerings: BulkResourceDefinition = {
            actually distinguishes two offerings of the same programme. An
            explicit `slug` column still wins, for a sheet that wants to
            name its own. */
-        slug: row.slug?.trim() || offeringSlug(row.universitySlug, row.name),
+        slug:
+          row.slug?.trim() ||
+          offeringSlug((university as RefRecord).slug, row.name),
         name: row.name.trim(),
         universityId: (university as RefRecord).id,
         genericCourseId: (genericCourse as { id: string }).id,
@@ -2176,8 +2224,12 @@ const offerings: BulkResourceDefinition = {
         tuitionMin,
         tuitionMax,
         status: row.status?.trim() || 'DRAFT',
+        ...details.data,
       },
-      relations: { genericCourseId: (genericCourse as { id: string }).id },
+      relations: {
+        genericCourseId: (genericCourse as { id: string }).id,
+        ...details.relations,
+      },
     };
   },
   /* An offering is what puts a course in a destination at all, so writing
@@ -2192,11 +2244,15 @@ const offerings: BulkResourceDefinition = {
      deployment swept. The admin's own write paths were given the full
      derivation; an import deserves the same, because an import is how most
      of the catalogue actually arrives. */
-  async reconcile(tx, _id, relations) {
-    const courseId = (relations as { genericCourseId?: string } | null)
-      ?.genericCourseId;
+  async reconcile(tx, id, relations) {
+    const details = relations as OfferingRelations;
+    await reconcileOfferingDetails(tx as PrismaService, id, details);
+    const courseId = details.genericCourseId;
     if (!courseId) return;
     await deriveForCourse(asDeriveClient(tx), courseId);
+  },
+  async relationsChanged(id, relations, prisma) {
+    return offeringRelationsChanged(prisma, id, relations as OfferingRelations);
   },
   toExportRow(record) {
     return {
@@ -2212,9 +2268,10 @@ const offerings: BulkResourceDefinition = {
         (record as { courseLevel?: { code?: string } }).courseLevel?.code ?? '',
       studyMode: record.studyMode ?? '',
       currencyCode: record.currencyCode ?? '',
-      tuitionMin: record.tuitionMin ?? '',
-      tuitionMax: record.tuitionMax ?? '',
+      tuitionMin: decimalText(record.tuitionMin),
+      tuitionMax: decimalText(record.tuitionMax),
       status: record.status,
+      ...exportOfferingDetails(record),
     };
   },
 };
