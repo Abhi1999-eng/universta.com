@@ -83,7 +83,7 @@ function apiFilters(filters: Record<string, string>) {
 }
 
 /** How many cards the landing shows: three across, two rows. */
-export const LANDING_LIMIT = 6;
+const LANDING_LIMIT = 6;
 
 async function loadData(filters: Record<string, string>) {
   const showingAll = filters.view === 'all';
