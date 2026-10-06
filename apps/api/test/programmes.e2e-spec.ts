@@ -30,7 +30,9 @@ type List = {
     };
   }>;
   meta: { total: number; sort: string; ignored: string[] };
-  facets: Record<string, Option[]>;
+  facets: Record<string, Option[]> & {
+    tuition: { currencyCode: string | null; count: number } | null;
+  };
   summary: Record<string, number>;
 };
 
@@ -186,7 +188,16 @@ describe('programmes across universities (e2e)', () => {
       slugs[key] = row.slug;
       return row;
     };
+    /* Fees in the home country: two in its dollars by the year, and one
+       in another currency that is lower in figures alone. */
+    const fee = (tuitionMin: number, currencyCode: string) => ({
+      tuitionMin,
+      tuitionMax: tuitionMin,
+      currencyCode,
+      tuitionPeriod: 'PER_YEAR',
+    });
     const scored = await offer('Scored', north.id, {
+      ...fee(30000, 'CAD'),
       requirements: {
         create: {
           category: 'ENGLISH_TEST',
@@ -196,8 +207,8 @@ describe('programmes across universities (e2e)', () => {
         },
       },
     });
-    const funded = await offer('Funded', south.id);
-    const drafted = await offer('Drafted', south.id);
+    const funded = await offer('Funded', south.id, fee(20000, 'CAD'));
+    const drafted = await offer('Drafted', south.id, fee(10000, 'AUD'));
     await offer('Abroad', abroad.id);
     await offer('AtDraft', draft.id);
     await offer('AtHidden', hidden.id);
@@ -318,6 +329,18 @@ describe('programmes across universities (e2e)', () => {
     expect((await list(`q=${suffix}&sort=fee&country=${home}`)).meta.sort).toBe(
       'fee',
     );
+  });
+
+  /* "Amounts in CAD": ten thousand Australian dollars is not the lowest
+     fee in a country whose range is in Canadian dollars. */
+  it('orders fees in the range’s currency and puts the rest after', async () => {
+    const body = await list(`q=${suffix}&country=${home}&sort=fee`);
+    expect(body.facets.tuition).toEqual({ currencyCode: 'CAD', count: 2 });
+    expect(body.data.map((row) => row.slug)).toEqual([
+      slugs.Funded,
+      slugs.Scored,
+      slugs.Drafted,
+    ]);
   });
 
   /* Its chip read the bare slug; it is named from the catalogue now. */

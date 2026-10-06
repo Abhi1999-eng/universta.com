@@ -34,6 +34,7 @@ import {
 } from './university-courses';
 import {
   matchesProgramme,
+  measurableFees,
   nameChoices,
   parseProgrammeQuery,
   PROGRAMME_SCAN_CAP,
@@ -309,6 +310,7 @@ function programmeScanSelect(now: Date) {
     tuitionMin: true,
     tuitionMax: true,
     currencyCode: true,
+    tuitionPeriod: true,
     publishedAt: true,
     createdAt: true,
     courseLevel: level,
@@ -1699,9 +1701,13 @@ export class ExpandedService {
     const now = new Date();
     const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
     const scan = await this.scanProgrammes(parsed, now);
+    /* The overview first: the tuition range it offers is the currency the
+       fees are filtered and ordered in. */
     const overview = await this.programmeOverview(parsed, scan, now);
     const matching = sortOfferings(
-      scan.rows.filter((row) => matchesProgramme(row, parsed, now)),
+      measurableFees(scan.rows, overview.facets.tuition).filter((row) =>
+        matchesProgramme(row, parsed, now),
+      ),
       parsed.sort,
       now,
     );

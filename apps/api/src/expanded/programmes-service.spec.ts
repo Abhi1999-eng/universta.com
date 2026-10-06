@@ -257,4 +257,36 @@ describe('the programme finder’s reads', () => {
     expect(plain.named.subject).toHaveLength(0);
     expect(plain.named.course).toHaveLength(0);
   });
+
+  /* "Amounts in CAD": the Australian fee is not the lowest in Canada. */
+  it('orders fees in the range’s currency, by the year, and the rest after', async () => {
+    const canada = {
+      ...warwick,
+      slug: 'northstar',
+      country: { ...warwick.country, name: 'Canada', slug: 'canada' },
+    };
+    const fee = (id: string, tuitionMin: string, currencyCode: string) =>
+      scanned({
+        id,
+        slug: id,
+        name: id,
+        tuitionMin,
+        currencyCode,
+        tuitionPeriod: 'PER_YEAR',
+        university: canada,
+      });
+    const { service } = build([
+      fee('c-24', '24000', 'CAD'),
+      fee('a-19', '19500', 'AUD'),
+      fee('c-18', '18000', 'CAD'),
+    ]);
+    const result = await service.programmes({ country: 'canada', sort: 'fee' });
+    expect(result.facets.tuition).toEqual({ currencyCode: 'CAD', count: 2 });
+    expect(result.data.map((row) => row.id)).toEqual(['c-18', 'c-24', 'a-19']);
+    const capped = await service.programmes({
+      country: 'canada',
+      tuitionMax: '20000',
+    });
+    expect(capped.data.map((row) => row.id).sort()).toEqual(['a-19', 'c-18']);
+  });
 });

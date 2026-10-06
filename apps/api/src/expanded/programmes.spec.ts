@@ -1,7 +1,9 @@
 import {
   applicationStatus,
   englishScoreMatch,
+  feeMeasurable,
   matchesProgramme,
+  measurableFees,
   nameChoices,
   parseProgrammeQuery,
   programmeFacets,
@@ -87,6 +89,7 @@ const catalogue: ProgrammeRow[] = [
     studyMode: 'FULL_TIME',
     tuitionMin: '30000',
     currencyCode: 'GBP',
+    tuitionPeriod: 'PER_YEAR',
     requirements: [ielts('6.5')],
     intakes: [{ intake: september, deadline: '2027-06-30' }],
     genericCourse: {
@@ -103,6 +106,7 @@ const catalogue: ProgrammeRow[] = [
     studyMode: 'PART_TIME',
     tuitionMin: '22000',
     currencyCode: 'GBP',
+    tuitionPeriod: 'PER_YEAR',
     university: ucl,
     requirements: [ielts('7')],
     intakes: [{ intake: january, deadline: '2026-01-15' }],
@@ -358,6 +362,69 @@ describe('fees, inside one country only', () => {
         'fee',
       ).map((row) => row.name),
     ).toEqual(['BSc Computer Science']);
+  });
+
+  /* "Amounts in GBP", the panel says, over a range labelled annual. A fee
+     in another currency, or for a semester, cannot be set against that,
+     so it is set aside as a missing fee is: last by "Lowest tuition", and
+     no bound leaves it out. */
+  it('measures only fees by the year in the range’s currency', () => {
+    const london = (
+      name: string,
+      fee: string,
+      currencyCode: string,
+      tuitionPeriod: string | null,
+    ) =>
+      programme({
+        name,
+        university: ucl,
+        tuitionMin: fee,
+        currencyCode,
+        tuitionPeriod,
+      });
+    const rows = [
+      ...catalogue,
+      london('MA Dollars', '9000', 'USD', 'PER_YEAR'),
+      london('MA Semester', '9500', 'GBP', 'PER_SEMESTER'),
+      london('MA Unstated', '7000', 'GBP', null),
+    ];
+    const query = parse({
+      country: 'united-kingdom',
+      tuitionMax: '8500',
+      sort: 'fee',
+    });
+    const facets = programmeFacets(rows, query, today);
+    /* Counted over the two annual pound fees, not the five priced rows. */
+    expect(facets.tuition).toEqual({ currencyCode: 'GBP', count: 2 });
+    const measured = measurableFees(rows, facets.tuition);
+    const order = (list: ProgrammeRow[]) =>
+      sortOfferings(
+        list.filter((row) =>
+          matchesProgramme(row, { ...query, tuitionMax: null }, today),
+        ),
+        'fee',
+      ).map((row) => row.name);
+    expect(order(measured)).toEqual([
+      'BSc Computer Science',
+      'MSc Computer Science',
+      'MA Dollars',
+      'MA Semester',
+      'MA Unstated',
+    ]);
+    /* The bound tests the two it can measure and keeps the rest, as it
+       keeps a programme with no fee: 9,000 dollars, or 9,500 pounds a
+       semester, is not shown to be above 8,500 pounds a year. */
+    expect(
+      measured
+        .filter((row) => matchesProgramme(row, query, today))
+        .map((row) => row.name),
+    ).toEqual(['MA Dollars', 'MA Semester', 'MA Unstated']);
+    /* Only what the finder filters and orders on: the rows themselves,
+       which the cards are not drawn from, keep their fees. */
+    expect(rows.at(-1)!.tuitionMin).toBe('7000');
+    expect(feeMeasurable(rows.at(-3)!, 'USD')).toBe(true);
+    /* Across countries nothing is measured, so nothing is set aside. */
+    expect(measurableFees(rows, null)).toBe(rows);
   });
 
   /* Pounds and yen do not compare, and nothing here converts them. */

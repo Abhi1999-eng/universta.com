@@ -98,6 +98,8 @@ type Country = {
 export type ProgrammeRow = OfferingLike & {
   id: string;
   currencyCode?: string | null;
+  /** What the fee is charged for: PER_YEAR, PER_SEMESTER, TOTAL. */
+  tuitionPeriod?: string | null;
   university: {
     name: string;
     slug: string;
@@ -475,6 +477,41 @@ export function matchesProgramme(
   return true;
 }
 
+/* The period the tuition range and "Lowest tuition" are measured in, as a
+   card writes it: "/yr" is printed for this period and no other. */
+const ANNUAL = 'PER_YEAR';
+
+/**
+ * Whether a programme's fee can be set against the others in its country:
+ * recorded by the year, in the currency the tuition range is offered in.
+ */
+export function feeMeasurable(row: ProgrammeRow, currencyCode: string | null) {
+  return (
+    row.tuitionPeriod === ANNUAL && (row.currencyCode ?? null) === currencyCode
+  );
+}
+
+/**
+ * The rows with only the fees the tuition range measures. The panel says
+ * "Amounts in CAD", and nothing here converts Australian dollars, or a
+ * semester's fee, into a year in Canadian dollars; so any other fee is set
+ * aside as a missing one is -- "Lowest tuition" puts it last and no bound
+ * leaves it out -- rather than read as the lowest in the country. Only the
+ * filtering and the order read these: the cards are read afresh, and still
+ * print every fee as it was recorded.
+ */
+export function measurableFees(
+  rows: ProgrammeRow[],
+  tuition: { currencyCode: string | null } | null,
+): ProgrammeRow[] {
+  if (!tuition) return rows;
+  return rows.map((row) =>
+    feeMeasurable(row, tuition.currencyCode)
+      ? row
+      : { ...row, tuitionMin: null, tuitionMax: null },
+  );
+}
+
 const byLabel = (a: FacetOption, b: FacetOption) =>
   a.label.localeCompare(b.label);
 
@@ -579,21 +616,24 @@ export function programmeFacets(
   ].filter((option) => option.count > 0);
 
   /* Fees compare only inside one country, so the range is offered there
-     alone, in the currency its programmes record most. */
+     alone, in the currency its programmes record most. It is labelled
+     annual, so only fees recorded by the year are counted towards it. */
   let tuition: { currencyCode: string | null; count: number } | null = null;
   if (query.countries.length === 1) {
-    const priced = local.filter(
+    const annual = local.filter(
       (row) =>
-        number(row.tuitionMin) !== null || number(row.tuitionMax) !== null,
+        row.tuitionPeriod === ANNUAL &&
+        (number(row.tuitionMin) !== null || number(row.tuitionMax) !== null),
     );
-    const currencies = tally(priced, (row) =>
+    const currencies = tally(annual, (row) =>
       row.currencyCode
         ? [{ value: row.currencyCode, label: row.currencyCode }]
         : [],
     ).sort((a, b) => b.count - a.count);
+    const currencyCode = currencies[0]?.value ?? null;
     tuition = {
-      currencyCode: currencies[0]?.value ?? null,
-      count: priced.length,
+      currencyCode,
+      count: annual.filter((row) => feeMeasurable(row, currencyCode)).length,
     };
   }
 
