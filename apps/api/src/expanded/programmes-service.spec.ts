@@ -1,4 +1,5 @@
 import { ExpandedService } from './expanded.service';
+import { PROGRAMME_SCAN_CAP } from './programmes';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { ExperimentsService } from '../experiments/experiments.service';
 
@@ -94,9 +95,12 @@ function build(rows: Array<Record<string, unknown>>) {
       },
     },
   } as unknown as PrismaService;
+  /* The scans: every read of the catalogue that is not the page's own. */
+  const scans = () => findMany.filter((args) => !args.where?.id);
   return {
     service: new ExpandedService(prisma, {} as ExperimentsService),
     findMany,
+    scans,
     named,
   };
 }
@@ -221,6 +225,20 @@ describe('the programme finder’s reads', () => {
     expect(generic.courseLevel).toBe(true);
   });
 
+  it('asks the live rule again for the page’s rows', async () => {
+    const { service, findMany } = build([scanned({})]);
+    await service.programmes({});
+    const full = findMany.find((args) => args.where?.id);
+    expect(full?.where).toMatchObject({
+      status: 'PUBLISHED',
+      deletedAt: null,
+      university: {
+        status: 'PUBLISHED',
+        country: { status: 'PUBLISHED', deletedAt: null },
+      },
+    });
+  });
+
   /* A destination or a course nothing is listed under is named from the
      catalogue, so its chip reads "Hong Kong" and "BA Law", not the slug. */
   it('names a chosen destination, subject or course nothing is listed under', async () => {
@@ -288,5 +306,81 @@ describe('the programme finder’s reads', () => {
       tuitionMax: '20000',
     });
     expect(capped.data.map((row) => row.id).sort()).toEqual(['a-19', 'c-18']);
+  });
+});
+
+/**
+ * Every unfiltered visit to the finder and every plain search used to read
+ * the whole live catalogue again; only the counts were kept. The read is
+ * kept for a minute now, per part of the catalogue, within bounds.
+ */
+describe('the programme finder’s kept reads', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('reads the catalogue once a minute for the same part of it', async () => {
+    jest.useFakeTimers({
+      now: new Date('2026-10-06T10:00:00Z'),
+      doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'],
+    });
+    const { service, scans } = build([scanned({})]);
+    await service.programmes({});
+    await service.programmes({ q: 'computer' });
+    await service.programmes({ level: 'PG', sort: 'name' });
+    expect(scans()).toHaveLength(1);
+    /* Another part of the catalogue is a read of its own, kept as well. */
+    await service.programmes({ country: 'united-kingdom' });
+    await service.programmes({ country: 'united-kingdom', q: 'msc' });
+    expect(scans()).toHaveLength(2);
+    jest.setSystemTime(new Date('2026-10-06T10:01:01Z'));
+    await service.programmes({});
+    expect(scans()).toHaveLength(3);
+  });
+
+  it('still says a read was cut short when it answers from what it kept', async () => {
+    const rows = Array.from({ length: PROGRAMME_SCAN_CAP }, (_, index) =>
+      scanned({ id: `o-${index}`, slug: `o-${index}` }),
+    );
+    const { service, scans } = build(rows);
+    expect((await service.programmes({})).meta).toMatchObject({
+      truncated: true,
+    });
+    expect((await service.programmes({ q: 'msc' })).meta).toMatchObject({
+      truncated: true,
+    });
+    expect(scans()).toHaveLength(1);
+  });
+
+  /* A crawler can ask for any number of narrowings; what is kept stays
+     within a count of reads and a count of programmes, and the reads least
+     recently asked for go first. Every narrower list's counts are taken
+     over the whole catalogue, so that read is asked for each time and
+     stays. */
+  it('lets go of the reads least recently asked for, past its bounds', async () => {
+    const { service, scans } = build([scanned({})]);
+    for (let index = 0; index <= 200; index += 1)
+      await service.programmes({ course: `course-${index}` });
+    /* Each course, and the whole catalogue for the counts, once. */
+    expect(scans()).toHaveLength(202);
+    await service.programmes({});
+    await service.programmes({ course: 'course-200' });
+    expect(scans()).toHaveLength(202);
+    await service.programmes({ course: 'course-0' });
+    expect(scans()).toHaveLength(203);
+
+    const many = Array.from({ length: PROGRAMME_SCAN_CAP }, (_, index) =>
+      scanned({ id: `o-${index}`, slug: `o-${index}` }),
+    );
+    const big = build(many);
+    await big.service.programmes({});
+    await big.service.programmes({ country: 'united-kingdom' });
+    /* A third whole catalogue's worth is past the bound of two: the read
+       least recently asked for goes, which is the country's, not the
+       whole catalogue the country's counts were just taken over. */
+    await big.service.programmes({ subject: 'computer-science' });
+    expect(big.scans()).toHaveLength(3);
+    await big.service.programmes({});
+    expect(big.scans()).toHaveLength(3);
+    await big.service.programmes({ country: 'united-kingdom' });
+    expect(big.scans()).toHaveLength(4);
   });
 });

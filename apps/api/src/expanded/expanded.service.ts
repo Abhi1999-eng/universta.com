@@ -374,8 +374,21 @@ function programmeScanSelect(now: Date) {
 
 /** How long the finder's counts and headline figures are kept. They are
  * taken over the whole catalogue, which changes when an editor publishes,
- * not between one reader's clicks. */
+ * not between one reader's clicks. The programmes they are counted from
+ * are kept as long, for the same reason. */
 const PROGRAMME_OVERVIEW_TTL_MS = 60_000;
+
+/**
+ * The most programmes the finder keeps read at once, across every part of
+ * the catalogue it keeps: two whole catalogues at the scan's cap. The whole
+ * catalogue, which every unfiltered visit and every plain search reads,
+ * fits beside the narrower reads of the moment, and a crawler asking for a
+ * thousand different narrowings cannot make it hold a thousand copies.
+ */
+const PROGRAMME_SCAN_KEEP_ROWS = 2 * PROGRAMME_SCAN_CAP;
+
+/** And the most parts of the catalogue, however few programmes each holds. */
+const PROGRAMME_SCAN_KEEP = 200;
 
 /** How many programmes one comparison holds, as both references allow. */
 export const COURSE_COMPARE_LIMIT = 4;
@@ -389,6 +402,13 @@ type ProgrammeParams = Record<string, string | string[] | undefined>;
 type ProgrammeOverview = {
   facets: ReturnType<typeof programmeFacets>;
   summary: ReturnType<typeof programmeSummary>;
+  truncated: boolean;
+};
+
+/** The live programmes one narrowing of the catalogue holds, as read. */
+type ProgrammeScan = {
+  key: string;
+  rows: ProgrammeRow[];
   truncated: boolean;
 };
 
@@ -574,6 +594,12 @@ export class ExpandedService {
     string,
     { at: number; value: ProgrammeOverview }
   >();
+  private readonly programmeScans = new Map<
+    string,
+    { at: number; value: ProgrammeScan }
+  >();
+  /** How many programmes `programmeScans` holds across its entries. */
+  private programmeScanRows = 0;
   private catalogueCodes: {
     at: number;
     levels: string[];
@@ -1695,7 +1721,8 @@ export class ExpandedService {
    * university's own list already uses, and only the page's rows are then
    * read in full for their cards. The counts beside the filters and the
    * headline figures are taken over the whole live catalogue -- or the part
-   * a list is fixed to with `within` -- and kept for a minute.
+   * a list is fixed to with `within` -- and they and the programmes they
+   * are counted from are kept for a minute.
    */
   async programmes(query: ProgrammeParams) {
     const now = new Date();
@@ -1778,9 +1805,25 @@ export class ExpandedService {
    * destination, university, subject, specialization, course -- narrow the
    * read; everything else is tested in memory by `matchesProgramme`, which
    * tests these again, so the two can never disagree about a row.
+   *
+   * Each narrowing's read is kept for a minute. Every unfiltered visit to
+   * the finder and every plain search reads the same whole catalogue, and
+   * reading all of it again for each of them was most of what each cost.
    */
-  private async scanProgrammes(narrow: ProgrammeNarrowing, now: Date) {
+  private async scanProgrammes(
+    narrow: ProgrammeNarrowing,
+    now: Date,
+  ): Promise<ProgrammeScan> {
     const pick = narrowingOf(narrow);
+    const key = JSON.stringify(pick);
+    const kept = this.programmeScans.get(key);
+    if (kept && now.getTime() - kept.at < PROGRAMME_OVERVIEW_TTL_MS) {
+      /* To the back of the queue: the whole catalogue, which every
+         narrower list's counts are taken over, is the last to go. */
+      this.programmeScans.delete(key);
+      this.programmeScans.set(key, kept);
+      return kept.value;
+    }
     const generic = {
       ...(pick.courses.length ? { slug: { in: pick.courses } } : {}),
       ...(pick.subjects.length
@@ -1846,11 +1889,37 @@ export class ExpandedService {
           })),
         },
       }));
-    return {
-      key: JSON.stringify(pick),
-      rows,
-      truncated: raw.length >= PROGRAMME_SCAN_CAP,
+    const value = { key, rows, truncated: raw.length >= PROGRAMME_SCAN_CAP };
+    this.keepScan(value, now);
+    return value;
+  }
+
+  /**
+   * Keeps a read, then lets go of the others least recently asked for
+   * until what is kept is back inside both bounds. A Map holds its keys in
+   * the order they were set, and a read is set again whenever it is asked
+   * for, so its first keys are the reads least recently asked for and the
+   * read just kept is its last.
+   */
+  private keepScan(scan: ProgrammeScan, now: Date) {
+    const forget = (key: string) => {
+      const entry = this.programmeScans.get(key);
+      if (!entry) return;
+      this.programmeScanRows -= entry.value.rows.length;
+      this.programmeScans.delete(key);
     };
+    forget(scan.key);
+    this.programmeScans.set(scan.key, { at: now.getTime(), value: scan });
+    this.programmeScanRows += scan.rows.length;
+    for (const key of this.programmeScans.keys()) {
+      if (
+        key === scan.key ||
+        (this.programmeScans.size <= PROGRAMME_SCAN_KEEP &&
+          this.programmeScanRows <= PROGRAMME_SCAN_KEEP_ROWS)
+      )
+        break;
+      forget(key);
+    }
   }
 
   /**
@@ -1862,7 +1931,7 @@ export class ExpandedService {
    */
   private async programmeOverview(
     parsed: ProgrammeQuery,
-    scan: Awaited<ReturnType<ExpandedService['scanProgrammes']>>,
+    scan: ProgrammeScan,
     now: Date,
   ) {
     const scope = programmeScope(parsed);
@@ -1893,11 +1962,14 @@ export class ExpandedService {
     return value;
   }
 
-  /** The page's programmes in full, for their cards, in the list's order. */
+  /** The page's programmes in full, for their cards, in the list's order.
+   * The ids come from a read kept for up to a minute, so the live rule is
+   * asked again: a programme taken down since is left off the page rather
+   * than drawn with a link that answers 404. */
   private async programmeCards(ids: string[], now: Date) {
     if (!ids.length) return [];
     const rows = await this.prisma.universityCourseOffering.findMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, ...liveProgrammeWhere(now) },
       /* A card never prints the long overview, and a reload of a long run
          asks for hundreds of rows at once. */
       omit: { overview: true },
