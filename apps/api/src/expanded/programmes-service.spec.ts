@@ -51,8 +51,28 @@ const scanned = (over: Record<string, unknown>) => ({
   ...over,
 });
 
+/* The catalogue's own records, which a choice nothing is listed under is
+   named from: only published ones are answered, as the read asks. */
+const records: Record<string, Array<Record<string, unknown>>> = {
+  country: [{ name: 'Hong Kong', slug: 'hong-kong', iso2Code: 'HK' }],
+  subject: [{ name: 'Law', slug: 'law' }],
+  course: [{ name: 'BA Law', slug: 'ba-law-15' }],
+};
+
 function build(rows: Array<Record<string, unknown>>) {
   const findMany: Args[] = [];
+  const named: Record<string, Args[]> = {
+    country: [],
+    subject: [],
+    course: [],
+  };
+  const lookup = (kind: string) => ({
+    findMany: async (args: Args) => {
+      named[kind].push(args);
+      const slugs = args.where.slug.in as string[];
+      return records[kind].filter((row) => slugs.includes(row.slug as string));
+    },
+  });
   const prisma = {
     courseLevel: {
       findMany: async () => [{ code: 'UG' }, { code: 'PG' }],
@@ -60,6 +80,9 @@ function build(rows: Array<Record<string, unknown>>) {
     studyMode: {
       findMany: async () => [{ code: 'FULL_TIME' }, { code: 'PART_TIME' }],
     },
+    country: lookup('country'),
+    subject: lookup('subject'),
+    course: lookup('course'),
     universityCourseOffering: {
       findMany: async (args: Args) => {
         findMany.push(args);
@@ -74,6 +97,7 @@ function build(rows: Array<Record<string, unknown>>) {
   return {
     service: new ExpandedService(prisma, {} as ExperimentsService),
     findMany,
+    named,
   };
 }
 
@@ -195,5 +219,42 @@ describe('the programme finder’s reads', () => {
     });
     /* The whole level, its status with it. */
     expect(generic.courseLevel).toBe(true);
+  });
+
+  /* A destination or a course nothing is listed under is named from the
+     catalogue, so its chip reads "Hong Kong" and "BA Law", not the slug. */
+  it('names a chosen destination, subject or course nothing is listed under', async () => {
+    const { service, named } = build([scanned({})]);
+    const result = await service.programmes({
+      country: 'hong-kong,atlantis',
+      subject: 'law',
+      course: 'ba-law-15',
+    });
+    expect(result.meta.total).toBe(0);
+    expect(result.facets.countries).toContainEqual({
+      value: 'hong-kong',
+      label: 'Hong Kong',
+      iso2Code: 'HK',
+      count: 0,
+    });
+    expect(result.facets.subjects).toEqual([
+      { value: 'law', label: 'Law', count: 0 },
+    ]);
+    expect(result.facets.courses).toEqual([
+      { value: 'ba-law-15', label: 'BA Law', count: 0 },
+    ]);
+    /* Only published records, asked for by the slugs nothing named. */
+    expect(named.country[0].where).toEqual({
+      slug: { in: ['hong-kong', 'atlantis'] },
+      status: 'PUBLISHED',
+      deletedAt: null,
+    });
+    expect(named.course[0].where.slug).toEqual({ in: ['ba-law-15'] });
+    /* A list whose choices the counts already name asks nothing more. */
+    const plain = build([scanned({})]);
+    await plain.service.programmes({ country: 'united-kingdom' });
+    expect(plain.named.country).toHaveLength(0);
+    expect(plain.named.subject).toHaveLength(0);
+    expect(plain.named.course).toHaveLength(0);
   });
 });

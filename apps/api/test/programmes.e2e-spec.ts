@@ -45,11 +45,15 @@ describe('programmes across universities (e2e)', () => {
   const countryIds: string[] = [];
   const universityIds: string[] = [];
   const courseIds: string[] = [];
+  const subjectIds: string[] = [];
   const offeringIds: string[] = [];
   const scholarshipIds: string[] = [];
   const slugs: Record<string, string> = {};
   let home = '';
   let away = '';
+  let empty = '';
+  let untaught = '';
+  let unlisted = '';
 
   const get = (path: string) =>
     request(app.getHttpServer()).get(`/api/v1/phase1${path}`);
@@ -92,8 +96,11 @@ describe('programmes across universities (e2e)', () => {
     const live = await country('Home', 'PUBLISHED');
     const elsewhere = await country('Away', 'PUBLISHED');
     const gone = await country('Gone', 'DRAFT');
+    /* Published, with nothing listed in it. */
+    const bare = await country('Empty', 'PUBLISHED');
     home = live.slug;
     away = elsewhere.slug;
+    empty = bare.slug;
 
     const university = async (
       name: string,
@@ -137,6 +144,31 @@ describe('programmes across universities (e2e)', () => {
       },
     });
     courseIds.push(generic.id);
+
+    /* A published subject and a published course guide that no programme
+       is filed under. */
+    const quiet = await prisma.subject.create({
+      data: {
+        name: `PR E2E Subject ${suffix}`,
+        slug: `pr-e2e-subject-${suffix}`,
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+      },
+    });
+    subjectIds.push(quiet.id);
+    unlisted = quiet.slug;
+    const idle = await prisma.course.create({
+      data: {
+        subjectId: subject.id,
+        courseLevelId: level.id,
+        name: `PR E2E Untaught ${suffix}`,
+        slug: `pr-e2e-untaught-${suffix}`,
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+      },
+    });
+    courseIds.push(idle.id);
+    untaught = idle.slug;
 
     const offer = async (key: string, universityId: string, extra = {}) => {
       const row = await prisma.universityCourseOffering.create({
@@ -202,6 +234,7 @@ describe('programmes across universities (e2e)', () => {
       where: { id: { in: offeringIds } },
     });
     await prisma.course.deleteMany({ where: { id: { in: courseIds } } });
+    await prisma.subject.deleteMany({ where: { id: { in: subjectIds } } });
     await prisma.universityCampus.deleteMany({
       where: { universityId: { in: universityIds } },
     });
@@ -285,6 +318,36 @@ describe('programmes across universities (e2e)', () => {
     expect((await list(`q=${suffix}&sort=fee&country=${home}`)).meta.sort).toBe(
       'fee',
     );
+  });
+
+  /* Its chip read the bare slug; it is named from the catalogue now. */
+  it('names a chosen destination, subject or course nothing is listed under', async () => {
+    const body = await list(
+      `country=${empty}&subject=${unlisted}&course=${untaught}`,
+    );
+    expect(body.meta.total).toBe(0);
+    expect(body.facets.countries).toContainEqual(
+      expect.objectContaining({
+        value: empty,
+        label: `PR Empty ${suffix}`,
+        count: 0,
+      }),
+    );
+    expect(body.facets.subjects).toContainEqual({
+      value: unlisted,
+      label: `PR E2E Subject ${suffix}`,
+      count: 0,
+    });
+    expect(body.facets.courses).toEqual([
+      { value: untaught, label: `PR E2E Untaught ${suffix}`, count: 0 },
+    ]);
+    /* A slug the catalogue does not publish is not named. */
+    const typed = await list(`country=atlantis-${suffix}`);
+    expect(
+      typed.facets.countries.some((option) =>
+        option.value.startsWith('atlantis'),
+      ),
+    ).toBe(false);
   });
 
   /* The card links "Course guide" only while the guide's page answers,

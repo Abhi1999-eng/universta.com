@@ -29,6 +29,7 @@ import {
   DURATION_BANDS,
   fold,
   matchesCourseQuery,
+  mostFirst,
   nextDeadline,
   number,
   tally,
@@ -36,6 +37,7 @@ import {
   type CourseQuery,
   type CourseSort,
   type FacetOption,
+  type NamedLike,
   type OfferingLike,
   type Query,
 } from './university-courses';
@@ -605,6 +607,67 @@ export function programmeFacets(
     status,
     extras,
     tuition,
+  };
+}
+
+export type ProgrammeFacets = ReturnType<typeof programmeFacets>;
+
+/** The destinations, subjects and courses chosen that no option names. */
+export function unnamedChoices(facets: ProgrammeFacets, query: ProgrammeQuery) {
+  const unnamed = (chosen: string[], options: FacetOption[]) =>
+    chosen.filter((slug) => !options.some((option) => option.value === slug));
+  return {
+    countries: unnamed(query.countries, facets.countries),
+    subjects: unnamed(query.subjects, facets.subjects),
+    courses: unnamed(query.courses, facets.courses),
+  };
+}
+
+/**
+ * The options, with the choices no programme carries named from the
+ * catalogue's own records. A destination, subject or course with nothing
+ * listed under it has no count to take a name from, so its chip and its
+ * box read as the bare slug -- "hong-kong", "ba-law-15" -- and on a
+ * catalogue with no programmes yet every one of them does. Each is named
+ * with a count of none, which is what it holds; a slug the catalogue does
+ * not publish is not named, and stays as it was typed.
+ */
+export function nameChoices(
+  facets: ProgrammeFacets,
+  named: {
+    countries?: Array<NamedLike & { iso2Code?: string | null }>;
+    subjects?: NamedLike[];
+    courses?: NamedLike[];
+  },
+): ProgrammeFacets {
+  const unlisted =
+    (options: FacetOption[]) =>
+    (record: NamedLike): boolean =>
+      !options.some((option) => option.value === record.slug);
+  const none = (record: NamedLike) => ({
+    value: record.slug,
+    label: record.name,
+    count: 0,
+  });
+  return {
+    ...facets,
+    countries: [
+      ...facets.countries,
+      ...(named.countries ?? [])
+        .filter(unlisted(facets.countries))
+        .map((record) => ({
+          ...none(record),
+          iso2Code: record.iso2Code ?? null,
+        })),
+    ].sort(byLabel),
+    subjects: [
+      ...facets.subjects,
+      ...(named.subjects ?? []).filter(unlisted(facets.subjects)).map(none),
+    ].sort(mostFirst),
+    courses: [
+      ...facets.courses,
+      ...(named.courses ?? []).filter(unlisted(facets.courses)).map(none),
+    ].sort(byLabel),
   };
 }
 

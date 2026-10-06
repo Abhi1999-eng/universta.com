@@ -34,11 +34,14 @@ import {
 } from './university-courses';
 import {
   matchesProgramme,
+  nameChoices,
   parseProgrammeQuery,
   PROGRAMME_SCAN_CAP,
   programmeFacets,
   programmeScope,
   programmeSummary,
+  unnamedChoices,
+  type ProgrammeFacets,
   type ProgrammeQuery,
   type ProgrammeRow,
 } from './programmes';
@@ -1696,18 +1699,19 @@ export class ExpandedService {
     const now = new Date();
     const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
     const scan = await this.scanProgrammes(parsed, now);
+    const overview = await this.programmeOverview(parsed, scan, now);
     const matching = sortOfferings(
       scan.rows.filter((row) => matchesProgramme(row, parsed, now)),
       parsed.sort,
       now,
     );
     const skip = (parsed.page - 1) * parsed.limit;
-    const [data, overview] = await Promise.all([
+    const [data, facets] = await Promise.all([
       this.programmeCards(
         matching.slice(skip, skip + parsed.limit).map((row) => row.id),
         now,
       ),
-      this.programmeOverview(parsed, scan, now),
+      this.namedFacets(overview.facets, parsed),
     ]);
     return {
       data,
@@ -1719,9 +1723,47 @@ export class ExpandedService {
         ignored: parsed.ignored,
         ...(scan.truncated || overview.truncated ? { truncated: true } : {}),
       },
-      facets: overview.facets,
+      facets,
       summary: overview.summary,
     };
+  }
+
+  /**
+   * The finder's options with every destination, subject and course chosen
+   * named, the ones nothing is listed under included: those are read from
+   * the catalogue by slug, published only, and only when there are any.
+   */
+  private async namedFacets(facets: ProgrammeFacets, parsed: ProgrammeQuery) {
+    const unnamed = unnamedChoices(facets, parsed);
+    if (
+      !unnamed.countries.length &&
+      !unnamed.subjects.length &&
+      !unnamed.courses.length
+    )
+      return facets;
+    const published = { status: 'PUBLISHED', deletedAt: null };
+    const named = { name: true, slug: true } as const;
+    const [countries, subjects, courses] = await Promise.all([
+      unnamed.countries.length
+        ? this.prisma.country.findMany({
+            where: { slug: { in: unnamed.countries }, ...published },
+            select: { ...named, iso2Code: true },
+          })
+        : [],
+      unnamed.subjects.length
+        ? this.prisma.subject.findMany({
+            where: { slug: { in: unnamed.subjects }, ...published },
+            select: named,
+          })
+        : [],
+      unnamed.courses.length
+        ? this.prisma.course.findMany({
+            where: { slug: { in: unnamed.courses }, ...published },
+            select: named,
+          })
+        : [],
+    ]);
+    return nameChoices(facets, { countries, subjects, courses });
   }
 
   /**

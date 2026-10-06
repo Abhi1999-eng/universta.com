@@ -528,11 +528,37 @@ export type ActiveChip = {
   search: string;
 };
 
+/* Joining words a title leaves in lower case: "University of Warwick". */
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'at', 'de', 'for', 'in', 'of', 'on', 'the', 'to']);
+
+/**
+ * A value no option names, as words: "hong-kong" as "Hong Kong",
+ * "university-of-warwick" as "University of Warwick", "HYBRID" as
+ * "Hybrid". A short code -- "PG", "MBA" -- is an abbreviation, and stays
+ * as it is written.
+ */
+function readableValue(value: string) {
+  if (/^[A-Z0-9_]+$/.test(value))
+    return value.length > 4 || value.includes('_') ? humanise(value) : value;
+  return value
+    .split('-')
+    .filter(Boolean)
+    .map((word, index) =>
+      index > 0 && SMALL_WORDS.has(word)
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(' ');
+}
+
 /**
  * One removable chip per filter in force, as the reference shows them above
  * its results -- each a link to the same list without that one value. A
  * value nothing carries keeps its chip, as on the reference, so the way out
- * of an empty list is always on the page.
+ * of an empty list is always on the page. Its label is the option's, or,
+ * for a destination or a subject with nothing listed under it yet -- on a
+ * catalogue with no programmes, every one of them -- its value in words
+ * rather than the bare slug.
  */
 export function activeChips(
   filters: CourseFilters,
@@ -552,7 +578,7 @@ export function activeChips(
       chips.push({
         key: group.key,
         value,
-        label: option?.label ?? value,
+        label: option?.label ?? readableValue(value),
         search: courseListSearch(filters, {
           [group.key]: filters[group.key].filter((entry) => entry !== value),
         }),

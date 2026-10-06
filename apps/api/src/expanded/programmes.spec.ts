@@ -2,10 +2,12 @@ import {
   applicationStatus,
   englishScoreMatch,
   matchesProgramme,
+  nameChoices,
   parseProgrammeQuery,
   programmeFacets,
   programmeScope,
   programmeSummary,
+  unnamedChoices,
   type ProgrammeRow,
 } from './programmes';
 import { sortOfferings } from './university-courses';
@@ -432,6 +434,63 @@ describe('counting the choices', () => {
       },
     ]);
     expect(facets.tuition).toBeNull();
+  });
+
+  /* A destination, subject or course nothing is listed under has no count
+     to be named by; its chip read "hong-kong" or "ba-law-15". Named from
+     the catalogue, with a count of none -- and only those the catalogue
+     publishes, so a typed slug stays as typed. */
+  it('names a choice nothing is listed under from the catalogue, with a count of none', () => {
+    const query = parse({
+      country: 'hong-kong,japan,atlantis',
+      subject: 'law',
+      course: 'ba-law-15,bsc-computer-science',
+    });
+    const facets = programmeFacets(catalogue, query, today);
+    expect(unnamedChoices(facets, query)).toEqual({
+      countries: ['hong-kong', 'atlantis'],
+      subjects: ['law'],
+      courses: ['ba-law-15'],
+    });
+    const named = nameChoices(facets, {
+      countries: [{ name: 'Hong Kong', slug: 'hong-kong', iso2Code: 'HK' }],
+      subjects: [{ name: 'Law', slug: 'law' }],
+      courses: [{ name: 'BA Law', slug: 'ba-law-15' }],
+    });
+    expect(named.countries).toEqual([
+      { value: 'hong-kong', label: 'Hong Kong', iso2Code: 'HK', count: 0 },
+      { value: 'japan', label: 'Japan', iso2Code: 'JP', count: 1 },
+      {
+        value: 'united-kingdom',
+        label: 'United Kingdom',
+        iso2Code: 'GB',
+        count: 2,
+      },
+    ]);
+    expect(named.subjects.at(-1)).toEqual({
+      value: 'law',
+      label: 'Law',
+      count: 0,
+    });
+    expect(named.courses).toEqual([
+      { value: 'ba-law-15', label: 'BA Law', count: 0 },
+      {
+        value: 'bsc-computer-science',
+        label: 'BSc Computer Science',
+        count: 1,
+      },
+    ]);
+    expect(unnamedChoices(named, query)).toEqual({
+      countries: ['atlantis'],
+      subjects: [],
+      courses: [],
+    });
+    /* An option the counts already name is not named twice. */
+    expect(
+      nameChoices(named, {
+        countries: [{ name: 'Nippon', slug: 'japan' }],
+      }).countries.filter((option) => option.value === 'japan'),
+    ).toEqual([{ value: 'japan', label: 'Japan', iso2Code: 'JP', count: 1 }]);
   });
 
   it('offers the tuition range in the one country’s currency', () => {
