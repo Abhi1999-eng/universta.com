@@ -8,6 +8,10 @@ import { SectionHead } from './SectionHead';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { counsellingHref } from '@/lib/counselling-link';
+import { inCountry } from '@/lib/country-article';
+import { durationLabel, programmesHref } from '@/lib/course-levels';
+import { formatNumber } from '@/lib/format';
+import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import {
   academicRows,
   englishRows,
@@ -15,19 +19,52 @@ import {
   hasEntryDetail,
   intakeRows,
 } from '@/lib/course-entry';
+import { allProgrammes, ProgrammeSample } from './ProgrammeSample';
+
+/** How many of the programmes read are drawn as cards; the rest are a line
+ *  each, so every university the page read is named. */
+const CARDS_SHOWN = 6;
+
+const NOT_LISTED = 'Not listed';
+
+/** The design's labels for the section strip, by section. */
+const TAB_LABELS: Record<string, string> = {
+  about: 'About',
+  curriculum: 'Curriculum',
+  eligibility: 'Eligibility',
+  destinations: 'Destinations',
+  taught: 'Universities',
+  entry: 'Entry',
+  apply: 'How to apply',
+  funding: 'Scholarships',
+  careers: 'Careers',
+  faqs: 'FAQs',
+  similar: 'Similar',
+};
 
 /**
  * A programme's guide, in the approved design.
  *
  * The reference runs twelve sections here, several of which describe things a
- * generic course record cannot know -- which university teaches it, which
- * consultants cover it. Those stand down rather than render a heading over
- * nothing, and the numbering is taken from what survives so it never skips.
+ * generic course record cannot know -- which consultants cover it, say. Those
+ * stand down rather than render a heading over nothing, and the numbering is
+ * taken from what survives so it never skips.
+ *
+ * Which universities teach it is no longer one of them: the universities'
+ * own programmes name the course they are an instance of, so the guide
+ * lists them, narrowed to the destination it was opened under, and hands
+ * on to all of them in the finder. A course nobody teaches yet -- every
+ * course, while the catalogue holds no programmes -- simply has no such
+ * section.
+ *
+ * The facts the hero used to run together in one line are the design's
+ * "At a glance" panel, as on a programme's own page.
  */
 export function CourseGuide({
   course,
   country,
   scholarships = [],
+  programmes = null,
 }: {
   course: CourseDetail;
   /** Awards recorded against this programme wherever it is taught. Read on
@@ -37,6 +74,9 @@ export function CourseGuide({
   /** The destination the visitor arrived under, so counselling booked from
    *  here starts with the course and that country already stated. */
   country?: string;
+  /** The universities' programmes of this course, in that destination when
+   *  there is one. Null when there are none or they could not be read. */
+  programmes?: Programmes | null;
 }) {
   const overview = course.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview));
@@ -52,11 +92,77 @@ export function CourseGuide({
   const eligibility = named('eligibility');
   const apply = named('apply') ?? named('admission-process');
 
+  /* The destination the guide was opened under, by its name; the course's
+     record narrows to it, so it is the one row its availability holds. */
+  const atHere = country
+    ? (availability.find((row) => row.country.slug === country) ?? null)
+    : null;
+  const hereName =
+    atHere?.country.name ??
+    (country && course.selectedCountry?.slug === country
+      ? course.selectedCountry.name
+      : null);
+  const here = hereName ? inCountry(hereName) : null;
+  const taught = programmes?.cards.length ? programmes : null;
+
+  /* The panel holds what the facts line held -- the level, how long, how it
+     is taught, how many destinations -- and, under a destination, what that
+     destination records for its fee and intakes. A fact the record does
+     not hold says so rather than dropping its row. */
+  const duration = durationLabel(course);
+  const modes = (course.studyModes ?? []).map((mode) => mode.name).join(', ');
+  const intakesHere = atHere ? intakeRows(atHere).map((row) => row.name) : [];
+  const glance: Array<{ label: string; value: string | null; note?: string | null }> = [
+    {
+      label: 'Level',
+      value: course.courseLevel?.name ?? null,
+      note: course.qualificationName,
+    },
+    { label: 'Duration', value: duration },
+    { label: 'Study mode', value: modes || null },
+    hereName
+      ? { label: 'Destination', value: hereName }
+      : {
+          label: 'Destinations',
+          value: availability.length
+            ? `${formatNumber(availability.length)} ${availability.length === 1 ? 'destination' : 'destinations'}`
+            : null,
+        },
+    ...(hereName
+      ? [
+          {
+            label: 'Tuition',
+            value: atHere ? feeRange(atHere.tuition) : null,
+            note:
+              atHere && feeRange(atHere.tuition) && atHere.tuition?.period === 'PER_YEAR'
+                ? 'A year'
+                : null,
+          },
+          {
+            label: intakesHere.length > 1 ? 'Intakes' : 'Intake',
+            value: [...new Set(intakesHere)].join(' · ') || null,
+          },
+        ]
+      : []),
+    ...(taught
+      ? [
+          {
+            label: 'Programmes',
+            value: formatNumber(taught.total),
+            note: taught.universities
+              ? `At ${formatNumber(taught.universities)} ${taught.universities === 1 ? 'university' : 'universities'}`
+              : null,
+          },
+        ]
+      : []),
+  ];
+
   const order: string[] = [];
   if (hasOverview) order.push('about');
   if (curriculum) order.push('curriculum');
   if (eligibility) order.push('eligibility');
   if (availability.length) order.push('destinations');
+  if (taught) order.push('taught');
   /* A destination that is only a name adds a card saying nothing, so the
      section is built from the ones that actually recorded something. */
   const detailed = availability.filter(hasEntryDetail);
@@ -86,7 +192,7 @@ export function CourseGuide({
 
   return (
     <>
-      <section className="hero hero--compact">
+      <section className="hero hero--compact coursehero">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>
@@ -109,63 +215,124 @@ export function CourseGuide({
             </span>
             <span aria-current="page">{course.name}</span>
           </nav>
-          <div className="hero__lead">
-            <p className="hero__eyebrow">
-              {course.courseLevel?.name ?? 'Programme'}
-              {course.qualificationName ? (
-                <>
-                  <b>·</b>
-                  {course.qualificationName}
-                </>
+          <div className="coursehero__grid">
+            <div className="coursehero__main">
+              <p className="hero__eyebrow">
+                {course.courseLevel?.name ?? 'Programme'}
+                {course.qualificationName ? (
+                  <>
+                    <b>·</b>
+                    {course.qualificationName}
+                  </>
+                ) : null}
+              </p>
+              <h1 className="coursehero__name">{course.name}</h1>
+              {course.shortDescription ? (
+                <p className="hero__sub">{course.shortDescription}</p>
               ) : null}
-            </p>
-            <h1 className="hero__h1">{course.name}</h1>
-            {course.shortDescription ? (
-              <p className="hero__sub">{course.shortDescription}</p>
-            ) : null}
-          </div>
-          <div className="btn-row" style={{ marginTop: 22 }}>
-            <Link className="btn btn--lg" href={`/courses?subject=${course.subject.slug}`}>
-              Similar programmes{' '}
-              <span className="btn__arrow" aria-hidden="true">
-                &rarr;
-              </span>
-            </Link>
-            <Link
-              className="btn btn--lg btn--ghost"
-              href={counsellingHref({
-                source: 'course',
-                course: course.slug,
-                ...(country ? { country } : {}),
-                from: `/courses/${course.slug}`,
-              })}
-            >
-              Talk to a counsellor
-            </Link>
-          </div>
-          <div className="coursefacts">
-            {course.duration?.min ? (
-              <span className="datum">
-                {[course.duration.min, course.duration.max]
-                  .filter(Boolean)
-                  .join('–')}{' '}
-                {course.duration.unit?.toLowerCase() ?? ''}
-              </span>
-            ) : null}
-            {course.studyModes?.length ? (
-              <span className="datum">
-                {course.studyModes.map((mode) => mode.name).join(', ')}
-              </span>
-            ) : null}
-            {availability.length ? (
-              <span className="datum">
-                {availability.length}{' '}
-                {availability.length === 1 ? 'destination' : 'destinations'}
-              </span>
-            ) : null}
+              {/* Where the course sits, as the design's programme page shows
+                  it: the subject, the specialization, and the subject in the
+                  destination the guide was opened under. */}
+              {course.subject ? (
+                <div className="topicpath" aria-label="Where this course sits">
+                  <Link
+                    className="topicpath__item"
+                    href={`/subjects/${course.subject.slug}`}
+                  >
+                    <span className="label">Subject</span>
+                    <span>
+                      {course.subject.name} <span aria-hidden="true">&rarr;</span>
+                    </span>
+                  </Link>
+                  {course.subSubject ? (
+                    <Link
+                      className="topicpath__item"
+                      href={`/subjects/${course.subject.slug}/${course.subSubject.slug}`}
+                    >
+                      <span className="label">Specialization</span>
+                      <span>
+                        {course.subSubject.name}{' '}
+                        <span aria-hidden="true">&rarr;</span>
+                      </span>
+                    </Link>
+                  ) : null}
+                  {country && hereName ? (
+                    <Link
+                      className="topicpath__item"
+                      href={`/study-abroad/${country}/${course.subject.slug}`}
+                    >
+                      <span className="label">In {here}</span>
+                      <span>
+                        {course.subject.name} <span aria-hidden="true">&rarr;</span>
+                      </span>
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="btn-row" style={{ marginTop: 22 }}>
+                <Link
+                  className="btn btn--lg"
+                  href={`/courses?subject=${course.subject.slug}`}
+                >
+                  Similar programmes{' '}
+                  <span className="btn__arrow" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </Link>
+                <Link
+                  className="btn btn--lg btn--ghost"
+                  href={counsellingHref({
+                    source: 'course',
+                    course: course.slug,
+                    ...(country ? { country } : {}),
+                    from: `/courses/${course.slug}`,
+                  })}
+                >
+                  Talk to a counsellor
+                </Link>
+              </div>
+            </div>
+
+            <aside className="snap coursefacts" aria-label="Course facts">
+              <div className="snap__head">
+                <span className="snap__title">At a glance</span>
+              </div>
+              {glance.map((row) => (
+                <div className="snap__row" key={row.label}>
+                  <span className="snap__k">{row.label}</span>
+                  <span className={`snap__v${row.value ? '' : ' uc-none'}`}>
+                    {row.value ?? NOT_LISTED}
+                  </span>
+                  {row.note ? <span className="snap__n">{row.note}</span> : null}
+                </div>
+              ))}
+              <div className="snap__foot">
+                <p className="snap__disclaimer">
+                  {hereName
+                    ? `What the catalogue records for ${here}. `
+                    : ''}
+                  Each university sets its own fees, intakes and entry
+                  requirements &mdash; open a programme for its figures.
+                </p>
+              </div>
+            </aside>
           </div>
         </div>
       </section>
+
+      {/* `unitabs--sections` gives the sections below their offset, so a
+          link here lands each one under the sticky header and this strip. */}
+      {order.length > 1 ? (
+        <nav className="unitabs unitabs--sections" aria-label="Course sections">
+          <div className="wrap unitabs__inner">
+            {order.map((id) => (
+              <a key={id} href={`#${id}`}>
+                {TAB_LABELS[id] ?? id}
+              </a>
+            ))}
+          </div>
+        </nav>
+      ) : null}
 
       {hasOverview ? (
         <section className={band('about')} id="about">
@@ -225,7 +392,9 @@ export function CourseGuide({
               title="Where you can study it"
               lead="Fees and intakes are set by the university, so open a destination for its own numbers."
             />
-            <div className="chip-row">
+            {/* The design's chip row, which wraps: as one line it ran
+                twelve countries off the side of a phone. */}
+            <div className="citychips">
               {availability.map((row) => (
                 <Link
                   key={row.id}
@@ -236,6 +405,32 @@ export function CourseGuide({
                 </Link>
               ))}
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {taught ? (
+        <section className={band('taught')} id="taught">
+          <div className="wrap">
+            <SectionHead
+              n={n('taught')}
+              eyebrow="Universities"
+              title="Where it is taught"
+              lead={`${formatNumber(taught.total)} ${taught.total === 1 ? 'programme' : 'programmes'}${
+                taught.universities
+                  ? ` at ${formatNumber(taught.universities)} ${taught.universities === 1 ? 'university' : 'universities'}`
+                  : ''
+              }${here ? ` in ${here}` : ''}, each as the university teaches it. Its page has the university’s own fees, intakes and entry requirements.`}
+            />
+            <ProgrammeSample
+              cards={taught.cards.slice(0, CARDS_SHOWN)}
+              rows={taught.cards.slice(CARDS_SHOWN)}
+              rowsLabel="Also taught at"
+              link={{
+                href: programmesHref({ course: course.slug, country: country || undefined }),
+                label: allProgrammes('See', taught.total),
+              }}
+            />
           </div>
         </section>
       ) : null}

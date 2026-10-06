@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getCourse } from "@/lib/catalog";
 import { CourseGuide } from "@/components/study-abroad/CourseGuide";
 import { resolvedMetadata } from "@/lib/seo-management";
-import { phaseList } from "@/lib/phase1";
+import { phaseCourseSlug, phaseList } from "@/lib/phase1";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
+import { programmeSample } from "@/lib/programme-sample";
 import { toScholarshipCards } from "@/lib/scholarship-card";
+import { withQuery } from "@/lib/university-courses";
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+/* How many of the course's programmes the guide reads: six drawn as cards,
+   the rest named a line each, so a course taught at a few dozen
+   universities names every one of them on its own page. */
+const PROGRAMMES_READ = 30;
 function one(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -45,8 +51,25 @@ export default async function CourseDetailPage({
   const p = await params;
   const q = await searchParams;
   const country = one(q.country);
-  const course = await load(p.slug, country);
-  if (!course) notFound();
+  /* The course and the universities' programmes of it are read together;
+     the programmes are not the point of the page, so a failure there
+     costs their section and not the route. */
+  const [course, programmes] = await Promise.all([
+    load(p.slug, country),
+    programmeSample(
+      { course: [p.slug], ...(country ? { country: [country] } : {}) },
+      PROGRAMMES_READ,
+    ),
+  ]);
+  if (!course) {
+    /* The reference sends /courses/<slug>/ to whatever carries the slug,
+       so a programme, a subject or a specialization reached by its bare
+       name lands on its own page. Only one live match moves the reader;
+       none or several stay a 404 rather than a guess. */
+    const match = await phaseCourseSlug(p.slug);
+    if (match) permanentRedirect(withQuery(match.path, q));
+    notFound();
+  }
   /* Funding is a cross-link, not the point of the page: a failure here drops
      the section rather than the route. */
   const scholarships = await phaseList<AnyRecord>("scholarships", {
@@ -62,6 +85,7 @@ export default async function CourseDetailPage({
         course={course}
         country={country}
         scholarships={scholarships}
+        programmes={programmes}
       />
       <script type="application/ld+json">
         {JSON.stringify(course.jsonLd).replace(/</g, "\\u003c")}

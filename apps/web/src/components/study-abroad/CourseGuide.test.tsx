@@ -11,6 +11,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { CourseGuide } from './CourseGuide';
 import type { CourseAvailability, CourseDetail } from '@/lib/catalog';
 import { toScholarshipCards } from '@/lib/scholarship-card';
+import { toOfferingCard } from '@/lib/university-courses';
 
 /**
  * The same programme is admitted on different terms in different countries,
@@ -148,6 +149,182 @@ describe('what each destination asks for', () => {
     const markup = html([availability({ englishRequirements: { ielts: '6.5' } })]);
     expect(markup).toContain('01');
     expect(markup).toContain('02');
+  });
+});
+
+/**
+ * The facts under the hero ran together as "1–2 yearsFull time12
+ * destinations" in an unstyled line. They are the design's "At a glance"
+ * panel now, as on a programme's page, and every fact the line held is
+ * still there.
+ */
+describe('the course at a glance', () => {
+  const full = (over: Partial<CourseDetail> = {}) =>
+    ({
+      ...course([
+        availability(),
+        availability({ id: 'a2', country: { id: 'c2', name: 'United Kingdom', slug: 'united-kingdom' } }),
+      ]),
+      qualificationName: 'Master of Science',
+      duration: { min: '1.00', max: '2.00', unit: 'YEARS' },
+      studyModes: [{ id: 'f', name: 'Full time', code: 'FULL_TIME' }],
+      ...over,
+    }) as CourseDetail;
+  const panel = (markup: string) =>
+    /<aside class="snap coursefacts"[^>]*>.*?<\/aside>/.exec(markup)?.[0] ?? '';
+
+  it('holds the level, the length, how it is taught and how many destinations', () => {
+    const facts = panel(renderToStaticMarkup(<CourseGuide course={full()} />));
+    expect(facts).toContain('At a glance');
+    expect(facts).toContain('Postgraduate');
+    expect(facts).toContain('Master of Science');
+    expect(facts).toContain('1–2 years');
+    expect(facts).toContain('Full time');
+    expect(facts).toContain('2 destinations');
+  });
+
+  it('no longer runs the facts together in one line', () => {
+    const markup = renderToStaticMarkup(<CourseGuide course={full()} />);
+    expect(markup).not.toMatch(/<div class="coursefacts">/);
+    expect(markup).not.toContain('<span class="datum">');
+  });
+
+  it('says what it does not know rather than dropping the row', () => {
+    const facts = panel(
+      renderToStaticMarkup(
+        <CourseGuide
+          course={full({ duration: { min: null, max: null, unit: null }, studyModes: [] })}
+        />,
+      ),
+    );
+    expect(facts).toMatch(/Duration<\/span><span class="snap__v uc-none">Not listed/);
+    expect(facts).toMatch(/Study mode<\/span><span class="snap__v uc-none">Not listed/);
+  });
+
+  it('under a destination, states that destination’s fee and intakes', () => {
+    const uk = availability({
+      id: 'a2',
+      country: { id: 'c2', name: 'United Kingdom', slug: 'united-kingdom' },
+      tuition: { min: '30000', max: '30000', currencyCode: 'GBP', period: 'PER_YEAR' },
+      intakes: [{ id: 'i1', intake: { id: 'x', name: 'September', slug: 'september' } }],
+    });
+    const facts = panel(
+      renderToStaticMarkup(
+        <CourseGuide course={full({ availability: [uk] })} country="united-kingdom" />,
+      ),
+    );
+    expect(facts).toMatch(/Destination<\/span><span class="snap__v">United Kingdom/);
+    expect(facts).toContain('GBP 30,000');
+    expect(facts).toContain('A year');
+    expect(facts).toMatch(/Intake<\/span><span class="snap__v">September/);
+    expect(facts).toContain('What the catalogue records for the United Kingdom.');
+  });
+
+  it('under a destination that records no fee, says so', () => {
+    const facts = panel(
+      renderToStaticMarkup(
+        <CourseGuide
+          course={full({
+            availability: [
+              availability({ id: 'a2', country: { id: 'c2', name: 'United Kingdom', slug: 'united-kingdom' } }),
+            ],
+          })}
+          country="united-kingdom"
+        />,
+      ),
+    );
+    expect(facts).toMatch(/Tuition<\/span><span class="snap__v uc-none">Not listed/);
+    expect(facts).toMatch(/Intake<\/span><span class="snap__v uc-none">Not listed/);
+  });
+
+  it('wraps its row of destinations, which ran off the side of a phone', () => {
+    const markup = renderToStaticMarkup(<CourseGuide course={full()} />);
+    expect(markup).toMatch(/<div class="citychips"><a class="chipbtn" href="\/study-abroad\/germany">/);
+    expect(markup).not.toContain('chip-row');
+  });
+});
+
+/**
+ * The generic course page never said which universities teach the course,
+ * though every programme names the course it is an instance of. It lists
+ * them now, narrowed to the destination it was opened under, and hands on
+ * to all of them in the finder.
+ */
+describe('where the course is taught', () => {
+  const uk = { name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB' };
+  const programme = (n: number) =>
+    toOfferingCard({
+      id: `p${n}`,
+      slug: `university-${n}-msc-computer-science`,
+      name: 'MSc Computer Science',
+      genericCourse: { name: 'MSc Computer Science', slug: 'msc-computer-science' },
+      university: {
+        name: `University ${n}`,
+        slug: `university-${n}`,
+        country: uk,
+        campuses: [{ city: 'Coventry' }],
+      },
+    })!;
+  const sample = (count: number, total = count) => ({
+    cards: Array.from({ length: count }, (_, index) => programme(index + 1)),
+    total,
+    universities: total,
+    cities: 3,
+  });
+  const markup = (programmes: ReturnType<typeof sample> | null, country?: string) =>
+    renderToStaticMarkup(
+      <CourseGuide
+        course={course([availability()])}
+        programmes={programmes}
+        country={country}
+      />,
+    );
+
+  it('draws the first six as cards, each opening its programme at its nested address', () => {
+    const html = markup(sample(2));
+    expect(html).toContain('Where it is taught');
+    expect(html.match(/class="coursecard"/g)).toHaveLength(2);
+    expect(html).toContain(
+      'href="/study-abroad/united-kingdom/universities/university-1/courses/university-1-msc-computer-science"',
+    );
+    expect(html).toContain('2 programmes at 2 universities');
+  });
+
+  it('names every university it read, the ones past six a line each', () => {
+    const html = markup(sample(8));
+    expect(html.match(/class="coursecard"/g)).toHaveLength(6);
+    expect(html).toContain('Also taught at');
+    expect(html).toMatch(
+      /<a class="courselist__row" href="\/study-abroad\/united-kingdom\/universities\/university-8\/courses\/university-8-msc-computer-science"><span class="courselist__name">University 8<\/span>/,
+    );
+    expect(html).toContain('Fee not listed');
+  });
+
+  it('sends "See all" to the finder narrowed to this course', () => {
+    expect(markup(sample(2, 19))).toMatch(
+      /<a class="linkcta" href="\/courses\?course=msc-computer-science">See all 19 programmes/,
+    );
+  });
+
+  it('keeps the destination it was opened under in the finder', () => {
+    expect(markup(sample(1, 3), 'germany')).toContain(
+      'href="/courses?course=msc-computer-science&amp;country=germany"',
+    );
+    expect(markup(sample(1, 3), 'germany')).toContain('3 programmes at 3 universities in Germany');
+  });
+
+  it('stands down when no university teaches it, as every course does while there are no programmes', () => {
+    for (const html of [markup(null), markup(sample(0, 0))]) {
+      expect(html).not.toContain('Where it is taught');
+      expect(html).not.toContain('id="taught"');
+      expect(html).not.toContain('class="coursecard"');
+    }
+  });
+
+  it('numbers the section in the run', () => {
+    const html = markup(sample(1));
+    expect(html).toMatch(/<a href="#taught">Universities<\/a>/);
+    expect(html).toMatch(/02<\/span> Universities/);
   });
 });
 
