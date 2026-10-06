@@ -356,6 +356,11 @@ describe('a subject in one destination', () => {
       ]);
     });
   });
+
+  it('asks for no further than the finder loads, as /courses does', async () => {
+    await renderSubject({ page: '25' });
+    expect(api.reads[0]).toMatchObject({ page: '1', limit: '360' });
+  });
 });
 
 describe('a specialization in one destination, its intakes', () => {
@@ -364,6 +369,19 @@ describe('a specialization in one destination, its intakes', () => {
     expect(await render()).toMatch(/<b>Sep<\/b><span>Intakes<\/span>/);
     api.programmes = 0;
     expect(await render()).toMatch(/<b>Jul, Sep<\/b><span>Intakes<\/span>/);
+  });
+});
+
+/* Past the twentieth page the run asked for more rows than the API serves
+   at once; it answered the first page alone, and the list showed eighteen
+   with no way on to the rest. */
+describe('a specialization in one destination, loaded further', () => {
+  it('asks for no further than the finder loads, as /courses does', async () => {
+    await render({ page: '25' });
+    expect(api.reads[0]).toMatchObject({ page: '1', limit: '360' });
+    api.reads = [];
+    await render({ page: '3' });
+    expect(api.reads[0]).toMatchObject({ limit: '54' });
   });
 });
 

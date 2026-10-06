@@ -50,6 +50,7 @@ import {
   rankSpecializations,
   specializationCountsHere,
 } from '@/lib/country-subject';
+import { PROGRAMME_MAX_PAGES } from '@/lib/courses-params';
 import {
   consultantsGroup,
   scholarshipsGroup,
@@ -135,7 +136,11 @@ export default async function Page({ params, searchParams }: Params) {
   const subject = specialization.subject;
   const subjectHref = `/study-abroad/${country.slug}/${subject.slug}`;
   const self = `${subjectHref}/${specialization.slug}`;
-  const asked = readCourseFilters(await searchParams);
+  const read = readCourseFilters(await searchParams);
+  /* No further than the finder loads. Past it the run asks for more rows
+     than the API serves in one answer, which then sends the first page
+     alone and leaves no way on to the rest. */
+  const asked = { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
   /* What the programme list is fixed to: this country, this field. */
   const scope = {
     country: [country.slug],
