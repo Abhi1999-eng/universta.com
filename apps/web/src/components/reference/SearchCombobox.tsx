@@ -28,6 +28,23 @@ export type SearchComboboxProps = {
    * the results band wants `cresults__search`, the heroes want nothing. */
   className?: string;
   style?: CSSProperties;
+  /** On a phone, the submit button shrinks to its arrow, so the field keeps
+   *  the width a placeholder needs. Off by default. */
+  iconSubmit?: boolean;
+  /** Where a suggestion that carries its own page goes -- a programme, a
+   *  university's programmes. Without it every suggestion is a search term,
+   *  as it always was. */
+  onFollow?: (href: string) => void;
+};
+
+/** A suggestion: the words it puts in the field, and the page it opens
+ *  instead when it has one of its own and the caller follows those. */
+type Suggestion = { name: string; href: string | null; kind: string | null };
+
+const KIND_LABELS: Record<string, string> = {
+  programme: 'Programme',
+  code: 'Programme',
+  university: 'University',
 };
 
 export function SearchCombobox(props: SearchComboboxProps) {
@@ -38,11 +55,14 @@ export function SearchCombobox(props: SearchComboboxProps) {
    * alongside the results is what lets the list open only once the answer
    * belongs to what is actually in the field -- no flicker between keystrokes,
    * and no stale list under a term that has moved on. */
-  const [result, setResult] = useState<{ term: string; items: string[] } | null>(null);
+  const [result, setResult] = useState<{ term: string; items: Suggestion[] } | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(-1);
 
   const term = value.trim();
+  /* A list whose suggestions open pages mixes programmes and universities
+     with course names, so it shows a few more. */
+  const limit = props.onFollow ? 8 : 6;
   const answered = result !== null && result.term === term && term.length >= 2;
   const suggestions = answered ? result.items : [];
   const open = answered && !dismissed;
@@ -53,18 +73,27 @@ export function SearchCombobox(props: SearchComboboxProps) {
     const timer = setTimeout(() => {
       void (async () => {
         try {
+          /* An endpoint may carry a query of its own -- which list to
+             suggest from -- and the term joins it. */
+          const joiner = props.endpoint.includes('?') ? '&' : '?';
           const response = await fetch(
-            `${props.endpoint}?q=${encodeURIComponent(term)}`,
+            `${props.endpoint}${joiner}q=${encodeURIComponent(term)}`,
           );
           if (!response.ok || cancelled) return;
-          const body = (await response.json()) as { data?: Array<{ name?: string }> };
+          const body = (await response.json()) as {
+            data?: Array<{ name?: string; href?: unknown; kind?: unknown }>;
+          };
           if (cancelled) return;
           setResult({
             term,
             items: (body.data ?? [])
-              .map((item) => String(item.name ?? ''))
-              .filter(Boolean)
-              .slice(0, 6),
+              .map((item) => ({
+                name: String(item.name ?? ''),
+                href: typeof item.href === 'string' ? item.href : null,
+                kind: typeof item.kind === 'string' ? item.kind : null,
+              }))
+              .filter((item) => item.name)
+              .slice(0, limit),
           });
           setActive(-1);
         } catch {
@@ -76,7 +105,7 @@ export function SearchCombobox(props: SearchComboboxProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [term, props.endpoint]);
+  }, [term, props.endpoint, limit]);
 
   useEffect(() => {
     function onDocumentClick(event: MouseEvent) {
@@ -86,11 +115,15 @@ export function SearchCombobox(props: SearchComboboxProps) {
     return () => document.removeEventListener('click', onDocumentClick);
   }, []);
 
-  function choose(picked: string) {
-    onValueChange(picked);
+  function choose(picked: Suggestion) {
     setDismissed(true);
     setActive(-1);
-    onSubmit(picked);
+    if (picked.href && props.onFollow) {
+      props.onFollow(picked.href);
+      return;
+    }
+    onValueChange(picked.name);
+    onSubmit(picked.name);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -117,7 +150,13 @@ export function SearchCombobox(props: SearchComboboxProps) {
 
   return (
     <form
-      className={props.className ? `searchwrap ${props.className}` : 'searchwrap'}
+      className={[
+        'searchwrap',
+        props.className,
+        props.iconSubmit ? 'searchwrap--iconsubmit' : null,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       ref={formRef}
       style={props.style}
       onSubmit={(event) => {
@@ -159,7 +198,11 @@ export function SearchCombobox(props: SearchComboboxProps) {
           onKeyDown={onKeyDown}
         />
         <button type="submit" className="btn btn--sm">
-          {submitLabel}{' '}
+          {props.iconSubmit ? (
+            <span className="searchwrap__label">{submitLabel}</span>
+          ) : (
+            submitLabel
+          )}{' '}
           <span className="btn__arrow" aria-hidden="true">
             →
           </span>
@@ -169,7 +212,7 @@ export function SearchCombobox(props: SearchComboboxProps) {
         <ul className="suggest" id={listId} role="listbox" aria-label={label}>
           {suggestions.map((item, index) => (
             <li
-              key={item}
+              key={`${item.name}-${item.href ?? ''}`}
               id={`${listId}-${index}`}
               role="option"
               aria-selected={index === active}
@@ -181,7 +224,10 @@ export function SearchCombobox(props: SearchComboboxProps) {
                 choose(item);
               }}
             >
-              {item}
+              {item.name}
+              {props.onFollow && item.href && item.kind && KIND_LABELS[item.kind] ? (
+                <span className="suggest__kind"> {KIND_LABELS[item.kind]}</span>
+              ) : null}
             </li>
           ))}
         </ul>
