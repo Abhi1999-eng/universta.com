@@ -367,6 +367,69 @@ describe('/courses, the programme finder', () => {
     expect(chip.textContent).toContain('atlantis');
     expect(chip.getAttribute('rel')).toBe('nofollow');
   });
+
+  /* An empty programme list with the given filters, and the course
+     guides' count for the filters they can apply. */
+  const emptyFor = (raw: Record<string, string>, guideTotal: number) => {
+    const list = programmes(raw);
+    return props({
+      programmes: { ...list, cards: [], meta: { page: 1, limit: 18, total: 0, totalPages: 0 } },
+      guideFilters: checkGuideFilters(readGuideFilters(raw), options).filters,
+      guideTotal,
+    });
+  };
+  const guidesLink = (value: CoursesReferenceProps) =>
+    parse(render(value)).querySelector('[data-testid=course-empty] a.linkcta')!;
+
+  it('says how many course guides match when the guides can apply every filter', () => {
+    const link = guidesLink(emptyFor({ level: 'PG', country: 'country-1' }, 14));
+    expect(link.textContent).toContain('14 course guides match these filters');
+    expect(link.getAttribute('href')).toBe(
+      '/courses?view=guides&level=PG&country=country-1#discovery',
+    );
+  });
+
+  it('claims no match for the guides when a filter they cannot apply is in force', () => {
+    const extras: Array<Record<string, string>> = [
+      { university: 'university-of-warwick' },
+      { city: 'coventry' },
+      { status: 'closed' },
+      { ielts: '6' },
+      { duration: 'up-to-1-year' },
+    ];
+    for (const extra of extras) {
+      const link = guidesLink(emptyFor({ level: 'PG', ...extra }, 23));
+      expect(link.textContent, JSON.stringify(extra)).not.toContain('match');
+      expect(link.textContent).toContain('Browse the course guides');
+      /* The guides open on what they can apply, and carry the rest. */
+      const href = link.getAttribute('href')!;
+      expect(href).toContain('view=guides&level=PG');
+      expect(href).toContain(new URLSearchParams(extra).toString());
+    }
+  });
+
+  it('points a list narrowed to one course at that course’s own guide', () => {
+    const value = emptyFor({ course: 'ba-law-15' }, 299);
+    value.programmes!.facets = {
+      ...value.programmes!.facets,
+      course: [{ value: 'ba-law-15', label: 'BA Law', count: 0 }],
+    };
+    const page = parse(render(value));
+    const link = page.querySelector('[data-testid=course-empty] a.linkcta')!;
+    expect(link.getAttribute('href')).toBe('/courses/ba-law-15');
+    expect(link.textContent).toContain('Read the BA Law course guide');
+    expect(page.querySelector('.activechip')?.textContent).toContain('BA Law');
+
+    /* A course nothing names may be no guide at all, so it is not linked. */
+    const unknown = guidesLink(emptyFor({ course: 'no-such-course' }, 299));
+    expect(unknown.getAttribute('href')).not.toContain('/courses/no-such-course');
+    expect(unknown.textContent).toContain('Browse the course guides');
+  });
+
+  it('suggests programmes, codes and universities as the reader types in the finder', () => {
+    const field = parse(render(props())).querySelector('#discovery input[role=combobox]');
+    expect(field?.getAttribute('aria-label')).toBe('Search programmes');
+  });
 });
 
 describe('/courses?view=guides, the course guides', () => {
@@ -432,12 +495,39 @@ describe('/courses?view=guides, the course guides', () => {
   });
 
   it('links a guide to the programmes that teach it, in place of a compare that never worked', () => {
-    const grid = parse(render(guidesView())).querySelector('[data-testid=course-guide-grid]')!;
+    const taught = guidesView();
+    taught.guides!.taught = ['bsc-engineering-1'];
+    const grid = parse(render(taught)).querySelector('[data-testid=course-guide-grid]')!;
     expect(grid.querySelector('.tinycheck')).toBeNull();
-    expect(grid.querySelector('.coursecard__compare')?.getAttribute('href')).toBe(
+    const links = [...grid.querySelectorAll('.coursecard__compare')];
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/courses?course=bsc-engineering-1#discovery',
-    );
+    ]);
+    /* A guide no live programme teaches would open an empty list, so its
+       card has no such link. */
+    const second = grid.querySelectorAll('.coursecard')[1]!;
+    expect(second.querySelector('.coursecard__compare')).toBeNull();
+    expect(parse(render(guidesView())).querySelector('.coursecard__compare')).toBeNull();
     const withoutProgrammes = parse(render(guidesView({}, { programmes: null })));
     expect(withoutProgrammes.querySelector('.coursecard__compare')).toBeNull();
+  });
+
+  it('carries the programmes’ own filters unapplied, so the way back finds them', () => {
+    const raw = { view: 'guides', level: 'PG', university: 'university-of-warwick' };
+    const page = parse(render(guidesView(raw, { programmes: programmes(raw) })));
+    expect(page.querySelector('[data-testid=switch-programmes]')?.getAttribute('href')).toBe(
+      '/courses?university=university-of-warwick&level=PG#discovery',
+    );
+    /* Not applied to the guides, so not chipped as if it were. */
+    const chips = [...page.querySelectorAll('.activechip')].map((chip) => chip.textContent);
+    expect(chips.join(' ')).not.toContain('warwick');
+    /* Every way the guides move on keeps it: a chip, a filter submitted
+       without script. */
+    expect(page.querySelector('.activechip')?.getAttribute('href')).toBe(
+      '/courses?view=guides&university=university-of-warwick#discovery',
+    );
+    expect(
+      page.querySelector('#course-guide-filters input[type=hidden][name=university]')?.getAttribute('value'),
+    ).toBe('university-of-warwick');
   });
 });

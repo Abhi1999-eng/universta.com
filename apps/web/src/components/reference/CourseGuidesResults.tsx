@@ -10,6 +10,7 @@ import {
   guideFilterCount,
   guideListSearch,
   NO_GUIDE_FILTERS,
+  programmeOnlyEntries,
   type GuideFilters,
   type GuideMultiKey,
   type GuideUnknown,
@@ -37,7 +38,13 @@ import { SearchCombobox } from './SearchCombobox';
  * A card's "Check eligibility" opens the assessment rather than a blank
  * counselling form, and its Compare tick -- which could never compare a
  * course guide with anything -- is a link to the programmes that teach the
- * course, where compare works.
+ * course, where compare works, on the cards of the courses some live
+ * programme teaches.
+ *
+ * The programmes' own filters -- a university, a city, an English score --
+ * mean nothing to the guides, so they are not applied or chipped here; the
+ * guides' addresses carry them unchanged, so the way back to the
+ * programmes finds them still in force.
  */
 
 export type CourseGuidesResultsProps = {
@@ -54,8 +61,13 @@ export type CourseGuidesResultsProps = {
   /** Whether programmes are the page's default view, so this list's own
    *  address has to say ?view=guides. */
   viewParam: boolean;
-  /** Whether the catalogue lists programmes, which a guide can then link to. */
+  /** Whether the catalogue lists programmes, which the search then
+   *  suggests. */
   programmes: boolean;
+  /** The guides on the page that a live programme teaches: only these
+   *  link to their programmes, since for any other the link would open an
+   *  empty list. */
+  taught?: readonly string[];
 };
 
 /** The approved reveal: twelve to begin with, twelve more each time, and the
@@ -206,6 +218,7 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
   const { courses, meta, filters, filterOptions, viewParam } = props;
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const taught = new Set(props.taught ?? []);
 
   /* The search field follows the address, so the back button and a shared
      link land on the same search rather than an empty box. */
@@ -524,6 +537,9 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
           >
             {viewParam ? <input type="hidden" name="view" value="guides" /> : null}
             {filters.q ? <input type="hidden" name="q" value={filters.q} /> : null}
+            {programmeOnlyEntries(filters.programmeOnly).map(([key, value]) => (
+              <input key={key} type="hidden" name={key} value={value} />
+            ))}
             {groups.map((group) => (
               <div
                 className="fgroup"
@@ -742,7 +758,7 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
                         {course.courseLevel.name}
                         {course.qualificationName ? ` · ${course.qualificationName}` : ''}
                       </span>
-                      {props.programmes ? (
+                      {taught.has(course.slug) ? (
                         <div className="coursecard__tools">
                           {/* A guide is the course itself, which has nothing
                               to be compared with; its programmes -- the same

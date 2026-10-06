@@ -7,6 +7,7 @@ import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
 import {
   guideListSearch,
   guidesAsProgrammes,
+  hasProgrammeOnly,
   NO_GUIDE_FILTERS,
   type CoursesView,
   type GuideFilters,
@@ -65,6 +66,8 @@ export type CoursesReferenceProps = {
     filterOptions: CourseFilterOptions;
     /** True when the reader asked for a page or a page size themselves. */
     paged: boolean;
+    /** The guides on the page that a live programme teaches. */
+    taught?: string[];
   } | null;
   /** The guides' filters as checked against the catalogue, which the
    *  switcher's link to the guides carries on either view. */
@@ -375,7 +378,34 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
   /* Said under the empty programmes list: where else the reader might look.
      The course guides with the same choice, when some match it, and the
-     assessment, which matches a profile rather than a search. */
+     assessment, which matches a profile rather than a search.
+
+     The guides are counted on the filters they can apply, so the count is
+     only said to match when those are all the filters there are. With a
+     university, a city, an English score or another of the programmes'
+     own filters in force, the guides are offered without a claim; and a
+     programme list narrowed to one known course points at that course's
+     own guide, which is what its reader was looking at. */
+  const programmeFilters = programmes?.filters;
+  const oneCourse =
+    programmeFilters?.course.length === 1 ? programmeFilters.course[0]! : null;
+  const courseName = programmes?.facets.course.find(
+    (option) => option.value === oneCourse,
+  )?.label;
+  const guidesMatch =
+    Boolean(props.guideTotal) && !(programmeFilters && hasProgrammeOnly(programmeFilters));
+  const guidesLink =
+    oneCourse && courseName && courseName !== oneCourse
+      ? {
+          href: `/courses/${encodeURIComponent(oneCourse)}`,
+          text: `Read the ${courseName} course guide`,
+        }
+      : {
+          href: props.guideTotal ? switchToGuides : guidesHref({}),
+          text: guidesMatch
+            ? `${formatNumber(props.guideTotal!)} course ${props.guideTotal === 1 ? 'guide matches' : 'guides match'} these filters`
+            : 'Browse the course guides',
+        };
   const programmesEmpty = (
     <>
       <p>
@@ -391,10 +421,8 @@ export function CoursesReference(props: CoursesReferenceProps) {
         and we will match you against programmes directly.
       </p>
       <p>
-        <Link className="linkcta" href={props.guideTotal ? switchToGuides : guidesHref({})}>
-          {props.guideTotal
-            ? `${formatNumber(props.guideTotal)} course ${props.guideTotal === 1 ? 'guide matches' : 'guides match'} these filters`
-            : 'Browse the course guides'}{' '}
+        <Link className="linkcta" href={guidesLink.href}>
+          {guidesLink.text}{' '}
           <span className="linkcta__arrow" aria-hidden="true">
             &rarr;
           </span>
@@ -512,6 +540,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 cards={programmes.cards}
                 meta={programmes.meta}
                 catalogueTotal={programmes.summary.programmes}
+                suggestions="/api/courses/suggestions?with=programmes"
                 empty={programmesEmpty}
               />
             ) : guides ? (
@@ -524,6 +553,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 paged={guides.paged}
                 viewParam={viewParam}
                 programmes={hasProgrammes}
+                taught={guides.taught}
               />
             ) : null}
           </div>

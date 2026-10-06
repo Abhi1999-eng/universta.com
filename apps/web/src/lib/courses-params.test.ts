@@ -5,6 +5,8 @@ import {
   chooseView,
   guideApiParams,
   guideListSearch,
+  guidesAsProgrammes,
+  hasProgrammeOnly,
   isNarrowedCourses,
   NO_GUIDE_FILTERS,
   PROGRAMME_MAX_PAGES,
@@ -200,6 +202,43 @@ describe('the addresses the page writes', () => {
     expect(guideListSearch(filters, { page: filters.page })).toBe(
       '?view=guides&subSubject=software-engineering&scholarshipAvailable=true&sort=name&page=3',
     );
+  });
+
+  it('carries the programmes’ own filters through the guides and back, and never to the guides’ API', () => {
+    const raw = {
+      level: 'PG',
+      university: 'university-of-warwick',
+      city: 'coventry',
+      course: 'ba-law-15',
+      status: 'closed',
+      ielts: '6',
+    };
+    const checked = guides(raw);
+    expect(checked.filters.programmeOnly).toEqual({
+      university: ['university-of-warwick'],
+      city: ['coventry'],
+      course: ['ba-law-15'],
+      duration: [],
+      status: ['closed'],
+      ielts: '6',
+      toefl: '',
+      pte: '',
+    });
+    expect(hasProgrammeOnly(checked.filters.programmeOnly)).toBe(true);
+    expect(hasProgrammeOnly(guides({ level: 'PG' }).filters.programmeOnly)).toBe(false);
+    /* The guides can apply none of them, so none is asked of their API. */
+    expect(guideApiParams(checked.api)).toEqual({ level: 'PG', pageSize: '12' });
+
+    const there = guideListSearch(checked.filters);
+    expect(there).toBe(
+      '?view=guides&level=PG&university=university-of-warwick&city=coventry&course=ba-law-15&status=closed&ielts=6',
+    );
+    const back = guidesAsProgrammes(readGuideFilters(Object.fromEntries(new URLSearchParams(there))));
+    expect(courseListSearch(readCourseFilters({}), back)).toBe(
+      '?university=university-of-warwick&city=coventry&course=ba-law-15&level=PG&ielts=6&status=closed',
+    );
+    /* Clearing the guides' filters clears what they carried too. */
+    expect(guideListSearch(checked.filters, NO_GUIDE_FILTERS)).toBe('?view=guides');
   });
 
   it('takes out of the programmes’ filters what the API ignored', () => {

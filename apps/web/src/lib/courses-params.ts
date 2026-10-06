@@ -65,7 +65,9 @@ export function chooseView(
 /**
  * "Load more" counts pages of eighteen in the address, and the programmes
  * API answers at most 360 rows at once: twenty pages. A further page in
- * the address is read as the last one that can be drawn whole.
+ * the address is read as the last one that can be drawn whole -- by the
+ * server, and by the list in the browser, which would otherwise go on
+ * asking for pages the server never draws.
  */
 export const PROGRAMME_MAX_PAGES = 20;
 
@@ -153,6 +155,57 @@ const GUIDE_SORT_ALIASES: Record<string, string> = {
 /** The guides' default order, left out of the address. */
 export const GUIDE_DEFAULT_SORT = 'featured';
 
+/**
+ * The programmes' filters the course guides have no counterpart for: a
+ * university, a city or a course is where a programme is taught, and a
+ * duration band, an application status and an English score are read from
+ * each programme's own record. The guides cannot apply them, so they never
+ * narrow the guides or count towards them; they ride along in the guides'
+ * address instead, so a reader who looks at the guides and comes back finds
+ * the programmes as they left them.
+ */
+export const PROGRAMME_ONLY_KEYS = [
+  'university',
+  'city',
+  'course',
+  'duration',
+  'status',
+  'ielts',
+  'toefl',
+  'pte',
+] as const;
+export type ProgrammeOnlyFilters = Pick<
+  CourseFilters,
+  (typeof PROGRAMME_ONLY_KEYS)[number]
+>;
+
+const NO_PROGRAMME_ONLY: ProgrammeOnlyFilters = {
+  university: [],
+  city: [],
+  course: [],
+  duration: [],
+  status: [],
+  ielts: '',
+  toefl: '',
+  pte: '',
+};
+
+/** Whether any filter the course guides cannot apply is in force. */
+export function hasProgrammeOnly(filters: ProgrammeOnlyFilters): boolean {
+  return PROGRAMME_ONLY_KEYS.some((key) => filters[key].length > 0);
+}
+
+/** Those filters as an address writes them, several values comma-joined. */
+export function programmeOnlyEntries(
+  filters: ProgrammeOnlyFilters = NO_PROGRAMME_ONLY,
+): Array<[string, string]> {
+  return PROGRAMME_ONLY_KEYS.flatMap((key): Array<[string, string]> => {
+    const value = filters[key];
+    const written = Array.isArray(value) ? value.join(',') : value;
+    return written ? [[key, written]] : [];
+  });
+}
+
 /** The guides' own page size, and the most their API returns at once. */
 export const GUIDE_PAGE_SIZE = 12;
 export const GUIDE_MAX_PAGE_SIZE = 100;
@@ -171,6 +224,9 @@ export type GuideFilters = Record<GuideMultiKey, string[]> & {
   page: number;
   /** The page size the reader chose; null when they chose none. */
   pageSize: number | null;
+  /** The programmes' own filters, carried through the guides' address
+   *  untouched and never applied to the guides. */
+  programmeOnly: ProgrammeOnlyFilters;
 };
 
 export const NO_GUIDE_FILTERS: GuideFilters = {
@@ -189,6 +245,7 @@ export const NO_GUIDE_FILTERS: GuideFilters = {
   sort: '',
   page: 1,
   pageSize: null,
+  programmeOnly: NO_PROGRAMME_ONLY,
 };
 
 /**
@@ -196,8 +253,9 @@ export const NO_GUIDE_FILTERS: GuideFilters = {
  * page has answered to: the programme list's (`specialization`,
  * `scholarship`, `tuitionMin`), the reference's (`study_mode`, `pg`, its
  * level words and its sort names) and the guides' own (`subSubject`,
- * `scholarshipAvailable`, `minTuition`, `pageSize`). Nothing is checked
- * against the catalogue here; `checkGuideFilters` does that.
+ * `scholarshipAvailable`, `minTuition`, `pageSize`). The programmes' own
+ * filters are read too, to be carried. Nothing is checked against the
+ * catalogue here; `checkGuideFilters` does that.
  */
 export function readGuideFilters(params: Params): GuideFilters {
   const shared = readCourseFilters(params);
@@ -222,6 +280,9 @@ export function readGuideFilters(params: Params): GuideFilters {
     page: shared.page,
     pageSize:
       Number.isInteger(size) && size >= 1 ? Math.min(size, GUIDE_MAX_PAGE_SIZE) : null,
+    programmeOnly: Object.fromEntries(
+      PROGRAMME_ONLY_KEYS.map((key) => [key, shared[key]]),
+    ) as ProgrammeOnlyFilters,
   };
 }
 
@@ -332,7 +393,8 @@ export function guideApiParams(filters: GuideFilters): Record<string, string> {
 /**
  * The query string for a guides list, in the guides' own names and one
  * spelling: the default order and the first page left out, and ?view=guides
- * first wherever the programmes are the page's default.
+ * first wherever the programmes are the page's default. The programmes'
+ * own filters follow the guides' unchanged, in the programmes' names.
  */
 export function guideListSearch(
   filters: GuideFilters,
@@ -349,6 +411,8 @@ export function guideListSearch(
   if (next.postStudyWorkAvailable) params.set('postStudyWorkAvailable', 'true');
   if (next.minTuition) params.set('minTuition', next.minTuition);
   if (next.maxTuition) params.set('maxTuition', next.maxTuition);
+  for (const [key, value] of programmeOnlyEntries(next.programmeOnly))
+    params.set(key, value);
   if (next.sort && next.sort !== GUIDE_DEFAULT_SORT) params.set('sort', next.sort);
   if (next.page > 1) params.set('page', String(next.page));
   if (next.pageSize) params.set('pageSize', String(next.pageSize));
@@ -367,9 +431,11 @@ export function guideFilterCount(filters: GuideFilters) {
   );
 }
 
-/** The same choice as the programmes list writes it, for the switcher. */
+/** The same choice as the programmes list writes it, for the switcher:
+ *  the programmes' own filters the guides carried come back with it. */
 export function guidesAsProgrammes(filters: GuideFilters): Partial<CourseFilters> {
   return {
+    ...filters.programmeOnly,
     q: filters.q,
     level: filters.level,
     country: filters.country,

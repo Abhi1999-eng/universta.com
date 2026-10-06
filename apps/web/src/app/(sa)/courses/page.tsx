@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  getCourse,
   getCourseFilterOptions,
   getCourses,
   getSubjects,
@@ -136,6 +137,29 @@ export default async function CoursesPage({
       ? { ...list, filters: withoutIgnored(asked, list.ignored) }
       : null;
 
+  /* A chosen course is named by the programmes that teach it. One that no
+     live programme teaches is named from its own guide instead, so its chip
+     reads as a course rather than a slug and the empty list can point at
+     that guide; a slug that is no guide stays as it is. */
+  if (view === 'programmes' && programmes) {
+    const unnamed = programmes.filters.course
+      .filter((slug) => !programmes.facets.course.some((option) => option.value === slug))
+      .slice(0, 3);
+    if (unnamed.length) {
+      const named = await Promise.all(
+        unnamed.map((slug) =>
+          getCourse(slug)
+            .then((guide) => [{ value: slug, label: guide.name, count: 0 }])
+            .catch(() => []),
+        ),
+      );
+      programmes.facets = {
+        ...programmes.facets,
+        course: [...programmes.facets.course, ...named.flat()],
+      };
+    }
+  }
+
   const checked = catalogueOptions
     ? checkGuideFilters(readGuideFilters(raw), catalogueOptions)
     : null;
@@ -163,6 +187,23 @@ export default async function CoursesPage({
           ? getCourses({ pageSize: '1' }).then((result) => result.meta.total)
           : null,
       ]);
+      /* A guide's card links to the programmes that teach it only when a
+         live programme does. The programmes are asked about exactly the
+         guides on the page, and name each one they teach with its count;
+         if they cannot be asked, no card offers the link. */
+      const taught =
+        programmes && courses.data.length
+          ? await phaseProgrammes({
+              course: courses.data.map((course) => course.slug).join(','),
+              limit: '1',
+            })
+              .then((answer) =>
+                toProgrammeList(answer, asked)
+                  .facets.course.filter((option) => option.count > 0)
+                  .map((option) => option.value),
+              )
+              .catch(() => [])
+          : [];
       guides = {
         courses: courses.data,
         meta: courses.meta,
@@ -172,6 +213,7 @@ export default async function CoursesPage({
            means they are navigating the result set, and the pager has to
            appear for them. */
         paged: Boolean(raw.page || raw.pg || raw.pageSize),
+        taught,
       };
       guideTotal = courses.meta.total;
       guideCatalogueTotal = catalogue ?? courses.meta.total;

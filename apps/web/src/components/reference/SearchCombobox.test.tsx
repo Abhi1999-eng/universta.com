@@ -6,10 +6,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { SearchCombobox, type SearchComboboxProps } from './SearchCombobox';
 
 /**
- * The search field the heroes and the course finder share. Its two new
- * choices -- a phone's icon-only submit, and suggestions that open their own
- * page -- are opt-in, so every page that does not ask for them draws and
- * behaves exactly as it did.
+ * The search field the heroes and the course finder share. Its new choices
+ * -- a phone's icon-only submit, suggestions that open their own page, and
+ * a form that submits without script -- are opt-in, so every page that
+ * does not ask for them draws and behaves exactly as it did.
  */
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -59,6 +59,21 @@ describe('the shared search field', () => {
     const html = renderToStaticMarkup(<SearchCombobox {...base} iconSubmit />);
     expect(html).toContain('class="searchwrap cresults__search searchwrap--iconsubmit"');
     expect(html).toContain('<span class="searchwrap__label">Find courses</span>');
+  });
+
+  it('submits without script where it is told to, with the fields it is given', () => {
+    const html = renderToStaticMarkup(
+      <SearchCombobox {...base} action="/courses" name="q" maxLength={100}>
+        <input type="hidden" name="level" value="PG" />
+      </SearchCombobox>,
+    );
+    const form = new DOMParser().parseFromString(html, 'text/html').querySelector('form')!;
+    expect(form.getAttribute('action')).toBe('/courses');
+    expect(form.getAttribute('method')).toBe('get');
+    const field = form.querySelector('input[role=combobox]')!;
+    expect(field.getAttribute('name')).toBe('q');
+    expect(field.getAttribute('maxlength')).toBe('100');
+    expect(form.querySelector('input[type=hidden][name=level]')?.getAttribute('value')).toBe('PG');
   });
 
   it('adds the term to an endpoint that has a query of its own', async () => {

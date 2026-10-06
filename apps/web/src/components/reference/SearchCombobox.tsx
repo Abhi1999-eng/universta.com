@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 /** The search field the approved hero templates draw as a pill with a button.
  *
@@ -35,6 +35,14 @@ export type SearchComboboxProps = {
    *  university's programmes. Without it every suggestion is a search term,
    *  as it always was. */
   onFollow?: (href: string) => void;
+  /** For a browser without script: the address the form submits to, the
+   *  name the field goes under and the most it takes, and `children` --
+   *  hidden fields for the filters a list already has, so a search keeps
+   *  them. Without these the field draws exactly as it always has. */
+  action?: string;
+  name?: string;
+  maxLength?: number;
+  children?: ReactNode;
 };
 
 /** A suggestion: the words it puts in the field, and the page it opens
@@ -159,6 +167,8 @@ export function SearchCombobox(props: SearchComboboxProps) {
         .join(' ')}
       ref={formRef}
       style={props.style}
+      action={props.action}
+      method={props.action ? 'get' : undefined}
       onSubmit={(event) => {
         event.preventDefault();
         setDismissed(true);
@@ -189,6 +199,8 @@ export function SearchCombobox(props: SearchComboboxProps) {
           aria-controls={listId}
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
           autoComplete="off"
+          name={props.name}
+          maxLength={props.maxLength}
           value={value}
           placeholder={placeholder}
           onChange={(event) => {
@@ -208,6 +220,7 @@ export function SearchCombobox(props: SearchComboboxProps) {
           </span>
         </button>
       </div>
+      {props.children}
       {open && suggestions.length ? (
         <ul className="suggest" id={listId} role="listbox" aria-label={label}>
           {suggestions.map((item, index) => (

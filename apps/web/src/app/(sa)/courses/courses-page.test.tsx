@@ -31,7 +31,8 @@ vi.mock('@/lib/listing-page-content', () => ({
   getListingPageContent: async () => ({}),
 }));
 
-const state = { programmes: 3, guidesDown: false };
+/* `taught` is the course guides some live programme teaches. */
+const state = { programmes: 3, guidesDown: false, taught: [] as string[] };
 const sentToGuides: Array<Record<string, string>> = [];
 
 const options = {
@@ -113,6 +114,10 @@ vi.mock('@/lib/catalog', () => ({
     return options;
   },
   getSubjects: async () => ({ data: [], meta: { page: 1, limit: 100, total: 0, totalPages: 1 } }),
+  getCourse: async (slug: string) => {
+    if (slug !== 'ba-law-15') throw new Error('COURSE_NOT_FOUND');
+    return { name: 'BA Law', slug };
+  },
 }));
 
 vi.mock('@/lib/phase1', () => ({
@@ -137,7 +142,13 @@ vi.mock('@/lib/phase1', () => ({
       ignored: params.level === 'nope' ? ['level=nope'] : [],
     },
     summary: { programmes: state.programmes, universities: 1, cities: 1, intakeMonths: 1, countries: 1 },
-    facets: {},
+    /* As the API names chosen courses: only those a live programme
+       teaches, each with its count. */
+    facets: {
+      courses: (params.course?.split(',') ?? [])
+        .filter((slug) => state.taught.includes(slug))
+        .map((slug) => ({ value: slug, label: slug, count: 2 })),
+    },
   }),
 }));
 
@@ -150,6 +161,7 @@ const page = async (raw: Record<string, string>) =>
 beforeEach(() => {
   state.programmes = 3;
   state.guidesDown = false;
+  state.taught = [];
   sentToGuides.length = 0;
 });
 
@@ -219,6 +231,23 @@ describe('/courses', () => {
     state.programmes = 0;
     state.guidesDown = true;
     expect(await page({})).toContain('Courses are temporarily unavailable');
+  });
+
+  it('links a guide to its programmes only when a live programme teaches it', async () => {
+    expect(await page({ view: 'guides' })).not.toContain('Compare programmes');
+    state.taught = ['msc-software-engineering'];
+    const html = await page({ view: 'guides' });
+    expect(html).toContain('href="/courses?course=msc-software-engineering#discovery"');
+    /* With no programme in the catalogue there is nothing to ask. */
+    state.programmes = 0;
+    expect(await page({})).not.toContain('Compare programmes');
+  });
+
+  it('names a chosen course no programme teaches from its own guide', async () => {
+    const html = await page({ course: 'ba-law-15' });
+    expect(html).toContain('aria-label="Remove BA Law"');
+    /* A slug that is no guide stays as it was written. */
+    expect(await page({ course: 'no-such-course' })).toContain('aria-label="Remove no-such-course"');
   });
 
   it('still lists programmes when only the course guides are down', async () => {
