@@ -9,6 +9,8 @@ import {
   useTransition,
   type ReactNode,
 } from 'react';
+import { flushSync } from 'react-dom';
+import { PROGRAMME_MAX_PAGES } from '@/lib/courses-params';
 import {
   activeChips,
   activeFilterCount,
@@ -30,6 +32,7 @@ import {
   type FacetOption,
   type OfferingCardData,
 } from '@/lib/university-courses';
+import { SearchCombobox } from '@/components/reference/SearchCombobox';
 import { OfferingCard } from './OfferingCard';
 
 /**
@@ -54,7 +57,9 @@ import { OfferingCard } from './OfferingCard';
  * How far the list has been loaded is in the address too, as the university
  * lists keep it: ?page=3 is the first three pages of eighteen. "Load more"
  * writes it there as it appends, so a reload, or Back from a course, comes
- * to the same place rather than to the first eighteen.
+ * to the same place rather than to the first eighteen -- and the list keeps
+ * how far down the page the reader was on its own history entry, so Back
+ * puts them in front of the course they opened.
  *
  * Without script the panel is still a form that submits, and "Show more
  * courses" is a link to the next page of the same run, so nothing here
@@ -89,6 +94,10 @@ export type ProgrammeResultsProps = {
   /** Where the list is, for its empty sentence: "at University of Oxford". */
   where?: string;
   placeholder?: string;
+  /** Where the search asks what to suggest as the reader types, as the
+   *  course finder's has always done; without it the search is a plain
+   *  field. A suggestion that names a page of its own opens that page. */
+  suggestions?: string;
   /** Said under the empty sentence when the filters match nothing: where
    *  else the reader might look. */
   empty?: ReactNode;
@@ -110,6 +119,39 @@ const LABELS = Object.fromEntries(
 const GROUP_LABELS: Partial<Record<CourseFilterKey, string>> = {
   intake: 'Intake month',
 };
+
+/* Where the list's history entry keeps how far down the page the reader
+   was, beside the router's own state. */
+const SCROLL_KEY = 'programmeListScroll';
+
+/** How far down the page the reader was when they last left this entry. */
+function savedScroll(): number | null {
+  const state = window.history.state as Record<string, unknown> | null;
+  const value = state?.[SCROLL_KEY];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/** One page of eighteen cards from the list's endpoint. `query` is the
+ *  list's request without its page. */
+async function fetchCards(
+  endpoint: string,
+  query: string,
+  page: number,
+  signal?: AbortSignal,
+): Promise<{ cards: OfferingCardData[]; page: number }> {
+  const params = new URLSearchParams(query);
+  params.set('page', String(page));
+  const response = await fetch(`${endpoint}?${params}`, {
+    headers: { accept: 'application/json' },
+    signal,
+  });
+  if (!response.ok) throw new Error(String(response.status));
+  const body = (await response.json()) as {
+    cards?: OfferingCardData[];
+    meta?: { page: number };
+  };
+  return { cards: body.cards ?? [], page: body.meta?.page ?? page };
+}
 
 export function ProgrammeResults(props: ProgrammeResultsProps) {
   const {
@@ -168,20 +210,95 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
 
-  const cards = [...props.cards, ...loaded.cards];
+  /* A course is shown once, even when the list moved between two pages
+     and the second repeats the end of the first. */
+  const seen = new Set<string>();
+  const cards = [...props.cards, ...loaded.cards].filter((card) => {
+    if (seen.has(card.slug)) return false;
+    seen.add(card.slug);
+    return true;
+  });
   const lastPage = loaded.page;
   const more = lastPage < meta.totalPages;
+  /* The request for this list, every page alike but for its number. */
+  const apiQuery = new URLSearchParams(
+    courseApiParams(filters, 1, scope),
+  ).toString();
 
   /* Back from a course can bring the list back as the server first drew
      it, under an address "Load more" had since moved on, so the page holds
-     fewer courses than its address names. Asked again, the server draws
-     the whole run the address names. A press of the button moves the list
-     and the address together, so it never sets this off. */
-  const inAddress = readCourseFilters(useSearchParams()).page;
+     fewer courses than its address names. The missing pages are asked for
+     the way "Load more" asks for them and appended, and the reader is put
+     back where they were on the page -- which the list kept on its history
+     entry before they left, since the shorter page could not hold that
+     place. Never further than the server would draw the address itself.
+     A press of the button moves the list and the address together, so it
+     never sets this off. */
+  const inAddress = Math.min(
+    readCourseFilters(useSearchParams()).page,
+    PROGRAMME_MAX_PAGES,
+  );
   useEffect(() => {
-    if (!loading && inAddress > lastPage && lastPage < meta.totalPages)
-      router.refresh();
-  }, [inAddress, lastPage, loading, meta.totalPages, router]);
+    const target = Math.min(inAddress, meta.totalPages);
+    if (target <= lastPage) return;
+    const controller = new AbortController();
+    void (async () => {
+      setLoading(true);
+      try {
+        const appended: OfferingCardData[] = [];
+        let reached = lastPage;
+        for (let page = lastPage + 1; page <= target; page += 1) {
+          const next = await fetchCards(endpoint, apiQuery, page, controller.signal);
+          appended.push(...next.cards);
+          reached = next.page;
+        }
+        /* Drawn at once, so the place the reader left is on the page to
+           be put back to. */
+        flushSync(() =>
+          setLoaded((current) =>
+            current.key === listKey
+              ? { key: listKey, cards: [...current.cards, ...appended], page: reached }
+              : current,
+          ),
+        );
+        const place = savedScroll();
+        if (place !== null) window.scrollTo(0, place);
+      } catch {
+        if (!controller.signal.aborted)
+          setStatus(`More ${noun.many} could not be loaded. Try again.`);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    /* A list that has moved on -- new filters, or the address back at the
+       start -- needs none of it, and its button is free again. */
+    return () => {
+      controller.abort();
+      setLoading(false);
+    };
+  }, [apiQuery, endpoint, inAddress, lastPage, listKey, meta.totalPages, noun.many]);
+
+  /* On a phone the panel is a sheet over the page, which closes on Escape
+     as the course guides' sheet does. */
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPanelOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panelOpen]);
+
+  /* Where the reader is, kept on the list's entry as they leave for a
+     course. The router's own state is kept beside it, and the address is
+     left as it is. */
+  const rememberPlace = (event: React.MouseEvent) => {
+    if (!(event.target as Element).closest('a[href]')) return;
+    window.history.replaceState(
+      { ...window.history.state, [SCROLL_KEY]: window.scrollY },
+      '',
+    );
+  };
 
   /* What the panel shows while the server answers: a ticked box stays
      ticked at once, and a second tick builds on the first rather than on
@@ -207,38 +324,21 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
     setLoading(true);
     setStatus('');
     try {
-      const params = new URLSearchParams(
-        courseApiParams(filters, lastPage + 1, scope),
+      const { cards: next, page: reached } = await fetchCards(
+        endpoint,
+        apiQuery,
+        lastPage + 1,
       );
-      const response = await fetch(`${endpoint}?${params}`, {
-        headers: { accept: 'application/json' },
-      });
-      if (!response.ok) throw new Error(String(response.status));
-      const body = (await response.json()) as {
-        cards?: OfferingCardData[];
-        meta?: { page: number };
-      };
-      const next = body.cards ?? [];
-      const reached = body.meta?.page ?? lastPage + 1;
       setLoaded((current) =>
         current.key === listKey
-          ? {
-              key: listKey,
-              cards: [
-                ...current.cards,
-                ...next.filter(
-                  (card) =>
-                    !cards.some((existing) => existing.slug === card.slug),
-                ),
-              ],
-              page: reached,
-            }
+          ? { key: listKey, cards: [...current.cards, ...next], page: reached }
           : current,
       );
       /* Into the address in place, as the university lists do: no new
-         history entry for each press, and no round trip to the server. */
+         history entry for each press, and no round trip to the server.
+         Where the reader is goes with it, for the way back. */
       window.history.replaceState(
-        null,
+        { [SCROLL_KEY]: window.scrollY },
         '',
         `${base}${courseListSearch(filters, { page: reached })}${window.location.hash}`,
       );
@@ -536,54 +636,93 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
     return listGroup(group);
   };
 
+  const searchLabel = `Search ${noun.many}`;
+  const searchPlaceholder =
+    props.placeholder ?? 'Search courses, universities, specializations or cities';
+  /* Without script the search keeps the filters already in force. */
+  const hiddenFields = hidden.map(([key, value]) => (
+    <input key={key} type="hidden" name={key} value={value} />
+  ));
+
   return (
     <div className="cresults">
-      <form
-        className="bigsearch bigsearch--sm cresults__search"
-        role="search"
-        action={base}
-        method="get"
-        onSubmit={(event) => {
-          event.preventDefault();
-          go({ q: query.trim() });
-        }}
-      >
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#667085"
-          strokeWidth="1.7"
-          aria-hidden="true"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-        <input
-          className="bigsearch__input"
-          type="search"
-          name="q"
+      {props.suggestions ? (
+        <SearchCombobox
+          className="cresults__search"
+          label={searchLabel}
+          placeholder={searchPlaceholder}
+          submitLabel="Search"
+          endpoint={props.suggestions}
+          emptyMessage={`No ${noun.many} found.`}
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={
-            props.placeholder ??
-            'Search courses, universities, specializations or cities'
-          }
-          aria-label={`Search ${noun.many}`}
-          autoComplete="off"
+          onValueChange={setQuery}
+          onSubmit={(term) => go({ q: term.trim() })}
+          iconSubmit
+          /* A university's programmes are this list narrowed, so they open
+             in place as a search does; a programme opens its own page. */
+          onFollow={(href) => {
+            if (!href.startsWith(`${base}?`)) return router.push(href);
+            startTransition(() => router.push(href, { scroll: false }));
+          }}
+          action={base}
+          name="q"
           maxLength={100}
-        />
-        {/* Without script the search keeps the filters already in force. */}
-        {hidden.map(([key, value]) => (
-          <input key={key} type="hidden" name={key} value={value} />
-        ))}
-        <button className="btn btn--sm" type="submit">
-          Search
-        </button>
-      </form>
+        >
+          {hiddenFields}
+        </SearchCombobox>
+      ) : (
+        <form
+          className="bigsearch bigsearch--sm cresults__search"
+          role="search"
+          action={base}
+          method="get"
+          onSubmit={(event) => {
+            event.preventDefault();
+            go({ q: query.trim() });
+          }}
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#667085"
+            strokeWidth="1.7"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            className="bigsearch__input"
+            type="search"
+            name="q"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchLabel}
+            autoComplete="off"
+            maxLength={100}
+          />
+          {hiddenFields}
+          <button className="btn btn--sm" type="submit">
+            Search
+          </button>
+        </form>
+      )}
 
       <div className={hasPanel ? 'results' : 'results results--open'}>
+        {/* The page behind the open sheet is dimmed, and a tap on it closes
+            the sheet, as on the course guides. At the desktop width the
+            panel is a column and the stylesheet hides this. */}
+        {hasPanel && panelOpen ? (
+          <button
+            type="button"
+            className="cref-overlay"
+            aria-label="Close filters"
+            onClick={() => setPanelOpen(false)}
+          />
+        ) : null}
         {hasPanel ? (
           <aside
             className="filters-panel filters-panel--live"
@@ -722,7 +861,11 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
           ) : null}
 
           {cards.length ? (
-            <div className="coursegrid" data-testid="course-grid">
+            <div
+              className="coursegrid"
+              data-testid="course-grid"
+              onClickCapture={rememberPlace}
+            >
               {cards.map((card) => (
                 <OfferingCard key={card.slug} course={card} show={cardShows} />
               ))}
