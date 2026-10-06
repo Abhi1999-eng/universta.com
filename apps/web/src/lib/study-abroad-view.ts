@@ -1,6 +1,7 @@
 import type { CountryPage, ProfileSummary } from './countries';
 import type { Destination } from './study-abroad';
 import type { StudyPath } from '@/components/study-abroad/CountrySections';
+import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
 
 /**
  * Turning the country bundle into the rows and cards the approved design shows.
@@ -466,7 +467,11 @@ export function destinationCounts(entry: Destination): string | null {
   const parts: string[] = [];
   if (universities)
     parts.push(`${universities} ${universities === 1 ? 'university' : 'universities'}`);
-  if (courses) parts.push(`${courses} ${courses === 1 ? 'course' : 'courses'}`);
+  /* Programmes: a course as one university teaches it, which is what this
+     counts and what the guide's "Programmes listed" counts. The guide's
+     course search counts courses, one per course whoever teaches it, and the
+     card's "65 courses" opened on a guide offering "View all 53 courses". */
+  if (courses) parts.push(`${courses} ${courses === 1 ? 'programme' : 'programmes'}`);
   /* Only when there is room: a destination with no universities or courses
      still deserves to say what it does have. */
   if (parts.length < 2 && scholarships)
@@ -559,7 +564,7 @@ export function guideLinks(
       ? {
           key: 'scholarships',
           label: 'Scholarships',
-          href: `/scholarships?country=${country.slug}`,
+          href: countryScholarshipsHref(country.slug),
         }
       : null,
     languageRenders(page)

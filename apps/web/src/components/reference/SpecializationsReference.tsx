@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import type { Course, SubjectDetail } from '@/lib/catalog';
+import type { Course, SubjectBranch, SubjectDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
+import { sortByLevelOrder } from '@/lib/level-order';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { SpecializationSearch } from './SpecializationSearch';
 
@@ -12,35 +13,40 @@ import { SpecializationSearch } from './SpecializationSearch';
  * numbered section bands, `sec-head`, the `specgrid` of `speccard`s -- rather
  * than invented, and the behaviour the catalogue specs pin is unchanged: the
  * results region is still `#all` and still takes focus on submit, every card
- * still carries its slug as an anchor, and the call to action still opens the
- * courses filtered to that specialisation.
+ * still carries its slug as an anchor, and each card still opens the courses
+ * filtered to that specialisation.
+ *
+ * Its main job is the hand-off, so each card's name and its main call to
+ * action open that specialisation's own page, as the reference and the
+ * design both link a specialisation; the filtered course search is the
+ * card's second link. The destinations open the subject in that country,
+ * the reference's subject-in-country page, rather than a course search.
  */
 
 export type SpecializationsReferenceProps = {
   subject: SubjectDetail;
   /** Real per-specialisation course counts from the course filter options. */
   counts: Record<string, number>;
+  /** The destinations with programmes in this subject, most first. */
   countries: Array<{ value: string; label: string; count: number }>;
   /** Search term from the URL, so a filtered list is shareable and reloadable. */
   query: string;
   universities: Array<{ name: string; slug: string; country: string | null }>;
   courses: Course[];
   scholarships: Array<{ title: string; slug: string; amount: string | null; type: string | null }>;
+  /** Level codes in academic order, for each card's levels line. */
+  levelOrder?: string[];
 };
 
-const SKIP_WORDS = new Set(['of', 'in', 'and', 'the', 'for', 'a', 'an', '&']);
-
-function initials(value: string) {
-  const words = value
-    .split(/\s+/)
-    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter((word) => word && !SKIP_WORDS.has(word.toLowerCase()));
-  if (words.length === 0) return value.slice(0, 2).toUpperCase();
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return words
-    .slice(0, 2)
-    .map((word) => word[0].toUpperCase())
-    .join('');
+/** The levels a branch is taught at, in climbing order: what the design
+ *  prints on the card ("Bachelor's, Master's, PhD"). */
+function levelLine(
+  levels: SubjectBranch['levels'] | undefined,
+  order: string[],
+): string {
+  return sortByLevelOrder(levels ?? [], order)
+    .map((level) => level.name)
+    .join(', ');
 }
 
 const FAQS = [
@@ -64,6 +70,10 @@ function courseLabel(count: number) {
 
 export function SpecializationsReference(props: SpecializationsReferenceProps) {
   const { subject, counts, countries, universities, courses, scholarships, query } = props;
+  const levelOrder = props.levelOrder ?? [];
+  const specHref = (slug: string) => `/subjects/${subject.slug}/${slug}`;
+  const coursesHref = (slug: string) =>
+    `/courses?subject=${subject.slug}&subSubject=${slug}`;
   const term = query.trim().toLowerCase();
   const all = subject.subSubjects ?? [];
   const specialisations = term
@@ -187,22 +197,34 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                       <span className="label">Specialization</span>
                       <span className="badge badge--req">Popular</span>
                     </span>
-                    <h3 className="speccard__name">{item.name}</h3>
+                    <h3 className="speccard__name">
+                      <Link href={specHref(item.slug)}>{item.name}</Link>
+                    </h3>
                     {item.shortDescription ? (
                       <p className="speccard__desc">{item.shortDescription}</p>
                     ) : null}
                     <span className="speccard__foot">
-                      <span className="speccard__levels">{initials(subject.name)}</span>
+                      {/* The levels it is taught at, as the design prints
+                          them; this slot used to hold the subject's
+                          initials ("CS"). */}
+                      <span className="speccard__levels">
+                        {levelLine(item.levels, levelOrder)}
+                      </span>
                       <span className="speccard__count datum">
                         {counts[item.slug] ? courseLabel(counts[item.slug]) : 'No courses yet'}
                       </span>
                     </span>
-                    <Link
-                      className="speccard__cta"
-                      href={`/courses?subject=${subject.slug}&subSubject=${item.slug}#discovery`}
-                    >
-                      Explore specialisation <span aria-hidden="true">→</span>
-                    </Link>
+                    <span className="speccard__links">
+                      <Link className="speccard__cta" href={specHref(item.slug)}>
+                        Explore specialisation <span aria-hidden="true">→</span>
+                      </Link>
+                      <Link
+                        className="speccard__alt"
+                        href={`${coursesHref(item.slug)}#discovery`}
+                      >
+                        View courses
+                      </Link>
+                    </span>
                   </div>
                 </article>
               ))}
@@ -258,22 +280,30 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                     <span className="speccard__top">
                       <span className="label">Specialization</span>
                     </span>
-                    <h3 className="speccard__name">{item.name}</h3>
+                    <h3 className="speccard__name">
+                      <Link href={specHref(item.slug)}>{item.name}</Link>
+                    </h3>
                     {item.shortDescription ? (
                       <p className="speccard__desc">{item.shortDescription}</p>
                     ) : null}
                     <span className="speccard__foot">
-                      <span className="speccard__levels">{subject.name}</span>
+                      {/* Its levels where any are recorded; the subject's
+                          name, as before, where none are. */}
+                      <span className="speccard__levels">
+                        {levelLine(item.levels, levelOrder) || subject.name}
+                      </span>
                       <span className="speccard__count datum">
                         {counts[item.slug] ? courseLabel(counts[item.slug]) : 'No courses yet'}
                       </span>
                     </span>
-                    <Link
-                      className="speccard__cta"
-                      href={`/courses?subject=${subject.slug}&subSubject=${item.slug}`}
-                    >
-                      Explore courses <span aria-hidden="true">→</span>
-                    </Link>
+                    <span className="speccard__links">
+                      <Link className="speccard__cta" href={specHref(item.slug)}>
+                        Explore specialisation <span aria-hidden="true">→</span>
+                      </Link>
+                      <Link className="speccard__alt" href={coursesHref(item.slug)}>
+                        Explore courses
+                      </Link>
+                    </span>
                   </div>
                 </article>
               ))}
@@ -337,7 +367,8 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
               </p>
               <h2 className="sec-title">Best destinations for {subject.name}</h2>
               <p className="sec-lead">
-                Destinations with published course offerings in this subject.
+                Destinations with published course offerings in this subject,
+                most courses first. Each opens {subject.name} in that country.
               </p>
             </div>
 
@@ -346,7 +377,8 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                 <Link
                   key={country.value}
                   className="pill"
-                  href={`/courses?subject=${subject.slug}&country=${country.value}#discovery`}
+                  href={`/study-abroad/${country.value}/${subject.slug}`}
+                  aria-label={`${subject.name} in ${country.label}, ${courseLabel(country.count)}`}
                 >
                   {country.label}{' '}
                   <em>{formatNumber(country.count)}</em>
@@ -373,8 +405,11 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                   Institutions with published programmes in this subject.
                 </p>
                 <p className="sec-head__cta">
-                  <Link className="linkcta" href="/universities">
-                    All universities <span aria-hidden="true">→</span>
+                  {/* The directory reads `?subject=`: the link opens the
+                      universities teaching it, as the band says. */}
+                  <Link className="linkcta" href={`/universities?subject=${subject.slug}`}>
+                    All universities teaching {subject.name}{' '}
+                    <span aria-hidden="true">→</span>
                   </Link>
                 </p>
               </div>

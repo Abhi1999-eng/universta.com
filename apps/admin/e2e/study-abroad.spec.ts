@@ -58,8 +58,12 @@ test.describe('study abroad', () => {
     const healthy = watchHealth(page);
     await page.goto(directory);
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Every study destination' })).toBeVisible();
-    await expect(page.locator('a.dir__card[href="/study-abroad/canada"]')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Where do you want to study?' })).toBeVisible();
+    /* In its region. A popular destination is also in the row above the
+       regions, so the page can hold the same card twice. */
+    await expect(
+      page.getByTestId('directory-groups').locator('a.dir__card[href="/study-abroad/canada"]'),
+    ).toBeVisible();
     /* A destination without a guide has nowhere to go, so it is not a link. */
     await expect(page.locator('.dir__card--soon').first()).toBeVisible();
     await expect(page.locator('a.dir__card--soon')).toHaveCount(0);

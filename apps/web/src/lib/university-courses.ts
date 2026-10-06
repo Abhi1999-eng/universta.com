@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from './format';
+import { formatNumber } from './format';
 import { intakeRange } from './intake-range';
 import { offeringHref, universityHref } from './university-links';
 
@@ -135,6 +135,19 @@ export function courseListSearch(
   return search ? `?${search}` : '';
 }
 
+/**
+ * Whether an address asks for a slice of the list rather than the list:
+ * searched, filtered, sorted or loaded further. The behaviour reference
+ * keeps such a view out of the index while following its links, and so do
+ * this site's own university lists. Read through the canonical spelling,
+ * so `?sort=relevance` or `?page=1` -- the bare list under another
+ * address -- still names the bare list as its canonical instead.
+ */
+export function isNarrowedCourseList(params: Params): boolean {
+  const filters = readCourseFilters(params);
+  return courseListSearch(filters, { page: filters.page }) !== '';
+}
+
 /** The same filters, as the course API names them: one page of eighteen. */
 export function courseApiParams(
   filters: CourseFilters,
@@ -190,6 +203,24 @@ export function courseRunMeta(raw: unknown, filters: CourseFilters): CourseListM
     total,
     totalPages,
   };
+}
+
+/**
+ * "2 August 2027": how a university's pages write a date -- its profile,
+ * its course list and each course page -- so the same deadline reads the
+ * same way on all three. The site's medium form ("Aug 2, 2027") is left to
+ * the other pages. Fixed to UTC so the server and the browser agree.
+ */
+export function dateLabel(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
 }
 
 /** "FULL_TIME" -> "Full time". */
@@ -466,7 +497,7 @@ export function toOfferingCard(
         }),
       ),
     ],
-    nextDeadline: formatDate(upcoming(intakes)) || null,
+    nextDeadline: dateLabel(upcoming(intakes)),
     courseCode: text(row.courseCode),
     university: {
       name: uni.name,

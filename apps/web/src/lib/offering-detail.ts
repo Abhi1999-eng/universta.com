@@ -193,6 +193,29 @@ export function groupRequirements(requirements: OfferingRequirement[]) {
 }
 
 /**
+ * What the course's own requirements say about the language it is taught
+ * in: an English test means English, with the score each test asks for --
+ * "IELTS 6.5 minimum". Nothing else is read as a language, and nothing is
+ * borrowed from the country: plenty of courses in Germany or the
+ * Netherlands are taught in English, so a country's language would misstate
+ * them. Without an English test the course records no language.
+ */
+export function teachingLanguage(
+  requirements: OfferingRequirement[],
+): { value: string; note: string | null } | null {
+  const tests = requirements.filter((requirement) =>
+    /ENGLISH/.test(requirement.category.toUpperCase()),
+  );
+  if (!tests.length) return null;
+  const note = tests
+    .map((test) =>
+      test.minimumScore ? `${test.title} ${test.minimumScore} minimum` : test.title,
+    )
+    .join(' · ');
+  return { value: 'English', note: note || null };
+}
+
+/**
  * The course as a schema.org Course, built only from what the record holds.
  */
 export function offeringJsonLd(
@@ -215,6 +238,9 @@ export function offeringJsonLd(
     detail.shortDescription ??
     `${detail.card.name} at ${detail.university.name}, ${detail.university.country.name}.`;
   const credential = detail.card.qualification ?? detail.card.level?.name;
+  /* The language the page's "At a glance" panel names, and on the same
+     evidence: an English test the course asks for. */
+  const language = teachingLanguage(detail.requirements);
   return {
     '@context': 'https://schema.org',
     '@type': 'Course',
@@ -222,6 +248,7 @@ export function offeringJsonLd(
     description,
     url,
     ...(detail.card.courseCode ? { courseCode: detail.card.courseCode } : {}),
+    ...(language ? { inLanguage: 'en' } : {}),
     provider,
     ...(credential ? { educationalCredentialAwarded: credential } : {}),
     ...(detail.card.studyMode || detail.university.city

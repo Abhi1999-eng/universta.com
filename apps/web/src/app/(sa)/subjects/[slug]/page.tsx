@@ -1,5 +1,12 @@
-import { getCoursesByLevel, getSubject } from "@/lib/catalog";
+import {
+  getCoursesByLevel,
+  getSubject,
+  getSubjects,
+  type Subject,
+  type SubSubject,
+} from "@/lib/catalog";
 import { LEVEL_ROWS_FETCHED } from "@/lib/course-levels";
+import { relatedSubjects } from "@/lib/related-subjects";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -15,6 +22,9 @@ import { toScholarshipCards } from "@/lib/scholarship-card";
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
+
+/** A listing row: the subjects list sends each subject's branches. */
+type SubjectWithBranches = Subject & { subSubjects?: SubSubject[] };
 
 async function load(slug: string) {
   try {
@@ -46,28 +56,41 @@ export default async function SubjectDetailPage({ params }: Props) {
 
   /* Scholarships are a cross-link, not the point of the page: a failure here
      drops the section rather than the route. */
-  const [scholarships, universities, levels] = await Promise.all([
+  const [scholarships, universities, levels, allSubjects] = await Promise.all([
     phaseList<AnyRecord>("scholarships", { subject: slug, limit: "6" })
       .then((result) => toScholarshipCards(result.data))
       .catch(() => []),
     /* The reference's subject page has no universities section of its own,
        but the page it replaced cross-linked them, so they are kept as a
-       group in the closing connect band rather than dropped. */
+       group in the closing connect band rather than dropped. The total is
+       kept too: the page's figure used to be the eight it read. */
     phaseList<AnyRecord>("universities", { subject: slug, limit: "8" })
-      .then((result) =>
-        result.data.map((row) => ({
+      .then((result) => ({
+        rows: result.data.map((row) => ({
           id: String(row.id),
           name: String(row.name ?? ""),
           slug: String(row.slug ?? ""),
         })),
-      )
-      .catch(() => []),
+        total: Number((result.meta as { total?: unknown } | null)?.total) || null,
+      }))
+      .catch(() => ({ rows: [], total: null })),
     /* The subject's courses under their levels. A failure leaves the guide
        with the six mixed courses it always had, not without a section. */
     getCoursesByLevel({ subject: slug, perLevel: LEVEL_ROWS_FETCHED }).catch(
       () => null,
     ),
+    /* Every subject with its specializations, to find this one's
+       neighbours. Without it the page simply has no related band. */
+    getSubjects({ limit: "100" })
+      .then((result) => result.data as SubjectWithBranches[])
+      .catch(() => []),
   ]);
+  const related = relatedSubjects(subject, allSubjects).map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    iconMedia: row.iconMedia ?? null,
+  }));
 
   const breadcrumb = {
     "@context": "https://schema.org",
@@ -98,8 +121,10 @@ export default async function SubjectDetailPage({ params }: Props) {
       <SubjectGuide
         subject={subject}
         scholarships={scholarships}
-        universities={universities}
+        universities={universities.rows}
+        universityTotal={universities.total}
         levels={levels}
+        related={related}
       />
     </>
   );

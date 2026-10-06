@@ -2,15 +2,18 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { OfferingGuide } from '@/components/study-abroad/OfferingGuide';
+import { getCourse } from '@/lib/catalog';
 import { jsonLdString } from '@/lib/json-ld';
 import { offeringJsonLd, toOfferingDetail } from '@/lib/offering-detail';
 import { phaseList, phaseResolveRedirect } from '@/lib/phase1';
 import { toScholarshipCards } from '@/lib/scholarship-card';
-import { resolvedMetadata } from '@/lib/seo-management';
 import { siteOrigin } from '@/lib/site-origin';
+import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { offeringCanonical, withQuery } from '@/lib/university-courses';
 import { loadOffering } from '@/lib/university-courses-server';
 import { offeringHref } from '@/lib/university-links';
+import { toDestination } from '@/lib/university-record';
+import { offeringTitle, universityPageMetadata } from '@/lib/university-seo';
 
 /**
  * One course at one university, under its country:
@@ -48,42 +51,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: { absolute: 'University course not found | Universta' },
       robots: { index: false },
     };
-  const seo = detail.seo;
   /* The catalogue's own default title is the bare course name, which does
      not say where it is taught, and its default description is the site's.
-     What an editor wrote, one by one or in bulk, is kept as written. */
-  const written = (source: string | undefined) =>
-    source === 'manual' || source === 'bulk';
-  const ownTitle = written(seo?.source?.title) && seo?.seoTitle;
-  const title =
-    ownTitle ||
-    `${detail.card.name} at ${detail.university.name} | Fees, Eligibility & Intakes`;
-  const description =
-    (written(seo?.source?.description) && seo?.metaDescription) ||
-    detail.shortDescription ||
-    `${detail.card.name} at ${detail.university.name}, ${detail.university.country.name}: duration, tuition, intakes and entry requirements.`;
-  const meta = resolvedMetadata(
-    seo
-      ? {
-          ...seo,
-          seoTitle: title,
-          metaDescription: description,
-          canonicalUrl: offeringCanonical(seo.canonicalUrl, detail.card.href),
-          ...(ownTitle ? {} : { ogTitle: title, twitterTitle: title }),
-          ...(written(seo.source?.description)
-            ? {}
-            : { ogDescription: description, twitterDescription: description }),
-        }
-      : null,
-    title,
-    description,
-    detail.card.href,
-  );
-  /* `resolvedMetadata` finishes the title with the site name, and this
-     route family's layout would add it again through its template. */
-  return typeof meta.title === 'string'
-    ? { ...meta, title: { absolute: meta.title } }
-    : meta;
+     What an editor wrote, one by one or in bulk, is kept as written; a
+     stored title that is only the course's name is the default saved back
+     from the admin's form, and gives way like one. */
+  return universityPageMetadata({
+    seo: detail.seo,
+    title: offeringTitle(detail.card.name, detail.university.name),
+    description:
+      detail.shortDescription ??
+      `${detail.card.name} at ${detail.university.name}, ${detail.university.country.name}: duration, tuition, intakes and entry requirements.`,
+    canonical: offeringCanonical(detail.seo?.canonicalUrl, detail.card.href),
+    names: [detail.card.name, detail.fullName],
+  });
 }
 
 export default async function Page({ params, searchParams }: Props) {
@@ -105,13 +86,22 @@ export default async function Page({ params, searchParams }: Props) {
     permanentRedirect(withQuery(detail.card.href, query));
 
   /* Awards recorded against this course; failing those, the university's
-     own. Funding is a cross-link here, so a failure costs the section. */
-  const forCourse = await phaseList<AnyRecord>('scholarships', {
-    offering: detail.card.slug,
-    limit: '4',
-  })
-    .then((list) => toScholarshipCards(list.data))
-    .catch(() => []);
+     own. The destination's guide decides where the visa and living-cost
+     links land and who the student can ask; the generic course holds the
+     questions editors wrote about it. Each is a cross-link here, so a
+     failure costs what it feeds rather than the page. */
+  const [forCourse, guide, course] = await Promise.all([
+    phaseList<AnyRecord>('scholarships', {
+      offering: detail.card.slug,
+      limit: '4',
+    })
+      .then((list) => toScholarshipCards(list.data))
+      .catch(() => []),
+    getStudyAbroadCountry(detail.university.country.slug),
+    detail.courseSlug
+      ? getCourse(detail.courseSlug).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const forUniversity = forCourse.length
     ? []
     : await phaseList<AnyRecord>('scholarships', {
@@ -127,6 +117,8 @@ export default async function Page({ params, searchParams }: Props) {
         detail={detail}
         scholarships={forCourse.length ? forCourse : forUniversity}
         scholarshipScope={forCourse.length ? 'course' : 'university'}
+        destination={toDestination(guide)}
+        faqs={course?.faqs ?? []}
       />
       <script type="application/ld+json">
         {jsonLdString(offeringJsonLd(detail, siteOrigin))}

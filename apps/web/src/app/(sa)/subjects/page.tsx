@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getSubjects } from '@/lib/catalog';
+import { getCourseLevels, getSubjects } from '@/lib/catalog';
 import {
   SubjectIndex,
   type SubjectIndexRow,
@@ -22,13 +22,21 @@ export const metadata: Metadata = {
 export default async function SubjectsIndexPage() {
   /* The explorer searches specializations as well as subjects, so each row
      arrives with its branches rather than a count to look up later. */
-  const subjects = await getSubjects({ limit: '100' })
-    .then((result) => result.data as SubjectIndexRow[])
-    .catch(() => []);
+  const [subjects, levelOrder] = await Promise.all([
+    getSubjects({ limit: '100' })
+      .then((result) => result.data as SubjectIndexRow[])
+      .catch(() => []),
+    /* The public levels list is in the order a student climbs them, which
+       is the order the level bar reads in. Without it the bar keeps the
+       order the subjects supply. */
+    getCourseLevels()
+      .then((rows) => rows.map((row) => row.code))
+      .catch(() => []),
+  ]);
 
   return (
     <>
-      <SubjectIndex subjects={subjects} />
+      <SubjectIndex subjects={subjects} levelOrder={levelOrder} />
 
       <MatchBand heading="Found your field?" href="/courses" />
 
