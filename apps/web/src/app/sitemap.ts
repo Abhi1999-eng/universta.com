@@ -1,11 +1,20 @@
 import type { MetadataRoute } from "next";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
-import { phaseList, phaseListAll } from "@/lib/phase1";
+import {
+  phaseList,
+  phaseListAll,
+  phaseProgrammeAddresses,
+  type ProgrammeAddress,
+} from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
 import { getCourses, getSubjects } from "@/lib/catalog";
 import { siteOrigin } from "@/lib/site-origin";
-import { countryUniversitiesHref } from "@/lib/university-links";
+import {
+  countryUniversitiesHref,
+  offeringHref,
+  universityCoursesHref,
+} from "@/lib/university-links";
 
 const base = siteOrigin;
 // Testimonials remain listing-only. Published success stories have a public
@@ -62,6 +71,71 @@ async function countriesWithUniversities(
   return [...seen];
 }
 
+/* The catalogue lists serve a hundred rows a page at most. */
+const CATALOGUE_PAGE = 100;
+/* The programme addresses come five thousand to a page, and a sitemap
+   holds fifty thousand addresses: past ten pages the programmes would
+   need sitemaps of their own (generateSitemaps), which is far beyond the
+   catalogue today. */
+const ADDRESS_PAGE = 5000;
+const ADDRESS_PAGES = 10;
+
+/**
+ * Every row of a paged list, not the first page of it.
+ *
+ * The destinations and the course guides were read a hundred at a time and
+ * only the first hundred were announced: 100 of 206 destinations and 100
+ * of 299 courses. The first page says how many there are; the rest are
+ * read a few at a time, as the API asks. A page that fails fails the read,
+ * as the single page did before.
+ */
+async function everyPage<T>(
+  read: (params: Record<string, string>) => Promise<{ data: T[]; meta: unknown }>,
+  limit: number,
+  cap = Infinity,
+) {
+  const page = (n: number) => read({ limit: String(limit), page: String(n) });
+  const first = await page(1);
+  const totalPages = Number(
+    (first.meta as { totalPages?: unknown } | null)?.totalPages,
+  );
+  const pages = Math.min(
+    Number.isFinite(totalPages) && totalPages > 1 ? totalPages : 1,
+    cap,
+  );
+  const rest: T[] = [];
+  for (let from = 2; from <= pages; from += COUNT_CONCURRENCY) {
+    const batch = await Promise.all(
+      Array.from({ length: Math.min(COUNT_CONCURRENCY, pages - from + 1) }, (_, index) =>
+        page(from + index),
+      ),
+    );
+    rest.push(...batch.flatMap((result) => result.data));
+  }
+  return [...first.data, ...rest];
+}
+
+/**
+ * Each live programme's page, and each university's course list that has
+ * one -- the indexable pages the course catalogue is made of, which the
+ * sitemap never announced. A university with no programme has no list
+ * worth announcing. The programmes are an addition to the sitemap, so a
+ * failure to read them costs them alone.
+ */
+async function programmeRoutes() {
+  const addresses = await everyPage<ProgrammeAddress>(
+    phaseProgrammeAddresses,
+    ADDRESS_PAGE,
+    ADDRESS_PAGES,
+  ).catch(() => [] as ProgrammeAddress[]);
+  const lists = new Set<string>();
+  const pages = addresses.map((row) => {
+    lists.add(universityCoursesHref(row.countrySlug, row.universitySlug));
+    return offeringHref(row.countrySlug, row.universitySlug, row.slug);
+  });
+  return [...lists, ...pages];
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     // "/countries" redirects to "/study-abroad", which is now the canonical
@@ -93,23 +167,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       countries,
       subjects,
       courses,
+      programmes,
     ] = await Promise.all([
       Promise.all(
         resources.map((resource) => phaseListAll<AnyRecord>(resource)),
       ),
-      getCountries({ limit: "100" }),
+      everyPage(getCountries, CATALOGUE_PAGE),
       getSubjects({ limit: "100" }),
-      getCourses({ limit: "100" }),
+      everyPage(getCourses, CATALOGUE_PAGE),
+      programmeRoutes(),
     ]);
-    const citiesByCountry = await Promise.all(
-      countries.data.map((country) =>
-        getCountryCities(country.slug, { limit: "50" }).catch(() => ({
-          data: [] as Array<{ slug: string }>,
-        })),
-      ),
-    );
+    /* A few destinations at a time: with every destination listed there
+       are twice as many of these reads, and all at once the API would shed
+       most of them -- each lost one silently dropping its cities. */
+    const citiesByCountry: Array<{ data: Array<{ slug: string }> }> = [];
+    for (let from = 0; from < countries.length; from += COUNT_CONCURRENCY)
+      citiesByCountry.push(
+        ...(await Promise.all(
+          countries.slice(from, from + COUNT_CONCURRENCY).map((country) =>
+            getCountryCities(country.slug, { limit: "50" }).catch(() => ({
+              data: [] as Array<{ slug: string }>,
+            })),
+          ),
+        )),
+      );
     const universityLists = await countriesWithUniversities(
-      countries.data.map((country) => country.slug),
+      countries.map((country) => country.slug),
       universities.data,
     );
     const dynamicRoutes = [
@@ -121,18 +204,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...successStories.data.map((row) => `/success-stories/${row.slug}`),
       /* The canonical country guide lives under /study-abroad; /countries/<slug>
          permanently redirects there, so only the target is listed. */
-      ...countries.data.map((row) => `/study-abroad/${row.slug}`),
+      ...countries.map((row) => `/study-abroad/${row.slug}`),
       /* Each destination's own list of universities -- but only where a
          published university says there is one, so no empty list is
          announced. */
       ...universityLists.map((slug) => countryUniversitiesHref(slug)),
-      ...countries.data.flatMap((country, index) =>
+      ...countries.flatMap((country, index) =>
         citiesByCountry[index].data.map(
           (city) => `/study-in-${country.slug}/${city.slug}`,
         ),
       ),
       ...subjects.data.map((row) => `/subjects/${row.slug}`),
-      ...courses.data.map((row) => `/courses/${row.slug}`),
+      ...courses.map((row) => `/courses/${row.slug}`),
+      /* Each university's course list, where it lists a programme, and
+         each programme's page, at its nested address. */
+      ...programmes,
     ].map((path) => ({
       url: new URL(path, base).toString(),
       changeFrequency: "weekly" as const,
