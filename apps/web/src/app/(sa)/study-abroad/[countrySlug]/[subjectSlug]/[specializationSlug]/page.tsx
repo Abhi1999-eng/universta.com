@@ -44,6 +44,7 @@ import { counsellingHref } from '@/lib/counselling-link';
 import {
   figuresHere,
   intakeFigure,
+  listedIntakes,
   overviewParts,
   programmesHere,
   rankSpecializations,
@@ -212,14 +213,16 @@ export default async function Page({ params, searchParams }: Params) {
     (entry) => countsHere?.get(entry.slug) ?? 0,
   );
   /* The design's strip counts programmes, universities, cities and
-     intakes. Where the universities' programmes are listed here the first
-     three are theirs, counted together so they describe the same list;
+     intakes. Where the universities' programmes are listed here every
+     figure is theirs, counted together so they describe the same list;
      where none are, the strip says what it always said. */
   const figures = figuresHere({
     programmes: listed ? listed.summary.programmes : total,
     universities: listed ? listed.summary.universities : teaching.total,
     cities: listed?.summary.cities ?? null,
-    intakes: intakeFigure(filters?.intakes ?? []),
+    intakes: intakeFigure(
+      listed ? listedIntakes(listed.facets.intake) : (filters?.intakes ?? []),
+    ),
   });
 
   /* What the specialization is, said for this destination: the reference
