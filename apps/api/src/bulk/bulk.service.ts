@@ -1,3 +1,4 @@
+import { offeringCellText } from './offerings-bulk';
 import {
   BadRequestException,
   Injectable,
@@ -401,6 +402,8 @@ export class BulkOperationsService {
         genericCourse: { select: { slug: true, name: true } },
         campus: { select: { slug: true, name: true } },
         courseLevel: { select: { code: true, name: true } },
+        intakes: { include: { intake: true } },
+        requirements: true,
       },
       scholarships: { provider: { select: { slug: true, name: true } } },
       'consultant-locations': {
@@ -556,7 +559,13 @@ export class BulkOperationsService {
           this.humanExportValue(field.key, downloaded, stored),
         ]),
       );
-      return changedColumns(fields, row, exported, asDownloaded);
+      /* Intake references can spell the same set as names, slugs or months,
+         in any order. Its reconciler compares the resolved set and deadlines. */
+      const compared =
+        resourceKey === 'offerings'
+          ? fields.filter((field) => field.key !== 'intakes')
+          : fields;
+      return changedColumns(compared, row, exported, asDownloaded);
     } catch {
       return null;
     }
@@ -875,10 +884,58 @@ export class BulkOperationsService {
         details: null,
       });
     const table = delegate(this.prisma, definition);
-    const result = await table.updateMany({
-      where: { id: { in: ids }, deletedAt: null },
-      data: coerceUpdateFields(fields),
-    });
+    let updated: number;
+    if (resourceKey === 'offerings') {
+      /* Intakes and test scores belong to child rows. The same parser and
+         reconciler keep a bulk edit as strict and atomic as a sheet import. */
+      const records = (await table.findMany({
+        where: { id: { in: ids }, deletedAt: null },
+        include: BulkOperationsService.INCLUDE_MAP.offerings,
+      })) as Record<string, unknown>[];
+      const writes = [];
+      for (const record of records) {
+        const row = Object.fromEntries(
+          Object.entries({ ...definition.toExportRow(record), ...fields }).map(
+            ([key, value]) => [key, offeringCellText(value)],
+          ),
+        );
+        for (const key of [
+          'intakes',
+          'ieltsMinimum',
+          'toeflMinimum',
+          'pteMinimum',
+          'academicRequirement',
+        ])
+          if (!(key in fields)) delete row[key];
+        const parsed = await definition.parseRow(row, this.prisma);
+        const errors = [
+          ...(parsed.errors ?? []),
+          ...bulkFieldValueErrors(definition, row),
+        ];
+        if (errors.length || !parsed.data)
+          throw new BadRequestException({
+            code: 'INVALID_ROW',
+            message: errors.join('; '),
+            details: { id: record.id, errors },
+          });
+        const data = Object.fromEntries(
+          Object.entries(parsed.data).filter(([key]) => key in fields),
+        );
+        writes.push({
+          id: String(record.id),
+          parsed: { data, relations: parsed.relations },
+        });
+      }
+      for (const write of writes)
+        await this.writeRow(definition, write.id, write.parsed, 'update');
+      updated = writes.length;
+    } else {
+      const result = await table.updateMany({
+        where: { id: { in: ids }, deletedAt: null },
+        data: coerceUpdateFields(fields),
+      });
+      updated = result.count;
+    }
     await writeAudit(
       this.prisma,
       request,
@@ -889,9 +946,9 @@ export class BulkOperationsService {
       'BULK_UPDATE',
       null,
       { ids: JSON.stringify(ids), fields: JSON.stringify(fields) },
-      `Bulk update of ${result.count} ${resourceKey} record(s)`,
+      `Bulk update of ${updated} ${resourceKey} record(s)`,
     );
-    return { updated: result.count };
+    return { updated };
   }
 
   /**
