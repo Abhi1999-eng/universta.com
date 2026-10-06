@@ -14,6 +14,7 @@ type Rows = {
   countries?: unknown[];
   subjects?: unknown[];
   courses?: unknown[];
+  programmes?: unknown[];
   universities?: unknown[];
   scholarships?: unknown[];
 };
@@ -23,6 +24,9 @@ function build(rows: Rows = {}) {
     country: { findMany: jest.fn().mockResolvedValue(rows.countries ?? []) },
     subject: { findMany: jest.fn().mockResolvedValue(rows.subjects ?? []) },
     course: { findMany: jest.fn().mockResolvedValue(rows.courses ?? []) },
+    universityCourseOffering: {
+      findMany: jest.fn().mockResolvedValue(rows.programmes ?? []),
+    },
     university: {
       findMany: jest.fn().mockResolvedValue(rows.universities ?? []),
     },
@@ -125,6 +129,62 @@ describe('catalogue search', () => {
           }),
         }),
       );
+  });
+
+  /* A programme -- a course at one university -- is what the course
+     finder lists, so the search offers them under their own heading, each
+     opening its page under its country, and "all" opens the finder on the
+     same word. The course guides' "all" keeps the word too. */
+  it('offers programmes, each at its own address, and keeps the word in "all"', async () => {
+    const { prisma, service } = build({
+      courses: [
+        {
+          id: 'c1',
+          name: 'MSc Computer Science',
+          slug: 'msc-cs',
+          subject: null,
+        },
+      ],
+      programmes: [
+        {
+          id: 'o1',
+          name: 'MSc Computer Science',
+          slug: 'warwick-msc-cs',
+          university: {
+            name: 'University of Warwick',
+            slug: 'university-of-warwick',
+            country: { slug: 'united-kingdom' },
+          },
+        },
+      ],
+    });
+    const results = await service.search('Computer Science');
+    expect(results.groups.map((group) => group.type)).toEqual([
+      'course',
+      'programme',
+    ]);
+    const [courses, programmes] = results.groups;
+    expect(courses.href).toBe('/courses?view=guides&q=Computer+Science');
+    expect(programmes.label).toBe('Programmes');
+    expect(programmes.href).toBe('/courses?q=Computer+Science');
+    expect(programmes.items[0]).toEqual({
+      id: 'o1',
+      label: 'MSc Computer Science',
+      href: '/study-abroad/united-kingdom/universities/university-of-warwick/courses/warwick-msc-cs',
+      meta: 'University of Warwick',
+    });
+    /* Only live programmes, at live universities in published countries. */
+    expect(prisma.universityCourseOffering.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'PUBLISHED',
+          university: expect.objectContaining({
+            status: 'PUBLISHED',
+            country: { status: 'PUBLISHED', deletedAt: null },
+          }),
+        }),
+      }),
+    );
   });
 
   it('leaves out a kind that matched nothing', async () => {

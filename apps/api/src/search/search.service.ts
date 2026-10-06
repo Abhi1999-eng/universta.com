@@ -19,7 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 
 export type SearchGroupType =
-  'country' | 'subject' | 'course' | 'university' | 'scholarship';
+  'country' | 'subject' | 'course' | 'programme' | 'university' | 'scholarship';
 
 export type SearchItem = {
   id: string;
@@ -67,55 +67,99 @@ export class SearchService {
        SQL, which cannot order by "starts with" portably. */
     const pool = take * 4;
 
-    const [countries, subjects, courses, universities, scholarships] =
-      await Promise.all([
-        this.prisma.country.findMany({
-          where: { ...published, name: { contains: q } },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            iso2Code: true,
-            continent: { select: { name: true } },
+    const now = new Date();
+    const live = {
+      ...published,
+      AND: [
+        { OR: [{ publishStartsAt: null }, { publishStartsAt: { lte: now } }] },
+        { OR: [{ publishEndsAt: null }, { publishEndsAt: { gt: now } }] },
+      ],
+    };
+
+    const [
+      countries,
+      subjects,
+      courses,
+      programmes,
+      universities,
+      scholarships,
+    ] = await Promise.all([
+      this.prisma.country.findMany({
+        where: { ...published, name: { contains: q } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          iso2Code: true,
+          continent: { select: { name: true } },
+        },
+        orderBy: [{ isPopular: 'desc' }, { name: 'asc' }],
+        take: pool,
+      }),
+      this.prisma.subject.findMany({
+        where: { ...published, name: { contains: q } },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+        take: pool,
+      }),
+      this.prisma.course.findMany({
+        where: { ...published, name: { contains: q } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          subject: { select: { name: true } },
+        },
+        orderBy: { name: 'asc' },
+        take: pool,
+      }),
+      /* A programme is a course as one university teaches it, and it is
+           what the course finder lists: "Warwick" or "Computer Science at
+           Warwick" means one of these. Live only at a live university in a
+           published destination, the rule every programme list keeps, so
+           no suggestion opens a page that answers 404. */
+      this.prisma.universityCourseOffering.findMany({
+        where: {
+          ...live,
+          name: { contains: q },
+          university: {
+            ...live,
+            country: { status: 'PUBLISHED', deletedAt: null },
           },
-          orderBy: [{ isPopular: 'desc' }, { name: 'asc' }],
-          take: pool,
-        }),
-        this.prisma.subject.findMany({
-          where: { ...published, name: { contains: q } },
-          select: { id: true, name: true, slug: true },
-          orderBy: { name: 'asc' },
-          take: pool,
-        }),
-        this.prisma.course.findMany({
-          where: { ...published, name: { contains: q } },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            subject: { select: { name: true } },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          university: {
+            select: {
+              name: true,
+              slug: true,
+              country: { select: { slug: true } },
+            },
           },
-          orderBy: { name: 'asc' },
-          take: pool,
-        }),
-        this.prisma.university.findMany({
-          where: { ...published, name: { contains: q } },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            country: { select: { name: true } },
-          },
-          orderBy: { name: 'asc' },
-          take: pool,
-        }),
-        this.prisma.scholarship.findMany({
-          where: { ...published, title: { contains: q } },
-          select: { id: true, title: true, slug: true },
-          orderBy: { title: 'asc' },
-          take: pool,
-        }),
-      ]);
+        },
+        orderBy: { name: 'asc' },
+        take: pool,
+      }),
+      this.prisma.university.findMany({
+        where: { ...published, name: { contains: q } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          country: { select: { name: true } },
+        },
+        orderBy: { name: 'asc' },
+        take: pool,
+      }),
+      this.prisma.scholarship.findMany({
+        where: { ...published, title: { contains: q } },
+        select: { id: true, title: true, slug: true },
+        orderBy: { title: 'asc' },
+        take: pool,
+      }),
+    ]);
 
     const groups: SearchGroup[] = [
       {
@@ -145,12 +189,25 @@ export class SearchService {
       {
         type: 'course',
         label: 'Courses',
-        href: '/courses',
+        /* The course guides, searched for the same word: the bare list
+           dropped what the reader typed. */
+        href: `/courses?${new URLSearchParams({ view: 'guides', q })}`,
         items: courses.map((row) => ({
           id: row.id,
           label: row.name,
           href: `/courses/${row.slug}`,
           meta: row.subject?.name ?? null,
+        })),
+      },
+      {
+        type: 'programme',
+        label: 'Programmes',
+        href: `/courses?${new URLSearchParams({ q })}`,
+        items: programmes.map((row) => ({
+          id: row.id,
+          label: row.name,
+          href: `/study-abroad/${row.university.country.slug}/universities/${row.university.slug}/courses/${row.slug}`,
+          meta: row.university.name,
         })),
       },
       {
