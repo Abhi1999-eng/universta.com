@@ -263,6 +263,49 @@ describe('programmes on a subject’s and a specialization’s page', () => {
     expect(html).not.toContain('class="coursecard"');
     expect(html).toContain('Computer Science programmes by level');
     expect(html).toMatch(/<span class="label">Programmes profiled<\/span><b>36<\/b>/);
+    /* Every other count keeps the name it always had, too. */
+    expect(html).toMatch(/<p class="subjabout__facts datum">36 programmes ·.* 3 destinations<\/p>/);
+    expect(html).toContain('<span class="speccard__count datum">6 programmes</span>');
+    expect(html).toContain('aria-label="Computer Science in United Kingdom, 6 programmes"');
+    expect(html).toContain('<a href="/study-abroad/united-states/computer-science">United States</a><span>6 programmes</span>');
+  });
+
+  /* Beside the programmes, a chip saying "6 programmes" opened a page
+     listing 15, and a card saying "6 programmes" opened one listing 34:
+     those counts are of the catalogue's courses, and are called that. */
+  it('calls the course counts courses beside the programmes, so they match the pages they open', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={subject} scholarships={[]} levels={levelled} programmes={sample} />,
+    );
+    const specs = html.slice(html.indexOf('id="specializations"'), html.indexOf('id="destinations"'));
+    expect(specs).toContain('<span class="speccard__count datum">6 courses</span>');
+    expect(specs).not.toContain('programmes');
+    expect(html).toContain('aria-label="Computer Science in United Kingdom, 6 courses"');
+    expect(html).toContain('<a href="/study-abroad/united-states/computer-science">United States</a><span>6 courses</span>');
+    /* The facts line is all one kind of count: the destinations are the
+       ones its courses are taught in, so the first figure is its courses. */
+    expect(html).toMatch(/<p class="subjabout__facts datum">36 courses ·.* 3 destinations<\/p>/);
+    expect(html).not.toContain('136 programmes ·');
+  });
+
+  it('calls a specialization’s related and destination counts courses beside its programmes', () => {
+    const render = (programmes: typeof sample | null) =>
+      renderToStaticMarkup(
+        <SpecializationGuide
+          specialization={specialization as never}
+          scholarships={[]}
+          levels={levelled}
+          programmes={programmes}
+        />,
+      );
+    const listed = render({ ...sample, total: 34, universities: 32 });
+    expect(listed).toContain('<span class="speccard__count datum">4 courses</span>');
+    expect(listed).toContain('aria-label="Software Engineering in Canada, 3 courses"');
+    expect(listed).toContain('Software Engineering in Canada</a><span>3 courses</span>');
+    const none = render(null);
+    expect(none).toContain('<span class="speccard__count datum">4 programmes</span>');
+    expect(none).toContain('aria-label="Software Engineering in Canada, 3 programmes"');
+    expect(none).toContain('Software Engineering in Canada</a><span>3 programmes</span>');
   });
 
   it('shows a specialization’s programmes and opens all of them with both halves of the pair', () => {

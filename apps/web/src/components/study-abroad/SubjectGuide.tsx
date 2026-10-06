@@ -22,7 +22,6 @@ import { DestinationSwitcher } from './DestinationSwitcher';
 import { firstSentence, splitLead } from './CountryGuideSections';
 import {
   destinationsLead,
-  programmeCount,
   rankDestinations,
   sparseBandClass,
   switcherClass,
@@ -152,6 +151,13 @@ export function SubjectGuide({
      is the catalogue's courses, as it always was, and once there are the
      courses keep a figure of their own. */
   const sampled = programmes?.cards.length ? programmes : null;
+  /* Every other count on the page is of the catalogue's courses: the
+     specializations', the destinations' and the facts line's. Beside the
+     programmes they are called courses, as the level block's are, or a
+     chip saying "6 programmes" opens a page listing 15. */
+  const noun = sampled ? 'course' : 'programme';
+  const counted = (count: number) =>
+    `${formatNumber(count)} ${count === 1 ? noun : `${noun}s`}`;
 
   /* Only the figures this record actually has: a strip of dashes says less
      than a shorter strip does. */
@@ -268,9 +274,13 @@ export function SubjectGuide({
             <SectionHead n={n('about')} eyebrow="Overview" title={`About ${subject.name}`}>
               {opening ? <p className="ov__lead">{opening.first}</p> : null}
               {opening?.rest ? <p className="ov__more">{opening.rest}</p> : null}
+              {/* One kind of count throughout: the destinations are the
+                  ones its courses are taught in, so the first figure is
+                  its courses too. Beside 82 destinations, 136 programmes
+                  read as taught in all of them; they are in 20. */}
               <p className="subjabout__facts datum">
-                {formatNumber(sampled ? sampled.total : subject.publishedCourseCount) || '—'}{' '}
-                programmes ·{' '}
+                {formatNumber(subject.publishedCourseCount) || '—'}{' '}
+                {noun}s ·{' '}
                 {specializations.length || '—'} specializations ·{' '}
                 {destinationCount ? formatNumber(destinationCount) : '—'} destinations
               </p>
@@ -300,6 +310,7 @@ export function SubjectGuide({
               subjectSlug={subject.slug}
               branches={specializations}
               levelOrder={levelOrder}
+              noun={noun}
             />
           </div>
         </section>
@@ -338,6 +349,7 @@ export function SubjectGuide({
               countries={countries}
               label={subject.name}
               within={subject.slug}
+              noun={noun}
             />
           </div>
         </section>
@@ -597,7 +609,7 @@ export function SubjectGuide({
               id: row.id,
               name: row.name,
               href: `/study-abroad/${row.slug}/${subject.slug}`,
-              note: row.courseCount ? programmeCount(row.courseCount) : null,
+              note: row.courseCount ? counted(row.courseCount) : null,
             })),
             total: teaching.length || countries.length,
           },

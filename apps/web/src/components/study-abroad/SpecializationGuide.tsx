@@ -19,7 +19,6 @@ import { Crumbs } from './Crumbs';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import {
   destinationsLead,
-  programmeCount,
   rankDestinations,
   sparseBandClass,
   teachingDestinations,
@@ -119,6 +118,12 @@ export function SpecializationGuide({
     subSubject: specialization.slug,
   });
   const taught = programmes?.cards.length ? programmes : null;
+  /* The related cards' and the destinations' counts are of the catalogue's
+     courses. Beside the programmes they are called courses, as the level
+     block's are, or "6 programmes" opens a page that lists 34. */
+  const noun = taught ? 'course' : 'programme';
+  const counted = (count: number) =>
+    `${formatNumber(count)} ${count === 1 ? noun : `${noun}s`}`;
   /* The enquiry says which specialization the student was reading about. */
   const counselling = counsellingHref({
     source: 'specialization',
@@ -363,6 +368,7 @@ export function SpecializationGuide({
               countries={countries}
               label={specialization.name}
               within={`${subject.slug}/${specialization.slug}`}
+              noun={noun}
             />
           </div>
         </section>
@@ -415,7 +421,7 @@ export function SpecializationGuide({
                           <span className="speccard__levels">{levelNames}</span>
                           {count ? (
                             <span className="speccard__count datum">
-                              {programmeCount(count)}
+                              {counted(count)}
                             </span>
                           ) : null}
                         </span>
@@ -522,7 +528,7 @@ export function SpecializationGuide({
               id: row.id,
               name: `${specialization.name} in ${inCountry(row.name, row.iso2Code)}`,
               href: `/study-abroad/${row.slug}/${subject.slug}/${specialization.slug}`,
-              note: row.courseCount ? programmeCount(row.courseCount) : null,
+              note: row.courseCount ? counted(row.courseCount) : null,
             })),
             total: teaching.length || countries.length,
           },
