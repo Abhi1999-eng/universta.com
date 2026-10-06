@@ -23,9 +23,12 @@ import { formatNumber } from '@/lib/format';
  * country's courses under subjects this way; this is the same block with
  * levels as the groups.
  *
- * A level with no courses is not here -- the catalogue does not send one --
- * and with no courses at all the block is not rendered, like every other
- * section on these pages.
+ * The six levels the client named are always here (see `everyLevel`); any
+ * other level shows only where something is. An empty level is its name and
+ * "0 courses" and nothing more: the section's lead, or the notice above it,
+ * says once why nothing is listed, and a line under each level said it six
+ * times over. It has no link either, because the list it would open is
+ * empty too.
  */
 export function CourseLevels({
   groups,
@@ -60,12 +63,14 @@ export function CourseLevels({
     <div className="courselevels">
       {/* Straight to a level, for a page that now has several lists on it.
           Links, not filters: every level stays on the page. */}
-      {groups.length > 1 ? (
+      {/* Not when every level is empty: six chips reading 0, each jumping a
+          few lines down to say so again, are no way in. */}
+      {groups.length > 1 && groups.some((group) => group.count) ? (
         <nav className="levelbar levelbar--wide" aria-label="Study levels">
           <span className="filters__label">Study level</span>
           {groups.map((group) => (
             <a
-              className="chipbtn"
+              className={`chipbtn${group.count ? '' : ' chipbtn--none'}`}
               href={`#${levelAnchor(group.level.code)}`}
               key={group.level.id}
             >
@@ -78,6 +83,29 @@ export function CourseLevels({
 
       <div className="coursegroups coursegroups--stack">
         {groups.map((group) => {
+          if (!group.count)
+            return (
+              <section
+                className="coursegroup coursegroup--empty scrollstop"
+                id={levelAnchor(group.level.code)}
+                key={group.level.id}
+                aria-labelledby={`${levelAnchor(group.level.code)}-h`}
+              >
+                <h3
+                  className="coursegroup__title"
+                  id={`${levelAnchor(group.level.code)}-h`}
+                >
+                  <span className="coursegroup__head">
+                    <span className="coursegroup__name">{group.level.name}</span>
+                    <span className="coursegroup__n">0 courses</span>
+                    {/* The listed levels' arrow's room, so the counts line up. */}
+                    <span className="coursegroup__noarrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </span>
+                </h3>
+              </section>
+            );
           const first = group.courses.slice(0, LEVEL_ROWS_SHOWN);
           const rest = group.courses.slice(LEVEL_ROWS_SHOWN);
           const beyond = group.count - group.courses.length;

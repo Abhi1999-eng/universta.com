@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { SubjectDetail } from '@/lib/catalog';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
+import { everyLevel } from '@/lib/course-levels';
 
 const searchParams = { current: new URLSearchParams() };
 vi.mock('next/navigation', () => ({
@@ -384,5 +385,71 @@ describe('the subjects explorer', () => {
     );
     expect(html).toContain('36 programmes profiled');
     expect(html).not.toContain('0 programmes profiled');
+  });
+});
+
+/**
+ * The client could not see the study levels on a catalogue with nothing
+ * listed. The six they named now always show; the figures still count only
+ * the levels something is listed at, and the section says once, not six
+ * times, that nothing is listed yet.
+ */
+describe('the study levels, listed or not', () => {
+  const catalogue = [
+    { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
+    { id: 'p', code: 'PATHWAY', name: 'Pathway Program', educationOrder: 2 },
+    { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 },
+    { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 },
+    { id: 'm', code: 'MBA', name: 'MBA', educationOrder: 5 },
+    { id: 'h', code: 'PHD', name: 'PhD', educationOrder: 6 },
+  ];
+  const empty = { ...subject, courseCountsByLevel: [], featuredCourses: [] } as unknown as SubjectDetail;
+  const sectionIds = (html: string) =>
+    [...html.matchAll(/<section class="coursegroup[^"]*" id="(level-[^"]+)"/g)].map((m) => m[1]);
+
+  it('shows all six on a subject with nothing listed, says so once, and offers no empty search', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={empty} scholarships={[]} levels={everyLevel([], catalogue)} />,
+    );
+    expect(sectionIds(html)).toEqual([
+      'level-foundation',
+      'level-pathway',
+      'level-ug',
+      'level-pg',
+      'level-mba',
+      'level-phd',
+    ]);
+    expect(html.match(/is listed yet/g)).toHaveLength(1);
+    expect(html).toContain('No Computer Science programme is listed yet.');
+    expect(html).not.toMatch(/<span class="label">Study levels<\/span>/);
+    expect(html).not.toContain('Every Computer Science programme');
+  });
+
+  it('names only the levels something is listed at in the figures', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide
+        subject={empty}
+        scholarships={[]}
+        levels={everyLevel(
+          [{ level: { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 }, count: 4, courses: [] }],
+          catalogue,
+        )}
+      />,
+    );
+    expect(html).toMatch(/<span class="label">Study levels<\/span><b>Master&#x27;s<\/b>/);
+    expect(sectionIds(html)).toHaveLength(6);
+  });
+
+  it('shows all six on a specialization with nothing listed, without "View all 0"', () => {
+    const html = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={specialization as never}
+        scholarships={[]}
+        levels={everyLevel([], catalogue)}
+      />,
+    );
+    expect(sectionIds(html)).toHaveLength(6);
+    expect(html).toContain('No Software Engineering programme is listed yet.');
+    expect(html).not.toContain('View all 0');
   });
 });

@@ -216,29 +216,34 @@ export function SpecializationGuide({
               }
               lead={
                 groups.length
-                  ? `${formatNumber(filed)} published ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
+                  ? filed
+                    ? `${formatNumber(filed)} published ${filed === 1 ? 'programme' : 'programmes'}, each under the level it is taught at.`
+                    : `No ${specialization.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
                   : 'Published programmes recorded against this specialization.'
               }
             >
               {/* The reference ends its course list with "View all N
                   courses", filtered to the specialization. The subject's
                   whole list stays as the second way out. */}
-              <p className="sec-head__cta specprog__ctas">
-                <Link className="linkcta" href={coursesHref}>
-                  {groups.length
-                    ? `View all ${formatNumber(filed)} ${specialization.name} ${filed === 1 ? 'programme' : 'programmes'}`
-                    : `View all ${specialization.name} programmes`}{' '}
-                  <span className="linkcta__arrow" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-                <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
-                  Every {subject.name} programme{' '}
-                  <span className="linkcta__arrow" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-              </p>
+              {/* A search with nothing in it is not a way on. */}
+              {filed || courses.length ? (
+                <p className="sec-head__cta specprog__ctas">
+                  <Link className="linkcta" href={coursesHref}>
+                    {filed
+                      ? `View all ${formatNumber(filed)} ${specialization.name} ${filed === 1 ? 'programme' : 'programmes'}`
+                      : `View all ${specialization.name} programmes`}{' '}
+                    <span className="linkcta__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </Link>
+                  <Link className="linkcta" href={`/courses?subject=${subject.slug}`}>
+                    Every {subject.name} programme{' '}
+                    <span className="linkcta__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </Link>
+                </p>
+              ) : null}
             </SectionHead>
             {groups.length ? (
               <CourseLevels

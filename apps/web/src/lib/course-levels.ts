@@ -96,3 +96,77 @@ export function courseRowFigure(
 export function levelTotal(groups: CourseLevelGroup[]) {
   return groups.reduce((sum, group) => sum + group.count, 0);
 }
+
+/**
+ * The levels a subject's or a specialization's page always shows, listed or
+ * not: the six the client named -- Foundation, Pathway, Bachelor's,
+ * Master's, MBA and PhD. Their names and order are the catalogue's own
+ * (Admin, Course levels); this only says which of its levels are always
+ * there. Any other level, a diploma say, shows where something is listed
+ * at it.
+ *
+ * The block used to draw only the levels with courses, so on a catalogue
+ * with none yet the pages had no levels at all, and the client read that
+ * as the levels missing.
+ */
+export const LEVELS_ALWAYS_SHOWN: readonly string[] = [
+  'FOUNDATION',
+  'PATHWAY',
+  'UG',
+  'PG',
+  'MBA',
+  'PHD',
+];
+
+export type CatalogueLevel = {
+  id: string;
+  code: string;
+  name: string;
+  educationOrder?: number | null;
+  displayOrder?: number | null;
+};
+
+/**
+ * The catalogue's level groups, with an empty group for each always-shown
+ * level it sent none for, in the order a student climbs them.
+ *
+ * Null while the grouped read failed: the page does not know what is listed
+ * and keeps its fallback rather than drawing every level empty. Without the
+ * list of levels, the groups are returned as they came.
+ */
+export function everyLevel(
+  groups: CourseLevelGroup[] | null,
+  levels: readonly CatalogueLevel[] | null,
+): CourseLevelGroup[] | null {
+  if (!groups) return null;
+  if (!levels?.length) return groups;
+  const byCode = new Map(groups.map((group) => [group.level.code, group]));
+  const rank = (level: CatalogueLevel, index: number) =>
+    level.educationOrder ?? level.displayOrder ?? 1000 + index;
+  const ordered = levels
+    .map((level, index) => ({ level, at: rank(level, index) }))
+    .sort((left, right) => left.at - right.at)
+    .map(({ level }) => level);
+  const known = new Set(ordered.map((level) => level.code));
+  return [
+    ...ordered.flatMap((level): CourseLevelGroup[] => {
+      const group = byCode.get(level.code);
+      if (group) return [group];
+      if (!LEVELS_ALWAYS_SHOWN.includes(level.code)) return [];
+      return [
+        {
+          level: {
+            id: level.id,
+            code: level.code,
+            name: level.name,
+            educationOrder: level.educationOrder ?? 0,
+          },
+          count: 0,
+          courses: [],
+        },
+      ];
+    }),
+    /* A group for a level missing from the list still shows, last. */
+    ...groups.filter((group) => !known.has(group.level.code)),
+  ];
+}

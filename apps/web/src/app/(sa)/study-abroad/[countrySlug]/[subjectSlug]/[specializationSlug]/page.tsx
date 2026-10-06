@@ -18,11 +18,13 @@ import { loadCountryTabs, tabCounts } from '@/lib/country-tabs';
 import { guideLinks } from '@/lib/study-abroad-view';
 import {
   getCourseFilterOptions,
+  getCourseLevels,
   getCourses,
   getCoursesByLevel,
   getSpecialization,
 } from '@/lib/catalog';
 import {
+  everyLevel,
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
   levelTotal,
@@ -118,7 +120,7 @@ export default async function Page({ params }: Params) {
      this destination's courses in each sibling; the tab strip; and the
      closing band's groups. Read together, and each failure costs only what
      it feeds. */
-  const [levels, filters, tabs, teaching, scholarships, consultants] =
+  const [levels, filters, tabs, teaching, scholarships, consultants, allLevels] =
     await Promise.all([
       getCoursesByLevel({
         subject: subject.slug,
@@ -135,6 +137,9 @@ export default async function Page({ params }: Params) {
       specializationUniversities(subject, specialization, country, where),
       scholarshipsGroup(country.slug, where),
       consultantsGroup(country.slug, where),
+      /* Every study level, so the six the page always shows are there even
+         where nothing is listed at them here yet. */
+      getCourseLevels().catch(() => null),
     ]);
   /* The mixed run of nine is kept for when the grouped read fails. */
   const courses = levels
@@ -146,6 +151,14 @@ export default async function Page({ params }: Params) {
         limit: '9',
       }).catch(() => null);
   const shown = programmesHere(levels, courses);
+  /* What the level block draws: the levels with courses here, and the
+     always-shown ones that have none. `levels` stays what is listed. */
+  const levelBlock = everyLevel(
+    /* A failed grouped read whose fallback list came back empty also knows
+       nothing is listed, and still shows the levels. */
+    levels ?? (shown === 'none' ? [] : null),
+    allLevels,
+  );
   const total = levels ? levelTotal(levels) : (courses?.meta.total ?? 0);
 
   /* The destination does not have to claim the field. It used to: a page
@@ -194,6 +207,17 @@ export default async function Page({ params }: Params) {
      narrows to one country when it is told which, and without it a reader
      who came for the United Kingdom landed on all ten. */
   const courseHref = (slug: string) => `/courses/${slug}?country=${country.slug}`;
+  const levelBlockProps = {
+    branch: false,
+    allHref: (level: string) =>
+      levelCoursesHref({
+        subject: subject.slug,
+        subSubject: specialization.slug,
+        country: country.slug,
+        level,
+      }),
+    courseHref: (course: { slug: string }) => courseHref(course.slug),
+  };
 
   return (
     <>
@@ -325,19 +349,7 @@ export default async function Page({ params }: Params) {
           ) : null}
         </div>
         {levels?.length ? (
-          <CourseLevels
-            groups={levels}
-            branch={false}
-            allHref={(level) =>
-              levelCoursesHref({
-                subject: subject.slug,
-                subSubject: specialization.slug,
-                country: country.slug,
-                level,
-              })
-            }
-            courseHref={(course) => courseHref(course.slug)}
-          />
+          <CourseLevels groups={levelBlock ?? levels} {...levelBlockProps} />
         ) : null}
         {courses?.data.length ? (
           <div className="h-grid">
@@ -372,6 +384,13 @@ export default async function Page({ params }: Params) {
               { href: subjectHref, label: `${subject.name} in ${where}` },
             ]}
           />
+        ) : null}
+        {/* The levels still show, each saying it has nothing here yet, so
+            the page reads the same shape whatever is listed. */}
+        {shown === 'none' && levelBlock?.length ? (
+          <div className="fieldnone__levels">
+            <CourseLevels groups={levelBlock} {...levelBlockProps} />
+          </div>
         ) : null}
       </section>
 

@@ -1,11 +1,12 @@
 import {
+  getCourseLevels,
   getCoursesByLevel,
   getSubject,
   getSubjects,
   type Subject,
   type SubSubject,
 } from "@/lib/catalog";
-import { LEVEL_ROWS_FETCHED } from "@/lib/course-levels";
+import { everyLevel, LEVEL_ROWS_FETCHED } from "@/lib/course-levels";
 import { relatedSubjects } from "@/lib/related-subjects";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -56,7 +57,7 @@ export default async function SubjectDetailPage({ params }: Props) {
 
   /* Scholarships are a cross-link, not the point of the page: a failure here
      drops the section rather than the route. */
-  const [scholarships, universities, levels, allSubjects] = await Promise.all([
+  const [scholarships, universities, levels, allSubjects, allLevels] = await Promise.all([
     phaseList<AnyRecord>("scholarships", { subject: slug, limit: "6" })
       .then((result) => toScholarshipCards(result.data))
       .catch(() => []),
@@ -84,6 +85,9 @@ export default async function SubjectDetailPage({ params }: Props) {
     getSubjects({ limit: "100" })
       .then((result) => result.data as SubjectWithBranches[])
       .catch(() => []),
+    /* Every study level, so the six the page always shows are there even
+       where nothing is listed at them yet. */
+    getCourseLevels().catch(() => null),
   ]);
   const related = relatedSubjects(subject, allSubjects).map((row) => ({
     id: row.id,
@@ -123,7 +127,7 @@ export default async function SubjectDetailPage({ params }: Props) {
         scholarships={scholarships}
         universities={universities.rows}
         universityTotal={universities.total}
-        levels={levels}
+        levels={everyLevel(levels, allLevels)}
         related={related}
       />
     </>

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Course, CourseLevelGroup } from '@/lib/catalog';
-import { LEVEL_ROWS_SHOWN } from '@/lib/course-levels';
+import { everyLevel, LEVEL_ROWS_SHOWN } from '@/lib/course-levels';
 import { CourseLevels } from './CourseLevels';
 
 /**
@@ -118,5 +118,95 @@ describe('the edges', () => {
 
   it('is nothing at all when there are no courses', () => {
     expect(render([])).toBe('');
+  });
+});
+
+/**
+ * The client could not see the levels: on a catalogue with nothing listed
+ * yet the block drew no level at all. The six they named now always show,
+ * each saying when nothing is listed at it.
+ */
+describe('every level the client named, listed or not', () => {
+  /* Not in the order a student climbs them, as the catalogue may send them:
+     the order is the levels' own. */
+  const catalogue = [
+    { id: 'h', code: 'PHD', name: 'PhD', educationOrder: 6 },
+    { id: 'd', code: 'DIPLOMA', name: 'Diploma', educationOrder: 7 },
+    { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 },
+    { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
+    { id: 'm', code: 'MBA', name: 'MBA', educationOrder: 5 },
+    /* Without an education order, its display order ranks it. */
+    { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: null, displayOrder: 3 },
+    { id: 'p', code: 'PATHWAY', name: 'Pathway Program', educationOrder: 2 },
+  ];
+
+  it('adds the six as empty levels, in the order a student climbs them', () => {
+    const all = everyLevel([group('PG', "Master's", 4)], catalogue)!;
+    expect(all.map((row) => [row.level.code, row.count])).toEqual([
+      ['FOUNDATION', 0],
+      ['PATHWAY', 0],
+      ['UG', 0],
+      ['PG', 4],
+      ['MBA', 0],
+      ['PHD', 0],
+    ]);
+    /* The listed level keeps its own courses. */
+    expect(all[3]!.courses).toHaveLength(4);
+  });
+
+  it('shows any other level only where something is listed at it', () => {
+    expect(everyLevel([], catalogue)!.map((row) => row.level.code)).not.toContain('DIPLOMA');
+    expect(
+      everyLevel([group('DIPLOMA', 'Diploma', 2)], catalogue)!.map((row) => row.level.code),
+    ).toEqual(['FOUNDATION', 'PATHWAY', 'UG', 'PG', 'MBA', 'PHD', 'DIPLOMA']);
+  });
+
+  it('shows all six on a catalogue with nothing listed yet', () => {
+    expect(everyLevel([], catalogue)).toHaveLength(6);
+  });
+
+  it('knows nothing when the grouped read failed, and adds nothing', () => {
+    expect(everyLevel(null, catalogue)).toBeNull();
+  });
+
+  it('keeps the groups as they came without the list of levels', () => {
+    const groups = [group('PG', "Master's", 4)];
+    expect(everyLevel(groups, null)).toBe(groups);
+  });
+
+  it('draws an empty level as its name and "0 courses", with no sentence and no link to an empty list', () => {
+    const html = renderToStaticMarkup(
+      <CourseLevels
+        groups={everyLevel([group('PG', "Master's", 2)], catalogue)!}
+        allHref={(level) => `/courses?subject=agriculture&level=${level}`}
+      />,
+    );
+    expect(sections(html)).toEqual([
+      'level-foundation',
+      'level-pathway',
+      'level-ug',
+      'level-pg',
+      'level-mba',
+      'level-phd',
+    ]);
+    const empty = /<section class="coursegroup coursegroup--empty[^"]*" id="level-foundation".*?<\/section>/.exec(html)?.[0] ?? '';
+    expect(empty).toContain('Foundation Program');
+    expect(empty).toContain('0 courses');
+    expect(empty).not.toContain('<p');
+    expect(empty).not.toContain('href=');
+    expect(html).toContain('href="/courses?subject=agriculture&amp;level=PG"');
+    expect(html).not.toContain('level=FOUNDATION');
+    /* The chip bar names every level, the empty ones marked as such. */
+    expect(html).toMatch(/<a class="chipbtn chipbtn--none" href="#level-foundation">/);
+    expect(html).toMatch(/<a class="chipbtn" href="#level-pg">/);
+  });
+
+  it('has no chip bar when nothing is listed at any level', () => {
+    const html = renderToStaticMarkup(
+      <CourseLevels groups={everyLevel([], catalogue)!} allHref={() => '/courses'} />,
+    );
+    expect(sections(html)).toHaveLength(6);
+    expect(html).not.toContain('levelbar');
+    expect(html).not.toContain('href=');
   });
 });

@@ -78,7 +78,7 @@ export interface SpecializationDetail extends SubSubject { subject: { id: string
 export interface SpecializationRow extends SubSubject { subject: { id: string; name: string; slug: string }; publishedCourseCount: number; levels: Array<{ id: string; name: string; code: string | null }>; }
 export function getSpecialization(subjectSlug: string, slug: string) { return request<SpecializationDetail>(`/subjects/${encodeURIComponent(subjectSlug)}/specializations/${encodeURIComponent(slug)}`).then((result) => result.data); }
 export function getSpecializations(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<SpecializationRow[]>(`/specializations${query ? `?${query}` : ''}`); }
-export function getCourseLevels() { return request<Array<{ id: string; code: string; name: string; description: string | null }>>('/course-levels').then((result) => result.data); }
+export function getCourseLevels() { return request<Array<{ id: string; code: string; name: string; description: string | null; educationOrder?: number | null; displayOrder?: number | null }>>('/course-levels').then((result) => result.data); }
 export function getStudyModes() { return request<Array<{ id: string; code: string; name: string; description: string | null }>>('/study-modes').then((result) => result.data); }
 export function getCourses(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<Course[]>(`/courses${query ? `?${query}` : ''}`); }
 /** One level of a subject's courses: the level, how many courses it holds, and the first of them. */
