@@ -173,6 +173,9 @@ export type Figure = { label: string; value: string };
 export function figuresHere(input: {
   programmes: number | null;
   universities: number | null;
+  /** The cities the programmes here are taught in, as the design's strip
+   *  counts them; only known where programmes are listed. */
+  cities?: number | null;
   specializations?: number | null;
   intakes: string | null;
 }): Figure[] {
@@ -189,6 +192,10 @@ export function figuresHere(input: {
     {
       label: label(input.universities, 'University', 'Universities'),
       value: count(input.universities),
+    },
+    {
+      label: label(input.cities, 'City', 'Cities'),
+      value: count(input.cities),
     },
     {
       label: label(input.specializations, 'Specialization taught', 'Specializations taught'),
