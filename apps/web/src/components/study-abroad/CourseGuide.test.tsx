@@ -7,6 +7,13 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('./StudyAbroadShell', () => ({
   useStudyAbroadShell: () => ({ openAssessment: () => {}, openSelector: () => {} }),
 }));
+/* A programme card's heart saves through the account and asks for the
+   router; there is none mounted here. */
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/courses/msc-computer-science',
+  useSearchParams: () => new URLSearchParams(),
+}));
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CourseGuide } from './CourseGuide';
 import type { CourseAvailability, CourseDetail } from '@/lib/catalog';

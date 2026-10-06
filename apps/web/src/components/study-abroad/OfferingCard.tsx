@@ -32,15 +32,13 @@ import { universityInitials } from '@/lib/university-initials';
 
 const NOT_LISTED = 'Not listed';
 
-/* What the card reads beyond the list's shared shape: the offering's own id
-   for the save, the language on the course's evidence and the course it is
-   an instance of. A list that does not carry them yet still draws the card,
-   with "Not listed" and no guide link. */
-export type ProgrammeCardData = OfferingCardData & {
-  offeringId?: string;
-  language?: { value: string; note: string | null } | null;
-  genericCourse?: { name: string; slug: string } | null;
-};
+/* The list's card data, with the three fields the card reads beyond its
+   facts optional: the offering's own id for the save, the language on the
+   course's evidence and the course it is an instance of. A row built
+   without them still draws the card, with "Not listed" and no guide link. */
+type CardExtras = 'offeringId' | 'language' | 'genericCourse';
+export type ProgrammeCardData = Omit<OfferingCardData, CardExtras> &
+  Partial<Pick<OfferingCardData, CardExtras>>;
 
 function initials(name: string) {
   const letters = name

@@ -817,8 +817,8 @@ export function CoursesReference(props: CoursesReferenceProps) {
             <p>
               The best programme balances academic fit, affordability, admission chances and career
               outcomes. Start by filtering on your target degree level and destination, then narrow by
-              study mode and scholarship availability. Shortlist three courses and use the compare tray
-              to weigh tuition, duration and intakes against each other.
+              study mode and scholarship availability. Shortlist up to {UP_TO} courses and use the compare
+              tray to weigh tuition, duration and intakes against each other.
             </p>
             <details className="readmore cf-readmore">
               <summary>Read more about course selection</summary>
