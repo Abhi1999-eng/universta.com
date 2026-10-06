@@ -15,6 +15,8 @@ export function MatchBand({
   lead = 'Now find universities and programmes that match your academic profile, budget and intake.',
   href,
   talkHref = '/contact',
+  eyebrow = { n: 'Next', label: 'Programme discovery' },
+  assessment,
 }: {
   heading?: string;
   lead?: string;
@@ -24,6 +26,13 @@ export function MatchBand({
    *  knows what the student is reading about, so the request arrives with
    *  that context instead of as a blank enquiry. */
   talkHref?: string;
+  eyebrow?: { n: string; label: string };
+  /** The band's main button opens the assessment instead of following
+   *  `href`, with the assessment's own small print under it -- the course
+   *  finder's "Not sure what to search for?", which sits under the very
+   *  search the link would open. The shell opens the dialog from the
+   *  button's `data-open-assessment`, so the band needs no script. */
+  assessment?: { label: string; intent: string; note: string };
 }) {
   return (
     <section className="sec sec--navy sec--tight" id="find-programs">
@@ -31,18 +40,32 @@ export function MatchBand({
         <div className="matchband">
           <div>
             <p className="eyebrow">
-              <span className="eyebrow__n">Next</span> Programme discovery
+              <span className="eyebrow__n">{eyebrow.n}</span> {eyebrow.label}
             </p>
             <h2 className="matchband__h">{heading}</h2>
             <p className="sec-lead">{lead}</p>
           </div>
           <div className="matchband__cta">
-            <Link className="btn btn--onnavy btn--lg btn--block" href={href}>
-              Find my programmes{' '}
-              <span className="btn__arrow" aria-hidden="true">
-                →
-              </span>
-            </Link>
+            {assessment ? (
+              <button
+                className="btn btn--onnavy btn--lg btn--block"
+                type="button"
+                data-open-assessment
+                data-intent={assessment.intent}
+              >
+                {assessment.label}{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  →
+                </span>
+              </button>
+            ) : (
+              <Link className="btn btn--onnavy btn--lg btn--block" href={href}>
+                Find my programmes{' '}
+                <span className="btn__arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            )}
             <Link
               className="btn btn--onnavy-ghost btn--block"
               href={talkHref}
@@ -54,8 +77,8 @@ export function MatchBand({
               </span>
             </Link>
             <p className="matchband__note">
-              Programme listings are built from what universities publish.
-              Admission decisions are made by universities alone.
+              {assessment?.note ??
+                'Programme listings are built from what universities publish. Admission decisions are made by universities alone.'}
             </p>
           </div>
         </div>
