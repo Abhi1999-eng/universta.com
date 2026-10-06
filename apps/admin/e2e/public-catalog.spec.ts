@@ -3,6 +3,7 @@ import { webBaseUrl } from './helpers/e2e-urls';
 
 const subjects = `${webBaseUrl}/subjects`;
 const courses = `${webBaseUrl}/courses`;
+const guides = `${courses}?view=guides`;
 
 function observePageHealth(page: Page) {
   const consoleErrors: string[] = [];
@@ -158,8 +159,8 @@ test.describe('approved public subject and course discovery', () => {
 
     await results.getByRole('link', { name: 'Explore courses' }).click();
     await expect(page).toHaveURL(/subject=computer-science/);
-    await expect(page).toHaveURL(/subSubject=cybersecurity/);
-    await expect(page.getByRole('checkbox', { name: /Computer Science/ })).toBeChecked();
+    await expect(page).toHaveURL(/specialization=cybersecurity/);
+    await expect(page.getByRole('group', { name: 'Subject', exact: true }).getByRole('checkbox', { name: /Computer Science/ })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: /Cybersecurity/ })).toBeChecked();
     assertHealthyPage();
   });
@@ -210,7 +211,7 @@ test.describe('approved public subject and course discovery', () => {
   });
 
   test('hydrates approved course filters from the URL and preserves them on submit', async ({ page }) => {
-    await page.goto(`${courses}?q=computer&level=UG&country=canada`);
+    await page.goto(`${guides}&q=computer&level=UG&country=canada`);
 
     await expect(page.getByRole('heading', { level: 1, name: /Find your perfect course/i })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Search courses' })).toHaveValue('computer');
@@ -233,8 +234,24 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.getByRole('heading', { name: 'Bachelor of Computer Science' })).toBeVisible();
   });
 
+  test('filters university programmes live and restores the filter with Back', async ({ page }) => {
+    await page.goto(courses);
+    const country = page.getByRole('group', { name: 'Country', exact: true });
+    await country.getByRole('checkbox', { name: /Canada/ }).check();
+    await expect.poll(() => new URL(page.url()).searchParams.get('country')).toBe('canada');
+    const programmeLinks = page.locator('.cresults .coursecard__name a');
+    await expect(programmeLinks.first()).toBeVisible();
+    expect(await programmeLinks.evaluateAll((links) => links.every((link) => link.getAttribute('href')?.startsWith('/study-abroad/canada/universities/')))).toBe(true);
+    await page.reload();
+    await expect(country.getByRole('checkbox', { name: /Canada/ })).toBeChecked();
+    await page.goBack();
+    await expect.poll(() => new URL(page.url()).searchParams.has('country')).toBe(false);
+    await page.goForward();
+    await expect(country.getByRole('checkbox', { name: /Canada/ })).toBeChecked();
+  });
+
   test('restores course filter controls with browser back and forward navigation', async ({ page }) => {
-    await page.goto(`${courses}?level=UG&country=canada`);
+    await page.goto(`${guides}&level=UG&country=canada`);
     await page.getByRole('checkbox', { name: /^Diploma / }).check();
     await page.getByRole('checkbox', { name: /Bachelor's/ }).uncheck();
     await page.getByRole('button', { name: 'Apply filters' }).click();
@@ -250,10 +267,10 @@ test.describe('approved public subject and course discovery', () => {
   });
 
   test('combines supported filters and keeps OR selections within a dimension', async ({ page }) => {
-    await page.goto(courses);
+    await page.goto(guides);
 
     await page.getByRole('checkbox', { name: /Canada/ }).check();
-    await page.getByRole('checkbox', { name: /Computer Science/ }).check();
+    await page.getByRole('group', { name: 'Subject', exact: true }).getByRole('checkbox', { name: /Computer Science/ }).check();
     await page.getByRole('checkbox', { name: /Bachelor's/ }).check();
     await page.getByRole('checkbox', { name: /^Diploma / }).check();
     await page.getByRole('checkbox', { name: /IELTS/ }).check();
@@ -270,7 +287,7 @@ test.describe('approved public subject and course discovery', () => {
   });
 
   test('keeps quick filters and sort controls synchronized with the URL', async ({ page }) => {
-    await page.goto(courses);
+    await page.goto(guides);
 
     await page.getByRole('button', { name: 'Scholarships' }).click();
     await expect(page).toHaveURL(/scholarshipAvailable=true/);
@@ -287,7 +304,7 @@ test.describe('approved public subject and course discovery', () => {
 
   test('enables destination-currency tuition inputs and pagination', async ({ page }) => {
     const assertHealthyPage = observePageHealth(page);
-    await page.goto(`${courses}?country=canada&pageSize=3`);
+    await page.goto(`${guides}&country=canada&pageSize=3`);
 
     await expect(page.getByText(/Amounts in CAD/)).toBeVisible();
     await page.getByLabel('Minimum').fill('1000');
@@ -341,34 +358,33 @@ test.describe('approved public subject and course discovery', () => {
 
   test('opens the approved course filter drawer on mobile and applies a URL filter', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(courses);
+    await page.goto(guides);
 
     await page.getByRole('button', { name: /^Filters/ }).click();
-    await expect(page.locator('#course-filter-panel')).toHaveClass(/open/);
+    await expect(page.locator('#course-filter-panel')).toHaveAttribute('data-open', 'true');
     await page.getByRole('checkbox', { name: /Canada/ }).check();
     await page.getByRole('button', { name: 'Apply filters' }).click();
 
     await expect(page).toHaveURL(/country=canada/);
-    await expect(page.locator('#course-filter-panel')).not.toHaveClass(/open/);
+    await expect(page.locator('#course-filter-panel')).toHaveAttribute('data-open', 'false');
 
     await page.getByRole('button', { name: /^Filters/ }).click();
     await page.keyboard.press('Escape');
-    await expect(page.locator('#course-filter-panel')).not.toHaveClass(/open/);
+    await expect(page.locator('#course-filter-panel')).toHaveAttribute('data-open', 'false');
   });
 
   test('shortlists courses into the approved comparison tray', async ({ page }) => {
     await page.goto(courses);
 
-    // The prototype's per-card "Save" button had nothing behind it and stays
-    // out. Compare is real: it shortlists and hands off to /compare/courses.
-    await expect(page.getByRole('button', { name: /^Save / })).toHaveCount(0);
-    await expect(page.getByTestId('course-compare-tray')).toHaveCount(0);
+    // Saving now has an account flow, while comparison keeps a device shortlist.
+    await expect(page.getByRole('button', { name: /^Save / }).first()).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Courses to compare' })).toHaveCount(0);
 
     const cards = page.locator('.coursegrid .coursecard');
-    await cards.nth(0).getByRole('checkbox', { name: 'Compare' }).check();
-    await cards.nth(1).getByRole('checkbox', { name: 'Compare' }).check();
+    await cards.nth(0).getByRole('checkbox', { name: /^Compare / }).check();
+    await cards.nth(1).getByRole('checkbox', { name: /^Compare / }).check();
 
-    const tray = page.getByTestId('course-compare-tray');
+    const tray = page.getByRole('region', { name: 'Courses to compare' });
     await expect(tray).toBeVisible();
     const compareLink = tray.getByRole('link', { name: 'Compare 2' });
     await expect(compareLink).toHaveAttribute(
@@ -380,7 +396,7 @@ test.describe('approved public subject and course discovery', () => {
     await expect(tray.getByRole('link', { name: 'Compare 1' })).toBeVisible();
 
     await tray.getByRole('button', { name: 'Clear' }).click();
-    await expect(page.getByTestId('course-compare-tray')).toHaveCount(0);
+    await expect(tray).toHaveCount(0);
   });
 
   test('mobile menus are functional and catalog layouts do not overflow horizontally', async ({ page }) => {

@@ -1781,7 +1781,8 @@
 .sa .iconbtn:hover { border-color: var(--navy); }
 .sa .iconbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); color: #A81F1F; }
 .sa .iconbtn[aria-pressed="true"] svg { fill: currentColor; }
-.sa .matchband { display: grid; gap: clamp(24px, 3vw, 44px); }
+.sa .matchband { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 3vw, 44px); }
+.sa .matchband__cta .btn { white-space: normal; }
 @media (min-width: 900px) {
 .sa .matchband { grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr); align-items: center; }
 }
