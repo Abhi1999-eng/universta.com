@@ -424,6 +424,8 @@ export function CourseGuide({
                   : ''
               }${here ? ` in ${here}` : ''}, each as the university teaches it. Its page has the university’s own fees, intakes and entry requirements.`}
             />
+            {/* Every card here is an instance of this course, so its
+                "Course guide" would only lead back to this page. */}
             <ProgrammeSample
               cards={taught.cards.slice(0, CARDS_SHOWN)}
               rows={taught.cards.slice(CARDS_SHOWN)}
@@ -432,6 +434,7 @@ export function CourseGuide({
                 href: programmesHref({ course: course.slug, country: country || undefined }),
                 label: allProgrammes('See', taught.total),
               }}
+              guideLinks={false}
             />
           </div>
         </section>

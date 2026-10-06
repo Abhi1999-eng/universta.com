@@ -22,7 +22,8 @@ import { universityInitials } from '@/lib/university-initials';
  *
  * The heart saves the course to the student's account, as Save does on the
  * course page; the tick beside it adds it to the comparison shared by every
- * list. "Course guide" opens the course in general, across universities.
+ * list. "Course guide" opens the course in general, across universities,
+ * everywhere but on that guide's own page.
  *
  * On a university's own list every card would name the same university, so
  * there the card's second line names what the course is filed under -- its
@@ -52,10 +53,15 @@ export function OfferingCard({
   course,
   show = 'subject',
   headingLevel = 3,
+  guideLink = true,
 }: {
   course: ProgrammeCardData;
   show?: 'subject' | 'university';
   headingLevel?: 2 | 3;
+  /** Whether the foot links the course guide. A course guide's own cards
+   *  leave it out: every one of them would lead back to the page being
+   *  read. */
+  guideLink?: boolean;
 }) {
   const Heading = `h${headingLevel}` as const;
   const country = course.university.country;
@@ -77,7 +83,7 @@ export function OfferingCard({
   /* The account save takes the offering's id; a row that only had its slug
      to stand in for one gets no heart rather than one that cannot save. */
   const savedId = course.offeringId ?? (course.id !== course.slug ? course.id : null);
-  const guide = course.genericCourse ?? null;
+  const guide = guideLink ? (course.genericCourse ?? null) : null;
 
   return (
     <article className="coursecard">

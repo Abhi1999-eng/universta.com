@@ -333,6 +333,17 @@ describe('where the course is taught', () => {
     expect(html).toMatch(/<a href="#taught">Universities<\/a>/);
     expect(html).toMatch(/02<\/span> Universities/);
   });
+
+  it('gives its cards no "Course guide", which would lead back to this page', () => {
+    for (const html of [markup(sample(6)), markup(sample(2, 3), 'united-kingdom')]) {
+      const taught = html.slice(html.indexOf('id="taught"'));
+      expect(taught.match(/class="coursecard"/g)?.length).toBeGreaterThan(0);
+      expect(taught).not.toContain('coursecard__guide');
+      expect(taught).not.toContain('href="/courses/msc-computer-science"');
+      /* Each card still opens its programme and its eligibility. */
+      expect(taught).toContain('>Check eligibility</a>');
+    }
+  });
 });
 
 /**

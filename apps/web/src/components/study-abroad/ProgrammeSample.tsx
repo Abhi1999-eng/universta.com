@@ -22,6 +22,7 @@ export function ProgrammeSample({
   rows = [],
   rowsLabel,
   link,
+  guideLinks = true,
 }: {
   cards: OfferingCardData[];
   rows?: OfferingCardData[];
@@ -29,13 +30,20 @@ export function ProgrammeSample({
   rowsLabel?: string;
   /** The finder, narrowed to the same part: "View all 136 programmes". */
   link: { href: string; label: string };
+  /** Whether each card links its course guide; off on the guide itself. */
+  guideLinks?: boolean;
 }) {
   if (!cards.length) return null;
   return (
     <>
       <div className="coursegrid coursegrid--3">
         {cards.map((card) => (
-          <OfferingCard key={card.slug} course={card} show="university" />
+          <OfferingCard
+            key={card.slug}
+            course={card}
+            show="university"
+            guideLink={guideLinks}
+          />
         ))}
       </div>
       {rows.length ? (

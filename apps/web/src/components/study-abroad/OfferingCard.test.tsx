@@ -108,6 +108,18 @@ describe('the programme card', () => {
     expect(render(card())).not.toContain('Course guide');
   });
 
+  it('leaves the course guide out where the card sits on that guide', () => {
+    const course = card({}, { genericCourse: { name: 'MSc Computer Science', slug: 'msc-computer-science' } });
+    const html = renderToStaticMarkup(
+      <OfferingCard course={course} show="university" guideLink={false} />,
+    );
+    expect(html).not.toContain('Course guide');
+    expect(html).not.toContain('href="/courses/msc-computer-science"');
+    /* The rest of the foot stays. */
+    expect(html).toContain('>Check eligibility</a>');
+    expect(html).toContain('View course');
+  });
+
   it('carries the design’s heart, which saves to the student’s account', () => {
     const html = render(card());
     expect(html).toContain('class="tinybtn" aria-pressed="false" aria-label="Save MSc Computer Science at University of Warwick"');
