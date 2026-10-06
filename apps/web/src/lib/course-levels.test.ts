@@ -6,6 +6,7 @@ import {
   levelAnchor,
   levelCoursesHref,
   levelTotal,
+  programmesHref,
 } from './course-levels';
 
 describe('where a level is', () => {
@@ -16,7 +17,7 @@ describe('where a level is', () => {
 
   it('sends "all of this level" to the course list, filtered to exactly what the section counted', () => {
     expect(levelCoursesHref({ subject: 'engineering', level: 'PG' })).toBe(
-      '/courses?subject=engineering&level=PG',
+      '/courses?subject=engineering&level=PG&view=guides',
     );
     expect(
       levelCoursesHref({
@@ -26,12 +27,51 @@ describe('where a level is', () => {
         level: 'UG',
       }),
     ).toBe(
-      '/courses?country=uk&subject=engineering&subSubject=civil-engineering&level=UG',
+      '/courses?country=uk&subject=engineering&specialization=civil-engineering&level=UG&view=guides',
     );
     /* Without a level it is the whole subject there. */
     expect(levelCoursesHref({ subject: 'law', country: 'uk' })).toBe(
-      '/courses?country=uk&subject=law',
+      '/courses?country=uk&subject=law&view=guides',
     );
+  });
+
+  it('opens the course guides, because a level counts courses and the finder opens on programmes', () => {
+    /* "Master's (14)" has to open a list of fourteen. */
+    expect(
+      new URL(levelCoursesHref({ subject: 'computer-science', level: 'PG' }), 'http://x')
+        .searchParams.get('view'),
+    ).toBe('guides');
+  });
+});
+
+describe('the finder’s programmes, for a link with no course count', () => {
+  it('names a course, a destination, a subject and its specialization in the finder’s own words', () => {
+    expect(programmesHref({ course: 'msc-computer-science' })).toBe(
+      '/courses?course=msc-computer-science',
+    );
+    expect(
+      programmesHref({ course: 'bsc-computer-science', country: 'united-kingdom' }),
+    ).toBe('/courses?course=bsc-computer-science&country=united-kingdom');
+    expect(
+      programmesHref(
+        {
+          country: 'united-kingdom',
+          subject: 'computer-science',
+          specialization: 'software-engineering',
+        },
+        '#discovery',
+      ),
+    ).toBe(
+      '/courses?country=united-kingdom&subject=computer-science&specialization=software-engineering#discovery',
+    );
+  });
+
+  it('never opens the guides view, which is for counts of courses', () => {
+    expect(programmesHref({ subject: 'law' })).not.toContain('view=');
+  });
+
+  it('drops a specialization that comes without its subject, whose slug alone names no one branch', () => {
+    expect(programmesHref({ specialization: 'artificial-intelligence' })).toBe('/courses');
   });
 });
 

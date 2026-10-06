@@ -9,13 +9,18 @@ export async function CourseDiscovery({
 }) {
   const result = await courseDiscoveryData(filters);
   return (
-    <ApprovedCoursesListing
-      courses={result.courses.data}
-      meta={result.courses.meta}
-      subjects={result.subjects}
-      filterOptions={result.options}
-      filters={{ ...filters, pageSize: filters.pageSize ?? "12" }}
-    />
+    /* The wrapper lets the Study Abroad stylesheet put this old listing's
+       trail right without reaching into the template every catalogue page
+       shares. */
+    <div className="legacydisc">
+      <ApprovedCoursesListing
+        courses={result.courses.data}
+        meta={result.courses.meta}
+        subjects={result.subjects}
+        filterOptions={result.options}
+        filters={{ ...filters, pageSize: filters.pageSize ?? "12" }}
+      />
+    </div>
   );
 }
 

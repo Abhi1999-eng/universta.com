@@ -262,7 +262,9 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
                   <Link
                     key={subject.id}
                     className="cat-tile"
-                    href={`/courses?subject=${subject.slug}`}
+                    /* The tile counts courses, so it opens the finder's
+                       course guides, which list that many. */
+                    href={`/courses?subject=${subject.slug}&view=guides`}
                   >
                     <span className="cat-ic" aria-hidden="true">
                       {initials(subject.name)}

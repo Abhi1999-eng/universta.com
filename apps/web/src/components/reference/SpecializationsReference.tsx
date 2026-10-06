@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Course, SubjectBranch, SubjectDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
+import { levelCoursesHref } from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
 import { sortByLevelOrder } from '@/lib/level-order';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
@@ -72,8 +73,11 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
   const { subject, counts, countries, universities, courses, scholarships, query } = props;
   const levelOrder = props.levelOrder ?? [];
   const specHref = (slug: string) => `/subjects/${subject.slug}/${slug}`;
+  /* Each card counts its courses, so its link opens the finder's course
+     guides, which list that many, under the finder's own name for the
+     specialization. */
   const coursesHref = (slug: string) =>
-    `/courses?subject=${subject.slug}&subSubject=${slug}`;
+    levelCoursesHref({ subject: subject.slug, subSubject: slug });
   const term = query.trim().toLowerCase();
   const all = subject.subSubjects ?? [];
   const specialisations = term
