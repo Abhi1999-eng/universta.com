@@ -172,6 +172,23 @@ describe('a university’s course list', () => {
     const html = render();
     expect(html).toContain('<dt>Tuition</dt><dd class="coursecard__none">Not listed</dd>');
     expect(html).toContain('<dt>Intake</dt><dd class="coursecard__none">Not listed</dd>');
+    /* The list's rows carry no English test, so no language is claimed. */
+    expect(html).toContain('<dt>Language</dt><dd class="coursecard__none">Not listed</dd>');
+  });
+
+  it('draws each card as the design’s: its four facts, the heart, Compare and the study mode as a tag', () => {
+    const html = render();
+    const first = html.slice(html.indexOf('class="coursecard"'), html.indexOf('</article>'));
+    expect([...first.matchAll(/<dt>([^<]+)<\/dt>/g)].map((match) => match[1])).toEqual([
+      'Duration',
+      'Language',
+      'Tuition',
+      'Intake',
+    ]);
+    expect(first).toContain('class="tinybtn" aria-pressed="false" aria-label="Save MSc Course 0 at University of Oxford"');
+    expect(first).toContain('aria-label="Compare MSc Course 0"');
+    expect(first).toContain('<span class="tag">Full time</span>');
+    expect(first).toContain('#eligibility">Check eligibility</a>');
   });
 
   it('offers the reference’s filters with counts, and its sort', () => {

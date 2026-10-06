@@ -3201,3 +3201,14 @@
 }
 .sa #comparison .magnet { margin-top: 30px; }
 .sa #comparison .magnet .btn { white-space: normal; text-align: center; }
+
+/* The course card: the design's heart beside the Compare tick, the language
+   with the test that evidences it, and a third way on in the foot. */
+.sa .coursecard__tools .student-catalogue-actions { gap: 6px; flex-wrap: nowrap; }
+.sa .tinybtn:disabled { opacity: .6; cursor: progress; }
+.sa .coursecard__note { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+/* The two links stack at the right of "View course", so a narrow card keeps
+   the button and its links on one band rather than wrapping a link under. */
+.sa .coursecard__links { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; text-align: right; }
+.sa .coursecard__guide { color: var(--text); }
+.sa .coursecard__guide:hover { color: var(--accent); }
