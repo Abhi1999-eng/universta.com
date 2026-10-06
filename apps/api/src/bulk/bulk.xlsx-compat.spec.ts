@@ -33,6 +33,39 @@ async function withPrefixedSpreadsheetMl(buffer: Buffer): Promise<Buffer> {
 }
 
 describe('BulkOperationsService XLSX dry-run compatibility', () => {
+  it('reads the selected resource sheet instead of an unrelated first sheet or Data', async () => {
+    const workbook = new ExcelJS.Workbook();
+    workbook
+      .addWorksheet('universities')
+      .addRows([['universitySlug'], ['irrelevant-first-sheet']]);
+    workbook
+      .addWorksheet('Data')
+      .addRows([['unrelatedColumn'], ['irrelevant-data-sheet']]);
+    workbook.addWorksheet('subjects').addRows([
+      ['name', 'status'],
+      ['Demo Mathematics', 'PUBLISHED'],
+      ['Demo Computing', 'PUBLISHED'],
+    ]);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    await expect(
+      service.dryRun('subjects', buffer, 'catalogue.xlsx'),
+    ).resolves.toEqual({ totalRows: 2, errors: [] });
+  });
+
+  it('keeps the first-sheet fallback when neither a resource sheet nor Data exists', async () => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.addWorksheet('My subjects').addRows([
+      ['name', 'status'],
+      ['Demo Mathematics', 'PUBLISHED'],
+    ]);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    await expect(
+      service.dryRun('subjects', buffer, 'subjects.xlsx'),
+    ).resolves.toEqual({ totalRows: 1, errors: [] });
+  });
+
   it('parses the server-generated Subjects template during dry-run', async () => {
     const template = await service.template('subjects', 'xlsx');
 

@@ -49,11 +49,19 @@ async function loadWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
   }
 }
 
-/** Parses the first worksheet of an XLSX buffer into the same shape
+/** A catalogue workbook can carry one named sheet per resource. Existing
+ * templates use Data; ordinary single-sheet uploads keep their first sheet.
+ * The selected sheet becomes the same shape
  * `rowsWithHeader` expects from CSV: header row + string-keyed data rows. */
-export async function parseXlsx(buffer: Buffer): Promise<string[][]> {
+export async function parseXlsx(
+  buffer: Buffer,
+  resourceKey?: string,
+): Promise<string[][]> {
   const workbook = await loadWorkbook(buffer);
-  const sheet = workbook.getWorksheet('Data') ?? workbook.worksheets[0];
+  const sheet =
+    (resourceKey ? workbook.getWorksheet(resourceKey) : undefined) ??
+    workbook.getWorksheet('Data') ??
+    workbook.worksheets[0];
   if (!sheet) return [];
   const rows: string[][] = [];
   sheet.eachRow((row) => {

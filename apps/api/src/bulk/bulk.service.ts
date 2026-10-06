@@ -183,7 +183,7 @@ export class BulkOperationsService {
     if (isFile(filename, '.csv')) {
       cells = parseCsv(buffer.toString('utf8'));
     } else if (isFile(filename, '.xlsx')) {
-      cells = await parseXlsx(buffer);
+      cells = await parseXlsx(buffer, definition.key);
     } else {
       throw new BadRequestException({
         code: 'UNSUPPORTED_FILE_TYPE',
