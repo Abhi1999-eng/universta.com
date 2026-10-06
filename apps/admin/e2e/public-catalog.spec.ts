@@ -116,30 +116,29 @@ test.describe('approved public subject and course discovery', () => {
     await expect(page.locator('.subjindex .subjcard')).toHaveCount(1);
   });
 
-  test('offers API-backed subject suggestions with keyboard selection', async ({ page }) => {
+  test('suggests subjects from the page itself and opens the one picked with the keyboard', async ({ page }) => {
     const assertHealthyPage = observePageHealth(page);
     await page.goto(subjects);
     const search = page.getByRole('combobox', { name: 'Search subjects' });
-    const suggestionResponse = page.waitForResponse((response) => {
-      const target = new URL(response.url());
-      return (
-        target.pathname === '/api/subjects/suggestions' &&
-        target.searchParams.get('q') === 'comp'
-      );
+    /* The suggestions are read from the subjects and specializations the
+       page already holds, as the reference's are, so typing asks nothing
+       of the API -- which knew subject names only, and said "no match"
+       for a specialization the cards below had found. */
+    const asked: string[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/api/subjects')) asked.push(request.url());
     });
 
     await search.fill('comp');
-    expect((await suggestionResponse).status()).toBe(200);
-    await expect(
-      page.getByRole('option', { name: 'Computer Science', exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole('option', { name: /^Computer Science/ }).first()).toBeVisible();
     await expect(search).toHaveAttribute('aria-expanded', 'true');
+    /* A picked suggestion opens its own page, as on the reference. */
     await search.press('ArrowDown');
     await search.press('Enter');
 
-    await expect(page).toHaveURL(/q=Computer\+Science/);
-    await expect(search).toHaveValue('Computer Science');
-    await expect(page.locator('.subjindex .subjcard')).toHaveCount(1);
+    await expect(page).toHaveURL(/\/subjects\/computer-science$/);
+    await expect(page.getByRole('heading', { level: 1, name: /Computer Science/ })).toBeVisible();
+    expect(asked).toEqual([]);
     assertHealthyPage();
   });
 
