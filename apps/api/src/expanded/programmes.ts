@@ -29,6 +29,7 @@ import {
   DURATION_BANDS,
   fold,
   matchesCourseQuery,
+  mostFirst,
   nextDeadline,
   number,
   tally,
@@ -36,6 +37,7 @@ import {
   type CourseQuery,
   type CourseSort,
   type FacetOption,
+  type NamedLike,
   type OfferingLike,
   type Query,
 } from './university-courses';
@@ -96,6 +98,8 @@ type Country = {
 export type ProgrammeRow = OfferingLike & {
   id: string;
   currencyCode?: string | null;
+  /** What the fee is charged for: PER_YEAR, PER_SEMESTER, TOTAL. */
+  tuitionPeriod?: string | null;
   university: {
     name: string;
     slug: string;
@@ -166,13 +170,16 @@ export function citySlug(name: string) {
 /**
  * The filters a request asks for, read under both spellings.
  *
- * `levels` is the list of level codes the catalogue knows; a level outside
- * it is left out rather than matched against nothing, since no programme
- * could ever answer it.
+ * `levels` and `studyModes` are the codes the catalogue knows; a level or a
+ * study mode outside them is left out rather than matched against nothing,
+ * since no programme could ever answer it.
  */
 export function parseProgrammeQuery(
   query: Query,
-  known: { levels?: readonly string[] } = {},
+  known: {
+    levels?: readonly string[];
+    studyModes?: readonly string[];
+  } = {},
 ): ProgrammeQuery {
   const ignored: string[] = [];
   const first = (...keys: string[]) => {
@@ -210,10 +217,16 @@ export function parseProgrammeQuery(
     } else intakes.push(raw.toLowerCase());
   }
 
-  /* "full-time", as the reference writes it, is our FULL_TIME. */
-  const studyModes = values(query, 'studyMode', 'study_mode').map((raw) =>
-    raw.toUpperCase().replace(/[\s-]+/g, '_'),
-  );
+  /* "full-time", as the reference writes it, is our FULL_TIME. A mode the
+     catalogue has no code for is dropped the way an unknown level is: kept,
+     it narrowed the list to nothing under a chip that read "NOPE". */
+  const studyModes: string[] = [];
+  for (const raw of values(query, 'studyMode', 'study_mode')) {
+    const code = raw.toUpperCase().replace(/[\s-]+/g, '_');
+    if (known.studyModes && !known.studyModes.includes(code))
+      ignored.push(`studyMode=${raw}`);
+    else if (!studyModes.includes(code)) studyModes.push(code);
+  }
 
   const englishTests: EnglishTest[] = [];
   for (const raw of values(query, 'englishTest')) {
@@ -464,6 +477,41 @@ export function matchesProgramme(
   return true;
 }
 
+/* The period the tuition range and "Lowest tuition" are measured in, as a
+   card writes it: "/yr" is printed for this period and no other. */
+const ANNUAL = 'PER_YEAR';
+
+/**
+ * Whether a programme's fee can be set against the others in its country:
+ * recorded by the year, in the currency the tuition range is offered in.
+ */
+export function feeMeasurable(row: ProgrammeRow, currencyCode: string | null) {
+  return (
+    row.tuitionPeriod === ANNUAL && (row.currencyCode ?? null) === currencyCode
+  );
+}
+
+/**
+ * The rows with only the fees the tuition range measures. The panel says
+ * "Amounts in CAD", and nothing here converts Australian dollars, or a
+ * semester's fee, into a year in Canadian dollars; so any other fee is set
+ * aside as a missing one is -- "Lowest tuition" puts it last and no bound
+ * leaves it out -- rather than read as the lowest in the country. Only the
+ * filtering and the order read these: the cards are read afresh, and still
+ * print every fee as it was recorded.
+ */
+export function measurableFees(
+  rows: ProgrammeRow[],
+  tuition: { currencyCode: string | null } | null,
+): ProgrammeRow[] {
+  if (!tuition) return rows;
+  return rows.map((row) =>
+    feeMeasurable(row, tuition.currencyCode)
+      ? row
+      : { ...row, tuitionMin: null, tuitionMax: null },
+  );
+}
+
 const byLabel = (a: FacetOption, b: FacetOption) =>
   a.label.localeCompare(b.label);
 
@@ -568,21 +616,24 @@ export function programmeFacets(
   ].filter((option) => option.count > 0);
 
   /* Fees compare only inside one country, so the range is offered there
-     alone, in the currency its programmes record most. */
+     alone, in the currency its programmes record most. It is labelled
+     annual, so only fees recorded by the year are counted towards it. */
   let tuition: { currencyCode: string | null; count: number } | null = null;
   if (query.countries.length === 1) {
-    const priced = local.filter(
+    const annual = local.filter(
       (row) =>
-        number(row.tuitionMin) !== null || number(row.tuitionMax) !== null,
+        row.tuitionPeriod === ANNUAL &&
+        (number(row.tuitionMin) !== null || number(row.tuitionMax) !== null),
     );
-    const currencies = tally(priced, (row) =>
+    const currencies = tally(annual, (row) =>
       row.currencyCode
         ? [{ value: row.currencyCode, label: row.currencyCode }]
         : [],
     ).sort((a, b) => b.count - a.count);
+    const currencyCode = currencies[0]?.value ?? null;
     tuition = {
-      currencyCode: currencies[0]?.value ?? null,
-      count: priced.length,
+      currencyCode,
+      count: annual.filter((row) => feeMeasurable(row, currencyCode)).length,
     };
   }
 
@@ -596,6 +647,67 @@ export function programmeFacets(
     status,
     extras,
     tuition,
+  };
+}
+
+export type ProgrammeFacets = ReturnType<typeof programmeFacets>;
+
+/** The destinations, subjects and courses chosen that no option names. */
+export function unnamedChoices(facets: ProgrammeFacets, query: ProgrammeQuery) {
+  const unnamed = (chosen: string[], options: FacetOption[]) =>
+    chosen.filter((slug) => !options.some((option) => option.value === slug));
+  return {
+    countries: unnamed(query.countries, facets.countries),
+    subjects: unnamed(query.subjects, facets.subjects),
+    courses: unnamed(query.courses, facets.courses),
+  };
+}
+
+/**
+ * The options, with the choices no programme carries named from the
+ * catalogue's own records. A destination, subject or course with nothing
+ * listed under it has no count to take a name from, so its chip and its
+ * box read as the bare slug -- "hong-kong", "ba-law-15" -- and on a
+ * catalogue with no programmes yet every one of them does. Each is named
+ * with a count of none, which is what it holds; a slug the catalogue does
+ * not publish is not named, and stays as it was typed.
+ */
+export function nameChoices(
+  facets: ProgrammeFacets,
+  named: {
+    countries?: Array<NamedLike & { iso2Code?: string | null }>;
+    subjects?: NamedLike[];
+    courses?: NamedLike[];
+  },
+): ProgrammeFacets {
+  const unlisted =
+    (options: FacetOption[]) =>
+    (record: NamedLike): boolean =>
+      !options.some((option) => option.value === record.slug);
+  const none = (record: NamedLike) => ({
+    value: record.slug,
+    label: record.name,
+    count: 0,
+  });
+  return {
+    ...facets,
+    countries: [
+      ...facets.countries,
+      ...(named.countries ?? [])
+        .filter(unlisted(facets.countries))
+        .map((record) => ({
+          ...none(record),
+          iso2Code: record.iso2Code ?? null,
+        })),
+    ].sort(byLabel),
+    subjects: [
+      ...facets.subjects,
+      ...(named.subjects ?? []).filter(unlisted(facets.subjects)).map(none),
+    ].sort(mostFirst),
+    courses: [
+      ...facets.courses,
+      ...(named.courses ?? []).filter(unlisted(facets.courses)).map(none),
+    ].sort(byLabel),
   };
 }
 

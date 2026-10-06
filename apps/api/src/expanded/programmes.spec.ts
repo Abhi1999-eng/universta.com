@@ -1,11 +1,15 @@
 import {
   applicationStatus,
   englishScoreMatch,
+  feeMeasurable,
   matchesProgramme,
+  measurableFees,
+  nameChoices,
   parseProgrammeQuery,
   programmeFacets,
   programmeScope,
   programmeSummary,
+  unnamedChoices,
   type ProgrammeRow,
 } from './programmes';
 import { sortOfferings } from './university-courses';
@@ -85,6 +89,7 @@ const catalogue: ProgrammeRow[] = [
     studyMode: 'FULL_TIME',
     tuitionMin: '30000',
     currencyCode: 'GBP',
+    tuitionPeriod: 'PER_YEAR',
     requirements: [ielts('6.5')],
     intakes: [{ intake: september, deadline: '2027-06-30' }],
     genericCourse: {
@@ -101,6 +106,7 @@ const catalogue: ProgrammeRow[] = [
     studyMode: 'PART_TIME',
     tuitionMin: '22000',
     currencyCode: 'GBP',
+    tuitionPeriod: 'PER_YEAR',
     university: ucl,
     requirements: [ielts('7')],
     intakes: [{ intake: january, deadline: '2026-01-15' }],
@@ -222,6 +228,24 @@ describe('reading the reference’s addresses and the site’s old ones', () => 
     );
   });
 
+  /* A study mode is one of the catalogue's codes, as a level is: one it
+     does not have can never match, and kept, it narrowed the list to
+     nothing under a chip that read "NOPE". */
+  it('leaves out a study mode the catalogue has no code for, and says so', () => {
+    const modes = { levels: LEVELS, studyModes: ['FULL_TIME', 'PART_TIME'] };
+    const query = parseProgrammeQuery(
+      { studyMode: 'nope,PART_TIME', study_mode: 'full-time' },
+      modes,
+    );
+    expect(query.studyModes).toEqual(['PART_TIME', 'FULL_TIME']);
+    expect(query.ignored).toEqual(['studyMode=nope']);
+    const unknown = parseProgrammeQuery({ studyMode: 'nope' }, modes);
+    expect(unknown.studyModes).toEqual([]);
+    expect(
+      catalogue.filter((row) => matchesProgramme(row, unknown, today)),
+    ).toHaveLength(3);
+  });
+
   /* A slug that matches nothing is a question whose answer is none, as on
      the reference, not something to drop. */
   it('narrows to nothing for a slug nothing carries', () => {
@@ -340,6 +364,69 @@ describe('fees, inside one country only', () => {
     ).toEqual(['BSc Computer Science']);
   });
 
+  /* "Amounts in GBP", the panel says, over a range labelled annual. A fee
+     in another currency, or for a semester, cannot be set against that,
+     so it is set aside as a missing fee is: last by "Lowest tuition", and
+     no bound leaves it out. */
+  it('measures only fees by the year in the range’s currency', () => {
+    const london = (
+      name: string,
+      fee: string,
+      currencyCode: string,
+      tuitionPeriod: string | null,
+    ) =>
+      programme({
+        name,
+        university: ucl,
+        tuitionMin: fee,
+        currencyCode,
+        tuitionPeriod,
+      });
+    const rows = [
+      ...catalogue,
+      london('MA Dollars', '9000', 'USD', 'PER_YEAR'),
+      london('MA Semester', '9500', 'GBP', 'PER_SEMESTER'),
+      london('MA Unstated', '7000', 'GBP', null),
+    ];
+    const query = parse({
+      country: 'united-kingdom',
+      tuitionMax: '8500',
+      sort: 'fee',
+    });
+    const facets = programmeFacets(rows, query, today);
+    /* Counted over the two annual pound fees, not the five priced rows. */
+    expect(facets.tuition).toEqual({ currencyCode: 'GBP', count: 2 });
+    const measured = measurableFees(rows, facets.tuition);
+    const order = (list: ProgrammeRow[]) =>
+      sortOfferings(
+        list.filter((row) =>
+          matchesProgramme(row, { ...query, tuitionMax: null }, today),
+        ),
+        'fee',
+      ).map((row) => row.name);
+    expect(order(measured)).toEqual([
+      'BSc Computer Science',
+      'MSc Computer Science',
+      'MA Dollars',
+      'MA Semester',
+      'MA Unstated',
+    ]);
+    /* The bound tests the two it can measure and keeps the rest, as it
+       keeps a programme with no fee: 9,000 dollars, or 9,500 pounds a
+       semester, is not shown to be above 8,500 pounds a year. */
+    expect(
+      measured
+        .filter((row) => matchesProgramme(row, query, today))
+        .map((row) => row.name),
+    ).toEqual(['MA Dollars', 'MA Semester', 'MA Unstated']);
+    /* Only what the finder filters and orders on: the rows themselves,
+       which the cards are not drawn from, keep their fees. */
+    expect(rows.at(-1)!.tuitionMin).toBe('7000');
+    expect(feeMeasurable(rows.at(-3)!, 'USD')).toBe(true);
+    /* Across countries nothing is measured, so nothing is set aside. */
+    expect(measurableFees(rows, null)).toBe(rows);
+  });
+
   /* Pounds and yen do not compare, and nothing here converts them. */
   it('ignores them, and says so, across several countries or none', () => {
     const none = parse({ tuitionMin: '1000', sort: 'fee' });
@@ -414,6 +501,63 @@ describe('counting the choices', () => {
       },
     ]);
     expect(facets.tuition).toBeNull();
+  });
+
+  /* A destination, subject or course nothing is listed under has no count
+     to be named by; its chip read "hong-kong" or "ba-law-15". Named from
+     the catalogue, with a count of none -- and only those the catalogue
+     publishes, so a typed slug stays as typed. */
+  it('names a choice nothing is listed under from the catalogue, with a count of none', () => {
+    const query = parse({
+      country: 'hong-kong,japan,atlantis',
+      subject: 'law',
+      course: 'ba-law-15,bsc-computer-science',
+    });
+    const facets = programmeFacets(catalogue, query, today);
+    expect(unnamedChoices(facets, query)).toEqual({
+      countries: ['hong-kong', 'atlantis'],
+      subjects: ['law'],
+      courses: ['ba-law-15'],
+    });
+    const named = nameChoices(facets, {
+      countries: [{ name: 'Hong Kong', slug: 'hong-kong', iso2Code: 'HK' }],
+      subjects: [{ name: 'Law', slug: 'law' }],
+      courses: [{ name: 'BA Law', slug: 'ba-law-15' }],
+    });
+    expect(named.countries).toEqual([
+      { value: 'hong-kong', label: 'Hong Kong', iso2Code: 'HK', count: 0 },
+      { value: 'japan', label: 'Japan', iso2Code: 'JP', count: 1 },
+      {
+        value: 'united-kingdom',
+        label: 'United Kingdom',
+        iso2Code: 'GB',
+        count: 2,
+      },
+    ]);
+    expect(named.subjects.at(-1)).toEqual({
+      value: 'law',
+      label: 'Law',
+      count: 0,
+    });
+    expect(named.courses).toEqual([
+      { value: 'ba-law-15', label: 'BA Law', count: 0 },
+      {
+        value: 'bsc-computer-science',
+        label: 'BSc Computer Science',
+        count: 1,
+      },
+    ]);
+    expect(unnamedChoices(named, query)).toEqual({
+      countries: ['atlantis'],
+      subjects: [],
+      courses: [],
+    });
+    /* An option the counts already name is not named twice. */
+    expect(
+      nameChoices(named, {
+        countries: [{ name: 'Nippon', slug: 'japan' }],
+      }).countries.filter((option) => option.value === 'japan'),
+    ).toEqual([{ value: 'japan', label: 'Japan', iso2Code: 'JP', count: 1 }]);
   });
 
   it('offers the tuition range in the one country’s currency', () => {

@@ -34,11 +34,15 @@ import {
 } from './university-courses';
 import {
   matchesProgramme,
+  measurableFees,
+  nameChoices,
   parseProgrammeQuery,
   PROGRAMME_SCAN_CAP,
   programmeFacets,
   programmeScope,
   programmeSummary,
+  unnamedChoices,
+  type ProgrammeFacets,
   type ProgrammeQuery,
   type ProgrammeRow,
 } from './programmes';
@@ -214,6 +218,11 @@ const ENGLISH_REQUIREMENTS = {
  * Its scholarships are counted only while they are live: the count is what
  * the "with scholarships" filter reads, and a draft or an expired award
  * leaves a student nothing to apply for.
+ *
+ * The generic course comes with what its own page is answered on -- its
+ * state, its subject's and its level's -- because a card links "Course
+ * guide" to that page, and a guide an editor has taken down answers 404
+ * while the programmes filed under it stay live.
  */
 function offeringRowInclude(now: Date) {
   return {
@@ -224,13 +233,23 @@ function offeringRowInclude(now: Date) {
         id: true,
         name: true,
         slug: true,
+        status: true,
+        deletedAt: true,
         shortName: true,
         qualificationName: true,
         durationMin: true,
         durationMax: true,
         durationUnit: true,
         subjectId: true,
-        subject: { select: { id: true, name: true, slug: true } },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            deletedAt: true,
+          },
+        },
         subSubject: { select: { id: true, name: true, slug: true } },
         courseLevel: true,
       },
@@ -291,6 +310,7 @@ function programmeScanSelect(now: Date) {
     tuitionMin: true,
     tuitionMax: true,
     currencyCode: true,
+    tuitionPeriod: true,
     publishedAt: true,
     createdAt: true,
     courseLevel: level,
@@ -354,8 +374,21 @@ function programmeScanSelect(now: Date) {
 
 /** How long the finder's counts and headline figures are kept. They are
  * taken over the whole catalogue, which changes when an editor publishes,
- * not between one reader's clicks. */
+ * not between one reader's clicks. The programmes they are counted from
+ * are kept as long, for the same reason. */
 const PROGRAMME_OVERVIEW_TTL_MS = 60_000;
+
+/**
+ * The most programmes the finder keeps read at once, across every part of
+ * the catalogue it keeps: two whole catalogues at the scan's cap. The whole
+ * catalogue, which every unfiltered visit and every plain search reads,
+ * fits beside the narrower reads of the moment, and a crawler asking for a
+ * thousand different narrowings cannot make it hold a thousand copies.
+ */
+const PROGRAMME_SCAN_KEEP_ROWS = 2 * PROGRAMME_SCAN_CAP;
+
+/** And the most parts of the catalogue, however few programmes each holds. */
+const PROGRAMME_SCAN_KEEP = 200;
 
 /** How many programmes one comparison holds, as both references allow. */
 export const COURSE_COMPARE_LIMIT = 4;
@@ -369,6 +402,13 @@ type ProgrammeParams = Record<string, string | string[] | undefined>;
 type ProgrammeOverview = {
   facets: ReturnType<typeof programmeFacets>;
   summary: ReturnType<typeof programmeSummary>;
+  truncated: boolean;
+};
+
+/** The live programmes one narrowing of the catalogue holds, as read. */
+type ProgrammeScan = {
+  key: string;
+  rows: ProgrammeRow[];
   truncated: boolean;
 };
 
@@ -554,7 +594,17 @@ export class ExpandedService {
     string,
     { at: number; value: ProgrammeOverview }
   >();
-  private levelCodes: { at: number; codes: string[] } | null = null;
+  private readonly programmeScans = new Map<
+    string,
+    { at: number; value: ProgrammeScan }
+  >();
+  /** How many programmes `programmeScans` holds across its entries. */
+  private programmeScanRows = 0;
+  private catalogueCodes: {
+    at: number;
+    levels: string[];
+    studyModes: string[];
+  } | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -1671,26 +1721,30 @@ export class ExpandedService {
    * university's own list already uses, and only the page's rows are then
    * read in full for their cards. The counts beside the filters and the
    * headline figures are taken over the whole live catalogue -- or the part
-   * a list is fixed to with `within` -- and kept for a minute.
+   * a list is fixed to with `within` -- and they and the programmes they
+   * are counted from are kept for a minute.
    */
   async programmes(query: ProgrammeParams) {
     const now = new Date();
-    const parsed = parseProgrammeQuery(query, {
-      levels: await this.courseLevelCodes(now),
-    });
+    const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
     const scan = await this.scanProgrammes(parsed, now);
+    /* The overview first: the tuition range it offers is the currency the
+       fees are filtered and ordered in. */
+    const overview = await this.programmeOverview(parsed, scan, now);
     const matching = sortOfferings(
-      scan.rows.filter((row) => matchesProgramme(row, parsed, now)),
+      measurableFees(scan.rows, overview.facets.tuition).filter((row) =>
+        matchesProgramme(row, parsed, now),
+      ),
       parsed.sort,
       now,
     );
     const skip = (parsed.page - 1) * parsed.limit;
-    const [data, overview] = await Promise.all([
+    const [data, facets] = await Promise.all([
       this.programmeCards(
         matching.slice(skip, skip + parsed.limit).map((row) => row.id),
         now,
       ),
-      this.programmeOverview(parsed, scan, now),
+      this.namedFacets(overview.facets, parsed),
     ]);
     return {
       data,
@@ -1702,9 +1756,47 @@ export class ExpandedService {
         ignored: parsed.ignored,
         ...(scan.truncated || overview.truncated ? { truncated: true } : {}),
       },
-      facets: overview.facets,
+      facets,
       summary: overview.summary,
     };
+  }
+
+  /**
+   * The finder's options with every destination, subject and course chosen
+   * named, the ones nothing is listed under included: those are read from
+   * the catalogue by slug, published only, and only when there are any.
+   */
+  private async namedFacets(facets: ProgrammeFacets, parsed: ProgrammeQuery) {
+    const unnamed = unnamedChoices(facets, parsed);
+    if (
+      !unnamed.countries.length &&
+      !unnamed.subjects.length &&
+      !unnamed.courses.length
+    )
+      return facets;
+    const published = { status: 'PUBLISHED', deletedAt: null };
+    const named = { name: true, slug: true } as const;
+    const [countries, subjects, courses] = await Promise.all([
+      unnamed.countries.length
+        ? this.prisma.country.findMany({
+            where: { slug: { in: unnamed.countries }, ...published },
+            select: { ...named, iso2Code: true },
+          })
+        : [],
+      unnamed.subjects.length
+        ? this.prisma.subject.findMany({
+            where: { slug: { in: unnamed.subjects }, ...published },
+            select: named,
+          })
+        : [],
+      unnamed.courses.length
+        ? this.prisma.course.findMany({
+            where: { slug: { in: unnamed.courses }, ...published },
+            select: named,
+          })
+        : [],
+    ]);
+    return nameChoices(facets, { countries, subjects, courses });
   }
 
   /**
@@ -1713,9 +1805,25 @@ export class ExpandedService {
    * destination, university, subject, specialization, course -- narrow the
    * read; everything else is tested in memory by `matchesProgramme`, which
    * tests these again, so the two can never disagree about a row.
+   *
+   * Each narrowing's read is kept for a minute. Every unfiltered visit to
+   * the finder and every plain search reads the same whole catalogue, and
+   * reading all of it again for each of them was most of what each cost.
    */
-  private async scanProgrammes(narrow: ProgrammeNarrowing, now: Date) {
+  private async scanProgrammes(
+    narrow: ProgrammeNarrowing,
+    now: Date,
+  ): Promise<ProgrammeScan> {
     const pick = narrowingOf(narrow);
+    const key = JSON.stringify(pick);
+    const kept = this.programmeScans.get(key);
+    if (kept && now.getTime() - kept.at < PROGRAMME_OVERVIEW_TTL_MS) {
+      /* To the back of the queue: the whole catalogue, which every
+         narrower list's counts are taken over, is the last to go. */
+      this.programmeScans.delete(key);
+      this.programmeScans.set(key, kept);
+      return kept.value;
+    }
     const generic = {
       ...(pick.courses.length ? { slug: { in: pick.courses } } : {}),
       ...(pick.subjects.length
@@ -1781,11 +1889,37 @@ export class ExpandedService {
           })),
         },
       }));
-    return {
-      key: JSON.stringify(pick),
-      rows,
-      truncated: raw.length >= PROGRAMME_SCAN_CAP,
+    const value = { key, rows, truncated: raw.length >= PROGRAMME_SCAN_CAP };
+    this.keepScan(value, now);
+    return value;
+  }
+
+  /**
+   * Keeps a read, then lets go of the others least recently asked for
+   * until what is kept is back inside both bounds. A Map holds its keys in
+   * the order they were set, and a read is set again whenever it is asked
+   * for, so its first keys are the reads least recently asked for and the
+   * read just kept is its last.
+   */
+  private keepScan(scan: ProgrammeScan, now: Date) {
+    const forget = (key: string) => {
+      const entry = this.programmeScans.get(key);
+      if (!entry) return;
+      this.programmeScanRows -= entry.value.rows.length;
+      this.programmeScans.delete(key);
     };
+    forget(scan.key);
+    this.programmeScans.set(scan.key, { at: now.getTime(), value: scan });
+    this.programmeScanRows += scan.rows.length;
+    for (const key of this.programmeScans.keys()) {
+      if (
+        key === scan.key ||
+        (this.programmeScans.size <= PROGRAMME_SCAN_KEEP &&
+          this.programmeScanRows <= PROGRAMME_SCAN_KEEP_ROWS)
+      )
+        break;
+      forget(key);
+    }
   }
 
   /**
@@ -1797,7 +1931,7 @@ export class ExpandedService {
    */
   private async programmeOverview(
     parsed: ProgrammeQuery,
-    scan: Awaited<ReturnType<ExpandedService['scanProgrammes']>>,
+    scan: ProgrammeScan,
     now: Date,
   ) {
     const scope = programmeScope(parsed);
@@ -1828,11 +1962,14 @@ export class ExpandedService {
     return value;
   }
 
-  /** The page's programmes in full, for their cards, in the list's order. */
+  /** The page's programmes in full, for their cards, in the list's order.
+   * The ids come from a read kept for up to a minute, so the live rule is
+   * asked again: a programme taken down since is left off the page rather
+   * than drawn with a link that answers 404. */
   private async programmeCards(ids: string[], now: Date) {
     if (!ids.length) return [];
     const rows = await this.prisma.universityCourseOffering.findMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, ...liveProgrammeWhere(now) },
       /* A card never prints the long overview, and a reload of a long run
          asks for hundreds of rows at once. */
       omit: { overview: true },
@@ -1842,18 +1979,25 @@ export class ExpandedService {
     return ids.flatMap((id) => byId.get(id) ?? []);
   }
 
-  /** The level codes the catalogue knows, which a level filter is checked
-   * against: a code outside them is left out rather than matching nothing. */
-  private async courseLevelCodes(now: Date) {
-    const cached = this.levelCodes;
+  /** The level and study-mode codes the catalogue knows, which those
+   * filters are checked against: a code outside them is left out rather
+   * than matching nothing. */
+  private async knownCodes(now: Date) {
+    const cached = this.catalogueCodes;
     if (cached && now.getTime() - cached.at < PROGRAMME_OVERVIEW_TTL_MS)
-      return cached.codes;
-    const rows = await this.prisma.courseLevel.findMany({
-      select: { code: true },
-    });
-    const codes = rows.map((row) => row.code.toUpperCase());
-    this.levelCodes = { at: now.getTime(), codes };
-    return codes;
+      return cached;
+    const [levels, studyModes] = await Promise.all([
+      this.prisma.courseLevel.findMany({ select: { code: true } }),
+      this.prisma.studyMode.findMany({ select: { code: true } }),
+    ]);
+    const codes = (rows: Array<{ code: string }>) =>
+      rows.map((row) => row.code.toUpperCase());
+    this.catalogueCodes = {
+      at: now.getTime(),
+      levels: codes(levels),
+      studyModes: codes(studyModes),
+    };
+    return this.catalogueCodes;
   }
 
   /**
@@ -2172,10 +2316,19 @@ export class ExpandedService {
               },
               campus: true,
               courseLevel: true,
+              /* With the state its guide page is answered on, as a card's
+                 row carries it. */
               genericCourse: {
                 include: {
                   courseLevel: true,
-                  subject: { select: { name: true, slug: true } },
+                  subject: {
+                    select: {
+                      name: true,
+                      slug: true,
+                      status: true,
+                      deletedAt: true,
+                    },
+                  },
                   subSubject: { select: { name: true, slug: true } },
                 },
               },

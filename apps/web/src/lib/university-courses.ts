@@ -528,11 +528,37 @@ export type ActiveChip = {
   search: string;
 };
 
+/* Joining words a title leaves in lower case: "University of Warwick". */
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'at', 'de', 'for', 'in', 'of', 'on', 'the', 'to']);
+
+/**
+ * A value no option names, as words: "hong-kong" as "Hong Kong",
+ * "university-of-warwick" as "University of Warwick", "HYBRID" as
+ * "Hybrid". A short code -- "PG", "MBA" -- is an abbreviation, and stays
+ * as it is written.
+ */
+function readableValue(value: string) {
+  if (/^[A-Z0-9_]+$/.test(value))
+    return value.length > 4 || value.includes('_') ? humanise(value) : value;
+  return value
+    .split('-')
+    .filter(Boolean)
+    .map((word, index) =>
+      index > 0 && SMALL_WORDS.has(word)
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(' ');
+}
+
 /**
  * One removable chip per filter in force, as the reference shows them above
  * its results -- each a link to the same list without that one value. A
  * value nothing carries keeps its chip, as on the reference, so the way out
- * of an empty list is always on the page.
+ * of an empty list is always on the page. Its label is the option's, or,
+ * for a destination or a subject with nothing listed under it yet -- on a
+ * catalogue with no programmes, every one of them -- its value in words
+ * rather than the bare slug.
  */
 export function activeChips(
   filters: CourseFilters,
@@ -552,7 +578,7 @@ export function activeChips(
       chips.push({
         key: group.key,
         value,
-        label: option?.label ?? value,
+        label: option?.label ?? readableValue(value),
         search: courseListSearch(filters, {
           [group.key]: filters[group.key].filter((entry) => entry !== value),
         }),
@@ -718,7 +744,8 @@ export type OfferingCardData = {
   language: { value: string; note: string | null } | null;
   /** The English tests it lists, for the card's entry line. */
   englishTests: EnglishTestEntry[];
-  /** The course guide it is an instance of. */
+  /** The course guide it is an instance of, while that guide's page is
+   *  public; null otherwise. */
   genericCourse: { name: string; slug: string } | null;
   university: {
     name: string;
@@ -760,6 +787,26 @@ function slugName(value: unknown) {
   const name = text(entry?.name);
   const slug = text(entry?.slug);
   return name && slug ? { name, slug } : null;
+}
+
+/**
+ * The course guide a card links to, only while its page answers. The guide
+ * page shows a course that is published and not deleted, filed under a
+ * published subject at an active level, and answers 404 otherwise; an
+ * editor can take a guide down while the programmes filed under it stay
+ * live, and every one of their cards would then link to that 404. A row
+ * that does not say what state its guide is in gets no link either.
+ */
+function publicGuide(generic: Row) {
+  const subject = record(generic.subject);
+  const level = record(generic.courseLevel);
+  const live =
+    generic.status === 'PUBLISHED' &&
+    !generic.deletedAt &&
+    subject?.status === 'PUBLISHED' &&
+    !subject.deletedAt &&
+    level?.status === 'ACTIVE';
+  return live ? slugName(generic) : null;
 }
 
 /** The requirements a row lists, as the card reads them. */
@@ -880,7 +927,7 @@ export function toOfferingCard(
     courseCode: text(row.courseCode),
     language: teachingLanguage(requirements),
     englishTests: englishTestsOf(requirements),
-    genericCourse: slugName(generic),
+    genericCourse: publicGuide(generic),
     university: {
       name: uni.name,
       slug: uni.slug,

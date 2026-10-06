@@ -115,13 +115,27 @@ export class SearchService {
       }),
       /* A programme is a course as one university teaches it, and it is
            what the course finder lists: "Warwick" or "Computer Science at
-           Warwick" means one of these. Live only at a live university in a
+           Warwick" means one of these. Most programmes are named without
+           their university -- Warwick's are "MSc Computer Science" -- so,
+           as the finder does, each word may be found in the programme's
+           name or its university's. Live only at a live university in a
            published destination, the rule every programme list keeps, so
            no suggestion opens a page that answers 404. */
       this.prisma.universityCourseOffering.findMany({
         where: {
           ...live,
-          name: { contains: q },
+          AND: [
+            ...live.AND,
+            ...q
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((word) => ({
+                OR: [
+                  { name: { contains: word } },
+                  { university: { name: { contains: word } } },
+                ],
+              })),
+          ],
           university: {
             ...live,
             country: { status: 'PUBLISHED', deletedAt: null },

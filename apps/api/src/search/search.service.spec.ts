@@ -187,6 +187,40 @@ describe('catalogue search', () => {
     );
   });
 
+  /* Warwick's programmes are "MSc Computer Science" and "BSc Computer
+     Science", without the university, so a search for "Warwick" asked of
+     the name alone found none of them. Each word may be in the programme's
+     name or its university's, as in the finder, and every word has to be
+     found somewhere. */
+  it('finds a programme by its university, word by word', async () => {
+    const { prisma, service } = build();
+    await service.search('  computer science   warwick ');
+    const [args] = prisma.universityCourseOffering.findMany.mock.calls[0] as [
+      { where: { AND: unknown[]; name?: unknown } },
+    ];
+    expect(args.where.name).toBeUndefined();
+    const word = (value: string) => ({
+      OR: [
+        { name: { contains: value } },
+        { university: { name: { contains: value } } },
+      ],
+    });
+    expect(args.where.AND).toEqual([
+      /* The publishing window stays, ahead of the words. */
+      expect.objectContaining({ OR: expect.any(Array) }),
+      expect.objectContaining({ OR: expect.any(Array) }),
+      word('computer'),
+      word('science'),
+      word('warwick'),
+    ]);
+    expect(args.where.AND[0]).toEqual({
+      OR: [
+        { publishStartsAt: null },
+        { publishStartsAt: { lte: expect.any(Date) } },
+      ],
+    });
+  });
+
   it('leaves out a kind that matched nothing', async () => {
     const { service } = build({
       subjects: [{ id: 's1', name: 'Computer Science', slug: 'cs' }],

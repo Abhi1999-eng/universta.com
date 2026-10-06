@@ -287,17 +287,41 @@ describe('a course as a card', () => {
     expect(silent.englishTests).toEqual([]);
   });
 
+  /* The guide's page answers a published course under a published subject
+     at an active level; the card is handed the guide only then. */
+  const guide = {
+    ...row.genericCourse,
+    name: 'MSc Computer Science',
+    slug: 'msc-computer-science',
+    status: 'PUBLISHED',
+    deletedAt: null,
+    subject: { ...row.genericCourse.subject, status: 'PUBLISHED', deletedAt: null },
+    courseLevel: { ...row.genericCourse.courseLevel, status: 'ACTIVE' },
+  };
+
   it('carries its own id, for a saved list, and the course guide it is an instance of', () => {
-    const card = toOfferingCard(
-      {
-        ...row,
-        genericCourse: { ...row.genericCourse, name: 'MSc Computer Science', slug: 'msc-computer-science' },
-      },
-      owner,
-    )!;
+    const card = toOfferingCard({ ...row, genericCourse: guide }, owner)!;
     expect(card.offeringId).toBe('o1');
     expect(card.genericCourse).toEqual({ name: 'MSc Computer Science', slug: 'msc-computer-science' });
     expect(toOfferingCard({ ...row, id: undefined }, owner)!.offeringId).toBeNull();
+  });
+
+  it('links no course guide whose page would answer 404', () => {
+    const guideOf = (genericCourse: Record<string, unknown>) =>
+      toOfferingCard({ ...row, genericCourse }, owner)!.genericCourse;
+    expect(guideOf({ ...guide, status: 'DRAFT' })).toBeNull();
+    expect(guideOf({ ...guide, deletedAt: '2026-10-01T00:00:00.000Z' })).toBeNull();
+    expect(guideOf({ ...guide, subject: { ...guide.subject, status: 'DRAFT' } })).toBeNull();
+    expect(
+      guideOf({ ...guide, subject: { ...guide.subject, deletedAt: '2026-10-01T00:00:00.000Z' } }),
+    ).toBeNull();
+    expect(guideOf({ ...guide, courseLevel: { ...guide.courseLevel, status: 'INACTIVE' } })).toBeNull();
+    /* A row that does not say is not taken on trust. */
+    expect(guideOf({ name: 'MSc Computer Science', slug: 'msc-computer-science' })).toBeNull();
+    /* What the card still reads from the course is unchanged. */
+    const card = toOfferingCard({ ...row, genericCourse: { ...guide, status: 'DRAFT' } }, owner)!;
+    expect(card.subject).toEqual({ name: 'Computer Science', slug: 'computer-science' });
+    expect(card.qualification).toBe('Master of Science');
   });
 });
 
@@ -410,7 +434,7 @@ describe('the course finder’s address', () => {
       tuition: { currencyCode: 'GBP', count: 3 },
     });
     expect(activeChips(filters, facets).map((chip) => chip.label)).toEqual([
-      'atlantis',
+      'Atlantis',
       'MSc Computer Science',
       'Upcoming deadline',
       'Post-study work',
@@ -420,6 +444,36 @@ describe('the course finder’s address', () => {
     expect(activeFilterCount(filters)).toBe(6);
     expect(activeChips(filters, facets)[0]!.search).toBe(
       '?course=msc-computer-science&postStudyWork=true&ielts=6.5&status=open&tuitionMax=20000',
+    );
+  });
+
+  /* Nothing listed under a real destination or subject yet -- on a
+     catalogue with no programmes, every one -- left no option to name its
+     chip, which read "hong-kong ×". The API names the ones it publishes;
+     anything else reads as words, not as a slug. */
+  it('writes a value no option names as words, never as a slug', () => {
+    const filters = readCourseFilters({
+      country: 'hong-kong',
+      university: 'university-of-the-west-of-england',
+      subject: 'computer-science',
+      level: 'PG',
+      studyMode: 'HYBRID',
+      intake: 'september',
+    });
+    expect(activeChips(filters, toCourseFacets({})).map((chip) => chip.label)).toEqual([
+      'Hong Kong',
+      'University of the West of England',
+      'PG',
+      'Computer Science',
+      'September',
+      'Hybrid',
+    ]);
+    /* The option's own name wins wherever there is one. */
+    const named = toCourseFacets({
+      countries: [{ value: 'hong-kong', label: 'Hong Kong SAR', count: 0 }],
+    });
+    expect(activeChips(readCourseFilters({ country: 'hong-kong' }), named)[0]!.label).toBe(
+      'Hong Kong SAR',
     );
   });
 

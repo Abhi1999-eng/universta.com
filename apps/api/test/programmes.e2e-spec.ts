@@ -24,9 +24,15 @@ type List = {
   data: Array<{
     slug: string;
     university: { slug: string; country: { slug: string } };
+    genericCourse: Record<string, unknown> & {
+      subject: Record<string, unknown>;
+      courseLevel: Record<string, unknown>;
+    };
   }>;
   meta: { total: number; sort: string; ignored: string[] };
-  facets: Record<string, Option[]>;
+  facets: Record<string, Option[]> & {
+    tuition: { currencyCode: string | null; count: number } | null;
+  };
   summary: Record<string, number>;
 };
 
@@ -41,11 +47,15 @@ describe('programmes across universities (e2e)', () => {
   const countryIds: string[] = [];
   const universityIds: string[] = [];
   const courseIds: string[] = [];
+  const subjectIds: string[] = [];
   const offeringIds: string[] = [];
   const scholarshipIds: string[] = [];
   const slugs: Record<string, string> = {};
   let home = '';
   let away = '';
+  let empty = '';
+  let untaught = '';
+  let unlisted = '';
 
   const get = (path: string) =>
     request(app.getHttpServer()).get(`/api/v1/phase1${path}`);
@@ -88,8 +98,11 @@ describe('programmes across universities (e2e)', () => {
     const live = await country('Home', 'PUBLISHED');
     const elsewhere = await country('Away', 'PUBLISHED');
     const gone = await country('Gone', 'DRAFT');
+    /* Published, with nothing listed in it. */
+    const bare = await country('Empty', 'PUBLISHED');
     home = live.slug;
     away = elsewhere.slug;
+    empty = bare.slug;
 
     const university = async (
       name: string,
@@ -134,6 +147,31 @@ describe('programmes across universities (e2e)', () => {
     });
     courseIds.push(generic.id);
 
+    /* A published subject and a published course guide that no programme
+       is filed under. */
+    const quiet = await prisma.subject.create({
+      data: {
+        name: `PR E2E Subject ${suffix}`,
+        slug: `pr-e2e-subject-${suffix}`,
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+      },
+    });
+    subjectIds.push(quiet.id);
+    unlisted = quiet.slug;
+    const idle = await prisma.course.create({
+      data: {
+        subjectId: subject.id,
+        courseLevelId: level.id,
+        name: `PR E2E Untaught ${suffix}`,
+        slug: `pr-e2e-untaught-${suffix}`,
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+      },
+    });
+    courseIds.push(idle.id);
+    untaught = idle.slug;
+
     const offer = async (key: string, universityId: string, extra = {}) => {
       const row = await prisma.universityCourseOffering.create({
         data: {
@@ -150,7 +188,16 @@ describe('programmes across universities (e2e)', () => {
       slugs[key] = row.slug;
       return row;
     };
+    /* Fees in the home country: two in its dollars by the year, and one
+       in another currency that is lower in figures alone. */
+    const fee = (tuitionMin: number, currencyCode: string) => ({
+      tuitionMin,
+      tuitionMax: tuitionMin,
+      currencyCode,
+      tuitionPeriod: 'PER_YEAR',
+    });
     const scored = await offer('Scored', north.id, {
+      ...fee(30000, 'CAD'),
       requirements: {
         create: {
           category: 'ENGLISH_TEST',
@@ -160,8 +207,8 @@ describe('programmes across universities (e2e)', () => {
         },
       },
     });
-    const funded = await offer('Funded', south.id);
-    const drafted = await offer('Drafted', south.id);
+    const funded = await offer('Funded', south.id, fee(20000, 'CAD'));
+    const drafted = await offer('Drafted', south.id, fee(10000, 'AUD'));
     await offer('Abroad', abroad.id);
     await offer('AtDraft', draft.id);
     await offer('AtHidden', hidden.id);
@@ -198,6 +245,7 @@ describe('programmes across universities (e2e)', () => {
       where: { id: { in: offeringIds } },
     });
     await prisma.course.deleteMany({ where: { id: { in: courseIds } } });
+    await prisma.subject.deleteMany({ where: { id: { in: subjectIds } } });
     await prisma.universityCampus.deleteMany({
       where: { universityId: { in: universityIds } },
     });
@@ -263,10 +311,17 @@ describe('programmes across universities (e2e)', () => {
   });
 
   it('answers without what it does not know, and narrows to nothing for a slug nothing carries', async () => {
-    const odd = await list(`q=${suffix}&sort=bogus&level=nope&pageSize=500`);
+    const odd = await list(
+      `q=${suffix}&sort=bogus&level=nope&pageSize=500&studyMode=nope`,
+    );
     expect(odd.meta.total).toBe(4);
     expect(odd.meta.ignored).toEqual(
-      expect.arrayContaining(['sort=bogus', 'level=nope', 'pageSize=500']),
+      expect.arrayContaining([
+        'sort=bogus',
+        'level=nope',
+        'pageSize=500',
+        'studyMode=nope',
+      ]),
     );
     expect((await list('country=atlantis')).meta.total).toBe(0);
     const fee = await list(`q=${suffix}&sort=fee`);
@@ -274,6 +329,60 @@ describe('programmes across universities (e2e)', () => {
     expect((await list(`q=${suffix}&sort=fee&country=${home}`)).meta.sort).toBe(
       'fee',
     );
+  });
+
+  /* "Amounts in CAD": ten thousand Australian dollars is not the lowest
+     fee in a country whose range is in Canadian dollars. */
+  it('orders fees in the range’s currency and puts the rest after', async () => {
+    const body = await list(`q=${suffix}&country=${home}&sort=fee`);
+    expect(body.facets.tuition).toEqual({ currencyCode: 'CAD', count: 2 });
+    expect(body.data.map((row) => row.slug)).toEqual([
+      slugs.Funded,
+      slugs.Scored,
+      slugs.Drafted,
+    ]);
+  });
+
+  /* Its chip read the bare slug; it is named from the catalogue now. */
+  it('names a chosen destination, subject or course nothing is listed under', async () => {
+    const body = await list(
+      `country=${empty}&subject=${unlisted}&course=${untaught}`,
+    );
+    expect(body.meta.total).toBe(0);
+    expect(body.facets.countries).toContainEqual(
+      expect.objectContaining({
+        value: empty,
+        label: `PR Empty ${suffix}`,
+        count: 0,
+      }),
+    );
+    expect(body.facets.subjects).toContainEqual({
+      value: unlisted,
+      label: `PR E2E Subject ${suffix}`,
+      count: 0,
+    });
+    expect(body.facets.courses).toEqual([
+      { value: untaught, label: `PR E2E Untaught ${suffix}`, count: 0 },
+    ]);
+    /* A slug the catalogue does not publish is not named. */
+    const typed = await list(`country=atlantis-${suffix}`);
+    expect(
+      typed.facets.countries.some((option) =>
+        option.value.startsWith('atlantis'),
+      ),
+    ).toBe(false);
+  });
+
+  /* The card links "Course guide" only while the guide's page answers,
+     which it reads from these. */
+  it('carries the state each card’s course guide is answered on', async () => {
+    const [row] = (await list(`q=${suffix}&limit=1`)).data;
+    expect(row.genericCourse).toMatchObject({
+      status: 'PUBLISHED',
+      deletedAt: null,
+      subject: { status: expect.any(String), deletedAt: null },
+      courseLevel: { status: expect.any(String) },
+    });
   });
 
   it('compares live programmes only, with their university’s country', async () => {
