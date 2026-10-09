@@ -325,9 +325,9 @@ describe('a subject in one destination', () => {
         '4 Programmes',
         '4 Universities',
         '3 Cities',
-        '2 Specializations taught',
         'Sep Intakes',
       ]);
+      expect(html).toContain('Specializations · 2 taught here');
       expect(chips(html)).toEqual([
         'Software Engineering 4 /study-abroad/united-kingdom/computer-science/software-engineering',
         'Artificial Intelligence 1 /study-abroad/united-kingdom/computer-science/artificial-intelligence',
@@ -336,7 +336,8 @@ describe('a subject in one destination', () => {
 
     it('keeps the course guides’ counts on the specialization cards, which say they count courses', async () => {
       const html = await renderSubject();
-      const section = html.slice(html.indexOf('id="specializations"'), html.indexOf('id="courses"'));
+      const start = html.indexOf('id="specializations"');
+      const section = html.slice(start, html.indexOf('</section>', start));
       expect(section).toContain('2 courses');
       expect(section).toContain('1 course');
     });
@@ -347,9 +348,9 @@ describe('a subject in one destination', () => {
       expect(strip(html)).toEqual([
         '2 Programmes',
         '11 Universities',
-        '2 Specializations taught',
         'Jul, Aug, Sep Intakes',
       ]);
+      expect(html).toContain('Specializations · 2 taught here');
       expect(chips(html)).toEqual([
         'Software Engineering 2 /study-abroad/united-kingdom/computer-science/software-engineering',
         'Machine Learning 1 /study-abroad/united-kingdom/computer-science/machine-learning',

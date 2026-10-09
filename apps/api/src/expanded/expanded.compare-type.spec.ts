@@ -34,7 +34,8 @@ describe('ExpandedPublicController.compare -- unknown type', () => {
 
 /**
  * Comparing programmes. Both references compare up to four courses side by
- * side, where the other comparisons hold three. A programme compares only
+ * side; universities allow five, while countries and consultants hold three.
+ * A programme compares only
  * while its university and that university's destination are live -- the
  * rule every programme list keeps -- so a column never links to a page that
  * answers 404, and each comes with its university's country, which the
@@ -64,6 +65,7 @@ describe('ExpandedService.compare -- courses', () => {
     };
     const prisma = {
       universityCourseOffering: { findMany },
+      country: { findMany },
       university: { findMany },
       consultant: { findMany },
     } as unknown as PrismaService;
@@ -73,17 +75,73 @@ describe('ExpandedService.compare -- courses', () => {
     };
   }
 
-  it('keeps four programmes, and three of anything else', async () => {
+  it('keeps five universities, four programmes, and three countries or consultants', async () => {
     const { service, calls } = build([]);
-    const five = ['a', 'b', 'c', 'd', 'e'];
-    await service.compare('courses', five);
-    await service.compare('universities', five);
-    await service.compare('consultants', five);
+    const six = ['a', 'b', 'c', 'd', 'e', 'f'];
+    await service.compare('courses', six);
+    await service.compare('universities', six);
+    await service.compare('countries', six);
+    await service.compare('consultants', six);
     expect(calls.map((args) => args.where.slug.in)).toEqual([
       ['a', 'b', 'c', 'd'],
+      ['a', 'b', 'c', 'd', 'e'],
       ['a', 'b', 'c'],
       ['a', 'b', 'c'],
     ]);
+  });
+
+  it('returns all five universities in requested order and ignores the sixth', async () => {
+    const { service, calls } = build([
+      { slug: 'f' },
+      { slug: 'e' },
+      { slug: 'c' },
+      { slug: 'a' },
+      { slug: 'd' },
+      { slug: 'b' },
+    ]);
+    const result = await service.compare('universities', [
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+    ]);
+    expect(result.items.map((row) => row.slug)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+    ]);
+    expect(result.invalid).toEqual([]);
+    expect(calls[0].where).toMatchObject({
+      slug: { in: ['a', 'b', 'c', 'd', 'e'] },
+      status: 'PUBLISHED',
+      deletedAt: null,
+    });
+  });
+
+  it('normalizes and deduplicates university slugs before applying the five-column cap', async () => {
+    const { service, calls } = build([
+      { slug: 'a' },
+      { slug: 'b' },
+      { slug: 'c' },
+      { slug: 'e' },
+    ]);
+    const result = await service.compare('universities', [
+      ' A ',
+      '',
+      'a',
+      'B',
+      'c',
+      'd',
+      'e',
+      'f',
+    ]);
+    expect(calls[0].where.slug.in).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(result.items.map((row) => row.slug)).toEqual(['a', 'b', 'c', 'e']);
+    expect(result.invalid).toEqual(['d']);
   });
 
   it('asks for live universities in published destinations, and reports the rest invalid', async () => {

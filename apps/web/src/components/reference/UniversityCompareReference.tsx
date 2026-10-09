@@ -1,336 +1,188 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { formatDate, formatNumber } from '@/lib/format';
 import { universityCoursesHref } from '@/lib/university-links';
+import { universityInitials } from '@/lib/university-initials';
+import {
+  UNIVERSITY_COMPARE_LIMIT as MAX,
+  universityCompareHref,
+  universityCompareSlugs,
+  type CompareUniversity,
+} from '@/lib/university-compare';
+import { Crumbs } from '@/components/study-abroad/Crumbs';
 
-/** The client-approved university comparison page.
- *
- * The template compares on rankings, tuition by level, acceptance rate, cost
- * of living, accommodation, campus facilities, student life and career
- * outcomes, and closes with a "best fit" recommendation scored from those
- * numbers. Universta records none of them, and a recommendation computed from
- * data that does not exist would be the least honest thing on the site — so
- * the table carries the fields the university record actually holds, and the
- * scoring, dashboard and pros/cons blocks are omitted. */
-
-export type CompareUniversity = {
-  name: string;
-  slug: string;
-  country: string | null;
-  /** Where its courses are filed: under the country, in the address. */
-  countrySlug: string | null;
-  institutionType: string | null;
-  shortDescription: string | null;
-  campuses: number;
-  offerings: number;
-  accreditations: string[];
-  verifiedAt: string | null;
-};
+export type { CompareUniversity } from '@/lib/university-compare';
 
 export type UniversityCompareReferenceProps = {
   items: CompareUniversity[];
-  /** Slugs requested that matched no published record. */
   invalid: string[];
   options: Array<{ slug: string; name: string }>;
   selected: string[];
+  unavailable?: boolean;
 };
 
-const MAX = 3;
+const humanise = (value: string) => value.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (character) => character.toUpperCase());
+const coursesHref = (item: CompareUniversity) => item.countrySlug
+  ? universityCoursesHref(item.countrySlug, item.slug) : `/universities/${item.slug}/courses`;
 
-const SKIP_WORDS = new Set(['of', 'in', 'and', 'the', 'for', 'a', 'an', '&']);
-
-function initials(value: string) {
-  const words = value
-    .split(/\s+/)
-    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter((word) => word && !SKIP_WORDS.has(word.toLowerCase()));
-  if (words.length === 0) return value.slice(0, 2).toUpperCase();
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return words
-    .slice(0, 2)
-    .map((word) => word[0].toUpperCase())
-    .join('');
-}
-
-function humanise(value: string) {
-  return value.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
-}
-
-export function UniversityCompareReference(props: UniversityCompareReferenceProps) {
-  const { items, options, selected } = props;
+/** The final ZIP's comparison, with recorded fields and a shareable address. */
+export function UniversityCompareReference({ items, options, selected, invalid, unavailable = false }: UniversityCompareReferenceProps) {
   const router = useRouter();
-  const pathname = usePathname();
-
-  /** A shortlist is built up, then compared. Navigating on every pick would
-   * reload the page two or three times on the way to a comparison, and would
-   * publish half-finished shortlists into the visitor's history. */
+  const [pending, startTransition] = useTransition();
   const selectedKey = selected.join(',');
-  const [draft, setDraft] = useState<string[]>(() => selected.slice(0, MAX));
+  const picked = items.map((item) => item.slug);
+  const [direct, setDirect] = useState<string[]>(picked);
+  const [directFor, setDirectFor] = useState(selectedKey);
+  const queued = useRef<{ key: string; slugs: string[] } | null>(null);
+  useEffect(() => {
+    queued.current = null;
+  }, [selectedKey]);
+  if (directFor !== selectedKey) {
+    setDirect(picked);
+    setDirectFor(selectedKey);
+  }
+  const validSelection = universityCompareSlugs(selected.filter((slug) => items.some((item) => item.slug === slug) || options.some((option) => option.slug === slug)));
+  const [draft, setDraft] = useState<string[]>(validSelection);
   const [draftFor, setDraftFor] = useState(selectedKey);
   if (draftFor !== selectedKey) {
-    setDraft(selected.slice(0, MAX));
+    setDraft(validSelection);
     setDraftFor(selectedKey);
   }
   const [query, setQuery] = useState('');
-
-  function go(next: string[]) {
-    const unique = [...new Set(next)].slice(0, MAX);
-    router.push(unique.length ? `${pathname}?items=${unique.join(',')}` : pathname);
+  function commit(next: string[]) {
+    const slugs = universityCompareSlugs(next);
+    queued.current = { key: selectedKey, slugs };
+    setDirect(slugs);
+    setDraft(slugs);
+    startTransition(() => router.push(universityCompareHref(slugs)));
   }
 
-  function label(slug: string) {
-    return options.find((option) => option.slug === slug)?.name ?? slug;
-  }
-
+  const label = (slug: string) => options.find((option) => option.slug === slug)?.name ?? items.find((item) => item.slug === slug)?.name ?? slug;
   const available = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return options.filter((option) => {
-      if (draft.includes(option.slug)) return false;
-      if (!needle) return true;
-      return (
-        option.name.toLowerCase().includes(needle) ||
-        option.slug.toLowerCase().includes(needle)
-      );
-    });
+    return options.filter((option) => !draft.includes(option.slug) && (!needle || option.name.toLowerCase().includes(needle) || option.slug.toLowerCase().includes(needle)));
   }, [options, query, draft]);
-
-  const rows: Array<[string, (item: CompareUniversity) => React.ReactNode]> = [
-    ['Destination', (item) => item.country ?? '—'],
-    ['Institution type', (item) => (item.institutionType ? humanise(item.institutionType) : '—')],
-    [
-      'Published programmes',
-      (item) =>
-        item.offerings ? (
-          /* Straight to the courses' own address. The flat one answers only
-             with a redirect, and costs the reader a hop and the server a
-             course read to find the country again. */
-          <Link
-            href={
-              item.countrySlug
-                ? universityCoursesHref(item.countrySlug, item.slug)
-                : `/universities/${item.slug}/courses`
-            }
-            style={{ color: 'var(--blue)' }}
-          >
-            <b>{formatNumber(item.offerings)}</b>
-          </Link>
-        ) : (
-          '—'
-        ),
-    ],
-    ['Campuses', (item) => (item.campuses ? <b>{formatNumber(item.campuses)}</b> : '—')],
-    [
-      'Accreditations',
-      (item) => (item.accreditations.length ? item.accreditations.join(', ') : '—'),
-    ],
-    [
-      'Record verified',
-      (item) => (item.verifiedAt ? formatDate(item.verifiedAt) : 'Not verified'),
-    ],
-    ['Summary', (item) => item.shortDescription ?? '—'],
+  const dropdownOptions = options.filter((option) => !direct.includes(option.slug));
+  const rows: Array<[string, (item: CompareUniversity) => ReactNode]> = [
+    ['Location', (item) => [...(item.cities ?? []), item.country].filter(Boolean).join(', ') || 'Not listed'],
+    ['Destination', (item) => item.country ?? 'Not listed'],
+    ['Institution type', (item) => item.institutionType ? humanise(item.institutionType) : 'Not listed'],
+    ['QS ranking', (item) => item.qsRanking ? `#${formatNumber(item.qsRanking)}` : 'Not listed'],
+    ['Tuition', (item) => <><span className="uc-none">Not listed at university level</span>{item.offerings > 0 ? <Link className="cmpnote textlink" href={coursesHref(item)}>View programme fees</Link> : null}</>],
+    ['Published programmes', (item) => item.offerings > 0 ? <Link className="textlink" href={coursesHref(item)}><b>{formatNumber(item.offerings)}</b></Link> : '0'],
+    ['Campuses', (item) => formatNumber(item.campuses)],
+    ['Accreditations', (item) => item.accreditations.length ? item.accreditations.join(', ') : 'Not listed'],
+    ['Record verified', (item) => formatDate(item.verifiedAt) || 'Not verified'],
+    ['Summary', (item) => item.shortDescription ?? 'Not listed'],
   ];
 
   return (
-    <div className="cref cref-dest">
-      <div className="wrap">
-        <nav className="crumb" aria-label="Breadcrumb">
-          <Link href="/">Home</Link> › <Link href="/universities">Universities</Link> ›{' '}
-          <span aria-current="page">Compare</span>
-        </nav>
-      </div>
-
-      <section className="hero">
-        <div className="wrap hero-in">
-          <h1>
-            Compare <span className="b">universities</span>
-          </h1>
-          <p className="lead">
-            Line up to {MAX} published institutions side by side on the fields the catalogue
-            records. Nothing here is scored or ranked.
-          </p>
-        </div>
-      </section>
-
-      <section className="sec wrap" style={{ paddingTop: 8 }}>
-        <div className="cmp-picker">
-          <div className="cmp-search">
-            <label htmlFor="compare-search-universities">Search published universities</label>
-            <input
-              id="compare-search-universities"
-              type="text"
-              value={query}
-              placeholder="Search by name"
-              onChange={(event) => setQuery(event.target.value)}
-            />
+    <div className="universitycompare">
+      <section className="hero hero--compact">
+        <div className="wrap">
+          <Crumbs trail={[{ label: 'Home', href: '/' }, { label: 'Universities', href: '/universities' }, { label: 'Compare' }]} />
+          <div className="hero__lead">
+            <p className="hero__eyebrow">Comparison<b>·</b>up to {MAX} universities</p>
+            <h1 className="hero__h1">Compare universities side by side</h1>
+            <p className="hero__sub">Compare published institutions on location, programmes, campuses and the information each record provides.</p>
           </div>
-
-          {available.length ? (
-            <div className="cmp-options" role="list" aria-label="Available universities">
-              {available.slice(0, 8).map((option) => (
-                <button
-                  type="button"
-                  key={option.slug}
-                  className="chip"
-                  disabled={draft.length >= MAX}
-                  onClick={() => {
-                    setDraft((current) => [...current, option.slug]);
-                    setQuery('');
-                  }}
-                >
-                  Add {option.name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="cmp-note">
-              {options.length ? 'No published university matches that search.' : 'No published universities yet.'}
-            </p>
-          )}
-
-          <div className="cmp-chosen" aria-label="Selected comparison items">
-            {draft.map((slug) => (
-              <span key={slug}>
-                {label(slug)}
-                <button
-                  type="button"
-                  aria-label={`Remove ${label(slug)}`}
-                  onClick={() => setDraft((current) => current.filter((item) => item !== slug))}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-
-          <p className="cmp-note" role="status">
-            {draft.length}/{MAX} selected. Choose at least two.
-          </p>
-
-          <div className="cmp-actions">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={draft.length < 2}
-              onClick={() => go(draft)}
+          <div className="comparepick">
+            <label className="sr-only" htmlFor="compare-add-universities">Add a university to the comparison</label>
+            <select
+              className="comparepick__select"
+              id="compare-add-universities"
+              data-testid="university-compare-add"
+              value=""
+              disabled={pending || direct.length >= MAX || dropdownOptions.length === 0}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value) {
+                  // A second pick can arrive before the first page read.
+                  // Carry the queued selection, independently of the search draft.
+                  const current = queued.current?.key === selectedKey ? queued.current.slugs : picked;
+                  commit([...current, value]);
+                }
+              }}
             >
-              Compare selected
-            </button>
-            {draft.length ? (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setDraft([]);
-                  go([]);
-                }}
-              >
-                Clear all
-              </button>
-            ) : null}
+              <option value="">{direct.length >= MAX ? 'Five universities selected' : options.length ? 'Add a university…' : 'No published universities available'}</option>
+              {dropdownOptions.map((option) => <option key={option.slug} value={option.slug}>{option.name}</option>)}
+            </select>
+            <button className="btn btn--ghost btn--sm" type="button" data-testid="university-compare-clear" disabled={pending} onClick={() => { setQuery(''); commit([]); }}>Clear all</button>
           </div>
+
+          {/* The existing search-and-pick flow remains available, without
+              displacing the reference's direct comparison picker. */}
+          <details className="uni-comparison-search">
+            <summary>Search published universities</summary>
+            <div className="cmp-picker">
+              <div className="cmp-search">
+                <label htmlFor="compare-search-universities">Search published universities</label>
+                <input id="compare-search-universities" type="search" value={query} placeholder="Search by name" onChange={(event) => setQuery(event.target.value)} />
+              </div>
+              {available.length ? (
+                <div className="cmp-options" role="list" aria-label="Available universities">
+                  {available.slice(0, 8).map((option) => <button className="chipbtn" type="button" key={option.slug} disabled={pending || draft.length >= MAX} onClick={() => { setDraft((current) => universityCompareSlugs([...current, option.slug])); setQuery(''); }}>Add {option.name}</button>)}
+                </div>
+              ) : <p className="cmp-note">{options.length ? 'No published university matches that search.' : 'No published universities yet.'}</p>}
+              <div className="cmp-chosen" aria-label="Selected comparison items">
+                {draft.map((slug) => <span key={slug}>{label(slug)}<button type="button" aria-label={`Remove ${label(slug)} from selection`} disabled={pending} onClick={() => setDraft((current) => current.filter((item) => item !== slug))}>×</button></span>)}
+              </div>
+              <p className="cmp-note" role="status">{draft.length}/{MAX} selected. Choose at least two.</p>
+              <button className="btn btn--sm" type="button" disabled={pending || draft.length < 2} onClick={() => commit(draft)}>Compare selected</button>
+            </div>
+          </details>
         </div>
-
-        {props.invalid.length ? (
-          <p className="disclaimer" style={{ marginBottom: 18 }}>
-            Not published, so left out of the comparison: {props.invalid.join(', ')}.
-          </p>
-        ) : null}
-
-        {items.length === 0 ? (
-          <div className="cref-empty" data-testid="compare-empty">
-            <h3>Nothing selected yet</h3>
-            <p>Add up to {MAX} universities above to compare them side by side.</p>
-            <Link className="btn btn-primary" href="/universities">
-              Browse universities
-            </Link>
-          </div>
-        ) : (
-          <>
-          <div className="cmp-wrap phase1-compare-desktop">
-            <table className="cmp" data-testid="compare-table">
-              <thead>
-                <tr>
-                  <th scope="col">Field</th>
-                  {items.map((item) => (
-                    <th scope="col" key={item.slug}>
-                      <div className="cmp-head">
-                        <span className="lg" aria-hidden="true">
-                          {initials(item.name)}
-                        </span>
-                        <div>
-                          <Link href={`/universities/${item.slug}`}>{item.name}</Link>
-                          <div>
-                            <button
-                              type="button"
-                              className="btn-clear"
-                              style={{
-                                color: 'var(--muted)',
-                                fontSize: 12.5,
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0,
-                              }}
-                              onClick={() =>
-                                go(selected.filter((slug) => slug !== item.slug))
-                              }
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(([label, render]) => (
-                  <tr key={label}>
-                    <th scope="row">{label}</th>
-                    {items.map((item) => (
-                      <td key={item.slug}>{render(item)}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="phase1-compare-mobile">
-            {items.map((item) => (
-              <article className="card cmp-card" key={item.slug}>
-                <h3>{item.name}</h3>
-                {rows.map(([field, render]) => (
-                  <div className="fact" key={field}>
-                    <span>{field}</span>
-                    <strong>{render(item)}</strong>
-                  </div>
-                ))}
-              </article>
-            ))}
-          </div>
-          </>
-        )}
       </section>
 
-      <section className="sec wrap">
-        <div className="cta2">
-          <h2>Need a second opinion on the shortlist?</h2>
-          <p>
-            A counsellor can weigh these institutions against your marks, budget and target intake.
-          </p>
-          <div className="cta2-btns">
-            <Link href="/counselling" className="btn btn-primary btn-lg">
-              Book free counselling
-            </Link>
-            <Link href="/universities" className="btn btn-ghost btn-lg">
-              Browse universities
-            </Link>
+      <section className="sec sec--white" id="comparison">
+        <div className="wrap">
+          {invalid.length ? <p className="callout uni-comparison-notice">Not published, so left out of the comparison: {invalid.join(', ')}.</p> : null}
+          {unavailable ? <p className="callout uni-comparison-notice" role="status">The university comparison could not be loaded. Please try again.</p> : null}
+          {items.length ? (
+            <>
+              <div className="tablewrap uni-comparison-table" role="region" aria-label="University comparison" aria-busy={pending} tabIndex={0} data-testid="compare-table-wrap">
+                <table className="data comparetable" data-testid="compare-table" style={{ minWidth: `${Math.max(720, 190 + items.length * 190)}px` }}>
+                  <caption className="sr-only">University comparison</caption>
+                  <thead><tr><th scope="col"><span className="sr-only">Field</span></th>{items.map((item) => <th scope="col" key={item.slug}>
+                    <span className="cmphead">
+                      <span className="unimark unimark--xs" aria-hidden="true">{universityInitials(item.name)}</span>
+                      <Link className="cmphead__name" href={`/universities/${item.slug}`}>{item.name}</Link>
+                      <span className="cmphead__meta">{[...(item.cities ?? []), item.country].filter(Boolean).join(', ') || 'Location not listed'}</span>
+                      <Link className="cmpremove" href={universityCompareHref(selected.filter((slug) => slug !== item.slug))} aria-label={`Remove ${item.name} from the comparison`} aria-disabled={pending || undefined} tabIndex={pending ? -1 : undefined} onClick={(event) => { if (pending) event.preventDefault(); }}>Remove</Link>
+                    </span>
+                  </th>)}</tr></thead>
+                  <tbody>{rows.map(([field, render]) => <tr key={field}><th scope="row">{field}</th>{items.map((item) => <td key={item.slug}>{render(item)}</td>)}</tr>)}</tbody>
+                </table>
+              </div>
+              <p className="trust__note">Tuition and entry requirements vary by programme. Open a university’s published programmes for its listed fees and requirements.</p>
+              <details className="uni-comparison-cards">
+                <summary>Read universities as individual cards</summary>
+                <div className="uni-comparison-cardgrid">{items.map((item) => <article className="uni-comparison-card" key={item.slug}>
+                  <h3><Link href={`/universities/${item.slug}`}>{item.name}</Link></h3>
+                  <dl>{rows.map(([field, render]) => <div key={field}><dt>{field}</dt><dd>{render(item)}</dd></div>)}</dl>
+                </article>)}</div>
+              </details>
+              <div className="priorities">
+                <p className="eyebrow eyebrow--plain">Your priorities</p>
+                <h2 className="sec-title">There is no universal winner</h2>
+                <p className="sec-lead">Your programme, marks, budget and target intake shape the choice. Compare the published information here, then check the requirements of the courses you want to study.</p>
+              </div>
+            </>
+          ) : !unavailable ? (
+            <div className="compare-empty" data-testid="compare-empty">
+              <p className="ov__lead">Nothing selected yet.</p>
+              <p className="sec-lead">Add up to {MAX} universities above, or use the Compare button on a university card. The address keeps your selection so you can share it.</p>
+              <div className="btn-row"><Link className="btn" href="/universities">Browse universities <span className="btn__arrow" aria-hidden="true">→</span></Link></div>
+            </div>
+          ) : null}
+          <div className="magnet uni-comparison-counselling">
+            <div><h3 className="magnet__t">Need a second opinion on the shortlist?</h3><p className="magnet__b">A counsellor can weigh these institutions against your marks, budget and target intake.</p></div>
+            <Link className="btn btn--onnavy btn--lg" href="/counselling">Book free counselling <span className="btn__arrow" aria-hidden="true">→</span></Link>
           </div>
+          <div className="btn-row uni-comparison-browse"><Link className="linkcta" href="/universities">Browse universities <span className="linkcta__arrow" aria-hidden="true">→</span></Link></div>
         </div>
       </section>
     </div>

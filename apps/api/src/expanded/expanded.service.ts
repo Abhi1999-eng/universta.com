@@ -393,6 +393,9 @@ const PROGRAMME_SCAN_KEEP = 200;
 /** How many programmes one comparison holds, as both references allow. */
 export const COURSE_COMPARE_LIMIT = 4;
 
+/** The approved university comparison allows five institutions side by side. */
+export const UNIVERSITY_COMPARE_LIMIT = 5;
+
 /** The most programme addresses one sitemap read takes. */
 const PROGRAMME_ADDRESS_LIMIT = 5000;
 
@@ -2246,13 +2249,20 @@ export class ExpandedService {
     type: 'countries' | 'universities' | 'courses' | 'consultants',
     items: string[],
   ) {
-    /* Both references compare up to four courses side by side; the other
-       comparisons keep their three. */
+    /* The approved references compare five universities or four courses
+       side by side; countries and consultants keep their three. */
     const slugs = [
       ...new Set(
         items.map((item) => item.trim().toLowerCase()).filter(Boolean),
       ),
-    ].slice(0, type === 'courses' ? COURSE_COMPARE_LIMIT : 3);
+    ].slice(
+      0,
+      type === 'universities'
+        ? UNIVERSITY_COMPARE_LIMIT
+        : type === 'courses'
+          ? COURSE_COMPARE_LIMIT
+          : 3,
+    );
     if (!slugs.length) return { items: [], invalid: [] };
     const now = new Date();
     if (type === 'countries') {

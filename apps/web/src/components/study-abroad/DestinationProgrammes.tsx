@@ -34,6 +34,7 @@ export function DestinationProgrammes({
   where,
   searchHref,
   empty,
+  compact = false,
 }: {
   /** The page's own address, which the block's links keep to. */
   base: string;
@@ -46,30 +47,34 @@ export function DestinationProgrammes({
   /** The finder, narrowed the same way. */
   searchHref: string;
   empty?: ReactNode;
+  /** ZIP country-subject layout: the finder follows the hero directly. */
+  compact?: boolean;
 }) {
   const total = list.summary.programmes;
   const universities = list.summary.universities;
-  return (
-    <section className="sec sec--tight wrap" id="courses">
-      <div className="sec-head left row-between">
-        <div>
-          <span className="eyebrow">Programmes</span>
-          <h2 className="sec-title">{title}</h2>
-          <p className="sec-lead">
-            {`${formatNumber(total)} ${total === 1 ? 'programme' : 'programmes'}${
-              universities
-                ? ` at ${formatNumber(universities)} ${universities === 1 ? 'university' : 'universities'}`
-                : ''
-            }, each as the university teaches it: its own fees, intakes and entry requirements.`}
-          </p>
+  const content = (
+    <>
+      {compact ? <h2 className="sr-only">{title}</h2> : (
+        <div className="sec-head left row-between">
+          <div>
+            <span className="eyebrow">Programmes</span>
+            <h2 className="sec-title">{title}</h2>
+            <p className="sec-lead">
+              {`${formatNumber(total)} ${total === 1 ? 'programme' : 'programmes'}${
+                universities
+                  ? ` at ${formatNumber(universities)} ${universities === 1 ? 'university' : 'universities'}`
+                  : ''
+              }, each as the university teaches it: its own fees, intakes and entry requirements.`}
+            </p>
+          </div>
+          <Link className="linkcta" href={searchHref}>
+            Open in search{' '}
+            <span className="linkcta__arrow" aria-hidden="true">
+              &rarr;
+            </span>
+          </Link>
         </div>
-        <Link className="linkcta" href={searchHref}>
-          Open in search{' '}
-          <span className="linkcta__arrow" aria-hidden="true">
-            &rarr;
-          </span>
-        </Link>
-      </div>
+      )}
       <ProgrammeResults
         base={base}
         scope={scope}
@@ -82,7 +87,21 @@ export function DestinationProgrammes({
         empty={empty}
         idPrefix="dest"
       />
+      {compact ? (
+        <div className="destination-programmes__search">
+          <Link className="linkcta" href={searchHref}>
+            Open in search <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
+          </Link>
+        </div>
+      ) : null}
       <CompareTray />
+    </>
+  );
+  return compact ? (
+    <section className="sec sec--white sec--tight" id="courses">
+      <div className="wrap">{content}</div>
     </section>
+  ) : (
+    <section className="sec sec--tight wrap" id="courses">{content}</section>
   );
 }

@@ -3,6 +3,7 @@ import { Manrope, Sora } from 'next/font/google';
 import { StudyAbroadShell } from '@/components/study-abroad/StudyAbroadShell';
 import { getDestinations } from '@/lib/study-abroad';
 import './study-abroad.css';
+import './study-abroad-header.css';
 
 /**
  * The Study Abroad route family.

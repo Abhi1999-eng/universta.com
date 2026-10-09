@@ -1,0 +1,58 @@
+/* The ZIP's universities.css comparison, with this page's retained search
+   flow and individual-card reading option. Everything stays inside its frame. */
+.sa .universitycompare .hero__lead { margin-top: clamp(18px, 2.4vw, 30px); }
+.sa .universitycompare .comparepick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: clamp(20px, 2.6vw, 30px); }
+.sa .universitycompare .comparepick__select {
+  flex: 1; min-width: min(240px, 100%); max-width: 100%; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--white);
+  font-family: var(--font-body); font-size: 15px; color: var(--text); cursor: pointer;
+}
+.sa .universitycompare .comparepick__select:focus { outline: 0; border-color: var(--navy); }
+.sa .universitycompare button:disabled,
+.sa .universitycompare select:disabled { cursor: not-allowed; opacity: .55; }
+.sa .universitycompare .compare-empty { padding: clamp(26px, 4vw, 50px) 0; }
+.sa .universitycompare .compare-empty .btn-row { margin-top: 22px; }
+.sa .universitycompare .uni-comparison-table { max-width: 100%; overscroll-behavior-x: contain; }
+.sa .universitycompare .comparetable { table-layout: fixed; }
+.sa .universitycompare .comparetable th[scope="row"] { width: 190px; color: var(--muted); font-weight: 500; font-size: 13.5px; }
+.sa .universitycompare .comparetable thead th { vertical-align: bottom; }
+.sa .universitycompare .comparetable thead th:first-child { width: 190px; }
+.sa .universitycompare .comparetable th,
+.sa .universitycompare .comparetable td { overflow-wrap: anywhere; }
+.sa .universitycompare .cmphead { display: grid; gap: 8px; justify-items: start; }
+.sa .universitycompare .cmphead__name { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: -.02em; text-transform: none; color: var(--text); }
+.sa .universitycompare .cmphead__meta { font-family: var(--font-body); font-size: 12px; color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sa .universitycompare .cmpremove { color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; font-family: var(--font-body); font-weight: 400; }
+.sa .universitycompare .cmpremove:hover { color: var(--accent); }
+.sa .universitycompare .cmpremove[aria-disabled="true"] { pointer-events: none; opacity: .55; }
+.sa .universitycompare .cmpnote { display: block; margin-top: 5px; font-size: 12px; }
+.sa .universitycompare .priorities { margin-top: clamp(28px, 3.4vw, 44px); padding: clamp(22px, 2.8vw, 32px); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper); }
+.sa .universitycompare .priorities .sec-title { font-size: clamp(21px, 2.2vw, 28px); }
+.sa .universitycompare .uni-comparison-search { margin-top: 16px; }
+.sa .universitycompare .uni-comparison-search summary,
+.sa .universitycompare .uni-comparison-cards summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.sa .universitycompare .cmp-picker { display: grid; gap: 14px; margin-top: 16px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--white); }
+.sa .universitycompare .cmp-search { display: grid; gap: 8px; }
+.sa .universitycompare .cmp-search label { font-size: 13px; font-weight: 600; }
+.sa .universitycompare .cmp-search input { width: 100%; min-width: 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); font: inherit; }
+.sa .universitycompare .cmp-options,
+.sa .universitycompare .cmp-chosen { display: flex; flex-wrap: wrap; gap: 8px; }
+.sa .universitycompare .cmp-options .chipbtn { white-space: normal; max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+.sa .universitycompare .cmp-chosen > span { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); font-size: 13px; max-width: 100%; overflow-wrap: anywhere; }
+.sa .universitycompare .cmp-chosen button { flex: none; min-width: 32px; min-height: 32px; border: 0; padding: 2px 4px; background: transparent; cursor: pointer; color: var(--muted); font-size: 18px; }
+.sa .universitycompare .cmp-note { font-size: 13px; color: var(--muted); }
+.sa .universitycompare .cmp-picker > .btn { justify-self: start; }
+.sa .universitycompare .uni-comparison-notice { margin-bottom: 22px; overflow-wrap: anywhere; }
+.sa .universitycompare .uni-comparison-cards { margin-top: 20px; }
+.sa .universitycompare .uni-comparison-cardgrid { display: grid; gap: 16px; margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.sa .universitycompare .uni-comparison-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.sa .universitycompare .uni-comparison-card h3 { font-size: 19px; margin-bottom: 16px; overflow-wrap: anywhere; }
+.sa .universitycompare .uni-comparison-card dl { margin: 0; display: grid; gap: 12px; }
+.sa .universitycompare .uni-comparison-card dt { font-size: 12px; color: var(--muted); }
+.sa .universitycompare .uni-comparison-card dd { margin: 3px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+.sa .universitycompare .uni-comparison-counselling { margin-top: 34px; }
+.sa .universitycompare .uni-comparison-browse { margin-top: 22px; }
+@media (max-width: 699px) {
+  .sa .universitycompare .comparepick__select { flex-basis: 100%; }
+  .sa .universitycompare .uni-comparison-counselling .btn { white-space: normal; max-width: 100%; text-align: center; }
+}

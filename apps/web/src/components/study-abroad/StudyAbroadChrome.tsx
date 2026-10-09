@@ -1,12 +1,10 @@
 import Link from 'next/link';
+import { StudyAbroadMegaMenu, type NavigationGroup } from './StudyAbroadMegaMenu';
 
 /**
- * The header, mobile drawer and footer from the approved Study Abroad design.
- *
- * The export ships every navigation link as `href=", , , , , "` -- a template
- * artefact, not a destination. Those are replaced here with the routes this
- * site actually serves, and the three legal pages the design lists but the site
- * does not have yet are left out rather than pointed at a 404.
+ * The approved export's navigation, with its links limited to pages this
+ * product serves. Its institution and planning links also cover later phases,
+ * so those menus lead to the existing directories and contact page here.
  */
 
 export const PRIMARY = [
@@ -17,6 +15,66 @@ export const PRIMARY = [
   { label: 'Success Stories', href: '/success-stories' },
   { label: 'How It Works', href: '/about' },
 ] as const;
+
+export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
+  {
+    label: 'Study Abroad',
+    description: 'Explore where and what to study',
+    items: [
+      { label: 'Destinations', href: '/study-abroad', description: 'Countries with universities, courses and costs' },
+      { label: 'Universities', href: '/universities', description: 'Compare universities worldwide' },
+      { label: 'Courses', href: '/courses', description: 'Find programmes by subject and level' },
+      { label: 'Subjects', href: '/subjects', description: 'Browse subjects and career areas' },
+      { label: 'Specializations', href: '/specializations', description: 'Narrow down within a subject' },
+      { label: 'Scholarships', href: '/scholarships', description: 'Funding by country, level and subject' },
+      { label: 'Consultants', href: '/study-abroad-consultants', description: 'Study abroad consultants by destination' },
+      { label: 'Cities', href: '/cities', description: 'Explore places to study' },
+    ],
+  },
+  {
+    label: 'Tools',
+    description: 'Plan, compare and check',
+    items: [
+      { label: 'Course Finder', href: '/courses', description: 'Filter programmes' },
+      { label: 'University Finder', href: '/universities', description: 'Filter universities' },
+      { label: 'Scholarship Finder', href: '/scholarships', description: 'Filter scholarships' },
+      { label: 'University Compare', href: '/compare/universities', description: 'Compare universities side by side' },
+      { label: 'Course Compare', href: '/compare/courses', description: 'Compare programmes side by side' },
+      { label: 'Country Compare', href: '/compare/countries', description: 'Compare study destinations' },
+      { label: 'Consultant Compare', href: '/compare/consultants', description: 'Compare consultant profiles' },
+    ],
+  },
+  {
+    label: 'Resources',
+    description: 'Guides and answers',
+    items: [
+      { label: 'Country Guides', href: '/study-abroad', description: 'Explore study destinations' },
+      { label: 'Success Stories', href: '/success-stories', description: 'Read student stories' },
+      { label: 'Events', href: '/events', description: 'Browse upcoming events' },
+      { label: 'FAQs', href: '/faq', description: 'Answers to common questions' },
+    ],
+  },
+  {
+    label: 'For Institutions',
+    description: 'Connect with Universta',
+    items: [
+      { label: 'Universities', href: '/universities', description: 'Find a university profile and its claim option' },
+      { label: 'Consultants', href: '/study-abroad-consultants', description: 'Explore consultant profiles' },
+      { label: 'Contact', href: '/contact', description: 'Talk to Universta' },
+    ],
+  },
+  {
+    label: 'About',
+    description: 'Universta',
+    items: [
+      { label: 'About Universta', href: '/about', description: 'Who we are' },
+      { label: 'How It Works', href: '/about', description: 'Learn about Universta' },
+      { label: 'Free counselling', href: '/counselling', description: 'Talk through your study plans' },
+      { label: 'Contact', href: '/contact', description: 'Talk to Universta' },
+      { label: 'Careers', href: '/careers', description: 'Explore opportunities' },
+    ],
+  },
+];
 
 const FOOTER_COLUMNS = [
   {
@@ -66,26 +124,16 @@ export function StudyAbroadHeader() {
       <header className="nav">
         <div className="wrap nav__inner">
           <Brand />
-          <nav className="nav__links" aria-label="Primary">
-            {PRIMARY.map((item) => (
-              <Link key={item.href} href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <StudyAbroadMegaMenu groups={NAVIGATION_GROUPS} />
           <div className="nav__right">
-            <button
+            <Link
               className="nav__search"
-              type="button"
-              data-open-selector
-              aria-haspopup="dialog"
-              aria-expanded="false"
-              aria-label="Search destinations"
-              title="Search destinations"
+              href="/search"
+              aria-label="Search Universta"
             >
               <svg
-                width="18"
-                height="18"
+                width="17"
+                height="17"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -95,9 +143,25 @@ export function StudyAbroadHeader() {
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
               </svg>
+              <span className="nav__search-label">Search</span>
+            </Link>
+            <button
+              className="nav__globe"
+              type="button"
+              data-open-selector
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-label="Explore countries"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
+              </svg>
+              <span className="nav__globe-label">Explore countries</span>
             </button>
+            <Link className="nav__account" href="/student/login">Log in</Link>
             <button className="btn btn--sm nav__cta" type="button" data-open-assessment>
-              Check My Options{' '}
+              Start My Journey{' '}
               <span className="btn__arrow" aria-hidden="true">
                 &rarr;
               </span>

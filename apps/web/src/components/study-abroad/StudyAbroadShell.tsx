@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { DestinationDirectory } from '@/lib/study-abroad';
-import { PRIMARY, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChrome';
+import { NAVIGATION_GROUPS, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChrome';
 import { AssessmentDialog } from './AssessmentDialog';
 import { FlagMark } from './FlagMark';
 import { searchDestinations } from '@/lib/study-abroad-view';
@@ -85,6 +85,8 @@ export function StudyAbroadShell({
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [assessment, setAssessment] = useState<AssessmentContext | null>(null);
   const [query, setQuery] = useState('');
+  const drawer = useRef<HTMLElement>(null);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   /* Opened anywhere on a country guide, the assessment belongs to that country:
    * its destination step arrives answered and the lead records the guide it
@@ -105,7 +107,34 @@ export function StudyAbroadShell({
 
   useBodyScrollLock(selectorOpen || assessment !== null || drawerOpen);
   useEscape(selectorOpen, closeSelector);
-  useEscape(drawerOpen, () => setDrawerOpen(false));
+  useEscape(drawerOpen, closeDrawer);
+
+  /* The drawer covers the page, so keyboard navigation stays inside it
+     until it closes and then returns to the menu button. */
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    drawer.current?.querySelector<HTMLAnchorElement>('a')?.focus();
+    const keepFocus = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(drawer.current?.querySelectorAll<HTMLElement>('a, summary, button') ?? [])
+        .filter((element) => element.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', keepFocus);
+    return () => {
+      document.removeEventListener('keydown', keepFocus);
+      opener?.focus();
+    };
+  }, [drawerOpen]);
 
   /* The header is static markup, so the state its buttons announce is kept in
    * step here. Without this the menu button said "Open menu", collapsed, with
@@ -121,9 +150,8 @@ export function StudyAbroadShell({
       .forEach((button) => button.setAttribute('aria-expanded', String(selectorOpen)));
   }, [selectorOpen]);
 
-  /* The header opens this from a search icon, so typing is the next thing the
-   * student does. Focus goes back to whatever opened it on close, rather than
-   * being dropped on the body when the dialog hides. */
+  /* Choosing a country starts with typing. Focus goes back to the globe
+   * control on close, rather than being dropped on the page. */
   useEffect(() => {
     if (!selectorOpen) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -159,15 +187,9 @@ export function StudyAbroadShell({
   );
   const matches = useMemo(() => searchDestinations(all, query).slice(0, 40), [all, query]);
 
-  /* The header's magnifier replaced the "Explore countries" pill, and with it
-     the panel only ever searched countries -- so typing "computer" into the
-     one search control on the page answered "No destination matches that
-     name", while the catalogue search that does answer it sat on the home
-     page and on /search where nobody looked for it.
-     
-     The destinations stay matched in the browser, instantly and without a
-     request, because choosing a destination is what this panel is for. What
-     the catalogue knows is fetched and shown underneath. */
+  /* The country selector also keeps its existing catalogue results. The
+     destinations match instantly in the browser; courses and universities
+     are fetched underneath once the term is specific enough. */
   const term = query.trim();
   const tooShort = term.length < MIN_SEARCH;
   const [fetched, setFetched] = useState<SearchGroup[]>([]);
@@ -222,17 +244,27 @@ export function StudyAbroadShell({
           identity the shared chrome's drawer exposes. */}
       <nav
         className="drawer"
+        ref={drawer}
         id="sa-drawer"
         aria-label="Mobile navigation"
         data-drawer
         data-open={String(drawerOpen)}
         aria-hidden={!drawerOpen}
       >
-        {PRIMARY.map((item) => (
-          <Link key={item.href} href={item.href} onClick={() => setDrawerOpen(false)}>
-            {item.label}
-          </Link>
+        <Link className="drawer__search" href="/search" onClick={() => setDrawerOpen(false)}>
+          Search Universta
+        </Link>
+        {NAVIGATION_GROUPS.map((group) => (
+          <details className="drawer__group" key={group.label}>
+            <summary>{group.label}</summary>
+            {group.items.map((item) => (
+              <Link key={`${item.href}:${item.label}`} href={item.href} onClick={() => setDrawerOpen(false)}>
+                {item.label}
+              </Link>
+            ))}
+          </details>
         ))}
+        <Link href="/student/login" onClick={() => setDrawerOpen(false)}>Log in</Link>
         <div className="drawer__cta">
           <button
             className="btn btn--block btn--lg"
