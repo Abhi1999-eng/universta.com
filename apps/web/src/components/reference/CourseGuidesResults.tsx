@@ -9,6 +9,7 @@ import {
   GUIDE_MULTI_KEYS,
   guideFilterCount,
   guideListSearch,
+  guidesAsProgrammes,
   NO_GUIDE_FILTERS,
   programmeOnlyEntries,
   type GuideFilters,
@@ -20,6 +21,7 @@ import { intakeRange } from '@/lib/intake-range';
 import { useStudyAbroadShell } from '@/components/study-abroad/StudyAbroadShell';
 import { pagerPages } from './pager-pages';
 import { SearchCombobox } from './SearchCombobox';
+import { courseListSearch, readCourseFilters } from '@/lib/university-courses';
 
 /**
  * The course guides: /courses?view=guides, the generic course search the
@@ -47,7 +49,12 @@ import { SearchCombobox } from './SearchCombobox';
  * programmes finds them still in force.
  */
 
+export type CourseGuidesScope = Partial<Record<'subject' | 'subSubject' | 'level', string[]>>;
+
 export type CourseGuidesResultsProps = {
+  /** A scoped level listing carries its fixed field and level in this path. */
+  base?: string;
+  scope?: CourseGuidesScope;
   courses: Course[];
   meta: { page: number; limit: number; total: number; totalPages: number };
   /** The options and their counts for the list as it is filtered. */
@@ -215,7 +222,12 @@ function AssessmentLink({ children }: { children: ReactNode }) {
 }
 
 export function CourseGuidesResults(props: CourseGuidesResultsProps) {
-  const { courses, meta, filters, filterOptions, viewParam } = props;
+  const { courses, meta, filterOptions, viewParam, base = '/courses', scope = {} } = props;
+  const fixed = new Set<GuideMultiKey>(
+    (Object.keys(scope) as Array<keyof CourseGuidesScope>).filter((key) => scope[key]?.length),
+  );
+  const filters = { ...props.filters };
+  for (const key of fixed) filters[key] = [];
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const taught = new Set(props.taught ?? []);
@@ -257,8 +269,20 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
 
   /** The list's address with one change made, in the guides' own names. */
   function hrefWith(change: Partial<GuideFilters>) {
-    return `/courses${guideListSearch(filters, change, { view: viewParam })}`;
+    return `${base}${guideListSearch(filters, change, { view: viewParam })}`;
   }
+
+  const suggestions = new URLSearchParams(props.programmes ? { with: 'programmes' } : {});
+  for (const key of fixed) suggestions.set(key, scope[key as keyof CourseGuidesScope]!.join(','));
+  const suggestionsEndpoint = `/api/courses/suggestions${suggestions.size ? `?${suggestions}` : ''}`;
+  const searchFields = [...new URLSearchParams(
+    guideListSearch(filters, { q: '', page: 1, pageSize: null }, { view: viewParam }),
+  ).entries()];
+  const programmeHref = (course: Course) => fixed.size || base !== '/courses'
+    ? `${base}${courseListSearch(readCourseFilters({}), {
+        ...guidesAsProgrammes(filters), q: '', course: [course.slug], page: 1,
+      })}#discovery`
+    : `/courses?course=${encodeURIComponent(course.slug)}#discovery`;
 
   /** One place that turns a filter change into a URL, so the back button and a
    * shared link both keep working. It lands on the results, as the browse
@@ -325,7 +349,7 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
     return options;
   };
 
-  const groups = GROUP_ORDER.map((key) => ({
+  const groups = GROUP_ORDER.filter((key) => !fixed.has(key)).map((key) => ({
     key,
     label: GROUP_LABELS[key],
     options: optionsFor(key),
@@ -467,11 +491,7 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
         label="Search courses"
         placeholder="Search courses, universities, specializations or cities"
         submitLabel="Find courses"
-        endpoint={
-          props.programmes
-            ? '/api/courses/suggestions?with=programmes'
-            : '/api/courses/suggestions'
-        }
+        endpoint={suggestionsEndpoint}
         emptyMessage="No courses found."
         value={query}
         onValueChange={setQuery}
@@ -480,9 +500,16 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
         /* A university's programmes open at the results, as a search here
            does; a programme opens its own page. */
         onFollow={(href) =>
-          router.push(href.startsWith('/courses?') ? `${href}#discovery` : href)
+          router.push(href.startsWith(`${base}?`) ? `${href}#discovery` : href)
         }
-      />
+        action={base}
+        name="q"
+        maxLength={100}
+      >
+        {searchFields.map(([key, value], index) => (
+          <input key={`${key}-${index}`} type="hidden" name={key} value={value} />
+        ))}
+      </SearchCombobox>
 
       <div className="results">
         {drawerOpen ? (
@@ -507,9 +534,10 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
           <div className="filters-panel__head">
             <span className="filters-panel__title">Filters</span>
             {activeCount ? (
-              <Link className="linkbtn" href={clearAll} rel="nofollow">
+              /* Clear through the browser to avoid cached same-route fragments. */
+              <a className="linkbtn" href={clearAll} rel="nofollow">
                 Clear all
-              </Link>
+              </a>
             ) : null}
             <button
               type="button"
@@ -527,7 +555,7 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
           <form
             id="course-guide-filters"
             className="filters-panel__body"
-            action="/courses"
+            action={base}
             method="get"
             data-testid="course-guide-form"
             onSubmit={(event) => {
@@ -726,13 +754,13 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
                 </Link>
               ))}
               {chips.length > 1 ? (
-                <Link
+                <a
                   className="activechips__clear linkbtn"
-                  href={`${hrefWith({ ...NO_GUIDE_FILTERS, sort: filters.sort })}#discovery`}
+                  href={clearAll}
                   rel="nofollow"
                 >
                   Clear all
-                </Link>
+                </a>
               ) : null}
             </div>
           ) : null}
@@ -765,7 +793,7 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
                               course at each university -- do. */}
                           <Link
                             className="coursecard__compare"
-                            href={`/courses?course=${encodeURIComponent(course.slug)}#discovery`}
+                            href={programmeHref(course)}
                           >
                             Compare programmes
                           </Link>

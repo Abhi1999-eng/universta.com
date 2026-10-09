@@ -359,6 +359,7 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
 
   const active = activeFilterCount(filters);
   const chips = activeChips(filters, facets);
+  const hasFilterChips = chips.some((chip) => chip.key !== 'q');
   const fixed = new Set(
     (Object.keys(scope) as CourseFilterKey[]).filter(
       (key) => scope[key]?.length,
@@ -875,10 +876,17 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
                rather than all or nothing. */
             <div className="dir__none" data-testid="course-empty">
               <p>
-                {`No ${noun.one}${props.where ? ` ${props.where}` : ''} matches these filters. Remove a filter to see more.`}
+                {filters.q.trim()
+                  ? `No ${noun.one}${props.where ? ` ${props.where}` : ''} matches this search${hasFilterChips ? ' and filters' : ''}. Try another search${hasFilterChips ? ' or remove a filter' : ''}.`
+                  : `No ${noun.one}${props.where ? ` ${props.where}` : ''} matches these filters. Remove a filter to see more.`}
               </p>
               {/* On its own, so what a page hands in is never one of a
                   list of children. */}
+              {props.empty ? <div>{props.empty}</div> : null}
+            </div>
+          ) : meta.page <= 1 ? (
+            <div className="dir__none" data-testid="course-empty">
+              <p>No {noun.many}{props.where ? ` ${props.where}` : ''} are published yet.</p>
               {props.empty ? <div>{props.empty}</div> : null}
             </div>
           ) : (

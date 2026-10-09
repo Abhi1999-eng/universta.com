@@ -169,6 +169,21 @@ describe('the programme results block', () => {
     expect(html).toContain('name="country" checked="" value="atlantis"');
   });
 
+  it('distinguishes an unpublished scoped level from a page past the end', () => {
+    const empty = {
+      base: '/subjects/computer-science/levels/mba',
+      where: 'for Computer Science at MBA',
+      cards: [],
+      meta: { page: 1, limit: 18, total: 0, totalPages: 0 },
+    };
+    expect(render(empty)).toContain('No programmes for Computer Science at MBA are published yet.');
+    expect(render(empty)).not.toContain('Back to the start');
+    expect(render({ ...empty, meta: { ...empty.meta, page: 3 } })).toContain('The list ends before this page.');
+    const searched = render({ ...empty, filters: readCourseFilters({ q: 'unmatched course' }) });
+    expect(searched).toContain('matches this search. Try another search.');
+    expect(searched).not.toContain('are published yet');
+  });
+
   it('suggests as the reader types when told where to ask, and still searches without script', () => {
     const html = render({
       suggestions: '/api/courses/suggestions?with=programmes',

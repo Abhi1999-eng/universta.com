@@ -182,7 +182,7 @@ describe('a subject’s page', () => {
     expect(levelled).toMatch(
       /href="\/courses\?subject=computer-science&amp;view=guides">Every Computer Science programme/,
     );
-    expect(levelled).toContain('href="/courses?subject=computer-science&amp;level=PG&amp;view=guides"');
+    expect(levelled).toContain('href="/subjects/computer-science/levels/masters?view=guides"');
   });
 });
 
@@ -250,7 +250,7 @@ describe('programmes on a subject’s and a specialization’s page', () => {
     );
     expect(html).toContain('Computer Science courses by level');
     expect(html).toContain('14 courses, each under the level it is taught at.');
-    expect(html).toContain('href="/courses?subject=computer-science&amp;level=PG&amp;view=guides"');
+    expect(html).toContain('href="/subjects/computer-science/levels/masters?view=guides"');
     expect(html).toMatch(/<span class="label">Programmes profiled<\/span><b>136<\/b>/);
     expect(html).toMatch(/<span class="label">Courses<\/span><b>36<\/b>/);
   });
@@ -414,7 +414,7 @@ describe('a specialization’s page', () => {
 
   it('opens each level’s count on the course guides', () => {
     expect(html).toContain(
-      'href="/courses?subject=computer-science&amp;specialization=software-engineering&amp;level=UG&amp;view=guides"',
+      'href="/subjects/computer-science/software-engineering/levels/bachelors?view=guides"',
     );
   });
 

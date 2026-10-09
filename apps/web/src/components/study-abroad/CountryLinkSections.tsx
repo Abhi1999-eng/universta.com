@@ -292,10 +292,11 @@ export function CountryUniversities({
             one click on. What the guide is handed about each one is less
             than the list holds -- a name, a type, a rank -- and the card
             shows what it has; the destination it does not need to be told. */}
-        <div className="unigrid unigrid--compact">
+        <div className="unigrid unigrid--compact unigrid--aligned">
           {universities.slice(0, 6).map((university) => (
             <UniversityCard
               key={university.id}
+              showFlag={false}
               university={{
                 ...university,
                 country: {

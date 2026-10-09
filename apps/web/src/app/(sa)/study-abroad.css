@@ -577,15 +577,6 @@
    is an initial, not a picture. */
 .sa .trail .cchip__mark{ width: 1.5em; height: 1.1em; border-radius: 3px; }
 .sa .trail__dot{ color: var(--muted); font-weight: 700; }
-/* Size scales to the country name so "Germany" and "Saint Vincent and the
-   Grenadines" both sit inside the column. --namelen is set per country. */
-.sa .hero__display{
-  font-family: var(--font-display);
-  font-size: clamp(32px, calc(62vw / var(--namelen, 8)), 76px);
-  font-weight: 700; line-height: var(--lh-tight); letter-spacing: -0.045em;
-  text-transform: uppercase; color: var(--navy);
-  margin: 0 0 6px; overflow-wrap: break-word; hyphens: none;
-}
 /* The ring is what makes a white band read as white rather than as a gap in
    the rule: Denmark's cross and Ivory Coast's middle stripe are the page's own
    background colour, and without an edge the bar looks broken in half. */
@@ -1441,7 +1432,8 @@
 .sa .bigsearch__wrap{ position: relative; max-width: 760px; }
 .sa .sugg{
   position: absolute; z-index: 60; inset-inline: 0; top: calc(100% + 8px);
-  max-height: min(60vh, 520px); overflow-y: auto;
+  max-height: min(60vh, 520px, var(--sugg-available-height, 60vh)); overflow-y: auto;
+  overscroll-behavior-y: contain;
   background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-lg, var(--shadow));
   padding: 6px;
@@ -2739,6 +2731,21 @@
 .sa .unicard__desc { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
 .sa .unicard__where span { min-width: 0; }
 
+/* Each row shares its header, figures, description and action tracks, even
+   when a university has no recorded type or fewer subjects to display. */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 720px) {
+  .sa .unigrid--aligned > .unicard {
+    display: grid; grid-template-rows: subgrid; grid-row: span 5; row-gap: 16px;
+  }
+  .sa .unigrid--aligned .unicard__head { grid-row: 1; }
+  .sa .unigrid--aligned .unicard__stats { grid-row: 2; }
+  .sa .unigrid--aligned .unicard__desc { grid-row: 3; }
+  .sa .unigrid--aligned .unicard__fields { grid-row: 4; }
+  .sa .unigrid--aligned .unicard__foot { grid-row: 5; align-self: end; }
+  }
+}
+
 /* Compare is a link to the comparison page, drawn as the reference's icon
    button. */
 .sa a.iconbtn { text-decoration: none; }
@@ -3125,8 +3132,8 @@
    box and the "At a glance" card ran past the gutter and off a 360px
    screen. */
 @media (max-width: 999.98px){ .sa .hero__grid{ grid-template-columns: minmax(0, 1fr); } }
-/* The subjects search's suggestions hang below the hero; it clipped them at
-   its bottom edge, specializations and all. Sideways it still clips. */
+/* Hero searches can extend their suggestion panel over the following section
+   while keeping the page from overflowing sideways. */
 .sa .hero--suggests{ overflow-x: clip; overflow-y: visible; }
 /* A chip that opens a filtered slice of these lists lands on the results
    bar, not under the header and the tab strip. */

@@ -565,7 +565,7 @@ describe('the country guide’s universities band', () => {
 
   it('draws the list’s card in the compact grid', () => {
     const html = render();
-    expect(html).toContain('class="unigrid unigrid--compact"');
+    expect(html).toContain('class="unigrid unigrid--compact unigrid--aligned"');
     expect(html.match(/class="unicard"/g) ?? []).toHaveLength(2);
     expect(html).toContain('Public');
   });
@@ -578,7 +578,7 @@ describe('the country guide’s universities band', () => {
 
   it('names the destination on each card from the guide it is on', () => {
     const html = render();
-    expect(html).toContain('/flags/gb.svg');
+    expect(html).not.toContain('/flags/gb.svg');
     expect(html).toContain('<span>United Kingdom</span>');
   });
 

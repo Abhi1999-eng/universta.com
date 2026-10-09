@@ -114,7 +114,7 @@ export function HomeHero({
   ].filter((stat) => stat.value > 0);
 
   return (
-    <section className="hero h-home">
+    <section className="hero hero--suggests h-home">
       <div className="wrap">
         <div className="hero__lead h-home__lead">
           <p className="hero__eyebrow">Study abroad, connected</p>
