@@ -27,14 +27,15 @@ import { formatNumber } from '@/lib/format';
  * other level shows only where something is. An empty level is its name and
  * "0 courses" and nothing more: the section's lead, or the notice above it,
  * says once why nothing is listed, and a line under each level said it six
- * times over. It has no link either, because the list it would open is
- * empty too.
+ * times over. Global subject pages link to the level's own listing, where
+ * visitors can switch levels; destination pages keep these groups in place.
  */
 export function CourseLevels({
   groups,
   allHref,
   courseHref = (course) => `/courses/${course.slug}`,
   branch = true,
+  levelPages = false,
 }: {
   groups: CourseLevelGroup[];
   /** Where a level's whole list is: the course search, filtered to it. */
@@ -43,6 +44,8 @@ export function CourseLevels({
   /** Whether a row names its specialization. Not on a specialization's own
    * page, where every row would say the same one. */
   branch?: boolean;
+  /** Global subject pages open a dedicated level list, including empty levels. */
+  levelPages?: boolean;
 }) {
   if (!groups.length) return null;
 
@@ -65,13 +68,13 @@ export function CourseLevels({
           Links, not filters: every level stays on the page. */}
       {/* Not when every level is empty: six chips reading 0, each jumping a
           few lines down to say so again, are no way in. */}
-      {groups.length > 1 && groups.some((group) => group.count) ? (
+      {groups.length > 1 && (levelPages || groups.some((group) => group.count)) ? (
         <nav className="levelbar levelbar--wide" aria-label="Study levels">
           <span className="filters__label">Study level</span>
           {groups.map((group) => (
             <a
               className={`chipbtn${group.count ? '' : ' chipbtn--none'}`}
-              href={`#${levelAnchor(group.level.code)}`}
+              href={levelPages ? allHref(group.level.code) : `#${levelAnchor(group.level.code)}`}
               key={group.level.id}
             >
               {group.level.name}{' '}
@@ -95,14 +98,18 @@ export function CourseLevels({
                   className="coursegroup__title"
                   id={`${levelAnchor(group.level.code)}-h`}
                 >
-                  <span className="coursegroup__head">
+                  {levelPages ? <Link className="coursegroup__head" href={allHref(group.level.code)}>
+                    <span className="coursegroup__name">{group.level.name}</span>
+                    <span className="coursegroup__n">0 courses</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </Link> : <span className="coursegroup__head">
                     <span className="coursegroup__name">{group.level.name}</span>
                     <span className="coursegroup__n">0 courses</span>
                     {/* The listed levels' arrow's room, so the counts line up. */}
                     <span className="coursegroup__noarrow" aria-hidden="true">
                       &rarr;
                     </span>
-                  </span>
+                  </span>}
                 </h3>
               </section>
             );

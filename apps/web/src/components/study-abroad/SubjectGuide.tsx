@@ -6,6 +6,7 @@ import type {
   SubjectDetail,
 } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
+import { subjectLevelHref } from '@/lib/subject-levels';
 import {
   levelCoursesHref,
   levelTotal,
@@ -436,9 +437,10 @@ export function SubjectGuide({
             </SectionHead>
             {groups.length ? (
               <CourseLevels
+                levelPages
                 groups={groups}
                 allHref={(level) =>
-                  levelCoursesHref({ subject: subject.slug, level })
+                  subjectLevelHref({ subject: subject.slug, level, guides: true })
                 }
               />
             ) : (

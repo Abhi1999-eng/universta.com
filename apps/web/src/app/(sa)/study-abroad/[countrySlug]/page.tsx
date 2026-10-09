@@ -322,28 +322,21 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
 
           <div className="hero__grid">
             <div className="hero__main">
-              {/* No eyebrow here: "Study abroad · Europe · DK" under the
-                  breadcrumb read as a second breadcrumb. The snapshot's chip
-                  carries the ISO code. The design's display name. Decorative: the heading below
-                  already says it, so it is not announced twice. */}
-              <p
-                className="hero__display"
-                aria-hidden="true"
-                style={{ '--namelen': country.name.length } as React.CSSProperties}
-              >
-                {country.name}
-              </p>
+              <h1 className="hero__h1">{country.pageHeading ?? `Study in ${where}`}</h1>
               {flag?.length ? (
                 <div className="hero__bands" aria-hidden="true">
                   {flag.map((band, index) => (
                     <span
                       key={`${band.colour}-${index}`}
-                      style={{ background: band.colour, flexGrow: band.share }}
+                      style={{
+                        background: band.colour,
+                        // Fractional grow factors summing below one leave a gap.
+                        flexGrow: band.share * 100,
+                      }}
                     />
                   ))}
                 </div>
               ) : null}
-              <h1 className="hero__h1">{country.pageHeading ?? `Study in ${where}`}</h1>
               {heroSub ? <p className="hero__sub">{heroSub}</p> : null}
               {country.tagline ? (
                 <p className="hero__promise">{country.tagline}</p>

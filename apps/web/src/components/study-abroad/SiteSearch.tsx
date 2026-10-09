@@ -53,6 +53,7 @@ export function SiteSearch({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const box = useRef<HTMLDivElement>(null);
+  const suggestions = useRef<HTMLDivElement>(null);
   /* Enter on a highlighted row clicks that row's own link rather than
      pushing the route: the link is already there, Next handles it as a
      client navigation, and the box stays renderable outside a router. */
@@ -106,6 +107,47 @@ export function SiteSearch({
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
+
+  /* On a phone the search field can sit near the viewport's bottom. Bound
+     the panel to the space below it so every result is reachable by scrolling
+     the panel, including while the on-screen keyboard resizes the viewport. */
+  useEffect(() => {
+    if (!open || tooShort) return;
+    const panel = suggestions.current;
+    if (!panel) return;
+    const viewport = window.visualViewport;
+    const fit = () => {
+      const bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+      const available = Math.max(120, bottom - panel.getBoundingClientRect().top - 16);
+      panel.style.setProperty('--sugg-available-height', `${available}px`);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    window.addEventListener('scroll', fit, { passive: true });
+    viewport?.addEventListener('resize', fit);
+    viewport?.addEventListener('scroll', fit);
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.removeEventListener('scroll', fit);
+      viewport?.removeEventListener('resize', fit);
+      viewport?.removeEventListener('scroll', fit);
+    };
+  }, [open, tooShort]);
+
+  /* Keep the highlighted row in the panel's own scroll frame. Moving the
+     page would pull the search field away while the reader uses its keys. */
+  useEffect(() => {
+    if (!open || tooShort || active < 0) return;
+    const panel = suggestions.current;
+    const option = links.current.get(active);
+    if (!panel || !option) return;
+    const frame = panel.getBoundingClientRect();
+    const row = option.getBoundingClientRect();
+    const top = frame.top + panel.clientTop;
+    const bottom = top + panel.clientHeight;
+    if (row.top < top) panel.scrollTop -= top - row.top;
+    else if (row.bottom > bottom) panel.scrollTop += row.bottom - bottom;
+  }, [active, open, tooShort]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape') return setOpen(false);
@@ -161,6 +203,7 @@ export function SiteSearch({
           aria-expanded={panel}
           aria-controls={listId}
           aria-autocomplete="list"
+          aria-activedescendant={panel && active >= 0 ? `${listId}-${active}` : undefined}
           onChange={(event) => {
             typed.current = true;
             setQuery(event.target.value);
@@ -176,7 +219,7 @@ export function SiteSearch({
       </form>
 
       {panel ? (
-        <div className="sugg" id={listId} role="listbox" aria-label="Suggestions">
+        <div className="sugg" id={listId} ref={suggestions} role="listbox" aria-label="Suggestions">
           {showEmpty ? (
             <p className="sugg__none">
               Nothing matches <b>{term}</b> yet.
@@ -196,6 +239,7 @@ export function SiteSearch({
                   return (
                     <li key={item.id}>
                       <Link
+                        id={`${listId}-${index}`}
                         className={`sugg__item${index === active ? ' is-active' : ''}`}
                         href={item.href}
                         ref={(node) => {

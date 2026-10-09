@@ -306,9 +306,9 @@ export function UniversityIndex({
             </div>
 
             {shown.length ? (
-              <div className="unigrid">
+              <div className="unigrid unigrid--aligned">
                 {shown.slice(0, visible).map((row) => (
-                  <UniversityCard key={row.id} university={row} guide={!country} />
+                  <UniversityCard key={row.id} university={row} guide={!country} showFlag={!country} />
                 ))}
               </div>
             ) : (

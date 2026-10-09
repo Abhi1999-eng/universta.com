@@ -36,12 +36,15 @@ export function compareUniversityHref(slug: string) {
 export function UniversityCard({
   university,
   guide = false,
+  showFlag = true,
 }: {
   university: UniversityCardData;
   /** Add a button to the university's country guide -- worth it on the
    * worldwide directory, where the cards cross many countries, and noise on
    * a list that is one country's already. */
   guide?: boolean;
+  /** A destination's own list already identifies the country. */
+  showFlag?: boolean;
 }) {
   const href = universityHref(university.slug);
   const type = institutionTypeLabel(university.institutionType);
@@ -82,7 +85,7 @@ export function UniversityCard({
           </h3>
           {where ? (
             <p className="unicard__where">
-              {university.country ? (
+              {showFlag && university.country ? (
                 <FlagMark iso2Code={university.country.iso2Code} bands={null} />
               ) : null}
               <span>{where}</span>

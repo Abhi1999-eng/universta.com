@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { CourseLevelGroup, SpecializationDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
+import { subjectLevelHref } from '@/lib/subject-levels';
 import { inCountry } from '@/lib/country-article';
 import {
   levelCoursesHref,
@@ -318,13 +319,15 @@ export function SpecializationGuide({
             </SectionHead>
             {groups.length ? (
               <CourseLevels
+                levelPages
                 groups={groups}
                 branch={false}
                 allHref={(level) =>
-                  levelCoursesHref({
+                  subjectLevelHref({
                     subject: subject.slug,
-                    subSubject: specialization.slug,
+                    specialization: specialization.slug,
                     level,
+                    guides: true,
                   })
                 }
               />
