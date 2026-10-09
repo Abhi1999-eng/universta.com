@@ -3445,3 +3445,10 @@
 .sa .uc-curriculum .sec-head { margin-bottom: 0; }
 .sa .uc-modnote { margin-top: 0; max-width: 62ch; font-size: 15px; }
 .sa .uc-modnote a { color: var(--text); }
+
+/* Country-subject ZIP layout: secondary directory links stay below the finder. */
+.sa .field-directory__links{ display: flex; flex-wrap: wrap; gap: 12px 22px; }
+.sa .field-directory__links .linkcta{ white-space: normal; }
+.sa .destination-programmes__search{ display: flex; justify-content: flex-end; margin-top: 18px; }
+
+.sa #specialization-list{ scroll-margin-top: calc(var(--nav-h) + 24px); }

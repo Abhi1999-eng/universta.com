@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { webBaseUrl } from './helpers/e2e-urls';
 
 const comparisons = [
@@ -20,6 +20,14 @@ const comparisons = [
     ],
   },
 ];
+
+async function openUniversityDraftSearch(page: Page) {
+  const input = page.getByLabel('Search published universities');
+  if (!(await input.isVisible())) {
+    await page.locator('summary').filter({ hasText: 'Search published universities' }).click();
+  }
+  await expect(input).toBeVisible();
+}
 
 test.describe('published Phase 1 comparisons', () => {
   test('keeps four programme comparisons shareable and responsive', async ({ page }) => {
@@ -50,11 +58,72 @@ test.describe('published Phase 1 comparisons', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
+
+  test('adds universities immediately and keeps the ZIP comparison URL and mobile table usable', async ({ page }) => {
+    const path = `${webBaseUrl}/compare/universities`;
+    const universities = comparisons.find((comparison) => comparison.type === 'universities')!.items;
+    await page.goto(path);
+    await expect(page.locator('.sa')).toHaveCount(1);
+    const picker = page.getByLabel('Add a university to the comparison');
+    const selected: string[] = [];
+    for (const slug of universities) {
+      await picker.selectOption(slug);
+      selected.push(slug);
+      await expect.poll(() => new URL(page.url()).searchParams.get('items')).toBe(selected.join(','));
+      await expect(page.locator('.comparetable thead th')).toHaveCount(selected.length + 1);
+    }
+
+    await page.reload();
+    await expect(page.locator('.comparetable thead th')).toHaveCount(4);
+    expect(new URL(page.url()).searchParams.get('items')).toBe(selected.join(','));
+    await page.goBack({ waitUntil: 'commit' });
+    await expect.poll(() => new URL(page.url()).searchParams.get('items')).toBe(selected.slice(0, 2).join(','));
+    await expect(page.locator('.comparetable thead th')).toHaveCount(3);
+    await page.goForward({ waitUntil: 'commit' });
+    await expect(page.locator('.comparetable thead th')).toHaveCount(4);
+
+    await page.getByRole('link', { name: /^Remove .* from the comparison$/ }).first().click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('items')).toBe(selected.slice(1).join(','));
+    await expect(page.locator('.comparetable thead th')).toHaveCount(3);
+    await expect(picker).toBeEnabled();
+    await picker.selectOption(selected[0]);
+    await expect.poll(() => new URL(page.url()).searchParams.get('items')).toBe([...selected.slice(1), selected[0]].join(','));
+    await expect(page.locator('.comparetable thead th')).toHaveCount(4);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const region = page.getByRole('region', { name: 'University comparison' });
+    await expect(region).toBeVisible();
+    await expect(region).toHaveAttribute('tabindex', '0');
+    const tableSize = await region.evaluate((element) => ({
+      width: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+    expect(tableSize.width).toBeGreaterThan(0);
+    expect(tableSize.scroll, 'the comparison scrolls within its own region on a phone').toBeGreaterThan(tableSize.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+    await page.getByTestId('university-compare-clear').click();
+    await expect(page).toHaveURL(path);
+    await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(0);
+
+    // Repeated and unpublished slugs cannot create duplicate or invented
+    // columns, or consume a valid published university's position.
+    const invalid = 'not-a-published-comparison-university';
+    await page.goto(`${path}?items=${universities[0]},${universities[0]},${invalid},${universities[1]}`);
+    await expect(page.locator('.comparetable thead th')).toHaveCount(3);
+    await expect(page.getByText(new RegExp(`Not published.*${invalid}`))).toBeVisible();
+    await expect(page.locator('.comparetable')).not.toContainText(invalid);
+    await page.getByTestId('university-compare-clear').click();
+    await expect(page).toHaveURL(path);
+  });
+
   for (const comparison of comparisons) {
     test(`keeps ${comparison.type} comparison state shareable and responsive`, async ({ page }) => {
       const path = `${webBaseUrl}/compare/${comparison.type}`;
       const items = comparison.items.join(',');
       await page.goto(path);
+
+      if (comparison.type === 'universities') await openUniversityDraftSearch(page);
 
       const input = page.getByLabel(`Search published ${comparison.type}`);
       for (const slug of comparison.items) {
@@ -63,17 +132,23 @@ test.describe('published Phase 1 comparisons', () => {
       }
       await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
       await expect(page.getByRole('button', { name: 'Compare selected' })).toBeEnabled();
-      expect(
-        await page.getByRole('button', { name: /^Add / }).evaluateAll((buttons) =>
-          buttons.every((button) => (button as HTMLButtonElement).disabled),
-        ),
-      ).toBe(true);
+      if (comparison.type === 'universities') {
+        // Universities now allow five. These three seed records still prove
+        // the staged search flow without inventing extra catalogue records.
+        await expect(page.getByRole('status')).toContainText('3/5 selected');
+      } else {
+        expect(
+          await page.getByRole('button', { name: /^Add / }).evaluateAll((buttons) =>
+            buttons.every((button) => (button as HTMLButtonElement).disabled),
+          ),
+        ).toBe(true);
+      }
       await page.getByRole('button', { name: 'Compare selected' }).click();
       await expect(page).toHaveURL(new RegExp(`/compare/${comparison.type}\\?items=`));
       expect(new URL(page.url()).searchParams.get('items')).toBe(items);
-      await expect(
-        page.locator('.phase1-compare-desktop thead th'),
-      ).toHaveCount(4);
+      await expect(page.locator(
+        comparison.type === 'universities' ? '.comparetable thead th' : '.phase1-compare-desktop thead th',
+      )).toHaveCount(4);
 
       await page.reload();
       await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
@@ -82,6 +157,7 @@ test.describe('published Phase 1 comparisons', () => {
       // current browser history entry, so create a fresh base -> comparison
       // transition before asserting traversal in both directions.
       await page.goto(path);
+      if (comparison.type === 'universities') await openUniversityDraftSearch(page);
       await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(0);
       for (const slug of comparison.items) {
         await input.fill(slug);
@@ -93,6 +169,8 @@ test.describe('published Phase 1 comparisons', () => {
       await expect(page).toHaveURL(path);
       await page.goForward({ waitUntil: 'commit' });
       await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
+
+      if (comparison.type === 'universities') await openUniversityDraftSearch(page);
 
       const firstLabel = await page.getByLabel('Selected comparison items').locator('span').first().innerText();
       await page.getByRole('button', { name: new RegExp(`Remove ${firstLabel.replace('×', '').trim()}`) }).click();
@@ -114,7 +192,13 @@ test.describe('published Phase 1 comparisons', () => {
       );
 
       await page.setViewportSize({ width: 390, height: 844 });
-      await expect(page.locator('.phase1-compare-mobile article')).toHaveCount(3);
+      if (comparison.type === 'universities') {
+        const table = page.getByRole('region', { name: 'University comparison' });
+        await expect(table).toBeVisible();
+        await expect(table.locator('.comparetable thead th')).toHaveCount(4);
+      } else {
+        await expect(page.locator('.phase1-compare-mobile article')).toHaveCount(3);
+      }
       const removeButtonBox = await page
         .getByLabel('Selected comparison items')
         .getByRole('button', { name: /^Remove / })

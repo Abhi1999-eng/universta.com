@@ -19,6 +19,7 @@ export function CountryFieldHero({
   icon,
   kind,
   detail,
+  fallbackIconPath,
   children,
 }: {
   country: { iso2Code?: string | null };
@@ -26,6 +27,8 @@ export function CountryFieldHero({
    *  the subject and specialization pages use. */
   icon: Media | null;
   kind: 'Subject' | 'Specialization';
+  /** A matching design glyph when no catalogue image has been uploaded. */
+  fallbackIconPath?: string;
   /** After the dot: "12 specializations", "within Computer Science". */
   detail?: ReactNode;
   /** The heading, the trail and whatever follows them in the column. */
@@ -39,7 +42,7 @@ export function CountryFieldHero({
           <img src={icon.url} alt="" />
         ) : (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-            <path d="M4 5h16v14H4z M4 9h16" />
+            <path d={fallbackIconPath ?? "M4 5h16v14H4z M4 9h16"} />
           </svg>
         )}
       </span>
@@ -165,18 +168,20 @@ export function NothingListedHere({
  *  each opening on itself in this destination. */
 export function SpecializationChips({
   chips,
+  label = 'Specializations taught here',
 }: {
-  chips: Array<{ id: string; name: string; href: string; count: number }>;
+  chips: Array<{ id: string; name: string; href: string; count?: number }>;
+  label?: string;
 }) {
   if (!chips.length) return null;
   return (
     <div className="specchips">
-      <span className="label">Specializations taught here</span>
+      <span className="label">{label}</span>
       <div className="specchips__row">
         {chips.map((chip) => (
-          <Link className="specchip specchip--live" href={chip.href} key={chip.id}>
+          <Link className={chip.count ? 'specchip specchip--live' : 'specchip'} href={chip.href} key={chip.id}>
             {chip.name}
-            <em>{chip.count.toLocaleString('en-GB')}</em>
+            {chip.count !== undefined ? <em>{chip.count.toLocaleString('en-GB')}</em> : null}
           </Link>
         ))}
       </div>

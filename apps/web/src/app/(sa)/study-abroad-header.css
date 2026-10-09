@@ -1,0 +1,80 @@
+/* The final ZIP's app.css, hub.css and consultants.css navigation, scoped
+   to this frame. */
+.sa .nav .brand__name { color: var(--text); }
+.sa .nav .mega { gap: clamp(2px, 0.6vw, 8px); }
+.sa .nav .mega__item { position: relative; }
+.sa .nav .mega__btn {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; padding: 8px 9px; border-radius: 8px;
+  font-family: var(--font-body); font-size: 14.5px; font-weight: 500; color: var(--muted); white-space: nowrap;
+}
+.sa .nav .mega__btn:hover,
+.sa .nav .mega__btn[aria-expanded="true"] { color: var(--text); background: rgba(7, 20, 38, 0.05); }
+.sa .nav .mega__btn svg { transition: transform var(--dur) var(--ease); }
+.sa .nav .mega__btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.sa .nav .mega__panel {
+  position: absolute; top: calc(100% + 10px); left: -12px; z-index: 95;
+  width: min(620px, calc(100vw - 40px)); padding: 18px; border-radius: 14px;
+  background: var(--white); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(7, 20, 38, 0.16);
+}
+.sa .nav .mega__item:nth-last-child(-n+2) .mega__panel { left: auto; right: -12px; }
+.sa .nav .mega__desc {
+  font-size: 12px; font-family: var(--font-mono); text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin: 0 0 10px 8px;
+}
+.sa .nav .mega__grid {
+  list-style: none; margin: 0; padding: 0; display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px;
+}
+.sa .nav .nav__links .mega__link {
+  display: grid; gap: 2px; padding: 9px 10px; border-radius: 9px;
+  text-decoration: none; white-space: normal; color: var(--text);
+}
+.sa .nav .nav__links .mega__link:hover,
+.sa .nav .nav__links .mega__link:focus-visible { background: var(--paper); color: var(--text); }
+.sa .nav .mega__link strong { font-size: 14px; font-weight: 600; }
+.sa .nav .mega__link span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.sa .nav .nav__search {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius);
+  border: 1px solid var(--line-strong); background: var(--white); color: var(--text); text-decoration: none;
+}
+.sa .nav .nav__search:hover { border-color: var(--navy); }
+.sa .nav .nav__search-label { display: none; }
+.sa .nav .nav__globe {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 14px 8px 11px; border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong); background: var(--white);
+  font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text);
+  font-family: var(--font-body); flex: none;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.sa .nav .nav__globe:hover { border-color: var(--navy); box-shadow: var(--shadow-sm); }
+.sa .nav .nav__globe svg { flex: none; }
+.sa .nav .nav__globe-label { display: none; }
+.sa .nav .nav__account {
+  font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none;
+  padding: 8px 10px; border-radius: 8px; white-space: nowrap; display: none;
+}
+.sa .nav .nav__account:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sa .drawer .drawer__search { color: var(--accent); }
+.sa .drawer .drawer__group { border-bottom: 1px solid var(--line-soft); }
+.sa .drawer .drawer__group summary {
+  list-style: none; cursor: pointer; padding: 15px 0; font-family: var(--font-display); font-size: 21px; font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.sa .drawer .drawer__group summary::-webkit-details-marker { display: none; }
+.sa .drawer .drawer__group summary::after { content: "+"; font-weight: 400; color: var(--muted); }
+.sa .drawer .drawer__group[open] summary::after { content: "\2212"; }
+.sa .drawer .drawer__group a {
+  font-size: 16px; font-family: var(--font-body); font-weight: 500; padding: 10px 0 10px 12px; border-bottom: 0;
+}
+@media (min-width: 700px) { .sa .nav .nav__globe-label { display: inline; } }
+@media (min-width: 1080px) { .sa .nav .nav__account { display: inline; } }
+@media (max-width: 1260px) and (min-width: 1080px) { .sa .nav .nav__globe-label { display: none; } }
+/* The ZIP loads consultants.css on every public page. Its later navigation
+   rule keeps the grouped links in the drawer until the full row fits. */
+@media (min-width: 1080px) and (max-width: 1439px) {
+  .sa .nav .nav__links { display: none; }
+  .sa .nav .nav__burger { display: inline-grid; }
+}
+@media (max-width: 560px) { .sa .nav .mega__grid { grid-template-columns: 1fr; } }

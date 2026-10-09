@@ -58,7 +58,7 @@ describe('the site header and footer', () => {
     expect(footer()).toContain('class="usta-footer');
   });
 
-  it.each(['/compare/courses', '/courses', '/study-abroad/united-kingdom', '/universities/university-of-warwick', '/'])(
+  it.each(['/compare/courses', '/compare/universities', '/courses', '/study-abroad/united-kingdom', '/universities/university-of-warwick', '/'])(
     'stand down on %s, which wears its own, however it was reached',
     (path) => {
       route.pathname = path;
@@ -68,7 +68,7 @@ describe('the site header and footer', () => {
   );
 
   it('stay on the comparisons and pages that have not moved into the design', () => {
-    for (const path of ['/compare/universities', '/universities/university-of-warwick/claim']) {
+    for (const path of ['/compare/countries', '/compare/consultants', '/universities/university-of-warwick/claim']) {
       route.pathname = path;
       expect(header()).toContain('class="usta-header');
       expect(footer()).toContain('class="usta-footer');

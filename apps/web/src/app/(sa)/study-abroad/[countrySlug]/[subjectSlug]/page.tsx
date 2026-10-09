@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { CountryTrail } from '@/components/study-abroad/CountryTrail';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { CountryGuideLinks } from '@/components/study-abroad/CountryGuideLinks';
 import { CountryConsultants } from '@/components/study-abroad/CountryConsultants';
@@ -42,6 +41,7 @@ import {
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
+import { subjectIconPath } from '@/lib/subject-icon';
 import { counsellingHref } from '@/lib/counselling-link';
 import {
   countrySubjectPage,
@@ -106,8 +106,9 @@ export async function generateMetadata({
     };
   const { country, subject } = loaded;
   const where = inCountry(country.name, country.iso2Code);
+  const heroWhere = country.iso2Code?.toUpperCase() === 'GB' ? 'the UK' : where;
   return {
-    title: { absolute: `Study ${subject.name} in ${where} | Universta` },
+    title: { absolute: `${subject.name} courses in ${heroWhere} | Universta` },
     description:
       subject.shortDescription ??
       `The specializations, universities and programmes available in ${subject.name} for students going to ${where}.`,
@@ -131,6 +132,7 @@ export default async function Page({ params, searchParams }: Params) {
   if (!loaded) notFound();
   const { page, country, subject } = loaded;
   const where = inCountry(country.name, country.iso2Code);
+  const heroWhere = country.iso2Code?.toUpperCase() === 'GB' ? 'the UK' : where;
   const base = `/study-abroad/${country.slug}/${subject.slug}`;
   const read = readCourseFilters(await searchParams);
   /* No further than the finder loads. Past it the run asks for more rows
@@ -221,7 +223,7 @@ export default async function Page({ params, searchParams }: Params) {
         countsHere: programmeCountsHere(listed.facets.specialization),
       })
     : view;
-  const taught = hero.specializations.filter((entry) => (entry.here ?? 0) > 0);
+
   /* The design's strip counts programmes, universities, cities and
      intakes. Where the universities' programmes are listed here every
      figure is theirs, counted together so they describe the same list;
@@ -230,15 +232,15 @@ export default async function Page({ params, searchParams }: Params) {
     programmes: listed ? listed.summary.programmes : filed,
     universities: listed ? listed.summary.universities : (universities.total ?? null),
     cities: listed?.summary.cities ?? null,
-    specializations: hero.taughtHere,
+    // The ZIP strip has four measures; the taught count stays with its chips.
+    specializations: null,
     intakes: intakeFigure(
       listed ? listedIntakes(listed.facets.intake) : (filters?.intakes ?? []),
     ),
   });
 
-  /* The reference opens the page on why the field is worth studying, from
-     the subject's own overview. Its first paragraph is usually the short
-     description the hero has just printed, so that one is not said twice. */
+  /* Retain the subject overview after the finder. Its first paragraph
+     often repeats the hero description, so do not print it twice. */
   const why = overviewParts(subject.overview, subject.shortDescription);
   const counselling = counsellingHref({
     source: 'subject',
@@ -285,6 +287,7 @@ export default async function Page({ params, searchParams }: Params) {
             country={country}
             icon={subject.iconMedia}
             kind="Subject"
+            fallbackIconPath={subjectIconPath(subject.slug)}
             detail={
               view.specializations.length
                 ? `${view.specializations.length} ${view.specializations.length === 1 ? 'specialization' : 'specializations'}`
@@ -292,112 +295,31 @@ export default async function Page({ params, searchParams }: Params) {
             }
           >
             <h1 className="hero__h1">
-              Study {subject.name} in {where}
+              {subject.name} courses in {heroWhere}
             </h1>
-
-            {/* Both halves of what this page is, each a link back to itself.
-                A reader who arrived from the subject can leave through the
-                destination, and the other way round. */}
-            <CountryTrail
-              country={country}
-              parts={[{ label: subject.name, href: `/subjects/${subject.slug}` }]}
-            />
-
-            {subject.shortDescription ? (
-              <p className="hero__sub">{subject.shortDescription}</p>
-            ) : null}
-
-            {view.specializations.length ? (
-              <div className="btn-row">
-                <a className="btn btn--lg" href="#specializations">
-                  Explore specializations{' '}
-                  <span className="btn__arrow" aria-hidden="true">
-                    &rarr;
-                  </span>
-                </a>
-              </div>
-            ) : null}
+            <p className="hero__sub">
+              {subject.shortDescription?.trim() ||
+                'Explore universities, programmes, tuition fees, intakes and eligibility requirements.'}
+            </p>
           </CountryFieldHero>
 
           <FiguresStrip figures={figures} />
 
           <SpecializationChips
-            chips={taught.map((entry) => ({
+            label={hero.taughtHere ? `Specializations · ${hero.taughtHere} taught here` : 'Specializations'}
+            chips={hero.specializations.slice(0, 6).map((entry) => ({
               id: entry.id,
               name: entry.name,
               href: `${base}/${entry.slug}`,
-              count: entry.here ?? 0,
+              count: entry.here ? entry.here : undefined,
             }))}
           />
         </div>
       </section>
 
-      <CountryTabs tabs={tabs} current="subjects" below />
-
-      {why.lead || why.rest ? (
-        <section className="sec sec--tight wrap" id="why">
-          <div className="sec-head left">
-            <div>
-              <span className="eyebrow">Why study it</span>
-              <h2 className="sec-title">
-                Why study {subject.name} in {where}?
-              </h2>
-            </div>
-          </div>
-          {why.lead ? (
-            <div className="prose fieldwhy__lead">
-              <RichText value={why.lead} />
-            </div>
-          ) : null}
-          {why.rest ? (
-            <Longform label={`More about ${subject.name}`}>
-              <div className="prose">
-                <RichText value={why.rest} />
-              </div>
-            </Longform>
-          ) : null}
-        </section>
-      ) : null}
-
-      {view.specializations.length ? (
-        <section className="sec sec--tight wrap" id="specializations">
-          <div className="sec-head left row-between">
-            <div>
-              <span className="eyebrow">Fields of study</span>
-              <h2 className="sec-title">
-                Specializations in {where}
-              </h2>
-              <p className="sec-lead">
-                {view.specializations.length} inside {subject.name}.{' '}
-                {view.taughtHere === null
-                  ? `Each one opens on what it means for a student going to ${where}.`
-                  : view.taughtHere
-                    ? `${view.taughtHere === view.specializations.length ? 'All of them have' : `${view.taughtHere} of them ${view.taughtHere === 1 ? 'has' : 'have'}`} courses listed in ${where}${view.taughtHere < view.specializations.length ? ', and those come first' : ''}. Each one opens on what it means for a student going there.`
-                    : `None has a course listed in ${where} yet; each one still opens on what it means for a student going there.`}
-              </p>
-            </div>
-            <Link className="linkcta" href={`/subjects/${subject.slug}`}>
-              {subject.name} everywhere{' '}
-              <span className="linkcta__arrow" aria-hidden="true">
-                &rarr;
-              </span>
-            </Link>
-          </div>
-          <div className="h-grid">
-            {view.specializations.map((entry) => (
-              <RowCard
-                key={entry.id}
-                href={`${base}/${entry.slug}`}
-                title={entry.name}
-                meta={countLabel(entry.here, 'course')}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {listed ? (
         <DestinationProgrammes
+          compact
           base={base}
           scope={scope}
           filters={asked}
@@ -576,6 +498,75 @@ export default async function Page({ params, searchParams }: Params) {
         href={none ? `/courses?subject=${subject.slug}` : searchHere}
         talkHref={counselling}
       />
+
+      <CountryTabs tabs={tabs} current="subjects" below />
+
+      {why.lead || why.rest ? (
+        <section className="sec sec--tight wrap" id="why">
+          <div className="sec-head left">
+            <div>
+              <span className="eyebrow">Why study it</span>
+              <h2 className="sec-title">
+                Why study {subject.name} in {where}?
+              </h2>
+            </div>
+          </div>
+          {why.lead ? (
+            <div className="prose fieldwhy__lead">
+              <RichText value={why.lead} />
+            </div>
+          ) : null}
+          {why.rest ? (
+            <Longform label={`More about ${subject.name}`}>
+              <div className="prose">
+                <RichText value={why.rest} />
+              </div>
+            </Longform>
+          ) : null}
+        </section>
+      ) : null}
+
+      {view.specializations.length ? (
+        <section className="sec sec--tight wrap" id="specializations">
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">Fields of study</span>
+              <h2 className="sec-title">
+                Specializations in {where}
+              </h2>
+              <p className="sec-lead">
+                {view.specializations.length} inside {subject.name}.{' '}
+                {view.taughtHere === null
+                  ? `Each one opens on what it means for a student going to ${where}.`
+                  : view.taughtHere
+                    ? `${view.taughtHere === view.specializations.length ? 'All of them have' : `${view.taughtHere} of them ${view.taughtHere === 1 ? 'has' : 'have'}`} courses listed in ${where}${view.taughtHere < view.specializations.length ? ', and those come first' : ''}. Each one opens on what it means for a student going there.`
+                    : `None has a course listed in ${where} yet; each one still opens on what it means for a student going there.`}
+              </p>
+            </div>
+            <div className="field-directory__links">
+              <a className="linkcta" href="#specialization-list">
+                Explore specializations <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
+              </a>
+              <Link className="linkcta" href={`/subjects/${subject.slug}`}>
+                {subject.name} everywhere{' '}
+              <span className="linkcta__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+              </Link>
+            </div>
+          </div>
+          <div className="h-grid" id="specialization-list">
+            {view.specializations.map((entry) => (
+              <RowCard
+                key={entry.id}
+                href={`${base}/${entry.slug}`}
+                title={entry.name}
+                meta={countLabel(entry.here, 'course')}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {view.others.length ? (
         <section className="sec sec--tight wrap">
