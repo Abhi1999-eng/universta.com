@@ -76,6 +76,10 @@ admin_pending="${env_dir}/admin.env.pending"
   printf 'HOSTNAME=127.0.0.1\n'
   printf 'API_BASE_URL=http://127.0.0.1:4000\n'
   printf 'ADMIN_APP_ORIGIN=%s\n' "${admin_origin}"
+  # The public site's origin, for the Admin's "View live" and preview links.
+  # Read at request time: the Admin is built in CI, which does not know the
+  # host, and without this every live link opened localhost.
+  printf 'WEB_ORIGIN=%s\n' "${web_origin}"
   printf 'AUTH_REFRESH_COOKIE_NAME=universta_admin_refresh\n'
 } > "${admin_pending}"
 

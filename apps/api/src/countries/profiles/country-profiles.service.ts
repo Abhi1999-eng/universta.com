@@ -266,6 +266,11 @@ export class CountryProfilesService {
         id: true,
         name: true,
         slug: true,
+        /* The admin's intake list reads this response when no filter is
+           set, and draws its Activate/Deactivate button from each row's
+           status. Without the field every active intake offered
+           "Activate". */
+        status: true,
         startMonth: true,
         endMonth: true,
         seasonName: true,

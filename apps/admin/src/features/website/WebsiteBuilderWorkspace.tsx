@@ -6,6 +6,7 @@ import { authFetch } from "@/features/auth/auth-client";
 import { PageCmsEditor } from "@/features/phase1/PageCmsEditor";
 import { DevicePreview } from "./DevicePreview";
 import { VersionHistory } from "./VersionHistory";
+import { webOrigin } from "@/lib/web-origin";
 
 /** The one Website Builder workspace.
  *
@@ -202,7 +203,7 @@ export function WebsiteBuilderWorkspace({ pageId }: { pageId: string }) {
           </button>
           {current?.publicPath ? (
             <a
-              href={`${process.env.NEXT_PUBLIC_WEB_ORIGIN ?? "http://localhost:3000"}${current.publicPath}`}
+              href={`${webOrigin()}${current.publicPath}`}
               target="_blank"
               rel="noreferrer noopener"
             >

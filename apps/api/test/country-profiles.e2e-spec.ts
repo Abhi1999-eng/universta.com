@@ -141,9 +141,12 @@ describe('country structured profiles (e2e)', () => {
       ).status,
     ).toBe(401);
     const options = await admin('get', '/api/v1/admin/intakes').expect(200);
-    expect(
-      Array.isArray(data(options)) ? data(options).length : 0,
-    ).toBeGreaterThan(0);
+    const rows = data(options);
+    expect(Array.isArray(rows) ? rows.length : 0).toBeGreaterThan(0);
+    /* The admin's intake list draws Activate/Deactivate from each row's
+       status; without the field every active intake offered "Activate". */
+    for (const row of rows as Array<Record<string, unknown>>)
+      expect(row.status).toBe('ACTIVE');
   });
 
   it('upserts verified profiles, enforces stale versions, replaces intakes, and redacts public data safely', async () => {

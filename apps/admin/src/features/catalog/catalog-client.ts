@@ -555,6 +555,18 @@ export function listSubSubjects(
     `/api/v1/admin/subjects/${subjectId}/sub-subjects${query(params)}`,
   );
 }
+/**
+ * Every specialization of a subject, however many there are.
+ *
+ * The subject editor asked for one page of fifty, and the API hands out at
+ * most a hundred per page, so a subject with sixty-seven specializations
+ * (Computing, on production) showed fifty and silently dropped seventeen;
+ * saving then treated them as removed. This reads the whole set, the way
+ * the pickers do.
+ */
+export function listAllSubSubjects(subjectId: string) {
+  return listEvery((params) => listSubSubjects(subjectId, params));
+}
 export function createSubSubject(
   subjectId: string,
   data: Record<string, unknown>,
