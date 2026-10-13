@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getAllCities } from '@/lib/locations';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 import { richTextToPlainText } from '@/components/phase1/RichText';
+import { Crumbs } from '@/components/study-abroad/Crumbs';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,11 @@ export async function generateMetadata() {
 
 /** Global city index. City detail pages previously required opening a country
  * first, so this is the page the header's Study Destinations > Cities entry
- * points at. Grouped by country so the country context stays visible. */
+ * points at. Grouped by country so the country context stays visible.
+ *
+ * It is drawn from the approved design's subjects stylesheet, so it lives in
+ * the Study Abroad route group and wears that design's header and footer, as
+ * the destination guides it is reached from do. */
 export default async function CitiesPage() {
   let cities: Awaited<ReturnType<typeof getAllCities>>['data'] = [];
   let total = 0;
@@ -41,15 +46,12 @@ export default async function CitiesPage() {
   const groups = [...byCountry.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <main className="visual-subjects-page">
-      <div className="wrap crumbs">
-        <nav aria-label="Breadcrumb">
-          <ol>
-            <li><Link href="/">Home</Link></li>
-            <li className="sep">/</li>
-            <li aria-current="page">Cities</li>
-          </ol>
-        </nav>
+    <div className="visual-subjects-page">
+      {/* The family's own trail. The list-based one drew its own slash and
+          also took the shared stylesheet's chevron between items, so it read
+          "Home › / › Cities". */}
+      <div className="wrap">
+        <Crumbs trail={[{ label: 'Home', href: '/' }, { label: 'Cities' }]} />
       </div>
 
       <section className="hero">
@@ -71,7 +73,7 @@ export default async function CitiesPage() {
             <section className="section" key={group.slug} style={{ paddingTop: 0 }}>
               <div className="section-head row-between">
                 <div>
-                  <span className="eyebrow">Destination</span>
+                  <span className="eyebrow eyebrow--plain">Destination</span>
                   <h2>{group.name}</h2>
                 </div>
                 <Link className="link-more" href={`/study-in-${group.slug}/cities`}>
@@ -108,7 +110,7 @@ export default async function CitiesPage() {
         ) : (
           <section className="section">
             <div className="section-head">
-              <span className="eyebrow">Cities</span>
+              <span className="eyebrow eyebrow--plain">Cities</span>
               <h2>No cities are published yet</h2>
               <p className="sub">
                 Published city profiles will appear here. In the meantime you
@@ -121,6 +123,6 @@ export default async function CitiesPage() {
           </section>
         )}
       </div>
-    </main>
+    </div>
   );
 }
