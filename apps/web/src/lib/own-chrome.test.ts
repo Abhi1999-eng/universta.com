@@ -33,6 +33,12 @@ describe('which routes wear their own header and footer', () => {
     expect(ownsItsChrome('/compare/consultants')).toBe(false);
   });
 
+  it('owns the city index, and not a city page under a country', () => {
+    expect(ownsItsChrome('/cities')).toBe(true);
+    expect(ownsItsChrome('/cities/london')).toBe(false);
+    expect(ownsItsChrome('/study-in-uk/london')).toBe(false);
+  });
+
   it('leaves every other route, and a path it cannot read, to the site chrome', () => {
     for (const path of ['/scholarships', '/student/saved', '/coursesx', '/subjectsfoo', undefined, null, ''])
       expect(ownsItsChrome(path), String(path)).toBe(false);
