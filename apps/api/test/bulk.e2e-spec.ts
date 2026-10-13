@@ -507,14 +507,50 @@ describe('Bulk data import/export (e2e)', () => {
         .attach(
           'file',
           Buffer.from(
-            'slug,title,status\n' +
-              `${scholarshipSlug},Bulk E2E Scholarship,DRAFT`,
+            'slug,title,countrySlugs,status\n' +
+              `${scholarshipSlug},Bulk E2E Scholarship,canada,DRAFT`,
             'utf8',
           ),
           'scholarships.csv',
         )
         .expect(201);
       expect(data(scholarship).created).toBe(1);
+      /* The sheet's destinations become the links the public site lists a
+         scholarship under; the sheet had no column for them before. */
+      const linked = await prisma.scholarship.findFirst({
+        where: { slug: scholarshipSlug },
+        include: {
+          countries: { include: { country: { select: { slug: true } } } },
+        },
+      });
+      expect(linked?.countries.map((link) => link.country.slug)).toEqual([
+        'canada',
+      ]);
+      const exported = await admin(
+        'get',
+        '/api/v1/admin/bulk/scholarships/export?format=csv',
+      ).expect(200);
+      /* The export writes labelled columns, no slug; the row ends with the
+         destinations and the status. */
+      expect(exported.text).toContain('Country Slugs');
+      expect(exported.text).toMatch(/Bulk E2E Scholarship,.*,canada,DRAFT/);
+
+      const badScholarship = await admin(
+        'post',
+        '/api/v1/admin/bulk/scholarships/import',
+      )
+        .field('mode', 'create')
+        .attach(
+          'file',
+          Buffer.from(
+            'slug,title,countrySlugs,status\n' +
+              `${scholarshipSlug}-bad,Bad Scholarship,not-a-real-country,DRAFT`,
+            'utf8',
+          ),
+          'scholarships.csv',
+        )
+        .expect(201);
+      expect(data(badScholarship).failed).toBe(1);
 
       const consultant = await admin(
         'post',
@@ -524,14 +560,23 @@ describe('Bulk data import/export (e2e)', () => {
         .attach(
           'file',
           Buffer.from(
-            'slug,name,status\n' +
-              `${consultantSlug},Bulk E2E Consultant,DRAFT`,
+            'slug,name,countrySlugs,status\n' +
+              `${consultantSlug},Bulk E2E Consultant,canada,DRAFT`,
             'utf8',
           ),
           'consultants.csv',
         )
         .expect(201);
       expect(data(consultant).created).toBe(1);
+      const linkedConsultant = await prisma.consultant.findFirst({
+        where: { slug: consultantSlug },
+        include: {
+          countries: { include: { country: { select: { slug: true } } } },
+        },
+      });
+      expect(
+        linkedConsultant?.countries.map((link) => link.country.slug),
+      ).toEqual(['canada']);
 
       const badLocation = await admin(
         'post',

@@ -405,7 +405,17 @@ export class BulkOperationsService {
         intakes: { include: { intake: true } },
         requirements: true,
       },
-      scholarships: { provider: { select: { slug: true, name: true } } },
+      scholarships: {
+        provider: { select: { slug: true, name: true } },
+        countries: {
+          include: { country: { select: { slug: true, name: true } } },
+        },
+      },
+      consultants: {
+        countries: {
+          include: { country: { select: { slug: true, name: true } } },
+        },
+      },
       'consultant-locations': {
         country: { select: { slug: true, name: true } },
       },

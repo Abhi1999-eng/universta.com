@@ -1255,6 +1255,87 @@ async function reconcileCourseOfferings(
   }
 }
 
+/**
+ * The destinations a scholarship or a consultant is for, as the sheet's
+ * `countrySlugs` names them ("uk | canada"): each resolved here so an
+ * unknown one is reported against its row, as the courses sheet does.
+ */
+async function parseCountrySlugs(
+  prisma: unknown,
+  value: string | undefined,
+  errors: string[],
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const term of splitList(value)) {
+    const found = await findRef(
+      (prisma as Record<string, unknown>).country,
+      term,
+      'countrySlugs',
+      errors,
+      { deletedAt: null },
+    );
+    if (found === null) errors.push(`country "${term}" was not found`);
+    else if (found && !ids.includes(found.id)) ids.push(found.id);
+  }
+  return ids;
+}
+
+type CountryLinkTable = {
+  findMany(args: {
+    where: Record<string, unknown>;
+  }): Promise<Array<{ countryId: string }>>;
+  createMany(args: { data: Array<Record<string, unknown>> }): Promise<unknown>;
+  deleteMany(args: { where: Record<string, unknown> }): Promise<unknown>;
+};
+
+/**
+ * Makes a record's country links exactly the sheet's set.
+ *
+ * The public site lists a scholarship or a consultant under a destination
+ * only through these links, and the admin sets them from its "Eligible
+ * countries" picker; the sheets had no column for them, so an imported
+ * record was published yet appeared under no destination at all. An empty
+ * column leaves the links alone, so a sheet without it imports as before.
+ */
+async function reconcileCountryLinks(
+  tx: unknown,
+  table: 'scholarshipCountry' | 'consultantCountry',
+  ownerKey: 'scholarshipId' | 'consultantId',
+  id: string,
+  relations: unknown,
+) {
+  const ids = ((relations ?? {}) as { countryIds?: string[] }).countryIds;
+  if (!ids?.length) return;
+  const links = (tx as Record<string, unknown>)[table] as CountryLinkTable;
+  const existing = new Set(
+    (await links.findMany({ where: { [ownerKey]: id } })).map(
+      (row) => row.countryId,
+    ),
+  );
+  const wanted = new Set(ids);
+  const gone = [...existing].filter((countryId) => !wanted.has(countryId));
+  if (gone.length)
+    await links.deleteMany({
+      where: { [ownerKey]: id, countryId: { in: gone } },
+    });
+  const added = ids.filter((countryId) => !existing.has(countryId));
+  if (added.length)
+    await links.createMany({
+      data: added.map((countryId) => ({ [ownerKey]: id, countryId })),
+    });
+}
+
+/** "uk | canada": a record's country links, as the sheet writes them. */
+function countrySlugsOf(record: unknown): string {
+  const links =
+    (record as { countries?: Array<{ country?: { slug?: string } }> })
+      .countries ?? [];
+  return links
+    .map((link) => link.country?.slug ?? '')
+    .filter(Boolean)
+    .join(' | ');
+}
+
 const courses: BulkResourceDefinition = {
   /* Everything that only points at the course: its destination mappings,
      the related-course pairs on both sides, and the offerings that teach
@@ -2290,6 +2371,7 @@ const scholarships: BulkResourceDefinition = {
     'amount',
     'currencyCode',
     'deadline',
+    'countrySlugs',
     'status',
   ],
   statusAllowedValues: PUBLISH_STATUSES,
@@ -2304,6 +2386,7 @@ const scholarships: BulkResourceDefinition = {
     amount: '5000',
     currencyCode: 'USD',
     deadline: '',
+    countrySlugs: 'Demo Country',
     status: 'DRAFT',
   },
   updatableColumns: [
@@ -2313,11 +2396,17 @@ const scholarships: BulkResourceDefinition = {
     'amount',
     'currencyCode',
     'deadline',
+    'countrySlugs',
     'status',
   ],
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.title?.trim()) errors.push('title is required');
+    const countryIds = await parseCountrySlugs(
+      prisma,
+      row.countrySlugs,
+      errors,
+    );
     let providerId: string | null = null;
     if (row.providerSlug?.trim()) {
       const provider = await findRef(
@@ -2351,7 +2440,17 @@ const scholarships: BulkResourceDefinition = {
         deadline,
         status: row.status?.trim() || 'DRAFT',
       },
+      relations: { countryIds },
     };
+  },
+  async reconcile(tx, id, relations) {
+    await reconcileCountryLinks(
+      tx,
+      'scholarshipCountry',
+      'scholarshipId',
+      id,
+      relations,
+    );
   },
   toExportRow(record) {
     return {
@@ -2364,6 +2463,7 @@ const scholarships: BulkResourceDefinition = {
       amount: record.amount ?? '',
       currencyCode: record.currencyCode ?? '',
       deadline: (record.deadline as Date | null)?.toISOString?.() ?? '',
+      countrySlugs: countrySlugsOf(record),
       status: record.status,
     };
   },
@@ -2382,6 +2482,7 @@ const consultants: BulkResourceDefinition = {
     'websiteUrl',
     'verificationStatus',
     'shortDescription',
+    'countrySlugs',
     'status',
   ],
   statusAllowedValues: PUBLISH_STATUSES,
@@ -2395,6 +2496,7 @@ const consultants: BulkResourceDefinition = {
     verificationStatus: 'UNVERIFIED',
     shortDescription:
       'A fictional demo consultancy used only to show the expected import shape.',
+    countrySlugs: 'Demo Country',
     status: 'DRAFT',
   },
   updatableColumns: [
@@ -2404,10 +2506,18 @@ const consultants: BulkResourceDefinition = {
     'websiteUrl',
     'verificationStatus',
     'shortDescription',
+    'countrySlugs',
     'status',
   ],
-  async parseRow(row) {
-    if (!row.name?.trim()) return { errors: ['name is required'] };
+  async parseRow(row, prisma) {
+    const errors: string[] = [];
+    if (!row.name?.trim()) errors.push('name is required');
+    const countryIds = await parseCountrySlugs(
+      prisma,
+      row.countrySlugs,
+      errors,
+    );
+    if (errors.length) return { errors };
     return {
       data: {
         slug: slugOrFallback(row, row.name),
@@ -2419,7 +2529,17 @@ const consultants: BulkResourceDefinition = {
         shortDescription: row.shortDescription?.trim() || null,
         status: row.status?.trim() || 'DRAFT',
       },
+      relations: { countryIds },
     };
+  },
+  async reconcile(tx, id, relations) {
+    await reconcileCountryLinks(
+      tx,
+      'consultantCountry',
+      'consultantId',
+      id,
+      relations,
+    );
   },
   toExportRow(record) {
     return {
@@ -2430,6 +2550,7 @@ const consultants: BulkResourceDefinition = {
       websiteUrl: record.websiteUrl ?? '',
       verificationStatus: record.verificationStatus,
       shortDescription: record.shortDescription ?? '',
+      countrySlugs: countrySlugsOf(record),
       status: record.status,
     };
   },
