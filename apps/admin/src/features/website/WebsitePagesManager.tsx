@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import { DevicePreview } from "./DevicePreview";
 import { VersionHistory } from "./VersionHistory";
+import { webOrigin } from "@/lib/web-origin";
 
 /** Website Pages -- the front door of Website Builder.
  *
@@ -40,8 +41,6 @@ type WebsitePage = {
   canCreatePage: boolean;
 };
 
-const WEB_ORIGIN =
-  process.env.NEXT_PUBLIC_WEB_ORIGIN ?? "http://localhost:3000";
 
 /** The client's vocabulary, not ours: an admin looking for "the Universities
  * page" should not have to know whether it is a CMS Page or a code route. */
@@ -331,7 +330,7 @@ export function WebsitePagesManager() {
                       </button>
                     ) : null}
                     <a
-                      href={`${WEB_ORIGIN}${row.publicPath}`}
+                      href={`${webOrigin()}${row.publicPath}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-link"

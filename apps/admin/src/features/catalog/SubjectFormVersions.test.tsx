@@ -17,7 +17,7 @@ const replace = vi.fn();
 const mocks = vi.hoisted(() => ({
   getSubject: vi.fn(),
   getSubjectSeo: vi.fn(),
-  listSubSubjects: vi.fn(),
+  listAllSubSubjects: vi.fn(),
   createSubject: vi.fn(),
   updateSubject: vi.fn(),
   publishSubject: vi.fn(),
@@ -72,7 +72,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSubject.mockResolvedValue({ data: subject });
   mocks.getSubjectSeo.mockResolvedValue({ data: null });
-  mocks.listSubSubjects.mockResolvedValue({ data: [child('spec-v1', 'DRAFT')], meta: null });
+  mocks.listAllSubSubjects.mockResolvedValue([child('spec-v1', 'DRAFT')]);
   mocks.listEditorialMedia.mockResolvedValue({ data: [], meta: null });
   mocks.updateSubject.mockResolvedValue({ data: { ...subject, updatedAt: 'subject-v2' } });
   mocks.publishSubject.mockResolvedValue({

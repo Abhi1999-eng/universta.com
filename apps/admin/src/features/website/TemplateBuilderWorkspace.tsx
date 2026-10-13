@@ -9,6 +9,7 @@ import {
 } from "./ChromeOverridePanel";
 import { VersionHistory } from "./VersionHistory";
 import { PREVIEW_DEVICES, type PreviewDeviceKey } from "./DevicePreview";
+import { webOrigin } from "@/lib/web-origin";
 
 /** Builder workspace for a dynamic detail template.
  *
@@ -33,7 +34,6 @@ type Template = {
 type Entity = { label: string; path: string };
 type Panel = "history" | null;
 
-const WEB_ORIGIN = process.env.NEXT_PUBLIC_WEB_ORIGIN ?? "http://localhost:3000";
 
 export function TemplateBuilderWorkspace({ templateId }: { templateId: string }) {
   const router = useRouter();
@@ -129,7 +129,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
 
   const frame = PREVIEW_DEVICES.find((entry) => entry.key === device) ?? PREVIEW_DEVICES[0];
   const scale = stageWidth > 0 ? Math.min(1, stageWidth / frame.width) : 1;
-  const previewUrl = entityPath ? `${WEB_ORIGIN}${entityPath}` : null;
+  const previewUrl = entityPath ? `${webOrigin()}${entityPath}` : null;
 
   const stageRef = useCallback((node: HTMLDivElement | null) => {
     if (!node || typeof ResizeObserver === "undefined") return;

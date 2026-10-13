@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { webOrigin } from "@/lib/web-origin";
 
 /** ISS-019 fix. Before this, a navigation menu could be listed, published,
  * unpublished and archived -- but nothing anywhere let an admin see, add,
@@ -11,8 +12,6 @@ import { authFetch } from "@/features/auth/auth-client";
  * a menu's own fields plus full item management, backed by the
  * `/admin/phase1/navigation-menus/:id/items*` routes added alongside it. */
 
-const WEB_ORIGIN =
-  process.env.NEXT_PUBLIC_WEB_ORIGIN ?? "http://localhost:3000";
 
 type Menu = {
   id: string;
@@ -385,7 +384,7 @@ export function NavigationMenuEditor({
             </button>
           )}
           <a
-            href={WEB_ORIGIN}
+            href={webOrigin()}
             target="_blank"
             rel="noreferrer"
             className="ml-auto p-link"

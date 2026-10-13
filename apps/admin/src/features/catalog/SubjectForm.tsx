@@ -11,7 +11,7 @@ import {
   getSubject,
   getSubjectSeo,
   listEditorialMedia,
-  listSubSubjects,
+  listAllSubSubjects,
   publishSubSubject,
   publishSubject,
   saveSubjectSeo,
@@ -82,7 +82,7 @@ export function SubjectForm({ id }: { id?: string }) {
         setMedia(mediaResult.data);
         if (!id) return;
         const [subjectResult, seoResult, subResult] = await Promise.all([
-          getSubject(id), getSubjectSeo(id), listSubSubjects(id, { limit: 50 }),
+          getSubject(id), getSubjectSeo(id), listAllSubSubjects(id),
         ]);
         if (!active) return;
         const subject = subjectResult.data;
@@ -92,7 +92,7 @@ export function SubjectForm({ id }: { id?: string }) {
         setForm({
           name: subject.name, slug: subject.slug, shortDescription: subject.shortDescription ?? '', overview: subject.overview ?? '', iconMediaId: subject.iconMedia?.id ?? '', listingMediaId: subject.listingMedia?.id ?? '', heroMediaId: subject.heroMedia?.id ?? '', isFeatured: subject.isFeatured, displayOrder: String(subject.displayOrder),
         });
-        setSpecializations(subResult.data.map(specializationFromRecord));
+        setSpecializations(subResult.map(specializationFromRecord));
       } catch (cause: unknown) {
         if (active) setError(cause instanceof Error ? cause.message : 'Unable to load subject editor');
       } finally {

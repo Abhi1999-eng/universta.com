@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "@/features/auth/AuthProvider";
+import { configuredWebOrigin } from "@/lib/web-origin";
 import "./globals.css";
 /* The reference build's admin design system. Every rule in it is scoped under
  * `.pa`, so it costs the screens still on Tailwind nothing and applies only
@@ -31,6 +32,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
+      /* The public site's origin, for "View live" links: known only at
+         runtime on the host, so it travels on the document rather than
+         being baked into the build. */
+      data-web-origin={configuredWebOrigin()}
     >
       {/* The ported stylesheet is scoped under `.pa`, and several of its
           rules -- the app frame, the sign-in split -- target the element
