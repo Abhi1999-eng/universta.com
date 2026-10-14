@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
+import { originAllowed } from '@/lib/request-origin';
 
 const MAX_BODY_BYTES = 16 * 1024;
 const UPSTREAM_TIMEOUT_MS = 6_000;
@@ -91,12 +92,6 @@ function failure(
   );
 }
 
-function originAllowed(request: NextRequest): boolean {
-  const origin = request.headers.get('origin');
-  if (!origin) return true;
-  const configured = process.env.WEB_ORIGIN;
-  return [request.nextUrl.origin, configured].filter(Boolean).includes(origin);
-}
 
 function safeBody(value: unknown): string | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
