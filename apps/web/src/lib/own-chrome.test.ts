@@ -33,6 +33,13 @@ describe('which routes wear their own header and footer', () => {
     expect(ownsItsChrome('/compare/consultants')).toBe(false);
   });
 
+  it('owns the contact page and the content directories, not their records', () => {
+    for (const path of ['/contact', '/careers', '/events', '/success-stories', '/testimonials'])
+      expect(ownsItsChrome(path), path).toBe(true);
+    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne'])
+      expect(ownsItsChrome(path), path).toBe(false);
+  });
+
   it('owns the city index, and not a city page under a country', () => {
     expect(ownsItsChrome('/cities')).toBe(true);
     expect(ownsItsChrome('/cities/london')).toBe(false);

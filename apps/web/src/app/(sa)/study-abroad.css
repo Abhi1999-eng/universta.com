@@ -3459,3 +3459,26 @@
 .sa .destination-programmes__search{ display: flex; justify-content: flex-end; margin-top: 18px; }
 
 .sa #specialization-list{ scroll-margin-top: calc(var(--nav-h) + 24px); }
+
+/* ---------- Contact form ----------
+   The design's support form (`.leadform` inside `.h-formwrap`) was filled by
+   its export's script and shipped no styles of its own; these follow the
+   assessment dialog's fields so the two forms read as one family. */
+.sa .h-formwrap{ max-width: 760px; background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: clamp(20px, 3vw, 32px); }
+.sa .leadform__grid{ display: grid; gap: 0 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.sa .leadform__full{ grid-column: 1 / -1; }
+.sa .field textarea{
+  width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 16px; background: var(--white); color: var(--text); resize: vertical;
+}
+.sa .field textarea:focus{ outline: 0; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7,20,38,.07); }
+.sa .leadform__consent{ display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--muted); margin: 4px 0 18px; }
+.sa .leadform__consent input{ margin-top: 3px; flex: none; }
+.sa .leadform .btn{ width: 100%; justify-content: center; }
+/* A testimonial's quote, its marks drawn rather than typed so the words stay
+   exactly as the editor wrote them. */
+.sa .quotecard p{ font-size: 15.5px; line-height: 1.55; color: var(--text); }
+.sa .quotecard p::before{ content: "\201C"; }
+.sa .quotecard p::after{ content: "\201D"; }
+/* A hero that opens with an eyebrow under the trail, not a heading. */
+.sa .crumbs + .hero__eyebrow{ margin-top: clamp(20px, 2.6vw, 32px); }

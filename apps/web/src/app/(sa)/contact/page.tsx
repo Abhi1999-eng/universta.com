@@ -1,15 +1,18 @@
-import { ContactReference } from '@/components/reference/ContactReference';
+import type { Metadata } from 'next';
+import { ContactPage } from '@/components/study-abroad/ContactPage';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata() {
-  return staticPageMetadata(
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await staticPageMetadata(
     'contact',
     'Contact Universta',
     'Send an enquiry to the Universta team.',
     '/contact',
   );
+  /* The helper writes the site's suffix; the route family's template would add it again. */
+  return { ...metadata, title: { absolute: String(metadata.title) } };
 }
 
 type Settings = {
@@ -40,10 +43,10 @@ function present(value: string | undefined) {
   return trimmed ? trimmed : null;
 }
 
-export default async function ContactPage() {
+export default async function Contact() {
   const contact = await contactSettings();
   return (
-    <ContactReference
+    <ContactPage
       email={present(contact?.email)}
       phone={present(contact?.counsellingPhone)}
       address={present(contact?.address)}
