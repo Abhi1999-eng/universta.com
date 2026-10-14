@@ -62,7 +62,7 @@ const DIRECTORY_HREF_PREFIX: Record<string, string> = {
   CONSULTANT_DIRECTORY: "/study-abroad-consultants",
 };
 
-async function fetchDirectoryItems(
+export async function fetchDirectoryItems(
   sectionType: string,
   settings: DirectorySettings,
 ): Promise<DirectoryItem[]> {

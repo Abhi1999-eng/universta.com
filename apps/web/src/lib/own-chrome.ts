@@ -57,6 +57,10 @@ const OWN_CHROME_PATHS = [
   '/success-stories',
   '/testimonials',
   '/study-abroad-consultants',
+  /* Counselling, the FAQ and About moved into the design too. */
+  '/counselling',
+  '/about',
+  '/faq',
 ];
 const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/, /^\/universities\/[^/]+\/claim$/];
 

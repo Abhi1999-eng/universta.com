@@ -97,7 +97,9 @@ test.describe('page-level header and footer overrides', () => {
 
 test.describe('public chrome stays global by default', () => {
   test('renders exactly one header and one footer with no variant class', async ({ page }) => {
-    await page.goto(`${webBaseUrl}${ABOUT_PATH}`);
+    /* About wears the approved design's own chrome now; the student login is
+       the public page that still wears the global header and footer. */
+    await page.goto(`${webBaseUrl}/student/login`);
     await expect(page.locator('header.usta-header')).toHaveCount(1);
     await expect(page.locator('footer.usta-footer')).toHaveCount(1);
     // No page has an override in the deterministic demo data, so no variant

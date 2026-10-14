@@ -98,6 +98,8 @@ function sameOriginReferrer(): string | undefined {
   }
 }
 
+/** The counselling request, in the design's form classes. What it asks,
+ * checks and sends has not changed; only the markup around it has. */
 export function CounsellingForm({
   initialOptions,
   context,
@@ -264,64 +266,47 @@ export function CounsellingForm({
 
   if (submitState === 'success') {
     return (
-      <div
-        className="counselling-confirmation"
-        role="status"
-        aria-live="polite"
-        tabIndex={-1}
-        ref={confirmationRef}
-      >
-        <span className="eyebrow">Request received</span>
-        <h2>Thank you. We’ll help you plan your next step.</h2>
-        <p>
-          Your counselling request has been received. A Universta team member
-          can contact you using the details you provided.
+      <div className="done" role="status" aria-live="polite" tabIndex={-1} ref={confirmationRef}>
+        <p className="eyebrow eyebrow--plain">Request received</p>
+        <h2 className="done__t">Thank you. We’ll help you plan your next step.</h2>
+        <p className="done__b">
+          Your counselling request has been received. A Universta team member can contact you using
+          the details you provided.
         </p>
-        <Link className="btn btn-primary" href="/">
-          Continue exploring
-        </Link>
+        <div className="btn-row done__actions">
+          <Link className="btn" href="/">
+            Continue exploring
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="counselling-form-card">
-      <div className="counselling-form-heading">
-        <span className="eyebrow">Your study goals</span>
-        <h2>Tell us where you want to go.</h2>
-        <p>
-          All fields marked with <span aria-hidden="true">*</span> are required.
-        </p>
-        <span className="source-context">Started from: {contextLabel(context)}</span>
-      </div>
+    <div className="cform">
+      <p className="cform__context">
+        <span className="badge badge--neutral">Started from: {contextLabel(context)}</span>
+      </p>
       {optionsState === 'loading' ? (
-        <p className="form-notice" role="status">
+        <p className="formnote" role="status">
           Loading current countries, levels and intakes…
         </p>
       ) : null}
       {optionsState === 'error' ? (
-        <div className="form-notice error" role="alert">
+        <div className="formerr" role="alert">
           <p>Current counselling options could not be loaded.</p>
-          <button type="button" className="btn btn-secondary" onClick={() => void loadOptions()}>
+          <button type="button" className="btn btn--sm btn--ghost" onClick={() => void loadOptions()}>
             Retry loading options
           </button>
         </div>
       ) : null}
       {errorEntries.length ? (
-        <div
-          className="form-error-summary"
-          role="alert"
-          tabIndex={-1}
-          ref={errorSummaryRef}
-        >
+        <div className="formerr" role="alert" tabIndex={-1} ref={errorSummaryRef}>
           <h3>Please check the form</h3>
           <ul>
             {errorEntries.map(([name, message]) => (
               <li key={name}>
-                <button
-                  type="button"
-                  onClick={() => fieldRefs.current[name]?.focus()}
-                >
+                <button type="button" className="linkbtn" onClick={() => fieldRefs.current[name]?.focus()}>
                   {message}
                 </button>
               </li>
@@ -330,15 +315,15 @@ export function CounsellingForm({
         </div>
       ) : null}
       {submitState === 'error' ? (
-        <div className="form-notice error" role="alert">
+        <div className="formerr" role="alert">
           <p>{failureMessage}</p>
-          <button type="button" className="btn btn-secondary" onClick={() => void submit()}>
+          <button type="button" className="btn btn--sm btn--ghost" onClick={() => void submit()}>
             Try again
           </button>
         </div>
       ) : null}
-      <form className="counselling-form" noValidate onSubmit={submit}>
-        <div className="counselling-grid">
+      <form className="leadform" noValidate onSubmit={submit}>
+        <div className="leadform__grid">
           <Field label="Full name" name="fullName" error={errors.fullName}>
             <input
               id="fullName"
@@ -368,11 +353,7 @@ export function CounsellingForm({
               aria-describedby={errors.email ? 'email-error' : undefined}
             />
           </Field>
-          <Field
-            label="Phone number"
-            name="phoneNumber"
-            error={errors.phoneNumber}
-          >
+          <Field label="Phone number" name="phoneNumber" error={errors.phoneNumber}>
             <input
               id="phoneNumber"
               name="phoneNumber"
@@ -386,16 +367,10 @@ export function CounsellingForm({
                 fieldRefs.current.phoneNumber = node;
               }}
               aria-invalid={Boolean(errors.phoneNumber)}
-              aria-describedby={
-                errors.phoneNumber ? 'phoneNumber-error' : undefined
-              }
+              aria-describedby={errors.phoneNumber ? 'phoneNumber-error' : undefined}
             />
           </Field>
-          <Field
-            label="Interested country"
-            name="countrySlug"
-            error={errors.countrySlug}
-          >
+          <Field label="Interested country" name="countrySlug" error={errors.countrySlug}>
             <select
               id="countrySlug"
               name="countrySlug"
@@ -406,9 +381,7 @@ export function CounsellingForm({
                 fieldRefs.current.countrySlug = node;
               }}
               aria-invalid={Boolean(errors.countrySlug)}
-              aria-describedby={
-                errors.countrySlug ? 'countrySlug-error' : undefined
-              }
+              aria-describedby={errors.countrySlug ? 'countrySlug-error' : undefined}
             >
               <option value="">Choose a country</option>
               {options?.countries.map((country) => (
@@ -418,11 +391,7 @@ export function CounsellingForm({
               ))}
             </select>
           </Field>
-          <Field
-            label="Study level"
-            name="studyLevelCode"
-            error={errors.studyLevelCode}
-          >
+          <Field label="Study level" name="studyLevelCode" error={errors.studyLevelCode}>
             <select
               id="studyLevelCode"
               name="studyLevelCode"
@@ -433,9 +402,7 @@ export function CounsellingForm({
                 fieldRefs.current.studyLevelCode = node;
               }}
               aria-invalid={Boolean(errors.studyLevelCode)}
-              aria-describedby={
-                errors.studyLevelCode ? 'studyLevelCode-error' : undefined
-              }
+              aria-describedby={errors.studyLevelCode ? 'studyLevelCode-error' : undefined}
             >
               <option value="">Choose a level</option>
               {options?.courseLevels.map((level) => (
@@ -445,11 +412,7 @@ export function CounsellingForm({
               ))}
             </select>
           </Field>
-          <Field
-            label="Intended intake"
-            name="intakeSlug"
-            error={errors.intakeSlug}
-          >
+          <Field label="Intended intake" name="intakeSlug" error={errors.intakeSlug}>
             <select
               id="intakeSlug"
               name="intakeSlug"
@@ -460,9 +423,7 @@ export function CounsellingForm({
                 fieldRefs.current.intakeSlug = node;
               }}
               aria-invalid={Boolean(errors.intakeSlug)}
-              aria-describedby={
-                errors.intakeSlug ? 'intakeSlug-error' : undefined
-              }
+              aria-describedby={errors.intakeSlug ? 'intakeSlug-error' : undefined}
             >
               <option value="">Choose an intake</option>
               {options?.intakes.map((intake) => (
@@ -472,27 +433,27 @@ export function CounsellingForm({
               ))}
             </select>
           </Field>
+          <Field label="Message (optional)" name="message" error={errors.message} optional full>
+            <textarea
+              id="message"
+              name="message"
+              rows={5}
+              maxLength={2000}
+              value={fields.message}
+              onChange={(event) => update('message', event.target.value)}
+              ref={(node) => {
+                fieldRefs.current.message = node;
+              }}
+              aria-invalid={Boolean(errors.message)}
+              aria-describedby="message-help"
+            />
+            <span className="formhint" id="message-help">
+              {fields.message.length}/2,000 characters
+            </span>
+          </Field>
         </div>
-        <Field label="Message (optional)" name="message" error={errors.message} optional>
-          <textarea
-            id="message"
-            name="message"
-            rows={5}
-            maxLength={2000}
-            value={fields.message}
-            onChange={(event) => update('message', event.target.value)}
-            ref={(node) => {
-              fieldRefs.current.message = node;
-            }}
-            aria-invalid={Boolean(errors.message)}
-            aria-describedby="message-help"
-          />
-          <span className="field-help" id="message-help">
-            {fields.message.length}/2,000 characters
-          </span>
-        </Field>
-        <div className="counselling-honeypot" aria-hidden="true">
-          <label htmlFor="companyWebsite">Company website</label>
+        <label className="sr-only" aria-hidden="true" htmlFor="companyWebsite">
+          Company website
           <input
             id="companyWebsite"
             name="companyWebsite"
@@ -501,8 +462,8 @@ export function CounsellingForm({
             value={fields.companyWebsite}
             onChange={(event) => update('companyWebsite', event.target.value)}
           />
-        </div>
-        <div className="consent-field">
+        </label>
+        <div className="leadform__consent">
           <input
             id="consent"
             name="consent"
@@ -516,29 +477,25 @@ export function CounsellingForm({
             aria-describedby={errors.consent ? 'consent-error' : 'consent-help'}
           />
           <div>
-            <label htmlFor="consent">
-              I agree to be contacted about study abroad counselling.
-            </label>
-            <p id="consent-help">
-              Consent text version 1.0 · You can ask us not to contact you
-              again at any time.
+            <label htmlFor="consent">I agree to be contacted about study abroad counselling.</label>
+            <p className="formhint" id="consent-help">
+              Consent text version 1.0 · You can ask us not to contact you again at any time.
             </p>
             {errors.consent ? (
-              <p className="field-error" id="consent-error">
+              <p className="field__err" id="consent-error">
                 {errors.consent}
               </p>
             ) : null}
           </div>
         </div>
         <button
-          className="btn btn-primary btn-lg counselling-submit"
+          className="btn btn--accent btn--lg"
           type="submit"
           disabled={submitState === 'submitting' || optionsState !== 'ready'}
         >
-          {submitState === 'submitting'
-            ? 'Sending your request…'
-            : 'Request free counselling'}
+          {submitState === 'submitting' ? 'Sending your request…' : 'Request free counselling'}
         </button>
+        <p className="formnote">All fields marked with * are required. Your request goes to the Universta team, not to a third party.</p>
       </form>
     </div>
   );
@@ -549,22 +506,25 @@ function Field({
   name,
   error,
   optional = false,
+  full = false,
   children,
 }: {
   label: string;
   name: FieldName;
   error?: string;
   optional?: boolean;
+  /** Spans the form's grid, for the message. */
+  full?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={`counselling-field${error ? ' has-error' : ''}`}>
+    <div className={`field${full ? ' leadform__full' : ''}`} data-invalid={error ? 'true' : 'false'}>
       <label htmlFor={name}>
         {label} {!optional ? <span aria-hidden="true">*</span> : null}
       </label>
       {children}
       {error ? (
-        <p className="field-error" id={`${name}-error`}>
+        <p className="field__err" id={`${name}-error`}>
           {error}
         </p>
       ) : null}
