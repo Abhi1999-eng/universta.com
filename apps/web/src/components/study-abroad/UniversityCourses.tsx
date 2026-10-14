@@ -20,7 +20,6 @@ import {
 import { Crumbs } from './Crumbs';
 import { CompareTray } from './CourseCompare';
 import { ConnectBand } from './DiscoveryBands';
-import { FlagMark } from './FlagMark';
 import { PlanBand } from './PlanBand';
 import { countLabel, RowCard } from './RowCard';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
@@ -146,59 +145,62 @@ export function UniversityCourses(props: UniversityCoursesProps) {
           <Crumbs trail={trail} />
 
           <div className="unihero">
-            <div className="unihero__main">
-              <div className="unihero__id">
-                <span className="unimark unimark--lg" aria-hidden="true">
-                  {universityInitials(university.name)}
-                </span>
-                <div>
-                  <p className="hero__eyebrow">Courses offered</p>
-                  <h1 className="unihero__name">Courses at {university.name}</h1>
-                  <p className="unihero__where">
-                    <FlagMark iso2Code={country.iso2Code} bands={null} />
-                    <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
-                    {university.city ? <span>· {university.city}</span> : null}
-                  </p>
-                </div>
-              </div>
+            <div className="unihero__id">
+              <span className="unimark unimark--lg" aria-hidden="true">
+                {universityInitials(university.name)}
+              </span>
+              <div className="unihero__body">
+                {/* The country is in the trail above and on the destination
+                    band below, so the eyebrow names only the city. */}
+                <p className="hero__eyebrow">
+                  Courses offered
+                  {university.city ? (
+                    <>
+                      <b> · </b>
+                      {university.city}
+                    </>
+                  ) : null}
+                </p>
+                <h1 className="unihero__name">Courses at {university.name}</h1>
 
-              <p className="unihero__desc">
-                {total
-                  ? `${total.toLocaleString('en-GB')} ${total === 1 ? 'course is' : 'courses are'} published for ${university.name}, each with its level, study mode, duration, tuition and intakes where the university has stated them.`
-                  : `No course at ${university.name} is in the Universta catalogue yet. The university’s own website lists what it teaches.`}
-              </p>
+                <p className="unihero__desc">
+                  {total
+                    ? `${total.toLocaleString('en-GB')} ${total === 1 ? 'course is' : 'courses are'} published for ${university.name}, each with its level, study mode, duration, tuition and intakes where the university has stated them.`
+                    : `No course at ${university.name} is in the Universta catalogue yet. The university’s own website lists what it teaches.`}
+                </p>
 
-              <div className="btn-row">
-                {total ? (
-                  <a className="btn btn--lg" href="#courses">
-                    Browse {total === 1 ? 'the course' : `${total.toLocaleString('en-GB')} courses`}{' '}
-                    <span className="btn__arrow" aria-hidden="true">
-                      &rarr;
-                    </span>
-                  </a>
-                ) : null}
-                <Link
-                  className="btn btn--lg btn--ghost"
-                  href={universityHref(university.slug)}
-                >
-                  University profile
-                </Link>
-                {university.websiteUrl ? (
-                  <a
+                <div className="btn-row">
+                  {total ? (
+                    <a className="btn btn--lg" href="#courses">
+                      Browse {total === 1 ? 'the course' : `${total.toLocaleString('en-GB')} courses`}{' '}
+                      <span className="btn__arrow" aria-hidden="true">
+                        &rarr;
+                      </span>
+                    </a>
+                  ) : null}
+                  <Link
                     className="btn btn--lg btn--ghost"
-                    href={university.websiteUrl}
-                    rel="nofollow noopener"
-                    target="_blank"
+                    href={universityHref(university.slug)}
                   >
-                    Official website{' '}
-                    <span className="btn__arrow" aria-hidden="true">
-                      &#8599;
-                    </span>
-                  </a>
-                ) : null}
-                <Link className="btn btn--lg btn--ghost" href={counselling}>
-                  Talk to a counsellor
-                </Link>
+                    University profile
+                  </Link>
+                  {university.websiteUrl ? (
+                    <a
+                      className="btn btn--lg btn--ghost"
+                      href={university.websiteUrl}
+                      rel="nofollow noopener"
+                      target="_blank"
+                    >
+                      Official website{' '}
+                      <span className="btn__arrow" aria-hidden="true">
+                        &#8599;
+                      </span>
+                    </a>
+                  ) : null}
+                  <Link className="btn btn--lg btn--ghost" href={counselling}>
+                    Talk to a counsellor
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

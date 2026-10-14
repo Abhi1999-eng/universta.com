@@ -32,10 +32,10 @@ const OWN_CHROME_PREFIXES = [
 ];
 
 /** The same, for the routes under a family whose other children have not
- * moved. The university directory and a university's own guide are built on
- * the approved design and ship its chrome; the claim form and an offering's
- * page are still the older template and need the site chrome, so these match
- * a path rather than the family. Course and university comparisons have
+ * moved. The university directory, a university's own guide and its claim
+ * form are built on the approved design and ship its chrome; the old course
+ * addresses under a university only redirect, so these match a path rather
+ * than the family. Course and university comparisons have
  * moved into the design; country and consultant comparisons have not. */
 /* Search also lives in the Study Abroad layout, so its own navigation must
    replace the global header on first load and after a client navigation.
@@ -56,7 +56,7 @@ const OWN_CHROME_PATHS = [
   '/testimonials',
   '/study-abroad-consultants',
 ];
-const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/];
+const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/, /^\/universities\/[^/]+\/claim$/];
 
 export function ownsItsChrome(path: string | null | undefined): boolean {
   if (path === '/') return true;

@@ -20,13 +20,14 @@ describe('which routes wear their own header and footer', () => {
       expect(ownsItsChrome(path), path).toBe(true);
   });
 
-  it('owns course and university comparisons, the directory and a university guide, and no deeper', () => {
+  it('owns course and university comparisons, the directory, a university guide and its claim, and no deeper', () => {
     expect(ownsItsChrome('/compare/courses')).toBe(true);
     expect(ownsItsChrome('/universities')).toBe(true);
     expect(ownsItsChrome('/search')).toBe(true);
     expect(ownsItsChrome('/search/other')).toBe(false);
     expect(ownsItsChrome('/universities/university-of-warwick')).toBe(true);
-    expect(ownsItsChrome('/universities/university-of-warwick/claim')).toBe(false);
+    expect(ownsItsChrome('/universities/university-of-warwick/claim')).toBe(true);
+    expect(ownsItsChrome('/universities/university-of-warwick/courses')).toBe(false);
     expect(ownsItsChrome('/compare/universities')).toBe(true);
     expect(ownsItsChrome('/compare/universities/other')).toBe(false);
     expect(ownsItsChrome('/compare/countries')).toBe(false);
