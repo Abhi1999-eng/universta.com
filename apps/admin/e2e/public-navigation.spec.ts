@@ -75,8 +75,11 @@ test.describe('public navigation discoverability', () => {
        What must hold is that the design's header is the only header there:
        the site chrome stepping aside is what keeps the page from showing
        two. */
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${webBaseUrl}/scholarships`);
     await expect(page.locator('header')).toHaveCount(1);
+    /* The design's grouped menu is drawn only at desktop widths; narrower
+       viewports get its drawer, so the width is set before looking. */
     await expect(page.locator('header .mega__btn').first()).toBeVisible();
     await expect(page.locator('header.usta-header')).toHaveCount(0);
   });
