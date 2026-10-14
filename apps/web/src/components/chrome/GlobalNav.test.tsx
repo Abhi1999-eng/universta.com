@@ -67,8 +67,8 @@ describe('the site header and footer', () => {
     },
   );
 
-  it('stay on the comparisons and pages that have not moved into the design', () => {
-    for (const path of ['/compare/countries', '/compare/consultants', '/student/login']) {
+  it('stay on the pages that have not moved into the design', () => {
+    for (const path of ['/student/login', '/preview']) {
       route.pathname = path;
       expect(header()).toContain('class="usta-header');
       expect(footer()).toContain('class="usta-footer');

@@ -3670,3 +3670,34 @@
 .sa .leadform__consent .field__err { display: block; }
 .sa h2.done__t { margin: 0 0 10px; }
 .sa .done .eyebrow--plain { margin-bottom: 10px; }
+
+/* =====================================================================
+   CONSULTANT PROFILE, LOCATIONS AND COMPARISONS
+   The zip's consultants.css profile pieces, scoped, plus the published
+   contact card beside the profile's title and the comparison picker.
+   ===================================================================== */
+.sa .consulthero__row { display: grid; gap: 6px; margin-top: 14px; }
+.sa .destbadges--lg .destbadge { font-size: 15px; padding: 6px 14px; }
+.sa .instcard__loc { margin: 0; color: var(--muted); font-size: 15px; }
+.sa .emptyline { padding: 16px 18px; border: 1px dashed var(--line-strong); border-radius: 8px; color: var(--muted); font-size: 15px; }
+.sa .officegrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.sa .officegrid__item { display: grid; gap: 3px; padding: 16px; background: var(--white); border: 1px solid var(--line); border-radius: 8px; }
+.sa .officegrid__item b { font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; }
+.sa .officegrid__item > span:not(.label) { font-size: 14px; color: var(--muted); }
+.sa .officegrid__item .linkcta { margin-top: 8px; font-size: 13.5px; justify-self: start; }
+.sa .trustbox { padding: 18px 20px; border-radius: 10px; background: var(--info-soft, var(--surface-sunken)); border: 1px solid rgba(31,95,168,.2); display: grid; gap: 10px; }
+.sa .trustbox .ticklist li::before { border-color: var(--info, var(--navy)); }
+.sa .ticklist--sm li { font-size: 14px; }
+.sa .contactcard { display: grid; gap: 12px; padding: 22px; background: var(--navy); color: #fff; border-radius: 12px; align-self: start; }
+.sa .contactcard .label { color: var(--on-navy-muted); }
+.sa .contactcard__note { font-size: 13px; color: var(--on-navy-muted); margin: 0; }
+.sa .contactcard__rows { margin: 0; display: grid; }
+.sa .contactcard__row { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--on-navy-line); font-size: 14.5px; }
+.sa .contactcard__row dd { margin: 0; overflow-wrap: anywhere; }
+.sa .contactcard__row a { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.sa .contactcard .btn { --btn-bg: #fff; --btn-fg: var(--navy); --btn-bd: #fff; }
+.sa .comparehero .comparepick__select { flex: 1 1 320px; max-width: 520px; }
+.sa .comparetable thead th .cmphead .flag { display: inline-flex; }
+.sa .linklist a { display: inline-block; padding: 6px 0; font-size: 14.5px; text-decoration: none; color: var(--text); }
+.sa .linklist a:hover { color: var(--accent); }
+.sa .linklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }

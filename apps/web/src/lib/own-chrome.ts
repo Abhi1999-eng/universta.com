@@ -37,8 +37,7 @@ const OWN_CHROME_PREFIXES = [
  * moved. The university directory, a university's own guide and its claim
  * form are built on the approved design and ship its chrome; the old course
  * addresses under a university only redirect, so these match a path rather
- * than the family. Course and university comparisons have
- * moved into the design; country and consultant comparisons have not. */
+ * than the family. Every comparison has moved into the design. */
 /* Search also lives in the Study Abroad layout, so its own navigation must
    replace the global header on first load and after a client navigation.
    So does the city index; a city's own page is still the older template.
@@ -61,8 +60,18 @@ const OWN_CHROME_PATHS = [
   '/counselling',
   '/about',
   '/faq',
+  /* So did the country and consultant comparisons. */
+  '/compare/countries',
+  '/compare/consultants',
 ];
-const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/, /^\/universities\/[^/]+\/claim$/];
+/* A university's guide and its claim form, a consultant's profile and a
+   consultant location. */
+const OWN_CHROME_PATTERNS = [
+  /^\/universities\/[^/]+$/,
+  /^\/universities\/[^/]+\/claim$/,
+  /^\/study-abroad-consultants\/[^/]+$/,
+  /^\/study-abroad-consultants\/locations\/[^/]+$/,
+];
 
 export function ownsItsChrome(path: string | null | undefined): boolean {
   if (path === '/') return true;

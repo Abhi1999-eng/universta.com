@@ -32,15 +32,22 @@ describe('which routes wear their own header and footer', () => {
     expect(ownsItsChrome('/universities/university-of-warwick/courses')).toBe(false);
     expect(ownsItsChrome('/compare/universities')).toBe(true);
     expect(ownsItsChrome('/compare/universities/other')).toBe(false);
-    expect(ownsItsChrome('/compare/countries')).toBe(false);
-    expect(ownsItsChrome('/compare/consultants')).toBe(false);
+    expect(ownsItsChrome('/compare/countries')).toBe(true);
+    expect(ownsItsChrome('/compare/consultants')).toBe(true);
+    expect(ownsItsChrome('/compare/other')).toBe(false);
   });
 
   it('owns the contact page and the content directories, not their records', () => {
     for (const path of ['/contact', '/careers', '/events', '/success-stories', '/testimonials', '/study-abroad-consultants', '/counselling', '/about', '/faq'])
       expect(ownsItsChrome(path), path).toBe(true);
-    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne', '/study-abroad-consultants/leap-scholar', '/faq/other', '/aboutus'])
+    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne', '/faq/other', '/aboutus'])
       expect(ownsItsChrome(path), path).toBe(false);
+  });
+
+  it('owns a consultant profile and a consultant location', () => {
+    expect(ownsItsChrome('/study-abroad-consultants/leap-scholar')).toBe(true);
+    expect(ownsItsChrome('/study-abroad-consultants/locations/demo-harbour')).toBe(true);
+    expect(ownsItsChrome('/study-abroad-consultants/leap-scholar/other')).toBe(false);
   });
 
   it('owns the city index, and not a city page under a country', () => {
