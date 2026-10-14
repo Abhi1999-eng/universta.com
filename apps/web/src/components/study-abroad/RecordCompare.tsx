@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTransition, type ReactNode } from 'react';
+import { useMemo, useState, useTransition, type ReactNode } from 'react';
 import { compareHref } from '@/lib/record-compare';
 import { Crumbs } from './Crumbs';
 
@@ -67,6 +67,30 @@ export function RecordCompare({
   const go = (slugs: string[]) => startTransition(() => router.push(compareHref(kind, slugs, max)));
   const testId = `${kind}-compare`;
 
+  /* The search-and-pick draft the older comparison offered beside the
+     picker: a selection built up here and committed to the address at
+     once, which a shared link, a reload, and Back and Forward all restore
+     from the address. It starts from what the address already holds. */
+  const selectedKey = selected.join(',');
+  const known = selected.filter((slug) => columns.some((column) => column.slug === slug) || options.some((option) => option.slug === slug));
+  const [draft, setDraft] = useState<string[]>(known);
+  const [draftFor, setDraftFor] = useState(selectedKey);
+  if (draftFor !== selectedKey) {
+    setDraft(known);
+    setDraftFor(selectedKey);
+  }
+  const [query, setQuery] = useState('');
+  const label = (slug: string) =>
+    options.find((option) => option.slug === slug)?.name ?? columns.find((column) => column.slug === slug)?.name ?? slug;
+  const matches = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return options.filter(
+      (option) =>
+        !draft.includes(option.slug) &&
+        (!needle || option.name.toLowerCase().includes(needle) || option.slug.toLowerCase().includes(needle)),
+    );
+  }, [options, query, draft]);
+
   return (
     <>
       <section className="hero hero--compact comparehero">
@@ -108,10 +132,64 @@ export function RecordCompare({
               ))}
             </select>
             {picked.length ? (
-              <button className="btn btn--ghost btn--sm" type="button" disabled={pending} onClick={() => go([])}>
+              <button className="btn btn--ghost btn--sm" type="button" disabled={pending} onClick={() => { setQuery(''); go([]); }}>
                 Clear all
               </button>
             ) : null}
+          </div>
+
+          <div className="cmp-picker">
+            <div className="cmp-search">
+              <label htmlFor={`${testId}-search`}>Search published {kind}</label>
+              <input
+                id={`${testId}-search`}
+                type="search"
+                value={query}
+                placeholder="Search by name"
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+            {matches.length ? (
+              <div className="cmp-options" role="list" aria-label={`Available ${kind}`}>
+                {matches.slice(0, 8).map((option) => (
+                  <button
+                    className="chipbtn"
+                    type="button"
+                    key={option.slug}
+                    disabled={pending || draft.length >= max}
+                    onClick={() => {
+                      setDraft((current) => (current.includes(option.slug) || current.length >= max ? current : [...current, option.slug]));
+                      setQuery('');
+                    }}
+                  >
+                    Add {option.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="cmp-note">{options.length ? `No published ${noun[0]} matches that search.` : `No published ${noun[1]} yet.`}</p>
+            )}
+            <div className="cmp-chosen" aria-label="Selected comparison items">
+              {draft.map((slug) => (
+                <span key={slug}>
+                  {label(slug)}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${label(slug)} from selection`}
+                    disabled={pending}
+                    onClick={() => setDraft((current) => current.filter((item) => item !== slug))}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <p className="cmp-note" role="status">
+              {draft.length}/{max} selected. Choose at least two.
+            </p>
+            <button className="btn btn--sm" type="button" disabled={pending || draft.length < 2} onClick={() => go(draft)}>
+              Compare selected
+            </button>
           </div>
         </div>
       </section>
@@ -133,7 +211,7 @@ export function RecordCompare({
               <div
                 className="tablewrap"
                 role="region"
-                aria-label={title}
+                aria-label={`${noun[1][0]!.toUpperCase()}${noun[1].slice(1)} comparison`}
                 aria-busy={pending}
                 tabIndex={0}
                 data-testid={`${testId}-table-wrap`}

@@ -146,9 +146,8 @@ test.describe('published Phase 1 comparisons', () => {
       await page.getByRole('button', { name: 'Compare selected' }).click();
       await expect(page).toHaveURL(new RegExp(`/compare/${comparison.type}\\?items=`));
       expect(new URL(page.url()).searchParams.get('items')).toBe(items);
-      await expect(page.locator(
-        comparison.type === 'universities' ? '.comparetable thead th' : '.phase1-compare-desktop thead th',
-      )).toHaveCount(4);
+      /* Every comparison draws the approved design's table now. */
+      await expect(page.locator('.comparetable thead th')).toHaveCount(4);
 
       await page.reload();
       await expect(page.getByLabel('Selected comparison items').locator('span')).toHaveCount(3);
@@ -192,13 +191,10 @@ test.describe('published Phase 1 comparisons', () => {
       );
 
       await page.setViewportSize({ width: 390, height: 844 });
-      if (comparison.type === 'universities') {
-        const table = page.getByRole('region', { name: 'University comparison' });
-        await expect(table).toBeVisible();
-        await expect(table.locator('.comparetable thead th')).toHaveCount(4);
-      } else {
-        await expect(page.locator('.phase1-compare-mobile article')).toHaveCount(3);
-      }
+      /* On a phone the table scrolls within its own labelled region. */
+      const table = page.getByRole('region', { name: /comparison$/i });
+      await expect(table).toBeVisible();
+      await expect(table.locator('.comparetable thead th')).toHaveCount(4);
       const removeButtonBox = await page
         .getByLabel('Selected comparison items')
         .getByRole('button', { name: /^Remove / })
