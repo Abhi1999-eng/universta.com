@@ -22,10 +22,10 @@ const viewports = [
  * became the homepage and joined that family, and `/courses` and `/subjects`
  * left it when the approved design reached them too -- the same reason
  * `/study-abroad/...` was never in it. `/events` left with the contact page
- * and the other content directories for the same reason. */
+ * and the other content directories for the same reason, and
+ * `/study-abroad-consultants` when the consultants directory followed. */
 const publicRoutes = [
   '/scholarships',
-  '/study-abroad-consultants',
   '/about',
   '/student/login',
 ];

@@ -3482,3 +3482,38 @@
 .sa .quotecard p::after{ content: "\201D"; }
 /* A hero that opens with an eyebrow under the trail, not a heading. */
 .sa .crumbs + .hero__eyebrow{ margin-top: clamp(20px, 2.6vw, 32px); }
+
+/* ---------- Consultants directory ----------
+   The approved export's directory sections (consultants.css), scoped to the
+   family: who needs a consultant, the services, destinations, cities and the
+   due-diligence checks. */
+.sa .needgrid{ display: grid; gap: 22px; }
+@media (min-width: 860px){ .sa .needgrid{ grid-template-columns: 1fr 1fr; gap: 40px; } }
+.sa .needgrid__col{ padding: 22px; background: var(--white); border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 12px; align-content: start; }
+.sa .ticklist{ list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sa .ticklist li{ position: relative; padding-left: 26px; font-size: 15.5px; }
+.sa .ticklist li::before{ content: ""; position: absolute; left: 2px; top: 7px; width: 12px; height: 7px; border-left: 2px solid var(--ok); border-bottom: 2px solid var(--ok); transform: rotate(-45deg); }
+.sa .ticklist--muted li::before{ border-color: var(--muted); }
+.sa .svcgroups{ display: grid; gap: 28px; }
+@media (min-width: 900px){ .sa .svcgroups{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 40px; } }
+.sa .svclist{ list-style: none; margin: 0; padding: 0; display: grid; }
+.sa .svclist__item{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 12px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); color: var(--text); text-decoration: none; }
+.sa a.svclist__item:hover b{ color: var(--accent); }
+.sa .svclist__item b{ font-size: 15.5px; letter-spacing: -0.01em; }
+.sa .svclist__n{ font-style: normal; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+.sa .destgrid{ display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.sa .destgrid__item{ display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; background: var(--white); border: 1px solid var(--line); border-radius: 8px; color: var(--text); text-decoration: none; }
+.sa .destgrid__item:hover{ border-color: var(--navy); }
+.sa .destgrid__name{ font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.sa .destgrid__n{ font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+.sa .choosegrid{ list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+@media (min-width: 700px){ .sa .choosegrid{ grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1100px){ .sa .choosegrid{ grid-template-columns: repeat(4, 1fr); } }
+.sa .choosegrid__item{ display: grid; gap: 6px; align-content: start; padding: 18px; background: var(--white); border: 1px solid var(--line); border-radius: 8px; }
+.sa .choosegrid__n{ font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+.sa .choosegrid__t{ font-size: 16.5px; letter-spacing: -0.015em; }
+.sa .choosegrid__d{ font-size: 13.5px; color: var(--muted); }
+/* The design's FAQ as native disclosure, for a list with no script of its own. */
+.sa summary.faq__q{ list-style: none; cursor: pointer; }
+.sa summary.faq__q::-webkit-details-marker{ display: none; }
+.sa details[open] > .faq__q .faq__plus{ transform: rotate(45deg); background: var(--navy); color: #fff; border-color: var(--navy); }

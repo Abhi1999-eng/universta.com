@@ -123,6 +123,10 @@ export const CONSULTANT_SORTS: ReadonlyArray<{ value: ConsultantSort; label: str
 
 export type ConsultantListState = {
   q: string;
+  /** Destination slugs, for the worldwide directory: `?country=uk,australia`.
+   *  A destination's own page never sets it -- every row there is that
+   *  destination's. */
+  destinations: string[];
   /** City keys: "New Delhi" is `new-delhi`. */
   cities: string[];
   services: string[];
@@ -134,6 +138,7 @@ export type ConsultantListState = {
 
 export const CONSULTANT_PARAMS = [
   'q',
+  'country',
   'city',
   'service',
   'language',
@@ -154,6 +159,7 @@ export function readConsultantState(params: Params): ConsultantListState {
   const page = Number.parseInt(params.get('page') ?? '', 10);
   return {
     q: (params.get('q') ?? '').trim().slice(0, 100),
+    destinations: list(params.get('country')).map((slug) => slug.toLowerCase()),
     /* Read as keys whichever way they arrive: the guide's links used to
        carry the name -- `?city=Adelaide` -- and the list writes the key. */
     cities: [...new Set(list(params.get('city')).map(cityKey).filter(Boolean))],
@@ -170,6 +176,7 @@ export function readConsultantState(params: Params): ConsultantListState {
 export function consultantListHref(path: string, state: Partial<ConsultantListState>) {
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
+  if (state.destinations?.length) params.set('country', state.destinations.join(','));
   if (state.cities?.length) params.set('city', state.cities.join(','));
   if (state.services?.length) params.set('service', state.services.join(','));
   if (state.languages?.length) params.set('language', state.languages.join(','));
@@ -213,6 +220,9 @@ function tally(
  * consultants, so no option is offered that would empty the list. */
 export function consultantOptions(rows: readonly CountryConsultantRow[]) {
   return {
+    destinations: tally(rows, (row) =>
+      row.destinations.map((destination) => ({ value: destination.slug, label: destination.name })),
+    ),
     cities: tally(rows, (row) =>
       row.cities.map((city) => ({ value: cityKey(city), label: city })),
     ),
@@ -252,6 +262,11 @@ export function filterConsultants(
   const shown = rows.filter((row) => {
     if (!matchesSubject(searchText(row), state.q)) return false;
     if (
+      state.destinations.length &&
+      !row.destinations.some((destination) => state.destinations.includes(destination.slug))
+    )
+      return false;
+    if (
       state.cities.length &&
       !row.cities.some((city) => state.cities.includes(cityKey(city)))
     )
@@ -285,6 +300,7 @@ export function filterConsultants(
 
 export function activeConsultantFilters(state: ConsultantListState) {
   return (
+    state.destinations.length +
     state.cities.length +
     state.services.length +
     state.languages.length +

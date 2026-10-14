@@ -65,6 +65,7 @@ const rows = toConsultantRows([
 
 const state = (over: Partial<ConsultantListState> = {}): ConsultantListState => ({
   q: '',
+  destinations: [],
   cities: [],
   services: [],
   languages: [],
@@ -113,6 +114,34 @@ describe('a destination\'s consultants page', () => {
   it('dates a verification only when the record is verified', () => {
     expect(rows[2]?.verified).toBe(false);
     expect(rows[2]?.verifiedAt).toBeNull();
+  });
+});
+
+describe('the worldwide directory by destination', () => {
+  /* The destination guides' consultants pages never narrow by destination;
+     the worldwide directory does, and keeps the old `?country=` links. */
+  const world = toConsultantRows([
+    record(),
+    record({ id: 'c5', name: 'Kestrel Partners', slug: 'kestrel', countries: [{ country: { name: 'Australia', slug: 'australia' } }] }),
+  ]);
+
+  it('reads ?country= as the destinations, and writes it back', () => {
+    const read = readConsultantState(new URLSearchParams('country=UK,australia'));
+    expect(read.destinations).toEqual(['uk', 'australia']);
+    expect(consultantListHref('/study-abroad-consultants', { destinations: ['australia'] })).toBe(
+      '/study-abroad-consultants?country=australia',
+    );
+  });
+
+  it('counts each destination and keeps only the consultants who list it', () => {
+    expect(consultantOptions(world).destinations.map(({ value, count }) => [value, count])).toEqual([
+      ['australia', 1],
+      ['belize', 1],
+      ['united-kingdom', 1],
+    ]);
+    const only = filterConsultants(world, state({ destinations: ['australia'] }));
+    expect(only.map((row) => row.slug)).toEqual(['kestrel']);
+    expect(activeConsultantFilters(state({ destinations: ['australia'] }))).toBe(1);
   });
 });
 
