@@ -2328,6 +2328,9 @@
   background: var(--white); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(7, 20, 38, 0.16);
 }
 .sa .mega__panel[hidden] { display: none; }
+/* The gap above a panel belongs to it, so a pointer crossing from the button
+   to the links never leaves the menu. */
+.sa .mega__panel::before { content: ''; position: absolute; left: 0; right: 0; top: -12px; height: 12px; }
 .sa .mega__item:nth-last-child(-n+2) .mega__panel { left: auto; right: -12px; }
 .sa .mega__desc { font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px 8px; }
 .sa .mega__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
