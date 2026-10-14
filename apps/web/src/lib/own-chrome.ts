@@ -40,7 +40,7 @@ const OWN_CHROME_PREFIXES = [
  * than the family. Every comparison has moved into the design. */
 /* Search also lives in the Study Abroad layout, so its own navigation must
    replace the global header on first load and after a client navigation.
-   So does the city index; a city's own page is still the older template.
+   So does the city index, and a destination's cities with each city's page.
    The contact page, the consultants directory and the careers, events,
    success stories and testimonials directories moved into the design too;
    their detail pages have not. */
@@ -75,6 +75,11 @@ const OWN_CHROME_PATTERNS = [
   /^\/success-stories\/[^/]+$/,
   /^\/study-abroad-consultants\/[^/]+$/,
   /^\/study-abroad-consultants\/locations\/[^/]+$/,
+  /* A destination's cities and a city of its own: `/study-in-<country>/cities`
+     and `/study-in-<country>/<city>`, the public addresses the rewrite keeps,
+     and the route segments behind them. */
+  /^\/study-in-[^/]+\/[^/]+$/,
+  /^\/study-in\/[^/]+\/[^/]+$/,
 ];
 
 export function ownsItsChrome(path: string | null | undefined): boolean {
