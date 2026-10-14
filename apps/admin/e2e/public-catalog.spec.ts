@@ -194,7 +194,7 @@ test.describe('approved public subject and course discovery', () => {
     const response = await page.goto(`${subjects}/not-a-published-subject/specializations`);
 
     expect(response?.status()).toBe(404);
-    await expect(page.getByRole('heading', { name: 'This page could not be found.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'We could not find that page' })).toBeVisible();
   });
 
   test('does not load reference HTML or persist auth tokens on public subject pages', async ({ page }) => {
