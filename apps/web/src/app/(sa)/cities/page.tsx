@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllCities } from '@/lib/locations';
 import { staticPageMetadata } from '@/lib/static-page-seo';
@@ -6,13 +7,16 @@ import { Crumbs } from '@/components/study-abroad/Crumbs';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata() {
-  return staticPageMetadata(
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await staticPageMetadata(
     'cities-listing',
     'Cities',
     'Browse published study cities across every published destination country.',
     '/cities',
   );
+  /* The helper writes the site's suffix itself; the route family's title
+     template would add it a second time ("Cities | Universta | Universta"). */
+  return { ...metadata, title: { absolute: String(metadata.title) } };
 }
 
 /** Global city index. City detail pages previously required opening a country
