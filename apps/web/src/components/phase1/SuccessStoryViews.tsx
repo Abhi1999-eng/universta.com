@@ -39,7 +39,7 @@ export function SuccessStoriesListing({
         <div className="shell">
           <p className="eyebrow">Student journeys</p>
           <h1>Success Stories</h1>
-          <p>Read long-form journeys from fictional demonstration profiles.</p>
+          <p>Long-form accounts of how students planned and made their move abroad.</p>
         </div>
       </section>
       <section className="catalog-explorer shell" aria-labelledby="success-stories-heading">

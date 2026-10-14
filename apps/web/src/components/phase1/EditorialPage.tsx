@@ -45,14 +45,17 @@ export function EditorialPage({
           ))
         ) : (
           <>
+            {/* A page nobody has written yet is read by students, so it says
+                where to get the answer now rather than describing the CMS. */}
             <article className="editorial-section">
-              <p className="eyebrow">Local Phase 1</p>
-              <h2>Published content will appear here</h2>
+              <h2>Nothing published here yet</h2>
               <p>
-                This page is managed through the local editorial catalogue. The
-                route, metadata and navigation are ready while content is
-                prepared.
+                Book a free counselling session and the Universta team will
+                answer your questions directly.
               </p>
+              <Link className="button" href="/counselling">
+                Book free counselling
+              </Link>
             </article>
             {home ? (
               <div className="catalog-card-grid">
