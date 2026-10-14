@@ -208,6 +208,12 @@ export function StudentSessionProvider({
   );
 }
 
+/** The session where there is one, and null outside the provider: for a
+ * link that reads "Log in" or "My Dashboard" and must render either way. */
+export function useStudentSessionIfAny(): StudentSessionValue | null {
+  return useContext(SessionContext);
+}
+
 export function useStudentSession(): StudentSessionValue {
   const value = useContext(SessionContext);
   if (!value) {
