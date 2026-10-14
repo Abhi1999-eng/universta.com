@@ -57,8 +57,9 @@ test.describe('student portal', () => {
     });
     /* A public page that still carries the site chrome, which is what holds
        the student account menu. `/universities` did until the approved
-       design reached it and brought its own header. */
-    await page.goto(`${webBaseUrl}/scholarships`);
+       design reached it and brought its own header, and `/scholarships`
+       until it followed; the student login still wears it. */
+    await page.goto(`${webBaseUrl}/student/login`);
     await expect(page.locator('.usta-header')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
@@ -261,7 +262,9 @@ test.describe('student portal', () => {
     }
     // The phone gets a bottom bar, not a shrunken sidebar.
     await expect(page.locator('.stu-tabbar')).toBeVisible();
-    await page.goto(`${webBaseUrl}/scholarships`);
+    /* The preview page still wears the site chrome and its account menu;
+       the public listings all wear the approved design's own header now. */
+    await page.goto(`${webBaseUrl}/preview`);
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
     ).toBeVisible();
