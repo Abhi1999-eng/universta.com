@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { originAllowed } from '@/lib/request-origin';
 
 export async function POST(request: NextRequest) {
   const raw = await request.text();
@@ -6,7 +7,7 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ data: null, error: { code: 'VALIDATION_ERROR', message: 'Invalid claim request' } }, { status: 400 }); }
   const origin = request.headers.get('origin');
-  if (origin && origin !== (process.env.NEXT_PUBLIC_WEB_ORIGIN ?? 'http://localhost:3000')) return NextResponse.json({ data: null, error: { code: 'FORBIDDEN', message: 'Request origin is not allowed' } }, { status: 403 });
+  if (!originAllowed(request)) return NextResponse.json({ data: null, error: { code: 'FORBIDDEN', message: 'Request origin is not allowed' } }, { status: 403 });
   try {
     const upstream = await fetch(new URL('/api/v1/phase1/university-claims', process.env.API_BASE_URL ?? 'http://127.0.0.1:4000'), { method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', ...(origin ? { origin } : {}) }, body: JSON.stringify(body), cache: 'no-store', signal: AbortSignal.timeout(5_000) });
     return NextResponse.json(await upstream.json(), { status: upstream.status, headers: { 'cache-control': 'no-store' } });
