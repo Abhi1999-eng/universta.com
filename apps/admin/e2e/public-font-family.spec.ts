@@ -21,11 +21,11 @@ const viewports = [
  * than the site's Inter. `/` left this list when the destination listing
  * became the homepage and joined that family, and `/courses` and `/subjects`
  * left it when the approved design reached them too -- the same reason
- * `/study-abroad/...` was never in it. */
+ * `/study-abroad/...` was never in it. `/events` left with the contact page
+ * and the other content directories for the same reason. */
 const publicRoutes = [
   '/scholarships',
   '/study-abroad-consultants',
-  '/events',
   '/about',
   '/student/login',
 ];
@@ -147,7 +147,9 @@ test('public typography roles keep headings, cards and native controls on the sh
   expect(listing.input?.size).toBe('16px');
   expect(listing.select?.size).toBe('16px');
 
-  await page.goto(`${webBaseUrl}/contact`, { waitUntil: 'domcontentloaded' });
+  /* The contact page moved into the approved design; the counselling form is
+     the site-chrome form with a textarea. */
+  await page.goto(`${webBaseUrl}/counselling`, { waitUntil: 'domcontentloaded' });
   const textarea = await page.locator('textarea').first().evaluate((element) => {
     const style = getComputedStyle(element);
     return { family: style.fontFamily, size: style.fontSize, lineHeight: style.lineHeight };
