@@ -3525,7 +3525,6 @@
 .sa details[open] > .faq__q .faq__plus{ transform: rotate(45deg); background: var(--navy); color: #fff; border-color: var(--navy); }
 
 /* =====================================================================
-<<<<<<< HEAD
    SCHOLARSHIPS
    The zip's scholarships.css (finder hero, ledger, funding cards, award
    page) and the link list and process steps its exams.css gives, scoped.
@@ -3621,7 +3620,8 @@
 .sa .schbody h3, .sa .schbody h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; margin: 18px 0 8px; }
 .sa .schactions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
 .sa .schactions .student-catalogue-status { font-size: 13px; color: var(--muted); }
-=======
+
+/* =====================================================================
    HUB PAGES: prose, answers and managed sections
    The zip's hub.css prose and FAQ list, scoped, plus the form card's
    selects and notes the counselling request needs.
@@ -3670,4 +3670,3 @@
 .sa .leadform__consent .field__err { display: block; }
 .sa h2.done__t { margin: 0 0 10px; }
 .sa .done .eyebrow--plain { margin-bottom: 10px; }
->>>>>>> defea09 (Counselling, About and the FAQ wear the approved design)
