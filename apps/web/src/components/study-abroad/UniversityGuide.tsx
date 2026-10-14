@@ -323,7 +323,14 @@ export function UniversityGuide({
   const split = hasOverview
     ? splitOverview(overview!, university.shortDescription)
     : { intro: null, highlights: [] };
-  const type = typeLabel(university.institutionType);
+  /* "Public" on its own says little above a name; "Public university" says
+     what the record means. A type that already names the kind of institution
+     is left as it is. */
+  const kind = typeLabel(university.institutionType);
+  const type =
+    kind && !/universit|college|institute|school|polytechnic|academy/i.test(kind)
+      ? `${kind} university`
+      : kind;
   const where = country ? inCountry(country.name, country.iso2Code) : null;
   const self = universityHref(university.slug);
   const coursesHref = country
@@ -543,78 +550,68 @@ export function UniversityGuide({
           <Crumbs trail={trail} />
 
           <div className="unihero">
-            <div className="unihero__main">
-              <div className="unihero__id">
-                <span className="unimark unimark--lg" aria-hidden="true">
-                  {universityInitials(university.name)}
-                </span>
-                <div>
-                  {type || university.establishedYear ? (
-                    <p className="hero__eyebrow">
-                      {type}
-                      {type && university.establishedYear ? <b> · </b> : null}
-                      {university.establishedYear
-                        ? `Founded ${university.establishedYear}`
-                        : null}
-                    </p>
-                  ) : null}
-                  <h1 className="unihero__name">{university.name}</h1>
-                  {country ? (
-                    <p className="unihero__where">
-                      <FlagMark iso2Code={country.iso2Code} bands={null} />
-                      <span>
-                        {university.city ? `${university.city}, ` : null}
-                        <Link href={`/study-abroad/${country.slug}`}>{country.name}</Link>
-                      </span>
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-
-              {university.shortDescription ? (
-                <p className="unihero__desc">{university.shortDescription}</p>
-              ) : null}
-
-              <div className="btn-row">
-                <UniversityAssessmentButton
-                  className="btn btn--lg"
-                  intent="university"
-                  {...assessment}
-                >
-                  Check my eligibility{' '}
-                  <span className="btn__arrow" aria-hidden="true">
-                    &rarr;
-                  </span>
-                </UniversityAssessmentButton>
-                {offerings.length ? (
-                  <Link className="btn btn--lg btn--ghost" href="#programmes">
-                    See its programmes
-                  </Link>
+            <div className="unihero__id">
+              <span className="unimark unimark--lg" aria-hidden="true">
+                {universityInitials(university.name)}
+              </span>
+              <div className="unihero__body">
+                {/* What it is and where it is. The country is already in the
+                    trail above and on the guide button below, and the founding
+                    year has its own snapshot cell, so neither is said again. */}
+                {type || university.city ? (
+                  <p className="hero__eyebrow">
+                    {type}
+                    {type && university.city ? <b> · </b> : null}
+                    {university.city}
+                  </p>
                 ) : null}
-                {country ? (
-                  <Link
-                    className="btn btn--lg btn--ghost"
-                    href={`/study-abroad/${country.slug}`}
+                <h1 className="unihero__name">{university.name}</h1>
+
+                {university.shortDescription ? (
+                  <p className="unihero__desc">{university.shortDescription}</p>
+                ) : null}
+
+                <div className="btn-row">
+                  <UniversityAssessmentButton
+                    className="btn btn--lg"
+                    intent="university"
+                    {...assessment}
                   >
-                    {country.name} guide
+                    Check my eligibility{' '}
+                    <span className="btn__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </UniversityAssessmentButton>
+                  {offerings.length ? (
+                    <Link className="btn btn--lg btn--ghost" href="#programmes">
+                      See its programmes
+                    </Link>
+                  ) : null}
+                  {country ? (
+                    <Link
+                      className="btn btn--lg btn--ghost"
+                      href={`/study-abroad/${country.slug}`}
+                    >
+                      {country.name} guide
+                    </Link>
+                  ) : null}
+                  <Link className="btn btn--lg btn--ghost" href={compareHref}>
+                    Compare
                   </Link>
-                ) : null}
-                <Link className="btn btn--lg btn--ghost" href={compareHref}>
-                  Compare
-                </Link>
-              </div>
+                </div>
 
-              {university.qsRanking ? (
-                <p className="rankline">
-                  <span>
-                    <b>#{university.qsRanking}</b> QS World University Rankings
-                  </span>
-                  <em>
-                    Ranking is one factor among many. Programme fit, cost and
-                    entry requirements usually matter more to your outcome.
-                  </em>
-                </p>
-              ) : null}
+                {university.qsRanking ? (
+                  <p className="rankline">
+                    <span>
+                      <b>#{university.qsRanking}</b> QS World University Rankings
+                    </span>
+                    <em>
+                      Ranking is one factor among many. Programme fit, cost and
+                      entry requirements usually matter more to your outcome.
+                    </em>
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

@@ -390,11 +390,16 @@ describe('a university within its destination', () => {
     expect(crumbs).not.toContain('/study-abroad');
   });
 
-  it('says where the university is, with the country as a link to its guide', () => {
+  it('names the city in the eyebrow and leaves the country and founding year to the trail and the snapshot', () => {
     const markup = html({ city: 'Bremen', establishedYear: 1971 });
-    expect(markup).toMatch(/unihero__where.*Bremen, .*href="\/study-abroad\/germany">Germany</);
-    expect(markup).toContain('Founded 1971');
-    expect(markup).toContain('Bremen, Germany');
+    const hero = markup.slice(markup.indexOf('class="unihero'), markup.indexOf('class="statstrip') > 0 ? markup.indexOf('class="statstrip') : markup.indexOf('id="snapshot"'));
+    expect(hero).toMatch(/hero__eyebrow">.*Bremen</);
+    expect(hero).not.toContain('unihero__where');
+    expect(hero).not.toContain('Founded 1971');
+    expect(hero).not.toContain('Bremen, Germany');
+    /* The country keeps its guide link: in the trail and on the guide button. */
+    expect(hero).toContain('href="/study-abroad/germany"');
+    expect(markup).toMatch(/<span class="label">Founded<\/span><b>1971<\/b>/);
     expect(markup).toContain('href="/compare/universities?items=elmswood-polytechnic-university-germany"');
   });
 
