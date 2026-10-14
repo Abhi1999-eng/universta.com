@@ -37,10 +37,12 @@ describe('which routes wear their own header and footer', () => {
     expect(ownsItsChrome('/compare/other')).toBe(false);
   });
 
-  it('owns the contact page and the content directories, not their records', () => {
+  it('owns the contact page, the content directories and their records', () => {
     for (const path of ['/contact', '/careers', '/events', '/success-stories', '/testimonials', '/study-abroad-consultants', '/counselling', '/about', '/faq'])
       expect(ownsItsChrome(path), path).toBe(true);
-    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne', '/faq/other', '/aboutus'])
+    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne'])
+      expect(ownsItsChrome(path), path).toBe(true);
+    for (const path of ['/careers/student-advisor/apply', '/faq/other', '/aboutus'])
       expect(ownsItsChrome(path), path).toBe(false);
   });
 
