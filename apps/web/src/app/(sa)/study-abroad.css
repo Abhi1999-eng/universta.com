@@ -3525,6 +3525,7 @@
 .sa details[open] > .faq__q .faq__plus{ transform: rotate(45deg); background: var(--navy); color: #fff; border-color: var(--navy); }
 
 /* =====================================================================
+<<<<<<< HEAD
    SCHOLARSHIPS
    The zip's scholarships.css (finder hero, ledger, funding cards, award
    page) and the link list and process steps its exams.css gives, scoped.
@@ -3620,3 +3621,53 @@
 .sa .schbody h3, .sa .schbody h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; margin: 18px 0 8px; }
 .sa .schactions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
 .sa .schactions .student-catalogue-status { font-size: 13px; color: var(--muted); }
+=======
+   HUB PAGES: prose, answers and managed sections
+   The zip's hub.css prose and FAQ list, scoped, plus the form card's
+   selects and notes the counselling request needs.
+   ===================================================================== */
+.sa .h-prose { max-width: 760px; font-size: 16.5px; line-height: 1.7; }
+.sa .h-prose p + p { margin-top: 14px; }
+.sa .h-prose h2 { font-size: clamp(20px, 2vw, 26px); margin: 30px 0 10px; }
+.sa .h-prose h2:first-child { margin-top: 0; }
+.sa .h-prose ul { padding-left: 20px; }
+.sa .h-prose li { margin: 4px 0; }
+.sa .h-note { font-size: 14px; color: var(--muted); border-left: 3px solid var(--line-strong); padding-left: 12px; margin-top: 30px; }
+.sa .h-faqs { display: grid; gap: 8px; }
+.sa .h-faq { border: 1px solid var(--line); border-radius: 10px; background: var(--white); padding: 0 16px; }
+.sa .sec--white .h-faq { background: var(--paper); }
+.sa .h-faq summary { cursor: pointer; padding: 14px 0; font-weight: 600; list-style: none; }
+.sa .h-faq summary::-webkit-details-marker { display: none; }
+.sa .h-faq p { margin: 0 0 14px; color: var(--muted); }
+.sa .h-faqgroup { margin-top: 28px; }
+.sa .h-faqgroup__t { font-size: 20px; margin-bottom: 12px; }
+.sa .h-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
+.sa .h-msecs { display: grid; gap: 0; }
+.sa .h-msec + .h-msec { margin-top: 36px; padding-top: 32px; border-top: 1px solid var(--line-soft); }
+.sa .h-msec__t { font-size: clamp(22px, 2.4vw, 30px); margin: 4px 0 14px; }
+.sa .h-msec .sec-lead { margin-bottom: 16px; }
+.sa .h-figure { margin: 0; }
+.sa .h-figure img { max-width: 100%; height: auto; border-radius: 12px; }
+.sa .h-figure figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.sa .h-imgtext { display: grid; gap: 20px; }
+.sa .h-imgtext img { max-width: 100%; height: auto; border-radius: 12px; }
+@media (min-width: 800px) { .sa .h-imgtext { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; } .sa .h-imgtext--right img { order: 2; } }
+.sa .field select {
+  width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 16px; background: var(--white); color: var(--text);
+}
+.sa .field select:focus { outline: 0; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7,20,38,.07); }
+.sa .field select:disabled { color: var(--muted); }
+.sa .field[data-invalid="true"] select, .sa .field[data-invalid="true"] textarea { border-color: var(--accent); }
+.sa .formhint { display: block; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.sa .formerr h3 { font-size: 15px; font-weight: 700; margin: 0 0 4px; color: var(--text); }
+.sa .formerr ul { margin: 6px 0 0; padding-left: 18px; }
+.sa .formerr .linkbtn { color: var(--accent); }
+.sa .formerr .btn { margin-top: 8px; }
+.sa .cform__context { margin: 0 0 18px; }
+.sa .leadform__consent label { font-weight: 600; color: var(--text); }
+.sa .leadform__consent .formhint { margin-top: 2px; }
+.sa .leadform__consent .field__err { display: block; }
+.sa h2.done__t { margin: 0 0 10px; }
+.sa .done .eyebrow--plain { margin-bottom: 10px; }
+>>>>>>> defea09 (Counselling, About and the FAQ wear the approved design)

@@ -37,9 +37,9 @@ describe('which routes wear their own header and footer', () => {
   });
 
   it('owns the contact page and the content directories, not their records', () => {
-    for (const path of ['/contact', '/careers', '/events', '/success-stories', '/testimonials', '/study-abroad-consultants'])
+    for (const path of ['/contact', '/careers', '/events', '/success-stories', '/testimonials', '/study-abroad-consultants', '/counselling', '/about', '/faq'])
       expect(ownsItsChrome(path), path).toBe(true);
-    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne', '/study-abroad-consultants/leap-scholar'])
+    for (const path of ['/careers/student-advisor', '/events/open-day', '/success-stories/from-delhi-to-melbourne', '/study-abroad-consultants/leap-scholar', '/faq/other', '/aboutus'])
       expect(ownsItsChrome(path), path).toBe(false);
   });
 
