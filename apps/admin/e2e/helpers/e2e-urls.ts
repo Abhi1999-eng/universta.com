@@ -8,15 +8,14 @@ export const webBaseUrl =
 /**
  * A public route that still wears the Admin-editable global header and footer.
  *
- * The homepage does not. The Study Abroad route family ships its own header
- * and footer as part of the approved design, and it now covers `/`,
- * `/subjects`, `/specializations`, `/courses` and `/universities` as well as
- * the destination guides, so the site chrome stands down on all of them.
+ * The Study Abroad route family ships its own header and footer as part of
+ * the approved design, and it now covers every public listing -- `/`,
+ * `/subjects`, `/courses`, `/universities`, `/scholarships` and the rest --
+ * so the site chrome stands down on all of them.
  *
- * Tests about the chrome itself need a route outside that family, and the
- * family keeps growing: this was `/courses`, then `/universities`, and is
- * now `/scholarships`. When the approved design reaches that too, move this
- * again rather than asserting the site chrome on a page that no longer has
- * one -- the failure reads as a broken header, which is not what it is.
+ * Tests about the chrome itself need a route outside that family. This was
+ * `/courses`, then `/universities`, then `/scholarships`; the student login
+ * is the public page that still wears the site chrome, with every header and
+ * footer link the navigation tests look for.
  */
-export const chromeBaseUrl = `${webBaseUrl}/scholarships`;
+export const chromeBaseUrl = `${webBaseUrl}/student/login`;
