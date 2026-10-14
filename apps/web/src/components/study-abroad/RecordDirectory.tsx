@@ -86,22 +86,23 @@ export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows
   );
 }
 
-const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+/** The same readings of a record's fields, for the record's own page. */
+export const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
 
 /** Words from a field the editor wrote as rich text. */
-function plain(value: unknown, length = 180) {
+export function plain(value: unknown, length = 180) {
   const raw = text(value);
   if (!raw) return null;
   const words = (/<[a-z][^>]*>/i.test(raw) ? richTextToPlainText(raw) : raw).replace(/\s+/g, ' ').trim();
   return words.length > length ? `${words.slice(0, length).trimEnd()}…` : words;
 }
 
-function humanise(value: unknown) {
+export function humanise(value: unknown) {
   const raw = text(value);
   return raw ? raw.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : null;
 }
 
-function day(value: unknown, timeZone?: string | null) {
+export function day(value: unknown, timeZone?: string | null) {
   const raw = text(value);
   if (!raw) return null;
   const at = new Date(raw);
@@ -109,10 +110,10 @@ function day(value: unknown, timeZone?: string | null) {
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', ...(timeZone ? { timeZone } : {}) }).format(at);
 }
 
-const name = (value: unknown) =>
+export const name = (value: unknown) =>
   value && typeof value === 'object' && 'name' in value ? text((value as { name?: unknown }).name) : null;
 
-const facts = (...parts: Array<string | null>) => parts.filter(Boolean).join(' · ');
+export const facts = (...parts: Array<string | null | undefined>) => parts.filter(Boolean).join(' · ');
 
 export function JobCard({ row }: { row: DirectoryRow }) {
   const href = `/careers/${encodeURIComponent(String(row.slug ?? row.id))}`;

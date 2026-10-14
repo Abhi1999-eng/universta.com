@@ -65,10 +65,14 @@ const OWN_CHROME_PATHS = [
   '/compare/consultants',
 ];
 /* A university's guide and its claim form, a consultant's profile and a
-   consultant location. */
+   consultant location, and a career, an event and a success story of
+   their own. */
 const OWN_CHROME_PATTERNS = [
   /^\/universities\/[^/]+$/,
   /^\/universities\/[^/]+\/claim$/,
+  /^\/careers\/[^/]+$/,
+  /^\/events\/[^/]+$/,
+  /^\/success-stories\/[^/]+$/,
   /^\/study-abroad-consultants\/[^/]+$/,
   /^\/study-abroad-consultants\/locations\/[^/]+$/,
 ];
