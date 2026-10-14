@@ -101,7 +101,9 @@ test.describe('student portal', () => {
   test('keeps public discovery connected to the student dashboard', async ({
     page,
   }) => {
-    await registerAndSignIn(page, newEmail('public'), '/scholarships');
+    /* The preview page is the public page that still wears the site chrome
+       and its account menu; every listing wears the design's own header. */
+    await registerAndSignIn(page, newEmail('public'), '/preview');
     await expect(page.locator('.usta-header')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
@@ -125,7 +127,7 @@ test.describe('student portal', () => {
     await expect(page.getByText('Admin', { exact: true })).toHaveCount(0);
     await page.getByRole('link', { name: 'My Dashboard' }).click();
     await expect(page).toHaveURL(/\/student$/);
-    await page.goto(`${webBaseUrl}/scholarships`);
+    await page.goto(`${webBaseUrl}/preview`);
     await page
       .getByRole('button', { name: 'Open student account menu' })
       .click();
