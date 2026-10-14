@@ -16,6 +16,8 @@ describe('which routes wear their own header and footer', () => {
       '/specializations',
       '/courses',
       '/courses/msc-computer-science',
+      '/scholarships',
+      '/scholarships/chevening',
     ])
       expect(ownsItsChrome(path), path).toBe(true);
   });
@@ -48,7 +50,7 @@ describe('which routes wear their own header and footer', () => {
   });
 
   it('leaves every other route, and a path it cannot read, to the site chrome', () => {
-    for (const path of ['/scholarships', '/student/saved', '/coursesx', '/subjectsfoo', undefined, null, ''])
+    for (const path of ['/student/saved', '/coursesx', '/subjectsfoo', '/scholarshipsx', undefined, null, ''])
       expect(ownsItsChrome(path), String(path)).toBe(false);
   });
 });

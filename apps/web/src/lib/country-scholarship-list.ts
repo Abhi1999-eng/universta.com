@@ -103,6 +103,11 @@ export const SCHOLARSHIP_SORTS: ReadonlyArray<{ value: ScholarshipSort; label: s
 
 export type ScholarshipListState = {
   q: string;
+  /** Destinations and universities by slug: the worldwide finder's own
+   * narrowing, under the names its links already carry. A destination's
+   * page offers neither, since every award there is for it already. */
+  destinations: string[];
+  universities: string[];
   levels: string[];
   types: string[];
   /** Only awards whose closing date has not passed. */
@@ -116,6 +121,10 @@ export type ScholarshipListState = {
  * indexed whole, so the server asks search engines not to index it. */
 export const SCHOLARSHIP_PARAMS = [
   'q',
+  'country',
+  'university',
+  /* Read on the server, where the subject's awards are asked of the API. */
+  'subject',
   'degreeLevel',
   'type',
   'deadline',
@@ -135,6 +144,8 @@ export function readScholarshipState(params: Params): ScholarshipListState {
   const page = Number.parseInt(params.get('page') ?? '', 10);
   return {
     q: (params.get('q') ?? '').trim().slice(0, 100),
+    destinations: list(params.get('country')),
+    universities: list(params.get('university')),
     levels: list(params.get('degreeLevel')),
     types: list(params.get('type')),
     open: params.get('deadline') === 'open',
@@ -153,6 +164,8 @@ export function scholarshipListHref(
 ) {
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
+  if (state.destinations?.length) params.set('country', state.destinations.join(','));
+  if (state.universities?.length) params.set('university', state.universities.join(','));
   if (state.levels?.length) params.set('degreeLevel', state.levels.join(','));
   if (state.types?.length) params.set('type', state.types.join(','));
   if (state.open) params.set('deadline', 'open');
@@ -188,16 +201,20 @@ export function scholarshipOptions(
   levelNames: ReadonlyArray<{ code: string; name: string }>,
 ) {
   const types = new Map<string, ScholarshipFilterOption>();
-  for (const row of rows) {
-    if (!row.type) continue;
-    const entry = types.get(row.type);
+  const destinations = new Map<string, ScholarshipFilterOption>();
+  const universities = new Map<string, ScholarshipFilterOption>();
+  const tally = (into: Map<string, ScholarshipFilterOption>, value: string, label: string) => {
+    const entry = into.get(value);
     if (entry) entry.count += 1;
-    else
-      types.set(row.type, {
-        value: row.type,
-        label: benefitLabel(row.type) ?? row.type,
-        count: 1,
-      });
+    else into.set(value, { value, label, count: 1 });
+  };
+  for (const row of rows) {
+    if (row.type) tally(types, row.type, benefitLabel(row.type) ?? row.type);
+    /* Each place once per award, however many times the record names it. */
+    for (const place of new Map(row.countries.filter((c) => c.slug).map((c) => [c.slug, c])).values())
+      tally(destinations, place.slug, place.name);
+    for (const place of new Map(row.universities.filter((u) => u.slug).map((u) => [u.slug, u])).values())
+      tally(universities, place.slug, place.name);
   }
   const levels = levelNames
     .map((level) => ({
@@ -209,6 +226,8 @@ export function scholarshipOptions(
   return {
     types: [...types.values()].sort(byCount),
     levels,
+    destinations: [...destinations.values()].sort(byCount),
+    universities: [...universities.values()].sort(byCount),
     open: rows.filter((row) => row.closed !== true).length,
   };
 }
@@ -241,6 +260,16 @@ export function filterScholarships(
 ): CountryScholarshipRow[] {
   const shown = rows.filter((row) => {
     if (!matchesSubject(searchText(row), state.q)) return false;
+    if (
+      state.destinations.length &&
+      !row.countries.some((place) => state.destinations.includes(place.slug))
+    )
+      return false;
+    if (
+      state.universities.length &&
+      !row.universities.some((place) => state.universities.includes(place.slug))
+    )
+      return false;
     if (state.levels.length && !state.levels.some((level) => row.levels.includes(level)))
       return false;
     if (state.types.length && !(row.type && state.types.includes(row.type))) return false;
@@ -277,5 +306,11 @@ export function filterScholarships(
 
 /** The number of filters ticked, for the badge on the phone's Filters button. */
 export function activeScholarshipFilters(state: ScholarshipListState) {
-  return state.levels.length + state.types.length + (state.open ? 1 : 0);
+  return (
+    state.destinations.length +
+    state.universities.length +
+    state.levels.length +
+    state.types.length +
+    (state.open ? 1 : 0)
+  );
 }

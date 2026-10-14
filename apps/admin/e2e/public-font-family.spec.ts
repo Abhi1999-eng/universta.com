@@ -23,9 +23,9 @@ const viewports = [
  * left it when the approved design reached them too -- the same reason
  * `/study-abroad/...` was never in it. `/events` left with the contact page
  * and the other content directories for the same reason, and
- * `/study-abroad-consultants` when the consultants directory followed. */
+ * `/study-abroad-consultants` when the consultants directory followed, and
+ * `/scholarships` when the finder and the award pages did. */
 const publicRoutes = [
-  '/scholarships',
   '/about',
   '/student/login',
 ];

@@ -66,6 +66,8 @@ const rows = toCountryScholarshipRows(
 
 const state = (over: Partial<ScholarshipListState> = {}): ScholarshipListState => ({
   q: '',
+  destinations: [],
+  universities: [],
   levels: [],
   types: [],
   open: false,
@@ -108,6 +110,8 @@ describe('the scholarships list state', () => {
     );
     expect(read).toEqual({
       q: 'gates',
+      destinations: [],
+      universities: [],
       levels: ['PG', 'UG'],
       types: ['FULL_FUNDING'],
       open: true,
@@ -205,5 +209,60 @@ describe('filterScholarships', () => {
 
   it('keeps the catalogue\'s own order as the most relevant', () => {
     expect(titles(filterScholarships(rows, state()))).toEqual(titles(rows));
+  });
+});
+
+describe('the worldwide finder by destination and university', () => {
+  /* A destination's page never narrows by either: every award there is for
+     it. The worldwide finder does, under the names its links already use. */
+  const world = toCountryScholarshipRows(
+    [
+      record({
+        countries: [
+          { country: { name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB' } },
+          { country: { name: 'United Kingdom', slug: 'united-kingdom', iso2Code: 'GB' } },
+        ],
+        universities: [{ university: { name: 'University of Warwick', slug: 'university-of-warwick' } }],
+      }),
+      record({
+        id: 's6',
+        slug: 'australia-awards',
+        title: 'Australia Awards',
+        countries: [{ country: { name: 'Australia', slug: 'australia', iso2Code: 'AU' } }],
+      }),
+    ],
+    new Map(),
+    now,
+  );
+
+  it('reads ?country= and ?university=, and writes them back', () => {
+    const read = readScholarshipState(new URLSearchParams('country=australia,uk&university=warwick'));
+    expect(read.destinations).toEqual(['australia', 'uk']);
+    expect(read.universities).toEqual(['warwick']);
+    expect(scholarshipListHref('/scholarships', { destinations: ['australia'], universities: ['warwick'] })).toBe(
+      '/scholarships?country=australia&university=warwick',
+    );
+    expect(isNarrowedScholarshipList({ subject: 'law' })).toBe(true);
+  });
+
+  it('counts each destination and university once per award', () => {
+    const options = scholarshipOptions(world, []);
+    expect(options.destinations.map(({ value, count }) => [value, count])).toEqual([
+      ['australia', 1],
+      ['united-kingdom', 1],
+    ]);
+    expect(options.universities).toEqual([
+      { value: 'university-of-warwick', label: 'University of Warwick', count: 1 },
+    ]);
+  });
+
+  it('keeps only the awards for a ticked destination or university', () => {
+    expect(titles(filterScholarships(world, state({ destinations: ['australia'] })))).toEqual([
+      'Australia Awards',
+    ]);
+    expect(titles(filterScholarships(world, state({ universities: ['university-of-warwick'] })))).toEqual([
+      'Chevening Scholarships',
+    ]);
+    expect(activeScholarshipFilters(state({ destinations: ['australia'], universities: ['x'] }))).toBe(2);
   });
 });

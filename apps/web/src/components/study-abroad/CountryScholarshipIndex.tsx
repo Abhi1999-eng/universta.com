@@ -32,12 +32,25 @@ export function CountryScholarshipIndex({
   rows,
   levels,
   where,
+  byDestination = false,
+  byUniversity = false,
+  heading,
+  none,
 }: {
   rows: CountryScholarshipRow[];
   /** The catalogue's study levels, in academic order, for their names. */
   levels: ReadonlyArray<{ code: string; name: string }>;
   /** The destination as it reads in a sentence: "the United Kingdom". */
   where: string;
+  /** Offer the destination and university groups: the worldwide finder's
+   * own narrowing. A destination's page leaves them out, since every award
+   * there is for it already. */
+  byDestination?: boolean;
+  byUniversity?: boolean;
+  /** The list's heading for a screen reader, and what to say when nothing
+   * is published; the destination's wording when not given. */
+  heading?: string;
+  none?: string;
 }) {
   const path = usePathname();
   const params = useSearchParams();
@@ -51,6 +64,12 @@ export function CountryScholarshipIndex({
      rather than allowed to empty the list. */
   const filters: ScholarshipListState = {
     ...state,
+    destinations: state.destinations.filter((slug) =>
+      options.destinations.some((option) => option.value === slug),
+    ),
+    universities: state.universities.filter((slug) =>
+      options.universities.some((option) => option.value === slug),
+    ),
     levels: state.levels.filter((code) => options.levels.some((option) => option.value === code)),
     types: state.types.filter((type) => options.types.some((option) => option.value === type)),
   };
@@ -61,6 +80,12 @@ export function CountryScholarshipIndex({
   const total = rows.length;
 
   const groups = {
+    destinations:
+      byDestination &&
+      (narrowsScholarships(options.destinations, total) || filters.destinations.length > 0),
+    universities:
+      byUniversity &&
+      (narrowsScholarships(options.universities, total) || filters.universities.length > 0),
     levels: narrowsScholarships(options.levels, total) || filters.levels.length > 0,
     types: narrowsScholarships(options.types, total) || filters.types.length > 0,
     open: (options.open > 0 && options.open < total) || filters.open,
@@ -77,7 +102,9 @@ export function CountryScholarshipIndex({
     if (!keepPage) setStatus('');
   };
 
-  const toggle = (key: 'levels' | 'types', value: string) => {
+  type Group = 'destinations' | 'universities' | 'levels' | 'types';
+
+  const toggle = (key: Group, value: string) => {
     const list = filters[key];
     commit({
       [key]: list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
@@ -97,11 +124,7 @@ export function CountryScholarshipIndex({
 
   const noun = (count: number) => (count === 1 ? 'scholarship' : 'scholarships');
 
-  const group = (
-    title: string,
-    key: 'levels' | 'types',
-    list: ScholarshipFilterOption[],
-  ) => (
+  const group = (title: string, key: Group, list: ScholarshipFilterOption[]) => (
     <div className="fgroup">
       <p className="fgroup__t">{title}</p>
       <div className={list.length > 8 ? 'fgroup__opts fgroup__opts--scroll' : 'fgroup__opts'}>
@@ -138,7 +161,7 @@ export function CountryScholarshipIndex({
     <section className="sec sec--white sec--tight" id="scholarships" aria-labelledby="results-heading">
       <div className="wrap">
         <h2 className="sr-only" id="results-heading">
-          Scholarships to study in {where}
+          {heading ?? `Scholarships to study in ${where}`}
         </h2>
         <div className={hasFilters ? 'results' : 'results results--open'}>
           {hasFilters ? (
@@ -161,6 +184,12 @@ export function CountryScholarshipIndex({
                 </button>
               </div>
               <div className="filters-panel__body">
+                {groups.destinations
+                  ? group('Destination', 'destinations', options.destinations)
+                  : null}
+                {groups.universities
+                  ? group('University', 'universities', options.universities)
+                  : null}
                 {groups.levels ? group('Study level', 'levels', options.levels) : null}
                 {groups.types ? group('Funding type', 'types', options.types) : null}
                 {groups.open ? (
@@ -249,7 +278,7 @@ export function CountryScholarshipIndex({
               <div className="dir__none">
                 <p>
                   {total === 0
-                    ? `No scholarship for ${where} is published yet.`
+                    ? (none ?? `No scholarship for ${where} is published yet.`)
                     : narrowed
                       ? 'No scholarship matches that. Try a shorter word, or clear the filters.'
                       : 'No scholarship matches that.'}

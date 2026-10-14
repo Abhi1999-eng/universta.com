@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /* The path the header and footer are drawn on, as the router reports it
    after a navigation; the account entry's session is not what these
    assertions are about. */
-const route = vi.hoisted(() => ({ pathname: '/scholarships' }));
+const route = vi.hoisted(() => ({ pathname: '/student/login' }));
 vi.mock('next/navigation', () => ({
   usePathname: () => route.pathname,
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -19,7 +19,7 @@ import { GlobalFooter, GlobalHeader } from './GlobalNav';
 /**
  * The root layout draws the site header and footer once, on the server, and
  * leaves them out for a route that wears its own. It is not drawn again on
- * a client navigation, so a link or router.push from /scholarships to
+ * a client navigation, so a link or router.push from /student/login to
  * /compare/courses kept the site header and footer above and below the
  * comparison's own: two of each. The header and footer ask the same
  * question of the path they are on, and step aside.
@@ -49,7 +49,7 @@ const header = () => renderToStaticMarkup(<GlobalHeader chrome={chrome} />);
 const footer = () => renderToStaticMarkup(<GlobalFooter chrome={chrome} />);
 
 beforeEach(() => {
-  route.pathname = '/scholarships';
+  route.pathname = '/student/login';
 });
 
 describe('the site header and footer', () => {
