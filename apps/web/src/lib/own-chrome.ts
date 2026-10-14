@@ -40,8 +40,9 @@ const OWN_CHROME_PREFIXES = [
 /* Search also lives in the Study Abroad layout, so its own navigation must
    replace the global header on first load and after a client navigation.
    So does the city index; a city's own page is still the older template.
-   The contact page and the careers, events, success stories and testimonials
-   directories moved into the design too; their detail pages have not. */
+   The contact page, the consultants directory and the careers, events,
+   success stories and testimonials directories moved into the design too;
+   their detail pages have not. */
 const OWN_CHROME_PATHS = [
   '/universities',
   '/compare/courses',
@@ -53,6 +54,7 @@ const OWN_CHROME_PATHS = [
   '/events',
   '/success-stories',
   '/testimonials',
+  '/study-abroad-consultants',
 ];
 const OWN_CHROME_PATTERNS = [/^\/universities\/[^/]+$/];
 

@@ -179,13 +179,18 @@ export function CountryConsultantIndex({
   countrySlug,
   where,
   guides = [],
+  byDestination = false,
 }: {
   rows: CountryConsultantRow[];
+  /** The destination the page is about, or '' on the worldwide directory. */
   countrySlug: string;
   /** The destination as it reads in a sentence: "the United Kingdom". */
   where: string;
   /** The destinations with a published guide, for the cards' badges. */
   guides?: readonly string[];
+  /** The worldwide directory narrows by destination too; a destination's
+   *  own page does not, since every consultant on it lists that one. */
+  byDestination?: boolean;
 }) {
   const path = usePathname();
   const params = useSearchParams();
@@ -201,6 +206,7 @@ export function CountryConsultantIndex({
      empty the list. */
   const filters: ConsultantListState = {
     ...state,
+    destinations: byDestination ? known(options.destinations, state.destinations) : [],
     cities: known(options.cities, state.cities),
     services: known(options.services, state.services),
     languages: state.languages.filter((value) =>
@@ -216,6 +222,9 @@ export function CountryConsultantIndex({
   const total = rows.length;
 
   const groups = {
+    destinations:
+      byDestination &&
+      (narrowsConsultants(options.destinations, total) || filters.destinations.length > 0),
     cities: narrowsConsultants(options.cities, total) || filters.cities.length > 0,
     services: narrowsConsultants(options.services, total) || filters.services.length > 0,
     languages: narrowsConsultants(options.languages, total) || filters.languages.length > 0,
@@ -233,7 +242,7 @@ export function CountryConsultantIndex({
     if (!keepPage) setStatus('');
   };
 
-  const toggle = (key: 'cities' | 'services' | 'languages', value: string) => {
+  const toggle = (key: 'destinations' | 'cities' | 'services' | 'languages', value: string) => {
     const list = filters[key];
     commit({
       [key]: list.includes(value) ? list.filter((item) => item !== value) : [...list, value],
@@ -255,7 +264,7 @@ export function CountryConsultantIndex({
 
   const group = (
     title: string,
-    key: 'cities' | 'services' | 'languages',
+    key: 'destinations' | 'cities' | 'services' | 'languages',
     list: ConsultantFilterOption[],
   ) => (
     <div className="fgroup">
@@ -317,6 +326,7 @@ export function CountryConsultantIndex({
                 </button>
               </div>
               <div className="filters-panel__body">
+                {groups.destinations ? group('Destination', 'destinations', options.destinations) : null}
                 {groups.cities ? group('Consultant location', 'cities', options.cities) : null}
                 {groups.services ? group('Service', 'services', options.services) : null}
                 {groups.languages ? group('Language', 'languages', options.languages) : null}
@@ -412,7 +422,9 @@ export function CountryConsultantIndex({
               <div className="dir__none">
                 <p>
                   {total === 0
-                    ? `No consultant on Universta lists ${where} yet.`
+                    ? byDestination
+                      ? 'No consultants are published on Universta yet.'
+                      : `No consultant on Universta lists ${where} yet.`
                     : narrowed
                       ? 'No consultant matches that. Try a shorter word, or clear the filters.'
                       : 'No consultant matches that.'}
