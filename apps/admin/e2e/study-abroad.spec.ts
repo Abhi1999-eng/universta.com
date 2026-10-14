@@ -105,10 +105,11 @@ test.describe('study abroad', () => {
   });
 
   test('keeps the approved design scoped to its own routes', async ({ page }) => {
-    /* `/`, `/subjects`, `/specializations`, `/courses` and `/universities`
-       are all inside the family now, so the proof has to come from a route
-       outside it: the scoped stylesheet and its typefaces must not leak. */
-    await page.goto(`${webBaseUrl}/scholarships`);
+    /* `/`, `/subjects`, `/specializations`, `/courses`, `/universities` and
+       now `/scholarships` are all inside the family, so the proof has to come
+       from a route outside it -- the student login -- where the scoped
+       stylesheet and its typefaces must not leak. */
+    await page.goto(`${webBaseUrl}/student/login`);
     await expect(page.locator('.sa')).toHaveCount(0);
     await expect(page.locator('footer.usta-footer')).toBeVisible();
     const fonts = await page.evaluate(() =>
