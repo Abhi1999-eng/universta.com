@@ -52,10 +52,13 @@ describe('which routes wear their own header and footer', () => {
     expect(ownsItsChrome('/study-abroad-consultants/leap-scholar/other')).toBe(false);
   });
 
-  it('owns the city index, and not a city page under a country', () => {
+  it('owns the city index, a destination\'s cities and a city page under a country', () => {
     expect(ownsItsChrome('/cities')).toBe(true);
     expect(ownsItsChrome('/cities/london')).toBe(false);
-    expect(ownsItsChrome('/study-in-uk/london')).toBe(false);
+    expect(ownsItsChrome('/study-in-uk/cities')).toBe(true);
+    expect(ownsItsChrome('/study-in-uk/london')).toBe(true);
+    expect(ownsItsChrome('/study-in/uk/london')).toBe(true);
+    expect(ownsItsChrome('/study-in-uk')).toBe(false);
   });
 
   it('leaves every other route, and a path it cannot read, to the site chrome', () => {
