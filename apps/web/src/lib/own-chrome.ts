@@ -29,6 +29,8 @@ const OWN_CHROME_PREFIXES = [
   '/subjects',
   '/specializations',
   '/courses',
+  /* The scholarship finder and each award's page moved into the design. */
+  '/scholarships',
 ];
 
 /** The same, for the routes under a family whose other children have not

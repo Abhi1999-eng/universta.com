@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { CountryListSearch } from '@/components/study-abroad/CountryListSearch';
 import { CountryScholarshipIndex } from '@/components/study-abroad/CountryScholarshipIndex';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
-import { getCourseLevels } from '@/lib/catalog';
 import { inCountry } from '@/lib/country-article';
 import { countryConsultantsHref } from '@/lib/country-consultant-list';
 import {
@@ -16,11 +14,10 @@ import {
   isNarrowedScholarshipList,
   scholarshipListHref,
   scholarshipOptions,
-  toCountryScholarshipRows,
 } from '@/lib/country-scholarship-list';
 import { destinationTotal, loadCountryTabs } from '@/lib/country-tabs';
 import { formatNumber } from '@/lib/format';
-import { phaseListAll } from '@/lib/phase1';
+import { loadScholarshipRows } from '@/lib/scholarship-list-server';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { countryUniversitiesHref } from '@/lib/university-links';
 
@@ -42,48 +39,10 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-/** How many level reads are in flight together: the API sheds load above
- *  about a dozen concurrent requests, and the page has others of its own. */
-const LEVEL_BATCH = 3;
-
 async function load(slug: string) {
   const page = await getStudyAbroadCountry(slug);
   if (!page) return null;
-  const [list, levels] = await Promise.all([
-    phaseListAll<AnyRecord>('scholarships', { country: slug }).catch(() => null),
-    getCourseLevels().catch(() => []),
-  ]);
-  /* Which awards are for which study level, asked of the list endpoint one
-     level at a time -- its own reading of "for Master's", through the
-     programmes an award is attached to -- so the level filter here agrees
-     with the worldwide finder's. A level whose read fails is not offered,
-     rather than offered with a count that is not true. */
-  const byLevel = new Map<string, Set<string>>();
-  if (list?.data.length) {
-    for (let index = 0; index < levels.length; index += LEVEL_BATCH) {
-      const batch = levels.slice(index, index + LEVEL_BATCH);
-      const results = await Promise.all(
-        batch.map((level) =>
-          phaseListAll<AnyRecord>('scholarships', {
-            country: slug,
-            degreeLevel: level.code,
-          })
-            .then((result) => result.data)
-            .catch(() => []),
-        ),
-      );
-      batch.forEach((level, at) => {
-        const ids = new Set(results[at]!.map((row) => String(row.id)));
-        if (ids.size) byLevel.set(level.code, ids);
-      });
-    }
-  }
-  return {
-    page,
-    failed: list === null,
-    rows: toCountryScholarshipRows(list?.data ?? [], byLevel, new Date()),
-    levels: levels.map((level) => ({ code: level.code, name: level.name })),
-  };
+  return { page, ...(await loadScholarshipRows({ country: slug })) };
 }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {

@@ -69,11 +69,19 @@ test.describe('public navigation discoverability', () => {
     expect(dead).toEqual([]);
   });
 
-  test('marks the current section active in the header', async ({ page }) => {
+  test('wears the approved header, and only that one, on a listing that moved into the design', async ({ page }) => {
+    /* The site header marked its active section; the approved design's
+       header has no active state, and the scholarship finder now wears it.
+       What must hold is that the design's header is the only header there:
+       the site chrome stepping aside is what keeps the page from showing
+       two. */
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${webBaseUrl}/scholarships`);
-    await expect(
-      page.locator('header .usta-nav-link.is-active'),
-    ).toHaveText('Scholarships');
+    await expect(page.locator('header')).toHaveCount(1);
+    /* The design's grouped menu is drawn only at desktop widths; narrower
+       viewports get its drawer, so the width is set before looking. */
+    await expect(page.locator('header .mega__btn').first()).toBeVisible();
+    await expect(page.locator('header.usta-header')).toHaveCount(0);
   });
 
   test('opens dropdowns and reaches a nested destination', async ({ page }) => {

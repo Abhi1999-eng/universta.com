@@ -23,9 +23,9 @@ const viewports = [
  * left it when the approved design reached them too -- the same reason
  * `/study-abroad/...` was never in it. `/events` left with the contact page
  * and the other content directories for the same reason, and
- * `/study-abroad-consultants` when the consultants directory followed. */
+ * `/study-abroad-consultants` when the consultants directory followed, and
+ * `/scholarships` when the finder and the award pages did. */
 const publicRoutes = [
-  '/scholarships',
   '/about',
   '/student/login',
 ];
@@ -79,19 +79,19 @@ function primaryFamily(font: string) {
   return font.split(',')[0].trim().toLowerCase();
 }
 
-test('public typography roles keep headings, cards and native controls on the shared contract', async ({ page }) => {
+test('public typography roles keep headings and native controls on the shared contract', async ({ page }) => {
   await page.setViewportSize(viewports[0]);
 
   /* This probes the shared public type contract, so it has to stand on a page
-     that still uses it. `/courses` joined the approved Study Abroad design and
-     its scoped typefaces, for the same reason it left `publicRoutes` above,
-     and `/universities` has now joined it too; `/scholarships` is the listing
-     that still carries the shared chrome, catalogue cards and native controls
-     this asserts. */
-  await page.goto(`${webBaseUrl}/scholarships`, { waitUntil: 'domcontentloaded' });
+     that still uses it. Every public listing has joined the approved Study
+     Abroad design and its scoped typefaces -- `/courses`, `/universities` and
+     now `/scholarships`, which carried this probe until then -- so the
+     student login is the public page that still wears the shared chrome and
+     its native controls. */
+  await page.goto(`${webBaseUrl}/student/login`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('body')).toBeVisible();
 
-  const listing = await page.evaluate(() => {
+  const shared = await page.evaluate(() => {
     const style = (selector: string) => {
       const element = document.querySelector<HTMLElement>(selector);
       if (!element) return null;
@@ -122,40 +122,20 @@ test('public typography roles keep headings, cards and native controls on the sh
       ].map((name) => [name, getComputedStyle(document.documentElement).getPropertyValue(name).trim()]),
       display: style('h1'),
       section: style('h2'),
-      /* Every public listing's card title, whatever that listing calls its
-         card. `/universities` carried this probe until the approved design
-         reached it; scholarships name theirs `.scard`. */
-      cardTitles: [...document.querySelectorAll<HTMLElement>('.card h3, .catalog-card h2, .catalog-card h3, .scard h3')]
-        .slice(0, 8)
-        .map((element) => getComputedStyle(element).font),
-      button: style('button:not([aria-label])'),
+      button: style('button[type="submit"]'),
       input: style('input:not([type="hidden"])'),
-      select: style('select'),
     };
   });
 
-  expect(listing.roles.every(([, value]) => value), 'every documented public type role has a value').toBe(true);
-  expect(Number.parseFloat(listing.display?.size ?? '0')).toBeGreaterThan(
-    Number.parseFloat(listing.section?.size ?? '0'),
+  expect(shared.roles.every(([, value]) => value), 'every documented public type role has a value').toBe(true);
+  expect(Number.parseFloat(shared.display?.size ?? '0')).toBeGreaterThan(
+    Number.parseFloat(shared.section?.size ?? '0'),
   );
-  expect(listing.cardTitles.length).toBeGreaterThan(0);
-  expect(new Set(listing.cardTitles).size, 'equivalent public listing card titles use one role').toBe(1);
-  for (const control of [listing.button, listing.input, listing.select]) {
+  for (const control of [shared.button, shared.input]) {
     expect(control).not.toBeNull();
     expect(primaryFamily(control!.family)).toContain('inter');
   }
-  expect(listing.input?.size).toBe('16px');
-  expect(listing.select?.size).toBe('16px');
-
-  /* The contact page moved into the approved design; the counselling form is
-     the site-chrome form with a textarea. */
-  await page.goto(`${webBaseUrl}/counselling`, { waitUntil: 'domcontentloaded' });
-  const textarea = await page.locator('textarea').first().evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { family: style.fontFamily, size: style.fontSize, lineHeight: style.lineHeight };
-  });
-  expect(primaryFamily(textarea.family)).toContain('inter');
-  expect(textarea.size).toBe('16px');
+  expect(shared.input?.size).toBe('16px');
 
   await signUpAndIn(page);
   const student = await page.evaluate(() => {

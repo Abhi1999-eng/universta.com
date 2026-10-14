@@ -57,8 +57,9 @@ test.describe('student portal', () => {
     });
     /* A public page that still carries the site chrome, which is what holds
        the student account menu. `/universities` did until the approved
-       design reached it and brought its own header. */
-    await page.goto(`${webBaseUrl}/scholarships`);
+       design reached it and brought its own header, and `/scholarships`
+       until it followed; the student login still wears it. */
+    await page.goto(`${webBaseUrl}/student/login`);
     await expect(page.locator('.usta-header')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
@@ -100,7 +101,9 @@ test.describe('student portal', () => {
   test('keeps public discovery connected to the student dashboard', async ({
     page,
   }) => {
-    await registerAndSignIn(page, newEmail('public'), '/scholarships');
+    /* The preview page is the public page that still wears the site chrome
+       and its account menu; every listing wears the design's own header. */
+    await registerAndSignIn(page, newEmail('public'), '/preview');
     await expect(page.locator('.usta-header')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
@@ -124,7 +127,7 @@ test.describe('student portal', () => {
     await expect(page.getByText('Admin', { exact: true })).toHaveCount(0);
     await page.getByRole('link', { name: 'My Dashboard' }).click();
     await expect(page).toHaveURL(/\/student$/);
-    await page.goto(`${webBaseUrl}/scholarships`);
+    await page.goto(`${webBaseUrl}/preview`);
     await page
       .getByRole('button', { name: 'Open student account menu' })
       .click();
@@ -261,7 +264,9 @@ test.describe('student portal', () => {
     }
     // The phone gets a bottom bar, not a shrunken sidebar.
     await expect(page.locator('.stu-tabbar')).toBeVisible();
-    await page.goto(`${webBaseUrl}/scholarships`);
+    /* The preview page still wears the site chrome and its account menu;
+       the public listings all wear the approved design's own header now. */
+    await page.goto(`${webBaseUrl}/preview`);
     await expect(
       page.getByRole('link', { name: 'My Dashboard' }),
     ).toBeVisible();
