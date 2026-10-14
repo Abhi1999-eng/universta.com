@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NAVIGATION_GROUPS, PRIMARY, StudyAbroadHeader } from './StudyAbroadChrome';
 import { StudyAbroadShell } from './StudyAbroadShell';
 
@@ -28,6 +28,19 @@ async function renderHeader() {
 
 async function click(element: HTMLElement) {
   await act(async () => element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+}
+
+async function pointer(element: HTMLElement, type: 'pointerenter' | 'pointerleave', pointerType = 'mouse') {
+  await act(async () => {
+    /* React derives enter and leave from over and out against the related
+       target; jsdom has no PointerEvent, and the handler reads only pointerType. */
+    const event = new MouseEvent(type === 'pointerenter' ? 'pointerover' : 'pointerout', {
+      bubbles: true,
+      relatedTarget: document.body,
+    });
+    Object.defineProperty(event, 'pointerType', { value: pointerType });
+    element.dispatchEvent(event);
+  });
 }
 
 async function key(element: HTMLElement, value: string) {
@@ -58,6 +71,43 @@ describe('the final ZIP navigation', () => {
     expect(document.querySelector('a[data-open-selector]')).toBeNull();
     expect(html).not.toContain('/eligibility-checker');
     expect(html).not.toContain('/for-universities');
+  });
+
+  it('opens a menu when a mouse rests on it, and closes it when the mouse leaves', async () => {
+    vi.useFakeTimers();
+    try {
+      await renderHeader();
+      const items = host.querySelectorAll<HTMLElement>('.mega__item');
+      const buttons = host.querySelectorAll<HTMLButtonElement>('.mega__btn');
+      await pointer(items[3], 'pointerenter');
+      expect(buttons[3].getAttribute('aria-expanded')).toBe('false');
+      await act(async () => vi.advanceTimersByTime(150));
+      expect(buttons[3].getAttribute('aria-expanded')).toBe('true');
+      /* A click on the button a hover opened keeps it open. */
+      await click(buttons[3]);
+      expect(buttons[3].getAttribute('aria-expanded')).toBe('true');
+      /* Leaving for the panel's gap and coming back within the grace keeps it open. */
+      await pointer(items[3], 'pointerleave');
+      await act(async () => vi.advanceTimersByTime(100));
+      await pointer(items[3], 'pointerenter');
+      await act(async () => vi.advanceTimersByTime(300));
+      expect(buttons[3].getAttribute('aria-expanded')).toBe('true');
+      /* Resting on a neighbour switches; leaving for good closes. */
+      await pointer(items[3], 'pointerleave');
+      await pointer(items[4], 'pointerenter');
+      await act(async () => vi.advanceTimersByTime(150));
+      expect(buttons[3].getAttribute('aria-expanded')).toBe('false');
+      expect(buttons[4].getAttribute('aria-expanded')).toBe('true');
+      await pointer(items[4], 'pointerleave');
+      await act(async () => vi.advanceTimersByTime(300));
+      expect(buttons[4].getAttribute('aria-expanded')).toBe('false');
+      /* A finger resting does nothing: touch still taps. */
+      await pointer(items[0], 'pointerenter', 'touch');
+      await act(async () => vi.advanceTimersByTime(300));
+      expect(buttons[0].getAttribute('aria-expanded')).toBe('false');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('opens one menu at a time and closes when the user clicks outside', async () => {

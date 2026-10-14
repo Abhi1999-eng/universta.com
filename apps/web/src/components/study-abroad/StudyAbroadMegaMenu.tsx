@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 
 export type NavigationGroup = {
   label: string;
@@ -9,10 +16,46 @@ export type NavigationGroup = {
   items: readonly { label: string; href: string; description: string }[];
 };
 
-/** The export's disclosure menus, including its keyboard route through links. */
+/** How long a pointer rests on a group before its panel opens, how long it
+ *  rests on a neighbour before the open panel switches to it -- so a diagonal
+ *  move into a wide panel is not hijacked by the button it passes over -- and
+ *  how long it may be away, crossing the gap to the panel, before it closes. */
+const HOVER_OPEN_MS = 120;
+const HOVER_SWITCH_MS = 90;
+const HOVER_CLOSE_MS = 220;
+
+/** The export's disclosure menus, including its keyboard route through links.
+ *
+ * A mouse opens a group by resting on it, as the reference's header does; a
+ * click still opens and closes it, and touch and keyboard work as before. A
+ * panel a hover opened stays open when its button is then clicked, rather
+ * than the click closing what the reader just reached for. */
 export function StudyAbroadMegaMenu({ groups }: { groups: readonly NavigationGroup[] }) {
   const [open, setOpen] = useState<number | null>(null);
   const navigation = useRef<HTMLElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openedByHover = useRef(false);
+
+  const wait = (run: () => void, ms: number) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(run, ms);
+  };
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  function hoverIn(index: number, event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse') return;
+    wait(() => {
+      openedByHover.current = true;
+      setOpen(index);
+    }, open === null ? HOVER_OPEN_MS : open === index ? 0 : HOVER_SWITCH_MS);
+  }
+
+  function hoverOut(index: number, event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse') return;
+    wait(() => setOpen((current) => (current === index ? null : current)), HOVER_CLOSE_MS);
+  }
 
   useEffect(() => {
     if (open === null) return;
@@ -32,6 +75,12 @@ export function StudyAbroadMegaMenu({ groups }: { groups: readonly NavigationGro
   }
 
   function toggle(index: number, event: MouseEvent<HTMLButtonElement>) {
+    if (timer.current) clearTimeout(timer.current);
+    if (open === index && openedByHover.current) {
+      openedByHover.current = false;
+      return;
+    }
+    openedByHover.current = false;
     if (open === index) setOpen(null);
     else {
       setOpen(index);
@@ -72,7 +121,13 @@ export function StudyAbroadMegaMenu({ groups }: { groups: readonly NavigationGro
       }}
     >
       {groups.map((group, index) => (
-        <div className="mega__item" key={group.label} onKeyDown={(event) => move(index, event)}>
+        <div
+          className="mega__item"
+          key={group.label}
+          onKeyDown={(event) => move(index, event)}
+          onPointerEnter={(event) => hoverIn(index, event)}
+          onPointerLeave={(event) => hoverOut(index, event)}
+        >
           <button
             className="mega__btn"
             type="button"
