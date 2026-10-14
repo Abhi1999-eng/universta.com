@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NAVIGATION_GROUPS, PRIMARY, StudyAbroadHeader } from './StudyAbroadChrome';
 import { StudyAbroadShell } from './StudyAbroadShell';
+import { StudentSessionProvider } from '@/components/student/StudentSession';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -108,6 +109,38 @@ describe('the final ZIP navigation', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('names the dashboard for a signed-in student, and the login otherwise', async () => {
+    const session = { authenticated: true, accessToken: 'test-token', user: { id: 's1', firstName: 'Asha', email: 'asha@example.test', emailVerified: true } };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new Response(JSON.stringify({ data: String(input).endsWith('/api/student/auth/session') ? session : { authenticated: false } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    try {
+      await act(async () =>
+        root.render(
+          <StudentSessionProvider>
+            <StudyAbroadHeader />
+          </StudentSessionProvider>,
+        ),
+      );
+      /* The session is probed on mount; until it answers the link is the login. */
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      const account = host.querySelector<HTMLAnchorElement>('.nav__account');
+      expect(account?.getAttribute('href')).toBe('/student');
+      expect(account?.textContent).toBe('My Dashboard');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+    /* Outside any session, as the static markup is rendered, it is the login. */
+    const html = renderToStaticMarkup(<StudyAbroadHeader />);
+    expect(html).toContain('href="/student/login"');
+    expect(html).toContain('Log in');
   });
 
   it('opens one menu at a time and closes when the user clicks outside', async () => {

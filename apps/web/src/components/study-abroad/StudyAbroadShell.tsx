@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { DestinationDirectory } from '@/lib/study-abroad';
+import { StudyAbroadAccountLink } from './StudyAbroadAccountLink';
 import { NAVIGATION_GROUPS, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChrome';
 import { AssessmentDialog } from './AssessmentDialog';
 import { FlagMark } from './FlagMark';
@@ -264,7 +265,7 @@ export function StudyAbroadShell({
             ))}
           </details>
         ))}
-        <Link href="/student/login" onClick={() => setDrawerOpen(false)}>Log in</Link>
+        <StudyAbroadAccountLink onClick={() => setDrawerOpen(false)} />
         <div className="drawer__cta">
           <button
             className="btn btn--block btn--lg"

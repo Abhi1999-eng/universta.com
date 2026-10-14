@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { StudyAbroadAccountLink } from './StudyAbroadAccountLink';
 import { StudyAbroadMegaMenu, type NavigationGroup } from './StudyAbroadMegaMenu';
 
 /**
@@ -159,7 +160,7 @@ export function StudyAbroadHeader() {
               </svg>
               <span className="nav__globe-label">Explore countries</span>
             </button>
-            <Link className="nav__account" href="/student/login">Log in</Link>
+            <StudyAbroadAccountLink className="nav__account" />
             <button className="btn btn--sm nav__cta" type="button" data-open-assessment>
               Start My Journey{' '}
               <span className="btn__arrow" aria-hidden="true">
