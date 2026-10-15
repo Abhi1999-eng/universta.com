@@ -41,7 +41,7 @@ beforeEach(() => {
 
 describe('sidebar selection', () => {
   it.each([
-    ['/subjects', 'Subjects'],
+    ['/subjects', 'All subjects'],
     ['/countries', 'Countries'],
     ['/page-templates', 'Page templates'],
     ['/phase1/universities', 'Universities'],
@@ -79,7 +79,7 @@ describe('sidebar selection', () => {
     );
     const selected = selectedLabels();
     expect(selected).toHaveLength(1);
-    expect(selected[0]).toContain('Subjects');
+    expect(selected[0]).toContain('All subjects');
   });
 
   it('ignores a query string when deciding the selected row', () => {

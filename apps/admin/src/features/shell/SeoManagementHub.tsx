@@ -27,7 +27,7 @@ const ENTRIES: SeoEntry[] = [
     note: "Open a subject and use its SEO tab for a manual override.",
   },
   {
-    label: "Generic courses",
+    label: "Courses",
     href: "/courses",
     note: "Open a course and use its SEO tab for a manual override.",
   },
