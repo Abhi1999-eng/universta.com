@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { Manrope, Sora } from 'next/font/google';
 import { StudyAbroadShell } from '@/components/study-abroad/StudyAbroadShell';
+import { manrope, sora } from './fonts';
 import { getDestinations } from '@/lib/study-abroad';
 import './study-abroad.css';
 import './study-abroad-header.css';
@@ -13,20 +13,6 @@ import './study-abroad-header.css';
  * and the two typefaces are loaded through next/font as CSS variables rather
  * than a stylesheet link, so nothing blocks paint and nothing leaks either.
  */
-
-const sora = Sora({
-  subsets: ['latin'],
-  weight: ['400', '600', '700', '800'],
-  variable: '--sa-font-display',
-  display: 'swap',
-});
-
-const manrope = Manrope({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--sa-font-body',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: {

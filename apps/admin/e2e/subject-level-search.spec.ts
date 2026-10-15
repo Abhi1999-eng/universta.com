@@ -76,7 +76,7 @@ test.describe('subject level discovery', () => {
     ]) {
       const response = await page.goto(`${webBaseUrl}${path}`);
       expect(response?.status(), path).toBe(404);
-      await expect(page.getByRole('heading', { name: 'This page could not be found.' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'We could not find that page' })).toBeVisible();
     }
   });
 
