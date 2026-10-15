@@ -143,8 +143,8 @@ export class CourseLevelsService {
       const row = await this.prisma.courseLevel.update({
         where: { id },
         data: {
-          code: dto.code,
-          name: dto.name,
+          code: dto.code ?? current.code,
+          name: dto.name ?? current.name,
           description: dto.description,
           educationOrder: dto.educationOrder ?? current.educationOrder,
           displayOrder: dto.displayOrder ?? current.displayOrder,
