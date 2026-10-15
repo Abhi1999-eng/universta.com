@@ -448,6 +448,7 @@ export class SeoManagementService {
         directString(record, 'name') ??
         directString(storyOffering, 'name'),
       subjectName: directString(subject, 'name'),
+      specializationName: directString(record, 'name'),
       degreeLevel: directString(courseLevel, 'name'),
       scholarshipTitle: directString(record, 'title'),
       providerName: directString(provider, 'name'),
@@ -464,6 +465,7 @@ export class SeoManagementService {
       citySlug: directString(record, 'slug'),
       subjectSlug:
         directString(subject, 'slug') ?? directString(record, 'slug'),
+      specializationSlug: directString(record, 'slug'),
       courseSlug:
         directString(genericCourse, 'slug') ?? directString(record, 'slug'),
       universitySlug:
@@ -505,6 +507,7 @@ export class SeoManagementService {
         directString(record, 'pageHeading') ?? directString(record, 'name'),
       city: directString(record, 'name'),
       subject: directString(record, 'name'),
+      specialization: directString(record, 'name'),
       course: directString(record, 'name'),
       university: directString(record, 'name'),
       offering: directString(record, 'name'),
@@ -540,6 +543,10 @@ export class SeoManagementService {
         return `/study-in/${encodeURIComponent(directString(country, 'slug') ?? '')}/${slug}`;
       case 'subject':
         return `/subjects/${slug}`;
+      case 'specialization':
+        /* A specialization's slug is unique within its subject, so its
+           address carries both. */
+        return `/subjects/${encodeURIComponent(directString(nested(record, 'subject'), 'slug') ?? '')}/${slug}`;
       case 'course':
         return `/courses/${slug}`;
       case 'university':
@@ -603,6 +610,11 @@ export class SeoManagementService {
       case 'subject':
         return this.prisma.subject.findFirst({
           where,
+        });
+      case 'specialization':
+        return this.prisma.subSubject.findFirst({
+          where,
+          include: { subject: true },
         });
       case 'course':
         return this.prisma.course.findFirst({

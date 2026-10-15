@@ -104,6 +104,9 @@ describe('route matching is segment-safe', () => {
     expect(activeLabel('/subjects/abc-123/edit')).toBe('All subjects');
     /* The "Add" entries own their create routes, and nothing else. */
     expect(activeLabel('/subjects/new')).toBe('Add subject');
+    expect(activeLabel('/specializations')).toBe('All specializations');
+    expect(activeLabel('/specializations/abc-123')).toBe('All specializations');
+    expect(activeLabel('/specializations/new')).toBe('Add specialization');
     expect(activeLabel('/courses/new')).toBe('Add course');
     expect(activeLabel('/courses/abc-123')).toBe('Courses');
     expect(activeLabel('/phase1/universities/xyz-789')).toBe('Universities');

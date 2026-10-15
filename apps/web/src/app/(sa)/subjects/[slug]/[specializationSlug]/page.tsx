@@ -9,6 +9,7 @@ import { jsonLdString } from '@/lib/json-ld';
 import { phaseList } from '@/lib/phase1';
 import { programmeSample } from '@/lib/programme-sample';
 import { toScholarshipCards } from '@/lib/scholarship-card';
+import { resolvedMetadata } from '@/lib/seo-management';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,16 +36,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: 'Specialisation not found',
       alternates: { canonical },
     };
-  /* A specialization publishes with nothing written yet, as imported ones
-     arrive. Its page opens for a reader, but a search engine is not sent to
-     an empty one until it has a description or an overview. */
-  const written = Boolean(specialization.shortDescription?.trim() || specialization.overview?.trim());
-  return {
-    title: `Study ${specialization.name} abroad`,
-    description:
-      specialization.shortDescription ??
+  /* The record's own SEO first, then the bulk template, then what the page
+     can say for itself: the same order as a subject's page. */
+  const resolved = resolvedMetadata(
+    specialization.seo,
+    `Study ${specialization.name} abroad`,
+    specialization.shortDescription ??
       `${specialization.name} is a specialisation within ${specialization.subject.name}. See where you can study it.`,
-    alternates: { canonical },
+    canonical,
+  );
+  /* A specialization can be published with nothing written about it, and
+     a page with nothing of its own is not worth sending crawlers to. An
+     editor's own description, in the record or in its SEO, counts as
+     something written; a bulk template's does not. */
+  const written = Boolean(
+    specialization.shortDescription?.trim() ||
+      specialization.overview?.trim() ||
+      specialization.seo?.source?.description === 'manual',
+  );
+  return {
+    ...resolved,
+    /* `resolvedMetadata` appends the site name, and this route family's
+       layout appends it again through its title template. Hand the template
+       the bare title and let it do that once. */
+    title: specialization.seo?.seoTitle ?? `Study ${specialization.name} abroad`,
     ...(written ? {} : { robots: { index: false, follow: true } }),
   };
 }

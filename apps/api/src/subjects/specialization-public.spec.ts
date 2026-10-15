@@ -36,6 +36,8 @@ function prisma(calls: Record<string, unknown[]>) {
     (calls[name] ??= []).push(args);
   };
   return {
+    /* The page's SEO row; none is written in these. */
+    seoMetadata: { findUnique: async () => null },
     subject: {
       findFirst: async () => ({
         id: 'cs',

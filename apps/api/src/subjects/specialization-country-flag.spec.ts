@@ -31,6 +31,8 @@ function prisma(captured: { select?: unknown }) {
     status: 'PUBLISHED',
   };
   return {
+    /* The page's SEO row; none is written in these. */
+    seoMetadata: { findUnique: async () => null },
     subject: { findFirst: async () => subject },
     subSubject: {
       findFirst: async () => specialization,

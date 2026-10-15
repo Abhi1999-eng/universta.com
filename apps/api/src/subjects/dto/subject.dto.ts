@@ -231,6 +231,15 @@ export class UpdateSubSubjectDto extends SubSubjectFieldsDto {
   @ApiPropertyOptional() @IsOptional() @IsISO8601() expectedUpdatedAt?: string;
 }
 export class SubSubjectListQueryDto extends SubjectListQueryDto {}
+/** The cross-subject specialization list: every subject's, or one subject's
+ * by its id. The parent is a filter here, not part of the address. */
+export class AdminSpecializationListQueryDto extends SubjectListQueryDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @Transform(trim)
+  @IsOptional()
+  @IsUUID()
+  subjectId?: string;
+}
 
 export class SeoMetadataDto {
   @ApiProperty() @Transform(trim) @IsString() @Length(1, 255) seoTitle!: string;

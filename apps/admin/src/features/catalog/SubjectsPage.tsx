@@ -84,7 +84,7 @@ export function SubjectsPage() {
           <h2 id="subjects-heading" className="p-h1">
             Subjects
           </h2>
-          <p className="p-sub">Manage subject pathways and their Sub-Subjects.</p>
+          <p className="p-sub">Manage subject pathways. Each subject&apos;s specializations have a list and editor of their own.</p>
         </div>
         <div className="p-head__actions">
           <Link href="/subjects/new" className="p-btn p-btn--primary">
@@ -188,10 +188,10 @@ export function SubjectsPage() {
                         Edit
                       </Link>
                       <Link
-                        href={`/subjects/${row.id}?subSubjects=1`}
+                        href={`/specializations?subject=${row.id}`}
                         className="p-btn p-btn--ghost p-btn--sm"
                       >
-                        Sub-Subjects
+                        Specializations
                       </Link>
                       {row.status === 'PUBLISHED' ? (
                         <button

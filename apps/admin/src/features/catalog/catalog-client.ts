@@ -616,6 +616,42 @@ export function deleteSubSubject(
     { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
   );
 }
+/** Specializations across every subject, for their own list; `subjectId`
+ * narrows to one subject's. */
+export function listSpecializations(
+  params: CatalogListParams = {},
+  signal?: AbortSignal,
+) {
+  return request<SubSubjectRecord[]>(
+    `/api/v1/admin/specializations${query(params)}`,
+    { signal },
+  );
+}
+/** A specialization by id alone; the record names its subject, which the
+ * nested write endpoints above then need. */
+export function getSpecialization(id: string) {
+  return request<SubSubjectRecord>(`/api/v1/admin/specializations/${id}`);
+}
+export function getSpecializationSeo(id: string) {
+  return requestNullable<EditorialSeo>(
+    `/api/v1/admin/specializations/${id}/seo`,
+  );
+}
+export function saveSpecializationSeo(
+  id: string,
+  data: Record<string, unknown>,
+) {
+  return request<EditorialSeo>(`/api/v1/admin/specializations/${id}/seo`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+export function deleteSpecializationSeo(id: string, expectedUpdatedAt?: string) {
+  return request<{ deleted: boolean }>(
+    `/api/v1/admin/specializations/${id}/seo`,
+    { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
+  );
+}
 export function listCourseLevels(params: CatalogListParams = {}) {
   return request<MasterRecord[]>(`/api/v1/admin/course-levels${query(params)}`);
 }
