@@ -9,13 +9,15 @@ import {
   getSpecialization,
   getSpecializationSeo,
   listAllSubjects,
+  listCourseLevels,
   listEditorialMedia,
   publishSubSubject,
   saveSpecializationSeo,
   unpublishSubSubject,
   updateSubSubject,
 } from './catalog-client';
-import type { EditorialMedia, EditorialSeo, SubjectRecord, SubSubjectRecord } from './catalog.types';
+import type { CatalogLevel, EditorialMedia, EditorialSeo, MasterRecord, SubjectRecord, SubSubjectRecord } from './catalog.types';
+import { StudyLevelTicks } from './StudyLevelTicks';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -47,6 +49,9 @@ export function SpecializationForm({ id }: { id?: string }) {
   const preselectedSubject = useSearchParams().get('subject') ?? '';
   const [record, setRecord] = useState<SubSubjectRecord | null>(null);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
+  const [levels, setLevels] = useState<MasterRecord[]>([]);
+  const [levelIds, setLevelIds] = useState<string[]>([]);
+  const [impliedLevels, setImpliedLevels] = useState<CatalogLevel[]>([]);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [form, setForm] = useState({ ...blankForm(), subjectId: preselectedSubject });
@@ -63,18 +68,22 @@ export function SpecializationForm({ id }: { id?: string }) {
     let active = true;
     const load = async () => {
       try {
-        const [mediaResult, subjectRows] = await Promise.all([
+        const [mediaResult, subjectRows, levelRows] = await Promise.all([
           listEditorialMedia({ limit: 50 }),
           listAllSubjects(),
+          listCourseLevels({ status: 'ACTIVE', limit: 100 }),
         ]);
         if (!active) return;
         setMedia(mediaResult.data);
         setSubjects(subjectRows);
+        setLevels(levelRows.data);
         if (!id) return;
         const [recordResult, seoResult] = await Promise.all([getSpecialization(id), getSpecializationSeo(id)]);
         if (!active) return;
         const row = recordResult.data;
         setRecord(row);
+        setLevelIds((row.courseLevels ?? []).map((level) => level.id));
+        setImpliedLevels(row.impliedCourseLevels ?? []);
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
         setForm({
@@ -130,6 +139,7 @@ export function SpecializationForm({ id }: { id?: string }) {
         listingMediaId: form.listingMediaId || undefined,
         isFeatured: form.isFeatured,
         displayOrder: Number(form.displayOrder) || 0,
+        courseLevelIds: levelIds,
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
       };
       const subjectId = record?.subject.id ?? form.subjectId;
@@ -150,6 +160,7 @@ export function SpecializationForm({ id }: { id?: string }) {
       if (intent === 'draft' && saved.status === 'PUBLISHED')
         saved = (await unpublishSubSubject(subjectId, saved.id, saved.updatedAt)).data;
       setRecord(saved);
+      setLevelIds((saved.courseLevels ?? []).map((level) => level.id));
       setForm((current) => ({ ...current, slug: saved.slug, shortDescription: saved.shortDescription ?? '', overview: saved.overview ?? '' }));
       setDirty(false);
       if (!id) router.replace(`/specializations/${saved.id}`);
@@ -206,6 +217,8 @@ export function SpecializationForm({ id }: { id?: string }) {
             <label className="p-btn p-btn--ghost self-end"><input type="checkbox" checked={form.isFeatured} onChange={(e) => set('isFeatured', e.target.checked)} /> Featured specialization</label>
           </div>
         </fieldset>
+
+        <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
         <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
         <UnifiedEditorActions cancelHref="/specializations" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />

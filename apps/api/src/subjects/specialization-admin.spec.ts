@@ -79,6 +79,7 @@ function prisma(
         return null;
       },
     },
+    course: { groupBy: async () => [] },
     auditLog: { create: async () => null },
   } as unknown as PrismaService;
 }

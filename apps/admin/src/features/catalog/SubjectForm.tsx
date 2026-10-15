@@ -8,6 +8,7 @@ import {
   deleteSubjectSeo,
   getSubject,
   getSubjectSeo,
+  listCourseLevels,
   listEditorialMedia,
   listAllSubSubjects,
   publishSubSubject,
@@ -17,7 +18,8 @@ import {
   unpublishSubject,
   updateSubject,
 } from './catalog-client';
-import type { EditorialMedia, EditorialSeo, SubSubjectRecord, SubjectRecord } from './catalog.types';
+import type { EditorialMedia, EditorialSeo, MasterRecord, SubSubjectRecord, SubjectRecord } from './catalog.types';
+import { StudyLevelTicks } from './StudyLevelTicks';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -37,6 +39,8 @@ export function SubjectForm({ id }: { id?: string }) {
   const [record, setRecord] = useState<SubjectRecord | null>(null);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
+  const [levels, setLevels] = useState<MasterRecord[]>([]);
+  const [levelIds, setLevelIds] = useState<string[]>([]);
   const [form, setForm] = useState({ name: '', slug: '', shortDescription: '', overview: '', iconMediaId: '', listingMediaId: '', heroMediaId: '', isFeatured: false, displayOrder: '0' });
   const [specializations, setSpecializations] = useState<SubSubjectRecord[]>([]);
   const [seo, setSeo] = useState<UnifiedSeoDraft>(blankUnifiedSeo);
@@ -55,6 +59,11 @@ export function SubjectForm({ id }: { id?: string }) {
         const mediaResult = await listEditorialMedia({ limit: 50 });
         if (!active) return;
         setMedia(mediaResult.data);
+        /* The study levels to tick. Their list failing leaves the ticks out,
+           not the editor. */
+        void listCourseLevels({ status: 'ACTIVE', limit: 100 })
+          .then((result) => { if (active) setLevels(result.data); })
+          .catch(() => undefined);
         if (!id) return;
         const [subjectResult, seoResult, subResult] = await Promise.all([
           getSubject(id), getSubjectSeo(id), listAllSubSubjects(id),
@@ -62,6 +71,7 @@ export function SubjectForm({ id }: { id?: string }) {
         if (!active) return;
         const subject = subjectResult.data;
         setRecord(subject);
+        setLevelIds((subject.courseLevels ?? []).map((level) => level.id));
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
         setForm({
@@ -137,6 +147,7 @@ export function SubjectForm({ id }: { id?: string }) {
         name: form.name.trim(), slug: form.slug.trim() || undefined, shortDescription: form.shortDescription.trim(), overview: form.overview.trim() || undefined,
         iconMediaId: form.iconMediaId || undefined, listingMediaId: form.listingMediaId || undefined, heroMediaId: form.heroMediaId || undefined,
         isFeatured: form.isFeatured, displayOrder: Number(form.displayOrder) || 0,
+        courseLevelIds: levelIds,
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
       };
       const saved = record ? (await updateSubject(record.id, payload)).data : (await createSubject(payload)).data;
@@ -185,6 +196,8 @@ export function SubjectForm({ id }: { id?: string }) {
             <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor="subject-order" help={commonFieldHelp.displayOrder} /><input id="subject-order" type="number" min="0" max="999999" className={inputClass} value={form.displayOrder} onChange={(e) => set('displayOrder', e.target.value)} /></div>
           </div>
         </fieldset>
+
+        <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
         <fieldset id="editor-specializations" className="p-panel">
           <legend className="sr-only">Specializations</legend>

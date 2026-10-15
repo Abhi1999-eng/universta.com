@@ -724,6 +724,7 @@ model Subject {
   subSubjects     SubSubject[]
   courses         Course[]
   countrySubjects CountrySubject[]
+  courseLevels    SubjectCourseLevel[]
   leads           Lead[]
 
   studentPreferences StudentProfile[] @relation("StudentPreferredSubject")
@@ -767,6 +768,7 @@ model SubSubject {
   updatedBy    User?               @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   courses      Course[]
   countries    CountrySubSubject[]
+  courseLevels SubSubjectCourseLevel[]
 
   @@unique([subjectId, name])
   @@unique([subjectId, slug])
@@ -827,10 +829,44 @@ model CourseLevel {
   courses                   Course[]
   leads                     Lead[]
   universityCourseOfferings UniversityCourseOffering[]
+  subjects                  SubjectCourseLevel[]
+  subSubjects               SubSubjectCourseLevel[]
 
   studentPreferences StudentProfile[] @relation("StudentPreferredCourseLevel")
 
   @@map("course_levels")
+}
+
+/// The study levels an editor says a subject is offered at. A subject's page
+/// also works out levels from its published courses; a tick here stands on
+/// its own, so a level can be shown before any course is filed under it.
+model SubjectCourseLevel {
+  id            String   @id @default(uuid()) @db.Char(36)
+  subjectId     String   @map("subject_id") @db.Char(36)
+  courseLevelId String   @map("course_level_id") @db.Char(36)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  courseLevel CourseLevel @relation(fields: [courseLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, courseLevelId])
+  @@index([courseLevelId])
+  @@map("subject_course_levels")
+}
+
+/// The same for a specialization.
+model SubSubjectCourseLevel {
+  id            String   @id @default(uuid()) @db.Char(36)
+  subSubjectId  String   @map("sub_subject_id") @db.Char(36)
+  courseLevelId String   @map("course_level_id") @db.Char(36)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  subSubject  SubSubject  @relation(fields: [subSubjectId], references: [id], onDelete: Cascade)
+  courseLevel CourseLevel @relation(fields: [courseLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([subSubjectId, courseLevelId])
+  @@index([courseLevelId])
+  @@map("sub_subject_course_levels")
 }
 
 model StudyMode {

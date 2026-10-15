@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, type TransformFnParams } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -82,6 +84,14 @@ export class SubjectFieldsDto {
   @Min(0)
   @Max(999999)
   displayOrder?: number;
+  /** The study levels this is offered at, by course level id. Sent whole:
+   * the list replaces what was ticked before. */
+  @ApiPropertyOptional({ type: [String], format: 'uuid' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
+  courseLevelIds?: string[];
 }
 
 export class CreateSubjectDto extends SubjectFieldsDto {}
@@ -224,6 +234,14 @@ export class SubSubjectFieldsDto {
   @Min(0)
   @Max(999999)
   displayOrder?: number;
+  /** The study levels this is offered at, by course level id. Sent whole:
+   * the list replaces what was ticked before. */
+  @ApiPropertyOptional({ type: [String], format: 'uuid' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
+  courseLevelIds?: string[];
 }
 
 export class CreateSubSubjectDto extends SubSubjectFieldsDto {}

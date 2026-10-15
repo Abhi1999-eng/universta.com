@@ -325,10 +325,20 @@ export interface SubjectRecord {
   heroMedia: EditorialMedia | null;
   isFeatured: boolean;
   displayOrder: number;
+  /** The study levels an editor ticked for it. */
+  courseLevels?: CatalogLevel[];
+  /** The levels its published courses already stand at, for the editor to
+   * show beside the ticks. Only on a single record, not a list. */
+  impliedCourseLevels?: CatalogLevel[];
   status: string;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+export interface CatalogLevel {
+  id: string;
+  name: string;
+  code: string | null;
 }
 export interface SubSubjectRecord {
   id: string;
@@ -341,6 +351,8 @@ export interface SubSubjectRecord {
   listingMedia: EditorialMedia | null;
   featured: boolean;
   displayOrder: number;
+  courseLevels?: CatalogLevel[];
+  impliedCourseLevels?: CatalogLevel[];
   status: string;
   publishedAt: string | null;
   createdAt: string;

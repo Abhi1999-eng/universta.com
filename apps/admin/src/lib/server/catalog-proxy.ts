@@ -311,7 +311,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method,
       path,
       query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [],
-      body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+      body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder', 'courseLevelIds'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'isFeatured', 'displayOrder', 'courseLevelIds', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
     };
   }
   if (operation.startsWith('subjects:')) {
@@ -322,7 +322,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : action === 'get' ? 'GET' : action === 'publish' || action === 'unpublish' ? 'POST' : 'DELETE',
       path,
       query: action === 'list' ? ['q', 'status', 'featured', 'sort', 'page', 'limit'] : [],
-      body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+      body: action === 'create' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder', 'courseLevelIds'] : action === 'update' ? ['name', 'slug', 'shortDescription', 'overview', 'iconMediaId', 'listingMediaId', 'heroMediaId', 'isFeatured', 'displayOrder', 'courseLevelIds', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
     };
   }
   if (operation.startsWith('course-levels:') || operation.startsWith('study-modes:')) {
