@@ -1336,11 +1336,10 @@ export class SubjectsService {
     const errors: Array<{ field: string; message: string }> = [];
     if (!row.name) errors.push({ field: 'name', message: 'Name is required' });
     if (!row.slug) errors.push({ field: 'slug', message: 'Slug is required' });
-    if (!row.shortDescription)
-      errors.push({
-        field: 'shortDescription',
-        message: 'Short description is required',
-      });
+    /* A specialization publishes without a short description: imported
+       subjects arrive with dozens of specializations and no descriptions,
+       and requiring one held the whole subject back. The public page reads
+       it only where it is written. */
     if (parent.status !== 'PUBLISHED')
       errors.push({
         field: 'subject',

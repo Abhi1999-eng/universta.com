@@ -116,7 +116,7 @@ export function SubjectForm({ id }: { id?: string }) {
 
   const normalizedSpecializations = useMemo(() => specializations.filter((row) => row.id || row.name.trim() || row.slug.trim() || row.shortDescription.trim() || row.overview.trim()), [specializations]);
 
-  function validate(intent: Intent) {
+  function validate() {
     const next: string[] = [];
     if (!form.name.trim()) next.push('Subject name is required.');
     if (!form.shortDescription.trim()) next.push('Subject short description is required.');
@@ -126,7 +126,6 @@ export function SubjectForm({ id }: { id?: string }) {
       const label = `Specialization ${index + 1}`;
       if (!row.name.trim()) next.push(`${label}: name is required.`);
       if (row.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.slug)) next.push(`${label}: slug format is invalid.`);
-      if (intent === 'publish' && !row.shortDescription.trim()) next.push(`${label}: short description is required before publishing.`);
       if (!/^\d+$/.test(row.displayOrder) || Number(row.displayOrder) > 999999) next.push(`${label}: display order must be 0-999999.`);
     });
     if (hasSeo(seo) && (!seo.seoTitle.trim() || !seo.metaDescription.trim())) next.push('SEO title and meta description are both required when SEO is configured.');
@@ -192,7 +191,7 @@ export function SubjectForm({ id }: { id?: string }) {
     if (saving) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const intent: Intent = submitter?.value === 'publish' ? 'publish' : 'draft';
-    if (!validate(intent)) return;
+    if (!validate()) return;
     setSaving(true); setSavingIntent(intent); setError('');
     try {
       const payload = {
