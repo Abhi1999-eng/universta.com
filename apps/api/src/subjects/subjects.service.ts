@@ -1219,7 +1219,8 @@ export class SubjectsService {
           subjectId,
           name,
           slug,
-          shortDescription: dto.shortDescription?.trim(),
+          /* Optional for a specialization: nothing written is stored as nothing. */
+          shortDescription: dto.shortDescription?.trim() || null,
           overview: dto.overview?.trim(),
           iconMediaId: dto.iconMediaId,
           listingMediaId: dto.listingMediaId,
@@ -1275,7 +1276,7 @@ export class SubjectsService {
           name: dto.name.trim(),
           slug: dto.slug?.trim() || current.slug,
           ...(dto.shortDescription !== undefined
-            ? { shortDescription: dto.shortDescription.trim() }
+            ? { shortDescription: dto.shortDescription.trim() || null }
             : {}),
           ...(dto.overview !== undefined
             ? { overview: dto.overview.trim() }
@@ -1336,11 +1337,10 @@ export class SubjectsService {
     const errors: Array<{ field: string; message: string }> = [];
     if (!row.name) errors.push({ field: 'name', message: 'Name is required' });
     if (!row.slug) errors.push({ field: 'slug', message: 'Slug is required' });
-    if (!row.shortDescription)
-      errors.push({
-        field: 'shortDescription',
-        message: 'Short description is required',
-      });
+    /* A specialization publishes without a short description: imported
+       subjects arrive with dozens of specializations and no descriptions,
+       and requiring one held the whole subject back. The public page reads
+       it only where it is written. */
     if (parent.status !== 'PUBLISHED')
       errors.push({
         field: 'subject',

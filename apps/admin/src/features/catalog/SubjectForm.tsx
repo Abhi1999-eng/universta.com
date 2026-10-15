@@ -116,7 +116,7 @@ export function SubjectForm({ id }: { id?: string }) {
 
   const normalizedSpecializations = useMemo(() => specializations.filter((row) => row.id || row.name.trim() || row.slug.trim() || row.shortDescription.trim() || row.overview.trim()), [specializations]);
 
-  function validate(intent: Intent) {
+  function validate() {
     const next: string[] = [];
     if (!form.name.trim()) next.push('Subject name is required.');
     if (!form.shortDescription.trim()) next.push('Subject short description is required.');
@@ -126,7 +126,6 @@ export function SubjectForm({ id }: { id?: string }) {
       const label = `Specialization ${index + 1}`;
       if (!row.name.trim()) next.push(`${label}: name is required.`);
       if (row.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.slug)) next.push(`${label}: slug format is invalid.`);
-      if (intent === 'publish' && !row.shortDescription.trim()) next.push(`${label}: short description is required before publishing.`);
       if (!/^\d+$/.test(row.displayOrder) || Number(row.displayOrder) > 999999) next.push(`${label}: display order must be 0-999999.`);
     });
     if (hasSeo(seo) && (!seo.seoTitle.trim() || !seo.metaDescription.trim())) next.push('SEO title and meta description are both required when SEO is configured.');
@@ -143,7 +142,8 @@ export function SubjectForm({ id }: { id?: string }) {
       const payload = {
         name: row.name.trim(),
         slug: row.slug.trim() || slugify(row.name),
-        shortDescription: row.shortDescription.trim() || undefined,
+        /* Sent even when blank, so a description can be cleared: it is optional now. */
+        shortDescription: row.shortDescription.trim(),
         overview: row.overview.trim() || undefined,
         iconMediaId: row.iconMediaId || undefined,
         listingMediaId: row.listingMediaId || undefined,
@@ -192,7 +192,7 @@ export function SubjectForm({ id }: { id?: string }) {
     if (saving) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const intent: Intent = submitter?.value === 'publish' ? 'publish' : 'draft';
-    if (!validate(intent)) return;
+    if (!validate()) return;
     setSaving(true); setSavingIntent(intent); setError('');
     try {
       const payload = {
@@ -255,7 +255,7 @@ export function SubjectForm({ id }: { id?: string }) {
           <div className="mt-6 space-y-5">
             {specializations.length === 0 ? <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
               <div key={row.id ?? `new-${index}`} className="p-panel">
-                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
+                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}{row.shortDescription.trim() ? null : <span className="p-chip ml-2 align-middle text-xs font-normal" title="Publishes without one; its page stays out of search engines until it has some content.">No short description</span>}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor={`spec-name-${index}`} /><input id={`spec-name-${index}`} className={inputClass} value={row.name} onChange={(e) => updateSpecialization(index, { name: e.target.value, slug: row.slug || slugify(e.target.value) })} /></div>
                   <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor={`spec-slug-${index}`} /><input id={`spec-slug-${index}`} className={inputClass} value={row.slug} onChange={(e) => updateSpecialization(index, { slug: e.target.value })} /></div>
