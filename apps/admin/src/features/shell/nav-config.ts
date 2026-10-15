@@ -43,14 +43,21 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Academics",
+    // The client's wording. Subjects, their specializations, the study levels
+    // and the courses are one chain, so they live together, each with its
+    // list and its "Add" as the client asked for. Specializations are still
+    // edited inside their subject until they have an editor of their own.
+    label: "Subject & specialization",
     items: [
-      { label: "Subjects", href: "/subjects", hints: ["Specializations"] },
-      { label: "Generic courses", href: "/courses" },
+      { label: "All subjects", href: "/subjects", hints: ["Specializations"] },
+      { label: "Add subject", href: "/subjects/new" },
+      { label: "All levels", href: "/catalog-masters?section=course-levels" },
       {
-        label: "Course levels",
-        href: "/catalog-masters?section=course-levels",
+        label: "Add level",
+        href: "/catalog-masters?section=course-levels&new=1",
       },
+      { label: "Courses", href: "/courses" },
+      { label: "Add course", href: "/courses/new" },
       { label: "Study modes", href: "/catalog-masters?section=study-modes" },
       { label: "Intakes", href: "/catalog-masters?section=intakes" },
     ],
@@ -146,6 +153,13 @@ function normalizePath(value: string): string {
   return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
 
+/** How many query discriminators an entry's href carries: an entry with
+ * `?section=x&new=1` is more specific than its `?section=x` sibling, so the
+ * two can share a screen and still select one row each. */
+function querySpecificity(href: string): number {
+  return new URLSearchParams(href.split("?")[1] ?? "").size;
+}
+
 function queryMatches(location: string, href: string): boolean {
   const expected = new URLSearchParams(href.split("?")[1] ?? "");
   if (expected.size === 0) return true;
@@ -180,6 +194,8 @@ function matchesBase(path: string, base: string): boolean {
  *
  * Resolution, in order:
  *   1. deepest matching href wins, so /phase1/universities beats /phase1;
+ *   1b. among entries sharing that path, the one whose query says more wins,
+ *      so "Add level" (`?section=course-levels&new=1`) beats "All levels";
  *   2. among entries sharing that href, the real destination wins over a
  *      signpost -- a `note` marks an entry whose subject is managed elsewhere,
  *      so Subjects is selected rather than Specializations;
@@ -195,6 +211,7 @@ export function resolveActiveNavItem(
     group: string;
     item: NavItem;
     depth: number;
+    specificity: number;
     isSignpost: boolean;
     order: number;
   } | null = null;
@@ -211,6 +228,7 @@ export function resolveActiveNavItem(
         group: group.label,
         item,
         depth: base.length,
+        specificity: querySpecificity(item.href),
         isSignpost: false,
         order: position,
       };
@@ -218,6 +236,9 @@ export function resolveActiveNavItem(
         !best ||
         candidate.depth > best.depth ||
         (candidate.depth === best.depth &&
+          candidate.specificity > best.specificity) ||
+        (candidate.depth === best.depth &&
+          candidate.specificity === best.specificity &&
           !candidate.isSignpost &&
           best.isSignpost)
       ) {

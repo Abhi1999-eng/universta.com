@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '@/features/auth/auth-client';
 import { FieldLabel } from '@/features/shared/FieldLabel';
+import { useSearchParams } from 'next/navigation';
 import { useSectionFocus } from '@/features/shell/use-section-focus';
 import { commonFieldHelp } from '@/lib/field-help/common';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
@@ -286,8 +287,13 @@ export function CatalogMastersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [kind, setKind] = useState<Kind>('level');
-  const [editorOpen, setEditorOpen] = useState(false);
+  /* The sidebar's "Add level" opens this screen with `?new=1`: the create
+     form is open from the first render, for the section the address names. */
+  const wantsNew = useSearchParams().get('new') === '1';
+  const newKind: Kind | null =
+    focused === 'course-levels' ? 'level' : focused === 'study-modes' ? 'mode' : null;
+  const [kind, setKind] = useState<Kind>(newKind ?? 'level');
+  const [editorOpen, setEditorOpen] = useState(wantsNew && newKind !== null);
   const [editing, setEditing] = useState<MasterRecord | null>(null);
   const [form, setForm] = useState(empty);
   const [pending, setPending] = useState<Pending>(null);
@@ -315,6 +321,7 @@ export function CatalogMastersPage() {
     const timer = window.setTimeout(() => load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
 
   function open(kindValue: Kind, row?: MasterRecord) {
     setKind(kindValue);

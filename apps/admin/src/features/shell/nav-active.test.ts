@@ -47,7 +47,7 @@ describe('exactly one sidebar entry is active', () => {
 
   it('selects Subjects, not Specializations, on /subjects', () => {
     // The exact symptom reported.
-    expect(activeLabel('/subjects')).toBe('Subjects');
+    expect(activeLabel('/subjects')).toBe('All subjects');
   });
 
   it('selects Universities, not Campuses or Accreditations', () => {
@@ -79,7 +79,8 @@ describe('exactly one sidebar entry is active', () => {
   it.each([
     ['/locations?tab=states', 'States / provinces'],
     ['/locations?tab=cities', 'Cities'],
-    ['/catalog-masters?section=course-levels', 'Course levels'],
+    ['/catalog-masters?section=course-levels', 'All levels'],
+    ['/catalog-masters?section=course-levels&new=1', 'Add level'],
     ['/catalog-masters?section=study-modes', 'Study modes'],
     ['/catalog-masters?section=intakes', 'Intakes'],
     ['/catalog-masters?section=scholarship-providers', 'Scholarship providers'],
@@ -99,8 +100,12 @@ describe('route matching is segment-safe', () => {
   });
 
   it('keeps a nested edit or detail route on its owning entry', () => {
-    expect(activeLabel('/subjects/computer-science')).toBe('Subjects');
-    expect(activeLabel('/subjects/abc-123/edit')).toBe('Subjects');
+    expect(activeLabel('/subjects/computer-science')).toBe('All subjects');
+    expect(activeLabel('/subjects/abc-123/edit')).toBe('All subjects');
+    /* The "Add" entries own their create routes, and nothing else. */
+    expect(activeLabel('/subjects/new')).toBe('Add subject');
+    expect(activeLabel('/courses/new')).toBe('Add course');
+    expect(activeLabel('/courses/abc-123')).toBe('Courses');
     expect(activeLabel('/phase1/universities/xyz-789')).toBe('Universities');
     expect(activeLabel('/leads/42')).toBe(activeLabel('/leads'));
   });
@@ -123,7 +128,7 @@ describe('route matching is segment-safe', () => {
     ]) {
       expect({ suffix, label: activeLabel(`/subjects${suffix}`) }).toEqual({
         suffix,
-        label: 'Subjects',
+        label: 'All subjects',
       });
     }
   });
