@@ -153,6 +153,7 @@ export function SubjectsPage() {
             <thead>
               <tr>
                 <th scope="col">Subject</th>
+                <th scope="col">Levels</th>
                 <th scope="col">Status</th>
                 <th scope="col">Updated</th>
                 <th scope="col" className="p-td-actions">Actions</th>
@@ -167,6 +168,13 @@ export function SubjectsPage() {
                       /{row.slug}
                       
                     </span>
+                  </td>
+                  <td>
+                    {row.courseLevels?.length ? (
+                      row.courseLevels.map((level) => level.code ?? level.name).join(', ')
+                    ) : (
+                      <span className="p-muted">—</span>
+                    )}
                   </td>
                   <td>
                     <span

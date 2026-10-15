@@ -64,10 +64,35 @@ const MEDIA_SELECT = {
   status: true,
   deletedAt: true,
 } as const;
+/** One entry per level id, the first occurrence kept. */
+function dedupeLevels<T extends { id: string }>(levels: T[]): T[] {
+  const seen = new Set<string>();
+  return levels.filter((level) => {
+    if (seen.has(level.id)) return false;
+    seen.add(level.id);
+    return true;
+  });
+}
+
+/* A ticked level, with what it is ordered by. */
+const LEVEL_LINK_INCLUDE = {
+  courseLevel: {
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      educationOrder: true,
+      displayOrder: true,
+      status: true,
+    },
+  },
+} as const;
+
 const SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
   listingMedia: { select: MEDIA_SELECT },
   heroMedia: { select: MEDIA_SELECT },
+  courseLevels: { include: LEVEL_LINK_INCLUDE },
   /* The Country taxonomy picker orders by real usage and shows sub-subjects
    * beneath their parent for navigation. Both come from this include so the
    * picker never issues a query per row. */
@@ -85,6 +110,7 @@ const SUB_SUBJECT_SEO_OWNER = 'SUB_SUBJECT';
 const SUB_SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
   listingMedia: { select: MEDIA_SELECT },
+  courseLevels: { include: LEVEL_LINK_INCLUDE },
   subject: {
     select: { id: true, name: true, slug: true, status: true, deletedAt: true },
   },
@@ -321,7 +347,13 @@ export class SubjectsService {
     ] = await Promise.all([
       this.prisma.subSubject.findMany({
         where: siblingWhere,
-        select: { id: true, name: true, slug: true, shortDescription: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          shortDescription: true,
+          courseLevels: { include: LEVEL_LINK_INCLUDE },
+        },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         take: 12,
       }),
@@ -393,6 +425,13 @@ export class SubjectsService {
     return {
       ...this.toSubSubjectPublic(specialization),
       subject,
+      /* The levels it is offered at: ticked by an editor, or standing
+         behind a published course. */
+      levels: await this.unionLevels(
+        this.tickedLevels(specialization.courseLevels),
+        (await this.branchStats([specialization.id])).get(specialization.id)
+          ?.levels ?? [],
+      ),
       seo: this.seoManagement
         ? await this.seoManagement.resolve(
             'specialization',
@@ -403,11 +442,19 @@ export class SubjectsService {
       /* Each sibling carries what its card states -- a line about it, the
          levels it is taught at and how many programmes -- so the related
          cards read like the subject page's, not as a bare name. */
-      siblings: siblings.map((row) => ({
-        ...row,
-        publishedCourseCount: siblingStats.get(row.id)?.count ?? 0,
-        levels: siblingStats.get(row.id)?.levels ?? [],
-      })),
+      siblings: await Promise.all(
+        siblings.map(async (row) => ({
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          shortDescription: row.shortDescription,
+          publishedCourseCount: siblingStats.get(row.id)?.count ?? 0,
+          levels: await this.unionLevels(
+            this.tickedLevels(row.courseLevels),
+            siblingStats.get(row.id)?.levels ?? [],
+          ),
+        })),
+      ),
       siblingTotal,
       availableCountryCount: teaching.size,
       countries: await this.destinations(countries, teaching),
@@ -719,16 +766,21 @@ export class SubjectsService {
        them -- one grouped query for the page rather than one per row. */
     const branchStats = await this.branchStats(rows.map((row) => row.id));
     return {
-      data: rows.map((row) => ({
-        ...this.toSubSubjectPublic(row),
-        subject: {
-          id: row.subject.id,
-          name: row.subject.name,
-          slug: row.subject.slug,
-        },
-        publishedCourseCount: branchStats.get(row.id)?.count ?? 0,
-        levels: branchStats.get(row.id)?.levels ?? [],
-      })),
+      data: await Promise.all(
+        rows.map(async (row) => ({
+          ...this.toSubSubjectPublic(row),
+          subject: {
+            id: row.subject.id,
+            name: row.subject.name,
+            slug: row.subject.slug,
+          },
+          publishedCourseCount: branchStats.get(row.id)?.count ?? 0,
+          levels: await this.unionLevels(
+            this.tickedLevels(row.courseLevels),
+            branchStats.get(row.id)?.levels ?? [],
+          ),
+        })),
+      ),
       meta: { total, page, limit: take },
     };
   }
@@ -868,15 +920,30 @@ export class SubjectsService {
           count: row._count._all,
         };
       })
+      /* A level an editor ticked is offered even before a course is filed
+         under it: it joins the list with nothing counted yet. */
+      .concat(
+        (subject.courseLevels ?? [])
+          .map((link) => link.courseLevel)
+          .filter(
+            (level) => !levels.some((row) => row.courseLevelId === level.id),
+          )
+          .map((level) => ({ level, count: 0 })),
+      )
       .sort((a, b) => byEducationOrder(a.level, b.level))
       .map((row) => ({ level: publicLevel(row.level), count: row.count }));
     return {
       ...(await this.toPublic(subject)),
-      subSubjects: children.map((child) => ({
-        ...this.toSubSubjectPublic(child),
-        publishedCourseCount: branchStats.get(child.id)?.count ?? 0,
-        levels: branchStats.get(child.id)?.levels ?? [],
-      })),
+      subSubjects: await Promise.all(
+        children.map(async (child) => ({
+          ...this.toSubSubjectPublic(child),
+          publishedCourseCount: branchStats.get(child.id)?.count ?? 0,
+          levels: await this.unionLevels(
+            this.tickedLevels(child.courseLevels),
+            branchStats.get(child.id)?.levels ?? [],
+          ),
+        })),
+      ),
       courseCountsByLevel,
       featuredCourses: featuredCourses.map((course) =>
         this.toCourseCard(course),
@@ -938,6 +1005,7 @@ export class SubjectsService {
       dto.listingMediaId,
       dto.heroMediaId,
     ]);
+    const levelIds = await this.validateLevels(dto.courseLevelIds);
     try {
       const row = await this.prisma.subject.create({
         data: {
@@ -953,6 +1021,13 @@ export class SubjectsService {
           status: 'DRAFT',
           createdByUserId: userId,
           updatedByUserId: userId,
+          ...(levelIds?.length
+            ? {
+                courseLevels: {
+                  create: levelIds.map((courseLevelId) => ({ courseLevelId })),
+                },
+              }
+            : {}),
         },
         include: SUBJECT_INCLUDE,
       });
@@ -1011,7 +1086,17 @@ export class SubjectsService {
       dto.listingMediaId,
       dto.heroMediaId,
     ]);
+    const levelIds = await this.validateLevels(dto.courseLevelIds);
     const data: Prisma.SubjectUncheckedUpdateInput = {
+      /* The ticks are sent whole, so the list replaces what was there. */
+      ...(levelIds
+        ? {
+            courseLevels: {
+              deleteMany: {},
+              create: levelIds.map((courseLevelId) => ({ courseLevelId })),
+            },
+          }
+        : {}),
       name: dto.name.trim(),
       slug: dto.slug?.trim() || current.slug,
       ...(dto.shortDescription !== undefined
@@ -1259,7 +1344,11 @@ export class SubjectsService {
   /** A specialization by its id alone, so its own editor can open it
    * without first knowing the subject; the record names the subject. */
   async getSpecialization(id: string) {
-    return this.toSubSubjectAdmin(await this.specializationRecord(id));
+    const row = await this.specializationRecord(id);
+    return {
+      ...this.toSubSubjectAdmin(row),
+      impliedCourseLevels: await this.impliedLevels({ subSubjectId: row.id }),
+    };
   }
 
   async getSpecializationSeo(id: string) {
@@ -1340,7 +1429,10 @@ export class SubjectsService {
   async getSubSubject(subjectId: string, id: string) {
     await this.ensureSubject(subjectId);
     const row = await this.subSubjectRecord(subjectId, id);
-    return this.toSubSubjectAdmin(row);
+    return {
+      ...this.toSubSubjectAdmin(row),
+      impliedCourseLevels: await this.impliedLevels({ subSubjectId: row.id }),
+    };
   }
 
   async createSubSubject(
@@ -1353,6 +1445,7 @@ export class SubjectsService {
     const name = dto.name.trim();
     const slug = dto.slug?.trim() || slugify(name);
     await this.validateMedia([dto.iconMediaId, dto.listingMediaId]);
+    const levelIds = await this.validateLevels(dto.courseLevelIds);
     try {
       const row = await this.prisma.subSubject.create({
         data: {
@@ -1369,6 +1462,13 @@ export class SubjectsService {
           status: 'DRAFT',
           createdByUserId: userId,
           updatedByUserId: userId,
+          ...(levelIds?.length
+            ? {
+                courseLevels: {
+                  create: levelIds.map((courseLevelId) => ({ courseLevelId })),
+                },
+              }
+            : {}),
         },
         include: SUB_SUBJECT_INCLUDE,
       });
@@ -1409,12 +1509,21 @@ export class SubjectsService {
       'SUB_SUBJECT_STALE_VERSION',
     );
     await this.validateMedia([dto.iconMediaId, dto.listingMediaId]);
+    const levelIds = await this.validateLevels(dto.courseLevelIds);
     try {
       const row = await this.prisma.subSubject.update({
         where: { id },
         data: {
           name: dto.name.trim(),
           slug: dto.slug?.trim() || current.slug,
+          ...(levelIds
+            ? {
+                courseLevels: {
+                  deleteMany: {},
+                  create: levelIds.map((courseLevelId) => ({ courseLevelId })),
+                },
+              }
+            : {}),
           ...(dto.shortDescription !== undefined
             ? { shortDescription: dto.shortDescription.trim() || null }
             : {}),
@@ -1703,6 +1812,67 @@ export class SubjectsService {
     return row;
   }
 
+  /** The levels an editor ticked must be real, active ones. */
+  private async validateLevels(ids: string[] | undefined) {
+    if (!ids) return undefined;
+    const unique = [...new Set(ids)];
+    if (!unique.length) return [];
+    const count = await this.prisma.courseLevel.count({
+      where: { id: { in: unique }, status: 'ACTIVE' },
+    });
+    if (count !== unique.length)
+      throw catalogConflict(
+        'COURSE_LEVEL_INVALID',
+        'A selected study level is not an active course level',
+      );
+    return unique;
+  }
+
+  /** What was ticked, in the order a student climbs the levels. */
+  private tickedLevels(
+    links: Array<{ courseLevel: OrderedLevel & { id: string } }> | undefined,
+  ) {
+    return (links ?? [])
+      .map((link) => link.courseLevel)
+      .sort(byEducationOrder)
+      .map(publicLevel);
+  }
+
+  /** The ticked levels and the ones worked out from courses, as one list in
+   * climbing order: a page says a level is offered when either an editor or
+   * a published course says so. */
+  private async unionLevels(
+    ticked: Array<{ id: string; name: string; code: string | null }>,
+    derived: Array<{ id: string; name: string; code: string | null }>,
+  ) {
+    const seen = new Set<string>();
+    const merged = [...ticked, ...derived].filter((level) => {
+      if (seen.has(level.id)) return false;
+      seen.add(level.id);
+      return true;
+    });
+    if (merged.length < 2) return merged;
+    const known = await this.levelsById(merged.map((level) => level.id));
+    return this.inEducationOrder(merged, known);
+  }
+
+  /** The levels a record's published courses stand at, for the editor to
+   * show beside its ticks. */
+  private async impliedLevels(where: Prisma.CourseWhereInput) {
+    const rows = await this.prisma.course.groupBy({
+      by: ['courseLevelId'],
+      where: { ...where, status: 'PUBLISHED', deletedAt: null },
+    });
+    const levels = await this.levelsById(rows.map((row) => row.courseLevelId));
+    return this.inEducationOrder(
+      rows.flatMap((row) => {
+        const level = levels.get(row.courseLevelId);
+        return level ? [publicLevel(level)] : [];
+      }),
+      levels,
+    );
+  }
+
   private async validateMedia(ids: Array<string | undefined>) {
     const requested = [
       ...new Set(ids.filter((id): id is string => Boolean(id))),
@@ -1782,6 +1952,7 @@ export class SubjectsService {
           select: {
             courseLevel: {
               select: {
+                id: true,
                 code: true,
                 name: true,
                 educationOrder: true,
@@ -1814,9 +1985,10 @@ export class SubjectsService {
       /* Foundation first, PhD last: the explorer's level bar and each card's
          levels line are built from this, and the distinct read hands the
          levels back in whatever order it met them. */
-      levels: levels
-        .map((entry) => entry.courseLevel)
-        .filter(Boolean)
+      levels: dedupeLevels([
+        ...(row.courseLevels ?? []).map((link) => link.courseLevel),
+        ...levels.map((entry) => entry.courseLevel).filter(Boolean),
+      ])
         .sort(byEducationOrder)
         .map((level) => ({ code: level.code, name: level.name })),
       subSubjects: (row.subSubjects ?? [])
@@ -1848,6 +2020,7 @@ export class SubjectsService {
        * rather than a display hint. */
       courseCount: row._count?.courses ?? 0,
       countryCount: row._count?.countrySubjects ?? 0,
+      courseLevels: this.tickedLevels(row.courseLevels),
       shortDescription: row.shortDescription,
       overview: row.overview,
       isFeatured: row.isFeatured,
@@ -1881,6 +2054,7 @@ export class SubjectsService {
         name: row.subject.name,
         slug: row.subject.slug,
       },
+      courseLevels: this.tickedLevels(row.courseLevels),
       status: row.status,
       publishedAt: row.publishedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
