@@ -45,12 +45,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     // The client's wording. Subjects, their specializations, the study levels
     // and the courses are one chain, so they live together, each with its
-    // list and its "Add" as the client asked for. Specializations are still
-    // edited inside their subject until they have an editor of their own.
+    // list and its "Add" as the client asked for.
     label: "Subject & specialization",
     items: [
-      { label: "All subjects", href: "/subjects", hints: ["Specializations"] },
+      { label: "All subjects", href: "/subjects" },
       { label: "Add subject", href: "/subjects/new" },
+      { label: "All specializations", href: "/specializations" },
+      { label: "Add specialization", href: "/specializations/new" },
       { label: "All levels", href: "/catalog-masters?section=course-levels" },
       {
         label: "Add level",

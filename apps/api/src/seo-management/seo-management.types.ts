@@ -2,6 +2,7 @@ export const SEO_BULK_ENTITY_TYPES = [
   'country',
   'city',
   'subject',
+  'specialization',
   'course',
   'university',
   'offering',
@@ -49,6 +50,16 @@ export const SEO_ENTITY_DEFINITIONS: SeoEntityDefinition[] = [
     key: 'subject',
     label: 'Subjects',
     variables: [
+      { key: 'subjectName', label: 'Subject name' },
+      { key: 'subjectSlug', label: 'Subject slug' },
+    ],
+  },
+  {
+    key: 'specialization',
+    label: 'Specializations',
+    variables: [
+      { key: 'specializationName', label: 'Specialization name' },
+      { key: 'specializationSlug', label: 'Specialization slug' },
       { key: 'subjectName', label: 'Subject name' },
       { key: 'subjectSlug', label: 'Subject slug' },
     ],

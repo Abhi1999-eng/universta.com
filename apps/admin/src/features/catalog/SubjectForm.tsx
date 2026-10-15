@@ -1,12 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  createSubSubject,
   createSubject,
-  deleteSubSubject,
   deleteSubjectSeo,
   getSubject,
   getSubjectSeo,
@@ -17,10 +15,9 @@ import {
   saveSubjectSeo,
   unpublishSubSubject,
   unpublishSubject,
-  updateSubSubject,
   updateSubject,
 } from './catalog-client';
-import type { CatalogMutationError, EditorialMedia, EditorialSeo, SubSubjectRecord, SubjectRecord } from './catalog.types';
+import type { EditorialMedia, EditorialSeo, SubSubjectRecord, SubjectRecord } from './catalog.types';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -30,40 +27,18 @@ import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } f
 import { catalogErrorText } from './catalog-errors';
 
 type Intent = 'draft' | 'publish';
-type SpecializationDraft = {
-  id?: string;
-  updatedAt?: string;
-  name: string;
-  slug: string;
-  shortDescription: string;
-  overview: string;
-  iconMediaId: string;
-  listingMediaId: string;
-  isFeatured: boolean;
-  displayOrder: string;
-};
-
-const blankSpecialization = (): SpecializationDraft => ({
-  name: '', slug: '', shortDescription: '', overview: '', iconMediaId: '', listingMediaId: '', isFeatured: false, displayOrder: '0',
-});
 const inputClass = 'p-input';
-const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-');
 const hasSeo = (value: UnifiedSeoDraft) => Boolean(value.seoTitle.trim() || value.metaDescription.trim() || value.canonicalUrl.trim() || value.focusKeyword.trim() || value.ogTitle.trim() || value.ogDescription.trim() || value.ogMediaId || value.twitterTitle.trim() || value.twitterDescription.trim() || value.twitterMediaId);
 const seoFromRecord = (record: EditorialSeo | null): UnifiedSeoDraft => record ? {
   seoTitle: record.seoTitle ?? '', metaDescription: record.metaDescription ?? '', canonicalUrl: record.canonicalUrl ?? '', focusKeyword: record.focusKeyword ?? '', ogTitle: record.ogTitle ?? '', ogDescription: record.ogDescription ?? '', ogMediaId: record.ogMediaId ?? '', twitterTitle: record.twitterTitle ?? '', twitterDescription: record.twitterDescription ?? '', twitterMediaId: record.twitterMediaId ?? '', robotsIndex: record.robotsIndex, robotsFollow: record.robotsFollow,
 } : blankUnifiedSeo;
-const specializationFromRecord = (row: SubSubjectRecord): SpecializationDraft => ({
-  id: row.id, updatedAt: row.updatedAt, name: row.name, slug: row.slug, shortDescription: row.shortDescription ?? '', overview: row.overview ?? '', iconMediaId: row.iconMedia?.id ?? '', listingMediaId: row.listingMedia?.id ?? '', isFeatured: row.featured, displayOrder: String(row.displayOrder),
-});
-
 export function SubjectForm({ id }: { id?: string }) {
   const router = useRouter();
   const [record, setRecord] = useState<SubjectRecord | null>(null);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [form, setForm] = useState({ name: '', slug: '', shortDescription: '', overview: '', iconMediaId: '', listingMediaId: '', heroMediaId: '', isFeatured: false, displayOrder: '0' });
-  const [specializations, setSpecializations] = useState<SpecializationDraft[]>([]);
-  const [removedSpecializations, setRemovedSpecializations] = useState<SpecializationDraft[]>([]);
+  const [specializations, setSpecializations] = useState<SubSubjectRecord[]>([]);
   const [seo, setSeo] = useState<UnifiedSeoDraft>(blankUnifiedSeo);
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
@@ -92,7 +67,7 @@ export function SubjectForm({ id }: { id?: string }) {
         setForm({
           name: subject.name, slug: subject.slug, shortDescription: subject.shortDescription ?? '', overview: subject.overview ?? '', iconMediaId: subject.iconMedia?.id ?? '', listingMediaId: subject.listingMedia?.id ?? '', heroMediaId: subject.heroMedia?.id ?? '', isFeatured: subject.isFeatured, displayOrder: String(subject.displayOrder),
         });
-        setSpecializations(subResult.map(specializationFromRecord));
+        setSpecializations(subResult);
       } catch (cause: unknown) {
         if (active) setError(cause instanceof Error ? cause.message : 'Unable to load subject editor');
       } finally {
@@ -111,52 +86,15 @@ export function SubjectForm({ id }: { id?: string }) {
 
   const status = record?.status ?? 'DRAFT';
   const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
-  const updateSpecialization = (index: number, patch: Partial<SpecializationDraft>) => { setSpecializations((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row)); setDirty(true); };
-  const removeSpecialization = (index: number) => { const row = specializations[index]; if (row?.id) setRemovedSpecializations((current) => [...current, row]); setSpecializations((rows) => rows.filter((_, i) => i !== index)); setDirty(true); };
-
-  const normalizedSpecializations = useMemo(() => specializations.filter((row) => row.id || row.name.trim() || row.slug.trim() || row.shortDescription.trim() || row.overview.trim()), [specializations]);
-
   function validate() {
     const next: string[] = [];
     if (!form.name.trim()) next.push('Subject name is required.');
     if (!form.shortDescription.trim()) next.push('Subject short description is required.');
     if (form.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) next.push('Subject slug must use lowercase letters, numbers and single hyphens.');
     if (!/^\d+$/.test(form.displayOrder) || Number(form.displayOrder) > 999999) next.push('Subject display order must be a whole number from 0 to 999999.');
-    normalizedSpecializations.forEach((row, index) => {
-      const label = `Specialization ${index + 1}`;
-      if (!row.name.trim()) next.push(`${label}: name is required.`);
-      if (row.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.slug)) next.push(`${label}: slug format is invalid.`);
-      if (!/^\d+$/.test(row.displayOrder) || Number(row.displayOrder) > 999999) next.push(`${label}: display order must be 0-999999.`);
-    });
     if (hasSeo(seo) && (!seo.seoTitle.trim() || !seo.metaDescription.trim())) next.push('SEO title and meta description are both required when SEO is configured.');
     setIssues(next);
     return next.length === 0;
-  }
-
-  async function persistSpecializations(subject: SubjectRecord) {
-    for (const removed of removedSpecializations) {
-      if (removed.id) await deleteSubSubject(subject.id, removed.id, removed.updatedAt);
-    }
-    const savedRows: SubSubjectRecord[] = [];
-    for (const row of normalizedSpecializations) {
-      const payload = {
-        name: row.name.trim(),
-        slug: row.slug.trim() || slugify(row.name),
-        /* Sent even when blank, so a description can be cleared: it is optional now. */
-        shortDescription: row.shortDescription.trim(),
-        overview: row.overview.trim() || undefined,
-        iconMediaId: row.iconMediaId || undefined,
-        listingMediaId: row.listingMediaId || undefined,
-        isFeatured: row.isFeatured,
-        displayOrder: Number(row.displayOrder) || 0,
-        ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
-      };
-      const result = row.id ? await updateSubSubject(subject.id, row.id, payload) : await createSubSubject(subject.id, payload);
-      savedRows.push(result.data);
-    }
-    setSpecializations(savedRows.map(specializationFromRecord));
-    setRemovedSpecializations([]);
-    return savedRows;
   }
 
   /* Publishing a specialization bumps its version, so the rows this returns
@@ -202,7 +140,6 @@ export function SubjectForm({ id }: { id?: string }) {
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
       };
       const saved = record ? (await updateSubject(record.id, payload)).data : (await createSubject(payload)).data;
-      const children = await persistSpecializations(saved);
       if (hasSeo(seo)) {
         const result = await saveSubjectSeo(saved.id, seoPayload(seo));
         setExistingSeo(result.data);
@@ -210,9 +147,9 @@ export function SubjectForm({ id }: { id?: string }) {
         await deleteSubjectSeo(saved.id, existingSeo.updatedAt);
         setExistingSeo(null);
       }
-      const settled = await applyPublication(saved, children, intent);
+      const settled = await applyPublication(saved, specializations, intent);
       setRecord(settled.record);
-      setSpecializations(settled.children.map(specializationFromRecord));
+      setSpecializations(settled.children);
       setDirty(false);
       if (!id) router.replace(`/subjects/${settled.record.id}`);
       router.refresh();
@@ -227,7 +164,7 @@ export function SubjectForm({ id }: { id?: string }) {
     <section className="mx-auto max-w-[1040px]" aria-labelledby="subject-form-heading">
       <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, specializations, media and SEO are saved together.</p></div>
+        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
         <span className="p-chip">{status}</span>
       </div>
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
@@ -251,24 +188,45 @@ export function SubjectForm({ id }: { id?: string }) {
 
         <fieldset id="editor-specializations" className="p-panel">
           <legend className="sr-only">Specializations</legend>
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="p-eyebrow">Children</p><h3 className="mt-2 text-xl font-semibold">Specializations</h3><p className="p-sub">Create or edit specializations here. They are persisted only when the Subject is saved.</p></div><button type="button" onClick={() => { setSpecializations((rows) => [...rows, blankSpecialization()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add specialization</button></div>
-          <div className="mt-6 space-y-5">
-            {specializations.length === 0 ? <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
-              <div key={row.id ?? `new-${index}`} className="p-panel">
-                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}{row.shortDescription.trim() ? null : <span className="p-chip ml-2 align-middle text-xs font-normal" title="Publishes without one; its page stays out of search engines until it has some content.">No short description</span>}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor={`spec-name-${index}`} /><input id={`spec-name-${index}`} className={inputClass} value={row.name} onChange={(e) => updateSpecialization(index, { name: e.target.value, slug: row.slug || slugify(e.target.value) })} /></div>
-                  <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor={`spec-slug-${index}`} /><input id={`spec-slug-${index}`} className={inputClass} value={row.slug} onChange={(e) => updateSpecialization(index, { slug: e.target.value })} /></div>
-                  <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Short description" htmlFor={`spec-short-${index}`} /><textarea id={`spec-short-${index}`} rows={3} className={inputClass} value={row.shortDescription} onChange={(e) => updateSpecialization(index, { shortDescription: e.target.value })} /></div>
-                  <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Overview" htmlFor={`spec-overview-${index}`} /><textarea id={`spec-overview-${index}`} rows={4} className={inputClass} value={row.overview} onChange={(e) => updateSpecialization(index, { overview: e.target.value })} /></div>
-                  <MediaPickerDialog label="Icon media" value={row.iconMediaId} media={media} onChange={(value) => updateSpecialization(index, { iconMediaId: value })} />
-                  <MediaPickerDialog label="Listing media" value={row.listingMediaId} media={media} onChange={(value) => updateSpecialization(index, { listingMediaId: value })} />
-                  <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor={`spec-order-${index}`} /><input id={`spec-order-${index}`} type="number" min="0" max="999999" className={inputClass} value={row.displayOrder} onChange={(e) => updateSpecialization(index, { displayOrder: e.target.value })} /></div>
-                  <label className="p-btn p-btn--ghost"><input type="checkbox" checked={row.isFeatured} onChange={(e) => updateSpecialization(index, { isFeatured: e.target.checked })} /> Featured specialization</label>
-                </div>
-              </div>
-            ))}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="p-eyebrow">Children</p>
+              <h3 className="mt-2 text-xl font-semibold">Specializations</h3>
+              <p className="p-sub">
+                {record
+                  ? 'Each specialization has an editor of its own, with its content and SEO. Publishing this subject also publishes the drafts among them.'
+                  : 'Save the subject first; its specializations are then added from here, each with an editor of its own.'}
+              </p>
+            </div>
+            {record ? (
+              <Link href={`/specializations/new?subject=${record.id}`} className="p-btn p-btn--outline p-btn--sm">+ Add specialization</Link>
+            ) : null}
           </div>
+          {record ? (
+            <div className="mt-6">
+              {specializations.length === 0 ? (
+                <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div>
+              ) : (
+                <ul className="divide-y divide-[#E8ECF3] rounded-xl border border-[#E8ECF3]">
+                  {specializations.map((row) => (
+                    <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <div>
+                        <span className="font-semibold">{row.name}</span>
+                        <span className="p-hint ml-2">/{row.slug}</span>
+                        {row.shortDescription?.trim() ? null : (
+                          <span className="p-chip ml-2 align-middle text-xs font-normal" title="Publishes without one; its page stays out of search engines until it has some content.">No short description</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`}>{row.status}</span>
+                        <Link href={`/specializations/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">Edit</Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
         </fieldset>
 
         <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />

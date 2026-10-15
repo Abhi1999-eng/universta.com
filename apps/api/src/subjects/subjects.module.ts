@@ -5,6 +5,7 @@ import {
   SubjectsController,
 } from './subjects.controller';
 import { AdminSubjectsController } from './admin-subjects.controller';
+import { AdminSpecializationsController } from './admin-specializations.controller';
 import { SubjectsService } from './subjects.service';
 import { SeoManagementModule } from '../seo-management/seo-management.module';
 
@@ -14,6 +15,7 @@ import { SeoManagementModule } from '../seo-management/seo-management.module';
     SubjectsController,
     SpecializationsController,
     AdminSubjectsController,
+    AdminSpecializationsController,
   ],
   providers: [SubjectsService],
   exports: [SubjectsService],

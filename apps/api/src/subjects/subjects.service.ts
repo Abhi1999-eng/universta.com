@@ -32,6 +32,7 @@ import type {
   SubjectActionDto,
   SubjectListQueryDto,
   SubSubjectListQueryDto,
+  AdminSpecializationListQueryDto,
   UpdateSubSubjectDto,
   UpdateSubjectDto,
 } from './dto/subject.dto';
@@ -77,6 +78,10 @@ const SUBJECT_INCLUDE = {
   },
   _count: { select: { courses: true, countrySubjects: true } },
 } satisfies Prisma.SubjectInclude;
+/* The `seo_metadata` row of a specialization is filed under this owner
+   type, as a subject's is under SUBJECT. */
+const SUB_SUBJECT_SEO_OWNER = 'SUB_SUBJECT';
+
 const SUB_SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
   listingMedia: { select: MEDIA_SELECT },
@@ -372,10 +377,29 @@ export class SubjectsService {
     ]);
 
     const siblingStats = await this.branchStats(siblings.map((row) => row.id));
+    const seoRow = await this.prisma.seoMetadata.findUnique({
+      where: {
+        ownerType_ownerId: {
+          ownerType: SUB_SUBJECT_SEO_OWNER,
+          ownerId: specialization.id,
+        },
+      },
+      include: {
+        ogMedia: { select: MEDIA_SELECT },
+        twitterMedia: { select: MEDIA_SELECT },
+      },
+    });
 
     return {
       ...this.toSubSubjectPublic(specialization),
       subject,
+      seo: this.seoManagement
+        ? await this.seoManagement.resolve(
+            'specialization',
+            { ...specialization, subject },
+            this.toSeo(seoRow),
+          )
+        : this.toSeo(seoRow),
       /* Each sibling carries what its card states -- a line about it, the
          levels it is taught at and how many programmes -- so the related
          cards read like the subject page's, not as a bare name. */
@@ -1197,6 +1221,122 @@ export class SubjectsService {
     };
   }
 
+  /** Every specialization, across subjects, for the admin's own list of
+   * them. A subject id narrows it to one subject's; a deleted subject's
+   * children stay out, as they are unreachable from the catalogue. */
+  async adminSpecializationList(query: AdminSpecializationListQueryDto) {
+    const where: Prisma.SubSubjectWhereInput = {
+      deletedAt: null,
+      subject: { deletedAt: null },
+      ...(query.subjectId ? { subjectId: query.subjectId } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.q
+        ? {
+            OR: [
+              { name: { contains: query.q } },
+              { slug: { contains: query.q } },
+            ],
+          }
+        : {}),
+      ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
+    };
+    const [total, rows] = await Promise.all([
+      this.prisma.subSubject.count({ where }),
+      this.prisma.subSubject.findMany({
+        where,
+        include: SUB_SUBJECT_INCLUDE,
+        orderBy: this.orderBy(query.sort),
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+    ]);
+    return {
+      data: rows.map((row) => this.toSubSubjectAdmin(row)),
+      meta: paginationMeta(query.page, query.limit, total),
+    };
+  }
+
+  /** A specialization by its id alone, so its own editor can open it
+   * without first knowing the subject; the record names the subject. */
+  async getSpecialization(id: string) {
+    return this.toSubSubjectAdmin(await this.specializationRecord(id));
+  }
+
+  async getSpecializationSeo(id: string) {
+    await this.specializationRecord(id);
+    return this.getSeoFor(SUB_SUBJECT_SEO_OWNER, id);
+  }
+
+  async putSpecializationSeo(
+    id: string,
+    dto: SeoMetadataDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    await this.specializationRecord(id);
+    if (!validUrl(dto.canonicalUrl))
+      throw catalogConflict(
+        'SEO_URL_INVALID',
+        'Canonical URL must use HTTP or HTTPS',
+      );
+    const key = { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id };
+    const current = await this.prisma.seoMetadata.findUnique({
+      where: { ownerType_ownerId: key },
+    });
+    const row = await this.prisma.seoMetadata.upsert({
+      where: { ownerType_ownerId: key },
+      create: this.seoData(id, SUB_SUBJECT_SEO_OWNER, dto),
+      update: this.seoData(id, SUB_SUBJECT_SEO_OWNER, dto),
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'SEO_UPSERT',
+      current ? { seoTitle: current.seoTitle } : null,
+      { seoTitle: row.seoTitle, metaDescription: row.metaDescription },
+      'Specialization SEO saved',
+    );
+    return this.toSeo(row);
+  }
+
+  async deleteSpecializationSeo(
+    id: string,
+    dto: SubjectActionDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    await this.specializationRecord(id);
+    const current = await this.prisma.seoMetadata.findUnique({
+      where: {
+        ownerType_ownerId: { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id },
+      },
+    });
+    if (!current) return { deleted: false };
+    versionMatches(
+      current.updatedAt,
+      dto.expectedUpdatedAt,
+      'SUB_SUBJECT_SEO_STALE_VERSION',
+    );
+    await this.prisma.seoMetadata.delete({ where: { id: current.id } });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'SEO_DELETE',
+      { seoTitle: current.seoTitle },
+      null,
+      'Specialization SEO deleted',
+    );
+    return { deleted: true };
+  }
+
   async getSubSubject(subjectId: string, id: string) {
     await this.ensureSubject(subjectId);
     const row = await this.subSubjectRecord(subjectId, id);
@@ -1529,6 +1669,19 @@ export class SubjectsService {
       include: SUBJECT_INCLUDE,
     });
     if (!row) throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
+    return row;
+  }
+
+  private async specializationRecord(id: string) {
+    const row = await this.prisma.subSubject.findFirst({
+      where: { id, deletedAt: null, subject: { deletedAt: null } },
+      include: SUB_SUBJECT_INCLUDE,
+    });
+    if (!row)
+      throw catalogNotFound(
+        'SUB_SUBJECT_NOT_FOUND',
+        'Specialization not found',
+      );
     return row;
   }
 

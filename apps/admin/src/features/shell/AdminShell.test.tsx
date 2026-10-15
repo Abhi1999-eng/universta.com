@@ -68,6 +68,8 @@ describe('AdminShell', () => {
       ['Continents', '/continents'],
       ['All subjects', '/subjects'],
       ['Add subject', '/subjects/new'],
+      ['All specializations', '/specializations'],
+      ['Add specialization', '/specializations/new'],
       ['All levels', '/catalog-masters?section=course-levels'],
       ['Add level', '/catalog-masters?section=course-levels&new=1'],
       ['Courses', '/courses'],
