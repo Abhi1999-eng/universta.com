@@ -716,11 +716,11 @@ model Subject {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  iconMedia       MediaAsset?      @relation("SubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
-  listingMedia    MediaAsset?      @relation("SubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
-  heroMedia       MediaAsset?      @relation("SubjectHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
-  createdBy       User?            @relation("SubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy       User?            @relation("SubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  iconMedia       MediaAsset?          @relation("SubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia    MediaAsset?          @relation("SubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  heroMedia       MediaAsset?          @relation("SubjectHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  createdBy       User?                @relation("SubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?                @relation("SubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   subSubjects     SubSubject[]
   courses         Course[]
   countrySubjects CountrySubject[]
@@ -761,11 +761,11 @@ model SubSubject {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  subject      Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  iconMedia    MediaAsset?         @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
-  listingMedia MediaAsset?         @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
-  createdBy    User?               @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy    User?               @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  subject      Subject                 @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  iconMedia    MediaAsset?             @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia MediaAsset?             @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  createdBy    User?                   @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?                   @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   courses      Course[]
   countries    CountrySubSubject[]
   courseLevels SubSubjectCourseLevel[]
