@@ -142,7 +142,8 @@ export function SubjectForm({ id }: { id?: string }) {
       const payload = {
         name: row.name.trim(),
         slug: row.slug.trim() || slugify(row.name),
-        shortDescription: row.shortDescription.trim() || undefined,
+        /* Sent even when blank, so a description can be cleared: it is optional now. */
+        shortDescription: row.shortDescription.trim(),
         overview: row.overview.trim() || undefined,
         iconMediaId: row.iconMediaId || undefined,
         listingMediaId: row.listingMediaId || undefined,
@@ -254,7 +255,7 @@ export function SubjectForm({ id }: { id?: string }) {
           <div className="mt-6 space-y-5">
             {specializations.length === 0 ? <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div> : specializations.map((row, index) => (
               <div key={row.id ?? `new-${index}`} className="p-panel">
-                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
+                <div className="flex items-center justify-between gap-3"><h4 className="font-semibold">Specialization {index + 1}{row.shortDescription.trim() ? null : <span className="p-chip ml-2 align-middle text-xs font-normal" title="Publishes without one; its page stays out of search engines until it has some content.">No short description</span>}</h4><button type="button" onClick={() => removeSpecialization(index)} className="p-danger">Remove</button></div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor={`spec-name-${index}`} /><input id={`spec-name-${index}`} className={inputClass} value={row.name} onChange={(e) => updateSpecialization(index, { name: e.target.value, slug: row.slug || slugify(e.target.value) })} /></div>
                   <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor={`spec-slug-${index}`} /><input id={`spec-slug-${index}`} className={inputClass} value={row.slug} onChange={(e) => updateSpecialization(index, { slug: e.target.value })} /></div>

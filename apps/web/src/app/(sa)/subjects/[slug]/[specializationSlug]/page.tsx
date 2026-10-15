@@ -35,12 +35,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: 'Specialisation not found',
       alternates: { canonical },
     };
+  /* A specialization publishes with nothing written yet, as imported ones
+     arrive. Its page opens for a reader, but a search engine is not sent to
+     an empty one until it has a description or an overview. */
+  const written = Boolean(specialization.shortDescription?.trim() || specialization.overview?.trim());
   return {
     title: `Study ${specialization.name} abroad`,
     description:
       specialization.shortDescription ??
       `${specialization.name} is a specialisation within ${specialization.subject.name}. See where you can study it.`,
     alternates: { canonical },
+    ...(written ? {} : { robots: { index: false, follow: true } }),
   };
 }
 

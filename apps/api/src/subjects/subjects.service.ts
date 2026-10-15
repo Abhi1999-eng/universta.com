@@ -1219,7 +1219,8 @@ export class SubjectsService {
           subjectId,
           name,
           slug,
-          shortDescription: dto.shortDescription?.trim(),
+          /* Optional for a specialization: nothing written is stored as nothing. */
+          shortDescription: dto.shortDescription?.trim() || null,
           overview: dto.overview?.trim(),
           iconMediaId: dto.iconMediaId,
           listingMediaId: dto.listingMediaId,
@@ -1275,7 +1276,7 @@ export class SubjectsService {
           name: dto.name.trim(),
           slug: dto.slug?.trim() || current.slug,
           ...(dto.shortDescription !== undefined
-            ? { shortDescription: dto.shortDescription.trim() }
+            ? { shortDescription: dto.shortDescription.trim() || null }
             : {}),
           ...(dto.overview !== undefined
             ? { overview: dto.overview.trim() }
