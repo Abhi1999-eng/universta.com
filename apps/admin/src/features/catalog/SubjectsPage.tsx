@@ -3,8 +3,10 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { deleteSubject, listSubjects, publishSubject, unpublishSubject } from './catalog-client';
-import type { CatalogMutationError, PageMeta, SubjectRecord } from './catalog.types';
+import type { PageMeta, SubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
+import { formatUpdated, ListSummary, RowMenu, StatusBadge, Toasts, useToasts, ViewOnSite } from '@/features/shared/records-ui';
+import { useRouter } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubjectRecord } | null;
 
@@ -25,9 +27,12 @@ export function SubjectsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [pending, setPending] = useState<Pending>(null);
   const [confirm, setConfirm] = useState('');
+  const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const { toasts, push: toast, dismiss } = useToasts();
+  const router = useRouter();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -53,24 +58,67 @@ export function SubjectsPage() {
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  /* How many are live and how many are not, for the line over the table. */
+  const loadCounts = useCallback(() => {
+    void Promise.all([
+      listSubjects({ status: 'PUBLISHED', limit: 1 }),
+      listSubjects({ status: 'DRAFT', limit: 1 }),
+    ])
+      .then(([published, draft]) =>
+        setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 }),
+      )
+      .catch(() => setCounts(null));
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadCounts(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCounts]);
+
+  /* Publish or unpublish straight from the row: the button says what it is
+     doing, the badge changes when the API answers, and a toast says what
+     happened -- or why it did not, with the editor one click away. */
+  async function quick(row: SubjectRecord, kind: 'publish' | 'unpublish') {
+    setBusy((current) => ({ ...current, [row.id]: kind }));
+    try {
+      const result = kind === 'publish' ? await publishSubject(row.id, row.updatedAt) : await unpublishSubject(row.id, row.updatedAt);
+      setRows((current) => current.map((item) => (item.id === row.id ? result.data : item)));
+      toast('ok', kind === 'publish' ? `${row.name} published.` : `${row.name} moved to draft.`);
+      void load();
+      loadCounts();
+    } catch (cause: unknown) {
+      toast('error', `${row.name}: ${kind === 'publish' ? 'not published' : 'not moved to draft'}. ${catalogErrorText(cause, 'The request failed')}`, {
+        label: 'Fix in editor',
+        onSelect: () => router.push(`/subjects/${row.id}`),
+      });
+    } finally {
+      setBusy((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }
+
   async function act() {
     if (!pending || (pending.kind === 'delete' && confirm !== pending.row.name)) return;
     try {
       if (pending.kind === 'publish') await publishSubject(pending.row.id, pending.row.updatedAt);
       if (pending.kind === 'unpublish') await unpublishSubject(pending.row.id, pending.row.updatedAt);
       if (pending.kind === 'delete') await deleteSubject(pending.row.id, pending.row.updatedAt);
-      setSuccess(
+      toast(
+        'ok',
         pending.kind === 'publish'
-          ? 'Subject published.'
+          ? `${pending.row.name} published.`
           : pending.kind === 'unpublish'
-            ? 'Subject unpublished.'
-            : 'Subject deleted.',
+            ? `${pending.row.name} moved to draft.`
+            : `${pending.row.name} deleted.`,
       );
       setPending(null);
       setConfirm('');
       void load();
+      loadCounts();
     } catch (cause: unknown) {
-      setError(catalogErrorText(cause, 'Subject action failed'));
+      toast('error', `${pending.row.name}: ${catalogErrorText(cause, 'Subject action failed')}`);
       setPending(null);
       setConfirm('');
     }
@@ -85,6 +133,7 @@ export function SubjectsPage() {
             Subjects
           </h2>
           <p className="p-sub">Manage subject pathways. Each subject&apos;s specializations have a list and editor of their own.</p>
+          <ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="subject" />
         </div>
         <div className="p-head__actions">
           <Link href="/subjects/new" className="p-btn p-btn--primary">
@@ -93,12 +142,8 @@ export function SubjectsPage() {
         </div>
       </header>
 
-      {success ? (
-        <p role="status" className="p-alert p-alert--ok">
-          <span>{success}</span>
-        </p>
-      ) : null}
       {error ? <CatalogError message={error} onRetry={load} /> : null}
+      <Toasts toasts={toasts} onDismiss={dismiss} />
 
       <section className="p-panel a-filters" aria-label="Filter subjects">
         <div className="p-grid3">
@@ -163,10 +208,10 @@ export function SubjectsPage() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <strong>{row.name}</strong>
-                    <span className="p-hint">
+                    <Link href={`/subjects/${row.id}`} className="p-link font-semibold">{row.name}</Link>
+                    <span className="p-hint block">
                       /{row.slug}
-                      
+                      {row.status === 'PUBLISHED' ? <> · <ViewOnSite path={`/subjects/${row.slug}`} /></> : null}
                     </span>
                   </td>
                   <td>
@@ -177,19 +222,9 @@ export function SubjectsPage() {
                     )}
                   </td>
                   <td>
-                    <span
-                      className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`}
-                    >
-                      {row.status}
-                    </span>
+                    <StatusBadge status={row.status} />
                   </td>
-                  <td>
-                    {row.updatedAt ? (
-                      new Date(row.updatedAt).toLocaleString()
-                    ) : (
-                      <span className="p-muted">—</span>
-                    )}
-                  </td>
+                  <td>{formatUpdated(row.updatedAt)}</td>
                   <td className="p-td-actions">
                     <div className="p-row p-row--actions">
                       <Link href={`/subjects/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">
@@ -205,26 +240,22 @@ export function SubjectsPage() {
                         <button
                           type="button"
                           className="p-btn p-btn--ghost p-btn--sm"
-                          onClick={() => setPending({ kind: 'unpublish', row })}
+                          disabled={Boolean(busy[row.id])}
+                          onClick={() => void quick(row, 'unpublish')}
                         >
-                          Unpublish
+                          {busy[row.id] === 'unpublish' ? 'Moving to draft…' : 'Unpublish'}
                         </button>
                       ) : (
                         <button
                           type="button"
                           className="p-btn p-btn--primary p-btn--sm"
-                          onClick={() => setPending({ kind: 'publish', row })}
+                          disabled={Boolean(busy[row.id])}
+                          onClick={() => void quick(row, 'publish')}
                         >
-                          Publish
+                          {busy[row.id] === 'publish' ? 'Publishing…' : 'Publish'}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="p-btn p-btn--danger p-btn--sm"
-                        onClick={() => setPending({ kind: 'delete', row })}
-                      >
-                        Delete
-                      </button>
+                      <RowMenu items={[{ label: 'Delete', danger: true, onSelect: () => setPending({ kind: 'delete', row }) }]} />
                     </div>
                   </td>
                 </tr>

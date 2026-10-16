@@ -83,6 +83,21 @@ const resourceModel: Record<Resource, string> = {
   'contact-inquiries': 'contactInquiry',
 };
 
+/** What the admin list's search box looks through, per resource. */
+const adminSearchFields: Record<Resource, string[]> = {
+  universities: ['name', 'slug'],
+  offerings: ['name', 'slug'],
+  scholarships: ['title', 'slug'],
+  consultants: ['name', 'slug', 'email'],
+  jobs: ['title', 'slug'],
+  events: ['title', 'slug'],
+  'success-stories': ['title', 'slug'],
+  testimonials: ['quote'],
+  pages: ['title', 'slug'],
+  'navigation-menus': ['name'],
+  'contact-inquiries': ['fullName', 'email', 'inquiryNumber'],
+};
+
 const seoEntityTypeByResource: Partial<Record<Resource, SeoBulkEntityType>> = {
   universities: 'university',
   offerings: 'offering',
@@ -2471,11 +2486,11 @@ export class ExpandedService {
     const q = contains(query.q);
     const where: any =
       resource === 'navigation-menus' ? {} : { deletedAt: null };
+    /* Only the columns the model has: a search was written as name, title
+       and slug for every resource, and a university has no title, so the
+       first search of any list was a 500. */
     if (q)
-      where.OR =
-        resource === 'contact-inquiries'
-          ? [{ fullName: q }, { email: q }, { inquiryNumber: q }]
-          : [{ name: q }, { title: q }, { slug: q }];
+      where.OR = adminSearchFields[resource].map((field) => ({ [field]: q }));
     if (query.status) where.status = query.status;
     const [data, total] = await Promise.all([
       delegate.findMany({

@@ -95,7 +95,9 @@ describe('countries list is compact enough to reach its actions', () => {
       '/countries/country-1',
     );
     expect(actions.getByRole('button', { name: 'Publish' })).toBeVisible();
-    expect(actions.getByRole('button', { name: 'Delete' })).toBeVisible();
+    // Delete sits behind the row's menu, so it cannot be hit by mistake.
+    expect(actions.getByRole('button', { name: 'More actions' })).toBeVisible();
+    expect(actions.queryByRole('button', { name: 'Delete' })).toBeNull();
   });
 
   it('still surfaces the data the dropped columns carried, one level in', async () => {

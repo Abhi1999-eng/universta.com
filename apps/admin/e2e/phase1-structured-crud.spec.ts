@@ -110,18 +110,18 @@ async function publishAndVerify(
   await page.getByRole('form', { name: `Edit ${resource}` }).getByRole('button', { name: 'Close editor' }).click();
   const row = page.getByRole('row').filter({ hasText: adminRowText });
   await row.getByRole('button', { name: 'Publish', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Saved.');
+  await expect(page.getByRole('status')).toContainText('published.');
   await page.goto(`${webBaseUrl}${publicPath}`);
   await expect(page.getByText(rowText, { exact: true }).first()).toBeVisible();
   await page.goto(`/phase1/${resource}`);
   const adminRow = page.getByRole('row').filter({ hasText: adminRowText });
   await adminRow.getByRole('button', { name: 'Unpublish', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Saved.');
+  await expect(page.getByRole('status')).toContainText('moved to draft.');
   await page.goto(`${webBaseUrl}${publicPath}`);
   await expect(page.getByText(rowText, { exact: true })).toHaveCount(0);
   await page.goto(`/phase1/${resource}`);
   await page.getByRole('row').filter({ hasText: adminRowText }).getByRole('button', { name: 'Publish', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Saved.');
+  await expect(page.getByRole('status')).toContainText('published.');
 }
 
 test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () => {

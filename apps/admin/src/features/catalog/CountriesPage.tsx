@@ -5,8 +5,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { FlashBanner, useHandedOverFlash, type Flash } from '@/features/shared/Flash';
 import { deleteCountry, listContinents, listCountries, listCountryTags, listAllSubjects, publishCountry, unpublishCountry } from './catalog-client';
-import type { CatalogMutationError, ContinentRecord, CountryRecord, CountryTagRecord, PageMeta, SubjectRecord } from './catalog.types';
+import type { ContinentRecord, CountryRecord, CountryTagRecord, PageMeta, SubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
+import { formatUpdated, ListSummary, RowMenu, StatusBadge, Toasts, useToasts, ViewOnSite } from '@/features/shared/records-ui';
+import { useRouter } from 'next/navigation';
 
 type PendingAction = { kind: 'publish' | 'unpublish' | 'delete'; country: CountryRecord } | null;
 
@@ -39,6 +41,10 @@ export function CountriesPage() {
   const [pending, setPending] = useState<PendingAction>(null);
   const [pendingValue, setPendingValue] = useState('');
   const [working, setWorking] = useState(false);
+  const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const { toasts, push: toast, dismiss } = useToasts();
+  const router = useRouter();
 
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true); setError('');
@@ -64,18 +70,58 @@ export function CountriesPage() {
     } finally { setWorking(false); }
   }
 
+  /* How many are live and how many are not, for the line over the table. */
+  const loadCounts = useCallback(() => {
+    void Promise.all([
+      listCountries({ status: 'PUBLISHED', limit: 1 }),
+      listCountries({ status: 'DRAFT', limit: 1 }),
+    ])
+      .then(([published, draft]) =>
+        setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 }),
+      )
+      .catch(() => setCounts(null));
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadCounts(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCounts]);
+
+  /* Publish or unpublish straight from the row; see SubjectsPage. */
+  async function quick(row: CountryRecord, kind: 'publish' | 'unpublish') {
+    setBusy((current) => ({ ...current, [row.id]: kind }));
+    try {
+      const result = kind === 'publish' ? await publishCountry(row.id, row.updatedAt) : await unpublishCountry(row.id, row.updatedAt);
+      setRows((current) => current.map((item) => (item.id === row.id ? result.data : item)));
+      toast('ok', kind === 'publish' ? `${row.name} published.` : `${row.name} moved to draft.`);
+      setReload((value) => value + 1);
+      loadCounts();
+    } catch (cause: unknown) {
+      toast('error', `${row.name}: ${kind === 'publish' ? 'not published' : 'not moved to draft'}. ${catalogErrorText(cause, 'The request failed')}`, {
+        label: 'Fix in editor',
+        onSelect: () => router.push(`/countries/${row.id}`),
+      });
+    } finally {
+      setBusy((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }
+
   function resetFilters() { setQ(''); setContinentId(''); setSubjectId(''); setTagId(''); setStatus(''); setFeatured(''); setPage(1); }
 
   return (
     <section aria-labelledby="countries-heading">
-      <header className="p-head"><div><p className="p-eyebrow">Catalog core</p><h2 id="countries-heading" className="p-h1">Countries</h2><p className="p-sub">Manage core country records and their public publishing state. Detailed profiles remain deferred.</p></div><div className="p-head__actions"><Link href="/countries/new" className="p-btn p-btn--primary">Create country</Link></div></header>
+      <header className="p-head"><div><p className="p-eyebrow">Catalog core</p><h2 id="countries-heading" className="p-h1">Countries</h2><p className="p-sub">Manage core country records and their public publishing state. Detailed profiles remain deferred.</p><ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="country" /></div><div className="p-head__actions"><Link href="/countries/new" className="p-btn p-btn--primary">Create country</Link></div></header>
       <FlashBanner flash={flash} onDismiss={dismissFlash} />
+      <Toasts toasts={toasts} onDismiss={dismiss} />
       <section className="p-panel a-filters p-grid3" aria-label="Filter countries"><label className="sm:col-span-2 lg:col-span-1"><span className="sr-only">Search countries</span><input value={q} onChange={(event) => { setQ(event.target.value); setPage(1); }} placeholder="Search countries or ISO code" className="p-input" /></label><label><span className="sr-only">Filter by continent</span><select value={continentId} onChange={(event) => { setContinentId(event.target.value); setPage(1); }} className="p-input"><option value="">All continents</option>{continents.map((continent) => <option key={continent.id} value={continent.id}>{continent.name}</option>)}</select></label><label><span className="sr-only">Filter by subject</span><select aria-label="Filter by subject" value={subjectId} onChange={(event) => { setSubjectId(event.target.value); setPage(1); }} className="p-input"><option value="">All subjects</option>{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label><label><span className="sr-only">Filter by tag</span><select aria-label="Filter by tag" value={tagId} onChange={(event) => { setTagId(event.target.value); setPage(1); }} className="p-input"><option value="">All tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label><label><span className="sr-only">Filter by status</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="p-input"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></label><label><span className="sr-only">Filter featured countries</span><select value={featured} onChange={(event) => { setFeatured(event.target.value); setPage(1); }} className="p-input"><option value="">Featured: all</option><option value="true">Featured only</option><option value="false">Not featured</option></select></label><button type="button" onClick={resetFilters} className="p-btn p-btn--ghost p-btn--sm">Clear filters</button></section>
       <div className="mt-5">{loading ? <CatalogLoading label="Loading countries…" /> : error ? <CatalogError message={error} onRetry={() => { setError(''); setReload((value) => value + 1); }} /> : rows.length === 0 ? <div className="p-panel p-empty"><h3 className="p-empty__t">No countries found</h3><p className="p-empty__d">Create a core country record or adjust the filters.</p></div> : <div className="p-tablewrap">{/* Eleven columns forced a 1180px floor, so Actions sat off the right
         edge and Edit could only be reached by scrolling the table sideways.
         The six kept here are what the list is scanned for; ISO, tags, linked
         records, featured and order are all still edited in the country
-        editor. */}<table className="p-table u-table"><thead><tr><th scope="col">Country</th><th scope="col">Continent</th><th scope="col">Subjects</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col" className="p-td-actions">Actions</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td><strong>{row.name}</strong><span className="p-hint">/{row.slug}</span></td><td>{row.continent?.name ?? '—'}</td><td><TermList terms={row.subjects} empty="No subjects" /></td><td><span className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`}>{row.status}</span></td><td>{row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : <span className="p-muted">—</span>}</td><td className="p-td-actions"><div className="p-row p-row--actions"><Link href={`/countries/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">Edit</Link>{row.status === 'PUBLISHED' ? <button type="button" onClick={() => setPending({ kind: 'unpublish', country: row })} className="p-btn p-btn--ghost p-btn--sm">Unpublish</button> : <button type="button" onClick={() => setPending({ kind: 'publish', country: row })} className="p-btn p-btn--primary p-btn--sm">Publish</button>}<button type="button" onClick={() => setPending({ kind: 'delete', country: row })} className="p-btn p-btn--danger p-btn--sm">Delete</button></div></td></tr>)}</tbody></table></div>}</div>
+        editor. */}<table className="p-table u-table"><thead><tr><th scope="col">Country</th><th scope="col">Continent</th><th scope="col">Subjects</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col" className="p-td-actions">Actions</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td><Link href={`/countries/${row.id}`} className="p-link font-semibold">{row.name}</Link><span className="p-hint block">/{row.slug}{row.status === 'PUBLISHED' ? <> · <ViewOnSite path={`/countries/${row.slug}`} /></> : null}</span></td><td>{row.continent?.name ?? '—'}</td><td><TermList terms={row.subjects} empty="No subjects" /></td><td><StatusBadge status={row.status} /></td><td>{formatUpdated(row.updatedAt)}</td><td className="p-td-actions"><div className="p-row p-row--actions"><Link href={`/countries/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">Edit</Link>{row.status === 'PUBLISHED' ? <button type="button" disabled={Boolean(busy[row.id])} onClick={() => void quick(row, 'unpublish')} className="p-btn p-btn--ghost p-btn--sm">{busy[row.id] === 'unpublish' ? 'Moving to draft…' : 'Unpublish'}</button> : <button type="button" disabled={Boolean(busy[row.id])} onClick={() => void quick(row, 'publish')} className="p-btn p-btn--primary p-btn--sm">{busy[row.id] === 'publish' ? 'Publishing…' : 'Publish'}</button>}<RowMenu items={[{ label: 'Delete', danger: true, onSelect: () => setPending({ kind: 'delete', country: row }) }]} /></div></td></tr>)}</tbody></table></div>}</div>
       {meta && meta.totalPages > 1 ? <nav className="a-grid__pager" aria-label="Pagination"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="p-btn p-btn--ghost p-btn--sm">Previous</button><span className="p-hint">Page {meta.page} of {meta.totalPages}</span><button type="button" disabled={page >= meta.totalPages} onClick={() => setPage((value) => value + 1)} className="p-btn p-btn--ghost p-btn--sm">Next</button></nav> : null}
       {pending ? <CatalogDialog title={pending.kind === 'publish' ? 'Publish country?' : pending.kind === 'unpublish' ? 'Unpublish country?' : 'Delete country?'} description={pending.kind === 'publish' ? 'Publishing makes the core country record available to public country APIs.' : pending.kind === 'unpublish' ? 'Unpublishing removes this country from public APIs while preserving its content.' : 'This is a soft delete and removes the country from normal admin and public lists.'} onClose={() => { if (!working) { setPending(null); setPendingValue(''); } }}><p className="p-sub">{pending.kind === 'delete' ? <>Type <strong>{pending.country.name}</strong> to confirm this destructive action.</> : <>Confirm this action for <strong>{pending.country.name}</strong>.</>}</p>{pending.kind === 'delete' ? <input autoFocus value={pendingValue} onChange={(event) => setPendingValue(event.target.value)} placeholder={pending.country.name} className="p-input" /> : null}<div className="p-row p-row--wrap"><button type="button" disabled={working} onClick={() => { setPending(null); setPendingValue(''); }} className="p-btn p-btn--ghost">Cancel</button><button type="button" disabled={working || (pending.kind === 'delete' && pendingValue !== pending.country.name)} onClick={() => void performAction()} className={`p-btn ${pending.kind === 'delete' ? 'p-btn--danger' : 'p-btn--primary'}`}>{working ? 'Working…' : pending.kind === 'delete' ? 'Delete country' : pending.kind === 'publish' ? 'Publish country' : 'Unpublish country'}</button></div></CatalogDialog> : null}
     </section>

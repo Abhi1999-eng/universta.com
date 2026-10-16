@@ -2,6 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import {
+  formatUpdated,
+  ListSummary,
+  RowMenu,
+  StatusBadge,
+  Toasts,
+  useToasts,
+  ViewOnSite,
+} from "@/features/shared/records-ui";
 import { isStructuredPhase1Resource } from "./Phase1StructuredEditor";
 import { UnifiedPhase1StructuredEditor } from "./UnifiedPhase1StructuredEditor";
 import { PageCmsEditor } from "./PageCmsEditor";
@@ -38,11 +47,35 @@ type Phase1Row = {
   convertedLeadId?: string | null;
   menuKey?: string;
   usedAs?: "header" | "footer" | null;
+  updatedAt?: string;
 };
+
+/* Where a published record lives on the site, for the "View on site" link.
+   Offerings, testimonials, pages and menus have no page of their own by slug
+   alone, so they carry none. */
+const publicPaths: Record<string, (row: Phase1Row) => string | null> = {
+  universities: (row) => (row.slug ? `/universities/${row.slug}` : null),
+  scholarships: (row) => (row.slug ? `/scholarships/${row.slug}` : null),
+  consultants: (row) => (row.slug ? `/study-abroad-consultants/${row.slug}` : null),
+  jobs: (row) => (row.slug ? `/careers/${row.slug}` : null),
+  events: (row) => (row.slug ? `/events/${row.slug}` : null),
+  "success-stories": (row) => (row.slug ? `/success-stories/${row.slug}` : null),
+};
+
+function rowName(row: Phase1Row) {
+  return (
+    row.name ??
+    row.title ??
+    row.fullName ??
+    row.inquiryNumber ??
+    row.quote?.slice(0, 48) ??
+    "This record"
+  );
+}
 
 type ListMeta = { page: number; limit: number; total: number; totalPages: number };
 type Envelope = {
-  data: Phase1Row[] | null;
+  data: Phase1Row[] | Phase1Row | null;
   meta: ListMeta | null;
   error: { message: string } | null;
 };
@@ -78,28 +111,62 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [pendingArchive, setPendingArchive] = useState<Phase1Row | null>(null);
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
+  /* Which row is mid-action, and what it is doing, so its button can say so. */
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const { toasts, push: toast, dismiss } = useToasts();
   const title = titles[resource] ?? resource;
   const structured = isStructuredPhase1Resource(resource);
   const isPageCms = resource === "pages";
   const isNavMenu = resource === "navigation-menus";
+  const isInquiries = resource === "contact-inquiries";
+  const editable = structured || isPageCms || isNavMenu;
+  const publishable = !isInquiries;
   const [newMenu, setNewMenu] = useState({ name: "", location: "HEADER" });
 
   const load = useCallback(async () => {
     try {
-      const body = await request(`${resource}?page=${page}&limit=${PAGE_SIZE}`);
-      setRows(body.data ?? []);
+      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+      if (q.trim()) params.set("q", q.trim());
+      if (statusFilter) params.set("status", statusFilter);
+      const body = await request(`${resource}?${params.toString()}`);
+      setRows(Array.isArray(body.data) ? body.data : []);
       setListMeta(body.meta);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Unable to load records",
       );
     }
-  }, [resource, page]);
+  }, [resource, page, q, statusFilter]);
+
+  /* How many are live and how many are not, for the line over the table.
+     Two one-row reads; a failure only leaves the line without them. */
+  const loadCounts = useCallback(async () => {
+    if (!publishable) return;
+    try {
+      const [published, draft] = await Promise.all([
+        request(`${resource}?status=PUBLISHED&limit=1`),
+        request(`${resource}?status=DRAFT&limit=1`),
+      ]);
+      setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 });
+    } catch {
+      setCounts(null);
+    }
+  }, [resource, publishable]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
+    setQ("");
+    setStatusFilter("");
   }, [resource]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadCounts();
+  }, [loadCounts]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -122,15 +189,72 @@ export function Phase1Manager({ resource }: { resource: string }) {
   async function action(path: string, method = "POST") {
     try {
       await request(path, { method });
-      setMessage("Saved.");
+      toast("ok", "Saved.");
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to save");
+      toast("error", error instanceof Error ? error.message : "Unable to save");
+    }
+  }
+
+  /* Publish, unpublish or archive one row. The row says what it is doing
+     while the request runs, shows its new status as soon as the API
+     answers, and a toast says in one line what happened -- or why it did
+     not, with the editor one click away. */
+  async function rowAction(row: Phase1Row, kind: "publish" | "unpublish" | "archive") {
+    const name = rowName(row);
+    setBusy((current) => ({ ...current, [row.id]: kind }));
+    try {
+      const body =
+        kind === "archive"
+          ? await request(`${resource}/${row.id}`, { method: "DELETE" })
+          : await request(`${resource}/${row.id}/${kind}`, { method: "POST" });
+      const saved = body.data && !Array.isArray(body.data) ? body.data : null;
+      if (kind === "archive") {
+        setRows((current) => current.filter((item) => item.id !== row.id));
+      } else {
+        setRows((current) =>
+          current.map((item) =>
+            item.id === row.id
+              ? { ...item, ...(saved ?? {}), status: saved?.status ?? (kind === "publish" ? "PUBLISHED" : "DRAFT") }
+              : item,
+          ),
+        );
+      }
+      toast(
+        "ok",
+        kind === "publish"
+          ? `${name} published.`
+          : kind === "unpublish"
+            ? `${name} moved to draft.`
+            : `${name} archived.`,
+      );
+      await Promise.all([load(), loadCounts()]);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "The request failed";
+      toast(
+        "error",
+        `${name}: ${kind === "publish" ? "not published" : kind === "unpublish" ? "not moved to draft" : "not archived"}. ${reason}`,
+        editable && kind !== "archive"
+          ? {
+              label: "Fix in editor",
+              onSelect: () => {
+                setCreating(false);
+                setEditingId(row.id);
+              },
+            }
+          : undefined,
+      );
+    } finally {
+      setBusy((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
     }
   }
 
   async function afterSave() {
-    await load();
+    await Promise.all([load(), loadCounts()]);
     setCreating(false);
     setEditingId(null);
   }
@@ -175,9 +299,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
           </h2>
         </div>
         <div className="flex items-center gap-3">
-          <p className="p-sub">
-            {listMeta ? `${listMeta.total} record${listMeta.total === 1 ? "" : "s"}` : `${rows.length} records`}
-          </p>
+          <ListSummary
+            total={listMeta ? listMeta.total : rows.length}
+            published={counts?.published}
+            draft={counts?.draft}
+          />
           {structured || isPageCms || isNavMenu ? (
             <button
               type="button"
@@ -277,29 +403,84 @@ export function Phase1Manager({ resource }: { resource: string }) {
             : "lg:grid-cols-[1fr_360px]"
         }`}
       >
-        <div className="overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
+        <div>
+          {publishable ? (
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <label className="p-field">
+                <span className="sr-only">Search {title.toLowerCase()}</span>
+                <input
+                  className="p-input p-input--sm"
+                  placeholder="Search by name or slug"
+                  value={q}
+                  onChange={(event) => {
+                    setQ(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </label>
+              <label className="p-field">
+                <span className="sr-only">Filter by status</span>
+                <select
+                  className="p-input p-input--sm"
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">All statuses</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="DRAFT">Draft</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
+          <div className="overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
           <table className="p-table u-table min-w-full">
             <thead className="border-b border-[#E8ECF3] text-[#667085]">
               <tr>
                 <th className="p-4">Record</th>
-                <th className="p-4">Slug / status</th>
+                <th className="p-4">Status</th>
                 {isNavMenu ? <th className="p-4">Affects</th> : null}
+                <th className="p-4">Updated</th>
                 <th className="p-4">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row) => {
+                const name = rowName(row);
+                const sitePath = row.status === "PUBLISHED" ? (publicPaths[resource]?.(row) ?? null) : null;
+                const working = busy[row.id];
+                return (
                 <tr className="border-b border-[#F0F2F5]" key={row.id}>
-                  <td className="p-4 font-semibold">
-                    {row.name ??
-                      row.title ??
-                      row.fullName ??
-                      row.inquiryNumber ??
-                      row.quote?.slice(0, 48)}
+                  <td className="p-4">
+                    {editable ? (
+                      <button
+                        type="button"
+                        className="p-link font-semibold"
+                        onClick={() => {
+                          setCreating(false);
+                          setEditingId(row.id);
+                        }}
+                      >
+                        {name}
+                      </button>
+                    ) : (
+                      <span className="font-semibold">{name}</span>
+                    )}
+                    <span className="p-hint block">
+                      {row.slug ?? ""}
+                      {isNavMenu && row.menuKey ? ` (${row.menuKey})` : null}
+                      {sitePath ? (
+                        <>
+                          {row.slug ? " · " : null}
+                          <ViewOnSite path={sitePath} />
+                        </>
+                      ) : null}
+                    </span>
                   </td>
-                  <td className="p-4 text-[#667085]">
-                    {row.slug ?? row.status}
-                    {isNavMenu && row.menuKey ? ` (${row.menuKey})` : null}
+                  <td className="p-4">
+                    <StatusBadge status={row.status} />
                   </td>
                   {isNavMenu ? (
                     <td className="p-4">
@@ -317,8 +498,10 @@ export function Phase1Manager({ resource }: { resource: string }) {
                       )}
                     </td>
                   ) : null}
-                  <td className="flex flex-wrap gap-2 p-4">
-                    {structured || isPageCms || isNavMenu ? (
+                  <td className="p-4 text-[#667085]">{formatUpdated(row.updatedAt)}</td>
+                  <td className="p-4">
+                    <div className="p-row p-row--actions">
+                    {editable ? (
                       <button
                         type="button"
                         className="p-btn p-btn--outline p-btn--sm"
@@ -330,27 +513,26 @@ export function Phase1Manager({ resource }: { resource: string }) {
                         Edit
                       </button>
                     ) : null}
-                    {resource !== "contact-inquiries" ? (
-                      <>
-                        <button
-                          type="button"
-                          className="p-btn p-btn--primary p-btn--sm"
-                          onClick={() =>
-                            void action(`${resource}/${row.id}/publish`)
-                          }
-                        >
-                          Publish
-                        </button>
+                    {publishable ? (
+                      row.status === "PUBLISHED" ? (
                         <button
                           type="button"
                           className="p-btn p-btn--ghost p-btn--sm"
-                          onClick={() =>
-                            void action(`${resource}/${row.id}/unpublish`)
-                          }
+                          disabled={Boolean(working)}
+                          onClick={() => void rowAction(row, "unpublish")}
                         >
-                          Unpublish
+                          {working === "unpublish" ? "Moving to draft…" : "Unpublish"}
                         </button>
-                      </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="p-btn p-btn--primary p-btn--sm"
+                          disabled={Boolean(working)}
+                          onClick={() => void rowAction(row, "publish")}
+                        >
+                          {working === "publish" ? "Publishing…" : "Publish"}
+                        </button>
+                      )
                     ) : (
                       <button
                         type="button"
@@ -363,21 +545,22 @@ export function Phase1Manager({ resource }: { resource: string }) {
                         Convert to lead
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="p-btn p-btn--danger p-btn--sm"
-                      onClick={() => setPendingArchive(row)}
-                    >
-                      Archive
-                    </button>
+                    <RowMenu
+                      items={[
+                        { label: "Archive", danger: true, onSelect: () => setPendingArchive(row) },
+                      ]}
+                    />
+                    </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {rows.length ? null : (
-            <p className="p-6 p-sub">No records yet.</p>
+            <p className="p-6 p-sub">{q || statusFilter ? "No records match these filters." : "No records yet."}</p>
           )}
+          </div>
         </div>
 
         {listMeta && listMeta.totalPages > 1 ? (
@@ -439,10 +622,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
         ) : null}
       </div>
       {message ? (
-        <p className="mt-5 p-sub" role="status">
+        <p className="mt-5 p-sub" role="alert">
           {message}
         </p>
       ) : null}
+      <Toasts toasts={toasts} onDismiss={dismiss} />
       {pendingArchive ? (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-5"
@@ -455,10 +639,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
               Archive this record?
             </h3>
             <p className="p-sub">
-              {pendingArchive.name ??
-                pendingArchive.title ??
-                pendingArchive.quote?.slice(0, 48) ??
-                "This record"} will be removed from Admin and public listings.
+              {rowName(pendingArchive)} will be removed from Admin and public listings.
             </p>
             <div className="mt-5 flex justify-end gap-3">
               <button
@@ -472,7 +653,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                 type="button"
                 className="p-btn p-btn--danger"
                 onClick={() => {
-                  void action(`${resource}/${pendingArchive.id}`, "DELETE");
+                  void rowAction(pendingArchive, "archive");
                   setPendingArchive(null);
                 }}
               >

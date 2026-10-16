@@ -169,7 +169,7 @@ test('keeps a contact enquiry traceable and converts it to exactly one counselli
   const inquiry = page.getByRole('row').filter({ hasText: fullName });
   await expect(inquiry).toBeVisible();
   await inquiry.getByRole('button', { name: 'Convert to lead' }).click();
-  await expect(page.getByRole('status')).toHaveText('Saved.');
+  await expect(page.getByRole('status')).toContainText('Saved.');
   await expect(
     inquiry.getByRole('button', { name: 'Convert to lead' }),
   ).toBeDisabled();

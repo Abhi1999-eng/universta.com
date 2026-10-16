@@ -13,7 +13,6 @@ import {
   listEvery,
 } from './catalog-client';
 import type {
-  CatalogMutationError,
   CourseRecord,
   CountryRecord,
   MasterRecord,
@@ -21,6 +20,8 @@ import type {
   SubjectRecord,
 } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
+import { formatUpdated, ListSummary, RowMenu, StatusBadge, Toasts, useToasts, ViewOnSite } from '@/features/shared/records-ui';
+import { useRouter } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: CourseRecord } | null;
 
@@ -45,9 +46,12 @@ export function CoursesPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [pending, setPending] = useState<Pending>(null);
   const [confirm, setConfirm] = useState('');
+  const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const { toasts, push: toast, dismiss } = useToasts();
+  const router = useRouter();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -98,24 +102,65 @@ export function CoursesPage() {
     };
   }, []);
 
+  /* How many are live and how many are not, for the line over the table. */
+  const loadCounts = useCallback(() => {
+    void Promise.all([
+      listAdminCourses({ status: 'PUBLISHED', limit: 1 }),
+      listAdminCourses({ status: 'DRAFT', limit: 1 }),
+    ])
+      .then(([published, draft]) =>
+        setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 }),
+      )
+      .catch(() => setCounts(null));
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadCounts(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCounts]);
+
+  /* Publish or unpublish straight from the row; see SubjectsPage. */
+  async function quick(row: CourseRecord, kind: 'publish' | 'unpublish') {
+    setBusy((current) => ({ ...current, [row.id]: kind }));
+    try {
+      const result = kind === 'publish' ? await publishCourse(row.id, row.updatedAt) : await unpublishCourse(row.id, row.updatedAt);
+      setRows((current) => current.map((item) => (item.id === row.id ? result.data : item)));
+      toast('ok', kind === 'publish' ? `${row.name} published.` : `${row.name} moved to draft.`);
+      void load();
+      loadCounts();
+    } catch (cause: unknown) {
+      toast('error', `${row.name}: ${kind === 'publish' ? 'not published' : 'not moved to draft'}. ${catalogErrorText(cause, 'The request failed')}`, {
+        label: 'Fix in editor',
+        onSelect: () => router.push(`/courses/${row.id}`),
+      });
+    } finally {
+      setBusy((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }
+
   async function action() {
     if (!pending || (pending.kind === 'delete' && confirm !== pending.row.name)) return;
     try {
       if (pending.kind === 'publish') await publishCourse(pending.row.id, pending.row.updatedAt);
       if (pending.kind === 'unpublish') await unpublishCourse(pending.row.id, pending.row.updatedAt);
       if (pending.kind === 'delete') await deleteCourse(pending.row.id, pending.row.updatedAt);
-      setSuccess(
+      toast(
+        'ok',
         pending.kind === 'publish'
-          ? 'Course published.'
+          ? `${pending.row.name} published.`
           : pending.kind === 'unpublish'
-            ? 'Course unpublished.'
-            : 'Course deleted.',
+            ? `${pending.row.name} moved to draft.`
+            : `${pending.row.name} deleted.`,
       );
       setPending(null);
       setConfirm('');
       void load();
+      loadCounts();
     } catch (cause: unknown) {
-      setError(catalogErrorText(cause, 'Course action failed'));
+      toast('error', `${pending.row.name}: ${catalogErrorText(cause, 'Course action failed')}`);
       setPending(null);
       setConfirm('');
     }
@@ -133,6 +178,7 @@ export function CoursesPage() {
             Manage course core data, verified country availability, and controlled editorial
             sections.
           </p>
+          <ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="course" />
         </div>
         <div className="p-head__actions">
           <Link href="/courses/new" className="p-btn p-btn--primary">
@@ -141,12 +187,8 @@ export function CoursesPage() {
         </div>
       </header>
 
-      {success ? (
-        <p role="status" className="p-alert p-alert--ok">
-          <span>{success}</span>
-        </p>
-      ) : null}
       {error ? <CatalogError message={error} onRetry={load} /> : null}
+      <Toasts toasts={toasts} onDismiss={dismiss} />
 
       <section className="p-panel a-filters" aria-label="Filter courses">
         <div className="p-grid3">
@@ -274,6 +316,7 @@ export function CoursesPage() {
                 <th scope="col">Subject</th>
                 <th scope="col">Level</th>
                 <th scope="col">Status</th>
+                <th scope="col">Updated</th>
                 <th scope="col" className="p-td-actions">Actions</th>
               </tr>
             </thead>
@@ -281,18 +324,18 @@ export function CoursesPage() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <strong>{row.name}</strong>
-                    <span className="p-hint">/{row.slug}</span>
+                    <Link href={`/courses/${row.id}`} className="p-link font-semibold">{row.name}</Link>
+                    <span className="p-hint block">
+                      /{row.slug}
+                      {row.status === 'PUBLISHED' ? <> · <ViewOnSite path={`/courses/${row.slug}`} /></> : null}
+                    </span>
                   </td>
                   <td>{row.subject.name}</td>
                   <td>{row.courseLevel.name}</td>
                   <td>
-                    <span
-                      className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`}
-                    >
-                      {row.status}
-                    </span>
+                    <StatusBadge status={row.status} />
                   </td>
+                  <td>{formatUpdated(row.updatedAt)}</td>
                   <td className="p-td-actions">
                     <div className="p-row p-row--actions">
                       <Link href={`/courses/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">
@@ -302,26 +345,22 @@ export function CoursesPage() {
                         <button
                           type="button"
                           className="p-btn p-btn--ghost p-btn--sm"
-                          onClick={() => setPending({ kind: 'unpublish', row })}
+                          disabled={Boolean(busy[row.id])}
+                          onClick={() => void quick(row, 'unpublish')}
                         >
-                          Unpublish
+                          {busy[row.id] === 'unpublish' ? 'Moving to draft…' : 'Unpublish'}
                         </button>
                       ) : (
                         <button
                           type="button"
                           className="p-btn p-btn--primary p-btn--sm"
-                          onClick={() => setPending({ kind: 'publish', row })}
+                          disabled={Boolean(busy[row.id])}
+                          onClick={() => void quick(row, 'publish')}
                         >
-                          Publish
+                          {busy[row.id] === 'publish' ? 'Publishing…' : 'Publish'}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="p-btn p-btn--danger p-btn--sm"
-                        onClick={() => setPending({ kind: 'delete', row })}
-                      >
-                        Delete
-                      </button>
+                      <RowMenu items={[{ label: 'Delete', danger: true, onSelect: () => setPending({ kind: 'delete', row }) }]} />
                     </div>
                   </td>
                 </tr>
