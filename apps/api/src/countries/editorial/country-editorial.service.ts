@@ -260,6 +260,22 @@ async function withSectionKeyConflict<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** A consultant card's slug is unique across every country, not only this one,
+ * and a card outlives a deleted country (its link is cleared, the row stays).
+ * Re-entering a country's card under the same slug then failed as a bare 500. */
+async function withCardSlugConflict<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error: unknown) {
+    if (isUniqueConstraintError(error))
+      throw bad(
+        'COUNTRY_CONSULTANT_CARD_SLUG_CONFLICT',
+        'Another consultant card already uses that slug. Choose a different slug',
+      );
+    throw error;
+  }
+}
+
 function sanitizeEditorialBody(
   type: string,
   value: Record<string, unknown> | undefined,
@@ -892,26 +908,28 @@ export class CountryEditorialService {
      * label are short labels and stay plain text. */
     assertSafeCopy([dto.title, dto.slug, dto.ctaLabel]);
     await this.mediaIds([dto.iconMediaId, dto.featuredMediaId]);
-    const row = await this.prisma.consultantLandingCard.create({
-      data: {
-        countryId,
-        title: dto.title.trim(),
-        slug: dto.slug.trim(),
-        shortDescription: sanitizeRichText(
-          dto.shortDescription.trim(),
-        ) as string,
-        overview: sanitizeRichText(trim(dto.overview)) as string | undefined,
-        iconMediaId: dto.iconMediaId,
-        featuredMediaId: dto.featuredMediaId,
-        isFreeConsultation: dto.isFreeConsultation ?? true,
-        ctaLabel: trim(dto.ctaLabel) ?? 'View consultants',
-        ctaUrl: trim(dto.ctaUrl),
-        status: dto.status ?? 'DRAFT',
-        isFeatured: dto.isFeatured ?? false,
-        displayOrder: dto.displayOrder ?? 0,
-        publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
-      },
-    });
+    const row = await withCardSlugConflict(() =>
+      this.prisma.consultantLandingCard.create({
+        data: {
+          countryId,
+          title: dto.title.trim(),
+          slug: dto.slug.trim(),
+          shortDescription: sanitizeRichText(
+            dto.shortDescription.trim(),
+          ) as string,
+          overview: sanitizeRichText(trim(dto.overview)) as string | undefined,
+          iconMediaId: dto.iconMediaId,
+          featuredMediaId: dto.featuredMediaId,
+          isFreeConsultation: dto.isFreeConsultation ?? true,
+          ctaLabel: trim(dto.ctaLabel) ?? 'View consultants',
+          ctaUrl: trim(dto.ctaUrl),
+          status: dto.status ?? 'DRAFT',
+          isFeatured: dto.isFeatured ?? false,
+          displayOrder: dto.displayOrder ?? 0,
+          publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
+        },
+      }),
+    );
     await writeAudit(
       this.prisma,
       request,
@@ -945,28 +963,30 @@ export class CountryEditorialService {
       'COUNTRY_CONSULTANT_CARD_STALE_VERSION',
     );
     await this.mediaIds([dto.iconMediaId, dto.featuredMediaId]);
-    const row = await this.prisma.consultantLandingCard.update({
-      where: { id },
-      data: {
-        title: dto.title.trim(),
-        slug: dto.slug.trim(),
-        shortDescription: sanitizeRichText(
-          dto.shortDescription.trim(),
-        ) as string,
-        overview: sanitizeRichText(trim(dto.overview)) as string | undefined,
-        iconMediaId: dto.iconMediaId,
-        featuredMediaId: dto.featuredMediaId,
-        isFreeConsultation: dto.isFreeConsultation ?? true,
-        ctaLabel: trim(dto.ctaLabel) ?? current.ctaLabel,
-        ctaUrl: trim(dto.ctaUrl),
-        status: dto.status ?? current.status,
-        isFeatured: dto.isFeatured ?? current.isFeatured,
-        displayOrder: dto.displayOrder ?? current.displayOrder,
-        publishedAt: dto.publishedAt
-          ? new Date(dto.publishedAt)
-          : current.publishedAt,
-      },
-    });
+    const row = await withCardSlugConflict(() =>
+      this.prisma.consultantLandingCard.update({
+        where: { id },
+        data: {
+          title: dto.title.trim(),
+          slug: dto.slug.trim(),
+          shortDescription: sanitizeRichText(
+            dto.shortDescription.trim(),
+          ) as string,
+          overview: sanitizeRichText(trim(dto.overview)) as string | undefined,
+          iconMediaId: dto.iconMediaId,
+          featuredMediaId: dto.featuredMediaId,
+          isFreeConsultation: dto.isFreeConsultation ?? true,
+          ctaLabel: trim(dto.ctaLabel) ?? current.ctaLabel,
+          ctaUrl: trim(dto.ctaUrl),
+          status: dto.status ?? current.status,
+          isFeatured: dto.isFeatured ?? current.isFeatured,
+          displayOrder: dto.displayOrder ?? current.displayOrder,
+          publishedAt: dto.publishedAt
+            ? new Date(dto.publishedAt)
+            : current.publishedAt,
+        },
+      }),
+    );
     await writeAudit(
       this.prisma,
       request,
