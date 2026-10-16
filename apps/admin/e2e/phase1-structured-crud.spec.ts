@@ -72,6 +72,15 @@ async function openCreate(page: Page, resource: string) {
   return form;
 }
 
+/** An edit form is on screen before its record has loaded; its fields,
+ * rich-text ones included, stay read-only until it has. Typing in that
+ * window fails, so wait for the form to become editable. */
+async function editable(form: Locator) {
+  await expect(form.locator('fieldset[disabled]')).toHaveCount(0);
+  await expect(form.locator('.jodit-wysiwyg:not([contenteditable="true"])')).toHaveCount(0);
+  return form;
+}
+
 async function saveAndOpenEdit(page: Page, resource: string, rowText: string) {
   const form = page.getByRole('form', { name: `Create ${resource}` });
   await form.getByRole('button', { name: 'Create draft' }).click();
@@ -80,7 +89,7 @@ async function saveAndOpenEdit(page: Page, resource: string, rowText: string) {
   await row.getByRole('button', { name: 'Edit' }).click();
   const edit = page.getByRole('form', { name: `Edit ${resource}` });
   await expect(edit).toBeVisible();
-  return edit;
+  return editable(edit);
 }
 
 async function saveEdit(page: Page, resource: string, rowText: string) {
@@ -97,7 +106,9 @@ async function saveEdit(page: Page, resource: string, rowText: string) {
   await page.reload();
   const row = page.getByRole('row').filter({ hasText: rowText });
   await row.getByRole('button', { name: 'Edit' }).click();
-  return page.getByRole('form', { name: `Edit ${resource}` });
+  const edit = page.getByRole('form', { name: `Edit ${resource}` });
+  await expect(edit).toBeVisible();
+  return editable(edit);
 }
 
 async function publishAndVerify(

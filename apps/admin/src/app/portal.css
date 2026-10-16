@@ -1230,3 +1230,36 @@
    the media library, settings -- sat in a narrow strip while the lists beside
    it ran full width. */
 .pa .a-app .p-page > section.mx-auto { width: 100%; }
+
+/* The top bar's search: the title keeps its width, the search takes what is
+   left, and a highlighted result reads as the one Enter will open. */
+.pa .p-top .p-top__title { flex: none; }
+.pa .p-crumb--bar { margin: 0; font-size: .88rem; }
+.pa .p-crumb--bar a { color: var(--muted); text-decoration: none; }
+.pa .p-crumb--bar a:hover { color: var(--navy); }
+.pa .p-crumb--bar .p-crumb__here { color: var(--navy); font-weight: 600; }
+@media (max-width: 760px) {
+  /* A phone keeps the page's own name; the group is in the drawer. */
+  .pa .p-top .p-top__title { flex: 1 1 auto; min-width: 0; }
+  .pa .p-crumb--bar { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pa .p-crumb--bar .p-crumb__group { display: none; }
+}
+.pa .p-top .a-cmd { margin-left: 16px; }
+.pa .p-search__item.is-active { background: var(--soft); }
+.pa .p-search__item > .p-search__txt { color: var(--navy); font-size: inherit; }
+.pa .p-search__item .p-search__detail { display: block; color: var(--muted); font-size: .8rem; }
+@media (max-width: 760px) { .pa .p-top .a-cmd { display: none; } }
+
+/* On a phone a list reads as cards, one record each, rather than a table to
+   scroll sideways: the header row goes, each row stacks its cells, and the
+   row's actions sit along its foot. */
+@media (max-width: 640px) {
+  .pa .u-table thead { display: none; }
+  .pa .u-table, .pa .u-table tbody { display: block; }
+  .pa .u-table tbody tr { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; background: var(--surface); }
+  .pa .u-table tbody td { display: block; grid-column: 2; padding: 0 !important; border: 0 !important; }
+  .pa .u-table tbody td:first-child:has(input[type=checkbox]) { grid-column: 1; grid-row: 1 / span 4; padding-top: 2px !important; }
+  .pa .u-table tbody td.p-td-actions, .pa .u-table tbody td:last-child { grid-column: 1 / -1; margin-top: 6px; width: auto; text-align: left; }
+  .pa .u-table tbody td .p-row--actions { justify-content: flex-start; flex-wrap: wrap; }
+  .pa .p-tablewrap, .pa .u-table { overflow: visible; min-width: 0 !important; width: 100%; }
+}

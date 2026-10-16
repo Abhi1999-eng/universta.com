@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { authFetch } from "@/features/auth/auth-client";
 import {
   BulkBar,
+  useFiltersInUrl,
   bulkSummary,
   formatUpdated,
   ListSummary,
@@ -34,21 +35,6 @@ const titles: Record<string, string> = {
   pages: "Editorial pages",
   "navigation-menus": "Navigation menus",
   "contact-inquiries": "Contact enquiries",
-};
-
-/* The sidebar group each resource sits in, shown above its title. */
-const groups: Record<string, string> = {
-  universities: "Universities",
-  offerings: "Universities",
-  scholarships: "Scholarships",
-  consultants: "Consultants",
-  jobs: "Careers and events",
-  events: "Careers and events",
-  "success-stories": "Content records",
-  testimonials: "Content records",
-  pages: "Website Builder",
-  "navigation-menus": "Website Builder",
-  "contact-inquiries": "Enquiries and Counselling",
 };
 
 const examples: Record<string, string> = {
@@ -126,37 +112,24 @@ async function request(path: string, init?: RequestInit): Promise<Envelope> {
 export function Phase1Manager({ resource }: { resource: string }) {
   const [rows, setRows] = useState<Phase1Row[]>([]);
   const [listMeta, setListMeta] = useState<ListMeta | null>(null);
-  const [page, setPage] = useState(1);
   const [message, setMessage] = useState("");
   const [draft, setDraft] = useState(examples[resource] ?? "{}");
   /* The open editor lives in the address -- ?edit=<id> or ?new=1 -- so a
      refresh keeps it open and the link can be shared. */
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
   const [editingId, setEditingId] = useState<string | null>(() => searchParams.get("edit"));
   const [creating, setCreating] = useState(() => searchParams.get("new") === "1");
   const editorRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const next = new URLSearchParams(searchParams.toString());
-    next.delete("edit");
-    next.delete("new");
-    if (editingId) next.set("edit", editingId);
-    else if (creating) next.set("new", "1");
-    const query = next.toString();
-    const target = `${pathname}${query ? `?${query}` : ""}`;
-    const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    if (target !== current) router.replace(target, { scroll: false });
-    // Only the editor state drives the address; the address is read once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingId, creating]);
   /* Opening a row's editor from far down the list brings it into view. */
   useEffect(() => {
     if (editingId || creating) editorRef.current?.scrollIntoView({ block: "start" });
   }, [editingId, creating]);
   const [pendingArchive, setPendingArchive] = useState<Phase1Row | null>(null);
-  const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "");
+  /* The open editor and the filters live in the address together. */
+  useFiltersInUrl({ q, status: statusFilter, page, edit: editingId ?? "", new: creating && !editingId ? "1" : "" });
   const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
   /* Which row is mid-action, and what it is doing, so its button can say so. */
   const [busy, setBusy] = useState<Record<string, string>>({});
@@ -200,8 +173,13 @@ export function Phase1Manager({ resource }: { resource: string }) {
     }
   }, [resource, publishable]);
 
+  /* Another list in the same instance starts from its first page with no
+     filters; the first render keeps whatever the address asked for. */
+  const shownResource = useRef(resource);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (shownResource.current === resource) return;
+    shownResource.current = resource;
+     
     setPage(1);
     setQ("");
     setStatusFilter("");
@@ -359,9 +337,6 @@ export function Phase1Manager({ resource }: { resource: string }) {
     <section className="mx-auto w-full max-w-[1240px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">
-            {groups[resource] ?? 'Records'}
-          </p>
           <h2 className="p-h1">
             {title}
           </h2>

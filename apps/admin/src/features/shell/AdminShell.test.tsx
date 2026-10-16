@@ -4,7 +4,7 @@ import { AdminShell } from './AdminShell';
 
 const mockUseAuth = vi.fn();
 vi.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => mockUseAuth() }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard', useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => '/dashboard', useSearchParams: () => new URLSearchParams() }));
 
 describe('AdminShell', () => {
   beforeEach(() => {
@@ -67,13 +67,9 @@ describe('AdminShell', () => {
       ['Countries', '/countries'],
       ['Continents', '/continents'],
       ['All subjects', '/subjects'],
-      ['Add subject', '/subjects/new'],
       ['All specializations', '/specializations'],
-      ['Add specialization', '/specializations/new'],
       ['All levels', '/catalog-masters?section=course-levels'],
-      ['Add level', '/catalog-masters?section=course-levels&new=1'],
       ['Courses', '/courses'],
-      ['Add course', '/courses/new'],
       ['University claim requests', '/university-claims'],
       ['A/B experiments', '/experiments'],
     ];

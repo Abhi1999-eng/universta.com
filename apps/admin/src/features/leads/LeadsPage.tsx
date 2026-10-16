@@ -160,9 +160,6 @@ export function LeadsPage() {
     <section aria-labelledby="leads-heading" className="mx-auto w-full max-w-[1240px]">
       <div className="p-head">
         <div>
-          <p className="p-eyebrow">
-            Counselling pipeline
-          </p>
           <h2
             id="leads-heading"
             className="p-h1"

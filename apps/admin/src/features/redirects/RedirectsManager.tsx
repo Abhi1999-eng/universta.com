@@ -265,9 +265,6 @@ export function RedirectsManager() {
   return (
     <section className="mx-auto w-full max-w-[1240px]">
       <div>
-        <p className="p-eyebrow">
-          URL management
-        </p>
         <h2 className="p-h1">Redirects</h2>
         <p className="p-sub">
           Manage source-to-target URL redirects. Automatic redirects created

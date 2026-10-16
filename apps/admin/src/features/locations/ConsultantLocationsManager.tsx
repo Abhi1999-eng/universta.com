@@ -367,9 +367,6 @@ export function ConsultantLocationsManager() {
     <section className="mx-auto w-full max-w-[1180px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">
-            Consultants
-          </p>
           <h2 className="p-h1">
             Consultant locations
           </h2>

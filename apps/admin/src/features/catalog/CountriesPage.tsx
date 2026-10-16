@@ -7,8 +7,8 @@ import { FlashBanner, useHandedOverFlash, type Flash } from '@/features/shared/F
 import { deleteCountry, listContinents, listCountries, listCountryTags, listAllSubjects, publishCountry, unpublishCountry } from './catalog-client';
 import type { ContinentRecord, CountryRecord, CountryTagRecord, PageMeta, SubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
-import { BulkBar, bulkSummary, formatUpdated, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, useRowSelection, useToasts, ViewOnSite } from '@/features/shared/records-ui';
-import { useRouter } from 'next/navigation';
+import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type PendingAction = { kind: 'publish' | 'unpublish' | 'delete'; country: CountryRecord } | null;
 
@@ -16,15 +16,17 @@ export function CountriesPage() {
   const [rows, setRows] = useState<CountryRecord[]>([]);
   const [continents, setContinents] = useState<ContinentRecord[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
-  const [q, setQ] = useState('');
-  const [continentId, setContinentId] = useState('');
-  const [subjectId, setSubjectId] = useState('');
-  const [tagId, setTagId] = useState('');
+  const initial = useSearchParams();
+  const [q, setQ] = useState(() => initial.get('q') ?? '');
+  const [continentId, setContinentId] = useState(() => initial.get('continent') ?? '');
+  const [subjectId, setSubjectId] = useState(() => initial.get('subject') ?? '');
+  const [tagId, setTagId] = useState(() => initial.get('tag') ?? '');
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [tags, setTags] = useState<CountryTagRecord[]>([]);
-  const [status, setStatus] = useState('');
-  const [featured, setFeatured] = useState('');
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState(() => initial.get('status') ?? '');
+  const [featured, setFeatured] = useState(() => initial.get('featured') ?? '');
+  const [page, setPage] = useState(() => Number(initial.get('page')) || 1);
+  useFiltersInUrl({ q, continent: continentId, subject: subjectId, tag: tagId, status, featured, page });
   const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -139,7 +141,7 @@ export function CountriesPage() {
 
   return (
     <section aria-labelledby="countries-heading">
-      <header className="p-head"><div><p className="p-eyebrow">Destinations</p><h2 id="countries-heading" className="p-h1">Countries</h2><p className="p-sub">Add study destinations and publish them to the website.</p><ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="country" /></div><div className="p-head__actions"><Link href="/countries/new" className="p-btn p-btn--primary">Create country</Link></div></header>
+      <header className="p-head"><div><h2 id="countries-heading" className="p-h1">Countries</h2><p className="p-sub">Add study destinations and publish them to the website.</p><ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="country" /></div><div className="p-head__actions"><Link href="/countries/new" className="p-btn p-btn--primary">Create country</Link></div></header>
       <FlashBanner flash={flash} onDismiss={dismissFlash} />
       <Toasts toasts={toasts} onDismiss={dismiss} />
       <section className="p-panel a-filters p-grid3" aria-label="Filter countries"><label className="sm:col-span-2 lg:col-span-1"><span className="sr-only">Search countries</span><input value={q} onChange={(event) => { setQ(event.target.value); setPage(1); }} placeholder="Search countries or ISO code" className="p-input" /></label><label><span className="sr-only">Filter by continent</span><select value={continentId} onChange={(event) => { setContinentId(event.target.value); setPage(1); }} className="p-input"><option value="">All continents</option>{continents.map((continent) => <option key={continent.id} value={continent.id}>{continent.name}</option>)}</select></label><label><span className="sr-only">Filter by subject</span><select aria-label="Filter by subject" value={subjectId} onChange={(event) => { setSubjectId(event.target.value); setPage(1); }} className="p-input"><option value="">All subjects</option>{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label><label><span className="sr-only">Filter by tag</span><select aria-label="Filter by tag" value={tagId} onChange={(event) => { setTagId(event.target.value); setPage(1); }} className="p-input"><option value="">All tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label><label><span className="sr-only">Filter by status</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="p-input"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></label><label><span className="sr-only">Filter featured countries</span><select value={featured} onChange={(event) => { setFeatured(event.target.value); setPage(1); }} className="p-input"><option value="">Featured: all</option><option value="true">Featured only</option><option value="false">Not featured</option></select></label><button type="button" onClick={resetFilters} className="p-btn p-btn--ghost p-btn--sm">Clear filters</button></section>

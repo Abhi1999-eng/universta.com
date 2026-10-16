@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { NAV_GROUPS, findNavItem, navItemKey, resolveActiveNavItem } from './nav-config';
 import { NavGroupIcon } from './nav-icons';
+import { AdminSearch } from './AdminSearch';
 import { rolesLabel } from './role-label';
 
 /** Below this the sidebar is a drawer rather than a column -- the same width
@@ -45,12 +46,13 @@ function currentBreadcrumb(pathname: string) {
   }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((entry) => entry.href.split('?')[0] === pathname);
-    if (item) return { group: group.label, item: item.label };
+    // "Universities / Universities" says one thing twice; the item alone.
+    if (item) return { group: group.label === item.label ? null : group.label, item: item.label };
   }
   const fuzzy = findNavItem(pathname);
   if (fuzzy) {
     const group = NAV_GROUPS.find((g) => g.items.includes(fuzzy));
-    return { group: group?.label ?? null, item: fuzzy.label };
+    return { group: group && group.label !== fuzzy.label ? group.label : null, item: fuzzy.label };
   }
   return { group: null as string | null, item: 'Dashboard' };
 }
@@ -73,10 +75,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   /* The browser tab names the screen, so several open tabs can be told
      apart: "Courses · Universta Admin", not "Super Admin | Universta" on
-     every one. */
+     every one. Next restores the layout's title on every navigation,
+     filter changes in the query string included, so it is set again on
+     each one. */
   useEffect(() => {
     document.title = `${pageTitle} · Universta Admin`;
-  }, [pageTitle]);
+  }, [pageTitle, location]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const isDrawer = useIsDrawer();
@@ -226,20 +230,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <MenuIcon />
           </button>
+          {/* One breadcrumb for the whole admin. The page names itself in its
+              own heading below, so the bar repeats neither; its h1 stays for
+              screen readers, which announce it as the screen's name. */}
           <div className="p-top__title">
-            <p className="p-crumb">
+            <nav aria-label="Breadcrumb" className="p-crumb p-crumb--bar">
+              <Link href="/dashboard">Admin</Link>
               {breadcrumb.group ? (
-                <>
-                  <Link href="/dashboard">Admin</Link>
-                  {' / '}
-                  {breadcrumb.group}
-                </>
-              ) : (
-                <Link href="/dashboard">Admin workspace</Link>
-              )}
-            </p>
-            <h1 className="p-h2">{pageTitle}</h1>
+                <span className="p-crumb__group">
+                  <span aria-hidden="true"> / </span>
+                  <span>{breadcrumb.group}</span>
+                </span>
+              ) : null}
+              <span aria-hidden="true"> / </span>
+              <span aria-current="page" className="p-crumb__here">{pageTitle}</span>
+            </nav>
+            <h1 className="sr-only">{pageTitle}</h1>
           </div>
+          <AdminSearch />
           <div className="u-account">
             {/* One ellipsised line, as the design intends it: the role. The
                 name and the address are stated in the sidebar's foot, and

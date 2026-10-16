@@ -124,7 +124,6 @@ export function MediaLibrary() {
   return (
     <section className="mx-auto w-full max-w-[1240px]">
       <div>
-        <p className="p-eyebrow">Media</p>
         <h2 className="p-h1">Media library</h2>
         <p className="p-sub">
           Upload images for use across Pages, Universities, Scholarships, Consultants,

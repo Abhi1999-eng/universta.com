@@ -213,10 +213,6 @@ export function ScholarshipProvidersPanel() {
     <section className="p-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="p-eyebrow">
-            Master data
-          </p>
-          <h3 className="mt-2 text-xl font-semibold">Scholarship providers</h3>
           <p className="p-hint">
             Manage the organisation behind a scholarship. Edit provider details,
             deactivate it temporarily, archive it, or permanently delete an

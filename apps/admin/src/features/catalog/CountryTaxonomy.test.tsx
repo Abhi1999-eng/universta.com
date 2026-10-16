@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => ({
   deleteCountry: vi.fn(),
 }));
 vi.mock('./catalog-client', () => mocks);
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/', }));
 vi.mock('next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>

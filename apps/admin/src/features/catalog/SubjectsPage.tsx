@@ -5,8 +5,8 @@ import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { deleteSubject, listSubjects, publishSubject, unpublishSubject } from './catalog-client';
 import type { PageMeta, SubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
-import { BulkBar, bulkSummary, formatUpdated, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, useRowSelection, useToasts, ViewOnSite } from '@/features/shared/records-ui';
-import { useRouter } from 'next/navigation';
+import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubjectRecord } | null;
 
@@ -22,9 +22,11 @@ type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubjectRecord } 
 export function SubjectsPage() {
   const [rows, setRows] = useState<SubjectRecord[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  const initial = useSearchParams();
+  const [q, setQ] = useState(() => initial.get('q') ?? '');
+  const [status, setStatus] = useState(() => initial.get('status') ?? '');
+  const [page, setPage] = useState(() => Number(initial.get('page')) || 1);
+  useFiltersInUrl({ q, status, page });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pending, setPending] = useState<Pending>(null);
@@ -156,7 +158,6 @@ export function SubjectsPage() {
     <section aria-labelledby="subjects-heading">
       <header className="p-head">
         <div>
-          <p className="p-eyebrow">Subject &amp; specialization</p>
           <h2 id="subjects-heading" className="p-h1">
             Subjects
           </h2>

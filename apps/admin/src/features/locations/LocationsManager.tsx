@@ -373,7 +373,6 @@ export function LocationsManager() {
   return (
     <section className="mx-auto w-full max-w-[1240px]">
       <div>
-        <p className="p-eyebrow">Location hierarchy</p>
         <h2 className="p-h1">States &amp; cities</h2>
         <p className="p-sub">
           Manage the destination hierarchy that backs each country&apos;s canonical{" "}

@@ -161,8 +161,7 @@ function GroupForm({
 
   return (
     <form onSubmit={(event) => void save(event)} className="p-panel">
-      <p className="p-eyebrow">Platform settings</p>
-      <h3 className="mt-2 text-xl font-semibold">{config.title}</h3>
+      <h3 className="text-xl font-semibold">{config.title}</h3>
       <p className="p-sub">{config.description}</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {config.fields.map((field) => {
@@ -240,7 +239,6 @@ function GroupForm({
 
 export function SettingsManager({
   only,
-  eyebrow = "Global configuration",
   title = "Settings",
   intro = "Global platform configuration — every value here is served to the public site. Universities, Scholarships and Consultants have their own dedicated sections and are not managed here.",
 }: {
@@ -248,7 +246,6 @@ export function SettingsManager({
    * Global Header and Global Footer screens, which read and write the very
    * same settings rows as the full Settings page. */
   only?: string[];
-  eyebrow?: string;
   title?: string;
   intro?: string;
 } = {}) {
@@ -286,7 +283,6 @@ export function SettingsManager({
 
   return (
     <section className="mx-auto w-full max-w-[1180px]">
-      <p className="p-eyebrow">{eyebrow}</p>
       <h2 className="p-h1">{title}</h2>
       <p className="p-sub">{intro}</p>
       {error ? <p className="mt-4 p-danger" role="alert">{error}</p> : null}

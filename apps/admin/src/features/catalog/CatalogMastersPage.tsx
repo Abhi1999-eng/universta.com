@@ -138,13 +138,7 @@ function IntakesPanel() {
 
   return (
     <section className="p-panel">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="p-eyebrow">
-            Master data
-          </p>
-          <h3 className="mt-2 text-xl font-semibold">Intakes</h3>
-        </div>
+      <div className="flex items-start justify-end gap-3">
         <button
           type="button"
           onClick={() => (creating ? resetForm() : setCreating(true))}
@@ -406,13 +400,7 @@ export function CatalogMastersPage() {
   function panel(title: string, panelKind: Kind, rows: MasterRecord[]) {
     return (
       <section className="p-panel">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="p-eyebrow">
-              Master data
-            </p>
-            <h3 className="mt-2 text-xl font-semibold">{title}</h3>
-          </div>
+        <div className="flex items-start justify-end gap-3">
           <button
             type="button"
             onClick={() => open(panelKind)}
@@ -475,9 +463,6 @@ export function CatalogMastersPage() {
 
   return (
     <section aria-labelledby="masters-heading" className="mx-auto w-full max-w-[1180px]">
-      <p className="p-eyebrow">
-        Reference data
-      </p>
       <h2 id="masters-heading" className="p-h1">
         {title}
       </h2>

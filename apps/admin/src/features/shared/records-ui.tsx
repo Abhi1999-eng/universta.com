@@ -230,3 +230,23 @@ export function bulkSummary(kind: 'publish' | 'unpublish', done: number, skipped
   if (failed.length) parts.push(`${failed.length} failed: ${failed.join(' · ')}`);
   return parts.join(' · ') + '.';
 }
+
+/** A list's filters, kept in the address so a refresh, Back, a shared link
+ * or a dashboard shortcut ("?status=DRAFT") opens the same view. Empty
+ * values and page 1 stay out of the address. */
+export function useFiltersInUrl(values: Record<string, string | number | undefined>) {
+  const serialized = JSON.stringify(values);
+  useEffect(() => {
+    const current = window.location.search.replace(/^\?/, '');
+    const next = new URLSearchParams(current);
+    for (const [key, value] of Object.entries(JSON.parse(serialized) as Record<string, string | number | undefined>)) {
+      const text = value === undefined || value === null ? '' : String(value);
+      if (!text || (key === 'page' && text === '1')) next.delete(key);
+      else next.set(key, text);
+    }
+    const query = next.toString();
+    // The browser's own history call, which Next's router follows: the
+    // address changes without asking the server for the page again.
+    if (query !== current) window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, [serialized]);
+}

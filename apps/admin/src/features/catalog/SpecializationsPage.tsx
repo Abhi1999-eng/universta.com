@@ -12,7 +12,7 @@ import {
 } from './catalog-client';
 import type { PageMeta, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
-import { BulkBar, bulkSummary, formatUpdated, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, useRowSelection, useToasts, ViewOnSite } from '@/features/shared/records-ui';
+import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
 import { useRouter } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubSubjectRecord } | null;
@@ -25,14 +25,16 @@ type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubSubjectRecord
  * links here that way.
  */
 export function SpecializationsPage() {
-  const preselectedSubject = useSearchParams().get('subject') ?? '';
+  const initial = useSearchParams();
+  const preselectedSubject = initial.get('subject') ?? '';
   const [rows, setRows] = useState<SubSubjectRecord[]>([]);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(() => initial.get('q') ?? '');
   const [subjectId, setSubjectId] = useState(preselectedSubject);
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState(() => initial.get('status') ?? '');
+  const [page, setPage] = useState(() => Number(initial.get('page')) || 1);
+  useFiltersInUrl({ q, subject: subjectId, status, page });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pending, setPending] = useState<Pending>(null);
@@ -179,7 +181,6 @@ export function SpecializationsPage() {
     <section aria-labelledby="specializations-heading">
       <header className="p-head">
         <div>
-          <p className="p-eyebrow">Subject &amp; specialization</p>
           <h2 id="specializations-heading" className="p-h1">
             Specializations
           </h2>

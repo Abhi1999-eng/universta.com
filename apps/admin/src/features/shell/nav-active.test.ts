@@ -80,7 +80,7 @@ describe('exactly one sidebar entry is active', () => {
     ['/locations?tab=states', 'States / provinces'],
     ['/locations?tab=cities', 'Cities'],
     ['/catalog-masters?section=course-levels', 'All levels'],
-    ['/catalog-masters?section=course-levels&new=1', 'Add level'],
+    ['/catalog-masters?section=course-levels&new=1', 'All levels'],
     ['/catalog-masters?section=study-modes', 'Study modes'],
     ['/catalog-masters?section=intakes', 'Intakes'],
     ['/catalog-masters?section=scholarship-providers', 'Scholarship providers'],
@@ -102,12 +102,12 @@ describe('route matching is segment-safe', () => {
   it('keeps a nested edit or detail route on its owning entry', () => {
     expect(activeLabel('/subjects/computer-science')).toBe('All subjects');
     expect(activeLabel('/subjects/abc-123/edit')).toBe('All subjects');
-    /* The "Add" entries own their create routes, and nothing else. */
-    expect(activeLabel('/subjects/new')).toBe('Add subject');
+    /* A create route belongs to its list: the lists carry their own Create. */
+    expect(activeLabel('/subjects/new')).toBe('All subjects');
     expect(activeLabel('/specializations')).toBe('All specializations');
     expect(activeLabel('/specializations/abc-123')).toBe('All specializations');
-    expect(activeLabel('/specializations/new')).toBe('Add specialization');
-    expect(activeLabel('/courses/new')).toBe('Add course');
+    expect(activeLabel('/specializations/new')).toBe('All specializations');
+    expect(activeLabel('/courses/new')).toBe('Courses');
     expect(activeLabel('/courses/abc-123')).toBe('Courses');
     expect(activeLabel('/phase1/universities/xyz-789')).toBe('Universities');
     expect(activeLabel('/leads/42')).toBe(activeLabel('/leads'));

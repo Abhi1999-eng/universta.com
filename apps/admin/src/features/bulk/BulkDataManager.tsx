@@ -509,9 +509,6 @@ export function BulkDataManager() {
   return (
     <section className="mx-auto w-full max-w-[1240px]">
       <div>
-        <p className="p-eyebrow">
-          Catalog operations
-        </p>
         <h2 className="p-h1">
           Bulk data import &amp; export
         </h2>
