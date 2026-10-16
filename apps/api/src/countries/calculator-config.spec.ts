@@ -147,12 +147,24 @@ describe('calculator configuration', () => {
        old ceiling of 1,000,000 refused the whole calculator over it. */
     const parsed = parseCalculatorConfig({
       ...valid,
-      base: { ...valid.base, livingMin: 85_000, livingMax: 160_000, semesterFee: 267_900 },
+      base: {
+        ...valid.base,
+        livingMin: 85_000,
+        livingMax: 160_000,
+        semesterFee: 267_900,
+      },
       factors: [
         {
           id: 'university',
           label: 'Which kind of university?',
-          options: [{ value: 'private', label: 'A private university', tuitionMin: 300_000, tuitionMax: 1_264_200 }],
+          options: [
+            {
+              value: 'private',
+              label: 'A private university',
+              tuitionMin: 300_000,
+              tuitionMax: 1_264_200,
+            },
+          ],
         },
       ],
     });
