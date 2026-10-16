@@ -29,6 +29,10 @@ const mocks = vi.hoisted(() => ({
   deleteSubjectSeo: vi.fn(),
   listEditorialMedia: vi.fn(),
   listCourseLevels: vi.fn(),
+  listCountries: vi.fn(),
+  listEvery: vi.fn(),
+  getSubjectCountries: vi.fn(),
+  saveSubjectCountries: vi.fn(),
 }));
 vi.mock('./catalog-client', () => mocks);
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace, refresh: vi.fn() }) }));
@@ -75,6 +79,9 @@ beforeEach(() => {
   mocks.listAllSubSubjects.mockResolvedValue([child('spec-v1', 'DRAFT')]);
   mocks.listEditorialMedia.mockResolvedValue({ data: [], meta: null });
   mocks.listCourseLevels.mockResolvedValue({ data: [], meta: null });
+  mocks.listEvery.mockResolvedValue([]);
+  mocks.getSubjectCountries.mockResolvedValue({ data: [] });
+  mocks.saveSubjectCountries.mockResolvedValue({ data: [] });
   mocks.updateSubject.mockResolvedValue({ data: { ...subject, updatedAt: 'subject-v2' } });
   mocks.publishSubject.mockResolvedValue({
     data: { ...subject, status: 'PUBLISHED', updatedAt: 'subject-v3' },

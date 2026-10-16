@@ -52,6 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const written = Boolean(
     specialization.shortDescription?.trim() ||
       specialization.overview?.trim() ||
+      specialization.contentSections?.length ||
+      specialization.faqs?.length ||
       specialization.seo?.source?.description === 'manual',
   );
   return {

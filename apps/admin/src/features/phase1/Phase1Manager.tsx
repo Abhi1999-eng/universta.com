@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
 import {
+  BulkBar,
+  bulkSummary,
   formatUpdated,
   ListSummary,
+  RowCheckbox,
   RowMenu,
+  SelectAllCheckbox,
   StatusBadge,
   Toasts,
+  useRowSelection,
   useToasts,
   ViewOnSite,
 } from "@/features/shared/records-ui";
@@ -253,6 +258,30 @@ export function Phase1Manager({ resource }: { resource: string }) {
     }
   }
 
+  /* Publish or unpublish every ticked row, one after another, and say in
+     one line what happened. */
+  const selection = useRowSelection(rows.map((row) => row.id));
+  const [bulkBusy, setBulkBusy] = useState(false);
+  async function bulk(kind: "publish" | "unpublish") {
+    const picked = rows.filter((row) => selection.has(row.id));
+    const targets = picked.filter((row) => (kind === "publish" ? row.status !== "PUBLISHED" : row.status === "PUBLISHED"));
+    setBulkBusy(true);
+    const failed: string[] = [];
+    let done = 0;
+    for (const row of targets) {
+      try {
+        await request(`${resource}/${row.id}/${kind}`, { method: "POST" });
+        done += 1;
+      } catch (error) {
+        failed.push(`${rowName(row)} (${error instanceof Error ? error.message : "failed"})`);
+      }
+    }
+    toast(failed.length ? "error" : "ok", bulkSummary(kind, done, picked.length - targets.length, failed));
+    selection.clear();
+    setBulkBusy(false);
+    await Promise.all([load(), loadCounts()]);
+  }
+
   async function afterSave() {
     await Promise.all([load(), loadCounts()]);
     setCreating(false);
@@ -435,10 +464,12 @@ export function Phase1Manager({ resource }: { resource: string }) {
               </label>
             </div>
           ) : null}
+          {publishable ? <BulkBar count={selection.count} busy={bulkBusy} onPublish={() => void bulk("publish")} onUnpublish={() => void bulk("unpublish")} onClear={selection.clear} /> : null}
           <div className="overflow-x-auto rounded-2xl border border-[#E8ECF3] bg-white">
           <table className="p-table u-table min-w-full">
             <thead className="border-b border-[#E8ECF3] text-[#667085]">
               <tr>
+                {publishable ? <th className="p-4 w-8"><SelectAllCheckbox checked={selection.allSelected} onChange={selection.toggleAll} /></th> : null}
                 <th className="p-4">Record</th>
                 <th className="p-4">Status</th>
                 {isNavMenu ? <th className="p-4">Affects</th> : null}
@@ -453,6 +484,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                 const working = busy[row.id];
                 return (
                 <tr className="border-b border-[#F0F2F5]" key={row.id}>
+                  {publishable ? <td className="p-4"><RowCheckbox name={name} checked={selection.has(row.id)} onChange={(on) => selection.toggle(row.id, on)} /></td> : null}
                   <td className="p-4">
                     {editable ? (
                       <button

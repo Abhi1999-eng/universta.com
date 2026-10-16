@@ -7,9 +7,13 @@ import {
   createSubject,
   deleteSubjectSeo,
   getSubject,
+  getSubjectCountries,
   getSubjectSeo,
+  listCountries,
   listCourseLevels,
   listEditorialMedia,
+  listEvery,
+  saveSubjectCountries,
   listAllSubSubjects,
   publishSubSubject,
   publishSubject,
@@ -18,7 +22,8 @@ import {
   unpublishSubject,
   updateSubject,
 } from './catalog-client';
-import type { EditorialMedia, EditorialSeo, MasterRecord, SubSubjectRecord, SubjectRecord } from './catalog.types';
+import type { CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubSubjectRecord, SubjectRecord } from './catalog.types';
+import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
@@ -41,6 +46,12 @@ export function SubjectForm({ id }: { id?: string }) {
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
+  const [countries, setCountries] = useState<CountryRecord[]>([]);
+  const [countryIds, setCountryIds] = useState<string[]>([]);
+  const [derivedCountryIds, setDerivedCountryIds] = useState<string[]>([]);
+  /* A new subject starts listed for every destination, as the catalogue
+     links it; the ticks show that so an editor can untick before saving. */
+  const [countriesDefaulted, setCountriesDefaulted] = useState(false);
   const [form, setForm] = useState({ name: '', slug: '', shortDescription: '', overview: '', iconMediaId: '', listingMediaId: '', heroMediaId: '', isFeatured: false, displayOrder: '0' });
   const [specializations, setSpecializations] = useState<SubSubjectRecord[]>([]);
   const [seo, setSeo] = useState<UnifiedSeoDraft>(blankUnifiedSeo);
@@ -64,13 +75,22 @@ export function SubjectForm({ id }: { id?: string }) {
         void listCourseLevels({ status: 'ACTIVE', limit: 100 })
           .then((result) => { if (active) setLevels(result.data); })
           .catch(() => undefined);
+        void listEvery(listCountries)
+          .then((rows) => {
+            if (!active) return;
+            setCountries(rows);
+            if (!id) { setCountryIds(rows.map((row) => row.id)); setCountriesDefaulted(true); }
+          })
+          .catch(() => undefined);
         if (!id) return;
-        const [subjectResult, seoResult, subResult] = await Promise.all([
-          getSubject(id), getSubjectSeo(id), listAllSubSubjects(id),
+        const [subjectResult, seoResult, subResult, countryLinks] = await Promise.all([
+          getSubject(id), getSubjectSeo(id), listAllSubSubjects(id), getSubjectCountries(id),
         ]);
         if (!active) return;
         const subject = subjectResult.data;
         setRecord(subject);
+        setCountryIds(countryLinks.data.map((link) => link.country.id));
+        setDerivedCountryIds(countryLinks.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
         setLevelIds((subject.courseLevels ?? []).map((level) => level.id));
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
@@ -151,6 +171,13 @@ export function SubjectForm({ id }: { id?: string }) {
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
       };
       const saved = record ? (await updateSubject(record.id, payload)).data : (await createSubject(payload)).data;
+      /* The destinations, written whole after the record; a new subject's
+         default of "everywhere" is what the catalogue would have linked. */
+      if (record || !countriesDefaulted || countryIds.length !== countries.length) {
+        const links = await saveSubjectCountries(saved.id, countryIds);
+        setCountryIds(links.data.map((link) => link.country.id));
+        setDerivedCountryIds(links.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
+      }
       if (hasSeo(seo)) {
         const result = await saveSubjectSeo(saved.id, seoPayload(seo));
         setExistingSeo(result.data);
@@ -175,7 +202,7 @@ export function SubjectForm({ id }: { id?: string }) {
     <section className="mx-auto max-w-[1040px]" aria-labelledby="subject-form-heading">
       <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
+        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, study levels, destinations, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
         <span className="p-chip">{status}</span>
       </div>
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
@@ -198,6 +225,8 @@ export function SubjectForm({ id }: { id?: string }) {
         </fieldset>
 
         <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
+
+        <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'A new subject is listed for every destination until you untick some. A country with a published course in it stays ticked on its own.'} />
 
         <fieldset id="editor-specializations" className="p-panel">
           <legend className="sr-only">Specializations</legend>

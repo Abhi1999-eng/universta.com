@@ -4,6 +4,8 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
+  Post,
   Put,
   Query,
   Req,
@@ -18,7 +20,12 @@ import { successEnvelope } from '../catalog/catalog.responses';
 import {
   SeoMetadataDto,
   AdminSpecializationListQueryDto,
+  CreateSpecializationFaqDto,
+  CreateSpecializationSectionDto,
   SubjectActionDto,
+  TaxonomyCountriesDto,
+  UpdateSpecializationFaqDto,
+  UpdateSpecializationSectionDto,
 } from './dto/subject.dto';
 import { SubjectsService } from './subjects.service';
 
@@ -71,6 +78,121 @@ export class AdminSpecializationsController {
       await this.subjects.putSpecializationSeo(id, dto, request),
     );
   }
+  /* The destinations the specialization is listed for. */
+  @Get(':id/countries') async countries(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.listSpecializationCountries(id),
+    );
+  }
+  @Put(':id/countries') async putCountries(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: TaxonomyCountriesDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.putSpecializationCountries(id, dto, request),
+    );
+  }
+
+  /* Its own content: sections and FAQs, as a course has. */
+  @Get(':id/content-sections') async sections(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.listSpecializationSections(id),
+    );
+  }
+  @Post(':id/content-sections') async createSection(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateSpecializationSectionDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.createSpecializationSection(id, dto, request),
+    );
+  }
+  @Patch(':id/content-sections/:sectionId') async updateSection(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+    @Body() dto: UpdateSpecializationSectionDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.updateSpecializationSection(
+        id,
+        sectionId,
+        dto,
+        request,
+      ),
+    );
+  }
+  @Delete(':id/content-sections/:sectionId') async deleteSection(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+    @Body() dto: SubjectActionDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.removeSpecializationSection(
+        id,
+        sectionId,
+        dto,
+        request,
+      ),
+    );
+  }
+  @Get(':id/faqs') async faqs(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.listSpecializationFaqs(id),
+    );
+  }
+  @Post(':id/faqs') async createFaq(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateSpecializationFaqDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.createSpecializationFaq(id, dto, request),
+    );
+  }
+  @Patch(':id/faqs/:faqId') async updateFaq(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @Body() dto: UpdateSpecializationFaqDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.updateSpecializationFaq(id, faqId, dto, request),
+    );
+  }
+  @Delete(':id/faqs/:faqId') async deleteFaq(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @Body() dto: SubjectActionDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.removeSpecializationFaq(id, faqId, dto, request),
+    );
+  }
+
   @Delete(':id/seo') async deleteSeo(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,

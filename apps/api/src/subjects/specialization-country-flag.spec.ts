@@ -33,6 +33,8 @@ function prisma(captured: { select?: unknown }) {
   return {
     /* The page's SEO row; none is written in these. */
     seoMetadata: { findUnique: async () => null },
+    subSubjectContentSection: { findMany: async () => [] },
+    subSubjectFaq: { findMany: async () => [] },
     subject: { findFirst: async () => subject },
     subSubject: {
       findFirst: async () => specialization,

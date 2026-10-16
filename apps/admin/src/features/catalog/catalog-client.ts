@@ -18,6 +18,7 @@ import type {
   EditorialMedia,
   SubjectRecord,
   SubSubjectRecord,
+  TaxonomyCountryLink,
   MasterRecord,
   CourseRecord,
   CourseMappingRecord,
@@ -649,6 +650,70 @@ export function saveSpecializationSeo(
 export function deleteSpecializationSeo(id: string, expectedUpdatedAt?: string) {
   return request<{ deleted: boolean }>(
     `/api/v1/admin/specializations/${id}/seo`,
+    { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
+  );
+}
+/* The destinations a subject or a specialization is listed for. */
+export function getSubjectCountries(id: string) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/subjects/${id}/countries`);
+}
+export function saveSubjectCountries(id: string, countryIds: string[]) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/subjects/${id}/countries`, {
+    method: "PUT",
+    body: JSON.stringify({ countryIds }),
+  });
+}
+export function getSpecializationCountries(id: string) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/specializations/${id}/countries`);
+}
+export function saveSpecializationCountries(id: string, countryIds: string[]) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/specializations/${id}/countries`, {
+    method: "PUT",
+    body: JSON.stringify({ countryIds }),
+  });
+}
+/* A specialization's sections and FAQs, the shapes a course's take. */
+export function listSpecializationSections(id: string) {
+  return request<CourseSectionRecord[]>(
+    `/api/v1/admin/specializations/${id}/content-sections`,
+  );
+}
+export function createSpecializationSection(id: string, data: Record<string, unknown>) {
+  return request<CourseSectionRecord>(
+    `/api/v1/admin/specializations/${id}/content-sections`,
+    { method: "POST", body: JSON.stringify(data) },
+  );
+}
+export function updateSpecializationSection(id: string, sectionId: string, data: Record<string, unknown>) {
+  return request<CourseSectionRecord>(
+    `/api/v1/admin/specializations/${id}/content-sections/${sectionId}`,
+    { method: "PATCH", body: JSON.stringify(data) },
+  );
+}
+export function deleteSpecializationSection(id: string, sectionId: string, expectedUpdatedAt?: string) {
+  return request<{ deleted: true }>(
+    `/api/v1/admin/specializations/${id}/content-sections/${sectionId}`,
+    { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
+  );
+}
+export function listSpecializationFaqs(id: string) {
+  return request<CourseFaqRecord[]>(`/api/v1/admin/specializations/${id}/faqs`);
+}
+export function createSpecializationFaq(id: string, data: Record<string, unknown>) {
+  return request<CourseFaqRecord>(`/api/v1/admin/specializations/${id}/faqs`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+export function updateSpecializationFaq(id: string, faqId: string, data: Record<string, unknown>) {
+  return request<CourseFaqRecord>(
+    `/api/v1/admin/specializations/${id}/faqs/${faqId}`,
+    { method: "PATCH", body: JSON.stringify(data) },
+  );
+}
+export function deleteSpecializationFaq(id: string, faqId: string, expectedUpdatedAt?: string) {
+  return request<{ deleted: true }>(
+    `/api/v1/admin/specializations/${id}/faqs/${faqId}`,
     { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
   );
 }

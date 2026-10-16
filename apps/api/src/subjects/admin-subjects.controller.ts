@@ -24,6 +24,7 @@ import {
   SubjectActionDto,
   SubjectListQueryDto,
   SubSubjectListQueryDto,
+  TaxonomyCountriesDto,
   UpdateSubSubjectDto,
   UpdateSubjectDto,
 } from './dto/subject.dto';
@@ -167,6 +168,27 @@ export class AdminSubjectsController {
     return successEnvelope(
       request,
       await this.subjects.removeSubSubject(subjectId, id, dto, request),
+    );
+  }
+
+  /* The destinations the subject is listed for. */
+  @Get(':id/countries') async countries(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.listSubjectCountries(id),
+    );
+  }
+  @Put(':id/countries') async putCountries(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: TaxonomyCountriesDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.putSubjectCountries(id, dto, request),
     );
   }
 

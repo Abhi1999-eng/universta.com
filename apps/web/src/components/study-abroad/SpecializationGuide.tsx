@@ -78,6 +78,41 @@ export type SpecializationRecord = Omit<SpecializationDetail, 'siblings' | 'coun
  * numbered run is built from what actually renders, so the numbering never
  * skips.
  */
+/* The lines a section's body holds: paragraphs for text, items for a
+   checklist, the step text for steps. */
+function sectionLines(section: {
+  sectionType: string;
+  bodyJson: { paragraphs?: unknown; items?: unknown; steps?: unknown } | null;
+}): string[] {
+  const body = section.bodyJson;
+  if (!body) return [];
+  const strings = (value: unknown) =>
+    Array.isArray(value) ? value.filter((line): line is string => typeof line === 'string' && line.trim() !== '') : [];
+  if (section.sectionType === 'CHECKLIST' && strings(body.items).length) return strings(body.items);
+  if (section.sectionType === 'STEPS' && Array.isArray(body.steps))
+    return body.steps
+      .map((step) => (step && typeof step === 'object' ? (step as { text?: unknown }).text : step))
+      .filter((line): line is string => typeof line === 'string' && line.trim() !== '');
+  return strings(body.paragraphs);
+}
+
+const SECTION_EYEBROWS: Record<string, string> = {
+  'what-you-study': 'What you study',
+  curriculum: 'Curriculum',
+  skills: 'Skills',
+  'career-outcomes': 'Careers',
+  'admission-requirements': 'Admission',
+  documents: 'Documents',
+  'application-process': 'Applying',
+  'why-choose': 'Why choose it',
+  'top-destinations': 'Destinations',
+};
+
+function sectionTitle(key: string) {
+  const words = key.replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function SpecializationGuide({
   specialization: record,
   levels = null,
@@ -143,12 +178,21 @@ export function SpecializationGuide({
   const courses = specialization.courses ?? [];
   const groups = levels ?? [];
   const filed = levelTotal(groups);
+  /* Its own content, as a course has: each section is a band of its own,
+     named by its key, after the overview; the FAQs come before the funding
+     hand-off. */
+  const sections = (specialization.contentSections ?? []).filter(
+    (section) => sectionLines(section).length || section.media,
+  );
+  const faqs = specialization.faqs ?? [];
   const order: string[] = [];
   if (hasOverview) order.push('about');
+  for (const section of sections) order.push(`content-${section.sectionKey}`);
   if (taught) order.push('courses');
   if (groups.length || courses.length) order.push('programs');
   if (countries.length) order.push('destinations');
   if (siblings.length) order.push('related');
+  if (faqs.length) order.push('faqs');
   /* Funding, then the consultants hand-off; with no awards recorded the
      hand-off stands alone, since the reference shows consultants on every
      specialization page, programmes or not. */
@@ -227,6 +271,40 @@ export function SpecializationGuide({
           </div>
         </section>
       ) : null}
+
+      {sections.map((section) => {
+        const id = `content-${section.sectionKey}`;
+        const lines = sectionLines(section);
+        return (
+          <section className={band(id)} id={id} key={section.id}>
+            <div className="wrap">
+              <SectionHead
+                n={n(id)}
+                eyebrow={SECTION_EYEBROWS[section.sectionKey] ?? 'About'}
+                title={section.heading ?? sectionTitle(section.sectionKey)}
+                lead={section.subheading}
+              />
+              <div className="prose">
+                {section.media?.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={section.media.url} alt={section.media.alt ?? ''} loading="lazy" />
+                ) : null}
+                {section.sectionType === 'RICH_TEXT'
+                  ? lines.map((line, index) => <RichText key={index} value={line} />)
+                  : section.sectionType === 'CHECKLIST' || section.sectionType === 'STEPS'
+                    ? (
+                        <ul>
+                          {lines.map((line, index) => (
+                            <li key={index}>{line}</li>
+                          ))}
+                        </ul>
+                      )
+                    : lines.map((line, index) => <p key={index}>{line}</p>)}
+              </div>
+            </div>
+          </section>
+        );
+      })}
 
       {/* The design's "Where to study" band: the universities' programmes
           in the specialization, each naming where it is taught, and the
@@ -448,6 +526,33 @@ export function SpecializationGuide({
                 </span>
               </Link>
             </p>
+          </div>
+        </section>
+      ) : null}
+
+      {faqs.length ? (
+        <section className={band('faqs')} id="faqs">
+          <div className="wrap">
+            <SectionHead
+              n={n('faqs')}
+              eyebrow="Questions"
+              title={`Straight answers about ${specialization.name}`}
+            />
+            <div className="faq">
+              {faqs.map((faq) => (
+                <details className="faq__item" key={faq.id}>
+                  <summary className="faq__q">
+                    {faq.question}
+                    <span className="faq__plus" aria-hidden="true">
+                      +
+                    </span>
+                  </summary>
+                  <div className="faq__a prose">
+                    <RichText value={faq.answer} />
+                  </div>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       ) : null}

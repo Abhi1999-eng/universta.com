@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export type CatalogProxyOperation = 'country-tags:list' | 'country-tags:create' | 'country-features:list' | 'country-features:create' | 'country-english-tests:list' | 'country-english-tests:create' | 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | 'specializations:list' | `specializations:get:${string}` | `specializations-seo:get:${string}` | `specializations-seo:put:${string}` | `specializations-seo:delete:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
+export type CatalogProxyOperation = 'country-tags:list' | 'country-tags:create' | 'country-features:list' | 'country-features:create' | 'country-english-tests:list' | 'country-english-tests:create' | 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | `subjects:countries:get:${string}` | `subjects:countries:put:${string}` | `specializations:countries:get:${string}` | `specializations:countries:put:${string}` | 'specializations:list' | `specializations:get:${string}` | `specializations-seo:get:${string}` | `specializations-seo:put:${string}` | `specializations-seo:delete:${string}` | `specializations:sections:list:${string}` | `specializations:sections:create:${string}` | `specializations:sections:update:${string}:${string}` | `specializations:sections:delete:${string}:${string}` | `specializations:faqs:list:${string}` | `specializations:faqs:create:${string}` | `specializations:faqs:update:${string}:${string}` | `specializations:faqs:delete:${string}:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
@@ -114,6 +114,13 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_RELATED_NOT_FOUND: 'One or more related courses were not found',
   COURSE_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
   SUB_SUBJECT_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
+  COUNTRY_INVALID: 'A selected destination does not exist. Reload and choose again',
+  SUB_SUBJECT_SECTION_DUPLICATE: 'This content section key is already used on this specialization',
+  SUB_SUBJECT_SECTION_STALE_VERSION: 'This content section changed in another session. Reload before saving',
+  SUB_SUBJECT_SECTION_NOT_FOUND: 'Content section not found',
+  SUB_SUBJECT_SECTION_INVALID: 'This content section cannot be saved as written',
+  SUB_SUBJECT_FAQ_STALE_VERSION: 'This FAQ changed in another session. Reload before saving',
+  SUB_SUBJECT_FAQ_NOT_FOUND: 'FAQ not found',
   SEO_URL_INVALID: 'SEO canonical URL must use HTTPS',
   MEDIA_INVALID: 'Selected media is not an active image',
   /* An operator reads these, not a developer. They name the card's own words
@@ -263,6 +270,16 @@ function operationDetails(operation: CatalogProxyOperation): {
       body: [...common, ...(profileFields[profile ?? ''] ?? [])],
     };
   }
+  /* The destinations a subject or a specialization is listed for. */
+  if (operation.startsWith('subjects:countries:') || operation.startsWith('specializations:countries:')) {
+    const [resource, , action, id] = operation.split(':');
+    return {
+      method: action === 'get' ? 'GET' : 'PUT',
+      path: `/api/v1/admin/${resource}/${encodeURIComponent(id ?? '')}/countries`,
+      query: [],
+      body: action === 'get' ? [] : ['countryIds'],
+    };
+  }
   if (operation.startsWith('subjects-seo:')) {
     const [, action, id] = operation.split(':');
     const path = `/api/v1/admin/subjects/${encodeURIComponent(id ?? '')}/seo`;
@@ -279,6 +296,20 @@ function operationDetails(operation: CatalogProxyOperation): {
     return { method: 'GET', path: '/api/v1/admin/specializations', query: ['q', 'subjectId', 'status', 'featured', 'sort', 'page', 'limit'], body: [] };
   if (operation.startsWith('specializations:get:'))
     return { method: 'GET', path: `/api/v1/admin/specializations/${encodeURIComponent(operation.slice('specializations:get:'.length))}`, query: [], body: [] };
+  /* A specialization's sections and FAQs: the same shapes a course's take. */
+  if (operation.startsWith('specializations:sections:') || operation.startsWith('specializations:faqs:')) {
+    const [, resource, action, id, childId] = operation.split(':');
+    const pathName = resource === 'sections' ? 'content-sections' : 'faqs';
+    const leaf = childId ? `/${encodeURIComponent(childId)}` : '';
+    return {
+      method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE',
+      path: `/api/v1/admin/specializations/${encodeURIComponent(id ?? '')}/${pathName}${leaf}`,
+      query: [],
+      body: resource === 'sections'
+        ? (action === 'create' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status'] : action === 'update' ? ['sectionKey', 'sectionType', 'heading', 'subheading', 'bodyJson', 'mediaId', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt'])
+        : (action === 'create' ? ['question', 'answer', 'status', 'displayOrder'] : action === 'update' ? ['question', 'answer', 'status', 'displayOrder', 'expectedUpdatedAt'] : ['expectedUpdatedAt']),
+    };
+  }
   if (operation.startsWith('specializations-seo:')) {
     const [, action, id] = operation.split(':');
     const path = `/api/v1/admin/specializations/${encodeURIComponent(id ?? '')}/seo`;

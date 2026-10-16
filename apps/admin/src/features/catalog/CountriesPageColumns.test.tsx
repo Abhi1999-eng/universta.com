@@ -69,7 +69,8 @@ describe('countries list is compact enough to reach its actions', () => {
     render(<CountriesPage />);
     await waitFor(() => expect(screen.getByText('Malta')).toBeVisible());
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+    // The first column is the tick for bulk actions and names nothing.
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim()).filter(Boolean);
     expect(headers).toEqual(KEPT);
     for (const removed of REMOVED) expect(headers).not.toContain(removed);
   });

@@ -244,32 +244,33 @@ model MediaAsset {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  uploadedBy               User?                   @relation("MediaUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
-  avatarUsers              User[]                  @relation("UserAvatar")
-  pageSections             PageSection[]           @relation("PageSectionMedia")
-  backgroundSections       PageSection[]           @relation("PageSectionBackgroundMedia")
-  navigationIcons          NavigationItem[]        @relation("NavigationItemIconMedia")
-  platformMetrics          PlatformMetric[]        @relation("PlatformMetricIconMedia")
-  seoOgMetadata            SeoMetadata[]           @relation("SeoOgMedia")
-  seoTwitterMetadata       SeoMetadata[]           @relation("SeoTwitterMedia")
-  continentIcons           Continent[]             @relation("ContinentIconMedia")
-  continentHeroes          Continent[]             @relation("ContinentHeroMedia")
-  subjectIcons             Subject[]               @relation("SubjectIconMedia")
-  subjectListingMedia      Subject[]               @relation("SubjectListingMedia")
-  subjectHeroMedia         Subject[]               @relation("SubjectHeroMedia")
-  subSubjectIcons          SubSubject[]            @relation("SubSubjectIconMedia")
-  subSubjectListingMedia   SubSubject[]            @relation("SubSubjectListingMedia")
-  countryFlags             Country[]               @relation("CountryFlagMedia")
-  countryListingMedia      Country[]               @relation("CountryListingMedia")
-  countryHeroMedia         Country[]               @relation("CountryHeroMedia")
-  countryMapMedia          Country[]               @relation("CountryMapMedia")
-  cityHeroMedia            City[]                  @relation("CityHeroMedia")
-  countryPrimarySections   CountryContentSection[] @relation("CountryPrimaryMedia")
-  countrySecondarySections CountryContentSection[] @relation("CountrySecondaryMedia")
-  courseFeaturedMedia      Course[]                @relation("CourseFeaturedMedia")
-  courseSections           CourseContentSection[]  @relation("CourseSectionMedia")
-  consultantIcons          ConsultantLandingCard[] @relation("ConsultantIconMedia")
-  consultantFeaturedMedia  ConsultantLandingCard[] @relation("ConsultantFeaturedMedia")
+  uploadedBy               User?                      @relation("MediaUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  avatarUsers              User[]                     @relation("UserAvatar")
+  pageSections             PageSection[]              @relation("PageSectionMedia")
+  backgroundSections       PageSection[]              @relation("PageSectionBackgroundMedia")
+  navigationIcons          NavigationItem[]           @relation("NavigationItemIconMedia")
+  platformMetrics          PlatformMetric[]           @relation("PlatformMetricIconMedia")
+  seoOgMetadata            SeoMetadata[]              @relation("SeoOgMedia")
+  seoTwitterMetadata       SeoMetadata[]              @relation("SeoTwitterMedia")
+  continentIcons           Continent[]                @relation("ContinentIconMedia")
+  continentHeroes          Continent[]                @relation("ContinentHeroMedia")
+  subjectIcons             Subject[]                  @relation("SubjectIconMedia")
+  subjectListingMedia      Subject[]                  @relation("SubjectListingMedia")
+  subjectHeroMedia         Subject[]                  @relation("SubjectHeroMedia")
+  subSubjectIcons          SubSubject[]               @relation("SubSubjectIconMedia")
+  subSubjectListingMedia   SubSubject[]               @relation("SubSubjectListingMedia")
+  countryFlags             Country[]                  @relation("CountryFlagMedia")
+  countryListingMedia      Country[]                  @relation("CountryListingMedia")
+  countryHeroMedia         Country[]                  @relation("CountryHeroMedia")
+  countryMapMedia          Country[]                  @relation("CountryMapMedia")
+  cityHeroMedia            City[]                     @relation("CityHeroMedia")
+  countryPrimarySections   CountryContentSection[]    @relation("CountryPrimaryMedia")
+  countrySecondarySections CountryContentSection[]    @relation("CountrySecondaryMedia")
+  courseFeaturedMedia      Course[]                   @relation("CourseFeaturedMedia")
+  courseSections           CourseContentSection[]     @relation("CourseSectionMedia")
+  subSubjectSections       SubSubjectContentSection[] @relation("SubSubjectSectionMedia")
+  consultantIcons          ConsultantLandingCard[]    @relation("ConsultantIconMedia")
+  consultantFeaturedMedia  ConsultantLandingCard[]    @relation("ConsultantFeaturedMedia")
 
   studentEnglishTestResults StudentEnglishTest[] @relation("StudentEnglishTestResult")
   studentPassportScans      StudentPassport[]    @relation("StudentPassportScan")
@@ -761,14 +762,16 @@ model SubSubject {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   deletedAt        DateTime? @map("deleted_at") @db.DateTime(3)
 
-  subject      Subject                 @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  iconMedia    MediaAsset?             @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
-  listingMedia MediaAsset?             @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
-  createdBy    User?                   @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy    User?                   @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  courses      Course[]
-  countries    CountrySubSubject[]
-  courseLevels SubSubjectCourseLevel[]
+  subject         Subject                    @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  iconMedia       MediaAsset?                @relation("SubSubjectIconMedia", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  listingMedia    MediaAsset?                @relation("SubSubjectListingMedia", fields: [listingMediaId], references: [id], onDelete: SetNull)
+  createdBy       User?                      @relation("SubSubjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?                      @relation("SubSubjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  courses         Course[]
+  countries       CountrySubSubject[]
+  courseLevels    SubSubjectCourseLevel[]
+  contentSections SubSubjectContentSection[]
+  faqs            SubSubjectFaq[]
 
   @@unique([subjectId, name])
   @@unique([subjectId, slug])
@@ -1564,6 +1567,49 @@ model CourseContentSection {
   @@index([courseId, status, displayOrder])
   @@index([mediaId])
   @@map("course_content_sections")
+}
+
+/// A specialization's own content, as a course has: named sections with a
+/// heading, a body and a picture, and the questions students ask. Written in
+/// the specialization editor and shown on its public page.
+model SubSubjectContentSection {
+  id           String    @id @default(uuid()) @db.Char(36)
+  subSubjectId String    @map("sub_subject_id") @db.Char(36)
+  sectionKey   String    @map("section_key") @db.VarChar(100)
+  heading      String?   @db.VarChar(500)
+  subheading   String?   @db.Text
+  bodyJson     Json?     @map("body_json") @db.Json
+  mediaId      String?   @map("media_id") @db.Char(36)
+  displayOrder Int       @default(0) @map("display_order")
+  status       String    @default("ACTIVE") @db.VarChar(30)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
+
+  subSubject SubSubject  @relation(fields: [subSubjectId], references: [id], onDelete: Cascade)
+  media      MediaAsset? @relation("SubSubjectSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@unique([subSubjectId, sectionKey], map: "sub_subject_sections_owner_key_key")
+  @@index([subSubjectId, status, displayOrder], map: "sub_subject_sections_owner_status_order_idx")
+  @@index([mediaId], map: "sub_subject_sections_media_id_idx")
+  @@map("sub_subject_content_sections")
+}
+
+model SubSubjectFaq {
+  id           String    @id @default(uuid()) @db.Char(36)
+  subSubjectId String    @map("sub_subject_id") @db.Char(36)
+  question     String    @db.VarChar(1000)
+  answer       String    @db.LongText
+  status       String    @default("ACTIVE") @db.VarChar(30)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(3)
+
+  subSubject SubSubject @relation(fields: [subSubjectId], references: [id], onDelete: Cascade)
+
+  @@index([subSubjectId, status, displayOrder], map: "sub_subject_faqs_owner_status_order_idx")
+  @@map("sub_subject_faqs")
 }
 
 model CourseFaq {
