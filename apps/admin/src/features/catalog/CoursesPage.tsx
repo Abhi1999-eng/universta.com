@@ -20,8 +20,8 @@ import type {
   SubjectRecord,
 } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
-import { BulkBar, bulkSummary, formatUpdated, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, useRowSelection, useToasts, ViewOnSite } from '@/features/shared/records-ui';
-import { useRouter } from 'next/navigation';
+import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: CourseRecord } | null;
 
@@ -34,16 +34,18 @@ type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: CourseRecord } |
 export function CoursesPage() {
   const [rows, setRows] = useState<CourseRecord[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [subject, setSubject] = useState('');
-  const [subSubject, setSubSubject] = useState('');
-  const [level, setLevel] = useState('');
-  const [country, setCountry] = useState('');
+  const initial = useSearchParams();
+  const [q, setQ] = useState(() => initial.get('q') ?? '');
+  const [status, setStatus] = useState(() => initial.get('status') ?? '');
+  const [subject, setSubject] = useState(() => initial.get('subject') ?? '');
+  const [subSubject, setSubSubject] = useState(() => initial.get('subSubject') ?? '');
+  const [level, setLevel] = useState(() => initial.get('level') ?? '');
+  const [country, setCountry] = useState(() => initial.get('country') ?? '');
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(initial.get('page')) || 1);
+  useFiltersInUrl({ q, status, subject, subSubject, level, country, page });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pending, setPending] = useState<Pending>(null);
@@ -198,7 +200,6 @@ export function CoursesPage() {
     <section aria-labelledby="courses-heading">
       <header className="p-head">
         <div>
-          <p className="p-eyebrow">Subject &amp; specialization</p>
           <h2 id="courses-heading" className="p-h1">
             Courses
           </h2>

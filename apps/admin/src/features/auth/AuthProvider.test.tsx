@@ -14,7 +14,7 @@ const authMocks = vi.hoisted(() => ({
 const routerReplace = vi.fn();
 
 vi.mock('./auth-client', () => authMocks);
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: routerReplace }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: routerReplace }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/', }));
 
 const user = {
   id: 'user-1',

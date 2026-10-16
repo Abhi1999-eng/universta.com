@@ -269,7 +269,6 @@ export function SpecializationForm({ id }: { id?: string }) {
       <Link href="/specializations" className="p-link">← Specializations</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">Specialization</p>
           <h2 id="specialization-form-heading" className="p-h1">{record ? 'Edit specialization' : 'Create specialization'}</h2>
           <p className="p-sub">Basic information, study levels, content sections, FAQs and SEO are saved together.{subject ? <> Belongs to <Link href={`/subjects/${subject.id}`} className="p-link">{subject.name}</Link>.</> : null}</p>
         </div>

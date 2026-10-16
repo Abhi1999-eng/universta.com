@@ -16,8 +16,7 @@ import { AuthProvider, ProtectedBoundary } from './AuthProvider';
 
 const replace = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace, push: vi.fn() }),
-}));
+  useRouter: () => ({ replace, push: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/', }));
 
 const refreshSession = vi.fn();
 const getCurrentUser = vi.fn();

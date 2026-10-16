@@ -334,9 +334,6 @@ export function SeoManagementHub() {
   ] as const;
   return (
     <section className="mx-auto w-full max-w-[1180px]">
-      <p className="p-eyebrow">
-        Platform tools
-      </p>
       <h2 className="p-h1">
         SEO management
       </h2>
@@ -402,7 +399,6 @@ export function SeoManagementHub() {
       {tab === "default" ? (
         <SettingsManager
           only={["seo"]}
-          eyebrow="SEO management"
           title="Default SEO"
           intro="Global fallback values used when an indexable page has no manual SEO or matching bulk template."
         />

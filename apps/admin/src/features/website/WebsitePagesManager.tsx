@@ -137,9 +137,6 @@ export function WebsitePagesManager() {
   return (
     <section aria-labelledby="website-pages-heading">
       <div>
-        <p className="p-eyebrow">
-          Website Builder
-        </p>
         <h2
           id="website-pages-heading"
           className="p-h1"

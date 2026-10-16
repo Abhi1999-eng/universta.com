@@ -722,7 +722,6 @@ export function CourseForm({ id }: { id?: string }) {
       <Link href="/courses" className="p-link">← Courses</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">Course</p>
           <h2 id="course-form-heading" className="p-h1">{record ? 'Edit course' : 'Create course'}</h2>
           <p className="mt-2 max-w-3xl p-sub">Core data, availability, content, FAQs, related courses and SEO load on one page and save together.</p>
           <p className="mt-2 text-xs font-semibold text-[#667085]"><span className="p-danger">*</span> Required field. Some fields are required only when a section is used or when publishing.</p>

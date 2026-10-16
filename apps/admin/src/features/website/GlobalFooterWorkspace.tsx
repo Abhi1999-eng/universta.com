@@ -74,9 +74,6 @@ export function GlobalFooterWorkspace() {
     <section className="mt-6 space-y-4" aria-labelledby="global-footer-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="p-eyebrow">
-            Website Builder
-          </p>
           <h2 id="global-footer-heading" className="p-h1">
             Global Footer
           </h2>

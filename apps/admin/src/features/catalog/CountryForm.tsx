@@ -1333,9 +1333,6 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       </Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">
-            Country
-          </p>
           <h2 id="country-form-heading" className="p-h1">
             {record ? "Edit country" : "Create country"}
           </h2>

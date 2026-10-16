@@ -217,7 +217,6 @@ export function ExperimentsManager() {
   return (
     <section className="mx-auto w-full max-w-[1240px]">
       <div>
-        <p className="p-eyebrow">A/B testing</p>
         <h2 className="p-h1">Experiments</h2>
         <p className="p-sub">
           Run bot-safe, deterministic variant tests against a single CMS section. Each

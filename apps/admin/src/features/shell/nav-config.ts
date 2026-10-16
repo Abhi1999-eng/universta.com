@@ -43,22 +43,15 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // The client's wording. Subjects, their specializations, the study levels
-    // and the courses are one chain, so they live together, each with its
-    // list and its "Add" as the client asked for.
+    // Subjects, their specializations, the study levels and the courses are
+    // one chain, so they live together. Each list carries its own "Create"
+    // button, so the sidebar names the lists only.
     label: "Subject & specialization",
     items: [
       { label: "All subjects", href: "/subjects" },
-      { label: "Add subject", href: "/subjects/new" },
       { label: "All specializations", href: "/specializations" },
-      { label: "Add specialization", href: "/specializations/new" },
       { label: "All levels", href: "/catalog-masters?section=course-levels" },
-      {
-        label: "Add level",
-        href: "/catalog-masters?section=course-levels&new=1",
-      },
       { label: "Courses", href: "/courses" },
-      { label: "Add course", href: "/courses/new" },
       { label: "Study modes", href: "/catalog-masters?section=study-modes" },
       { label: "Intakes", href: "/catalog-masters?section=intakes" },
     ],

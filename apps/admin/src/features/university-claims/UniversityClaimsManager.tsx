@@ -134,7 +134,6 @@ export function UniversityClaimsManager() {
   return (
     <section className="mx-auto w-full max-w-[1240px]">
       <div>
-        <p className="p-eyebrow">Trust & partnerships</p>
         <h2 className="p-h1">University claim requests</h2>
         <p className="p-sub">
           Review requests to take ownership of a published university listing. Approving a

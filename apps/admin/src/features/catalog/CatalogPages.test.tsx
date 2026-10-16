@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   deleteContinent: vi.fn(),
 }));
 vi.mock('./catalog-client', () => mocks);
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/', }));
 vi.mock('next/link', () => ({ default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => <a href={href} {...props}>{children}</a> }));
 
 const meta = { page: 1, limit: 12, total: 0, totalPages: 0 };

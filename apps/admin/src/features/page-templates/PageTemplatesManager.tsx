@@ -181,7 +181,6 @@ export function PageTemplatesManager() {
     <section className="mx-auto w-full max-w-[1180px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">Content management</p>
           <h2 className="p-h1">Page templates</h2>
           <p className="p-sub">
             Reusable starting structures for a page family. In Website Pages, Apply template saves the assignment and
