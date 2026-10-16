@@ -135,8 +135,8 @@ export class StudyModesService {
       const row = await this.prisma.studyMode.update({
         where: { id },
         data: {
-          code: dto.code,
-          name: dto.name,
+          code: dto.code ?? current.code,
+          name: dto.name ?? current.name,
           description: dto.description,
           displayOrder: dto.displayOrder ?? current.displayOrder,
           status: dto.status ?? current.status,

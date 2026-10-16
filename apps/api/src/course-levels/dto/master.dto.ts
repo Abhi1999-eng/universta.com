@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, type TransformFnParams } from 'class-transformer';
 import {
   IsIn,
@@ -63,7 +63,10 @@ export class MasterFieldsDto {
   status?: string;
 }
 export class CreateMasterDto extends MasterFieldsDto {}
-export class UpdateMasterDto extends MasterFieldsDto {
+/** An update is a PATCH: a field left out keeps its value. The admin's
+ * "Deactivate" sends the status alone, and was refused for the code and
+ * name it did not mean to change. */
+export class UpdateMasterDto extends PartialType(MasterFieldsDto) {
   @ApiPropertyOptional() @IsOptional() @IsISO8601() expectedUpdatedAt?: string;
 }
 export class MasterActionDto {
