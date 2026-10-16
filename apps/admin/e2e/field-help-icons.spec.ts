@@ -82,8 +82,11 @@ test.describe('Field help icons', () => {
 
   test('Scholarship form (Phase1StructuredEditor): shared Field/Select/media-picker icons render and never submit the form', async ({ page }) => {
     await page.goto('/phase1/scholarships');
-    const url = page.url();
     await page.getByRole('button', { name: 'Create record' }).click();
+    // The open editor lives in the address, so the reference is taken once
+    // it is open.
+    await expect(page).toHaveURL(/\/phase1\/scholarships\?new=1$/);
+    const url = page.url();
 
     const titleIcon = page.getByRole('button', { name: 'Information about Title' });
     await expect(titleIcon).toBeVisible();
@@ -102,7 +105,7 @@ test.describe('Field help icons', () => {
     // text is not a reliable signal here — it isn't guaranteed to stay
     // rendered once the create editor opens.)
     await expect(page).toHaveURL(url);
-    await expect(page.getByRole('heading', { name: 'Create scholarships' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create scholarship' })).toBeVisible();
   });
 
   test('Generic Course form: icon renders for a shared select field and opens correct content', async ({ page }) => {
