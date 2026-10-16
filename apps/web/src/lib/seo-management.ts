@@ -29,6 +29,16 @@ export type ResolvedSeo = {
   source?: { title?: string; description?: string };
 };
 
+/**
+ * A title for a route under the "%s | Universta" template. An editor who
+ * typed the site name into an SEO title got it twice ("… | Universta |
+ * Universta"); such a title is used as it is instead.
+ */
+export function templatedTitle(title: string): string | { absolute: string } {
+  const trimmed = title.trim();
+  return /\|\s*Universta\s*$/i.test(trimmed) ? { absolute: trimmed } : trimmed;
+}
+
 export function titleWithSuffix(title: string, seo?: ResolvedSeo | null) {
   const suffix = seo?.titleSuffix;
   if (!suffix)

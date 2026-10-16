@@ -75,11 +75,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   /* The browser tab names the screen, so several open tabs can be told
      apart: "Courses · Universta Admin", not "Super Admin | Universta" on
-     every one. Next restores the layout's title on every navigation,
-     filter changes in the query string included, so it is set again on
-     each one. */
+     every one. Next writes the layout's title back on every navigation and
+     on every router.refresh() a form makes after saving, so the title is
+     watched and put back whenever it is overwritten. */
   useEffect(() => {
-    document.title = `${pageTitle} · Universta Admin`;
+    const wanted = `${pageTitle} · Universta Admin`;
+    const apply = () => {
+      if (document.title !== wanted) document.title = wanted;
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
   }, [pageTitle, location]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);

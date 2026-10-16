@@ -798,6 +798,29 @@ function UniversityFields(p: any) {
     </>
   );
 }
+/* Fixed lists for values the API and the website read by code. As free
+   text, "ENGLISH" was saved where the site's English-test filter looks for
+   ENGLISH_TEST, and a period other than PER_YEAR silently kept a fee out of
+   every comparison. */
+const DURATION_UNITS: Option[] = [
+  { id: 'YEARS', name: 'Years' },
+  { id: 'MONTHS', name: 'Months' },
+];
+const TUITION_PERIODS: Option[] = [
+  { id: 'PER_YEAR', name: 'Per year' },
+  { id: 'PER_SEMESTER', name: 'Per semester' },
+  { id: 'TOTAL', name: 'Total for the programme' },
+];
+const REQUIREMENT_CATEGORIES: Option[] = [
+  { id: 'ACADEMIC', name: 'Academic' },
+  { id: 'ENGLISH_TEST', name: 'English test' },
+  { id: 'OTHER', name: 'Other' },
+];
+/** A fixed list, plus whatever an older record already holds, so a value
+ * saved before the list existed still shows and can be changed. */
+function withCurrent(options: Option[], value: string): Option[] {
+  return value && !options.some((option) => option.id === value) ? [...options, { id: value, name: value }] : options;
+}
 function OfferingFields(p: any) {
   return (
     <>
@@ -822,11 +845,11 @@ function OfferingFields(p: any) {
         </div>
         <Field label="Duration minimum" type="number" value={p.values.durationMin ?? ''} onChange={(value) => p.set('durationMin', value)} />
         <Field label="Duration maximum" type="number" value={p.values.durationMax ?? ''} onChange={(value) => p.set('durationMax', value)} />
-        <Field label="Duration unit" value={p.values.durationUnit || 'YEARS'} onChange={(value) => p.set('durationUnit', value)} helpKey="offerings.durationUnit" />
+        <Select label="Duration unit" value={p.values.durationUnit || 'YEARS'} onChange={(value) => p.set('durationUnit', value)} options={withCurrent(DURATION_UNITS, p.values.durationUnit ?? '')} helpKey="offerings.durationUnit" />
         <Field label="Tuition minimum" type="number" value={p.values.tuitionMin ?? ''} onChange={(value) => p.set('tuitionMin', value)} />
         <Field label="Tuition maximum" type="number" value={p.values.tuitionMax ?? ''} onChange={(value) => p.set('tuitionMax', value)} />
         <Field label="Currency" value={p.values.currencyCode ?? ''} onChange={(value) => p.set('currencyCode', value)} helpKey="offerings.currencyCode" />
-        <Field label="Tuition period" value={p.values.tuitionPeriod ?? ''} onChange={(value) => p.set('tuitionPeriod', value)} />
+        <Select label="Tuition period" value={p.values.tuitionPeriod ?? ''} onChange={(value) => p.set('tuitionPeriod', value)} options={withCurrent(TUITION_PERIODS, p.values.tuitionPeriod ?? '')} />
         <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} helpKey="offerings.applicationUrl" />
         <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} helpKey="offerings.sourceReference" />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="offerings.featuredMediaId" />
@@ -842,6 +865,7 @@ function OfferingFields(p: any) {
         title="Academic and English-test requirements"
         rows={p.rows.requirements}
         fields={['category', 'title', 'description', 'minimumScore']}
+        choices={{ category: REQUIREMENT_CATEGORIES }}
         helpPrefix="requirements"
         add={() =>
           p.addRow('requirements', {
@@ -1074,15 +1098,19 @@ function TestimonialFields(p: any) {
     </>
   );
 }
-function Repeater({ title, rows, fields, add, update, helpPrefix }: { title: string; rows: Array<Record<string, string>>; fields: string[]; add: () => void; update: (index: number, key: string, value: string) => void; helpPrefix?: string }) {
+function Repeater({ title, rows, fields, add, update, helpPrefix, choices }: { title: string; rows: Array<Record<string, string>>; fields: string[]; add: () => void; update: (index: number, key: string, value: string) => void; helpPrefix?: string; choices?: Record<string, Option[]> }) {
   return (
     <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">{title}</legend>
       {rows.map((row, index) => (
         <div key={index} className="mt-3 grid gap-3 rounded-xl bg-[#F8FAFC] p-3 sm:grid-cols-2">
-          {fields.map((field) => (
-            <Field key={field} label={rowFieldLabel(field)} value={row[field] ?? ''} onChange={(value) => update(index, field, value)} helpKey={helpPrefix ? `${helpPrefix}.${field}` : undefined} />
-          ))}
+          {fields.map((field) =>
+            choices?.[field] ? (
+              <Select key={field} label={rowFieldLabel(field)} value={row[field] ?? ''} onChange={(value) => update(index, field, value)} options={withCurrent(choices[field], row[field] ?? '')} helpKey={helpPrefix ? `${helpPrefix}.${field}` : undefined} />
+            ) : (
+              <Field key={field} label={rowFieldLabel(field)} value={row[field] ?? ''} onChange={(value) => update(index, field, value)} helpKey={helpPrefix ? `${helpPrefix}.${field}` : undefined} />
+            ),
+          )}
         </div>
       ))}
       <button type="button" onClick={add} className="mt-3 rounded-lg border border-[#D9E0EA] px-3 py-2 text-sm font-semibold">

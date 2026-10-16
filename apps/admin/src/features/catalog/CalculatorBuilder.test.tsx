@@ -120,4 +120,24 @@ describe("calculator builder", () => {
     expect(screen.getByText(/set up outside the form/i)).toBeTruthy();
     expect(screen.getByDisplayValue(exotic)).toBeTruthy();
   });
+
+  /* A long answer made a key longer than the 40 characters the API takes,
+     and the whole calculator was refused with no word on why. */
+  it("keeps a new answer's key within what the API accepts", () => {
+    let latest = "";
+    const fresh = {
+      ...config,
+      factors: [{ label: "Which kind of university?", options: [{ label: "A national university, such as the University of Tokyo", mult: 1 }] }],
+    };
+    render(<CalculatorBuilder value={JSON.stringify(fresh)} onChange={(next) => { latest = next; }} />);
+    fireEvent.change(screen.getByDisplayValue("130"), { target: { value: "140" } });
+    const parsed = JSON.parse(latest) as { factors: Array<{ options: Array<{ value: string }> }> };
+    expect(parsed.factors[0].options[0].value.length).toBeLessThanOrEqual(40);
+  });
+
+  it("names a figure above the ceiling before the save is refused", () => {
+    render(<CalculatorBuilder value={JSON.stringify(config)} onChange={() => {}} />);
+    fireEvent.change(screen.getAllByDisplayValue("800")[1], { target: { value: "250000000" } });
+    expect(screen.getByText(/tuition can be at most 100,000,000/i)).toBeTruthy();
+  });
 });

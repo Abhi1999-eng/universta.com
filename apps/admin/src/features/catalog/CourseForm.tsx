@@ -193,6 +193,20 @@ const mappingBlank = (): MappingDraft => ({
   displayOrder: '0',
   intakes: [],
 });
+/* The section keys the API accepts for a course. A free-text key let an
+   author type one it then refused, after the course itself had already been
+   created. */
+const COURSE_SECTION_KEYS = [
+  { id: 'curriculum', label: 'Curriculum' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'admission-requirements', label: 'Admission requirements' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'career-outcomes', label: 'Career outcomes' },
+  { id: 'application-process', label: 'Application process' },
+  { id: 'source-trust', label: 'Source and trust information' },
+  { id: 'counselling-cta', label: 'Counselling call to action' },
+] as const;
+const sectionKeyIds: ReadonlySet<string> = new Set(COURSE_SECTION_KEYS.map((key) => key.id));
 const sectionBlank = (): SectionDraft => ({ sectionKey: 'curriculum', sectionType: 'RICH_TEXT', heading: '', subheading: '', bodyText: '', mediaId: '', status: 'ACTIVE', displayOrder: '0' });
 const faqBlank = (): FaqDraft => ({ question: '', answer: '', status: 'ACTIVE', displayOrder: '0' });
 const input = 'p-input';
@@ -528,7 +542,8 @@ export function CourseForm({ id }: { id?: string }) {
       if (row.currencyCode && !/^[A-Za-z]{3}$/.test(row.currencyCode.trim())) next.push(`${label}: currency must be a 3-letter code.`);
     });
     activeSections.forEach((row, index) => {
-      if (!row.sectionKey.trim()) next.push(`Content section ${index + 1}: section key is required.`);
+      if (!row.sectionKey.trim()) next.push(`Content section ${index + 1}: choose what the section is about.`);
+      else if (!sectionKeyIds.has(row.sectionKey)) next.push(`Content section ${index + 1}: choose what the section is about from the list.`);
       if (!/^\d+$/.test(row.displayOrder)) next.push(`Content section ${index + 1}: display order must be a whole number.`);
     });
     activeFaqs.forEach((row, index) => {
@@ -652,6 +667,8 @@ export function CourseForm({ id }: { id?: string }) {
     setSaving(true);
     setSavingIntent(intent);
     setError('');
+    /* The course this save is working on, once it exists. */
+    let courseId: string | null = record?.id ?? null;
     try {
       const corePayload = {
         subjectId: core.subjectId,
@@ -686,6 +703,7 @@ export function CourseForm({ id }: { id?: string }) {
          and /courses/[id] are separate routes and swapping them mid-save
          would unmount the form under its own request. */
       if (!record) setRecord(saved);
+      courseId = saved.id;
       saved = (await replaceCourseModes(saved.id, selectedModes, saved.updatedAt)).data;
       await syncMappings(saved.id);
       await syncSections(saved.id);
@@ -709,6 +727,19 @@ export function CourseForm({ id }: { id?: string }) {
     } catch (cause: unknown) {
       setError(catalogErrorText(cause, 'Unable to save course'));
       showAlert();
+      /* A step after the core can fail once the row has already moved on
+         (study modes and mappings bump its version). Holding the version the
+         save started from turned the author's retry into "The course changed
+         in another session", and their sections, FAQs and SEO were lost when
+         they reloaded. Re-reading the course keeps the retry an ordinary
+         update of what is really stored. */
+      if (courseId) {
+        try {
+          setRecord((await getAdminCourse(courseId)).data);
+        } catch {
+          /* The original error is the one worth showing. */
+        }
+      }
     } finally {
       setSaving(false);
       setSavingIntent(null);
@@ -822,5 +853,5 @@ function AvailabilityRow({ index, row, countries, intakes, onChange, onRemove }:
 
 function ContentRow({ index, row, media, onChange, onRemove }: { index: number; row: SectionDraft; media: EditorialMedia[]; onChange: (patch: Partial<SectionDraft>) => void; onRemove: () => void }) {
   const sectionUsed = Boolean(row.id || row.heading.trim() || row.bodyText.trim() || row.subheading.trim() || row.mediaId);
-  return <div className="p-panel"><div className="flex justify-between gap-3"><h4 className="font-semibold">Content section {index + 1}</h4>{index > 0 || row.id ? <button type="button" onClick={onRemove} className="p-danger">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="Section key" value={row.sectionKey} onChange={(value) => onChange({ sectionKey: value })} required={sectionUsed} /><Select label="Section type" value={row.sectionType} onChange={(value) => onChange({ sectionType: value })} options={['RICH_TEXT','CHECKLIST','STEPS','FACT_GRID','CARD_GRID'].map((id) => ({ id, label: id.replaceAll('_', ' ') }))} required={sectionUsed} /><Input label="Heading" value={row.heading} onChange={(value) => onChange({ heading: value })} /><Input label="Subheading" value={row.subheading} onChange={(value) => onChange({ subheading: value })} />{row.sectionType === 'RICH_TEXT' ? <div className="sm:col-span-full"><RichTextEditor label="Body" value={row.bodyText} onChange={(bodyText) => onChange({ bodyText })} allowedVariables={variablesForContext('course')} entityContext={{ variableContext: 'course' }} media={media} /></div> : <Input label="Body" value={row.bodyText} onChange={(value) => onChange({ bodyText: value })} textarea span rows={6} />}<MediaPickerDialog label="Section media" value={row.mediaId} media={media} onChange={(value) => onChange({ mediaId: value })} /><Select label="Status" value={row.status} onChange={(value) => onChange({ status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => onChange({ displayOrder: value })} type="number" /></div></div>;
+  return <div className="p-panel"><div className="flex justify-between gap-3"><h4 className="font-semibold">Content section {index + 1}</h4>{index > 0 || row.id ? <button type="button" onClick={onRemove} className="p-danger">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Select label="About" value={row.sectionKey} onChange={(value) => onChange({ sectionKey: value })} options={[...COURSE_SECTION_KEYS]} required={sectionUsed} /><Select label="Section type" value={row.sectionType} onChange={(value) => onChange({ sectionType: value })} options={['RICH_TEXT','CHECKLIST','STEPS','FACT_GRID','CARD_GRID'].map((id) => ({ id, label: id.replaceAll('_', ' ') }))} required={sectionUsed} /><Input label="Heading" value={row.heading} onChange={(value) => onChange({ heading: value })} /><Input label="Subheading" value={row.subheading} onChange={(value) => onChange({ subheading: value })} />{row.sectionType === 'RICH_TEXT' ? <div className="sm:col-span-full"><RichTextEditor label="Body" value={row.bodyText} onChange={(bodyText) => onChange({ bodyText })} allowedVariables={variablesForContext('course')} entityContext={{ variableContext: 'course' }} media={media} /></div> : <Input label="Body" value={row.bodyText} onChange={(value) => onChange({ bodyText: value })} textarea span rows={6} />}<MediaPickerDialog label="Section media" value={row.mediaId} media={media} onChange={(value) => onChange({ mediaId: value })} /><Select label="Status" value={row.status} onChange={(value) => onChange({ status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => onChange({ displayOrder: value })} type="number" /></div></div>;
 }

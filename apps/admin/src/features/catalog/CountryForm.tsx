@@ -367,7 +367,10 @@ const blankCard = (): CardRow => ({
   iconMediaId: "",
   featuredMediaId: "",
   isFreeConsultation: true,
-  ctaLabel: "View consultants",
+  /* Empty, with the default shown as a placeholder: a filled-in default
+     was typed onto ("View consultantsBook a free consultation"). The save
+     still falls back to it when the box is left empty. */
+  ctaLabel: "",
   ctaUrl: "",
   status: "DRAFT",
   isFeatured: false,
@@ -2054,6 +2057,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
                     <Input
                       label="CTA label"
                       value={row.ctaLabel}
+                      placeholder="View consultants"
                       onChange={(value) =>
                         updateCard(index, { ctaLabel: value })
                       }
@@ -2180,6 +2184,7 @@ function Input({
   error,
   onBlur,
   name,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -2199,6 +2204,7 @@ function Input({
   onBlur?: () => void;
   /** Lets Save focus the first field the operator still has to fix. */
   name?: string;
+  placeholder?: string;
 }) {
   // A label-derived id alone collides wherever a field repeats: every content
   // section renders a "Section key", so the sections shared one id, both labels
@@ -2211,6 +2217,7 @@ function Input({
     className: `${input} ${error ? "border-[#D92D20] focus:border-[#D92D20]" : ""}`,
     value,
     maxLength,
+    placeholder,
     "aria-invalid": error ? true : undefined,
     "aria-describedby": error ? errorId : undefined,
     "data-field": name,

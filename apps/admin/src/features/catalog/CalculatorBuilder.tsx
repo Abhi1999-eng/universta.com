@@ -161,9 +161,14 @@ function isEmpty(draft: Draft): boolean {
   );
 }
 
-/** Unique within its list, so two answers named the same still both save. */
+/* What the API accepts; past these it refuses the whole calculator. */
+const LIMITS = { key: 40, label: 80, note: 120, money: 100_000_000 } as const;
+
+/** Unique within its list, so two answers named the same still both save.
+ * Cut short enough to stay within the key limit with a "-2" on the end: a
+ * long answer used to make a key the API refused. */
 function uniqueKey(label: string, taken: Set<string>, fallback: string): string {
-  const base = slugFromText(label) || fallback;
+  const base = (slugFromText(label) || fallback).slice(0, LIMITS.key - 4).replace(/-+$/, "") || fallback;
   let key = base;
   let n = 2;
   while (taken.has(key)) key = `${base}-${n++}`;
@@ -232,8 +237,12 @@ function problems(draft: Draft): string[] {
   const found: string[] = [];
   const low = Number(draft.livingMin);
   const high = Number(draft.livingMax);
+  const tooMuch = (value: string) => value.trim() !== "" && Number(value) > LIMITS.money;
+  const money = LIMITS.money.toLocaleString("en-US");
   if (!draft.livingMin || !draft.livingMax || !draft.insurance || !draft.semesterFee)
     found.push("Fill all four monthly cost boxes, or clear the whole calculator.");
+  else if ([draft.livingMin, draft.livingMax, draft.insurance, draft.semesterFee].some(tooMuch))
+    found.push(`A monthly cost can be at most ${money}.`);
   else if (Number.isFinite(low) && Number.isFinite(high) && high < low)
     found.push("The highest living cost cannot be lower than the lowest.");
 
@@ -245,10 +254,18 @@ function problems(draft: Draft): string[] {
   filled.forEach((factor, index) => {
     const name = factor.label.trim() || `Question ${index + 1}`;
     if (!factor.label.trim()) found.push(`Question ${index + 1} needs a question.`);
+    else if (factor.label.trim().length > LIMITS.label)
+      found.push(`Question ${index + 1} is longer than ${LIMITS.label} characters.`);
     if (!factor.options.some((option) => option.label.trim()))
       found.push(`"${name}" needs at least one answer.`);
     factor.options.forEach((option) => {
       if (!option.label.trim()) return;
+      if (option.label.trim().length > LIMITS.label)
+        found.push(`"${option.label.trim().slice(0, 30)}…" is longer than ${LIMITS.label} characters.`);
+      if (option.note.trim().length > LIMITS.note)
+        found.push(`The note under "${option.label.trim()}" is longer than ${LIMITS.note} characters.`);
+      if (tooMuch(option.tuitionMin) || tooMuch(option.tuitionMax))
+        found.push(`"${option.label.trim()}": tuition can be at most ${money}.`);
       const mult = Number(option.mult);
       if (option.mult && (!Number.isFinite(mult) || mult < 0.1 || mult > 5))
         found.push(
@@ -290,6 +307,7 @@ function Money({
         className={inputClass}
         type="number"
         min={0}
+        max={LIMITS.money}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -445,6 +463,7 @@ export function CalculatorBuilder({
                 <input
                   className={inputClass}
                   value={factor.label}
+                  maxLength={LIMITS.label}
                   placeholder="Where will you live?"
                   onChange={(event) =>
                     setFactor(factorIndex, { label: event.target.value })
@@ -479,6 +498,7 @@ export function CalculatorBuilder({
                       <input
                         className={inputClass}
                         value={option.label}
+                        maxLength={LIMITS.label}
                         placeholder="In the capital"
                         onChange={(event) =>
                           setOption(factorIndex, optionIndex, {
@@ -530,6 +550,7 @@ export function CalculatorBuilder({
                       <input
                         className={inputClass}
                         value={option.note}
+                        maxLength={LIMITS.note}
                         placeholder="Shown to the student under this answer"
                         onChange={(event) =>
                           setOption(factorIndex, optionIndex, {
@@ -537,6 +558,11 @@ export function CalculatorBuilder({
                           })
                         }
                       />
+                      {/* The field stops at the limit, so say how much is left
+                          rather than let a pasted note lose its end unseen. */}
+                      <span className="mt-1 block p-hint" aria-live="polite">
+                        {option.note.length}/{LIMITS.note} characters
+                      </span>
                     </label>
                     {factor.options.length > 1 ? (
                       <button

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { templatedTitle } from '@/lib/seo-management';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CostCalculator } from '@/components/study-abroad/CostCalculator';
@@ -74,7 +75,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     seo?.metaDescription ??
     (country.shortDescription ? richTextToPlainText(country.shortDescription).slice(0, 300) : '');
   return {
-    title,
+    title: templatedTitle(title),
     description,
     /* The guide lives at /study-abroad/<slug>; the old /countries URL redirects
      * here, so this is the only address search engines are pointed at. */

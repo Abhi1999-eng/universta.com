@@ -9,7 +9,7 @@ import { jsonLdString } from '@/lib/json-ld';
 import { phaseList } from '@/lib/phase1';
 import { programmeSample } from '@/lib/programme-sample';
 import { toScholarshipCards } from '@/lib/scholarship-card';
-import { resolvedMetadata } from '@/lib/seo-management';
+import { resolvedMetadata, templatedTitle } from '@/lib/seo-management';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     /* `resolvedMetadata` appends the site name, and this route family's
        layout appends it again through its title template. Hand the template
        the bare title and let it do that once. */
-    title: specialization.seo?.seoTitle ?? `Study ${specialization.name} abroad`,
+    title: templatedTitle(specialization.seo?.seoTitle ?? `Study ${specialization.name} abroad`),
     ...(written ? {} : { robots: { index: false, follow: true } }),
   };
 }

@@ -18,7 +18,7 @@ import { RecordVisit } from "@/components/study-abroad/ContinueJourney";
 import { phaseList } from "@/lib/phase1";
 
 import { jsonLdString } from "@/lib/json-ld";
-import { resolvedMetadata } from "@/lib/seo-management";
+import { resolvedMetadata, templatedTitle } from "@/lib/seo-management";
 import { toScholarshipCards } from "@/lib/scholarship-card";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   /* `resolvedMetadata` appends the site name, and this route family's layout
      appends it again through its title template. Hand the template the bare
      title and let it do that once. */
-  return { ...resolved, title: subject.seo?.seoTitle ?? subject.name };
+  return { ...resolved, title: templatedTitle(subject.seo?.seoTitle ?? subject.name) };
 }
 
 export default async function SubjectDetailPage({ params }: Props) {

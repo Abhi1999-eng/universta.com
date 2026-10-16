@@ -425,7 +425,7 @@ export function SpecializationGuide({
             <SectionHead
               n={n('destinations')}
               eyebrow="Destinations"
-              title={`Where you can study ${specialization.name}`}
+              title={`Destinations for ${specialization.name}`}
               lead={destinationsLead({
                 name: specialization.name,
                 countries,

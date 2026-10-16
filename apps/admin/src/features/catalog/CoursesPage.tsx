@@ -8,6 +8,7 @@ import {
   listCountries,
   listCourseLevels,
   listAllSubjects,
+  listSpecializations,
   publishCourse,
   unpublishCourse,
   listEvery,
@@ -18,6 +19,7 @@ import type {
   MasterRecord,
   PageMeta,
   SubjectRecord,
+  SubSubjectRecord,
 } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
 import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
@@ -44,6 +46,7 @@ export function CoursesPage() {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
+  const [specializations, setSpecializations] = useState<SubSubjectRecord[]>([]);
   const [page, setPage] = useState(() => Number(initial.get('page')) || 1);
   useFiltersInUrl({ q, status, subject, subSubject, level, country, page });
   const [loading, setLoading] = useState(true);
@@ -103,6 +106,22 @@ export function CoursesPage() {
       cancelled = true;
     };
   }, []);
+
+  /* The specialization filter offers the chosen subject's specializations,
+     by name. It used to be a box for typing a slug. */
+  const subjectId = subjects.find((item) => item.slug === subject)?.id ?? '';
+  useEffect(() => {
+    if (!subjectId) return;
+    let cancelled = false;
+    void listSpecializations({ subjectId, limit: 100 })
+      .then((result) => {
+        if (!cancelled) setSpecializations(result.data);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectId]);
 
   /* How many are live and how many are not, for the line over the table. */
   const loadCounts = useCallback(() => {
@@ -227,6 +246,7 @@ export function CoursesPage() {
               value={subject}
               onChange={(event) => {
                 setSubject(event.target.value);
+                setSubSubject('');
                 setPage(1);
               }}
             >
@@ -239,16 +259,23 @@ export function CoursesPage() {
             </select>
           </label>
           <label className="p-field">
-            <span className="p-label">Sub-Subject slug</span>
-            <input
+            <span className="p-label">Specialization</span>
+            <select
               className="p-input"
               value={subSubject}
+              disabled={!subjectId}
               onChange={(event) => {
                 setSubSubject(event.target.value);
                 setPage(1);
               }}
-              placeholder="Optional slug"
-            />
+            >
+              <option value="">{subjectId ? 'All specializations' : 'Choose a subject first'}</option>
+              {(subjectId ? specializations : []).map((item) => (
+                <option key={item.id} value={item.slug}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="p-field">
             <span className="p-label">Course level</span>

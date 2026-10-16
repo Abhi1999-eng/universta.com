@@ -278,7 +278,9 @@ export class CountryProfilesService {
         description: true,
         displayOrder: true,
       },
-      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      /* Calendar order: with every intake at the same display order the
+         name decided, and course editors met February before January. */
+      orderBy: [{ displayOrder: 'asc' }, { startMonth: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
   }
 

@@ -229,7 +229,7 @@ export function SubjectForm({ id }: { id?: string }) {
 
         <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
-        <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'A new subject is listed for every destination until you untick some. A country with a published course in it stays ticked on its own.'} />
+        <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
 
         <fieldset id="editor-specializations" className="p-panel">
           <legend className="sr-only">Specializations</legend>

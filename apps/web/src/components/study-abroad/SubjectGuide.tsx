@@ -326,7 +326,7 @@ export function SubjectGuide({
             <SectionHead
               n={n('destinations')}
               eyebrow="Destinations"
-              title={`Where you can study ${subject.name}`}
+              title={`Destinations for ${subject.name}`}
               lead={destinationsLead({
                 name: subject.name,
                 countries,
