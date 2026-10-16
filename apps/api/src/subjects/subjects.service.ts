@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
 import type { SeoResolver } from '../seo-management/seo-management.types';
 import {
+  catalogBadRequest,
   catalogConflict,
   catalogNotFound,
   catalogNotReady,
@@ -15,6 +16,7 @@ import {
   slugify,
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
+import { sanitizeCourseRichTextBody } from '../courses/courses.service';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { isCanonicalPublicSlug } from '../common/public-slug';
 import {
@@ -33,6 +35,10 @@ import type {
   SubjectListQueryDto,
   SubSubjectListQueryDto,
   AdminSpecializationListQueryDto,
+  CreateSpecializationFaqDto,
+  CreateSpecializationSectionDto,
+  UpdateSpecializationFaqDto,
+  UpdateSpecializationSectionDto,
   UpdateSubSubjectDto,
   UpdateSubjectDto,
 } from './dto/subject.dto';
@@ -425,6 +431,33 @@ export class SubjectsService {
     return {
       ...this.toSubSubjectPublic(specialization),
       subject,
+      /* Its own content, as a course has: the sections an editor wrote and
+         the questions students ask, live ones only, in the order set. */
+      contentSections: (
+        await this.prisma.subSubjectContentSection.findMany({
+          where: {
+            subSubjectId: specialization.id,
+            status: 'ACTIVE',
+            deletedAt: null,
+          },
+          include: { media: { select: MEDIA_SELECT } },
+          orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+        })
+      ).map((row) => this.toSectionPublic(row)),
+      faqs: (
+        await this.prisma.subSubjectFaq.findMany({
+          where: {
+            subSubjectId: specialization.id,
+            status: 'ACTIVE',
+            deletedAt: null,
+          },
+          orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+        })
+      ).map((row) => ({
+        id: row.id,
+        question: row.question,
+        answer: row.answer,
+      })),
       /* The levels it is offered at: ticked by an editor, or standing
          behind a published course. */
       levels: await this.unionLevels(
@@ -1426,6 +1459,257 @@ export class SubjectsService {
     return { deleted: true };
   }
 
+  /* ---- A specialization's content sections and FAQs, as a course has. ---- */
+
+  async listSpecializationSections(id: string) {
+    await this.specializationRecord(id);
+    return (
+      await this.prisma.subSubjectContentSection.findMany({
+        where: { subSubjectId: id, deletedAt: null },
+        include: { media: { select: MEDIA_SELECT } },
+        orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+      })
+    ).map((row) => this.toSectionAdmin(row));
+  }
+
+  async createSpecializationSection(
+    id: string,
+    dto: CreateSpecializationSectionDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    await this.specializationRecord(id);
+    await this.validateSectionMedia(dto);
+    try {
+      const row = await this.prisma.subSubjectContentSection.create({
+        data: {
+          subSubjectId: id,
+          sectionKey: dto.sectionKey,
+          heading: dto.heading?.trim(),
+          subheading: dto.subheading?.trim(),
+          bodyJson: this.sectionBody(dto),
+          mediaId: dto.mediaId,
+          displayOrder: dto.displayOrder ?? 0,
+          status: dto.status ?? 'ACTIVE',
+        },
+        include: { media: { select: MEDIA_SELECT } },
+      });
+      await writeAudit(
+        this.prisma,
+        request,
+        userId,
+        'CATALOG',
+        'SUB_SUBJECT',
+        id,
+        'CONTENT_CREATE',
+        null,
+        { sectionKey: row.sectionKey, sectionType: dto.sectionType },
+        'Specialization content section created',
+      );
+      return this.toSectionAdmin(row);
+    } catch (error) {
+      if (isUniqueConstraintError(error))
+        throw catalogConflict(
+          'SUB_SUBJECT_SECTION_DUPLICATE',
+          'This content section key already exists',
+        );
+      throw error;
+    }
+  }
+
+  async updateSpecializationSection(
+    id: string,
+    sectionId: string,
+    dto: UpdateSpecializationSectionDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    const current = await this.specializationSection(id, sectionId);
+    versionMatches(
+      current.updatedAt,
+      dto.expectedUpdatedAt,
+      'SUB_SUBJECT_SECTION_STALE_VERSION',
+    );
+    await this.validateSectionMedia(dto);
+    try {
+      const row = await this.prisma.subSubjectContentSection.update({
+        where: { id: sectionId },
+        data: {
+          sectionKey: dto.sectionKey,
+          heading: dto.heading?.trim(),
+          subheading: dto.subheading?.trim(),
+          bodyJson: this.sectionBody(dto),
+          mediaId: dto.mediaId ?? null,
+          displayOrder: dto.displayOrder ?? current.displayOrder,
+          status: dto.status ?? current.status,
+        },
+        include: { media: { select: MEDIA_SELECT } },
+      });
+      await writeAudit(
+        this.prisma,
+        request,
+        userId,
+        'CATALOG',
+        'SUB_SUBJECT',
+        id,
+        'CONTENT_UPDATE',
+        { sectionKey: current.sectionKey },
+        { sectionKey: row.sectionKey, sectionType: dto.sectionType },
+        'Specialization content section updated',
+      );
+      return this.toSectionAdmin(row);
+    } catch (error) {
+      if (isUniqueConstraintError(error))
+        throw catalogConflict(
+          'SUB_SUBJECT_SECTION_DUPLICATE',
+          'This content section key already exists',
+        );
+      throw error;
+    }
+  }
+
+  async removeSpecializationSection(
+    id: string,
+    sectionId: string,
+    dto: SubjectActionDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    const current = await this.specializationSection(id, sectionId);
+    versionMatches(
+      current.updatedAt,
+      dto.expectedUpdatedAt,
+      'SUB_SUBJECT_SECTION_STALE_VERSION',
+    );
+    await this.prisma.subSubjectContentSection.update({
+      where: { id: sectionId },
+      data: { deletedAt: new Date(), status: 'INACTIVE' },
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'CONTENT_DELETE',
+      { sectionKey: current.sectionKey },
+      { deleted: true },
+      'Specialization content section deleted',
+    );
+    return { deleted: true };
+  }
+
+  async listSpecializationFaqs(id: string) {
+    await this.specializationRecord(id);
+    return (
+      await this.prisma.subSubjectFaq.findMany({
+        where: { subSubjectId: id, deletedAt: null },
+        orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+      })
+    ).map((row) => this.toFaqAdmin(row));
+  }
+
+  async createSpecializationFaq(
+    id: string,
+    dto: CreateSpecializationFaqDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    await this.specializationRecord(id);
+    const row = await this.prisma.subSubjectFaq.create({
+      data: {
+        subSubjectId: id,
+        question: dto.question.trim(),
+        answer: dto.answer.trim(),
+        status: dto.status ?? 'ACTIVE',
+        displayOrder: dto.displayOrder ?? 0,
+      },
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'FAQ_CREATE',
+      null,
+      { faqId: row.id },
+      'Specialization FAQ created',
+    );
+    return this.toFaqAdmin(row);
+  }
+
+  async updateSpecializationFaq(
+    id: string,
+    faqId: string,
+    dto: UpdateSpecializationFaqDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    const current = await this.specializationFaq(id, faqId);
+    versionMatches(
+      current.updatedAt,
+      dto.expectedUpdatedAt,
+      'SUB_SUBJECT_FAQ_STALE_VERSION',
+    );
+    const row = await this.prisma.subSubjectFaq.update({
+      where: { id: faqId },
+      data: {
+        question: dto.question.trim(),
+        answer: dto.answer.trim(),
+        status: dto.status ?? current.status,
+        displayOrder: dto.displayOrder ?? current.displayOrder,
+      },
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'FAQ_UPDATE',
+      { faqId },
+      { faqId },
+      'Specialization FAQ updated',
+    );
+    return this.toFaqAdmin(row);
+  }
+
+  async removeSpecializationFaq(
+    id: string,
+    faqId: string,
+    dto: SubjectActionDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    const current = await this.specializationFaq(id, faqId);
+    versionMatches(
+      current.updatedAt,
+      dto.expectedUpdatedAt,
+      'SUB_SUBJECT_FAQ_STALE_VERSION',
+    );
+    await this.prisma.subSubjectFaq.update({
+      where: { id: faqId },
+      data: { deletedAt: new Date(), status: 'INACTIVE' },
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'FAQ_DELETE',
+      { faqId: current.id },
+      { deleted: true },
+      'Specialization FAQ deleted',
+    );
+    return { deleted: true };
+  }
+
   async getSubSubject(subjectId: string, id: string) {
     await this.ensureSubject(subjectId);
     const row = await this.subSubjectRecord(subjectId, id);
@@ -1779,6 +2063,137 @@ export class SubjectsService {
     });
     if (!row) throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
     return row;
+  }
+
+  private async specializationSection(subSubjectId: string, id: string) {
+    await this.specializationRecord(subSubjectId);
+    const row = await this.prisma.subSubjectContentSection.findFirst({
+      where: { id, subSubjectId, deletedAt: null },
+      include: { media: { select: MEDIA_SELECT } },
+    });
+    if (!row)
+      throw catalogNotFound(
+        'SUB_SUBJECT_SECTION_NOT_FOUND',
+        'Content section not found',
+      );
+    return row;
+  }
+
+  private async specializationFaq(subSubjectId: string, id: string) {
+    await this.specializationRecord(subSubjectId);
+    const row = await this.prisma.subSubjectFaq.findFirst({
+      where: { id, subSubjectId, deletedAt: null },
+    });
+    if (!row)
+      throw catalogNotFound('SUB_SUBJECT_FAQ_NOT_FOUND', 'FAQ not found');
+    return row;
+  }
+
+  /** A section's picture must be a live image, as a course's must. */
+  private async validateSectionMedia(dto: {
+    mediaId?: string;
+    bodyJson?: Record<string, unknown>;
+    sectionType: string;
+  }) {
+    if (dto.bodyJson && JSON.stringify(dto.bodyJson).length > 50000)
+      throw catalogBadRequest(
+        'SUB_SUBJECT_SECTION_INVALID',
+        'Content section body is too large',
+      );
+    if (
+      dto.sectionType !== 'RICH_TEXT' &&
+      dto.bodyJson &&
+      JSON.stringify(dto.bodyJson).includes('<')
+    )
+      throw catalogBadRequest(
+        'SUB_SUBJECT_SECTION_INVALID',
+        'HTML is not allowed in this content section',
+      );
+    if (dto.mediaId) await this.validateMedia([dto.mediaId]);
+  }
+
+  /* The body is stored with its type, as a course section's is, so the
+     page knows how to read it back. */
+  private sectionBody(dto: {
+    sectionType: string;
+    bodyJson?: Record<string, unknown>;
+  }): Prisma.InputJsonValue {
+    const content: Prisma.InputJsonValue | null =
+      dto.sectionType === 'RICH_TEXT'
+        ? sanitizeCourseRichTextBody(dto.bodyJson)
+        : ((dto.bodyJson as Prisma.InputJsonObject | undefined) ?? null);
+    return { type: dto.sectionType, content };
+  }
+  private sectionType(row: { bodyJson: unknown }): string {
+    const value = row.bodyJson;
+    return value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      typeof (value as { type?: unknown }).type === 'string'
+      ? String((value as { type: string }).type)
+      : 'RICH_TEXT';
+  }
+  private sectionContent(row: { bodyJson: unknown }): unknown {
+    const value = row.bodyJson;
+    return value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      'content' in value
+      ? ((value as { content?: unknown }).content ?? null)
+      : value;
+  }
+  private toSectionPublic(row: {
+    id: string;
+    sectionKey: string;
+    heading: string | null;
+    subheading: string | null;
+    bodyJson: unknown;
+    media: MediaRecord | null;
+    displayOrder: number;
+  }) {
+    return {
+      id: row.id,
+      sectionKey: row.sectionKey,
+      sectionType: this.sectionType(row),
+      heading: row.heading,
+      subheading: row.subheading,
+      bodyJson: this.sectionContent(row),
+      media: media(row.media),
+      displayOrder: row.displayOrder,
+    };
+  }
+  private toSectionAdmin(
+    row: Parameters<SubjectsService['toSectionPublic']>[0] & {
+      status: string;
+      updatedAt: Date;
+      createdAt: Date;
+    },
+  ) {
+    return {
+      ...this.toSectionPublic(row),
+      status: row.status,
+      updatedAt: row.updatedAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+  private toFaqAdmin(row: {
+    id: string;
+    question: string;
+    answer: string;
+    status: string;
+    displayOrder: number;
+    updatedAt: Date;
+    createdAt: Date;
+  }) {
+    return {
+      id: row.id,
+      question: row.question,
+      answer: row.answer,
+      status: row.status,
+      displayOrder: row.displayOrder,
+      updatedAt: row.updatedAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+    };
   }
 
   private async specializationRecord(id: string) {

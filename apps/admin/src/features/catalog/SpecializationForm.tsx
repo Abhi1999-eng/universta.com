@@ -4,18 +4,42 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  createSpecializationFaq,
+  createSpecializationSection,
   createSubSubject,
+  deleteSpecializationFaq,
+  deleteSpecializationSection,
   deleteSpecializationSeo,
   getSpecialization,
   getSpecializationSeo,
   listAllSubjects,
   listCourseLevels,
   listEditorialMedia,
+  listSpecializationFaqs,
+  listSpecializationSections,
   publishSubSubject,
   saveSpecializationSeo,
   unpublishSubSubject,
+  updateSpecializationFaq,
+  updateSpecializationSection,
   updateSubSubject,
 } from './catalog-client';
+import {
+  ContentSectionsCard,
+  FaqsCard,
+  faqBlank,
+  faqFromRecord,
+  faqIssues,
+  faqPayload,
+  faqUsed,
+  sectionBlank,
+  sectionFromRecord,
+  sectionIssues,
+  sectionPayload,
+  sectionUsed,
+  type FaqDraft,
+  type SectionDraft,
+} from './editorial/ContentBlocks';
 import type { CatalogLevel, EditorialMedia, EditorialSeo, MasterRecord, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { StudyLevelTicks } from './StudyLevelTicks';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
@@ -33,6 +57,10 @@ const hasSeo = (value: UnifiedSeoDraft) => Boolean(value.seoTitle.trim() || valu
 const seoFromRecord = (record: EditorialSeo | null): UnifiedSeoDraft => record ? {
   seoTitle: record.seoTitle ?? '', metaDescription: record.metaDescription ?? '', canonicalUrl: record.canonicalUrl ?? '', focusKeyword: record.focusKeyword ?? '', ogTitle: record.ogTitle ?? '', ogDescription: record.ogDescription ?? '', ogMediaId: record.ogMediaId ?? '', twitterTitle: record.twitterTitle ?? '', twitterDescription: record.twitterDescription ?? '', twitterMediaId: record.twitterMediaId ?? '', robotsIndex: record.robotsIndex, robotsFollow: record.robotsFollow,
 } : blankUnifiedSeo;
+
+/* What a specialization's page can carry a section about; the API keeps
+   the same list. */
+const SECTION_KEYS = ['what-you-study', 'curriculum', 'skills', 'career-outcomes', 'admission-requirements', 'documents', 'application-process', 'why-choose', 'top-destinations'] as const;
 
 const blankForm = () => ({ subjectId: '', name: '', slug: '', shortDescription: '', overview: '', iconMediaId: '', listingMediaId: '', isFeatured: false, displayOrder: '0' });
 
@@ -52,6 +80,10 @@ export function SpecializationForm({ id }: { id?: string }) {
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
   const [impliedLevels, setImpliedLevels] = useState<CatalogLevel[]>([]);
+  const [sections, setSections] = useState<SectionDraft[]>(() => [sectionBlank(SECTION_KEYS[0])]);
+  const [faqs, setFaqs] = useState<FaqDraft[]>(() => [faqBlank()]);
+  const [removedSections, setRemovedSections] = useState<SectionDraft[]>([]);
+  const [removedFaqs, setRemovedFaqs] = useState<FaqDraft[]>([]);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [form, setForm] = useState({ ...blankForm(), subjectId: preselectedSubject });
@@ -78,10 +110,19 @@ export function SpecializationForm({ id }: { id?: string }) {
         setSubjects(subjectRows);
         setLevels(levelRows.data);
         if (!id) return;
-        const [recordResult, seoResult] = await Promise.all([getSpecialization(id), getSpecializationSeo(id)]);
+        const [recordResult, seoResult, sectionRows, faqRows] = await Promise.all([
+          getSpecialization(id),
+          getSpecializationSeo(id),
+          listSpecializationSections(id),
+          listSpecializationFaqs(id),
+        ]);
         if (!active) return;
         const row = recordResult.data;
         setRecord(row);
+        const loadedSections = sectionRows.data.map(sectionFromRecord);
+        const loadedFaqs = faqRows.data.map(faqFromRecord);
+        setSections(loadedSections.length ? loadedSections : [sectionBlank(SECTION_KEYS[0])]);
+        setFaqs(loadedFaqs.length ? loadedFaqs : [faqBlank()]);
         setLevelIds((row.courseLevels ?? []).map((level) => level.id));
         setImpliedLevels(row.impliedCourseLevels ?? []);
         setExistingSeo(seoResult.data);
@@ -109,8 +150,39 @@ export function SpecializationForm({ id }: { id?: string }) {
   const subject = record?.subject ?? subjects.find((row) => row.id === form.subjectId) ?? null;
   const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
 
+  const updateSection = (index: number, patch: Partial<SectionDraft>) => { setSections((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row))); setDirty(true); setIssues([]); };
+  const updateFaq = (index: number, patch: Partial<FaqDraft>) => { setFaqs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row))); setDirty(true); setIssues([]); };
+  const removeSection = (index: number) => { const row = sections[index]; if (row.id) setRemovedSections((old) => [...old, row]); setSections((rows) => { const next = rows.filter((_, i) => i !== index); return next.length ? next : [sectionBlank(SECTION_KEYS[0])]; }); setDirty(true); };
+  const removeFaq = (index: number) => { const row = faqs[index]; if (row.id) setRemovedFaqs((old) => [...old, row]); setFaqs((rows) => { const next = rows.filter((_, i) => i !== index); return next.length ? next : [faqBlank()]; }); setDirty(true); };
+
+  /* Each row is written on its own after the record is saved, as the course
+     editor does; the rows that come back are the ones kept, versions and all. */
+  async function syncContent(specializationId: string) {
+    for (const row of removedSections) if (row.id) await deleteSpecializationSection(specializationId, row.id, row.updatedAt);
+    const savedSections: SectionDraft[] = [];
+    for (const row of sections.filter(sectionUsed)) {
+      const result = row.id
+        ? await updateSpecializationSection(specializationId, row.id, sectionPayload(row))
+        : await createSpecializationSection(specializationId, sectionPayload(row));
+      savedSections.push(sectionFromRecord(result.data));
+    }
+    setSections(savedSections.length ? savedSections : [sectionBlank(SECTION_KEYS[0])]);
+    setRemovedSections([]);
+    for (const row of removedFaqs) if (row.id) await deleteSpecializationFaq(specializationId, row.id, row.updatedAt);
+    const savedFaqs: FaqDraft[] = [];
+    for (const row of faqs.filter(faqUsed)) {
+      const result = row.id
+        ? await updateSpecializationFaq(specializationId, row.id, faqPayload(row))
+        : await createSpecializationFaq(specializationId, faqPayload(row));
+      savedFaqs.push(faqFromRecord(result.data));
+    }
+    setFaqs(savedFaqs.length ? savedFaqs : [faqBlank()]);
+    setRemovedFaqs([]);
+  }
+
   function validate() {
     const next: string[] = [];
+    next.push(...sectionIssues(sections, SECTION_KEYS), ...faqIssues(faqs));
     if (!form.subjectId) next.push('Choose the subject this specialization belongs to.');
     if (!form.name.trim()) next.push('Specialization name is required.');
     if (form.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) next.push('Slug must use lowercase letters, numbers and single hyphens.');
@@ -146,6 +218,7 @@ export function SpecializationForm({ id }: { id?: string }) {
       let saved = record
         ? (await updateSubSubject(subjectId, record.id, payload)).data
         : (await createSubSubject(subjectId, payload)).data;
+      await syncContent(saved.id);
       if (hasSeo(seo)) {
         const result = await saveSpecializationSeo(saved.id, seoPayload(seo));
         setExistingSeo(result.data);
@@ -179,7 +252,7 @@ export function SpecializationForm({ id }: { id?: string }) {
         <div>
           <p className="p-eyebrow">Unified specialization editor</p>
           <h2 id="specialization-form-heading" className="p-h1">{record ? 'Edit specialization' : 'Create specialization'}</h2>
-          <p className="p-sub">Basic information, media and SEO are saved together.{subject ? <> Belongs to <Link href={`/subjects/${subject.id}`} className="p-link">{subject.name}</Link>.</> : null}</p>
+          <p className="p-sub">Basic information, study levels, content sections, FAQs and SEO are saved together.{subject ? <> Belongs to <Link href={`/subjects/${subject.id}`} className="p-link">{subject.name}</Link>.</> : null}</p>
         </div>
         <span className="p-chip">{status}</span>
       </div>
@@ -219,6 +292,10 @@ export function SpecializationForm({ id }: { id?: string }) {
         </fieldset>
 
         <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
+
+        <ContentSectionsCard idPrefix="specialization" rows={sections} keys={SECTION_KEYS} media={media} onChange={updateSection} onAdd={() => { setSections((rows) => [...rows, sectionBlank('')]); setDirty(true); }} onRemove={removeSection} />
+
+        <FaqsCard idPrefix="specialization" rows={faqs} onChange={updateFaq} onAdd={() => { setFaqs((rows) => [...rows, faqBlank()]); setDirty(true); }} onRemove={removeFaq} />
 
         <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
         <UnifiedEditorActions cancelHref="/specializations" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />

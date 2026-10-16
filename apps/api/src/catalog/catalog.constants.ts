@@ -55,6 +55,19 @@ export const COURSE_SECTION_KEYS = [
   'source-trust',
   'counselling-cta',
 ] as const;
+/** What a specialization's page can carry a section about. The keys name
+ * the band on the page; the heading is the editor's own. */
+export const SUB_SUBJECT_SECTION_KEYS = [
+  'what-you-study',
+  'curriculum',
+  'skills',
+  'career-outcomes',
+  'admission-requirements',
+  'documents',
+  'application-process',
+  'why-choose',
+  'top-destinations',
+] as const;
 export const SEO_OWNER_TYPES = ['SUBJECT', 'COURSE'] as const;
 
 export function slugify(value: string): string {
