@@ -336,7 +336,8 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
   test('requires an explicit archive confirmation for structured records', async ({ page }) => {
     await page.goto('/phase1/universities');
     const row = page.getByRole('row').filter({ hasText: universityName });
-    await row.getByRole('button', { name: 'Archive' }).click();
+    await row.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Archive' }).click();
     const dialog = page.getByRole('dialog', { name: 'Archive this record?' });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel' }).click();

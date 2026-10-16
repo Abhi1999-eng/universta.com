@@ -148,6 +148,10 @@ export function useToasts() {
 }
 
 export function Toasts({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+  /* Nothing to say, nothing in the document: an empty live region still
+     counts as "a status" to anyone looking for one, and the session check
+     and the flash banners are statuses of their own. */
+  if (!toasts.length) return null;
   return (
     <div className="p-toasts" role="status" aria-live="polite">
       {toasts.map((toast) => (
