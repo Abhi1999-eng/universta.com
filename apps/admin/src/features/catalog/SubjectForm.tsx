@@ -202,7 +202,7 @@ export function SubjectForm({ id }: { id?: string }) {
     <section className="mx-auto max-w-[1040px]" aria-labelledby="subject-form-heading">
       <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
+        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, study levels, destinations, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
         <span className="p-chip">{status}</span>
       </div>
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}

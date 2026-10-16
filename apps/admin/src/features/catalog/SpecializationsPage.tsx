@@ -77,15 +77,17 @@ export function SpecializationsPage() {
 
   /* How many are live and how many are not, for the line over the table. */
   const loadCounts = useCallback(() => {
+    /* Counted within the same subject and search as the list, so the line
+       reads as one set: "1 specialization · 1 published · 0 draft". */
     void Promise.all([
-      listSpecializations({ status: 'PUBLISHED', limit: 1 }),
-      listSpecializations({ status: 'DRAFT', limit: 1 }),
+      listSpecializations({ q, subjectId, status: 'PUBLISHED', limit: 1 }),
+      listSpecializations({ q, subjectId, status: 'DRAFT', limit: 1 }),
     ])
       .then(([published, draft]) =>
         setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 }),
       )
       .catch(() => setCounts(null));
-  }, []);
+  }, [q, subjectId]);
   useEffect(() => {
     const timer = window.setTimeout(() => loadCounts(), 0);
     return () => window.clearTimeout(timer);

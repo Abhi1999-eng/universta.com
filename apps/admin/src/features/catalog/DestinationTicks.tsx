@@ -66,7 +66,7 @@ export function DestinationTicks({
               const checked = isLocked || ticked.has(row.id);
               return (
                 <label key={row.id} htmlFor={`${idPrefix}-country-${row.id}`} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${checked ? 'border-[#B7C6E8] bg-[#EEF3FF]' : 'border-[#E8ECF3]'}`} title={isLocked ? 'A published course is taught here, so it stays listed.' : undefined}>
-                  <input id={`${idPrefix}-country-${row.id}`} type="checkbox" checked={checked} disabled={isLocked} onChange={(event) => toggle(row.id, event.target.checked)} />
+                  <input id={`${idPrefix}-country-${row.id}`} type="checkbox" aria-label={row.name} checked={checked} disabled={isLocked} onChange={(event) => toggle(row.id, event.target.checked)} />
                   <span className="flex-1">{row.name}</span>
                   {isLocked ? <span className="p-chip text-xs">has courses</span> : null}
                   {row.status !== 'PUBLISHED' ? <span className="p-hint text-xs">draft</span> : null}

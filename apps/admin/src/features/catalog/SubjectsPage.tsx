@@ -61,14 +61,14 @@ export function SubjectsPage() {
   /* How many are live and how many are not, for the line over the table. */
   const loadCounts = useCallback(() => {
     void Promise.all([
-      listSubjects({ status: 'PUBLISHED', limit: 1 }),
-      listSubjects({ status: 'DRAFT', limit: 1 }),
+      listSubjects({ q, status: 'PUBLISHED', limit: 1 }),
+      listSubjects({ q, status: 'DRAFT', limit: 1 }),
     ])
       .then(([published, draft]) =>
         setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 }),
       )
       .catch(() => setCounts(null));
-  }, []);
+  }, [q]);
   useEffect(() => {
     const timer = window.setTimeout(() => loadCounts(), 0);
     return () => window.clearTimeout(timer);
