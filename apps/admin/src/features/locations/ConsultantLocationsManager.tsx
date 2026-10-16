@@ -364,7 +364,7 @@ export function ConsultantLocationsManager() {
   }
 
   return (
-    <section className="mx-auto max-w-[1180px]">
+    <section className="mx-auto w-full max-w-[1180px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="p-eyebrow">

@@ -93,6 +93,7 @@ import {
   seoFieldRules,
 } from "./country-field-rules";
 import { catalogErrorText, catalogFieldLabel } from "./catalog-errors";
+import { EditorSectionNav } from "@/features/shared/EditorSectionNav";
 
 type Intent = "draft" | "publish";
 type Core = {
@@ -406,6 +407,7 @@ const INLINE_ERROR_FIELDS = new Set([
 
 export function CountryForm({ countryId }: { countryId?: string }) {
   const router = useRouter();
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
   const [record, setRecord] = useState<CountryRecord | null>(null);
   const [continents, setContinents] = useState<ContinentRecord[]>([]);
   const [subjectIds, setSubjectIds] = useState<string[]>([]);
@@ -1332,7 +1334,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="p-eyebrow">
-            Unified country editor
+            Country
           </p>
           <h2 id="country-form-heading" className="p-h1">
             {record ? "Edit country" : "Create country"}
@@ -1369,7 +1371,8 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           </ul>
         </div>
       ) : null}
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={formEl} />
+      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
         <Card
           eyebrow="Country"
           title="Identity & listing"

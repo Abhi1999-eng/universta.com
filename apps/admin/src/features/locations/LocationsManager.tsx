@@ -371,7 +371,7 @@ export function LocationsManager() {
     : linkedCities;
 
   return (
-    <section className="mx-auto max-w-[1240px]">
+    <section className="mx-auto w-full max-w-[1240px]">
       <div>
         <p className="p-eyebrow">Location hierarchy</p>
         <h2 className="p-h1">States &amp; cities</h2>

@@ -24,7 +24,7 @@ import {
   listEditorialMedia,
   listIntakeOptions,
   listStudyModes,
-  listSubjects,
+  listAllSubjects,
   listSubSubjects,
   publishCourse,
   replaceCourseIntakes,
@@ -61,6 +61,8 @@ import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { catalogErrorText } from './catalog-errors';
+import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
+import { RelatedCoursePicker } from './RelatedCoursePicker';
 
 type Intent = 'draft' | 'publish';
 type CoreState = {
@@ -298,6 +300,7 @@ function bodyJson(text: string, type: string) {
 
 export function CourseForm({ id }: { id?: string }) {
   const router = useRouter();
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
   const [record, setRecord] = useState<CourseRecord | null>(null);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [core, setCore] = useState<CoreState>(coreBlank);
@@ -340,7 +343,9 @@ export function CourseForm({ id }: { id?: string }) {
            that, which used to leave the country dropdown ending partway
            down the alphabet. */
         const base = await Promise.all([
-          listSubjects({ limit: 100 }),
+          /* Every subject, not the first hundred: a course filed under the
+             hundred-and-first showed an empty Subject and could not be saved. */
+          listAllSubjects(),
           listCourseLevels({ status: 'ACTIVE', limit: 100 }),
           listStudyModes({ status: 'ACTIVE', limit: 100 }),
           listEditorialMedia({ limit: 50 }),
@@ -349,7 +354,7 @@ export function CourseForm({ id }: { id?: string }) {
           listEvery(listAdminCourses),
         ]);
         if (!active) return;
-        setSubjects(base[0].data);
+        setSubjects(base[0]);
         setLevels(base[1].data);
         setModes(base[2].data);
         setMedia(base[3].data);
@@ -369,6 +374,17 @@ export function CourseForm({ id }: { id?: string }) {
         if (!active) return;
         const course = courseResult.data;
         const loadedMappings = mappingResult.data.map(mappingFromRecord);
+        /* A course may already be offered in a destination that is not
+           published; it stays choosable here, or its own row reads as empty
+           and the form refuses to save. */
+        setCountries((current) => {
+          const known = new Set(current.map((country) => country.id));
+          const extra = mappingResult.data
+            .map((row) => row.country)
+            .filter((country) => country && !known.has(country.id))
+            .map((country) => ({ ...country, status: country.status ?? 'DRAFT' }) as unknown as CountryRecord);
+          return extra.length ? [...current, ...extra].sort((a, b) => a.name.localeCompare(b.name)) : current;
+        });
         const loadedSections = sectionResult.data.map(sectionFromRecord);
         const loadedFaqs = faqResult.data.map(faqFromRecord);
         setRecord(course);
@@ -702,11 +718,11 @@ export function CourseForm({ id }: { id?: string }) {
   if (loading) return <section className="p-panel"><p className="p-sub">Loading complete course editor…</p></section>;
 
   return (
-    <section className="mx-auto max-w-[1180px]" aria-labelledby="course-form-heading">
+    <section className="mx-auto w-full max-w-[1180px]" aria-labelledby="course-form-heading">
       <Link href="/courses" className="p-link">← Courses</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">Unified course editor</p>
+          <p className="p-eyebrow">Course</p>
           <h2 id="course-form-heading" className="p-h1">{record ? 'Edit course' : 'Create course'}</h2>
           <p className="mt-2 max-w-3xl p-sub">Core data, availability, content, FAQs, related courses and SEO load on one page and save together.</p>
           <p className="mt-2 text-xs font-semibold text-[#667085]"><span className="p-danger">*</span> Required field. Some fields are required only when a section is used or when publishing.</p>
@@ -718,7 +734,8 @@ export function CourseForm({ id }: { id?: string }) {
         {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : null}
       </div>
 
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={formEl} />
+      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
         <EditorCard eyebrow="Course" title="Basic information" description="Identity, classification and public summary.">
           <div className="grid gap-5 sm:grid-cols-2">
             <Select label="Subject" value={core.subjectId} onChange={(value) => setCoreField('subjectId', value)} options={subjects.map((row) => ({ id: row.id, label: `${row.name}${row.status !== 'PUBLISHED' ? ' · Draft' : ''}` }))} required />
@@ -769,8 +786,8 @@ export function CourseForm({ id }: { id?: string }) {
           <div className="space-y-4">{faqs.map((row, index) => <div key={row.id ?? `faq-${index}`} className="p-panel"><div className="flex justify-between gap-3"><h4 className="font-semibold">FAQ {index + 1}</h4>{faqs.length > 1 || row.id ? <button type="button" onClick={() => removeFaq(index)} className="p-danger">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="Question" value={row.question} onChange={(value) => updateFaq(index, { question: value })} span required={Boolean(row.question || row.answer || row.id)} /><Input label="Answer" value={row.answer} onChange={(value) => updateFaq(index, { answer: value })} textarea span rows={4} required={Boolean(row.question || row.answer || row.id)} /><Select label="Status" value={row.status} onChange={(value) => updateFaq(index, { status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => updateFaq(index, { displayOrder: value })} type="number" /></div></div>)}</div>
         </EditorCard>
 
-        <EditorCard eyebrow="Discovery" title="Related courses" description="Select related courses; changes persist with the main record.">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{allCourses.filter((course) => course.id !== record?.id).map((course) => <label key={course.id} className="flex items-start gap-3 rounded-xl border border-[#D9E0EA] p-4 text-sm"><input className="mt-1" type="checkbox" checked={relatedIds.includes(course.id)} onChange={() => toggleRelated(course.id)} /><span><strong className="block text-[#1D2939]">{course.name}</strong><span className="p-hint">{course.subject.name}</span></span></label>)}</div>
+        <EditorCard eyebrow="Discovery" title="Related courses" description="Courses shown as related on this course's page. Saved with the course.">
+          <RelatedCoursePicker courses={allCourses} selected={relatedIds} excludeId={record?.id} onToggle={toggleRelated} />
         </EditorCard>
 
         <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />

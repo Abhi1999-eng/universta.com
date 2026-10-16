@@ -45,7 +45,7 @@ test.describe.serial('isolated authoritative Phase 1 Admin authentication', () =
       page.waitForURL(/\/phase1\/universities$/),
       page.getByRole('button', { name: 'Sign in securely' }).click(),
     ]);
-    await expect(page.getByRole('heading', { name: 'Universities' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: 'Universities' })).toBeVisible();
 
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /Good to see you,/ })).toBeVisible();

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { authFetch } from "@/features/auth/auth-client";
 import {
   BulkBar,
@@ -33,6 +34,21 @@ const titles: Record<string, string> = {
   pages: "Editorial pages",
   "navigation-menus": "Navigation menus",
   "contact-inquiries": "Contact enquiries",
+};
+
+/* The sidebar group each resource sits in, shown above its title. */
+const groups: Record<string, string> = {
+  universities: "Universities",
+  offerings: "Universities",
+  scholarships: "Scholarships",
+  consultants: "Consultants",
+  jobs: "Careers and events",
+  events: "Careers and events",
+  "success-stories": "Content records",
+  testimonials: "Content records",
+  pages: "Website Builder",
+  "navigation-menus": "Website Builder",
+  "contact-inquiries": "Enquiries and Counselling",
 };
 
 const examples: Record<string, string> = {
@@ -113,8 +129,31 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const [page, setPage] = useState(1);
   const [message, setMessage] = useState("");
   const [draft, setDraft] = useState(examples[resource] ?? "{}");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  /* The open editor lives in the address -- ?edit=<id> or ?new=1 -- so a
+     refresh keeps it open and the link can be shared. */
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [editingId, setEditingId] = useState<string | null>(() => searchParams.get("edit"));
+  const [creating, setCreating] = useState(() => searchParams.get("new") === "1");
+  const editorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("edit");
+    next.delete("new");
+    if (editingId) next.set("edit", editingId);
+    else if (creating) next.set("new", "1");
+    const query = next.toString();
+    const target = `${pathname}${query ? `?${query}` : ""}`;
+    const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    if (target !== current) router.replace(target, { scroll: false });
+    // Only the editor state drives the address; the address is read once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, creating]);
+  /* Opening a row's editor from far down the list brings it into view. */
+  useEffect(() => {
+    if (editingId || creating) editorRef.current?.scrollIntoView({ block: "start" });
+  }, [editingId, creating]);
   const [pendingArchive, setPendingArchive] = useState<Phase1Row | null>(null);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -317,11 +356,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
   const editor = (structured || isPageCms) && (creating || editingId);
 
   return (
-    <section className="mx-auto max-w-[1240px]">
+    <section className="mx-auto w-full max-w-[1240px]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="p-eyebrow">
-            Expanded Phase 1
+            {groups[resource] ?? 'Records'}
           </p>
           <h2 className="p-h1">
             {title}
@@ -401,6 +440,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
         />
       ) : null}
 
+      <div ref={editorRef} className="scroll-mt-24" />
       {editor && isPageCms ? (
         <PageCmsEditor
           key={editingId ?? 'create'}
@@ -558,7 +598,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                       ) : (
                         <button
                           type="button"
-                          className="p-btn p-btn--primary p-btn--sm"
+                          className="p-btn p-btn--outline p-btn--sm"
                           disabled={Boolean(working)}
                           onClick={() => void rowAction(row, "publish")}
                         >
@@ -630,8 +670,8 @@ export function Phase1Manager({ resource }: { resource: string }) {
         ) : null}
 
         {!structured && !isPageCms && !isNavMenu && resource !== "contact-inquiries" ? (
-          <aside className="p-panel">
-            <h3 className="font-semibold">Advanced development fallback</h3>
+          <details className="p-panel">
+            <summary className="cursor-pointer font-semibold">Developer tools (JSON)</summary>
             <p className="p-sub">
               This JSON tool is retained only for editorial development.
               Catalog records use field-based editors, and navigation menus
@@ -650,7 +690,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
             >
               Create draft
             </button>
-          </aside>
+          </details>
         ) : null}
       </div>
       {message ? (

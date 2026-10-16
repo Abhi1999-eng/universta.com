@@ -51,7 +51,7 @@ test('protects the dashboard, restores the session, and logs out', async ({ page
 
   await expect(page.getByRole('heading', { name: /Good to see you/ })).toBeVisible();
   await expect(page.getByRole('main').getByText(e2eEmail)).toBeVisible();
-  await expect(page.getByRole('main').getByText('SUPER_ADMIN')).toBeVisible();
+  await expect(page.getByRole('main').getByText('Super admin')).toBeVisible();
   const cookies = await context.cookies();
   const refreshCookie = cookies.find((cookie) => cookie.name === 'universta_admin_refresh');
   expect(refreshCookie?.httpOnly).toBe(true);

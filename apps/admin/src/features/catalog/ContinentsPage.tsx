@@ -110,9 +110,9 @@ export function ContinentsPage() {
   }
 
   return (
-    <section aria-labelledby="continents-heading" className="mx-auto max-w-[1180px]">
+    <section aria-labelledby="continents-heading" className="mx-auto w-full max-w-[1180px]">
       <div className="p-head">
-        <div><p className="p-eyebrow">Catalog core</p><h2 id="continents-heading" className="p-h1">Continents</h2><p className="p-sub">Manage the active continents used by the country catalog. A continent with countries cannot be deleted.</p></div>
+        <div><p className="p-eyebrow">Destinations</p><h2 id="continents-heading" className="p-h1">Continents</h2><p className="p-sub">Manage the active continents used by the country catalog. A continent with countries cannot be deleted.</p></div>
         <button type="button" onClick={openCreate} className="p-btn p-btn--primary">Create continent</button>
       </div>
       {success ? <p role="status" className="p-alert p-alert--ok">{success}</p> : null}

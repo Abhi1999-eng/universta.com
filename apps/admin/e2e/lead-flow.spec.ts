@@ -43,10 +43,10 @@ test('captures a contextual counselling lead and manages it in Admin', async ({
   await loginAsAdmin(page);
   // Scoped to the sidebar (not the Dashboard's own quick-link cards, which
   // repeat the same "Counselling leads" label as a shortcut into this page).
-  await page
-    .getByRole('navigation', { name: 'Primary navigation' })
-    .getByRole('link', { name: 'Counselling leads' })
-    .click();
+  // Only the current screen's group starts open, so open this one first.
+  const sidebar = page.getByRole('navigation', { name: 'Primary navigation' });
+  await sidebar.getByText('Enquiries and Counselling', { exact: true }).click();
+  await sidebar.getByRole('link', { name: 'Counselling leads' }).click();
   await expect(page).toHaveURL(/\/leads$/);
   await page.getByLabel('Search').fill(email);
   await page.getByRole('button', { name: 'Apply filters' }).click();

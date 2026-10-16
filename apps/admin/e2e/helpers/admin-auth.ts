@@ -13,5 +13,5 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: /Good to see you/ })).toBeVisible();
   await expect(page.getByRole('main').getByText(e2eEmail!, { exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByText('SUPER_ADMIN', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Super admin', { exact: true })).toBeVisible();
 }

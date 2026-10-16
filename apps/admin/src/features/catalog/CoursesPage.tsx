@@ -7,7 +7,7 @@ import {
   listAdminCourses,
   listCountries,
   listCourseLevels,
-  listSubjects,
+  listAllSubjects,
   publishCourse,
   unpublishCourse,
   listEvery,
@@ -84,14 +84,14 @@ export function CoursesPage() {
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
-      listSubjects({ limit: 100 }),
+      listAllSubjects(),
       listCourseLevels({ status: 'ACTIVE', limit: 100 }),
       // A filter has to offer every destination, not the first page of them.
       listEvery(listCountries, { status: 'PUBLISHED' }),
     ])
       .then(([subjectResult, levelResult, countries]) => {
         if (!cancelled) {
-          setSubjects(subjectResult.data);
+          setSubjects(subjectResult);
           setLevels(levelResult.data);
           setCountries(countries);
         }
@@ -198,13 +198,12 @@ export function CoursesPage() {
     <section aria-labelledby="courses-heading">
       <header className="p-head">
         <div>
-          <p className="p-eyebrow">Catalog discovery</p>
+          <p className="p-eyebrow">Subject &amp; specialization</p>
           <h2 id="courses-heading" className="p-h1">
             Courses
           </h2>
           <p className="p-sub">
-            Manage course core data, verified country availability, and controlled editorial
-            sections.
+            Add courses, the countries they are offered in, and the content their pages show.
           </p>
           <ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="course" />
         </div>
@@ -385,7 +384,7 @@ export function CoursesPage() {
                       ) : (
                         <button
                           type="button"
-                          className="p-btn p-btn--primary p-btn--sm"
+                          className="p-btn p-btn--outline p-btn--sm"
                           disabled={Boolean(busy[row.id])}
                           onClick={() => void quick(row, 'publish')}
                         >

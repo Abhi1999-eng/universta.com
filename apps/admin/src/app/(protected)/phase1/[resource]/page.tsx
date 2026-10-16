@@ -20,5 +20,7 @@ export default async function Phase1AdminPage({
 }) {
   const { resource } = await params;
   if (!resources.has(resource)) notFound();
-  return <Phase1Manager resource={resource} />;
+  /* Keyed by resource: a different list starts with its own editor state
+     and reads its own address, rather than carrying the last one's open record. */
+  return <Phase1Manager key={resource} resource={resource} />;
 }

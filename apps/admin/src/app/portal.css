@@ -1217,3 +1217,16 @@
   display: block; max-width: 340px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* The jump bar over a long editor (EditorSectionNav). It sits just under the
+   sticky top bar and scrolls sideways when the sections outgrow it. */
+.pa .editor-sections { position: sticky; top: calc(var(--top) + 8px); z-index: 20; display: flex; gap: 6px; overflow-x: auto; margin: 20px 0 0; padding: 6px; background: rgba(255, 255, 255, .96); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 18px rgba(15, 23, 42, .06); backdrop-filter: blur(8px); scrollbar-width: thin; }
+.pa .editor-sections__link { flex: none; padding: 6px 12px; border-radius: 8px; font-size: .84rem; font-weight: 600; color: #475467; text-decoration: none; white-space: nowrap; }
+.pa .editor-sections__link:hover { background: var(--soft); color: var(--navy); }
+.pa .editor-sections__link.is-active { background: var(--navy); color: #fff; }
+
+/* Every screen fills the page column. The page is a grid, and a centred
+   child of a grid shrinks to its content, so a screen with little in it --
+   the media library, settings -- sat in a narrow strip while the lists beside
+   it ran full width. */
+.pa .a-app .p-page > section.mx-auto { width: 100%; }

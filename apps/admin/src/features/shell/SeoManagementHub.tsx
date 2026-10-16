@@ -333,7 +333,7 @@ export function SeoManagementHub() {
     ["verification", "Site Verification"],
   ] as const;
   return (
-    <section className="mx-auto max-w-[1180px]">
+    <section className="mx-auto w-full max-w-[1180px]">
       <p className="p-eyebrow">
         Platform tools
       </p>

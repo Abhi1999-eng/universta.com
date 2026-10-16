@@ -11,6 +11,8 @@ import {
 } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { NAV_GROUPS, findNavItem, navItemKey, resolveActiveNavItem } from './nav-config';
+import { NavGroupIcon } from './nav-icons';
+import { rolesLabel } from './role-label';
 
 /** Below this the sidebar is a drawer rather than a column -- the same width
  *  the ported stylesheet switches on. */
@@ -41,14 +43,6 @@ function currentBreadcrumb(pathname: string) {
   if (pathname === '/dashboard' || pathname === '/') {
     return { group: null as string | null, item: 'Overview' };
   }
-  // The generic Phase 1 resource screens render their own specific heading
-  // (e.g. "Universities") inside the page body, matching the nav item's
-  // label exactly for most resources -- using that same label for the
-  // header title here would duplicate it visibly and break a heading-count
-  // assertion, so the header stays generic for this whole route family.
-  if (pathname.startsWith('/phase1')) {
-    return { group: 'Content Management', item: 'Phase 1 content' };
-  }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((entry) => entry.href.split('?')[0] === pathname);
     if (item) return { group: group.label, item: item.label };
@@ -76,6 +70,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const location = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`;
   const breadcrumb = currentBreadcrumb(location);
   const pageTitle = breadcrumb.item;
+
+  /* The browser tab names the screen, so several open tabs can be told
+     apart: "Courses · Universta Admin", not "Super Admin | Universta" on
+     every one. */
+  useEffect(() => {
+    document.title = `${pageTitle} · Universta Admin`;
+  }, [pageTitle]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const isDrawer = useIsDrawer();
@@ -243,7 +244,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             {/* One ellipsised line, as the design intends it: the role. The
                 name and the address are stated in the sidebar's foot, and
                 stacking all three here ran them together. */}
-            <span className="u-account__org">{user?.roles.join(' · ')}</span>
+            <span className="u-account__org">{rolesLabel(user?.roles)}</span>
             <span className="p-avatar">
               <span>{initial}</span>
             </span>
@@ -272,6 +273,7 @@ function Navigation({
   const dashboardActive = pathname === '/dashboard' && activeKey === null;
   const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
 
   // Bring the selected entry into view when the route changes. The sidebar is
   // long enough that the active item is often off-screen after a direct URL
@@ -309,25 +311,26 @@ function Navigation({
         <span>Dashboard</span>
       </Link>
       {NAV_GROUPS.map((group) => {
-        const open = group.items.some(
+        const current = group.items.some(
           (item) => navItemKey(group.label, item.label) === activeKey,
         );
+        /* Only the group holding the current screen starts open, as the
+           reference has it; a group a reader opened or closed stays that way
+           while they move around. */
+        const open = toggled[group.label] ?? current;
         return (
-          /* The reference collapses its groups and opens only the one
-             holding the current screen. Its navigation is a handful of
-             entries; this one is long enough that collapsing it would put
-             most of the Admin behind a disclosure nobody asked for -- and
-             did, hiding links the acceptance specs click directly. So the
-             groups are the reference's, and they open: a reader can still
-             fold one away, and nothing starts out hidden. */
           <details
             className="a-navgroup"
             key={group.label}
-            open
-            {...(open ? { 'data-current-group': 'true' } : {})}
+            open={open}
+            onToggle={(event) => {
+              const isOpen = (event.currentTarget as HTMLDetailsElement).open;
+              if (isOpen !== open) setToggled((state) => ({ ...state, [group.label]: isOpen }));
+            }}
+            {...(current ? { 'data-current-group': 'true' } : {})}
           >
             <summary className="p-nav__link">
-              <span className="a-nav__dot" aria-hidden="true" />
+              <NavGroupIcon group={group.label} />
               <span>{group.label}</span>
               <ChevronIcon />
             </summary>
@@ -366,7 +369,7 @@ function UserSummary({
     <div className="p-menu__who">
       <strong>{user?.firstName}</strong>
       <span>{user?.email}</span>
-      <span>{user?.roles.join(' · ')}</span>
+      <span>{rolesLabel(user?.roles)}</span>
     </div>
   );
 }

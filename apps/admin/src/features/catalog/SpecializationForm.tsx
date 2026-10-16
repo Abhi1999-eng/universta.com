@@ -54,6 +54,7 @@ import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { catalogErrorText } from './catalog-errors';
+import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 
 type Intent = 'draft' | 'publish';
 
@@ -79,6 +80,7 @@ const blankForm = () => ({ subjectId: '', name: '', slug: '', shortDescription: 
  * content of its own. */
 export function SpecializationForm({ id }: { id?: string }) {
   const router = useRouter();
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
   const preselectedSubject = useSearchParams().get('subject') ?? '';
   const [record, setRecord] = useState<SubSubjectRecord | null>(null);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
@@ -260,14 +262,14 @@ export function SpecializationForm({ id }: { id?: string }) {
     } finally { setSaving(false); setSavingIntent(null); }
   }
 
-  if (loading) return <section className="mx-auto max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="p-sub">Loading specialization editor…</p></section>;
+  if (loading) return <section className="mx-auto w-full max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="p-sub">Loading specialization editor…</p></section>;
 
   return (
-    <section className="mx-auto max-w-[1040px]" aria-labelledby="specialization-form-heading">
+    <section className="mx-auto w-full max-w-[1040px]" aria-labelledby="specialization-form-heading">
       <Link href="/specializations" className="p-link">← Specializations</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="p-eyebrow">Unified specialization editor</p>
+          <p className="p-eyebrow">Specialization</p>
           <h2 id="specialization-form-heading" className="p-h1">{record ? 'Edit specialization' : 'Create specialization'}</h2>
           <p className="p-sub">Basic information, study levels, content sections, FAQs and SEO are saved together.{subject ? <> Belongs to <Link href={`/subjects/${subject.id}`} className="p-link">{subject.name}</Link>.</> : null}</p>
         </div>
@@ -276,7 +278,8 @@ export function SpecializationForm({ id }: { id?: string }) {
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
       {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
 
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={formEl} />
+      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
         <fieldset className="p-panel">
           <legend className="sr-only">Specialization information</legend>
           <h3 className="text-xl font-semibold">Specialization information</h3>

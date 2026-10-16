@@ -17,7 +17,7 @@ describe('AdminShell', () => {
   it('renders the authenticated user, role, active dashboard, and page content', () => {
     render(<AdminShell><p>Dashboard content</p></AdminShell>);
     expect(screen.getByText('admin@example.com')).toBeVisible();
-    expect(screen.getAllByText('SUPER_ADMIN').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Super admin').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /Dashboard/ })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('Dashboard content')).toBeVisible();
   });

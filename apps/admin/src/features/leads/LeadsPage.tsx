@@ -157,7 +157,7 @@ export function LeadsPage() {
   }
 
   return (
-    <section aria-labelledby="leads-heading" className="mx-auto max-w-[1240px]">
+    <section aria-labelledby="leads-heading" className="mx-auto w-full max-w-[1240px]">
       <div className="p-head">
         <div>
           <p className="p-eyebrow">

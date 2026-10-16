@@ -285,7 +285,7 @@ export function SettingsManager({
   }
 
   return (
-    <section className="mx-auto max-w-[1180px]">
+    <section className="mx-auto w-full max-w-[1180px]">
       <p className="p-eyebrow">{eyebrow}</p>
       <h2 className="p-h1">{title}</h2>
       <p className="p-sub">{intro}</p>
