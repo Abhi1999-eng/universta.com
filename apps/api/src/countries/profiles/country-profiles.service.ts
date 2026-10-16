@@ -280,7 +280,12 @@ export class CountryProfilesService {
       },
       /* Calendar order: with every intake at the same display order the
          name decided, and course editors met February before January. */
-      orderBy: [{ displayOrder: 'asc' }, { startMonth: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      orderBy: [
+        { displayOrder: 'asc' },
+        { startMonth: 'asc' },
+        { name: 'asc' },
+        { id: 'asc' },
+      ],
     });
   }
 
