@@ -23,6 +23,7 @@ import {
   CreateSpecializationFaqDto,
   CreateSpecializationSectionDto,
   SubjectActionDto,
+  TaxonomyCountriesDto,
   UpdateSpecializationFaqDto,
   UpdateSpecializationSectionDto,
 } from './dto/subject.dto';
@@ -77,6 +78,27 @@ export class AdminSpecializationsController {
       await this.subjects.putSpecializationSeo(id, dto, request),
     );
   }
+  /* The destinations the specialization is listed for. */
+  @Get(':id/countries') async countries(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.listSpecializationCountries(id),
+    );
+  }
+  @Put(':id/countries') async putCountries(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: TaxonomyCountriesDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.subjects.putSpecializationCountries(id, dto, request),
+    );
+  }
+
   /* Its own content: sections and FAQs, as a course has. */
   @Get(':id/content-sections') async sections(
     @Req() request: AuthenticatedRequest,

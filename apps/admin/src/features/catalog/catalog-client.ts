@@ -18,6 +18,7 @@ import type {
   EditorialMedia,
   SubjectRecord,
   SubSubjectRecord,
+  TaxonomyCountryLink,
   MasterRecord,
   CourseRecord,
   CourseMappingRecord,
@@ -651,6 +652,25 @@ export function deleteSpecializationSeo(id: string, expectedUpdatedAt?: string) 
     `/api/v1/admin/specializations/${id}/seo`,
     { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
   );
+}
+/* The destinations a subject or a specialization is listed for. */
+export function getSubjectCountries(id: string) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/subjects/${id}/countries`);
+}
+export function saveSubjectCountries(id: string, countryIds: string[]) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/subjects/${id}/countries`, {
+    method: "PUT",
+    body: JSON.stringify({ countryIds }),
+  });
+}
+export function getSpecializationCountries(id: string) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/specializations/${id}/countries`);
+}
+export function saveSpecializationCountries(id: string, countryIds: string[]) {
+  return request<TaxonomyCountryLink[]>(`/api/v1/admin/specializations/${id}/countries`, {
+    method: "PUT",
+    body: JSON.stringify({ countryIds }),
+  });
 }
 /* A specialization's sections and FAQs, the shapes a course's take. */
 export function listSpecializationSections(id: string) {

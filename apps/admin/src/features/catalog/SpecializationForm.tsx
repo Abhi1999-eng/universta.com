@@ -11,10 +11,14 @@ import {
   deleteSpecializationSection,
   deleteSpecializationSeo,
   getSpecialization,
+  getSpecializationCountries,
   getSpecializationSeo,
   listAllSubjects,
+  listCountries,
   listCourseLevels,
   listEditorialMedia,
+  listEvery,
+  saveSpecializationCountries,
   listSpecializationFaqs,
   listSpecializationSections,
   publishSubSubject,
@@ -40,7 +44,8 @@ import {
   type FaqDraft,
   type SectionDraft,
 } from './editorial/ContentBlocks';
-import type { CatalogLevel, EditorialMedia, EditorialSeo, MasterRecord, SubjectRecord, SubSubjectRecord } from './catalog.types';
+import type { CatalogLevel, CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubjectRecord, SubSubjectRecord } from './catalog.types';
+import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
@@ -79,6 +84,9 @@ export function SpecializationForm({ id }: { id?: string }) {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
+  const [countries, setCountries] = useState<CountryRecord[]>([]);
+  const [countryIds, setCountryIds] = useState<string[]>([]);
+  const [derivedCountryIds, setDerivedCountryIds] = useState<string[]>([]);
   const [impliedLevels, setImpliedLevels] = useState<CatalogLevel[]>([]);
   const [sections, setSections] = useState<SectionDraft[]>(() => [sectionBlank(SECTION_KEYS[0])]);
   const [faqs, setFaqs] = useState<FaqDraft[]>(() => [faqBlank()]);
@@ -109,16 +117,20 @@ export function SpecializationForm({ id }: { id?: string }) {
         setMedia(mediaResult.data);
         setSubjects(subjectRows);
         setLevels(levelRows.data);
+        void listEvery(listCountries).then((rows) => { if (active) setCountries(rows); }).catch(() => undefined);
         if (!id) return;
-        const [recordResult, seoResult, sectionRows, faqRows] = await Promise.all([
+        const [recordResult, seoResult, sectionRows, faqRows, countryLinks] = await Promise.all([
           getSpecialization(id),
           getSpecializationSeo(id),
           listSpecializationSections(id),
           listSpecializationFaqs(id),
+          getSpecializationCountries(id),
         ]);
         if (!active) return;
         const row = recordResult.data;
         setRecord(row);
+        setCountryIds(countryLinks.data.map((link) => link.country.id));
+        setDerivedCountryIds(countryLinks.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
         const loadedSections = sectionRows.data.map(sectionFromRecord);
         const loadedFaqs = faqRows.data.map(faqFromRecord);
         setSections(loadedSections.length ? loadedSections : [sectionBlank(SECTION_KEYS[0])]);
@@ -219,6 +231,11 @@ export function SpecializationForm({ id }: { id?: string }) {
         ? (await updateSubSubject(subjectId, record.id, payload)).data
         : (await createSubSubject(subjectId, payload)).data;
       await syncContent(saved.id);
+      if (record || countryIds.length) {
+        const links = await saveSpecializationCountries(saved.id, countryIds);
+        setCountryIds(links.data.map((link) => link.country.id));
+        setDerivedCountryIds(links.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
+      }
       if (hasSeo(seo)) {
         const result = await saveSpecializationSeo(saved.id, seoPayload(seo));
         setExistingSeo(result.data);
@@ -292,6 +309,8 @@ export function SpecializationForm({ id }: { id?: string }) {
         </fieldset>
 
         <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
+
+        <DestinationTicks idPrefix="specialization" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} />
 
         <ContentSectionsCard idPrefix="specialization" rows={sections} keys={SECTION_KEYS} media={media} onChange={updateSection} onAdd={() => { setSections((rows) => [...rows, sectionBlank('')]); setDirty(true); }} onRemove={removeSection} />
 

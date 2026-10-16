@@ -17,6 +17,7 @@ import {
 } from '../catalog/catalog.constants';
 import { writeAudit } from '../catalog/catalog.audit';
 import { sanitizeCourseRichTextBody } from '../courses/courses.service';
+import { DERIVED, EDITORIAL } from '../countries/country-taxonomy-reconciler';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { isCanonicalPublicSlug } from '../common/public-slug';
 import {
@@ -39,6 +40,7 @@ import type {
   CreateSpecializationSectionDto,
   UpdateSpecializationFaqDto,
   UpdateSpecializationSectionDto,
+  TaxonomyCountriesDto,
   UpdateSubSubjectDto,
   UpdateSubjectDto,
 } from './dto/subject.dto';
@@ -70,6 +72,14 @@ const MEDIA_SELECT = {
   status: true,
   deletedAt: true,
 } as const;
+const COUNTRY_LINK_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  status: true,
+  deletedAt: true,
+} as const;
+
 /** One entry per level id, the first occurrence kept. */
 function dedupeLevels<T extends { id: string }>(levels: T[]): T[] {
   const seen = new Set<string>();
@@ -1457,6 +1467,166 @@ export class SubjectsService {
       'Specialization SEO deleted',
     );
     return { deleted: true };
+  }
+
+  /* ---- The destinations a subject or a specialization is listed for. ---- */
+
+  /** Every destination this subject is listed for, and why: ticked by an
+   * editor, or standing behind a published course taught there. */
+  async listSubjectCountries(id: string) {
+    await this.subjectRecord(id);
+    return this.countryLinks(
+      await this.prisma.countrySubject.findMany({
+        where: { subjectId: id },
+        include: { country: { select: COUNTRY_LINK_SELECT } },
+      }),
+    );
+  }
+
+  async putSubjectCountries(
+    id: string,
+    dto: TaxonomyCountriesDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    await this.subjectRecord(id);
+    const wanted = await this.validateCountries(dto.countryIds);
+    await this.prisma.$transaction(async (tx) => {
+      /* Only the rows an editor put here are theirs to replace: a derived
+         row says a course is taught there, and unticking cannot make that
+         untrue. Same contract as the country editor's. */
+      await tx.countrySubject.deleteMany({
+        where: { subjectId: id, source: EDITORIAL },
+      });
+      const kept = new Set(
+        (
+          await tx.countrySubject.findMany({
+            where: { subjectId: id },
+            select: { countryId: true },
+          })
+        ).map((row) => row.countryId),
+      );
+      const added = wanted.filter((countryId) => !kept.has(countryId));
+      if (added.length)
+        await tx.countrySubject.createMany({
+          data: added.map((countryId) => ({
+            countryId,
+            subjectId: id,
+            source: EDITORIAL,
+          })),
+        });
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUBJECT',
+      id,
+      'COUNTRIES_SET',
+      null,
+      { countries: wanted.length },
+      'Subject destinations set',
+    );
+    return this.listSubjectCountries(id);
+  }
+
+  async listSpecializationCountries(id: string) {
+    await this.specializationRecord(id);
+    return this.countryLinks(
+      await this.prisma.countrySubSubject.findMany({
+        where: { subSubjectId: id },
+        include: { country: { select: COUNTRY_LINK_SELECT } },
+      }),
+    );
+  }
+
+  async putSpecializationCountries(
+    id: string,
+    dto: TaxonomyCountriesDto,
+    request: AuthenticatedRequest,
+  ) {
+    const userId = actorId(request);
+    await this.specializationRecord(id);
+    const wanted = await this.validateCountries(dto.countryIds);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.countrySubSubject.deleteMany({
+        where: { subSubjectId: id, source: EDITORIAL },
+      });
+      const kept = new Set(
+        (
+          await tx.countrySubSubject.findMany({
+            where: { subSubjectId: id },
+            select: { countryId: true },
+          })
+        ).map((row) => row.countryId),
+      );
+      const added = wanted.filter((countryId) => !kept.has(countryId));
+      if (added.length)
+        await tx.countrySubSubject.createMany({
+          data: added.map((countryId) => ({
+            countryId,
+            subSubjectId: id,
+            source: EDITORIAL,
+          })),
+        });
+    });
+    await writeAudit(
+      this.prisma,
+      request,
+      userId,
+      'CATALOG',
+      'SUB_SUBJECT',
+      id,
+      'COUNTRIES_SET',
+      null,
+      { countries: wanted.length },
+      'Specialization destinations set',
+    );
+    return this.listSpecializationCountries(id);
+  }
+
+  /** The ticked destinations must be real ones. */
+  private async validateCountries(ids: string[]) {
+    const unique = [...new Set(ids)];
+    if (!unique.length) return [];
+    const count = await this.prisma.country.count({
+      where: { id: { in: unique }, deletedAt: null },
+    });
+    if (count !== unique.length)
+      throw catalogConflict(
+        'COUNTRY_INVALID',
+        'A selected destination does not exist',
+      );
+    return unique;
+  }
+
+  /* A link to a deleted destination is invisible everywhere else, so it
+     is left out here too; the rows come back by name. */
+  private countryLinks(
+    rows: Array<{
+      source: string;
+      country: {
+        id: string;
+        name: string;
+        slug: string;
+        status: string;
+        deletedAt: Date | null;
+      };
+    }>,
+  ) {
+    return rows
+      .filter((row) => !row.country.deletedAt)
+      .sort((a, b) => a.country.name.localeCompare(b.country.name))
+      .map((row) => ({
+        country: {
+          id: row.country.id,
+          name: row.country.name,
+          slug: row.country.slug,
+          status: row.country.status,
+        },
+        source: row.source === DERIVED ? DERIVED : EDITORIAL,
+      }));
   }
 
   /* ---- A specialization's content sections and FAQs, as a course has. ---- */

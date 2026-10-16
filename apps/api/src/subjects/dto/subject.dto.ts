@@ -430,3 +430,14 @@ export class CreateSpecializationFaqDto extends SpecializationFaqDto {}
 export class UpdateSpecializationFaqDto extends SpecializationFaqDto {
   @ApiPropertyOptional() @IsOptional() @IsISO8601() expectedUpdatedAt?: string;
 }
+
+/** The destinations a subject or a specialization is listed for, sent
+ * whole: the list replaces what an editor ticked before. A destination that
+ * teaches it through a published course stays listed whatever is sent. */
+export class TaxonomyCountriesDto {
+  @ApiProperty({ type: [String], format: 'uuid' })
+  @IsArray()
+  @ArrayMaxSize(400)
+  @IsUUID('all', { each: true })
+  countryIds!: string[];
+}

@@ -12,7 +12,7 @@ import {
 } from './catalog-client';
 import type { PageMeta, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
-import { formatUpdated, ListSummary, RowMenu, StatusBadge, Toasts, useToasts, ViewOnSite } from '@/features/shared/records-ui';
+import { BulkBar, bulkSummary, formatUpdated, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, useRowSelection, useToasts, ViewOnSite } from '@/features/shared/records-ui';
 import { useRouter } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubSubjectRecord } | null;
@@ -145,6 +145,34 @@ export function SpecializationsPage() {
 
   const addHref = subjectId ? `/specializations/new?subject=${subjectId}` : '/specializations/new';
 
+
+  /* Publish or unpublish every ticked row, one after another, and say in
+     one line what happened. Rows already in the asked-for state are left
+     alone and counted as such. */
+  const selection = useRowSelection(rows.map((row) => row.id));
+  const [bulkBusy, setBulkBusy] = useState(false);
+  async function bulk(kind: 'publish' | 'unpublish') {
+    const picked = rows.filter((row) => selection.has(row.id));
+    const targets = picked.filter((row) => (kind === 'publish' ? row.status !== 'PUBLISHED' : row.status === 'PUBLISHED'));
+    setBulkBusy(true);
+    const failed: string[] = [];
+    let done = 0;
+    for (const row of targets) {
+      try {
+        if (kind === 'publish') await publishSubSubject(row.subject.id, row.id, row.updatedAt);
+        else await unpublishSubSubject(row.subject.id, row.id, row.updatedAt);
+        done += 1;
+      } catch (cause: unknown) {
+        failed.push(`${row.name} (${catalogErrorText(cause, 'failed')})`);
+      }
+    }
+    toast(failed.length ? 'error' : 'ok', bulkSummary(kind, done, picked.length - targets.length, failed));
+    selection.clear();
+    setBulkBusy(false);
+    void load();
+    loadCounts();
+  }
+
   return (
     <section aria-labelledby="specializations-heading">
       <header className="p-head">
@@ -233,10 +261,13 @@ export function SpecializationsPage() {
       {loading ? (
         <CatalogLoading label="Loading specializations…" />
       ) : rows.length ? (
+        <>
+        <BulkBar count={selection.count} busy={bulkBusy} onPublish={() => void bulk('publish')} onUnpublish={() => void bulk('unpublish')} onClear={selection.clear} />
         <div className="p-tablewrap">
           <table className="p-table u-table">
             <thead>
               <tr>
+                <th scope="col" className="w-8"><SelectAllCheckbox checked={selection.allSelected} onChange={selection.toggleAll} /></th>
                 <th scope="col">Specialization</th>
                 <th scope="col">Subject</th>
                 <th scope="col">Levels</th>
@@ -248,6 +279,7 @@ export function SpecializationsPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
+                  <td><RowCheckbox name={row.name} checked={selection.has(row.id)} onChange={(on) => selection.toggle(row.id, on)} /></td>
                   <td>
                     <Link href={`/specializations/${row.id}`} className="p-link font-semibold">{row.name}</Link>
                     <span className="p-hint block">
@@ -311,6 +343,7 @@ export function SpecializationsPage() {
             </tbody>
           </table>
         </div>
+        </>
       ) : (
         <div className="p-panel p-empty">
           <h3 className="p-empty__t">No specializations found</h3>

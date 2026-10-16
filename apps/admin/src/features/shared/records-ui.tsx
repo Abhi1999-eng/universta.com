@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { webOrigin } from '@/lib/web-origin';
 
 /**
@@ -176,4 +176,57 @@ export function formatUpdated(value: string | null | undefined) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/** Which rows on the page are ticked, for a bulk action. The set is kept
+ * only for the rows currently shown: a new page starts unticked. */
+export function useRowSelection(ids: string[]) {
+  /* The ticks are remembered with the rows they were made on: when the
+     rows change (page, filter, reload) the old ticks simply no longer
+     apply, so nothing has to be cleared by hand. */
+  const key = ids.join('|');
+  const [state, setState] = useState<{ key: string; selected: Set<string> }>(() => ({ key, selected: new Set() }));
+  const selected = useMemo(() => (state.key === key ? state.selected : new Set<string>()), [state, key]);
+  const toggle = useCallback((id: string, on: boolean) => {
+    setState((current) => {
+      const next = new Set(current.key === key ? current.selected : []);
+      if (on) next.add(id);
+      else next.delete(id);
+      return { key, selected: next };
+    });
+  }, [key]);
+  const toggleAll = useCallback((on: boolean) => setState({ key, selected: on ? new Set(ids) : new Set() }), [ids, key]);
+  const clear = useCallback(() => setState({ key, selected: new Set() }), [key]);
+  const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
+  return useMemo(() => ({ selected, has: (id: string) => selected.has(id), count: selected.size, toggle, toggleAll, clear, allSelected }), [selected, toggle, toggleAll, clear, allSelected]);
+}
+
+export function SelectAllCheckbox({ checked, onChange }: { checked: boolean; onChange: (on: boolean) => void }) {
+  return <input type="checkbox" aria-label="Select all on this page" checked={checked} onChange={(event) => onChange(event.target.checked)} />;
+}
+export function RowCheckbox({ name, checked, onChange }: { name: string; checked: boolean; onChange: (on: boolean) => void }) {
+  return <input type="checkbox" aria-label={`Select ${name}`} checked={checked} onChange={(event) => onChange(event.target.checked)} />;
+}
+
+/** The bar over the table once something is ticked: how many, and the two
+ * things that can be done to them at once. */
+export function BulkBar({ count, busy, onPublish, onUnpublish, onClear }: { count: number; busy: boolean; onPublish: () => void; onUnpublish: () => void; onClear: () => void }) {
+  if (!count) return null;
+  return (
+    <div className="a-grid__bulk" role="region" aria-label="Bulk actions">
+      <span className="font-semibold">{count} selected</span>
+      <button type="button" className="p-btn p-btn--primary p-btn--sm" disabled={busy} onClick={onPublish}>{busy ? 'Working…' : `Publish ${count}`}</button>
+      <button type="button" className="p-btn p-btn--ghost p-btn--sm" disabled={busy} onClick={onUnpublish}>Unpublish {count}</button>
+      <button type="button" className="p-btn p-btn--text p-btn--sm" disabled={busy} onClick={onClear}>Clear</button>
+    </div>
+  );
+}
+
+/** One line for what a bulk action did: "3 published · 1 failed: X (reason)". */
+export function bulkSummary(kind: 'publish' | 'unpublish', done: number, skipped: number, failed: string[]) {
+  const verb = kind === 'publish' ? 'published' : 'moved to draft';
+  const parts = [`${done} ${verb}`];
+  if (skipped) parts.push(`${skipped} already ${kind === 'publish' ? 'published' : 'draft'}`);
+  if (failed.length) parts.push(`${failed.length} failed: ${failed.join(' · ')}`);
+  return parts.join(' · ') + '.';
 }

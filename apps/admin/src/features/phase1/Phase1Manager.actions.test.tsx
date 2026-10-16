@@ -103,3 +103,15 @@ describe('the shared records list', () => {
     expect(await screen.findByRole('dialog')).toHaveTextContent('Archive this record?');
   });
 });
+
+describe('bulk publishing on the shared records list', () => {
+  it('publishes every ticked draft at once and sums it up in one toast', async () => {
+    render(<Phase1Manager resource="universities" />);
+    await rowOf('Beta University');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select all on this page' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish 2' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 published · 1 already published.'));
+    // Only the draft was sent; the published one was left alone.
+    expect(calls.filter((c) => c.method === 'POST' && c.url.endsWith('/publish')).map((c) => c.url.split('/').at(-2))).toEqual(['id-b']);
+  });
+});

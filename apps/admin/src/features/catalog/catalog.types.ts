@@ -335,6 +335,12 @@ export interface SubjectRecord {
   createdAt: string;
   updatedAt: string;
 }
+/** A destination a subject or a specialization is listed for, and why. */
+export interface TaxonomyCountryLink {
+  country: { id: string; name: string; slug: string; status: string };
+  /** EDITORIAL: an editor ticked it. DERIVED: a published course is taught there, so it stays listed. */
+  source: 'EDITORIAL' | 'DERIVED';
+}
 export interface CatalogLevel {
   id: string;
   name: string;
