@@ -215,7 +215,7 @@ export function ExperimentsManager() {
   }
 
   return (
-    <section className="mx-auto max-w-[1240px]">
+    <section className="mx-auto w-full max-w-[1240px]">
       <div>
         <p className="p-eyebrow">A/B testing</p>
         <h2 className="p-h1">Experiments</h2>

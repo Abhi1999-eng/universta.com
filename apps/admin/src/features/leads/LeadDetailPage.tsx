@@ -156,7 +156,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
 
   const name = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
   return (
-    <section aria-labelledby="lead-heading" className="mx-auto max-w-[1120px]">
+    <section aria-labelledby="lead-heading" className="mx-auto w-full max-w-[1120px]">
       <Link href="/leads" className="p-link">← Back to leads</Link>
       <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="min-w-0">

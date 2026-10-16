@@ -26,9 +26,9 @@ export function UnifiedEditorActions({
       className={`${sticky ? 'sticky bottom-4 z-30 bg-white/95 shadow-[0_14px_40px_rgba(15,23,42,0.12)] backdrop-blur' : 'bg-white'} mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E0EA] p-4`}
     >
       <div>
-        <p>One record, one save flow</p>
+        <p>Save your changes</p>
         <p className="p-hint">
-          Every section on this page is saved together. Draft keeps it private; Publish makes the complete record live.
+          Everything on this page saves together. Save draft keeps it off the website; Publish puts it live.
         </p>
       </div>
       <div className="flex flex-wrap gap-3">

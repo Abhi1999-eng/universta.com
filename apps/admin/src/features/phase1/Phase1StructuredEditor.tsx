@@ -19,6 +19,7 @@ import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 import { isFutureCalendarDate } from '@/lib/calendar-date';
 import { offeringDurationUnit, rowFieldLabel, singularTitle } from './structured-editor-labels';
+import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 
 type Option = {
   id: string;
@@ -57,6 +58,17 @@ type Props = {
 const StructuredEditorDisabledContext = createContext(false);
 
 const structured = new Set(['universities', 'offerings', 'scholarships', 'consultants', 'jobs', 'events', 'success-stories', 'testimonials']);
+/** What one record of each resource is called, for the editor's heading. */
+const SINGULAR: Record<string, string> = {
+  universities: 'university',
+  offerings: 'university course offering',
+  scholarships: 'scholarship',
+  consultants: 'consultant',
+  jobs: 'job',
+  events: 'event',
+  'success-stories': 'success story',
+  testimonials: 'testimonial',
+};
 const inputClass = 'p-input';
 const invalidInputClass = 'p-input';
 const emptyOptions: Options = {
@@ -103,6 +115,7 @@ export function isStructuredPhase1Resource(resource: string) {
 }
 
 export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }: Props) {
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
   const [options, setOptions] = useState<Options>(emptyOptions);
   const [values, setValues] = useState<Record<string, string>>({
     status: 'DRAFT',
@@ -370,12 +383,12 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
 
   return (
     <StructuredEditorDisabledContext.Provider value={loading || loadError}>
-      <form onSubmit={(event) => void submit(event)} className="mt-7 space-y-6 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-7" aria-label={`${recordId ? 'Edit' : 'Create'} ${resource}`}>
+      <EditorSectionNav root={formEl} />
+      <form ref={setFormEl} onSubmit={(event) => void submit(event)} className="mt-7 space-y-6 rounded-2xl border border-[#E8ECF3] bg-white p-5 sm:p-7" aria-label={`${recordId ? 'Edit' : 'Create'} ${resource}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="p-eyebrow">Structured editor</p>
             <h3 className="mt-1 text-2xl font-semibold">
-              {recordId ? 'Edit' : 'Create'} {resource === 'offerings' ? 'university course offering' : resource.replaceAll('-', ' ')}
+              {recordId ? 'Edit' : 'Create'} {SINGULAR[resource] ?? resource.replaceAll('-', ' ')}
             </h3>
           </div>
           <button type="button" onClick={onCancel} className="p-btn p-btn--ghost p-btn--sm">
@@ -543,15 +556,17 @@ function Core({ values, set, errors, entity = 'title', summaryKey, resource }: {
   );
 }
 function ScheduledPublishingFields(p: any) {
+  /* Rarely used, so folded away unless a window is already set. */
+  const scheduled = Boolean(p.values.publishStartsAt || p.values.publishEndsAt);
   return (
-    <fieldset className="p-card">
-      <legend className="px-1 text-sm font-semibold">Scheduled publishing</legend>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <details className="p-card" open={scheduled || undefined}>
+      <summary className="cursor-pointer px-1 text-sm font-semibold">Scheduled publishing (optional)</summary>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <Field label="Publish from (optional)" type="datetime-local" value={p.values.publishStartsAt ?? ''} onChange={(value) => p.set('publishStartsAt', value)} help={commonFieldHelp.publishStartsAt} />
         <Field label="Publish until (optional)" type="datetime-local" value={p.values.publishEndsAt ?? ''} onChange={(value) => p.set('publishEndsAt', value)} error={p.errors.publishEndsAt} help={commonFieldHelp.publishEndsAt} />
       </div>
       <p className="p-hint">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit.</p>
-    </fieldset>
+    </details>
   );
 }
 function UniversityFields(p: any) {

@@ -10,6 +10,11 @@ import { Phase1Manager } from './Phase1Manager';
 
 const calls: Array<{ url: string }> = [];
 const authFetch = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => '/phase1/universities',
+  useSearchParams: () => new URLSearchParams(),
+}));
 vi.mock('@/features/auth/auth-client', () => ({
   authFetch: (input: RequestInfo | URL) => authFetch(input),
 }));

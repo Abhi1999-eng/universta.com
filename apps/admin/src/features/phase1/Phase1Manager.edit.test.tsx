@@ -32,6 +32,11 @@ const calls: Array<{ url: string; method: string; body?: string }> = [];
 /** Both the list and the editor talk to the API through `authFetch`, so that is
  * what the test intercepts -- stubbing global fetch would miss it. */
 const authFetch = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => '/phase1/universities',
+  useSearchParams: () => new URLSearchParams(),
+}));
 vi.mock('@/features/auth/auth-client', () => ({
   authFetch: (input: RequestInfo | URL, init?: RequestInit) =>
     authFetch(input, init),

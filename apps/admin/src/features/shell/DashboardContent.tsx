@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { rolesLabel } from './role-label';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { NAV_GROUPS } from './nav-config';
 
@@ -23,7 +24,7 @@ export function DashboardContent() {
 
       <div className="p-grid2" style={{ marginTop: 18 }}>
         <InfoItem label="Account email" value={user?.email ?? 'Unavailable'} />
-        <InfoItem label="Active role" value={user?.roles.join(', ') ?? 'Unavailable'} />
+        <InfoItem label="Active role" value={user?.roles?.length ? rolesLabel(user.roles) : 'Unavailable'} />
       </div>
 
       <div className="mt-10 space-y-8">

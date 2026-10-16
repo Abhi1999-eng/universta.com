@@ -179,7 +179,7 @@ export function SpecializationsPage() {
     <section aria-labelledby="specializations-heading">
       <header className="p-head">
         <div>
-          <p className="p-eyebrow">Catalog discovery</p>
+          <p className="p-eyebrow">Subject &amp; specialization</p>
           <h2 id="specializations-heading" className="p-h1">
             Specializations
           </h2>
@@ -330,7 +330,7 @@ export function SpecializationsPage() {
                       ) : (
                         <button
                           type="button"
-                          className="p-btn p-btn--primary p-btn--sm"
+                          className="p-btn p-btn--outline p-btn--sm"
                           disabled={Boolean(busy[row.id])}
                           onClick={() => void quick(row, 'publish')}
                         >

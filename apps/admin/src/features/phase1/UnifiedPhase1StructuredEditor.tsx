@@ -63,11 +63,11 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
     <div className="sticky bottom-4 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E0EA] bg-white/95 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.12)] backdrop-blur">
       <div>
         <p>
-          One record, one save flow
+          Save your changes
         </p>
         <p className="p-hint">
-          Every field above is saved together. Draft keeps the record private;
-          Publish saves the same complete form and makes it live.
+          Everything above saves together. Save draft keeps it off the website;
+          Publish puts it live.
         </p>
       </div>
       <div className="flex flex-wrap gap-3">

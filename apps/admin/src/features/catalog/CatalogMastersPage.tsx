@@ -474,16 +474,16 @@ export function CatalogMastersPage() {
     : 'Course levels, study modes, intakes and scholarship providers';
 
   return (
-    <section aria-labelledby="masters-heading" className="mx-auto max-w-[1180px]">
+    <section aria-labelledby="masters-heading" className="mx-auto w-full max-w-[1180px]">
       <p className="p-eyebrow">
-        Catalog foundations
+        Reference data
       </p>
       <h2 id="masters-heading" className="p-h1">
         {title}
       </h2>
       <p className="p-sub">
-        Maintain the active master values used by course editors and public
-        filters. Dependencies are checked before deactivation or deletion.
+        The lists that course editors pick from and the website filters by. A
+        value still in use cannot be switched off or deleted.
       </p>
 
       {error ? (

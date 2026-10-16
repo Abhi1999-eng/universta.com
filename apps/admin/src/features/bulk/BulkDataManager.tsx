@@ -507,7 +507,7 @@ export function BulkDataManager() {
   );
 
   return (
-    <section className="mx-auto max-w-[1240px]">
+    <section className="mx-auto w-full max-w-[1240px]">
       <div>
         <p className="p-eyebrow">
           Catalog operations

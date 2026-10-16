@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { StatusBadge } from "@/features/shared/records-ui";
 import { DevicePreview } from "./DevicePreview";
 import { VersionHistory } from "./VersionHistory";
 import { webOrigin } from "@/lib/web-origin";
@@ -273,11 +274,10 @@ export function WebsitePagesManager() {
                     {MANAGEMENT_LABEL[row.managementType]}
                   </td>
                   <td>
-                    <span className="p-badge">
-                      {row.status}
-                    </span>
+                    <StatusBadge status={row.status} />
                   </td>
-                  <td className="px-5 py-4 text-right whitespace-nowrap">
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 whitespace-nowrap">
                     {row.canCreatePage ? (
                       <button
                         type="button"
@@ -337,6 +337,7 @@ export function WebsitePagesManager() {
                     >
                       View live
                     </a>
+                    </div>
                   </td>
                 </tr>
               ))}

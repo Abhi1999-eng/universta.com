@@ -32,6 +32,7 @@ import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { catalogErrorText } from './catalog-errors';
+import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 
 type Intent = 'draft' | 'publish';
 const inputClass = 'p-input';
@@ -41,6 +42,7 @@ const seoFromRecord = (record: EditorialSeo | null): UnifiedSeoDraft => record ?
 } : blankUnifiedSeo;
 export function SubjectForm({ id }: { id?: string }) {
   const router = useRouter();
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
   const [record, setRecord] = useState<SubjectRecord | null>(null);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
@@ -196,19 +198,20 @@ export function SubjectForm({ id }: { id?: string }) {
     } finally { setSaving(false); setSavingIntent(null); }
   }
 
-  if (loading) return <section className="mx-auto max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="p-sub">Loading subject editor…</p></section>;
+  if (loading) return <section className="mx-auto w-full max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="p-sub">Loading subject editor…</p></section>;
 
   return (
-    <section className="mx-auto max-w-[1040px]" aria-labelledby="subject-form-heading">
+    <section className="mx-auto w-full max-w-[1040px]" aria-labelledby="subject-form-heading">
       <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="p-eyebrow">Unified subject editor</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, study levels, destinations, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
+        <div><p className="p-eyebrow">Subject</p><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, study levels, destinations, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
         <span className="p-chip">{status}</span>
       </div>
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
       {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
 
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={formEl} />
+      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
         <fieldset className="p-panel">
           <legend className="sr-only">Subject information</legend>
           <h3 className="text-xl font-semibold">Subject information</h3>

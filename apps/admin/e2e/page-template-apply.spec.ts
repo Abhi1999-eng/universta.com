@@ -125,6 +125,7 @@ test.describe('page template apply', () => {
   }) => {
     await loginAsAdmin(page);
     const nav = page.getByRole('navigation', { name: 'Primary navigation' });
+    await nav.getByText('Website Builder', { exact: true }).click();
     await expect(nav.getByRole('link', { name: 'Website Pages' })).toBeVisible();
     await expect(
       nav.getByRole('link', { name: 'Page records (raw list)' }),
