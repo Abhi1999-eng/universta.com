@@ -157,7 +157,8 @@ test.describe.serial('continent administration', () => {
     await page.goto('/countries');
     await page.getByRole('textbox', { name: 'Search countries' }).fill(countryName);
     const countryRow = page.getByRole('row').filter({ hasText: countryName });
-    await countryRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await countryRow.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
     const countryDelete = page.getByRole('dialog');
     await countryDelete.getByPlaceholder(countryName).fill(countryName);
     await countryDelete.getByRole('button', { name: 'Delete country', exact: true }).click();

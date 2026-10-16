@@ -1310,7 +1310,7 @@ test.describe.serial('country client contract, end to end', () => {
     await page.getByPlaceholder('Search countries or ISO code').fill(COUNTRY_SLUG);
     const row = page.getByRole('row').filter({ hasText: COUNTRY_NAME });
     await expect(row).toBeVisible({ timeout: 30_000 });
-    await expect(row).toContainText('PUBLISHED');
+    await expect(row).toContainText('Published');
     /* Tags left the list so the row actions fit on screen without a sideways
      * scroll; the tag filter below still proves the assignment, and the row's
      * own actions are reachable where they belong. */
