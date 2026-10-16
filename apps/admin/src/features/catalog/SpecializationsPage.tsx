@@ -12,6 +12,8 @@ import {
 } from './catalog-client';
 import type { PageMeta, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
+import { formatUpdated, ListSummary, RowMenu, StatusBadge, Toasts, useToasts, ViewOnSite } from '@/features/shared/records-ui';
+import { useRouter } from 'next/navigation';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubSubjectRecord } | null;
 
@@ -33,9 +35,12 @@ export function SpecializationsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [pending, setPending] = useState<Pending>(null);
   const [confirm, setConfirm] = useState('');
+  const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const { toasts, push: toast, dismiss } = useToasts();
+  const router = useRouter();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -70,6 +75,48 @@ export function SpecializationsPage() {
     };
   }, []);
 
+  /* How many are live and how many are not, for the line over the table. */
+  const loadCounts = useCallback(() => {
+    void Promise.all([
+      listSpecializations({ status: 'PUBLISHED', limit: 1 }),
+      listSpecializations({ status: 'DRAFT', limit: 1 }),
+    ])
+      .then(([published, draft]) =>
+        setCounts({ published: published.meta?.total ?? 0, draft: draft.meta?.total ?? 0 }),
+      )
+      .catch(() => setCounts(null));
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadCounts(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCounts]);
+
+  /* Publish or unpublish straight from the row; see SubjectsPage. */
+  async function quick(row: SubSubjectRecord, kind: 'publish' | 'unpublish') {
+    setBusy((current) => ({ ...current, [row.id]: kind }));
+    try {
+      const result =
+        kind === 'publish'
+          ? await publishSubSubject(row.subject.id, row.id, row.updatedAt)
+          : await unpublishSubSubject(row.subject.id, row.id, row.updatedAt);
+      setRows((current) => current.map((item) => (item.id === row.id ? result.data : item)));
+      toast('ok', kind === 'publish' ? `${row.name} published.` : `${row.name} moved to draft.`);
+      void load();
+      loadCounts();
+    } catch (cause: unknown) {
+      toast('error', `${row.name}: ${kind === 'publish' ? 'not published' : 'not moved to draft'}. ${catalogErrorText(cause, 'The request failed')}`, {
+        label: 'Fix in editor',
+        onSelect: () => router.push(`/specializations/${row.id}`),
+      });
+    } finally {
+      setBusy((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }
+
   async function act() {
     if (!pending || (pending.kind === 'delete' && confirm !== pending.row.name)) return;
     const { row } = pending;
@@ -77,18 +124,20 @@ export function SpecializationsPage() {
       if (pending.kind === 'publish') await publishSubSubject(row.subject.id, row.id, row.updatedAt);
       if (pending.kind === 'unpublish') await unpublishSubSubject(row.subject.id, row.id, row.updatedAt);
       if (pending.kind === 'delete') await deleteSubSubject(row.subject.id, row.id, row.updatedAt);
-      setSuccess(
+      toast(
+        'ok',
         pending.kind === 'publish'
-          ? 'Specialization published.'
+          ? `${row.name} published.`
           : pending.kind === 'unpublish'
-            ? 'Specialization unpublished.'
-            : 'Specialization deleted.',
+            ? `${row.name} moved to draft.`
+            : `${row.name} deleted.`,
       );
       setPending(null);
       setConfirm('');
       void load();
+      loadCounts();
     } catch (cause: unknown) {
-      setError(catalogErrorText(cause, 'Specialization action failed'));
+      toast('error', `${row.name}: ${catalogErrorText(cause, 'Specialization action failed')}`);
       setPending(null);
       setConfirm('');
     }
@@ -105,6 +154,7 @@ export function SpecializationsPage() {
             Specializations
           </h2>
           <p className="p-sub">Each subject&apos;s sub-fields, with a page of their own on the site.</p>
+          <ListSummary total={meta ? meta.total : null} published={counts?.published} draft={counts?.draft} noun="specialization" />
         </div>
         <div className="p-head__actions">
           <Link href={addHref} className="p-btn p-btn--primary">
@@ -113,12 +163,8 @@ export function SpecializationsPage() {
         </div>
       </header>
 
-      {success ? (
-        <p role="status" className="p-alert p-alert--ok">
-          <span>{success}</span>
-        </p>
-      ) : null}
       {error ? <CatalogError message={error} onRetry={load} /> : null}
+      <Toasts toasts={toasts} onDismiss={dismiss} />
 
       <section className="p-panel a-filters" aria-label="Filter specializations">
         <div className="p-grid3">
@@ -203,8 +249,11 @@ export function SpecializationsPage() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <strong>{row.name}</strong>
-                    <span className="p-hint">/{row.subject.slug}/{row.slug}</span>
+                    <Link href={`/specializations/${row.id}`} className="p-link font-semibold">{row.name}</Link>
+                    <span className="p-hint block">
+                      /{row.subject.slug}/{row.slug}
+                      {row.status === 'PUBLISHED' ? <> · <ViewOnSite path={`/subjects/${row.subject.slug}/${row.slug}`} /></> : null}
+                    </span>
                     {row.shortDescription?.trim() ? null : (
                       <span
                         className="p-chip ml-2 align-middle text-xs"
@@ -227,19 +276,9 @@ export function SpecializationsPage() {
                     )}
                   </td>
                   <td>
-                    <span
-                      className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`}
-                    >
-                      {row.status}
-                    </span>
+                    <StatusBadge status={row.status} />
                   </td>
-                  <td>
-                    {row.updatedAt ? (
-                      new Date(row.updatedAt).toLocaleString()
-                    ) : (
-                      <span className="p-muted">—</span>
-                    )}
-                  </td>
+                  <td>{formatUpdated(row.updatedAt)}</td>
                   <td className="p-td-actions">
                     <div className="p-row p-row--actions">
                       <Link href={`/specializations/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">
@@ -249,26 +288,22 @@ export function SpecializationsPage() {
                         <button
                           type="button"
                           className="p-btn p-btn--ghost p-btn--sm"
-                          onClick={() => setPending({ kind: 'unpublish', row })}
+                          disabled={Boolean(busy[row.id])}
+                          onClick={() => void quick(row, 'unpublish')}
                         >
-                          Unpublish
+                          {busy[row.id] === 'unpublish' ? 'Moving to draft…' : 'Unpublish'}
                         </button>
                       ) : (
                         <button
                           type="button"
                           className="p-btn p-btn--primary p-btn--sm"
-                          onClick={() => setPending({ kind: 'publish', row })}
+                          disabled={Boolean(busy[row.id])}
+                          onClick={() => void quick(row, 'publish')}
                         >
-                          Publish
+                          {busy[row.id] === 'publish' ? 'Publishing…' : 'Publish'}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="p-btn p-btn--danger p-btn--sm"
-                        onClick={() => setPending({ kind: 'delete', row })}
-                      >
-                        Delete
-                      </button>
+                      <RowMenu items={[{ label: 'Delete', danger: true, onSelect: () => setPending({ kind: 'delete', row }) }]} />
                     </div>
                   </td>
                 </tr>

@@ -100,7 +100,8 @@ test.describe.serial('catalog management', () => {
     await page.getByRole('textbox', { name: 'Search countries' }).fill(countryName);
     const countryRow = page.getByRole('row').filter({ hasText: countryName });
     await expect(countryRow).toBeVisible();
-    await countryRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await countryRow.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
     const deleteCountryDialog = page.getByRole('dialog');
     await deleteCountryDialog.getByPlaceholder(countryName).fill(countryName);
     await deleteCountryDialog.getByRole('button', { name: 'Delete country', exact: true }).click();
