@@ -45,7 +45,10 @@ export type CalculatorConfig = {
 
 const MAX_FACTORS = 8;
 const MAX_OPTIONS = 12;
-const MAX_MONEY = 1_000_000;
+/* High enough for currencies counted in large units: a private university
+   in Japan charges 1,800,000 yen a year, and the old ceiling of 1,000,000
+   refused it. */
+const MAX_MONEY = 100_000_000;
 
 function finiteNumber(
   value: unknown,

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getCourse } from "@/lib/catalog";
 import { CourseGuide } from "@/components/study-abroad/CourseGuide";
-import { resolvedMetadata } from "@/lib/seo-management";
+import { resolvedMetadata, templatedTitle } from "@/lib/seo-management";
 import { phaseCourseSlug, phaseList } from "@/lib/phase1";
 import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { programmeSample } from "@/lib/programme-sample";
@@ -42,7 +42,7 @@ export async function generateMetadata({
   );
   /* This route family's layout appends the site name through its title
      template; `resolvedMetadata` appends it too. Hand over the bare title. */
-  return { ...resolved, title: course.seo?.seoTitle ?? course.name };
+  return { ...resolved, title: templatedTitle(course.seo?.seoTitle ?? course.name) };
 }
 export default async function CourseDetailPage({
   params,

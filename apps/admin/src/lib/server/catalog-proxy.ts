@@ -143,7 +143,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_SUBJECT_INVALID: 'One or more selected subjects are unavailable. Reload and choose them again',
   COUNTRY_TAG_INVALID: 'One or more of this country\u2019s tags are unavailable. Reload before saving',
   COUNTRY_TAG_INACTIVE_CONFLICT: 'That tag is retired. Pick an active one',
-  COUNTRY_CALCULATOR_INVALID: 'The budget calculator configuration is not valid',
+  COUNTRY_CALCULATOR_INVALID: 'The budget calculator could not be saved. Fix the problems listed under it, then save again',
   COUNTRY_CONSULTANT_CARD_NOT_FOUND: 'Guidance card not found',
   EDITORIAL_SECTION_TYPE_INVALID: 'That section type is not supported',
   NO_RECORDS_ARCHIVABLE: 'None of the selected records can be archived',

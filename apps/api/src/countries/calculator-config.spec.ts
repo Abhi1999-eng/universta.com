@@ -137,8 +137,25 @@ describe('calculator configuration', () => {
     expect(
       parseCalculatorConfig({
         ...valid,
-        base: { ...valid.base, livingMin: 99_000_000, livingMax: 99_000_001 },
+        base: { ...valid.base, livingMin: 200_000_000, livingMax: 200_000_001 },
       }),
     ).toBeNull();
+  });
+
+  it('accepts figures in currencies counted in large units, such as yen', () => {
+    /* A private university in Japan charges up to 1,800,000 yen a year; the
+       old ceiling of 1,000,000 refused the whole calculator over it. */
+    const parsed = parseCalculatorConfig({
+      ...valid,
+      base: { ...valid.base, livingMin: 85_000, livingMax: 160_000, semesterFee: 267_900 },
+      factors: [
+        {
+          id: 'university',
+          label: 'Which kind of university?',
+          options: [{ value: 'private', label: 'A private university', tuitionMin: 300_000, tuitionMax: 1_264_200 }],
+        },
+      ],
+    });
+    expect(parsed?.factors[0].options[0].tuitionMax).toBe(1_264_200);
   });
 });

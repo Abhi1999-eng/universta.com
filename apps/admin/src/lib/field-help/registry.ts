@@ -534,12 +534,12 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
   // ---- Course requirements (repeatable rows on a University Course Offering) ----
   'requirements.category': {
     purpose: 'What kind of requirement this row describes.',
-    input: 'A short label, e.g. "ACADEMIC" or "ENGLISH_TEST".',
+    input: 'Choose Academic, English test or Other.',
     dataType: 'Text',
     required: 'Required to save this row.',
     example: 'ACADEMIC',
     frontendEffect: 'Groups this requirement under the matching heading on the offering page.',
-    caution: 'This is a free-text box, not a fixed list — keep the wording consistent across offerings.',
+    caution: 'Choose English test for IELTS, TOEFL, PTE or Duolingo rows: the website\'s English-test filters only read requirements in that group.',
   },
   'requirements.title': {
     purpose: 'The name of this specific requirement.',
@@ -595,11 +595,10 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
   },
   'offerings.durationUnit': {
     purpose: 'The unit the Duration figures are measured in.',
-    input: 'Type the unit, e.g. YEARS.',
-    dataType: 'Text',
-    required: 'Optional, defaults to YEARS.',
+    input: 'Choose Years or Months.',
+    dataType: 'Choice',
+    required: 'Optional, defaults to Years.',
     frontendEffect: 'Shown next to the duration figures.',
-    caution: 'This is a free-text box, not a fixed list — keep the wording consistent.',
   },
   'offerings.currencyCode': commonFieldHelp.currency,
   'offerings.applicationUrl': commonFieldHelp.applicationUrl,
