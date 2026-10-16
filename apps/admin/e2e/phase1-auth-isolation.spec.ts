@@ -65,6 +65,9 @@ test.describe.serial('isolated authoritative Phase 1 Admin authentication', () =
       page.getByRole('button', { name: 'Sign in securely' }).click(),
     ]);
     await page.getByRole('button', { name: 'Sign out' }).click();
+    // Logout is a request; opening /login before it lands still carries the
+    // session, and /login then forwards a signed-in user to the dashboard.
+    await expect(page).toHaveURL(/\/login/);
 
     await page.goto('/login?returnTo=%2F%2Fevil.example');
     await page.getByLabel('Email address').fill(e2eEmail!);

@@ -967,136 +967,154 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     // The list itself is the running order — a section has no display-order
     // field of its own, so without this every section saved as 0 and came back
     // in whatever order the database chose.
-    for (const [index, row] of activeSections.entries()) {
-      const payload = {
-        sectionKey: row.sectionKey,
-        sectionType: row.sectionType,
-        /* Sent as written, "" included: an emptied field sent as nothing
-           was read as "leave it alone", so none of these could be cleared.
-           An emptied rich text editor still holds "<p><br></p>", which is
-           no subheading at all. */
-        eyebrow: row.eyebrow.trim(),
-        heading: row.heading.trim(),
-        subheading: richTextOrEmpty(row.subheading),
-        bodyJson: bodyForApi(row),
-        primaryMediaId: row.primaryMediaId || undefined,
-        secondaryMediaId: row.secondaryMediaId || undefined,
-        ctaLabel: row.ctaLabel.trim(),
-        ctaUrl: row.ctaUrl.trim(),
-        /* An explicit Display order wins; otherwise the position in the list
-         * supplies it, which is what a row left at the default 0 wants. It
-         * used to always be the index, so a number typed into the visible
-         * Display order field was accepted and then silently discarded. */
-        displayOrder: row.displayOrder > 0 ? row.displayOrder : index,
-        status: row.status,
-        ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
-      };
-      const result = row.id
-        ? await updateEditorialSection(id, row.id, payload)
-        : await createEditorialSection(id, payload);
-      nextSections.push({
-        ...draftFromSection(result.data),
-        id: result.data.id,
-        updatedAt: result.data.updatedAt,
-      });
+    try {
+      for (const [index, row] of activeSections.entries()) {
+        const payload = {
+          sectionKey: row.sectionKey,
+          sectionType: row.sectionType,
+          /* Sent as written, "" included: an emptied field sent as nothing
+             was read as "leave it alone", so none of these could be cleared.
+             An emptied rich text editor still holds "<p><br></p>", which is
+             no subheading at all. */
+          eyebrow: row.eyebrow.trim(),
+          heading: row.heading.trim(),
+          subheading: richTextOrEmpty(row.subheading),
+          bodyJson: bodyForApi(row),
+          primaryMediaId: row.primaryMediaId || undefined,
+          secondaryMediaId: row.secondaryMediaId || undefined,
+          ctaLabel: row.ctaLabel.trim(),
+          ctaUrl: row.ctaUrl.trim(),
+          /* An explicit Display order wins; otherwise the position in the list
+           * supplies it, which is what a row left at the default 0 wants. It
+           * used to always be the index, so a number typed into the visible
+           * Display order field was accepted and then silently discarded. */
+          displayOrder: row.displayOrder > 0 ? row.displayOrder : index,
+          status: row.status,
+          ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
+        };
+        const result = row.id
+          ? await updateEditorialSection(id, row.id, payload)
+          : await createEditorialSection(id, payload);
+        nextSections.push({
+          ...draftFromSection(result.data),
+          id: result.data.id,
+          updatedAt: result.data.updatedAt,
+        });
+      }
+    } finally {
+      /* Rows saved before a failure keep the id the server gave them, so
+         saving again updates them instead of creating them a second time. */
+      setSections([...nextSections, ...activeSections.slice(nextSections.length)]);
     }
-    setSections(nextSections);
     setRemovedSections([]);
     for (const row of removedFaqs)
       if (row.id) await deleteCountryFaq(id, row.id, row.updatedAt);
     const nextFaqs: FaqRow[] = [];
-    for (const row of activeFaqs) {
-      // An untouched FAQ is left exactly as the server holds it. Re-sending it
-      // gains nothing and, when its stored answer predates a validation rule,
-      // fails the whole Country save over content nobody was editing.
-      if (!faqRowChanged(row, row.id ? pristineFaqs.current.get(row.id) : undefined)) {
-        nextFaqs.push(row);
-        continue;
+    try {
+      for (const row of activeFaqs) {
+        // An untouched FAQ is left exactly as the server holds it. Re-sending it
+        // gains nothing and, when its stored answer predates a validation rule,
+        // fails the whole Country save over content nobody was editing.
+        if (!faqRowChanged(row, row.id ? pristineFaqs.current.get(row.id) : undefined)) {
+          nextFaqs.push(row);
+          continue;
+        }
+        const payload = {
+          question: row.question.trim(),
+          answer: row.answer.trim(),
+          category: optional(row.category),
+          isFeatured: row.isFeatured,
+          status: row.status,
+          displayOrder: Number(row.displayOrder) || 0,
+          ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
+        };
+        /* A FAQ's validation error names a property, not a form field, so the
+           page could only say "Invalid catalog request". Say which FAQ, and
+           what the API said about it. */
+        let result: Awaited<ReturnType<typeof updateCountryFaq>>;
+        try {
+          result = row.id
+            ? await updateCountryFaq(id, row.id, payload)
+            : await createCountryFaq(id, payload);
+        } catch (cause: unknown) {
+          const details = (cause as { details?: unknown }).details;
+          const reasons = Array.isArray(details)
+            ? details
+                .map((entry) => (entry as { message?: unknown }).message)
+                .filter((message): message is string => typeof message === "string")
+            : [];
+          throw new Error(
+            `The FAQ “${payload.question}” could not be saved${
+              reasons.length ? `: ${reasons.join("; ")}.` : "."
+            }`,
+          );
+        }
+        nextFaqs.push({
+          id: result.data.id,
+          updatedAt: result.data.updatedAt,
+          question: result.data.question,
+          answer: result.data.answer,
+          category: result.data.category ?? "",
+          isFeatured: result.data.isFeatured,
+          status: result.data.status,
+          displayOrder: String(result.data.displayOrder),
+        });
       }
-      const payload = {
-        question: row.question.trim(),
-        answer: row.answer.trim(),
-        category: optional(row.category),
-        isFeatured: row.isFeatured,
-        status: row.status,
-        displayOrder: Number(row.displayOrder) || 0,
-        ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
-      };
-      /* A FAQ's validation error names a property, not a form field, so the
-         page could only say "Invalid catalog request". Say which FAQ, and
-         what the API said about it. */
-      let result: Awaited<ReturnType<typeof updateCountryFaq>>;
-      try {
-        result = row.id
-          ? await updateCountryFaq(id, row.id, payload)
-          : await createCountryFaq(id, payload);
-      } catch (cause: unknown) {
-        const details = (cause as { details?: unknown }).details;
-        const reasons = Array.isArray(details)
-          ? details
-              .map((entry) => (entry as { message?: unknown }).message)
-              .filter((message): message is string => typeof message === "string")
-          : [];
-        throw new Error(
-          `The FAQ “${payload.question}” could not be saved${
-            reasons.length ? `: ${reasons.join("; ")}.` : "."
-          }`,
-        );
+    } finally {
+      if (nextFaqs.length === activeFaqs.length) setFaqs(rememberFaqs(nextFaqs));
+      else {
+        /* Only the rows that reached the server become the new baseline; the
+           one that failed, and those after it, still count as edited. */
+        for (const row of nextFaqs)
+          if (row.id) pristineFaqs.current.set(row.id, { ...row });
+        setFaqs([...nextFaqs, ...activeFaqs.slice(nextFaqs.length)]);
       }
-      nextFaqs.push({
-        id: result.data.id,
-        updatedAt: result.data.updatedAt,
-        question: result.data.question,
-        answer: result.data.answer,
-        category: result.data.category ?? "",
-        isFeatured: result.data.isFeatured,
-        status: result.data.status,
-        displayOrder: String(result.data.displayOrder),
-      });
     }
-    setFaqs(rememberFaqs(nextFaqs));
     setRemovedFaqs([]);
     for (const row of removedCards)
       if (row.id) await deleteConsultantCard(id, row.id, row.updatedAt);
     const nextCards: CardRow[] = [];
-    for (const row of activeCards) {
-      const payload = {
-        title: row.title.trim(),
-        slug: row.slug.trim() || slugify(row.title),
-        shortDescription: row.shortDescription.trim(),
-        overview: optional(row.overview),
-        iconMediaId: row.iconMediaId || undefined,
-        featuredMediaId: row.featuredMediaId || undefined,
-        isFreeConsultation: row.isFreeConsultation,
-        ctaLabel: row.ctaLabel.trim() || "View consultants",
-        ctaUrl: optional(row.ctaUrl),
-        status: row.status,
-        isFeatured: row.isFeatured,
-        displayOrder: Number(row.displayOrder) || 0,
-        ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
-      };
-      const result = row.id
-        ? await updateConsultantCard(id, row.id, payload)
-        : await createConsultantCard(id, payload);
-      const saved = result.data;
-      nextCards.push({
-        id: saved.id,
-        updatedAt: saved.updatedAt,
-        title: saved.title,
-        slug: saved.slug,
-        shortDescription: saved.shortDescription,
-        overview: saved.overview ?? "",
-        iconMediaId: saved.iconMediaId ?? "",
-        featuredMediaId: saved.featuredMediaId ?? "",
-        isFreeConsultation: saved.isFreeConsultation,
-        ctaLabel: saved.ctaLabel,
-        ctaUrl: saved.ctaUrl ?? "",
-        status: saved.status,
-        isFeatured: saved.isFeatured,
-        displayOrder: String(saved.displayOrder),
-      });
+    try {
+      for (const row of activeCards) {
+        const payload = {
+          title: row.title.trim(),
+          slug: row.slug.trim() || slugify(row.title),
+          shortDescription: row.shortDescription.trim(),
+          overview: optional(row.overview),
+          iconMediaId: row.iconMediaId || undefined,
+          featuredMediaId: row.featuredMediaId || undefined,
+          isFreeConsultation: row.isFreeConsultation,
+          ctaLabel: row.ctaLabel.trim() || "View consultants",
+          ctaUrl: optional(row.ctaUrl),
+          status: row.status,
+          isFeatured: row.isFeatured,
+          displayOrder: Number(row.displayOrder) || 0,
+          ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
+        };
+        const result = row.id
+          ? await updateConsultantCard(id, row.id, payload)
+          : await createConsultantCard(id, payload);
+        const saved = result.data;
+        nextCards.push({
+          id: saved.id,
+          updatedAt: saved.updatedAt,
+          title: saved.title,
+          slug: saved.slug,
+          shortDescription: saved.shortDescription,
+          overview: saved.overview ?? "",
+          iconMediaId: saved.iconMediaId ?? "",
+          featuredMediaId: saved.featuredMediaId ?? "",
+          isFreeConsultation: saved.isFreeConsultation,
+          ctaLabel: saved.ctaLabel,
+          ctaUrl: saved.ctaUrl ?? "",
+          status: saved.status,
+          isFeatured: saved.isFeatured,
+          displayOrder: String(saved.displayOrder),
+        });
+      }
+    } finally {
+      setCards([...nextCards, ...activeCards.slice(nextCards.length)]);
     }
-    setCards(nextCards);
     setRemovedCards([]);
     if (hasSeo(seo)) {
       const result = await saveCountrySeo(id, {

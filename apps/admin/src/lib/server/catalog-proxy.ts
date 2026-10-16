@@ -65,6 +65,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COUNTRY_CONTENT_SECTION_KEY_CONFLICT: 'Another section on this country already uses that section key',
   COUNTRY_FAQ_STALE_VERSION: 'FAQ changed in another session. Reload before saving',
   COUNTRY_CONSULTANT_CARD_STALE_VERSION: 'Consultant card changed in another session. Reload before saving',
+  COUNTRY_CONSULTANT_CARD_SLUG_CONFLICT: 'Another consultant card already uses that slug. Choose a different slug',
   EDITORIAL_MEDIA_INVALID: 'Selected media is not available',
   EDITORIAL_BODY_INVALID: 'Editorial section content is invalid',
   SUBJECT_NOT_FOUND: 'Subject not found',

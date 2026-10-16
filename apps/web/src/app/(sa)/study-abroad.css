@@ -856,6 +856,9 @@
 }
 .sa .calc__opt:hover{ border-color: var(--line-strong); }
 .sa .calc__opt[aria-pressed="true"]{ background: var(--navy); color: #fff; border-color: var(--navy); }
+/* An answer's note sits under its label, smaller and quieter, not run on into it. */
+.sa .calc__opt small{ display: block; margin-top: 3px; font-size: 12px; font-weight: 400; line-height: 1.4; color: var(--muted); text-align: left; }
+.sa .calc__opt[aria-pressed="true"] small{ color: var(--on-navy-muted); }
 .sa .calc__out{ background: var(--navy); color: var(--on-navy); border-radius: var(--radius); padding: 24px; align-self: start; }
 .sa .calc__out-l{ font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--on-navy-muted); }
 .sa .calc__out-v{ font-family: var(--font-display); font-size: clamp(22px, 2.3vw, 29px); font-weight: 700; color: #fff; letter-spacing: -0.03em; line-height: 1.15; margin: 10px 0 18px; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
