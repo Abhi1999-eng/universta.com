@@ -1195,7 +1195,8 @@
   transition: all var(--dur) var(--ease);
 }
 .sa .chipbtn:hover{ border-color: var(--line-strong); }
-.sa .chipbtn[aria-pressed="true"]{ background: var(--navy); color: #fff; border-color: var(--navy); }
+.sa .chipbtn[aria-pressed="true"],
+.sa a.chipbtn[aria-current="page"]{ background: var(--navy); color: #fff; border-color: var(--navy); }
 .sa .dir__group{ margin-bottom: clamp(30px, 3.6vw, 46px); }
 .sa .dir__grouphead{ display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .sa .dir__groupname{ font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -0.025em; }
@@ -1624,6 +1625,8 @@
 .sa .levelbar--wide{ padding-block: 16px; border-block: 1px solid var(--line); margin-bottom: clamp(24px, 3vw, 36px); gap: 8px; }
 
 .sa .specgrid{ display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+/* The level filter sat flush on the cards it filters. */
+.sa .levelbar + .specgrid{ margin-top: 18px; }
 .sa .speccard{ border: 1px solid var(--line); border-radius: 4px; background: var(--white); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
 .sa .speccard:hover{ border-color: var(--navy); transform: translateY(-2px); box-shadow: var(--shadow); }
 .sa .speccard[hidden]{ display: none !important; }
@@ -2186,6 +2189,9 @@
 }
 /* The count on a level's chip, quiet like every other count. */
 .sa .chipbtn__n { margin-inline-start: 4px; font-size: 11.5px; color: var(--muted); }
+/* On the navy of a picked chip the muted grey fell to about 3.7:1. */
+.sa .chipbtn[aria-pressed="true"] .chipbtn__n,
+.sa a.chipbtn[aria-current="page"] .chipbtn__n { color: var(--on-navy-muted); }
 /* The rest of a level, opened in place. */
 .sa .courselist--cont { border-top: 0; }
 .sa .coursegroup__more > summary {
@@ -3157,6 +3163,13 @@
 .sa .coursegroup__noarrow{ visibility: hidden; }
 .sa a.chipbtn--none{ color: var(--muted); border-style: dashed; }
 .sa .fieldnone__levels{ margin-top: clamp(28px, 3.4vw, 40px); }
+/* A field's study levels in one destination: the chosen level's
+   specializations under its heading, then its courses. */
+.sa button.chipbtn--none{ color: var(--muted); border-style: dashed; }
+.sa .studylevel__specs{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-block: 4px 16px; }
+.sa .studylevel__specs .specchip{ max-width: 100%; white-space: normal; }
+.sa .studylevel__elsewhere{ margin-top: 4px; }
+.sa .coursegroup--empty.studylevel .coursegroup__head{ border-bottom: 0; }
 /* ===== courses slice A: programme results ===== */
 /* The results block every list of programmes draws -- the course finder,
    a destination's subject pages, a university's own list. Its parts are
@@ -3465,7 +3478,6 @@
 /* Country-subject ZIP layout: secondary directory links stay below the finder. */
 .sa .field-directory__links{ display: flex; flex-wrap: wrap; gap: 12px 22px; }
 .sa .field-directory__links .linkcta{ white-space: normal; }
-.sa .destination-programmes__search{ display: flex; justify-content: flex-end; margin-top: 18px; }
 
 .sa #specialization-list{ scroll-margin-top: calc(var(--nav-h) + 24px); }
 

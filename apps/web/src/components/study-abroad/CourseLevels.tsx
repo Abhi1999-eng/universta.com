@@ -28,7 +28,8 @@ import { formatNumber } from '@/lib/format';
  * "0 courses" and nothing more: the section's lead, or the notice above it,
  * says once why nothing is listed, and a line under each level said it six
  * times over. Global subject pages link to the level's own listing, where
- * visitors can switch levels; destination pages keep these groups in place.
+ * visitors can switch levels. A destination's pages pick one level at a
+ * time instead, with its specializations beside its courses (`StudyLevels`).
  */
 export function CourseLevels({
   groups,
@@ -48,19 +49,6 @@ export function CourseLevels({
   levelPages?: boolean;
 }) {
   if (!groups.length) return null;
-
-  const row = (course: Course) => {
-    const meta = courseRowMeta(course, { branch });
-    const figure = courseRowFigure(course);
-    return (
-      <Link className="courselist__row" href={courseHref(course)} key={course.id}>
-        <span className="courselist__name">{course.name}</span>
-        <span className="courselist__meta">{meta}</span>
-        <span className="courselist__fee datum">{figure}</span>
-        <span aria-hidden="true">&rarr;</span>
-      </Link>
-    );
-  };
 
   return (
     <div className="courselevels">
@@ -113,10 +101,6 @@ export function CourseLevels({
                 </h3>
               </section>
             );
-          const first = group.courses.slice(0, LEVEL_ROWS_SHOWN);
-          const rest = group.courses.slice(LEVEL_ROWS_SHOWN);
-          const beyond = group.count - group.courses.length;
-          const noun = group.count === 1 ? 'course' : 'courses';
           return (
             <section
               className="coursegroup scrollstop"
@@ -131,45 +115,91 @@ export function CourseLevels({
                 <Link className="coursegroup__head" href={allHref(group.level.code)}>
                   <span className="coursegroup__name">{group.level.name}</span>
                   <span className="coursegroup__n">
-                    {formatNumber(group.count)} {noun}
+                    {formatNumber(group.count)} {group.count === 1 ? 'course' : 'courses'}
                   </span>
                   <span aria-hidden="true">&rarr;</span>
                 </Link>
               </h3>
 
-              <div className="courselist">{first.map(row)}</div>
-
-              {/* The rest of the level, in place. A disclosure rather than
-                  a second page: the reader asked for this level and is
-                  already looking at it. */}
-              {rest.length ? (
-                <details className="coursegroup__more">
-                  <summary>
-                    <span className="coursegroup__open">
-                      Show {formatNumber(rest.length)} more {group.level.name}{' '}
-                      {rest.length === 1 ? 'course' : 'courses'}
-                    </span>
-                    <span className="coursegroup__shut">Show fewer</span>
-                  </summary>
-                  <div className="courselist courselist--cont">{rest.map(row)}</div>
-                </details>
-              ) : null}
-
-              {/* More than the page holds: the course search, on this level. */}
-              {beyond > 0 ? (
-                <p className="h-more">
-                  <Link className="linkcta" href={allHref(group.level.code)}>
-                    All {formatNumber(group.count)} {group.level.name} {noun}{' '}
-                    <span className="linkcta__arrow" aria-hidden="true">
-                      &rarr;
-                    </span>
-                  </Link>
-                </p>
-              ) : null}
+              <LevelCourseList
+                group={group}
+                allHref={allHref}
+                courseHref={courseHref}
+                branch={branch}
+              />
             </section>
           );
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * One level's courses: the first ten as rows, the rest of what was read
+ * folded under them, and past that a link to the whole level in the course
+ * search. Shared by the level block and the study-level panels, so a level
+ * lists its courses the same way wherever it is drawn.
+ */
+export function LevelCourseList({
+  group,
+  allHref,
+  courseHref = (course) => `/courses/${course.slug}`,
+  branch = true,
+}: {
+  group: CourseLevelGroup;
+  allHref: (levelCode: string) => string;
+  courseHref?: (course: Course) => string;
+  branch?: boolean;
+}) {
+  if (!group.courses.length) return null;
+  const row = (course: Course) => {
+    const meta = courseRowMeta(course, { branch });
+    const figure = courseRowFigure(course);
+    return (
+      <Link className="courselist__row" href={courseHref(course)} key={course.id}>
+        <span className="courselist__name">{course.name}</span>
+        <span className="courselist__meta">{meta}</span>
+        <span className="courselist__fee datum">{figure}</span>
+        <span aria-hidden="true">&rarr;</span>
+      </Link>
+    );
+  };
+  const first = group.courses.slice(0, LEVEL_ROWS_SHOWN);
+  const rest = group.courses.slice(LEVEL_ROWS_SHOWN);
+  const beyond = group.count - group.courses.length;
+  const noun = group.count === 1 ? 'course' : 'courses';
+  return (
+    <>
+      <div className="courselist">{first.map(row)}</div>
+
+      {/* The rest of the level, in place. A disclosure rather than a second
+          page: the reader asked for this level and is already looking at
+          it. */}
+      {rest.length ? (
+        <details className="coursegroup__more">
+          <summary>
+            <span className="coursegroup__open">
+              Show {formatNumber(rest.length)} more {group.level.name}{' '}
+              {rest.length === 1 ? 'course' : 'courses'}
+            </span>
+            <span className="coursegroup__shut">Show fewer</span>
+          </summary>
+          <div className="courselist courselist--cont">{rest.map(row)}</div>
+        </details>
+      ) : null}
+
+      {/* More than the page holds: the course search, on this level. */}
+      {beyond > 0 ? (
+        <p className="h-more">
+          <Link className="linkcta" href={allHref(group.level.code)}>
+            All {formatNumber(group.count)} {group.level.name} {noun}{' '}
+            <span className="linkcta__arrow" aria-hidden="true">
+              &rarr;
+            </span>
+          </Link>
+        </p>
+      ) : null}
+    </>
   );
 }

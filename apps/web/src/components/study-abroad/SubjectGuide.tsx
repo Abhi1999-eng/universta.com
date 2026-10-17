@@ -11,6 +11,7 @@ import {
   levelCoursesHref,
   levelTotal,
   programmesHref,
+  subjectOfferedLevels,
 } from '@/lib/course-levels';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import { universityHref } from '@/lib/university-links';
@@ -118,12 +119,13 @@ export function SubjectGuide({
   const taught = groups.filter((group) => group.count > 0);
   /* In academic order where the grouped read supplied it; the subject's own
      counts arrive in that order too. */
-  /* Where an editor ticked the levels, the block's groups are exactly those
-     plus any with courses, so they are the levels it is offered at: the
-     strip said "Master's" alone beside a block listing Bachelor's, Master's
-     and PhD. Unticked, the groups hold the six shown regardless, which the
+  /* Where the subject is offered at levels -- ticked on it, or failing that
+     on its specializations -- the block's groups are exactly those plus any
+     with courses, so they are the levels it is offered at: the strip said
+     "Master's" alone beside a block listing Bachelor's, Master's and PhD.
+     Offered at none, the groups hold the six shown regardless, which the
      figures must not claim. */
-  const offered = (subject.offeredLevels ?? []).length > 0;
+  const offered = subjectOfferedLevels(subject).length > 0;
   const levels = offered && groups.length
     ? groups.map((group) => ({ level: group.level, count: group.count }))
     : taught.length

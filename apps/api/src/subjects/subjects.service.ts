@@ -294,16 +294,29 @@ export class SubjectsService {
    * lookup, not decoration on the URL.
    */
   async publicSpecialization(subjectSlug: string, slug: string) {
-    const subject = await this.prisma.subject.findFirst({
+    const parent = await this.prisma.subject.findFirst({
       where: {
         slug: subjectSlug.trim().toLowerCase(),
         status: 'PUBLISHED',
         deletedAt: null,
       },
-      select: { id: true, name: true, slug: true, shortDescription: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        shortDescription: true,
+        courseLevels: { include: LEVEL_LINK_INCLUDE },
+      },
     });
-    if (!subject)
+    if (!parent)
       throw catalogNotFound('SUBJECT_NOT_FOUND', 'Subject not found');
+    /* The subject's ticked levels travel with it: a specialization with
+       none ticked of its own is offered at its subject's. */
+    const { courseLevels: parentLevels, ...subjectFields } = parent;
+    const subject = {
+      ...subjectFields,
+      offeredLevels: this.tickedLevels(parentLevels),
+    };
 
     const specialization = await this.prisma.subSubject.findFirst({
       where: {

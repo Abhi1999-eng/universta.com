@@ -24,6 +24,9 @@ export function SubjectSpecializations({
   branches,
   levelOrder = [],
   noun = 'programme',
+  hrefBase,
+  limit,
+  levelLabel = 'Study level',
 }: {
   subjectName: string;
   subjectSlug: string;
@@ -35,6 +38,13 @@ export function SubjectSpecializations({
    *  courses; beside the universities' programmes they are called that, so
    *  "6 programmes" does not open a page that lists 34. */
   noun?: 'programme' | 'course';
+  /** Where the cards open: the subject's page by default, or the subject in
+   *  one destination. */
+  hrefBase?: string;
+  /** How many cards show before "Show all"; the rest stay in the page,
+   *  hidden, so every specialization is still linked. */
+  limit?: number;
+  levelLabel?: string;
 }) {
   const levels = useMemo(
     () =>
@@ -47,6 +57,8 @@ export function SubjectSpecializations({
   );
 
   const [level, setLevel] = useState('all');
+  const [all, setAll] = useState(false);
+  const base = hrefBase ?? `/subjects/${subjectSlug}`;
   const shown =
     level === 'all'
       ? branches
@@ -55,7 +67,7 @@ export function SubjectSpecializations({
   return (
     <>
       {levels.length > 1 ? (
-        <div className="levelbar" role="group" aria-label="Study level">
+        <div className="levelbar" role="group" aria-label={levelLabel}>
           <button
             className="chipbtn"
             type="button"
@@ -79,9 +91,13 @@ export function SubjectSpecializations({
       ) : null}
 
       <div className="specgrid">
-        {shown.map((row) => (
-          <article className="speccard" key={row.id}>
-            <Link className="speccard__btn" href={`/subjects/${subjectSlug}/${row.slug}`}>
+        {shown.map((row, index) => (
+          <article
+            className="speccard"
+            key={row.id}
+            hidden={limit !== undefined && !all && index >= limit}
+          >
+            <Link className="speccard__btn" href={`${base}/${row.slug}`}>
               <span className="speccard__top">
                 <span className="label">Specialization</span>
               </span>
@@ -113,6 +129,21 @@ export function SubjectSpecializations({
           </article>
         ))}
       </div>
+
+      {limit !== undefined && shown.length > limit ? (
+        <p className="h-more">
+          <button
+            type="button"
+            className="linkcta"
+            aria-expanded={all}
+            onClick={() => setAll((open) => !open)}
+          >
+            {all
+              ? 'Show fewer'
+              : `Show all ${formatNumber(shown.length)} specializations`}
+          </button>
+        </p>
+      ) : null}
 
       {shown.length === 0 ? (
         <p className="sec-lead">

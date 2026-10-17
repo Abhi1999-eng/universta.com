@@ -165,11 +165,79 @@ export type CatalogueLevel = {
   displayOrder?: number | null;
 };
 
+type LevelRef = { id: string; name: string; code: string | null };
+
+/** The catalogue's levels in the order a student climbs them. */
+export function climbingOrder<T extends CatalogueLevel>(levels: readonly T[]): T[] {
+  const rank = (level: T, index: number) =>
+    level.educationOrder ?? level.displayOrder ?? 1000 + index;
+  return levels
+    .map((level, index) => ({ level, at: rank(level, index) }))
+    .sort((left, right) => left.at - right.at)
+    .map(({ level }) => level);
+}
+
+/**
+ * The levels a subject is offered at, for the pages that show them.
+ *
+ * What an editor ticked on the subject is the answer. Where nothing is
+ * ticked, the levels its specializations are offered at stand in: a subject
+ * whose AI branch is ticked for Master's and PhD is offered at those. Empty
+ * only when neither says anything, and the page then shows the six levels
+ * the client named (see `LEVELS_ALWAYS_SHOWN`).
+ */
+export function subjectOfferedLevels(subject: {
+  offeredLevels?: readonly LevelRef[] | null;
+  subSubjects?: ReadonlyArray<{ levels?: readonly LevelRef[] | null }> | null;
+}): LevelRef[] {
+  if (subject.offeredLevels?.length) return [...subject.offeredLevels];
+  const seen = new Map<string, LevelRef>();
+  for (const branch of subject.subSubjects ?? [])
+    for (const level of branch.levels ?? [])
+      if (level.code && !seen.has(level.code)) seen.set(level.code, level);
+  return [...seen.values()];
+}
+
+/**
+ * The levels a specialization is offered at: its own ticks; with none, the
+ * levels its published courses are at (its `levels`, which then hold only
+ * those), as its card on the subject's page says; and with neither, its
+ * subject's ticks. Empty when none of them says.
+ */
+export function specializationOfferedLevels(specialization: {
+  offeredLevels?: readonly LevelRef[] | null;
+  levels?: readonly LevelRef[] | null;
+  subject?: { offeredLevels?: readonly LevelRef[] | null } | null;
+}): LevelRef[] {
+  if (specialization.offeredLevels?.length) return [...specialization.offeredLevels];
+  if (specialization.levels?.length) return [...specialization.levels];
+  return [...(specialization.subject?.offeredLevels ?? [])];
+}
+
+/**
+ * The catalogue's levels a level bar offers, in climbing order: the ones
+ * offered (the six named levels when none is), any with something listed
+ * at it, and the one being read.
+ */
+export function levelsOnBar(
+  levels: readonly CatalogueLevel[],
+  offered: ReadonlyArray<{ code: string | null }>,
+  listed: ReadonlyArray<string | null> = [],
+): CatalogueLevel[] {
+  const ticked = offered.flatMap((level) => (level.code ? [level.code] : []));
+  const shown = new Set<string>([
+    ...(ticked.length ? ticked : LEVELS_ALWAYS_SHOWN),
+    ...listed.flatMap((code) => (code ? [code] : [])),
+  ]);
+  return climbingOrder(levels).filter((level) => shown.has(level.code));
+}
+
 /**
  * The catalogue's level groups, with an empty group for each level the
- * subject or specialization is offered at (what an editor ticked; the six
- * always-shown levels when nothing is ticked) that it sent none for, in the
- * order a student climbs them.
+ * subject or specialization is offered at (see `subjectOfferedLevels` and
+ * `specializationOfferedLevels`; the six always-shown levels when it is
+ * offered at none) that it sent none for, in the order a student climbs
+ * them.
  *
  * Null while the grouped read failed: the page does not know what is listed
  * and keeps its fallback rather than drawing every level empty. Without the
@@ -183,12 +251,7 @@ export function everyLevel(
   if (!groups) return null;
   if (!levels?.length) return groups;
   const byCode = new Map(groups.map((group) => [group.level.code, group]));
-  const rank = (level: CatalogueLevel, index: number) =>
-    level.educationOrder ?? level.displayOrder ?? 1000 + index;
-  const ordered = levels
-    .map((level, index) => ({ level, at: rank(level, index) }))
-    .sort((left, right) => left.at - right.at)
-    .map(({ level }) => level);
+  const ordered = climbingOrder(levels);
   const known = new Set(ordered.map((level) => level.code));
   /* The levels shown with nothing filed under them: the ones an editor
      ticked on the subject or specialization. With none ticked, the six the

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { SubjectDetail } from '@/lib/catalog';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
-import { everyLevel } from '@/lib/course-levels';
+import { everyLevel, subjectOfferedLevels } from '@/lib/course-levels';
 import { toOfferingCard } from '@/lib/university-courses';
 
 const searchParams = { current: new URLSearchParams() };
@@ -572,12 +572,21 @@ describe('the study levels, listed or not', () => {
     { id: 'h', code: 'PHD', name: 'PhD', educationOrder: 6 },
   ];
   const empty = { ...subject, courseCountsByLevel: [], featuredCourses: [] } as unknown as SubjectDetail;
+  /* Nothing ticked on it or on its specializations: offered at no level. */
+  const unoffered = {
+    ...empty,
+    subSubjects: empty.subSubjects.map((branch) => ({ ...branch, levels: [] })),
+  } as SubjectDetail;
   const sectionIds = (html: string) =>
     [...html.matchAll(/<section class="coursegroup[^"]*" id="(level-[^"]+)"/g)].map((m) => m[1]);
 
-  it('shows all six on a subject with nothing listed, says so once, and offers no empty search', () => {
+  it('shows all six on a subject offered at no level, says so once, and offers no empty search', () => {
     const html = renderToStaticMarkup(
-      <SubjectGuide subject={empty} scholarships={[]} levels={everyLevel([], catalogue)} />,
+      <SubjectGuide
+        subject={unoffered}
+        scholarships={[]}
+        levels={everyLevel([], catalogue, subjectOfferedLevels(unoffered))}
+      />,
     );
     expect(sectionIds(html)).toEqual([
       'level-foundation',
@@ -596,16 +605,31 @@ describe('the study levels, listed or not', () => {
   it('names only the levels something is listed at in the figures', () => {
     const html = renderToStaticMarkup(
       <SubjectGuide
-        subject={empty}
+        subject={unoffered}
         scholarships={[]}
         levels={everyLevel(
           [{ level: { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 }, count: 4, courses: [] }],
           catalogue,
+          subjectOfferedLevels(unoffered),
         )}
       />,
     );
     expect(html).toMatch(/<span class="label">Study levels<\/span><b>Master&#x27;s<\/b>/);
     expect(sectionIds(html)).toHaveLength(6);
+  });
+
+  it('with nothing ticked on the subject, shows the levels its specializations are offered at', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide
+        subject={empty}
+        scholarships={[]}
+        levels={everyLevel([], catalogue, subjectOfferedLevels(empty))}
+      />,
+    );
+    /* Its one specialization is ticked for Bachelor's, a diploma and PhD;
+       the diploma is not one of this catalogue's levels. */
+    expect(sectionIds(html)).toEqual(['level-ug', 'level-phd']);
+    expect(html).toMatch(/<span class="label">Study levels<\/span><b>Bachelor&#x27;s, PhD<\/b>/);
   });
 
   it('shows all six on a specialization with nothing listed, without "View all 0"', () => {

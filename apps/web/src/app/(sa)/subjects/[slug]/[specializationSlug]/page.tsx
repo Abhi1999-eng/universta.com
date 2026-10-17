@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getCourseLevels, getCoursesByLevel, getSpecialization } from '@/lib/catalog';
-import { everyLevel, LEVEL_ROWS_FETCHED } from '@/lib/course-levels';
+import { everyLevel, LEVEL_ROWS_FETCHED, specializationOfferedLevels } from '@/lib/course-levels';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
 import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
@@ -135,7 +135,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
       />
       <SpecializationGuide
         specialization={specialization}
-        levels={everyLevel(levels, allLevels, specialization.offeredLevels)}
+        levels={everyLevel(levels, allLevels, specializationOfferedLevels(specialization))}
         scholarships={scholarships}
         programmes={programmes}
       />
