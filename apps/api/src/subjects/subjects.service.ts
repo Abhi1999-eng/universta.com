@@ -90,6 +90,16 @@ function dedupeLevels<T extends { id: string }>(levels: T[]): T[] {
   });
 }
 
+/* The ticks on levels still switched on. A level switched off under "All
+   levels" is no longer drawn as a tick box in the editor nor shown on the
+   site, so its ticks drop out of every list; the links themselves are kept,
+   and switching the level back on brings them back. */
+function activeTicks<T extends { courseLevel: { status: string } }>(
+  links: T[] | undefined,
+): T[] {
+  return (links ?? []).filter((link) => link.courseLevel.status === 'ACTIVE');
+}
+
 /* A ticked level, with what it is ordered by. */
 const LEVEL_LINK_INCLUDE = {
   courseLevel: {
@@ -1004,9 +1014,9 @@ export class SubjectsService {
          subject's own ticks only add to its specializations' levels. */
       .concat(
         dedupeLevels([
-          ...(subject.courseLevels ?? []).map((link) => link.courseLevel),
+          ...activeTicks(subject.courseLevels).map((link) => link.courseLevel),
           ...children.flatMap((child) =>
-            (child.courseLevels ?? []).map((link) => link.courseLevel),
+            activeTicks(child.courseLevels).map((link) => link.courseLevel),
           ),
         ])
           .filter(
@@ -1177,12 +1187,7 @@ export class SubjectsService {
     const data: Prisma.SubjectUncheckedUpdateInput = {
       /* The ticks are sent whole, so the list replaces what was there. */
       ...(levelIds
-        ? {
-            courseLevels: {
-              deleteMany: {},
-              create: levelIds.map((courseLevelId) => ({ courseLevelId })),
-            },
-          }
+        ? { courseLevels: this.levelWrite(levelIds, current.courseLevels) }
         : {}),
       name: dto.name.trim(),
       slug: dto.slug?.trim() || current.slug,
@@ -2033,12 +2038,7 @@ export class SubjectsService {
           name: dto.name.trim(),
           slug: nextSlug,
           ...(levelIds
-            ? {
-                courseLevels: {
-                  deleteMany: {},
-                  create: levelIds.map((courseLevelId) => ({ courseLevelId })),
-                },
-              }
+            ? { courseLevels: this.levelWrite(levelIds, current.courseLevels) }
             : {}),
           ...(dto.shortDescription !== undefined
             ? { shortDescription: dto.shortDescription.trim() || null }
@@ -2484,27 +2484,53 @@ export class SubjectsService {
     return row;
   }
 
-  /** The levels an editor ticked must be real, active ones. */
+  /** The ticks to write from what an editor sent. Each must be a real level.
+   * One switched off since is left out rather than refusing the save: the
+   * editor no longer sees it, and a whole subject could not be saved for a
+   * tick nobody could untick. */
   private async validateLevels(ids: string[] | undefined) {
     if (!ids) return undefined;
     const unique = [...new Set(ids)];
     if (!unique.length) return [];
-    const count = await this.prisma.courseLevel.count({
-      where: { id: { in: unique }, status: 'ACTIVE' },
+    const known = await this.prisma.courseLevel.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, status: true },
     });
-    if (count !== unique.length)
+    if (known.length !== unique.length)
       throw catalogConflict(
         'COURSE_LEVEL_INVALID',
-        'A selected study level is not an active course level',
+        'A selected study level no longer exists',
       );
-    return unique;
+    const active = new Set(
+      known.filter((level) => level.status === 'ACTIVE').map(({ id }) => id),
+    );
+    return unique.filter((id) => active.has(id));
   }
 
-  /** What was ticked, in the order a student climbs the levels. */
-  private tickedLevels(
-    links: Array<{ courseLevel: OrderedLevel & { id: string } }> | undefined,
+  /** The ticks sent are written whole over the active ones. Ticks on a
+   * switched-off level stay as they are: the editor never saw them, so a save
+   * is no reason to drop them. */
+  private levelWrite(
+    levelIds: string[],
+    current: Array<{ courseLevel: { id: string; status: string } }>,
   ) {
-    return (links ?? [])
+    const kept = current
+      .filter((link) => link.courseLevel.status !== 'ACTIVE')
+      .map((link) => link.courseLevel.id);
+    return {
+      deleteMany: kept.length ? { courseLevelId: { notIn: kept } } : {},
+      create: levelIds.map((courseLevelId) => ({ courseLevelId })),
+    };
+  }
+
+  /** What was ticked, in the order a student climbs the levels; ticks on a
+   * switched-off level are left out. */
+  private tickedLevels(
+    links:
+      | Array<{ courseLevel: OrderedLevel & { id: string; status: string } }>
+      | undefined,
+  ) {
+    return activeTicks(links)
       .map((link) => link.courseLevel)
       .sort(byEducationOrder)
       .map(publicLevel);
@@ -2658,11 +2684,11 @@ export class SubjectsService {
          levels line are built from this, and the distinct read hands the
          levels back in whatever order it met them. */
       levels: dedupeLevels([
-        ...(row.courseLevels ?? []).map((link) => link.courseLevel),
+        ...activeTicks(row.courseLevels).map((link) => link.courseLevel),
         /* What its published specializations are ticked for: the subject
            is offered at those too, whatever is ticked on it. */
         ...branches.flatMap((branch) =>
-          (branch.courseLevels ?? []).map((link) => link.courseLevel),
+          activeTicks(branch.courseLevels).map((link) => link.courseLevel),
         ),
         ...levels.map((entry) => entry.courseLevel).filter(Boolean),
       ])
