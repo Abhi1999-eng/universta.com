@@ -150,9 +150,9 @@ export function SubSubjectsEditor({
           Specializations
         </h3>
         <p className="p-sub">
-          Build the specializations that sit under this Subject. They do not
-          have separate Publish buttons; the Subject-level Publish action
-          publishes every complete specialization together.
+          Build the specializations that sit under this Subject. Each starts
+          as a draft and is published on its own, from its own editor;
+          publishing the Subject does not publish them.
         </p>
       </div>
 
@@ -169,7 +169,7 @@ export function SubSubjectsEditor({
         <div className="flex items-center justify-between gap-3">
           <h4 className="font-semibold">Add specialization</h4>
           <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#828B9B]">
-            Follows Subject status
+            Starts as a draft
           </span>
         </div>
 

@@ -58,8 +58,10 @@ import { FieldLabel } from '@/features/shared/FieldLabel';
 import { RichTextEditor } from '@/features/shared/RichTextEditor';
 import { variablesForContext } from '@/features/shared/variable-autocomplete';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { EnterSubmitGuard } from '@/features/shared/EnterSubmitGuard';
 import { nextAutoSlug } from '@/lib/slug';
-import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { showCreatedAddress } from '@/features/shared/created-address';
 import { catalogErrorText } from './catalog-errors';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 import { RelatedCoursePicker } from './RelatedCoursePicker';
@@ -304,6 +306,24 @@ function sectionFromRecord(row: CourseSectionRecord): SectionDraft {
 function faqFromRecord(row: CourseFaqRecord): FaqDraft {
   return { id: row.id, updatedAt: row.updatedAt, question: row.question, answer: row.answer, status: row.status, displayOrder: String(row.displayOrder) };
 }
+/* Writing a row's intakes moves the row's version on without handing the
+   new one back, so the version its own write returned is already behind.
+   Sent on the next save -- or on the retry after a later step failed -- it
+   was refused as changed in another session. The course as read back holds
+   each row's version as stored; it is taken for the rows this save wrote
+   (`written`), and only the version: the values on screen stay. A row this
+   save did not write keeps the version it was read at, so a change made to
+   it in another session is still refused rather than overwritten. */
+function withStoredMappingVersions(rows: MappingDraft[], course: CourseRecord, written: ReadonlySet<string>): MappingDraft[] {
+  const stored = new Map<string, string>();
+  for (const row of course.countries ?? []) {
+    if (typeof row.id === 'string' && typeof row.updatedAt === 'string' && written.has(row.id)) stored.set(row.id, row.updatedAt);
+  }
+  return rows.map((row) => {
+    const version = row.id ? stored.get(row.id) : undefined;
+    return version && version !== row.updatedAt ? { ...row, updatedAt: version } : row;
+  });
+}
 function bodyJson(text: string, type: string) {
   if (type === 'RICH_TEXT') return { paragraphs: text.trim() ? [text.trim()] : [] };
   const paragraphs = text.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
@@ -469,7 +489,7 @@ export function CourseForm({ id }: { id?: string }) {
 
   const setCoreField = <K extends keyof CoreState>(key: K, value: CoreState[K]) => {
     if (key === 'slug') setSlugEdited(true);
-    setCore((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) }));
+    setCore((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id || record), manuallyOverridden: slugEdited }) } : {}) }));
     setDirty(true);
     setIssues([]);
   };
@@ -601,62 +621,109 @@ export function CourseForm({ id }: { id?: string }) {
     return data;
   }
 
-  async function syncMappings(courseId: string) {
-    for (const row of removedMappings) if (row.id) await deleteCourseMapping(courseId, row.id, row.updatedAt);
-    const saved: MappingDraft[] = [];
-    for (const row of activeMappings) {
-      const result = row.id ? await updateCourseMapping(courseId, row.id, mappingPayload(row)) : await createCourseMapping(courseId, mappingPayload(row));
-      const current = result.data;
-      await replaceCourseIntakes(
-        courseId,
-        current.id,
-        row.intakes.filter((item) => item.intakeId).map((item) => ({ intakeId: item.intakeId, ...(item.applicationDeadline ? { applicationDeadline: item.applicationDeadline } : {}), status: 'ACTIVE' })),
-        current.updatedAt,
-      );
-      saved.push({ ...mappingFromRecord(current), intakes: row.intakes });
+  /* Availability rows, sections and FAQs are each written on their own
+     after the course, and each is kept as it is written, not only once all
+     of them are: when a later row fails, the ones already created carry
+     their ids into the retry, which updates them instead of adding them a
+     second time, and a row already deleted is not deleted again. The retry
+     used to write every row afresh -- the sections and FAQs twice over, and
+     an availability row refused as "already mapped" to its own country.
+     The same as the specialization editor. */
+  async function syncMappings(courseId: string, written: Set<string>) {
+    const toDelete = [...removedMappings];
+    try {
+      while (toDelete.length) {
+        const row = toDelete[0];
+        if (row.id) await deleteCourseMapping(courseId, row.id, row.updatedAt);
+        toDelete.shift();
+      }
+    } finally {
+      setRemovedMappings(toDelete);
     }
-    setMappings(saved.length ? saved : [mappingBlank()]);
-    setRemovedMappings([]);
+    const saved: MappingDraft[] = [];
+    try {
+      for (const row of activeMappings) {
+        const result = row.id ? await updateCourseMapping(courseId, row.id, mappingPayload(row)) : await createCourseMapping(courseId, mappingPayload(row));
+        const current = result.data;
+        /* Kept before its intakes are written: they can fail on their own,
+           and the row exists either way. */
+        saved.push({ ...mappingFromRecord(current), intakes: row.intakes });
+        written.add(current.id);
+        await replaceCourseIntakes(
+          courseId,
+          current.id,
+          row.intakes.filter((item) => item.intakeId).map((item) => ({ intakeId: item.intakeId, ...(item.applicationDeadline ? { applicationDeadline: item.applicationDeadline } : {}), status: 'ACTIVE' })),
+          current.updatedAt,
+        );
+      }
+    } finally {
+      const kept = [...saved, ...activeMappings.slice(saved.length)];
+      setMappings(kept.length ? kept : [mappingBlank()]);
+    }
   }
 
   async function syncSections(courseId: string) {
-    for (const row of removedSections) if (row.id) await deleteCourseSection(courseId, row.id, row.updatedAt);
-    const saved: SectionDraft[] = [];
-    for (const row of activeSections) {
-      const payload = {
-        sectionKey: row.sectionKey.trim(),
-        sectionType: row.sectionType,
-        heading: optional(row.heading),
-        subheading: optional(row.subheading),
-        bodyJson: bodyJson(row.bodyText, row.sectionType),
-        ...(row.mediaId ? { mediaId: row.mediaId } : {}),
-        status: row.status,
-        displayOrder: Number(row.displayOrder) || 0,
-        ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
-      };
-      const result = row.id ? await updateCourseSection(courseId, row.id, payload) : await createCourseSection(courseId, payload);
-      saved.push(sectionFromRecord(result.data));
+    const toDelete = [...removedSections];
+    try {
+      while (toDelete.length) {
+        const row = toDelete[0];
+        if (row.id) await deleteCourseSection(courseId, row.id, row.updatedAt);
+        toDelete.shift();
+      }
+    } finally {
+      setRemovedSections(toDelete);
     }
-    setSections(saved.length ? saved : [sectionBlank()]);
-    setRemovedSections([]);
+    const saved: SectionDraft[] = [];
+    try {
+      for (const row of activeSections) {
+        const payload = {
+          sectionKey: row.sectionKey.trim(),
+          sectionType: row.sectionType,
+          heading: optional(row.heading),
+          subheading: optional(row.subheading),
+          bodyJson: bodyJson(row.bodyText, row.sectionType),
+          ...(row.mediaId ? { mediaId: row.mediaId } : {}),
+          status: row.status,
+          displayOrder: Number(row.displayOrder) || 0,
+          ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
+        };
+        const result = row.id ? await updateCourseSection(courseId, row.id, payload) : await createCourseSection(courseId, payload);
+        saved.push(sectionFromRecord(result.data));
+      }
+    } finally {
+      const kept = [...saved, ...activeSections.slice(saved.length)];
+      setSections(kept.length ? kept : [sectionBlank()]);
+    }
   }
 
   async function syncFaqs(courseId: string) {
-    for (const row of removedFaqs) if (row.id) await deleteCourseFaq(courseId, row.id, row.updatedAt);
-    const saved: FaqDraft[] = [];
-    for (const row of activeFaqs) {
-      const payload = {
-        question: row.question.trim(),
-        answer: row.answer.trim(),
-        status: row.status,
-        displayOrder: Number(row.displayOrder) || 0,
-        ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
-      };
-      const result = row.id ? await updateCourseFaq(courseId, row.id, payload) : await createCourseFaq(courseId, payload);
-      saved.push(faqFromRecord(result.data));
+    const toDelete = [...removedFaqs];
+    try {
+      while (toDelete.length) {
+        const row = toDelete[0];
+        if (row.id) await deleteCourseFaq(courseId, row.id, row.updatedAt);
+        toDelete.shift();
+      }
+    } finally {
+      setRemovedFaqs(toDelete);
     }
-    setFaqs(saved.length ? saved : [faqBlank()]);
-    setRemovedFaqs([]);
+    const saved: FaqDraft[] = [];
+    try {
+      for (const row of activeFaqs) {
+        const payload = {
+          question: row.question.trim(),
+          answer: row.answer.trim(),
+          status: row.status,
+          displayOrder: Number(row.displayOrder) || 0,
+          ...(row.updatedAt ? { expectedUpdatedAt: row.updatedAt } : {}),
+        };
+        const result = row.id ? await updateCourseFaq(courseId, row.id, payload) : await createCourseFaq(courseId, payload);
+        saved.push(faqFromRecord(result.data));
+      }
+    } finally {
+      const kept = [...saved, ...activeFaqs.slice(saved.length)];
+      setFaqs(kept.length ? kept : [faqBlank()]);
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -670,6 +737,8 @@ export function CourseForm({ id }: { id?: string }) {
     setError('');
     /* The course this save is working on, once it exists. */
     let courseId: string | null = record?.id ?? null;
+    /* The availability rows this save has written, for their versions. */
+    const writtenMappings = new Set<string>();
     try {
       const corePayload = {
         subjectId: core.subjectId,
@@ -699,25 +768,33 @@ export function CourseForm({ id }: { id?: string }) {
          fail, and when it did the author was left on /courses/new with a
          record they could not see, and a retry collided with their own slug:
          "Course slug already exists", about a course they had just made by
-         accident. Adopting it now turns the retry into an update. The URL is
-         only replaced once the whole save is through, because /courses/new
+         accident. Adopting it now turns the retry into an update. The route
+         is only replaced once the whole save is through, because /courses/new
          and /courses/[id] are separate routes and swapping them mid-save
-         would unmount the form under its own request. */
-      if (!record) setRecord(saved);
+         would unmount the form under its own request; the address bar alone
+         follows now, so a reload opens the course instead of a blank form. */
+      if (!record) {
+        setRecord(saved);
+        showCreatedAddress(`/courses/${saved.id}`);
+      }
       courseId = saved.id;
       saved = (await replaceCourseModes(saved.id, selectedModes, saved.updatedAt)).data;
-      await syncMappings(saved.id);
+      await syncMappings(saved.id, writtenMappings);
       await syncSections(saved.id);
       await syncFaqs(saved.id);
       await replaceCourseRelated(saved.id, relatedIds.map((relatedCourseId, index) => ({ relatedCourseId, relationshipType: 'RELATED', displayOrder: index })));
-      if (hasSeo(seo)) {
-        const result = await saveCourseSeo(saved.id, seoPayload(seo));
+      /* Robots alone is a row of its own; the version is the row's as last
+         read (null: none was), so a change made in another session since is
+         refused instead of overwritten. */
+      if (unifiedSeoWanted(seo)) {
+        const result = await saveCourseSeo(saved.id, { ...seoPayload(seo), expectedUpdatedAt: existingSeo?.updatedAt ?? null });
         setExistingSeo(result.data);
       } else if (existingSeo) {
         await deleteCourseSeo(saved.id, existingSeo.updatedAt);
         setExistingSeo(null);
       }
       const refreshed = (await getAdminCourse(saved.id)).data;
+      setMappings((rows) => withStoredMappingVersions(rows, refreshed, writtenMappings));
       const finalRecord = intent === 'publish'
         ? (refreshed.status === 'PUBLISHED' ? refreshed : (await publishCourse(refreshed.id, refreshed.updatedAt)).data)
         : (refreshed.status === 'PUBLISHED' ? (await unpublishCourse(refreshed.id, refreshed.updatedAt)).data : refreshed);
@@ -727,7 +804,8 @@ export function CourseForm({ id }: { id?: string }) {
          confirmation there. A draft save keeps the operator where they are. */
       if (intent === 'publish') {
         queueFlash({ tone: 'success', message: `${finalRecord.name} published successfully.` });
-        router.push('/courses');
+        /* A new course replaces the entry it adopted; see SubjectForm. */
+        if (id) router.push('/courses'); else router.replace('/courses');
         return;
       }
       if (!id) router.replace(`/courses/${finalRecord.id}`);
@@ -740,10 +818,13 @@ export function CourseForm({ id }: { id?: string }) {
          save started from turned the author's retry into "The course changed
          in another session", and their sections, FAQs and SEO were lost when
          they reloaded. Re-reading the course keeps the retry an ordinary
-         update of what is really stored. */
+         update of what is really stored, the versions of the availability
+         rows this save wrote included. */
       if (courseId) {
         try {
-          setRecord((await getAdminCourse(courseId)).data);
+          const stored = (await getAdminCourse(courseId)).data;
+          setRecord(stored);
+          setMappings((rows) => withStoredMappingVersions(rows, stored, writtenMappings));
         } catch {
           /* The original error is the one worth showing. */
         }
@@ -774,6 +855,7 @@ export function CourseForm({ id }: { id?: string }) {
 
       <EditorSectionNav root={formEl} />
       <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+        <EnterSubmitGuard />
         <EditorCard eyebrow="Course" title="Basic information" description="Identity, classification and public summary.">
           <div className="grid gap-5 sm:grid-cols-2">
             <Select label="Subject" value={core.subjectId} onChange={(value) => setCoreField('subjectId', value)} options={subjects.map((row) => ({ id: row.id, label: `${row.name}${row.status !== 'PUBLISHED' ? ' · Draft' : ''}` }))} required />
@@ -828,7 +910,7 @@ export function CourseForm({ id }: { id?: string }) {
           <RelatedCoursePicker courses={allCourses} selected={relatedIds} excludeId={record?.id} onToggle={toggleRelated} />
         </EditorCard>
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
+        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="course" />
         <UnifiedEditorActions cancelHref="/courses" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

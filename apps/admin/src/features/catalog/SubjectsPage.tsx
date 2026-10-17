@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
 import { deleteSubject, listSubjects, publishSubject, unpublishSubject } from './catalog-client';
 import type { PageMeta, SubjectRecord } from './catalog.types';
-import { catalogErrorText } from './catalog-errors';
+import { catalogErrorText, subjectInUseText } from './catalog-errors';
+import { draftSpecializationsNote, withDraftsNote } from './subject-publishing';
+import { LEVELS_COLUMN_TITLE, listedLevelNames } from './level-pages';
 import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useHandedOverToast } from '@/features/shared/Flash';
@@ -32,6 +34,9 @@ export function SubjectsPage() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState<Pending>(null);
   const [confirm, setConfirm] = useState('');
+  /* A refused delete is explained inside its dialog, where the editor is
+     looking, and the dialog stays open on it. */
+  const [dialogError, setDialogError] = useState('');
   const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
   const [busy, setBusy] = useState<Record<string, string>>({});
   const { toasts, push: toast, dismiss } = useToasts();
@@ -87,7 +92,9 @@ export function SubjectsPage() {
     try {
       const result = kind === 'publish' ? await publishSubject(row.id, row.updatedAt) : await unpublishSubject(row.id, row.updatedAt);
       setRows((current) => current.map((item) => (item.id === row.id ? result.data : item)));
-      toast('ok', kind === 'publish' ? `${row.name} published.` : `${row.name} moved to draft.`);
+      /* A subject publishes alone; the toast names the specializations it
+         left in draft. */
+      toast('ok', kind === 'publish' ? withDraftsNote(`${row.name} published.`, draftSpecializationsNote(row.subSubjects)) : `${row.name} moved to draft.`);
       void load();
       loadCounts();
     } catch (cause: unknown) {
@@ -123,6 +130,10 @@ export function SubjectsPage() {
       void load();
       loadCounts();
     } catch (cause: unknown) {
+      if (pending.kind === 'delete') {
+        setDialogError(subjectInUseText(cause) ?? catalogErrorText(cause, 'The subject could not be deleted'));
+        return;
+      }
       toast('error', `${pending.row.name}: ${catalogErrorText(cause, 'Subject action failed')}`);
       setPending(null);
       setConfirm('');
@@ -140,17 +151,21 @@ export function SubjectsPage() {
     const targets = picked.filter((row) => (kind === 'publish' ? row.status !== 'PUBLISHED' : row.status === 'PUBLISHED'));
     setBulkBusy(true);
     const failed: string[] = [];
+    /* The specializations of the subjects this published, for the note on
+       the ones left in draft. */
+    const children: Array<{ status: string }> = [];
     let done = 0;
     for (const row of targets) {
       try {
         if (kind === 'publish') await publishSubject(row.id, row.updatedAt);
         else await unpublishSubject(row.id, row.updatedAt);
         done += 1;
+        if (kind === 'publish') children.push(...(row.subSubjects ?? []));
       } catch (cause: unknown) {
         failed.push(`${row.name} (${catalogErrorText(cause, 'failed')})`);
       }
     }
-    toast(failed.length ? 'error' : 'ok', bulkSummary(kind, done, picked.length - targets.length, failed));
+    toast(failed.length ? 'error' : 'ok', withDraftsNote(bulkSummary(kind, done, picked.length - targets.length, failed), draftSpecializationsNote(children, done === 1 ? 'Its' : 'Their')));
     selection.clear();
     setBulkBusy(false);
     void load();
@@ -233,7 +248,7 @@ export function SubjectsPage() {
               <tr>
                 <th scope="col" className="w-8"><SelectAllCheckbox checked={selection.allSelected} onChange={selection.toggleAll} /></th>
                 <th scope="col">Subject</th>
-                <th scope="col">Levels</th>
+                <th scope="col"><span title={LEVELS_COLUMN_TITLE.subject} className="cursor-help underline decoration-dotted underline-offset-4">Levels</span></th>
                 <th scope="col">Status</th>
                 <th scope="col">Updated</th>
                 <th scope="col" className="p-td-actions">Actions</th>
@@ -251,8 +266,8 @@ export function SubjectsPage() {
                     </span>
                   </td>
                   <td>
-                    {row.courseLevels?.length ? (
-                      row.courseLevels.map((level) => level.name).join(', ')
+                    {listedLevelNames(row).length ? (
+                      listedLevelNames(row).join(', ')
                     ) : (
                       <span className="p-muted">—</span>
                     )}
@@ -291,7 +306,7 @@ export function SubjectsPage() {
                           {busy[row.id] === 'publish' ? 'Publishing…' : 'Publish'}
                         </button>
                       )}
-                      <RowMenu items={[{ label: 'Delete', danger: true, onSelect: () => setPending({ kind: 'delete', row }) }]} />
+                      <RowMenu items={[{ label: 'Delete', danger: true, onSelect: () => { setDialogError(''); setPending({ kind: 'delete', row }); } }]} />
                     </div>
                   </td>
                 </tr>
@@ -336,14 +351,16 @@ export function SubjectsPage() {
           title={pending.kind === 'delete' ? 'Delete subject?' : 'Change subject visibility?'}
           description={
             pending.kind === 'delete'
-              ? `This removes ${pending.row.name} from the database for good, with its specializations, sections and FAQs, and frees its slug. It cannot be undone. Type ${pending.row.name} to confirm.`
+              ? `This removes ${pending.row.name} from the database for good, with its specializations, sections, FAQs and level pages, and frees its slug. It cannot be undone. Type ${pending.row.name} to confirm.`
               : 'This action is audited and changes public visibility.'
           }
           onClose={() => {
             setPending(null);
             setConfirm('');
+            setDialogError('');
           }}
         >
+          {dialogError ? <p role="alert" className="p-alert p-alert--error">{dialogError}</p> : null}
           <div className="p-row p-row--wrap">
             {pending.kind === 'delete' ? (
               <input
@@ -360,6 +377,7 @@ export function SubjectsPage() {
               onClick={() => {
                 setPending(null);
                 setConfirm('');
+                setDialogError('');
               }}
             >
               Cancel

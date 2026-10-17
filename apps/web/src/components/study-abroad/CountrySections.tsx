@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useId, useState } from 'react';
+import { safeRichText } from '@/components/phase1/RichText';
 import { SectionHead } from './SectionHead';
 
 /**
@@ -220,8 +221,11 @@ export function FaqAccordion({
                   data-open={String(expanded)}
                   hidden={!expanded}
                   /* Authored in the Admin WYSIWYG and sanitised by the API
-                     before it is stored and again before it is served. */
-                  dangerouslySetInnerHTML={{ __html: faq.answer }}
+                     before it is stored and again before it is served, and
+                     once more here, as every other rich text on the site
+                     is: the page does not rest on another service's
+                     sanitiser alone. */
+                  dangerouslySetInnerHTML={{ __html: safeRichText(faq.answer) }}
                 />
               </div>
             );

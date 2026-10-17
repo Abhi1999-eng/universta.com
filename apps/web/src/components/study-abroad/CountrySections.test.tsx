@@ -50,3 +50,38 @@ describe('country guide behaviour hooks', () => {
     expect(html).toContain('<dl class="path__stats"><div class="path__stat"><dt>Typical duration</dt><dd>3–5 years</dd>');
   });
 });
+
+/**
+ * A country's FAQ answers are rich text from the Admin. They were written
+ * into the page as the API served them, resting on its sanitiser alone;
+ * they now pass the site's own, as every other rich text does.
+ */
+describe('a country’s FAQ answers', () => {
+  const answer = (value: string) =>
+    renderToStaticMarkup(
+      <FaqAccordion
+        alt={false}
+        countryName="Germany"
+        faqs={[{ id: 'a', question: 'Can I work?', answer: value }]}
+      />,
+    ).match(/<div class="faq__a"[^>]*>([\s\S]*?)<\/div><\/div><\/div><\/div><\/section>$/)?.[1];
+
+  it('keeps the formatting an editor wrote', () => {
+    expect(answer('<p>Yes, <strong>20 hours</strong> a week. <a href="/study-abroad/germany">More</a></p>')).toBe(
+      '<p>Yes, <strong>20 hours</strong> a week. <a href="/study-abroad/germany" rel="noopener noreferrer">More</a></p>',
+    );
+  });
+
+  it('runs nothing an answer carries, whatever the API let through', () => {
+    const html = answer(
+      '<p onclick="alert(1)">Yes.</p><script>alert(2)</script><img src=x onerror="alert(3)"><a href="javascript:alert(4)">x</a>',
+    );
+    expect(html).toBe('<p>Yes.</p><a>x</a>');
+  });
+
+  it('does not escape an image address the API already escaped a second time', () => {
+    const html = answer('<p><img src="https://cdn.example/permit.png?w=1&amp;h=2" alt="Permit"></p>');
+    expect(html).toContain('src="https://cdn.example/permit.png?w=1&amp;h=2"');
+    expect(html).not.toContain('&amp;amp;');
+  });
+});

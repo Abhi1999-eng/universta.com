@@ -109,9 +109,19 @@ describe('a subject’s page', () => {
   });
 
   it('states the true figures: destinations that teach it, every university', () => {
-    expect(html).toMatch(/<span class="label">Destinations<\/span><b>3<\/b>/);
-    expect(html).toMatch(/<span class="label">Universities<\/span><b>105<\/b>/);
+    expect(html).toMatch(/<p class="subjabout__facts datum">.* 3 destinations<\/p>/);
     expect(html).toContain('3 destinations teach Computer Science');
+    expect(html).toMatch(/Universities <span class="h-count__n">105<\/span>/);
+  });
+
+  /* The client had the count line over the heading and the facts box
+     under the hero -- specializations, study levels and the rest --
+     taken off the page. */
+  it('opens on its name, with no count line above it and no facts box below', () => {
+    expect(html).toContain('<div><h1 class="hero__h1">Study Computer Science abroad</h1>');
+    expect(html).not.toContain('hero__eyebrow');
+    expect(html).not.toContain('unisnap');
+    expect(html).not.toMatch(/<span class="label">(?:Specializations|Study levels)<\/span>/);
   });
 
   it('shows the overview’s opening on the page, the rest under the toggle', () => {
@@ -251,8 +261,6 @@ describe('programmes on a subject’s and a specialization’s page', () => {
     expect(html).toContain('Computer Science courses by level');
     expect(html).toContain('14 courses, each under the level it is taught at.');
     expect(html).toContain('href="/subjects/computer-science/masters?view=guides"');
-    expect(html).toMatch(/<span class="label">Programmes profiled<\/span><b>136<\/b>/);
-    expect(html).toMatch(/<span class="label">Courses<\/span><b>36<\/b>/);
   });
 
   it('stands the section down, and keeps the old names, with no programme listed', () => {
@@ -262,7 +270,6 @@ describe('programmes on a subject’s and a specialization’s page', () => {
     expect(html).not.toContain('id="courses"');
     expect(html).not.toContain('class="coursecard"');
     expect(html).toContain('Computer Science programmes by level');
-    expect(html).toMatch(/<span class="label">Programmes profiled<\/span><b>36<\/b>/);
     /* Every other count keeps the name it always had, too. */
     expect(html).toMatch(/<p class="subjabout__facts datum">36 programmes ·.* 3 destinations<\/p>/);
     expect(html).toContain('<span class="speccard__count datum">6 programmes</span>');
@@ -523,16 +530,31 @@ describe('the subjects explorer', () => {
   ];
   const ORDER = ['FOUNDATION', 'UG', 'PG', 'PHD'];
 
-  it('lays its level bar out in climbing order', () => {
+  it('names each card’s levels in climbing order', () => {
     searchParams.current = new URLSearchParams();
     const html = renderToStaticMarkup(
       <SubjectIndex subjects={rows as never} levelOrder={ORDER} />,
     );
-    const bar = [...html.matchAll(/aria-pressed="(?:true|false)">([^<]+)</g)].map(
-      (match) => match[1],
-    );
-    expect(bar).toEqual(['All', 'Foundation Program', 'Bachelor&#x27;s', 'PhD']);
     expect(html).toContain('Bachelor&#x27;s, PhD');
+  });
+
+  /* The client had the explorer's count line, its suggested searches and
+     its study-level filter taken off: the question, the search box and
+     the cards are the page. */
+  it('opens on its question and its search, with no count line, suggestions or level filter', () => {
+    searchParams.current = new URLSearchParams();
+    const html = renderToStaticMarkup(
+      <SubjectIndex subjects={rows as never} levelOrder={ORDER} />,
+    );
+    expect(html).not.toContain('hero__eyebrow');
+    expect(html).not.toContain('Find your field');
+    expect(html).not.toContain('bigsearch__ex');
+    expect(html).not.toMatch(/>Try</);
+    expect(html).not.toContain('aria-label="Study level"');
+    expect(html).not.toContain('aria-pressed');
+    expect(html).not.toContain('>Foundation Program<');
+    /* Every subject is a card. */
+    expect(html.match(/<article class="subjcard"/g)).toHaveLength(2);
   });
 
   it('answers a specialization search with a count and a way back', () => {
@@ -543,7 +565,9 @@ describe('the subjects explorer', () => {
     expect(html).toMatch(/Results for “software”.*1 match/);
     expect(html).toMatch(/<a class="linkcta" href="\/subjects">All subjects/);
     expect(html).not.toContain('No subjects found');
-    expect(html).not.toContain('Civil Engineering');
+    /* The cards the search keeps. */
+    const results = html.slice(html.indexOf('id="taxonomy"'));
+    expect(results).not.toContain('Civil Engineering');
   });
 
   it('prints no programme figure for a subject with none', () => {
@@ -598,24 +622,7 @@ describe('the study levels, listed or not', () => {
     ]);
     expect(html.match(/is listed yet/g)).toHaveLength(1);
     expect(html).toContain('No Computer Science programme is listed yet.');
-    expect(html).not.toMatch(/<span class="label">Study levels<\/span>/);
     expect(html).not.toContain('Every Computer Science programme');
-  });
-
-  it('names only the levels something is listed at in the figures', () => {
-    const html = renderToStaticMarkup(
-      <SubjectGuide
-        subject={unoffered}
-        scholarships={[]}
-        levels={everyLevel(
-          [{ level: { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 }, count: 4, courses: [] }],
-          catalogue,
-          subjectOfferedLevels(unoffered),
-        )}
-      />,
-    );
-    expect(html).toMatch(/<span class="label">Study levels<\/span><b>Master&#x27;s<\/b>/);
-    expect(sectionIds(html)).toHaveLength(6);
   });
 
   it('with nothing ticked on the subject, shows the levels its specializations are offered at', () => {
@@ -629,7 +636,6 @@ describe('the study levels, listed or not', () => {
     /* Its one specialization is ticked for Bachelor's, a diploma and PhD;
        the diploma is not one of this catalogue's levels. */
     expect(sectionIds(html)).toEqual(['level-ug', 'level-phd']);
-    expect(html).toMatch(/<span class="label">Study levels<\/span><b>Bachelor&#x27;s, PhD<\/b>/);
   });
 
   it('shows all six on a specialization with nothing listed, without "View all 0"', () => {
@@ -643,5 +649,165 @@ describe('the study levels, listed or not', () => {
     expect(sectionIds(html)).toHaveLength(6);
     expect(html).toContain('No Software Engineering programme is listed yet.');
     expect(html).not.toContain('View all 0');
+  });
+});
+
+/**
+ * A level's link opens the field's page at that level only where the field
+ * has one -- a level it is offered at -- and the course finder otherwise:
+ * a level page the field is not offered at is a 404.
+ */
+describe('level links that open pages that exist', () => {
+  const groups = [
+    { level: { ...DIPLOMA, educationOrder: 2 }, count: 2, courses: [] },
+    { level: { ...PG, educationOrder: 4 }, count: 14, courses: [] },
+  ] as never;
+
+  it('sends a subject’s level with no page of its own to the course finder', () => {
+    const html = renderToStaticMarkup(
+      <SubjectGuide
+        subject={{ ...subject, offeredLevels: [PG], subSubjects: [], courseCountsByLevel: [{ level: PG, count: 14 }] } as SubjectDetail}
+        scholarships={[]}
+        levels={groups}
+      />,
+    );
+    expect(html).toContain('href="/subjects/computer-science/masters?view=guides"');
+    expect(html).toContain('href="/courses?subject=computer-science&amp;level=DIPLOMA&amp;view=guides"');
+    expect(html).not.toContain('/subjects/computer-science/diploma');
+  });
+
+  it('sends a specialization’s level with no page of its own to the course finder, narrowed to it', () => {
+    const html = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={{ ...specialization, offeredLevels: [PG], levels: [PG] } as never}
+        scholarships={[]}
+        levels={groups}
+      />,
+    );
+    expect(html).toContain('href="/subjects/computer-science/software-engineering/masters?view=guides"');
+    expect(html).toContain(
+      'href="/courses?subject=computer-science&amp;specialization=software-engineering&amp;level=DIPLOMA&amp;view=guides"',
+    );
+    expect(html).not.toContain('/software-engineering/diploma');
+  });
+
+  it('still opens the six level pages of a subject offered at nothing', () => {
+    const catalogue = [
+      { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
+      { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 },
+    ];
+    const unoffered = {
+      ...subject,
+      courseCountsByLevel: [],
+      subSubjects: [],
+    } as unknown as SubjectDetail;
+    const html = renderToStaticMarkup(
+      <SubjectGuide subject={unoffered} scholarships={[]} levels={everyLevel([], catalogue, subjectOfferedLevels(unoffered))} />,
+    );
+    expect(html).toContain('href="/subjects/computer-science/foundation?view=guides"');
+  });
+
+  /* A level switched off in Admin leaves the catalogue's list; a subject
+     offered there alone is offered at nothing, and its six pages open. */
+  it('opens the six level pages of a subject offered only at a switched-off level', () => {
+    const catalogue = [
+      { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
+      { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 },
+    ];
+    const switchedOff = {
+      ...subject,
+      offeredLevels: [],
+      subSubjects: [],
+      courseCountsByLevel: [{ level: DIPLOMA, count: 2 }],
+    } as unknown as SubjectDetail;
+    const html = renderToStaticMarkup(
+      <SubjectGuide
+        subject={switchedOff}
+        scholarships={[]}
+        catalogue={catalogue}
+        levels={everyLevel(
+          [{ level: { ...DIPLOMA, educationOrder: 2 }, count: 2, courses: [] }] as never,
+          catalogue,
+          subjectOfferedLevels(switchedOff),
+        )}
+      />,
+    );
+    expect(html).toContain('href="/subjects/computer-science/foundation?view=guides"');
+    expect(html).toContain('href="/subjects/computer-science/bachelors?view=guides"');
+    expect(html).toContain('href="/courses?subject=computer-science&amp;level=DIPLOMA&amp;view=guides"');
+    expect(html).not.toContain('/subjects/computer-science/diploma');
+  });
+
+  it('opens the level pages of a specialization offered only at a switched-off level', () => {
+    const catalogue = [{ id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 }];
+    const html = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={{ ...specialization, offeredLevels: [], levels: [DIPLOMA] } as never}
+        scholarships={[]}
+        catalogue={catalogue}
+        levels={everyLevel([], catalogue, [DIPLOMA])}
+      />,
+    );
+    expect(html).toContain('href="/subjects/computer-science/software-engineering/bachelors?view=guides"');
+  });
+});
+
+/** The facts strip a specialization's page had -- its subject, its
+ *  levels and its programmes -- went with the subject page's box: the
+ *  client asked for both to go. */
+describe('a specialization’s hero', () => {
+  it('opens on its name, with no facts strip below', () => {
+    const html = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={{ ...specialization, offeredLevels: [PG], levels: [UG, PG] } as never}
+        scholarships={[]}
+        levels={[
+          { level: { ...UG, educationOrder: 3 }, count: 4, courses: [] },
+          { level: { ...PG, educationOrder: 4 }, count: 2, courses: [] },
+        ] as never}
+      />,
+    );
+    expect(html).toContain('<h1 class="hero__h1">Study Software Engineering abroad</h1>');
+    expect(html).not.toContain('specialization-facts');
+    expect(html).not.toContain('unisnap');
+    expect(html).not.toContain('Parent subject');
+    expect(html).not.toMatch(/<span class="label">Study levels<\/span>/);
+  });
+
+  /* The client had the "Specialization · <subject>" line over the
+     heading taken off, as the subject page's was: the name is the first
+     line. The trail and "All <subject>" still lead back to the subject. */
+  it('opens on its name, with no line above it, and keeps the ways back to its subject', () => {
+    const html = renderToStaticMarkup(
+      <SpecializationGuide specialization={specialization as never} scholarships={[]} />,
+    );
+    expect(html).not.toContain('hero__eyebrow');
+    expect(html).not.toMatch(/Specialization<b>·<\/b>/);
+    expect(html).toMatch(
+      /<\/span>(?:<!-- -->)*<div><h1 class="hero__h1">Study Software Engineering abroad<\/h1>/,
+    );
+    expect(html).toContain(
+      '<a href="/subjects/computer-science">Computer Science</a>' +
+        '<span class="crumbs__sep" aria-hidden="true">/</span>' +
+        '<span aria-current="page">Software Engineering</span>',
+    );
+    expect(html).toMatch(
+      /<a class="btn btn--lg btn--ghost" href="\/subjects\/computer-science">All (?:<!-- -->)?Computer Science<\/a>/,
+    );
+  });
+});
+
+/** The consultants hand-off on a subject's page, awards or not. */
+describe('a subject’s consultants hand-off', () => {
+  it('stands alone where no award is recorded', () => {
+    const html = renderToStaticMarkup(<SubjectGuide subject={subject} scholarships={[]} />);
+    expect(html).toMatch(/id="consultants"/);
+    expect(html).toContain('Talk to a consultant about Computer Science');
+  });
+
+  it('closes the funding band where awards are recorded', () => {
+    const html = renderToStaticMarkup(<SubjectGuide subject={subject} scholarships={[scholarship]} />);
+    expect(html).not.toMatch(/id="consultants"/);
+    expect(html).toContain('Talk to a consultant about Computer Science');
   });
 });

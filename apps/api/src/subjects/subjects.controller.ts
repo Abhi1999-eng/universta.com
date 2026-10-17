@@ -7,12 +7,16 @@ import {
   SpecializationUniversitiesQueryDto,
   SubjectListQueryDto,
 } from './dto/subject.dto';
+import { SubjectLevelPagesService } from './level-pages.service';
 import { SubjectsService } from './subjects.service';
 
 @ApiTags('subjects')
 @Controller('subjects')
 export class SubjectsController {
-  constructor(private readonly subjects: SubjectsService) {}
+  constructor(
+    private readonly subjects: SubjectsService,
+    private readonly levelPages: SubjectLevelPagesService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List published subjects' })
@@ -22,6 +26,39 @@ export class SubjectsController {
   ) {
     const result = await this.subjects.publicList(query);
     return successEnvelope(request, result.data, result.meta);
+  }
+
+  /* A study level's page within a specialization, then within a subject.
+     `:level` is a code ("PG"), a readable slug ("masters") or
+     "undergraduate". Declared before the specialization and ':slug', as
+     the longer addresses here are. */
+  @Get(':subjectSlug/specializations/:slug/level-pages/:level')
+  @ApiOperation({
+    summary: "Get a specialization's page at one study level",
+  })
+  async specializationLevelPage(
+    @Req() request: RequestWithId,
+    @Param('subjectSlug') subjectSlug: string,
+    @Param('slug') slug: string,
+    @Param('level') level: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.levelPages.publicPage(subjectSlug, level, slug),
+    );
+  }
+
+  @Get(':subjectSlug/level-pages/:level')
+  @ApiOperation({ summary: "Get a subject's page at one study level" })
+  async levelPage(
+    @Req() request: RequestWithId,
+    @Param('subjectSlug') subjectSlug: string,
+    @Param('level') level: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.levelPages.publicPage(subjectSlug, level),
+    );
   }
 
   /* Declared before the specialization itself, like the route below it is
@@ -79,5 +116,41 @@ export class SpecializationsController {
   ) {
     const result = await this.subjects.publicSpecializationList(query);
     return successEnvelope(request, result.data, result.meta);
+  }
+}
+
+/** Every published level page the sitemap may list, with whether its own
+ * words are enough for search and its robots setting. */
+@ApiTags('subjects')
+@Controller('subject-level-pages')
+export class SubjectLevelPagesController {
+  constructor(private readonly levelPages: SubjectLevelPagesService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List the published study level pages' })
+  async list(@Req() request: RequestWithId) {
+    const result = await this.levelPages.publicIndex();
+    return successEnvelope(request, result.data, {
+      total: result.total,
+      templateRobotsIndex: result.templateRobotsIndex,
+    });
+  }
+}
+
+/** Every destination page of a subject or a specialization the sitemap may
+ * list, with how many programmes each has. A path of its own: under
+ * /countries or /subjects it would be read as a country or a subject slug. */
+@ApiTags('subjects')
+@Controller('country-field-pages')
+export class CountryFieldPagesController {
+  constructor(private readonly subjects: SubjectsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'List the country subject and country specialization pages',
+  })
+  async list(@Req() request: RequestWithId) {
+    const result = await this.subjects.publicCountryFieldPages();
+    return successEnvelope(request, result.data, { total: result.total });
   }
 }

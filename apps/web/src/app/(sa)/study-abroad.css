@@ -2524,6 +2524,28 @@
 .sa .subjcard__icon img { width: 21px; height: 21px; object-fit: contain; }
 .sa .subjhero__icon img { width: 55%; height: 55%; object-fit: contain; }
 
+/* What an editor set on a subject or a specialization for its listings and
+   its page: the design's "Popular" badge for a featured record, beside the
+   name as the reference draws it; a listing image at the top of its card;
+   and a subject's hero image under its hero. Each is drawn only where it
+   is set, so an unset record looks as it did. */
+.sa .subjcard__head .badge { margin-left: auto; flex: none; }
+.sa .subjcard__media,
+.sa .speccard__media {
+  display: block; overflow: hidden; aspect-ratio: 16 / 9;
+  background: var(--surface-sunken); border: 1px solid var(--line-soft);
+}
+.sa .subjcard__media { border-radius: 10px; aspect-ratio: 5 / 2; }
+.sa .speccard__media { border-radius: 3px; margin-bottom: 4px; }
+.sa .subjcard__media img,
+.sa .speccard__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sa .subjhero__media {
+  margin: clamp(20px, 2.6vw, 30px) 0 0; overflow: hidden;
+  height: clamp(160px, 24vw, 300px);
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface-sunken);
+}
+.sa .subjhero__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
 /* --- ported from the reference build: the "Continue your journey" strip --- */
 .sa .h-cont { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
 .sa .h-cont__item { display: grid; gap: 3px; padding: 13px 15px; border-radius: 11px; background: var(--white); border: 1px solid var(--line); text-decoration: none; color: var(--text); }
@@ -3130,6 +3152,16 @@
 }
 .sa .statstrip--field div { min-width: 0; }
 .sa .statstrip--field b { overflow-wrap: anywhere; }
+/* A field's page at one level stacks its figures, its level bar, its
+   specializations at the level and the way up to its subject in the hero.
+   The strip's bottom rule is the bar's top one, and the bar's own margin
+   is the gap before the chips. */
+.sa .statstrip + .levelbar--wide { margin-top: 0; border-top: 0; }
+.sa .levelbar--wide + .specchips { margin-top: 0; }
+.sa .levelup { margin-top: 14px; }
+/* The level page's own words lead into its list as one white band: a
+   single rule between them, not the two each band brings. */
+.sa .levelintro + .coursefinder { border-top: 0; }
 /* "Why study…" and "Studying…": the paragraph read straight away, with the
    rest under the design's read-more. */
 .sa .fieldwhy__lead { max-width: 74ch; }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { findSubjectLevel, subjectLevelHref, subjectLevelSlug } from './subject-levels';
+import { levelPages } from './course-levels';
+import { findSubjectLevel, levelPageHref, subjectLevelHref, subjectLevelSlug } from './subject-levels';
 
 const levels = [
   { code: 'FOUNDATION', name: 'Foundation' },
@@ -40,5 +41,17 @@ describe('subject study-level addresses', () => {
     expect(findSubjectLevel([], 'ug')).toBeUndefined();
     const extra = { code: 'CERTIFICATE', name: 'Certificate' };
     expect(findSubjectLevel([...levels, extra], 'certificate')).toBe(extra);
+  });
+
+  it('links a level page only where the field has one', () => {
+    const offered = levelPages([{ code: 'PG' }, { code: 'PHD' }]);
+    expect(levelPageHref(offered, { subject: 'computing', specialization: 'ai', level: 'PG', guides: true }))
+      .toBe('/subjects/computing/ai/masters?view=guides');
+    expect(levelPageHref(offered, { subject: 'computing', level: 'phd' })).toBe('/subjects/computing/phd');
+    expect(levelPageHref(offered, { subject: 'computing', level: 'UG' })).toBeNull();
+    /* A field offered at nothing has the six named pages, and only those. */
+    const fallback = levelPages([]);
+    expect(levelPageHref(fallback, { subject: 'x', level: 'FOUNDATION' })).toBe('/subjects/x/foundation');
+    expect(levelPageHref(fallback, { subject: 'x', level: 'DIPLOMA' })).toBeNull();
   });
 });

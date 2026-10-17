@@ -118,3 +118,37 @@ export function catalogErrorText(cause: unknown, fallback: string): string {
   const typed = cause as Partial<CatalogMutationError>;
   return typed?.message ?? (cause instanceof Error ? cause.message : fallback);
 }
+
+/**
+ * Why a subject cannot be deleted for good, from the counts the API sends
+ * with SUBJECT_IN_USE: the courses that still use it, and the deleted ones
+ * that still point at it. A deleted course is kept in the database and the
+ * admin lists none, so "referenced by courses" alone sent editors looking
+ * for courses that were nowhere to be seen. Null for any other failure, or
+ * when the counts are missing, so the caller falls back to the headline.
+ */
+export function subjectInUseText(cause: unknown): string | null {
+  const typed = cause as Partial<CatalogMutationError>;
+  if (typed?.code !== "SUBJECT_IN_USE") return null;
+  const details = (typed.details ?? null) as {
+    liveCourses?: unknown;
+    deletedCourses?: unknown;
+  } | null;
+  const live = details?.liveCourses;
+  const deleted = details?.deletedCourses;
+  if (typeof live !== "number" || typeof deleted !== "number") return null;
+  const lines: string[] = [];
+  if (live > 0)
+    lines.push(
+      live === 1
+        ? "1 course still uses this subject. Move it to another subject first."
+        : `${live} courses still use this subject. Move them to another subject first.`,
+    );
+  if (deleted > 0)
+    lines.push(
+      deleted === 1
+        ? "1 deleted course still points at this subject; it must be removed from the database first."
+        : `${deleted} deleted courses still point at this subject; they must be removed from the database first.`,
+    );
+  return lines.length ? lines.join(" ") : null;
+}

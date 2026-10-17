@@ -115,10 +115,13 @@ describe('admin specializations', () => {
       'Artificial Intelligence',
       'Software Engineering',
     ]);
+    /* With its status, so the list offers "View on site" only under a
+       published subject. */
     expect(result.data[0].subject).toEqual({
       id: 'cs',
       name: 'Computer Science',
       slug: 'computer-science',
+      status: 'PUBLISHED',
     });
     expect(result.meta.total).toBe(2);
   });
@@ -179,6 +182,81 @@ describe('admin specializations', () => {
       where: { ownerType_ownerId: { ownerType: 'SUB_SUBJECT', ownerId: 'ai' } },
       include: expect.anything(),
     });
+  });
+
+  it('accepts a canonical on this site and refuses a script one', async () => {
+    const service = new SubjectsService(prisma({}));
+    await expect(
+      service.putSpecializationSeo(
+        'ai',
+        {
+          seoTitle: 'Study AI abroad',
+          metaDescription: 'Where to study AI.',
+          canonicalUrl: '/subjects/computer-science/artificial-intelligence',
+        },
+        request,
+      ),
+    ).resolves.toMatchObject({
+      canonicalUrl: '/subjects/computer-science/artificial-intelligence',
+    });
+    for (const canonicalUrl of ['javascript:alert(1)', '//evil.example'])
+      await expect(
+        service.putSpecializationSeo(
+          'ai',
+          { seoTitle: 'T', metaDescription: 'D', canonicalUrl },
+          request,
+        ),
+      ).rejects.toMatchObject({ response: { code: 'SEO_URL_INVALID' } });
+  });
+
+  it('hands back the chosen images by id, so saving again keeps them', async () => {
+    const service = new SubjectsService(prisma({}));
+    await expect(
+      service.putSpecializationSeo(
+        'ai',
+        {
+          seoTitle: 'Study AI abroad',
+          metaDescription: 'Where to study AI.',
+          ogMediaId: 'og-1',
+          twitterMediaId: 'tw-1',
+        },
+        request,
+      ),
+    ).resolves.toMatchObject({ ogMediaId: 'og-1', twitterMediaId: 'tw-1' });
+  });
+
+  /* The editor leaves a field it cleared out of the body. Written as
+     undefined, the update skipped it and the old canonical and image came
+     back after the save. */
+  it('writes a field cleared in the editor as null, so the update clears it', async () => {
+    const calls: Record<string, unknown[]> = {};
+    const service = new SubjectsService(prisma(calls));
+    await service.putSpecializationSeo(
+      'ai',
+      {
+        seoTitle: 'Study AI abroad',
+        metaDescription: 'Where to study AI.',
+        ogTitle: '  ',
+      },
+      request,
+    );
+    const { update } = calls.seoUpsert.at(-1) as {
+      update: Record<string, unknown>;
+    };
+    expect(update).toMatchObject({
+      seoTitle: 'Study AI abroad',
+      canonicalUrl: null,
+      focusKeyword: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogMediaId: null,
+      twitterTitle: null,
+      twitterDescription: null,
+      twitterMediaId: null,
+    });
+    /* Not on the editor's form: left as it is. */
+    expect(update.schemaJson).toBeUndefined();
+    expect(update.hreflangJson).toBeUndefined();
   });
 
   it('reports nothing to delete when no SEO was written', async () => {

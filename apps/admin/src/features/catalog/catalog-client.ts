@@ -27,6 +27,9 @@ import type {
   CourseRelatedRecord,
   EditorialSeo,
   CountryTagRecord,
+  LevelPageDetail,
+  LevelPageOwner,
+  LevelPageRow,
 } from "./catalog.types";
 
 function query(params: object): string {
@@ -716,6 +719,49 @@ export function deleteSpecializationFaq(id: string, faqId: string, expectedUpdat
     `/api/v1/admin/specializations/${id}/faqs/${faqId}`,
     { method: "DELETE", body: JSON.stringify({ expectedUpdatedAt }) },
   );
+}
+/* A subject's or a specialization's page at each study level it is offered
+   at. Both owners share one set of calls: the address differs by owner, the
+   shapes do not. The ids are encoded because a level's id is not always the
+   UUID the other ids here are. */
+function levelPagesPath(owner: LevelPageOwner, ownerId: string, levelId?: string) {
+  const base = `/api/v1/admin/${owner === "subject" ? "subjects" : "specializations"}/${encodeURIComponent(ownerId)}/level-pages`;
+  return levelId ? `${base}/${encodeURIComponent(levelId)}` : base;
+}
+/** One row per level the owner is offered at, plus any page kept for a level
+ * it no longer is. */
+export function listLevelPages(owner: LevelPageOwner, ownerId: string) {
+  return request<LevelPageRow[]>(levelPagesPath(owner, ownerId));
+}
+/** Always answers, written or not: `page` is null until something is saved. */
+export function getLevelPage(owner: LevelPageOwner, ownerId: string, levelId: string) {
+  return request<LevelPageDetail>(levelPagesPath(owner, ownerId, levelId));
+}
+/** Saves the whole page in one go -- its text, status, FAQs (the list is
+ * replaced) and SEO (null removes it). `expectedUpdatedAt: null` says "there
+ * is no page yet", so a page written meanwhile in another tab is not
+ * overwritten. */
+export function saveLevelPage(
+  owner: LevelPageOwner,
+  ownerId: string,
+  levelId: string,
+  data: Record<string, unknown>,
+) {
+  return request<LevelPageDetail>(levelPagesPath(owner, ownerId, levelId), {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+export function deleteLevelPage(
+  owner: LevelPageOwner,
+  ownerId: string,
+  levelId: string,
+  expectedUpdatedAt?: string,
+) {
+  return request<{ deleted: boolean }>(levelPagesPath(owner, ownerId, levelId), {
+    method: "DELETE",
+    body: JSON.stringify({ expectedUpdatedAt }),
+  });
 }
 export function listCourseLevels(params: CatalogListParams = {}) {
   return request<MasterRecord[]>(`/api/v1/admin/course-levels${query(params)}`);

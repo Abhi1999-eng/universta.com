@@ -169,25 +169,53 @@ describe('specializations on the subject sheet', () => {
   });
 });
 
+/**
+ * Publishing a subject publishes only the subject. The row's status column
+ * is the subject's: a specialization the sheet adds starts as a draft, as
+ * one added in the editor does, and one already there keeps its own status.
+ * It used to be created with the row's status, so a published row published
+ * everything it listed.
+ */
 describe('the publication state of a bulk-created specialization', () => {
-  it('follows the row that named it', async () => {
-    const published = tx([]);
+  it('is a draft whatever the row says, a published row included', async () => {
+    for (const status of ['PUBLISHED', 'DRAFT']) {
+      const { client, calls } = tx([]);
+      await subjects.reconcile!(
+        client,
+        'subject-1',
+        (await parse('Artificial Intelligence', status)).relations,
+      );
+      expect(calls.created[0]).toMatchObject({ status: 'DRAFT' });
+      expect(calls.created[0].publishedAt).toBeUndefined();
+    }
+  });
+
+  it('leaves a draft already under the subject a draft when the row publishes', async () => {
+    const { client, calls } = tx([
+      {
+        id: 'spec-1',
+        name: 'Artificial Intelligence',
+        slug: 'artificial-intelligence',
+        deletedAt: null,
+      },
+    ]);
     await subjects.reconcile!(
-      published.client,
+      client,
       'subject-1',
       (await parse('Artificial Intelligence', 'PUBLISHED')).relations,
     );
-    expect(published.calls.created[0]).toMatchObject({ status: 'PUBLISHED' });
-    expect(published.calls.created[0].publishedAt).toBeInstanceOf(Date);
+    expect(calls.created).toEqual([]);
+    expect(calls.updated).toEqual([]);
+  });
 
-    const draft = tx([]);
-    await subjects.reconcile!(
-      draft.client,
-      'subject-1',
-      (await parse('Artificial Intelligence', 'DRAFT')).relations,
-    );
-    expect(draft.calls.created[0]).toMatchObject({ status: 'DRAFT' });
-    expect(draft.calls.created[0].publishedAt).toBeUndefined();
+  it('carries no status of its own beside the subject row', async () => {
+    const parsed = await parse('Artificial Intelligence', 'PUBLISHED');
+    expect(parsed.data).toMatchObject({ status: 'PUBLISHED' });
+    expect(parsed.relations).toEqual({
+      rows: [
+        { name: 'Artificial Intelligence', slug: 'artificial-intelligence' },
+      ],
+    });
   });
 });
 

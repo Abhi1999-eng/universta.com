@@ -1,7 +1,7 @@
 'use client';
 
 import { MediaPickerDialog } from '@/features/catalog/editorial/MediaPickerDialog';
-import type { EditorialMedia } from '@/features/catalog/catalog.types';
+import type { EditorialMedia, EditorialSeo } from '@/features/catalog/catalog.types';
 import { FieldLabel } from './FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
 
@@ -55,18 +55,11 @@ export function canonicalInputError(value: string): string | null {
   return CANONICAL_MESSAGE;
 }
 
-type Props = {
-  value: UnifiedSeoDraft;
-  onChange: (value: UnifiedSeoDraft) => void;
-  media: EditorialMedia[];
-};
-
-const input = 'p-input';
-
-export function UnifiedSeoFields({ value, onChange, media }: Props) {
-  const set = <K extends keyof UnifiedSeoDraft>(key: K, next: UnifiedSeoDraft[K]) =>
-    onChange({ ...value, [key]: next });
-  const configured = Boolean(
+/** Whether anything has been written in the SEO fields. The robots ticks
+ * do not count: written text is what makes the title and the description
+ * required, and the country editor saves no row without it. */
+export function unifiedSeoConfigured(value: UnifiedSeoDraft): boolean {
+  return Boolean(
     value.seoTitle.trim() ||
     value.metaDescription.trim() ||
     value.canonicalUrl.trim() ||
@@ -78,6 +71,55 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
     value.twitterDescription.trim() ||
     value.twitterMediaId,
   );
+}
+
+/** Whether a subject, specialization, course or level page needs an SEO row
+ * saved: something written, or a robots tick taken off. The API stores a row with
+ * only the robots ticks -- no title or description, which then fall back as
+ * if there were no row -- so unticking "Robots index" on its own keeps the
+ * page out of search engines. Before, that row was never sent: nothing was
+ * stored and the tick came back on reload. */
+export function unifiedSeoWanted(value: UnifiedSeoDraft): boolean {
+  return unifiedSeoConfigured(value) || !value.robotsIndex || !value.robotsFollow;
+}
+
+/** A stored SEO record as the fields show it; no record is the blank form. */
+export function seoDraftFromRecord(record: EditorialSeo | null): UnifiedSeoDraft {
+  if (!record) return blankUnifiedSeo;
+  return {
+    seoTitle: record.seoTitle ?? '',
+    metaDescription: record.metaDescription ?? '',
+    canonicalUrl: record.canonicalUrl ?? '',
+    focusKeyword: record.focusKeyword ?? '',
+    ogTitle: record.ogTitle ?? '',
+    ogDescription: record.ogDescription ?? '',
+    ogMediaId: record.ogMediaId ?? '',
+    twitterTitle: record.twitterTitle ?? '',
+    twitterDescription: record.twitterDescription ?? '',
+    twitterMediaId: record.twitterMediaId ?? '',
+    robotsIndex: record.robotsIndex,
+    robotsFollow: record.robotsFollow,
+  };
+}
+
+type Props = {
+  value: UnifiedSeoDraft;
+  onChange: (value: UnifiedSeoDraft) => void;
+  media: EditorialMedia[];
+  /** A line of its own under the intro, for what applies when the section
+   * is left blank on this kind of record. */
+  note?: string;
+  /** The record the fields belong to, as the required-fields alert names it:
+   * "before this subject can be saved". Every editor read "Country" before. */
+  noun?: string;
+};
+
+const input = 'p-input';
+
+export function UnifiedSeoFields({ value, onChange, media, note, noun = 'Country' }: Props) {
+  const set = <K extends keyof UnifiedSeoDraft>(key: K, next: UnifiedSeoDraft[K]) =>
+    onChange({ ...value, [key]: next });
+  const configured = unifiedSeoConfigured(value);
   const canonicalError = canonicalInputError(value.canonicalUrl);
   const requiredError = configured && (!value.seoTitle.trim() || !value.metaDescription.trim());
 
@@ -87,8 +129,9 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
       <p className="p-eyebrow">Search & sharing</p>
       <h3 className="p-h3">SEO</h3>
       <p className="p-sub">SEO is part of this record. There is no separate SEO save button.</p>
+      {note ? <p className="p-hint mt-2">{note}</p> : null}
       <p className="mt-2 text-xs font-medium text-[#667085]">Leave this whole section blank to use defaults. Once any SEO value is entered, <span className="p-danger">*</span> SEO title and Meta description become required.</p>
-      {requiredError ? <p role="alert" className="mt-2 p-danger">SEO title and Meta description are required before this Country can be saved.</p> : null}
+      {requiredError ? <p role="alert" className="mt-2 p-danger">SEO title and Meta description are required before this {noun} can be saved.</p> : null}
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <div className="text-sm font-semibold">
@@ -142,8 +185,10 @@ export function UnifiedSeoFields({ value, onChange, media }: Props) {
 export function seoPayload(value: UnifiedSeoDraft) {
   const optional = (input: string) => (input.trim() ? input.trim() : undefined);
   return {
-    seoTitle: value.seoTitle.trim(),
-    metaDescription: value.metaDescription.trim(),
+    /* Left out when blank: a robots-only row has neither (see
+       unifiedSeoWanted). Every other save requires both before it is sent. */
+    seoTitle: optional(value.seoTitle),
+    metaDescription: optional(value.metaDescription),
     canonicalUrl: optional(value.canonicalUrl),
     focusKeyword: optional(value.focusKeyword),
     ogTitle: optional(value.ogTitle),

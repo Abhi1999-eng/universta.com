@@ -52,6 +52,11 @@ import {
  * never touched. */
 const PRIVATE_USE_ISO2 = /^Q[A-Z]$/;
 
+/** The owner type a level page's SEO row is filed under. seo_metadata has no
+ * foreign key, so these rows outlive their page unless they are removed by
+ * hand -- the API does it on its own deletes, and cleanup does it here. */
+const LEVEL_PAGE_SEO_OWNER = 'SUBJECT_LEVEL_PAGE';
+
 /** Rejects any database that is not on this machine.
  *
  * Exported so the guard itself is testable: it is the last line of defence if
@@ -132,6 +137,20 @@ export async function countAcceptanceRecords(
     const browserSubSubjects = await prisma.subSubject.count({
       where: { subject: { name: { startsWith: own.countryName } } },
     });
+    /* A specialization's level pages carry its subject's id too, so one
+       predicate on the subject covers both kinds of page. */
+    const levelPageIds = (
+      await prisma.subjectLevelPage.findMany({
+        where: { subject: { name: { startsWith: own.countryName } } },
+        select: { id: true },
+      })
+    ).map((row) => row.id);
+    const browserLevelPages = levelPageIds.length;
+    const browserLevelPageSeo = levelPageIds.length
+      ? await prisma.seoMetadata.count({
+          where: { ownerType: LEVEL_PAGE_SEO_OWNER, ownerId: { in: levelPageIds } },
+        })
+      : 0;
     const browserCountryTags = await prisma.countryTag.count({
       where: { name: { startsWith: own.countryName } },
     });
@@ -155,6 +174,8 @@ export async function countAcceptanceRecords(
       browserCountries,
       browserSubjects,
       browserSubSubjects,
+      browserLevelPages,
+      browserLevelPageSeo,
       browserCountryTags,
       browserMedia,
       universities,
@@ -279,6 +300,30 @@ export async function purgeAcceptanceRecords(
         where: { name: { startsWith: own.continentName } },
       })
     ).count;
+    /* A level page goes with its subject or specialization on its own (its
+       FAQs with it), but its SEO row has no foreign key and would be left
+       behind. Both are removed first, the SEO row before its page, so a run
+       that wrote level pages leaves nothing. */
+    const levelPageIds = (
+      await prisma.subjectLevelPage.findMany({
+        where: { subject: { name: { startsWith: own.countryName } } },
+        select: { id: true },
+      })
+    ).map((row) => row.id);
+    removed.browserLevelPageSeo = levelPageIds.length
+      ? (
+          await prisma.seoMetadata.deleteMany({
+            where: { ownerType: LEVEL_PAGE_SEO_OWNER, ownerId: { in: levelPageIds } },
+          })
+        ).count
+      : 0;
+    removed.browserLevelPages = levelPageIds.length
+      ? (
+          await prisma.subjectLevelPage.deleteMany({
+            where: { id: { in: levelPageIds } },
+          })
+        ).count
+      : 0;
     /* Before the subjects: a specialization holds its subject with
        onDelete: Restrict, and the subject bulk sheet creates them from its
        own `specializations` column, so a run that imported subjects leaves

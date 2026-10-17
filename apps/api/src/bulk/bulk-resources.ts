@@ -27,6 +27,7 @@ import {
   deriveForUniversity,
 } from '../catalog/derive-links';
 import { formerLevelCode } from '../course-levels/former-level-names';
+import { SUBJECT_LEVEL_PAGE_SEO_OWNER } from '../subjects/level-pages.shared';
 import {
   exportOfferingDetails,
   OFFERING_EXTRA_COLUMNS,
@@ -167,7 +168,13 @@ export interface BulkResourceDefinition {
 /** The subset of a transaction the purge hooks use. */
 export type PurgeTx = Record<
   string,
-  { deleteMany: (args: { where: unknown }) => Promise<{ count: number }> }
+  {
+    deleteMany: (args: { where: unknown }) => Promise<{ count: number }>;
+    findMany: (args: {
+      where: unknown;
+      select: { id: true };
+    }) => Promise<Array<{ id: string }>>;
+  }
 >;
 
 const relationLabels: Record<string, string> = {
@@ -1030,8 +1037,8 @@ const cities: BulkResourceDefinition = {
  * twice, so re-sending a sheet is safe.
  */
 type SpecializationInput = { name: string; slug: string };
-/** The row's specializations and the publication state it asked for. */
-type SpecializationCell = { status: string; rows: SpecializationInput[] };
+/** The row's specializations. Its status is the subject's alone. */
+type SpecializationCell = { rows: SpecializationInput[] };
 
 /** A pipe-separated cell, trimmed and with the blanks dropped. */
 function splitList(value: string | undefined): string[] {
@@ -1074,10 +1081,7 @@ async function reconcileSpecializations(
   subjectId: string,
   relations: unknown,
 ) {
-  const cell = (relations ?? {
-    status: 'DRAFT',
-    rows: [],
-  }) as SpecializationCell;
+  const cell = (relations ?? { rows: [] }) as SpecializationCell;
   if (!cell.rows.length) return;
   const table = (tx as Record<string, unknown>).subSubject as SubSubjectTable;
   const existing = await table.findMany({ where: { subjectId } });
@@ -1091,14 +1095,13 @@ async function reconcileSpecializations(
     existing.map((row) => [row.name.trim().toLowerCase(), row]),
   );
   let order = existing.length;
-  /* One row, one publication decision: a sheet that publishes the subject
-     publishes what it lists under it, and a draft row stays a draft all the
-     way down. Publishing the parent and leaving its children invisible would
-     make the sheet's own status column mean two different things. */
-  const published = cell.status === 'PUBLISHED';
-  const state = published
-    ? { status: 'PUBLISHED', publishedAt: new Date() }
-    : { status: 'DRAFT' };
+  /* The row's status is the subject's and nobody else's: publishing a
+     subject publishes only the subject, here as in its editor. A
+     specialization the sheet adds starts as a draft, as one added in the
+     editor does, and is published on its own -- from its editor, or the
+     specializations list's bulk Publish. One already there keeps its status
+     whatever the row says. It used to be created with the row's status, so
+     a sheet that published a subject published what it listed under it. */
   for (const row of cell.rows) {
     const match =
       bySlug.get(row.slug) ?? byName.get(row.name.trim().toLowerCase());
@@ -1115,7 +1118,7 @@ async function reconcileSpecializations(
         subjectId,
         name: row.name,
         slug: row.slug,
-        ...state,
+        status: 'DRAFT',
         displayOrder: order,
       },
     });
@@ -1138,8 +1141,32 @@ type SubSubjectTable = {
 
 const subjects: BulkResourceDefinition = {
   /* A specialization cannot exist without its subject, so it goes with it.
-     A course referencing the subject is independent and blocks instead. */
+     A course referencing the subject is independent and blocks instead.
+     The level pages cascade with the subject and its specializations, but
+     the SEO rows of all three have no foreign key: left behind, a row still
+     counted as a use of its image, which then could not be archived. They
+     are found before anything is deleted -- every level page carries its
+     subject's id, a specialization's too -- and removed here, as a single
+     subject's delete removes them. */
   async purgeChildren(tx, ids) {
+    const idsOf = (rows: Array<{ id: string }>) => rows.map((row) => row.id);
+    const where = { subjectId: { in: ids } };
+    const [specializationIds, levelPageIds] = await Promise.all([
+      tx.subSubject.findMany({ where, select: { id: true } }).then(idsOf),
+      tx.subjectLevelPage.findMany({ where, select: { id: true } }).then(idsOf),
+    ]);
+    await tx.seoMetadata.deleteMany({
+      where: {
+        OR: [
+          { ownerType: 'SUBJECT', ownerId: { in: ids } },
+          { ownerType: 'SUB_SUBJECT', ownerId: { in: specializationIds } },
+          {
+            ownerType: SUBJECT_LEVEL_PAGE_SEO_OWNER,
+            ownerId: { in: levelPageIds },
+          },
+        ],
+      },
+    });
     await tx.countrySubject.deleteMany({ where: { subjectId: { in: ids } } });
     await tx.countrySubSubject.deleteMany({
       where: { subSubject: { subjectId: { in: ids } } },
@@ -1186,10 +1213,7 @@ const subjects: BulkResourceDefinition = {
         status: row.status?.trim() || 'DRAFT',
         displayOrder: Number(row.displayOrder) || 0,
       },
-      relations: {
-        status: row.status?.trim() || 'DRAFT',
-        rows: parseSpecializations(row.specializations),
-      },
+      relations: { rows: parseSpecializations(row.specializations) },
     };
   },
   async reconcile(tx, id, relations, born) {

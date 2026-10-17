@@ -26,8 +26,36 @@ export type ResolvedSeo = {
   robotsIndex?: boolean;
   robotsFollow?: boolean;
   titleSuffix?: string | null;
-  source?: { title?: string; description?: string };
+  /** Where each value came from: an editor's own record (`manual`), a bulk
+   *  template (`bulk`), or what the resolver makes up (`fallback`,
+   *  `default`). `canonical` is sent by newer APIs only. */
+  source?: { title?: string; description?: string; canonical?: string };
 };
+
+/**
+ * Only what an editor or a bulk template wrote. The resolver fills every
+ * gap with its own fallback -- the record's name, the site's description,
+ * the page's address -- and a page that can say more for itself than that
+ * fallback (a level page's counts, say) should. So a value whose source is
+ * not `manual` or `bulk` is dropped, and the page's own takes its place;
+ * images, robots and the title suffix pass through as they are.
+ */
+export function writtenSeo(seo: ResolvedSeo | null | undefined): ResolvedSeo | null {
+  if (!seo) return null;
+  const own = (source?: string) => source === "manual" || source === "bulk";
+  const title = own(seo.source?.title);
+  const description = own(seo.source?.description);
+  return {
+    ...seo,
+    seoTitle: title ? seo.seoTitle : undefined,
+    ogTitle: title ? seo.ogTitle : null,
+    twitterTitle: title ? seo.twitterTitle : null,
+    metaDescription: description ? seo.metaDescription : undefined,
+    ogDescription: description ? seo.ogDescription : null,
+    twitterDescription: description ? seo.twitterDescription : null,
+    canonicalUrl: own(seo.source?.canonical) ? seo.canonicalUrl : null,
+  };
+}
 
 /**
  * A title for a route under the "%s | Universta" template. An editor who

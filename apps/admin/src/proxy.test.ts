@@ -119,6 +119,16 @@ describe('protected-route guard', () => {
     expect(response.status).toBe(307);
   });
 
+  /* The specialization editor and its level pages have addresses of their own,
+     outside /subjects, and were left to the protected layout alone. */
+  it('guards the specialization editor and its level pages', async () => {
+    checkAdminSession.mockResolvedValue('invalid');
+    const response = await navigate('/specializations/spec-1/level-pages/level-1');
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get('location')!);
+    expect(location.searchParams.get('returnTo')).toBe('/specializations/spec-1/level-pages/level-1');
+  });
+
   it('carries the query string into returnTo', async () => {
     checkAdminSession.mockResolvedValue('invalid');
     const request = new NextRequest(

@@ -263,12 +263,23 @@ export class AdminSpecializationListQueryDto extends SubjectListQueryDto {
 }
 
 export class SeoMetadataDto {
-  @ApiProperty() @Transform(trim) @IsString() @Length(1, 255) seoTitle!: string;
-  @ApiProperty()
+  /* The title and the description may be left out, empty or null: a row
+     that only keeps a page out of search ("Robots index" unticked) is a
+     real choice an editor makes, and was silently not saved while both
+     were required. A row without them reads, for each, as no row does --
+     the bulk template, else the page's own fallback. */
+  @ApiPropertyOptional({ nullable: true })
   @Transform(trim)
+  @IsOptional()
   @IsString()
-  @Length(1, 500)
-  metaDescription!: string;
+  @MaxLength(255)
+  seoTitle?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  metaDescription?: string | null;
   @ApiPropertyOptional()
   @Transform(trim)
   @IsOptional()
@@ -331,10 +342,13 @@ export class SeoMetadataDto {
     string,
     unknown
   >;
-  @ApiPropertyOptional({ format: 'uuid' })
+  /** The SEO row's `updatedAt` from the last read. Null says "I saw no
+   * row"; left out, no check is made. It was `@IsUUID`, so no editor could
+   * send the version it had read and two sessions overwrote each other. */
+  @ApiPropertyOptional({ nullable: true, format: 'date-time' })
   @IsOptional()
-  @IsUUID()
-  expectedUpdatedAt?: string;
+  @IsISO8601()
+  expectedUpdatedAt?: string | null;
 }
 
 /** The universities that teach one specialization, narrowed to one

@@ -4,6 +4,9 @@ import Link from 'next/link';
 
 type Props = {
   cancelHref: string;
+  /** Runs before Cancel navigates; preventing the event's default keeps the
+   * editor open, e.g. to ask before unsaved changes are dropped. */
+  onCancel?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   busy?: boolean;
   draftLabel?: string;
   publishLabel?: string;
@@ -14,6 +17,7 @@ type Props = {
 
 export function UnifiedEditorActions({
   cancelHref,
+  onCancel,
   busy = false,
   draftLabel = 'Save draft',
   publishLabel = 'Publish',
@@ -32,7 +36,7 @@ export function UnifiedEditorActions({
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Link href={cancelHref} className="rounded-xl border border-[#D9E0EA] px-5 py-3 text-sm font-semibold text-[#344054]">
+        <Link href={cancelHref} onClick={onCancel} className="rounded-xl border border-[#D9E0EA] px-5 py-3 text-sm font-semibold text-[#344054]">
           Cancel
         </Link>
         <button

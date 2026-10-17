@@ -180,21 +180,27 @@ export function climbingOrder<T extends CatalogueLevel>(levels: readonly T[]): T
 /**
  * The levels a subject is offered at, for the pages that show them: what an
  * editor ticked on the subject, together with every level its
- * specializations are offered at. A subject whose AI branch is ticked for
- * Master's and PhD is offered at those whether or not the subject says so.
+ * specializations are offered at and every level a published course of its
+ * own is at. A subject whose AI branch is ticked for Master's and PhD is
+ * offered at those whether or not the subject says so, and a subject with a
+ * published Bachelor's course is offered at Bachelor's.
  *
  * The subject's own ticks only ever add. They used to replace the
  * specializations' levels, so a subject ticked for Master's alone hid its
  * Data Science branch's Bachelor's from the level bar and the destination's
  * panels while that branch's card still said "Bachelor's". The ticks are
  * for what the subject offers beyond its branches -- a Foundation year, say
- * -- or for a subject with no branches yet. Empty only when neither says
- * anything, and the page then shows the six levels the client named (see
- * `LEVELS_ALWAYS_SHOWN`).
+ * -- or for a subject with no branches yet. A level counted at nought adds
+ * nothing by itself: those rows are ticks the API has already merged. This
+ * is the rule the API applies to the admin's Level pages card and to the
+ * sitemap, so the three agree on which level pages exist. Empty only when
+ * none of them says anything, and the page then shows the six levels the
+ * client named (see `LEVELS_ALWAYS_SHOWN`).
  */
 export function subjectOfferedLevels(subject: {
   offeredLevels?: readonly LevelRef[] | null;
   subSubjects?: ReadonlyArray<{ levels?: readonly LevelRef[] | null }> | null;
+  courseCountsByLevel?: ReadonlyArray<{ level: LevelRef; count: number }> | null;
 }): LevelRef[] {
   const seen = new Map<string, LevelRef>();
   const add = (level: LevelRef) => {
@@ -202,18 +208,23 @@ export function subjectOfferedLevels(subject: {
   };
   for (const level of subject.offeredLevels ?? []) add(level);
   for (const branch of subject.subSubjects ?? []) for (const level of branch.levels ?? []) add(level);
+  for (const row of subject.courseCountsByLevel ?? []) if (row.count > 0) add(row.level);
   return [...seen.values()];
 }
 
 /**
- * The levels a specialization is offered at: its own ticks; with none, the
- * levels its published courses are at (its `levels`, which then hold only
- * those), as its card on the subject's page says. Empty when neither says,
- * and its pages then show the six named levels without claiming them --
- * as its card, which names no level, and the subject's level panels,
- * which list it under none.
+ * The levels a specialization is offered at: its own ticks together with
+ * the levels its published courses are at (its `levels`, which the API
+ * already sends as that union), each once. Empty when neither says, and its
+ * pages then show the six named levels without claiming them -- as its
+ * card, which names no level, and the subject's level panels, which list it
+ * under none.
  *
- * It no longer borrows its subject's ticks. Those are what the subject
+ * Its ticks used to replace its course levels, so a branch ticked for
+ * Master's with a published Bachelor's course had no Bachelor's page,
+ * while its subject's page listed it under Bachelor's.
+ *
+ * It does not borrow its subject's ticks. Those are what the subject
  * offers beyond its branches -- a Foundation year, say -- so a branch with
  * nothing of its own claimed exactly the levels its siblings do not have.
  */
@@ -221,34 +232,83 @@ export function specializationOfferedLevels(specialization: {
   offeredLevels?: readonly LevelRef[] | null;
   levels?: readonly LevelRef[] | null;
 }): LevelRef[] {
-  if (specialization.offeredLevels?.length) return [...specialization.offeredLevels];
-  return [...(specialization.levels ?? [])];
+  const seen = new Map<string, LevelRef>();
+  for (const level of [...(specialization.offeredLevels ?? []), ...(specialization.levels ?? [])])
+    if (level.code && !seen.has(level.code)) seen.set(level.code, level);
+  return [...seen.values()];
 }
 
 /**
+ * The levels a field has pages for. Where it is offered at any level:
+ * exactly those, and the pages claim them. Where it is offered at none: the
+ * six named levels, which render so the field never has no levels at all,
+ * but claim nothing -- they stay out of the index and the sitemap.
+ *
+ * Only the catalogue's levels count, where its list is known
+ * (/course-levels holds the active ones). A level an editor switched off
+ * has no page, though the courses filed at it still count towards a
+ * field's levels: a field offered at such levels alone claimed them, had a
+ * page at none and answered 404 at every level. It is offered at nothing
+ * instead, and shows the six.
+ *
+ * Every level page, every link to one and the sitemap go through this, so
+ * a link never opens a level the field has no page for.
+ */
+export type LevelPages = { codes: ReadonlySet<string>; claimed: boolean };
+
+export function levelPages(
+  offered?: ReadonlyArray<{ code: string | null }> | null,
+  catalogue?: ReadonlyArray<{ code: string }> | null,
+): LevelPages {
+  const active = catalogue?.length
+    ? new Set(catalogue.map((level) => level.code.toUpperCase()))
+    : null;
+  const codes = (offered ?? []).flatMap((level) => {
+    const code = level.code?.toUpperCase();
+    return code && (!active || active.has(code)) ? [code] : [];
+  });
+  return codes.length
+    ? { codes: new Set(codes), claimed: true }
+    : { codes: new Set(LEVELS_ALWAYS_SHOWN), claimed: false };
+}
+
+/** Whether the field has a page at this level. */
+export function hasLevelPage(pages: LevelPages, code: string | null | undefined) {
+  return Boolean(code) && pages.codes.has(code!.toUpperCase());
+}
+
+/** A subject's level pages (see `subjectOfferedLevels`), among the
+ *  catalogue's levels where those are known. */
+export const subjectLevelPages = (
+  subject: Parameters<typeof subjectOfferedLevels>[0],
+  catalogue?: ReadonlyArray<{ code: string }> | null,
+) => levelPages(subjectOfferedLevels(subject), catalogue);
+
+/** A specialization's level pages (see `specializationOfferedLevels`),
+ *  among the catalogue's levels where those are known. */
+export const specializationLevelPages = (
+  specialization: Parameters<typeof specializationOfferedLevels>[0],
+  catalogue?: ReadonlyArray<{ code: string }> | null,
+) => levelPages(specializationOfferedLevels(specialization), catalogue);
+
+/**
  * The catalogue's levels a level bar offers, in climbing order: the ones
- * offered (the six named levels when none is), any with something listed
- * at it, and the one being read.
+ * the field has pages for (the six named levels when it is offered at
+ * none). The levels with courses are in the offered set now, and the one
+ * being read is there because its page exists, so every chip opens a page.
  */
 export function levelsOnBar(
   levels: readonly CatalogueLevel[],
-  offered: ReadonlyArray<{ code: string | null }>,
-  listed: ReadonlyArray<string | null> = [],
+  pages: LevelPages,
 ): CatalogueLevel[] {
-  const ticked = offered.flatMap((level) => (level.code ? [level.code] : []));
-  const shown = new Set<string>([
-    ...(ticked.length ? ticked : LEVELS_ALWAYS_SHOWN),
-    ...listed.flatMap((code) => (code ? [code] : [])),
-  ]);
-  return climbingOrder(levels).filter((level) => shown.has(level.code));
+  return climbingOrder(levels).filter((level) => hasLevelPage(pages, level.code));
 }
 
 /**
  * The catalogue's level groups, with an empty group for each level the
- * subject or specialization is offered at (see `subjectOfferedLevels` and
- * `specializationOfferedLevels`; the six always-shown levels when it is
- * offered at none) that it sent none for, in the order a student climbs
- * them.
+ * subject or specialization has a page for (see `levelPages`: the levels it
+ * is offered at, or the six always-shown levels when it is offered at none)
+ * that it sent none for, in the order a student climbs them.
  *
  * Null while the grouped read failed: the page does not know what is listed
  * and keeps its fallback rather than drawing every level empty. Without the
@@ -264,16 +324,18 @@ export function everyLevel(
   const byCode = new Map(groups.map((group) => [group.level.code, group]));
   const ordered = climbingOrder(levels);
   const known = new Set(ordered.map((level) => level.code));
-  /* The levels shown with nothing filed under them: the ones an editor
-     ticked on the subject or specialization. With none ticked, the six the
-     client named, so a page never shows no levels at all. */
-  const ticked = (offered ?? []).flatMap((level) => (level.code ? [level.code] : []));
-  const shownEmpty = new Set<string>(ticked.length ? ticked : LEVELS_ALWAYS_SHOWN);
+  /* The levels shown with nothing filed under them: the ones the field has
+     pages for -- the levels it is offered at, or with none, the six the
+     client named, so a page never shows no levels at all. The same set the
+     level pages are built from, so an empty row always opens a page. A
+     group with courses is kept whether or not its level has a page: listed
+     courses are never hidden. */
+  const pages = levelPages(offered, levels);
   return [
     ...ordered.flatMap((level): CourseLevelGroup[] => {
       const group = byCode.get(level.code);
       if (group) return [group];
-      if (!shownEmpty.has(level.code)) return [];
+      if (!hasLevelPage(pages, level.code)) return [];
       return [
         {
           level: {

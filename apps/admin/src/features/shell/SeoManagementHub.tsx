@@ -32,6 +32,11 @@ const ENTRIES: SeoEntry[] = [
     note: "Open a specialization and use its SEO tab for a manual override.",
   },
   {
+    label: "Subject & specialization level pages",
+    href: "/subjects",
+    note: "Open a subject or a specialization, then Level pages → Edit on a level for its own SEO. Without one, the Study level pages template under Bulk SEO applies.",
+  },
+  {
     label: "Courses",
     href: "/courses",
     note: "Open a course and use its SEO tab for a manual override.",
@@ -364,8 +369,10 @@ export function SeoManagementHub() {
         <>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {ENTRIES.map((entry) => (
+              /* Keyed by label: level pages are reached through the subjects
+                 list too, so two entries share an address. */
               <Link
-                key={entry.href}
+                key={entry.label}
                 href={entry.href}
                 className="block p-panel"
               >

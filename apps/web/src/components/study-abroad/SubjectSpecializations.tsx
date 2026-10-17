@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { SubjectBranch } from '@/lib/catalog';
 import { formatNumber } from '@/lib/format';
 import { mergeLevels, sortByLevelOrder } from '@/lib/level-order';
+import { CardMedia, PopularBadge } from './CardMedia';
 
 /**
  * A subject's specializations, filtered by the level they are taught at.
@@ -98,8 +99,12 @@ export function SubjectSpecializations({
             hidden={limit !== undefined && !all && index >= limit}
           >
             <Link className="speccard__btn" href={`${base}/${row.slug}`}>
+              {/* Its listing image and its "Popular" mark, where an editor
+                  set them, as the design marks a featured branch. */}
+              <CardMedia media={row.listingMedia} className="speccard__media" />
               <span className="speccard__top">
                 <span className="label">Specialization</span>
+                <PopularBadge featured={row.featured} />
               </span>
               <span className="speccard__name">{row.name}</span>
               {row.shortDescription ? (

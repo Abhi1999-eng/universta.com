@@ -155,6 +155,13 @@ export type ProgrammeAddress = {
   universitySlug: string;
   countrySlug: string;
   updatedAt: string;
+  /** The field and level the programme is listed under, as the level pages
+   *  count it: its course's subject and specialization, and its own level
+   *  where it has one, else its course's. Absent from older APIs, and the
+   *  sitemap then counts no programme towards a level page. */
+  subjectSlug?: string | null;
+  specializationSlug?: string | null;
+  levelCode?: string | null;
 };
 
 /** Every live programme's address, a page at a time (up to 5,000), for

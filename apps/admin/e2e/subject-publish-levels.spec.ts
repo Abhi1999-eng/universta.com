@@ -11,6 +11,10 @@ import { apiBaseUrl, webBaseUrl } from './helpers/e2e-urls';
  * and so does the subject's page in a destination, where a level is picked
  * from a bar.
  *
+ * A level page exists only for a level the subject is offered at: its
+ * PhD page opens, its MBA page is not found, and the destination's empty
+ * PhD panel links to the PhD page everywhere.
+ *
  * The subject is named with this run's country prefix, so the acceptance
  * cleanup removes it with the rest of the run's records.
  */
@@ -61,5 +65,18 @@ test.describe('subject publishing and its study levels', () => {
     await expect(page.locator('#level-phd')).toBeVisible();
     await expect(page.locator('#level-phd')).toContainText(/Not listed in .+ yet/);
     await expect(page.locator('#level-ug')).toBeHidden();
+    await expect(page.locator('#level-phd .studylevel__elsewhere a')).toHaveAttribute('href', `/subjects/${slug}/phd`);
+
+    /* The level pages: one for each level it is offered at, and a real 404
+       for any other, its alias included. */
+    const phd = await page.goto(`${webBaseUrl}/subjects/${slug}/phd`);
+    expect(phd?.status()).toBe(200);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(`PhD in ${name}`);
+    await expect(page.getByRole('navigation', { name: 'Study levels' }).getByRole('link')).toHaveText(["Bachelor's", 'PhD']);
+    const mba = await page.goto(`${webBaseUrl}/subjects/${slug}/mba`);
+    expect(mba?.status()).toBe(404);
+    await expect(page.getByRole('heading', { name: 'We could not find that page' })).toBeVisible();
+    const masters = await page.goto(`${webBaseUrl}/subjects/${slug}/pg`);
+    expect(masters?.status()).toBe(404);
   });
 });

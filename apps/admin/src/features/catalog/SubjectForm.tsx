@@ -15,23 +15,26 @@ import {
   listEvery,
   saveSubjectCountries,
   listAllSubSubjects,
-  publishSubSubject,
   publishSubject,
   saveSubjectSeo,
-  unpublishSubSubject,
   unpublishSubject,
   updateSubject,
 } from './catalog-client';
 import type { CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubSubjectRecord, SubjectRecord } from './catalog.types';
 import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
+import { LevelPagesCard } from './LevelPagesCard';
+import { sameIds } from './level-pages';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { EnterSubmitGuard } from '@/features/shared/EnterSubmitGuard';
 import { nextAutoSlug } from '@/lib/slug';
-import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { showCreatedAddress } from '@/features/shared/created-address';
 import { catalogErrorText } from './catalog-errors';
+import { draftSpecializationsNote, withDraftsNote } from './subject-publishing';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 import { queueFlash } from '@/features/shared/Flash';
 
@@ -49,6 +52,11 @@ export function SubjectForm({ id }: { id?: string }) {
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
+  /* The ticks as last saved, and a counter bumped on each save: the Level
+     pages card reads the offered levels from the API, so it only follows the
+     ticks once they are saved, and says so until then. */
+  const [savedLevelIds, setSavedLevelIds] = useState<string[]>([]);
+  const [levelPagesKey, setLevelPagesKey] = useState(0);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
   const [countryIds, setCountryIds] = useState<string[]>([]);
   const [derivedCountryIds, setDerivedCountryIds] = useState<string[]>([]);
@@ -95,6 +103,7 @@ export function SubjectForm({ id }: { id?: string }) {
         setCountryIds(countryLinks.data.map((link) => link.country.id));
         setDerivedCountryIds(countryLinks.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
         setLevelIds((subject.courseLevels ?? []).map((level) => level.id));
+        setSavedLevelIds((subject.courseLevels ?? []).map((level) => level.id));
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
         setForm({
@@ -118,7 +127,7 @@ export function SubjectForm({ id }: { id?: string }) {
   }, [dirty]);
 
   const status = record?.status ?? 'DRAFT';
-  const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
+  const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id || record), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
   function validate() {
     const next: string[] = [];
     if (!form.name.trim()) next.push('Subject name is required.');
@@ -130,32 +139,16 @@ export function SubjectForm({ id }: { id?: string }) {
     return next.length === 0;
   }
 
-  /* Publishing a specialization bumps its version, so the rows this returns
-     are the ones the form must keep: writing back the pre-publish rows left
-     every specialization a version behind, and the next save was refused with
-     "changed in another session" for an edit nobody else had made. */
-  async function applyPublication(subject: SubjectRecord, children: SubSubjectRecord[], intent: Intent) {
-    const settled: SubSubjectRecord[] = [];
-    if (intent === 'publish') {
-      const current = subject.status === 'PUBLISHED' ? subject : (await publishSubject(subject.id, subject.updatedAt)).data;
-      for (const child of children) {
-        settled.push(
-          child.status === 'PUBLISHED'
-            ? child
-            : (await publishSubSubject(current.id, child.id, child.updatedAt)).data,
-        );
-      }
-      return { record: current, children: settled };
-    }
-    for (const child of children) {
-      settled.push(
-        child.status === 'PUBLISHED'
-          ? (await unpublishSubSubject(subject.id, child.id, child.updatedAt)).data
-          : child,
-      );
-    }
-    const record = subject.status === 'PUBLISHED' ? (await unpublishSubject(subject.id, subject.updatedAt)).data : subject;
-    return { record, children: settled };
+  /* The subject's own status, and nothing else. Its specializations are
+     published one by one, each from its own editor: publishing the subject
+     used to publish every draft among them too, half-written ones included,
+     and moving it to draft moved every one of them with it, so publishing it
+     again left them all drafts. While the subject is a draft its
+     specializations are off the site whatever their own status; the API
+     shows a specialization only under a published subject. */
+  async function applyPublication(subject: SubjectRecord, intent: Intent) {
+    if (intent === 'publish') return subject.status === 'PUBLISHED' ? subject : (await publishSubject(subject.id, subject.updatedAt)).data;
+    return subject.status === 'PUBLISHED' ? (await unpublishSubject(subject.id, subject.updatedAt)).data : subject;
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -165,6 +158,8 @@ export function SubjectForm({ id }: { id?: string }) {
     const intent: Intent = submitter?.value === 'publish' ? 'publish' : 'draft';
     if (!validate()) return;
     setSaving(true); setSavingIntent(intent); setError('');
+    /* The subject this save has written, once it has. */
+    let writtenId: string | null = null;
     try {
       const payload = {
         name: form.name.trim(), slug: form.slug.trim() || undefined, shortDescription: form.shortDescription.trim(), overview: form.overview.trim() || undefined,
@@ -174,6 +169,17 @@ export function SubjectForm({ id }: { id?: string }) {
         ...(record ? { expectedUpdatedAt: record.updatedAt } : {}),
       };
       const saved = record ? (await updateSubject(record.id, payload)).data : (await createSubject(payload)).data;
+      writtenId = saved.id;
+      /* The subject exists from here on, and its destinations, SEO and
+         publishing can each still fail. The form adopts it now, so the retry
+         updates it: it used to stay a "create", the retry was refused on the
+         subject's own slug, and a half-saved draft sat in the list. */
+      if (!record) {
+        setRecord(saved);
+        showCreatedAddress(`/subjects/${saved.id}`);
+      }
+      /* Its ticks are stored now, whatever fails after. */
+      setSavedLevelIds(saved.courseLevels ? saved.courseLevels.map((level) => level.id) : levelIds);
       /* The destinations, written whole after the record; a new subject's
          default of "everywhere" is what the catalogue would have linked. */
       if (record || !countriesDefaulted || countryIds.length !== countries.length) {
@@ -181,28 +187,51 @@ export function SubjectForm({ id }: { id?: string }) {
         setCountryIds(links.data.map((link) => link.country.id));
         setDerivedCountryIds(links.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
       }
-      if (hasSeo(seo)) {
-        const result = await saveSubjectSeo(saved.id, seoPayload(seo));
+      /* Robots alone is a row of its own; the version is the row's as last
+         read (null: none was), so a change made in another session since is
+         refused instead of overwritten. */
+      if (unifiedSeoWanted(seo)) {
+        const result = await saveSubjectSeo(saved.id, { ...seoPayload(seo), expectedUpdatedAt: existingSeo?.updatedAt ?? null });
         setExistingSeo(result.data);
       } else if (existingSeo) {
         await deleteSubjectSeo(saved.id, existingSeo.updatedAt);
         setExistingSeo(null);
       }
-      const settled = await applyPublication(saved, specializations, intent);
-      setRecord(settled.record);
-      setSpecializations(settled.children);
+      const settled = await applyPublication(saved, intent);
+      setRecord(settled);
       setDirty(false);
+      /* The ticks as the publish or move to draft handed them back; the
+         Level pages card reads the offered levels again. */
+      setSavedLevelIds(settled.courseLevels ? settled.courseLevels.map((level) => level.id) : levelIds);
+      setLevelPagesKey((value) => value + 1);
       /* Publish ends the editing session: back to the list, with the green
-         confirmation there. A draft save keeps the operator where they are. */
+         confirmation there, which names the specializations still in draft.
+         A draft save keeps the operator where they are. */
       if (intent === 'publish') {
-        queueFlash({ tone: 'success', message: `${settled.record.name} published successfully.` });
-        router.push('/subjects');
+        queueFlash({ tone: 'success', message: withDraftsNote(`${settled.name} published successfully.`, draftSpecializationsNote(specializations)) });
+        /* A subject made in this session holds this history entry under the
+           Create route (showCreatedAddress); pushing would leave it behind,
+           and Back would show a blank Create form at the subject's address. */
+        if (id) router.push('/subjects'); else router.replace('/subjects');
         return;
       }
-      if (!id) router.replace(`/subjects/${settled.record.id}`);
+      if (!id) router.replace(`/subjects/${settled.id}`);
       router.refresh();
     } catch (cause: unknown) {
       setError(catalogErrorText(cause, 'Unable to save subject'));
+      /* Past the subject's own write, publishing may already have moved its
+         version on. Holding the version the save started from turned the
+         retry into "changed in another session"; re-reading keeps it an
+         ordinary update of what is stored. A refused write of the subject
+         itself is not re-read: that refusal is the other session's change,
+         and the editor is told to reload. */
+      if (writtenId) {
+        try {
+          setRecord((await getSubject(writtenId)).data);
+        } catch {
+          /* The original error is the one worth showing. */
+        }
+      }
     } finally { setSaving(false); setSavingIntent(null); }
   }
 
@@ -212,7 +241,7 @@ export function SubjectForm({ id }: { id?: string }) {
     <section className="mx-auto w-full max-w-[1040px]" aria-labelledby="subject-form-heading">
       <Link href="/subjects" className="p-link">← Subjects</Link>
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-        <div><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, study levels, destinations, media and SEO are saved together. Publishing the subject also publishes its draft specializations.</p></div>
+        <div><h2 id="subject-form-heading" className="p-h1">{record ? 'Edit subject' : 'Create subject'}</h2><p className="p-sub">Basic information, study levels, destinations, media and SEO are saved together. Its specializations are published on their own, each from its own editor.</p></div>
         <span className="p-chip">{status}</span>
       </div>
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
@@ -220,6 +249,7 @@ export function SubjectForm({ id }: { id?: string }) {
 
       <EditorSectionNav root={formEl} />
       <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+        <EnterSubmitGuard />
         <fieldset className="p-panel">
           <legend className="sr-only">Subject information</legend>
           <h3 className="text-xl font-semibold">Subject information</h3>
@@ -237,6 +267,8 @@ export function SubjectForm({ id }: { id?: string }) {
 
         <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} hint="The levels ticked on its specializations show on the subject's pages on their own. Tick here any level the subject is offered at beyond them, or every level while it has no specializations. Levels with a published course show either way." onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
+        <LevelPagesCard owner="subject" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED'} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
+
         <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
 
         <fieldset id="editor-specializations" className="p-panel">
@@ -247,7 +279,7 @@ export function SubjectForm({ id }: { id?: string }) {
               <h3 className="mt-2 text-xl font-semibold">Specializations</h3>
               <p className="p-sub">
                 {record
-                  ? 'Each specialization has an editor of its own, with its content and SEO. Publishing this subject also publishes the drafts among them.'
+                  ? 'Each specialization has an editor of its own, with its content and SEO, and is published from there: publishing this subject leaves its drafts as drafts. While the subject is a draft, none of them is on the site.'
                   : 'Save the subject first; its specializations are then added from here, each with an editor of its own.'}
               </p>
             </div>
@@ -271,7 +303,7 @@ export function SubjectForm({ id }: { id?: string }) {
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`}>{row.status}</span>
+                        <span className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`} title={row.status === 'PUBLISHED' ? undefined : 'Not on the site until it is published from its own editor.'}>{row.status}</span>
                         <Link href={`/specializations/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">Edit</Link>
                       </div>
                     </li>
@@ -282,7 +314,7 @@ export function SubjectForm({ id }: { id?: string }) {
           ) : null}
         </fieldset>
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
+        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="subject" />
         <UnifiedEditorActions cancelHref="/subjects" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

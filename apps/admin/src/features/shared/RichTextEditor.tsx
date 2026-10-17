@@ -83,26 +83,53 @@ export function sanitizeEditorHtml(value: string) {
       }
       if (!['a', 'img'].includes(name)) return `<${name}>`;
       if (name === 'a') {
-        const href = tag.match(/\shref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+        const href = attributeValue(tag.match(/\shref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '');
         return safeHref(href)
           ? `<a href="${escapeAttribute(href)}" rel="noopener noreferrer">`
           : '<a>';
       }
 
-      const src = tag.match(/\ssrc\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
-      const alt = tag.match(/\salt\s*=\s*["']([^"']*)["']/i)?.[1] ?? '';
+      const src = attributeValue(tag.match(/\ssrc\s*=\s*["']([^"']+)["']/i)?.[1] ?? '');
+      const alt = attributeValue(tag.match(/\salt\s*=\s*["']([^"']*)["']/i)?.[1] ?? '');
       return safeImageUrl(src)
         ? `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}">`
         : '';
     });
 }
 
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' };
+
+/**
+ * An attribute value as the browser reads it, so it is checked as that and
+ * escaped once on the way out. Jodit hands its markup over already encoded
+ * -- `href="?a=1&amp;b=2"` -- and escaping that again stored `&amp;amp;`,
+ * one more layer on every blur, so a link or image went to the wrong address.
+ * One pass, so `&amp;lt;` stays the text `&lt;` and a second sanitise changes
+ * nothing. Any `&` it leaves -- an entity it does not know -- is escaped on
+ * the way out and stays the text it is. The address checks run on the
+ * decoded value, so `&#106;avascript:` is refused as the `javascript:` it is.
+ * The same decode as the public renderer's `attributeValue`.
+ */
+function attributeValue(raw: string) {
+  const decoded = raw.replace(/&(?:#(\d{1,7})|#x([0-9a-f]{1,6})|([a-z]+));/gi, (entity, dec, hex, name) => {
+    if (name) return NAMED_ENTITIES[name.toLowerCase()] ?? entity;
+    const code = dec ? Number(dec) : parseInt(hex, 16);
+    return code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff) ? String.fromCodePoint(code) : entity;
+  });
+  /* As the address parser reads it: tabs and line breaks anywhere are
+     dropped, and so are control characters and spaces at either end. */
+  return decoded.replace(/[\t\n\r]/g, '').replace(/^[\u0000- ]+|[\u0000- ]+$/g, '');
+}
+
+/* A leading slash is a path on this site only when a second one does not
+   follow it: a browser reads `//` and `/\` as the start of another host, and
+   `&#47;&#47;` decodes to one. The API and the public renderer refuse both. */
 function safeHref(value: string) {
-  return /^(https?:\/\/|mailto:|\/)/i.test(value.trim());
+  return /^(https?:\/\/|mailto:|\/(?![/\\]))/i.test(value.trim());
 }
 
 function safeImageUrl(value: string) {
-  return /^(https?:\/\/|\/)/i.test(value.trim());
+  return /^(https?:\/\/|\/(?![/\\]))/i.test(value.trim());
 }
 
 function escapeAttribute(value: string) {

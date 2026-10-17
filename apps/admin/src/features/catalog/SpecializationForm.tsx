@@ -48,12 +48,16 @@ import {
 import type { CatalogLevel, CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
+import { LevelPagesCard } from './LevelPagesCard';
+import { sameIds } from './level-pages';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { EnterSubmitGuard } from '@/features/shared/EnterSubmitGuard';
 import { nextAutoSlug } from '@/lib/slug';
-import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { showCreatedAddress } from '@/features/shared/created-address';
 import { catalogErrorText } from './catalog-errors';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 import { queueFlash } from '@/features/shared/Flash';
@@ -88,6 +92,10 @@ export function SpecializationForm({ id }: { id?: string }) {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
+  /* The ticks as last saved, and a counter bumped on each save, for the
+     Level pages card; see SubjectForm. */
+  const [savedLevelIds, setSavedLevelIds] = useState<string[]>([]);
+  const [levelPagesKey, setLevelPagesKey] = useState(0);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
   const [countryIds, setCountryIds] = useState<string[]>([]);
   const [derivedCountryIds, setDerivedCountryIds] = useState<string[]>([]);
@@ -140,6 +148,7 @@ export function SpecializationForm({ id }: { id?: string }) {
         setSections(loadedSections.length ? loadedSections : [sectionBlank(SECTION_KEYS[0])]);
         setFaqs(loadedFaqs.length ? loadedFaqs : [faqBlank()]);
         setLevelIds((row.courseLevels ?? []).map((level) => level.id));
+        setSavedLevelIds((row.courseLevels ?? []).map((level) => level.id));
         setImpliedLevels(row.impliedCourseLevels ?? []);
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
@@ -180,7 +189,7 @@ export function SpecializationForm({ id }: { id?: string }) {
 
   const status = record?.status ?? 'DRAFT';
   const subject = record?.subject ?? subjects.find((row) => row.id === form.subjectId) ?? null;
-  const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
+  const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id || record), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
 
   const updateSection = (index: number, patch: Partial<SectionDraft>) => { setSections((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row))); setDirty(true); setIssues([]); };
   const updateFaq = (index: number, patch: Partial<FaqDraft>) => { setFaqs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row))); setDirty(true); setIssues([]); };
@@ -188,28 +197,58 @@ export function SpecializationForm({ id }: { id?: string }) {
   const removeFaq = (index: number) => { const row = faqs[index]; if (row.id) setRemovedFaqs((old) => [...old, row]); setFaqs((rows) => { const next = rows.filter((_, i) => i !== index); return next.length ? next : [faqBlank()]; }); setDirty(true); };
 
   /* Each row is written on its own after the record is saved, as the course
-     editor does; the rows that come back are the ones kept, versions and all. */
+     editor does; the rows that come back are the ones kept, versions and all.
+     They are kept as they are written, not only once all of them are: when a
+     later row fails, the ones already created carry their ids into the
+     retry, which updates them instead of adding them a second time, and a
+     row already deleted is not deleted again. */
   async function syncContent(specializationId: string) {
-    for (const row of removedSections) if (row.id) await deleteSpecializationSection(specializationId, row.id, row.updatedAt);
+    const sectionsToDelete = [...removedSections];
+    try {
+      while (sectionsToDelete.length) {
+        const row = sectionsToDelete[0];
+        if (row.id) await deleteSpecializationSection(specializationId, row.id, row.updatedAt);
+        sectionsToDelete.shift();
+      }
+    } finally {
+      setRemovedSections(sectionsToDelete);
+    }
+    const usedSections = sections.filter(sectionUsed);
     const savedSections: SectionDraft[] = [];
-    for (const row of sections.filter(sectionUsed)) {
-      const result = row.id
-        ? await updateSpecializationSection(specializationId, row.id, sectionPayload(row))
-        : await createSpecializationSection(specializationId, sectionPayload(row));
-      savedSections.push(sectionFromRecord(result.data));
+    try {
+      for (const row of usedSections) {
+        const result = row.id
+          ? await updateSpecializationSection(specializationId, row.id, sectionPayload(row))
+          : await createSpecializationSection(specializationId, sectionPayload(row));
+        savedSections.push(sectionFromRecord(result.data));
+      }
+    } finally {
+      const kept = [...savedSections, ...usedSections.slice(savedSections.length)];
+      setSections(kept.length ? kept : [sectionBlank(SECTION_KEYS[0])]);
     }
-    setSections(savedSections.length ? savedSections : [sectionBlank(SECTION_KEYS[0])]);
-    setRemovedSections([]);
-    for (const row of removedFaqs) if (row.id) await deleteSpecializationFaq(specializationId, row.id, row.updatedAt);
+    const faqsToDelete = [...removedFaqs];
+    try {
+      while (faqsToDelete.length) {
+        const row = faqsToDelete[0];
+        if (row.id) await deleteSpecializationFaq(specializationId, row.id, row.updatedAt);
+        faqsToDelete.shift();
+      }
+    } finally {
+      setRemovedFaqs(faqsToDelete);
+    }
+    const usedFaqs = faqs.filter(faqUsed);
     const savedFaqs: FaqDraft[] = [];
-    for (const row of faqs.filter(faqUsed)) {
-      const result = row.id
-        ? await updateSpecializationFaq(specializationId, row.id, faqPayload(row))
-        : await createSpecializationFaq(specializationId, faqPayload(row));
-      savedFaqs.push(faqFromRecord(result.data));
+    try {
+      for (const row of usedFaqs) {
+        const result = row.id
+          ? await updateSpecializationFaq(specializationId, row.id, faqPayload(row))
+          : await createSpecializationFaq(specializationId, faqPayload(row));
+        savedFaqs.push(faqFromRecord(result.data));
+      }
+    } finally {
+      const kept = [...savedFaqs, ...usedFaqs.slice(savedFaqs.length)];
+      setFaqs(kept.length ? kept : [faqBlank()]);
     }
-    setFaqs(savedFaqs.length ? savedFaqs : [faqBlank()]);
-    setRemovedFaqs([]);
   }
 
   function validate() {
@@ -231,6 +270,8 @@ export function SpecializationForm({ id }: { id?: string }) {
     const intent: Intent = submitter?.value === 'publish' ? 'publish' : 'draft';
     if (!validate()) return;
     setSaving(true); setSavingIntent(intent); setError('');
+    /* The specialization this save has written, once it has. */
+    let writtenId: string | null = null;
     try {
       const payload = {
         name: form.name.trim(),
@@ -250,14 +291,28 @@ export function SpecializationForm({ id }: { id?: string }) {
       let saved = record
         ? (await updateSubSubject(subjectId, record.id, payload)).data
         : (await createSubSubject(subjectId, payload)).data;
+      writtenId = saved.id;
+      /* It exists from here on, and its content, destinations, SEO and
+         publishing can each still fail -- publishing under a draft subject
+         is refused, for one. The form adopts it now, so the retry updates
+         it: it used to stay a "create", the retry was refused on its own
+         slug, and a half-saved draft sat in the list. */
+      if (!record) {
+        setRecord(saved);
+        showCreatedAddress(`/specializations/${saved.id}`);
+      }
+      /* Its ticks are stored now, whatever fails after. */
+      setSavedLevelIds(saved.courseLevels ? saved.courseLevels.map((level) => level.id) : levelIds);
       await syncContent(saved.id);
       if (record || countryIds.length) {
         const links = await saveSpecializationCountries(saved.id, countryIds);
         setCountryIds(links.data.map((link) => link.country.id));
         setDerivedCountryIds(links.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
       }
-      if (hasSeo(seo)) {
-        const result = await saveSpecializationSeo(saved.id, seoPayload(seo));
+      /* Robots alone is a row of its own; the version is the row's as last
+         read (null: none was); see SubjectForm. */
+      if (unifiedSeoWanted(seo)) {
+        const result = await saveSpecializationSeo(saved.id, { ...seoPayload(seo), expectedUpdatedAt: existingSeo?.updatedAt ?? null });
         setExistingSeo(result.data);
       } else if (existingSeo) {
         await deleteSpecializationSeo(saved.id, existingSeo.updatedAt);
@@ -271,19 +326,31 @@ export function SpecializationForm({ id }: { id?: string }) {
         saved = (await unpublishSubSubject(subjectId, saved.id, saved.updatedAt)).data;
       setRecord(saved);
       setLevelIds((saved.courseLevels ?? []).map((level) => level.id));
+      setSavedLevelIds((saved.courseLevels ?? []).map((level) => level.id));
+      setLevelPagesKey((value) => value + 1);
       setForm((current) => ({ ...current, slug: saved.slug, shortDescription: saved.shortDescription ?? '', overview: saved.overview ?? '' }));
       setDirty(false);
       /* Publish ends the editing session: back to the list, with the green
          confirmation there. A draft save keeps the operator where they are. */
       if (intent === 'publish') {
         queueFlash({ tone: 'success', message: `${saved.name} published successfully.` });
-        router.push('/specializations');
+        /* A new one replaces the entry it adopted; see SubjectForm. */
+        if (id) router.push('/specializations'); else router.replace('/specializations');
         return;
       }
       if (!id) router.replace(`/specializations/${saved.id}`);
       router.refresh();
     } catch (cause: unknown) {
       setError(catalogErrorText(cause, 'Unable to save specialization'));
+      /* Past its own write, the version may have moved on; re-reading keeps
+         the retry an ordinary update. See SubjectForm. */
+      if (writtenId) {
+        try {
+          setRecord((await getSpecialization(writtenId)).data);
+        } catch {
+          /* The original error is the one worth showing. */
+        }
+      }
     } finally { setSaving(false); setSavingIntent(null); }
   }
 
@@ -304,6 +371,7 @@ export function SpecializationForm({ id }: { id?: string }) {
 
       <EditorSectionNav root={formEl} />
       <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+        <EnterSubmitGuard />
         <fieldset className="p-panel">
           <legend className="sr-only">Specialization information</legend>
           <h3 className="text-xl font-semibold">Specialization information</h3>
@@ -337,13 +405,15 @@ export function SpecializationForm({ id }: { id?: string }) {
 
         <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
+        <LevelPagesCard owner="specialization" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED' && (record.subject.status === undefined || record.subject.status === 'PUBLISHED')} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
+
         <DestinationTicks idPrefix="specialization" countries={countries} value={countryIds} derived={derivedCountryIds} hint={id ? undefined : 'A new specialization starts with the countries its subject is offered in. Untick the ones it is not taught in; a country with a published course in it stays ticked on its own.'} onChange={(next) => { destinationsTouched.current = true; setCountryIds(next); setDirty(true); }} />
 
         <ContentSectionsCard idPrefix="specialization" rows={sections} keys={SECTION_KEYS} media={media} onChange={updateSection} onAdd={() => { setSections((rows) => [...rows, sectionBlank('')]); setDirty(true); }} onRemove={removeSection} />
 
         <FaqsCard idPrefix="specialization" rows={faqs} onChange={updateFaq} onAdd={() => { setFaqs((rows) => [...rows, faqBlank()]); setDirty(true); }} onRemove={removeFaq} />
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
+        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="specialization" />
         <UnifiedEditorActions cancelHref="/specializations" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

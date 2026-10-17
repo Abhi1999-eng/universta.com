@@ -185,6 +185,19 @@ export function intakeFigure(
     .join(', ');
 }
 
+/**
+ * How long the programmes run, as one figure: the length band every
+ * programme with a recorded length falls in. Lengths spread over several
+ * bands have no one figure the bands can state, so none is printed rather
+ * than a range they cannot back.
+ */
+export function durationFigure(
+  options: ReadonlyArray<{ label: string; count: number }>,
+): string | null {
+  const bands = options.filter((option) => option.count > 0);
+  return bands.length === 1 ? bands[0]!.label : null;
+}
+
 const MONTH_NAMES = [
   'january', 'february', 'march', 'april', 'may', 'june',
   'july', 'august', 'september', 'october', 'november', 'december',
@@ -230,7 +243,12 @@ export function figuresHere(input: {
    *  counts them; only known where programmes are listed. */
   cities?: number | null;
   specializations?: number | null;
+  /** The destinations they are taught in, where a page spans several (a
+   *  field at one level, everywhere). */
+  countries?: number | null;
   intakes: string | null;
+  /** How long they run, as one band (see `durationFigure`). */
+  duration?: string | null;
 }): Figure[] {
   const count = (value: number | null | undefined) =>
     value && value > 0 ? value.toLocaleString('en-GB') : null;
@@ -247,6 +265,10 @@ export function figuresHere(input: {
       value: count(input.universities),
     },
     {
+      label: label(input.countries, 'Destination', 'Destinations'),
+      value: count(input.countries),
+    },
+    {
       label: label(input.cities, 'City', 'Cities'),
       value: count(input.cities),
     },
@@ -255,6 +277,7 @@ export function figuresHere(input: {
       value: count(input.specializations),
     },
     { label: 'Intakes', value: input.intakes },
+    { label: 'Duration', value: input.duration ?? null },
   ].filter((row): row is Figure => Boolean(row.value));
 }
 

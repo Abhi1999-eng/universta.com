@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Course, CourseLevelGroup } from '@/lib/catalog';
 import {
+  hasLevelPage,
+  LEVELS_ALWAYS_SHOWN,
+  levelPages,
   levelsOnBar,
+  specializationLevelPages,
   specializationOfferedLevels,
+  subjectLevelPages,
   subjectOfferedLevels,
 } from '@/lib/course-levels';
 import { namesInProse, studyLevelPanels, studyLevelsLead } from '@/lib/study-levels';
@@ -62,13 +67,39 @@ describe('the levels a subject is offered at', () => {
   it('is empty when neither says, so the page shows the six named levels', () => {
     expect(subjectOfferedLevels({ subSubjects: [{ levels: [] }] })).toEqual([]);
   });
+
+  it('adds the levels its own published courses are at', () => {
+    expect(
+      subjectOfferedLevels({
+        offeredLevels: [],
+        subSubjects: [],
+        courseCountsByLevel: [{ level: DIPLOMA, count: 2 }],
+      }).map((l) => l.code),
+    ).toEqual(['DIPLOMA']);
+    expect(
+      subjectOfferedLevels({
+        offeredLevels: [PG],
+        subSubjects: [{ levels: [PHD] }],
+        courseCountsByLevel: [{ level: UG, count: 3 }, { level: PG, count: 1 }],
+      }).map((l) => l.code),
+    ).toEqual(['PG', 'PHD', 'UG']);
+  });
+
+  it('ignores a level counted at nought: a count row alone claims nothing', () => {
+    expect(
+      subjectOfferedLevels({ offeredLevels: [], courseCountsByLevel: [{ level: MBA, count: 0 }] }),
+    ).toEqual([]);
+  });
 });
 
 describe('the levels a specialization is offered at', () => {
-  it('is its own ticks, whatever its courses or subject say', () => {
+  it('is its own ticks together with the levels of its courses, each once', () => {
     expect(
       specializationOfferedLevels({ offeredLevels: [PG], levels: [PG, PHD] }),
-    ).toEqual([PG]);
+    ).toEqual([PG, PHD]);
+    expect(
+      specializationOfferedLevels({ offeredLevels: [PG, MBA], levels: [UG] }).map((l) => l.code),
+    ).toEqual(['PG', 'MBA', 'UG']);
   });
 
   it('unticked, is the levels its courses are at, as its card says', () => {
@@ -86,13 +117,61 @@ describe('the levels a specialization is offered at', () => {
   });
 });
 
-describe('a level bar', () => {
-  it('offers the levels offered, any with courses and the one being read, in climbing order', () => {
-    expect(levelsOnBar(CATALOGUE, [PHD, UG], ['MBA', null]).map((l) => l.code)).toEqual(['UG', 'MBA', 'PHD']);
+describe('a field’s level pages', () => {
+  it('are the levels it is offered at, claimed', () => {
+    const pages = levelPages([PG, UG, { code: null }]);
+    expect(pages.claimed).toBe(true);
+    expect([...pages.codes]).toEqual(['PG', 'UG']);
   });
 
-  it('offers the six named levels when nothing is offered', () => {
-    expect(levelsOnBar(CATALOGUE, []).map((l) => l.code)).toEqual([
+  it('are the six named levels, unclaimed, when it is offered at none', () => {
+    for (const offered of [[], null, undefined]) {
+      const pages = levelPages(offered);
+      expect(pages.claimed).toBe(false);
+      expect([...pages.codes]).toEqual([...LEVELS_ALWAYS_SHOWN]);
+    }
+  });
+
+  it('answers for a level whatever its case, and never for none', () => {
+    const pages = levelPages([PG]);
+    expect(hasLevelPage(pages, 'PG')).toBe(true);
+    expect(hasLevelPage(pages, 'pg')).toBe(true);
+    expect(hasLevelPage(pages, 'UG')).toBe(false);
+    expect(hasLevelPage(pages, null)).toBe(false);
+    expect(hasLevelPage(pages, undefined)).toBe(false);
+    expect(hasLevelPage(levelPages([]), 'DIPLOMA')).toBe(false);
+    expect(hasLevelPage(levelPages([]), 'FOUNDATION')).toBe(true);
+  });
+
+  it('follow the offered rules for a subject and a specialization', () => {
+    const subject = subjectLevelPages({
+      offeredLevels: [FOUNDATION],
+      subSubjects: [{ levels: [PG] }],
+      courseCountsByLevel: [{ level: DIPLOMA, count: 1 }],
+    });
+    expect([...subject.codes]).toEqual(['FOUNDATION', 'PG', 'DIPLOMA']);
+    /* A specialization answers for its own levels, never its subject's. */
+    const specialization = specializationLevelPages({ offeredLevels: [PG], levels: [PHD] });
+    expect([...specialization.codes]).toEqual(['PG', 'PHD']);
+    expect(hasLevelPage(specialization, 'FOUNDATION')).toBe(false);
+  });
+
+  /* A level switched off in Admin, Course levels, leaves the catalogue's
+     list, but the courses filed at it still count towards a field's
+     levels. A field offered there alone claimed a level with no page, and
+     every level it might have shown was a 404. */
+  it('count only the catalogue’s levels, and with none of those left are the six, unclaimed', () => {
+    const active = [FOUNDATION, PATHWAY, UG, PG, MBA, PHD];
+    const mixed = levelPages([DIPLOMA, PG], active);
+    expect(mixed.claimed).toBe(true);
+    expect([...mixed.codes]).toEqual(['PG']);
+    const subject = subjectLevelPages(
+      { offeredLevels: [], subSubjects: [], courseCountsByLevel: [{ level: DIPLOMA, count: 4 }] },
+      active,
+    );
+    expect(subject.claimed).toBe(false);
+    expect([...subject.codes]).toEqual([...LEVELS_ALWAYS_SHOWN]);
+    expect(levelsOnBar(active, subject).map((level) => level.code)).toEqual([
       'FOUNDATION',
       'PATHWAY',
       'UG',
@@ -100,6 +179,32 @@ describe('a level bar', () => {
       'MBA',
       'PHD',
     ]);
+    expect(specializationLevelPages({ levels: [DIPLOMA] }, active).claimed).toBe(false);
+    /* Without the catalogue's list, nothing is taken away. */
+    expect(levelPages([DIPLOMA], null).claimed).toBe(true);
+    expect(levelPages([DIPLOMA], []).claimed).toBe(true);
+  });
+});
+
+describe('a level bar', () => {
+  it('offers exactly the levels the field has pages for, in climbing order', () => {
+    expect(levelsOnBar(CATALOGUE, levelPages([PHD, UG, MBA])).map((l) => l.code)).toEqual(['UG', 'MBA', 'PHD']);
+  });
+
+  it('offers the six named levels when nothing is offered', () => {
+    expect(levelsOnBar(CATALOGUE, levelPages([])).map((l) => l.code)).toEqual([
+      'FOUNDATION',
+      'PATHWAY',
+      'UG',
+      'PG',
+      'MBA',
+      'PHD',
+    ]);
+  });
+
+  it('never offers a catalogue level the field has no page for', () => {
+    expect(levelsOnBar(CATALOGUE, levelPages([PG])).map((l) => l.code)).toEqual(['PG']);
+    expect(levelsOnBar(CATALOGUE, levelPages([])).map((l) => l.code)).not.toContain('DIPLOMA');
   });
 });
 

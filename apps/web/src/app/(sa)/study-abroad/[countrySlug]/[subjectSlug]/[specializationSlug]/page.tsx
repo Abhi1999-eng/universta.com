@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { CountryTrail } from '@/components/study-abroad/CountryTrail';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { CountryGuideLinks } from '@/components/study-abroad/CountryGuideLinks';
@@ -27,6 +28,7 @@ import {
   everyLevel,
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
+  levelPages,
   levelTotal,
   programmesHref,
   specializationOfferedLevels,
@@ -35,17 +37,21 @@ import { StudyLevels } from '@/components/study-abroad/StudyLevels';
 import { FaqList, SectionBody } from '@/components/study-abroad/SpecializationContent';
 import { SECTION_EYEBROWS, sectionLines, sectionTitle } from '@/lib/specialization-content';
 import { studyLevelPanels, studyLevelsLead } from '@/lib/study-levels';
-import { subjectLevelHref } from '@/lib/subject-levels';
+import { levelPageHref } from '@/lib/subject-levels';
 import { DestinationProgrammes } from '@/components/study-abroad/DestinationProgrammes';
 import { programmeList } from '@/lib/programme-sample';
 import {
   isNarrowedCourseList,
   readCourseFilters,
+  type CourseFilters,
 } from '@/lib/university-courses';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
 import { counsellingHref } from '@/lib/counselling-link';
+import { countryFieldDescription, countryFieldIndexed } from '@/lib/country-field-page';
+import { countryFaqJsonLd } from '@/lib/country-faq';
+import { jsonLdString } from '@/lib/json-ld';
 import {
   figuresHere,
   intakeFigure,
@@ -85,18 +91,43 @@ type Params = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-async function load(
+type SearchParams = Record<string, string | string[] | undefined>;
+
+/* Read once a request: the metadata and the page both start here. */
+const load = cache(async (
   countrySlug: string,
   subjectSlug: string,
   specializationSlug: string,
-) {
+) => {
   const [page, specialization] = await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getSpecialization(subjectSlug, specializationSlug).catch(() => null),
   ]);
   if (!page?.country || !specialization) return null;
   return { page, country: page.country, specialization };
+});
+
+/** The programme filters the address asks for, no further than the finder
+ *  loads. Past it the run asks for more rows than the API serves in one
+ *  answer, which then sends the first page alone and leaves no way on to
+ *  the rest. */
+function askedFilters(raw: SearchParams): CourseFilters {
+  const read = readCourseFilters(raw);
+  return { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
 }
+
+/* The universities' programmes here, as the address filters them, read
+   once a request: the description counts them and the page lists them.
+   Keyed by the filters written out, which the metadata and the page build
+   alike from the same address, so they ask for the very same list. */
+const listedHere = cache(
+  (countrySlug: string, subjectSlug: string, specializationSlug: string, asked: string) =>
+    programmeList(JSON.parse(asked) as CourseFilters, {
+      country: [countrySlug],
+      subject: [subjectSlug],
+      specialization: [specializationSlug],
+    }),
+);
 
 export async function generateMetadata({
   params,
@@ -111,24 +142,40 @@ export async function generateMetadata({
     };
   const { country, specialization } = loaded;
   const where = inCountry(country.name, country.iso2Code);
+  const raw = await searchParams;
+  /* The same list the page draws, so the count is the one it shows. */
+  const listed = await listedHere(
+    country.slug,
+    specialization.subject.slug,
+    specialization.slug,
+    JSON.stringify(askedFilters(raw)),
+  );
   return {
     title: {
       absolute: `Study ${specialization.name} in ${where} | Universta`,
     },
-    description:
-      specialization.shortDescription ??
-      `Programmes and universities for ${specialization.name} available to students going to ${where}.`,
+    /* Its own, in every destination: the specialization's short
+       description was the same sentence on all of them, and its SEO
+       description is written for its page across every destination. */
+    description: countryFieldDescription({
+      field: specialization.name,
+      where,
+      subject: specialization.subject.name,
+      programmes: listed?.summary.programmes,
+      universities: listed?.summary.universities,
+      faqs: (specialization.faqs ?? []).length,
+    }),
     /* A searched, filtered, sorted or further-loaded programme list is a
        slice of the page, which is indexed whole: left out of the index,
        its links still followed, and naming no canonical, as the university
-       lists do it. */
-    ...(isNarrowedCourseList(await searchParams)
-      ? { robots: { index: false, follow: true } }
-      : {
+       lists do it. The sitemap reads the same rule. */
+    ...(countryFieldIndexed({ narrowed: isNarrowedCourseList(raw) })
+      ? {
           alternates: {
             canonical: `/study-abroad/${country.slug}/${specialization.subject.slug}/${specialization.slug}`,
           },
-        }),
+        }
+      : { robots: { index: false, follow: true } }),
   };
 }
 
@@ -141,11 +188,7 @@ export default async function Page({ params, searchParams }: Params) {
   const subject = specialization.subject;
   const subjectHref = `/study-abroad/${country.slug}/${subject.slug}`;
   const self = `${subjectHref}/${specialization.slug}`;
-  const read = readCourseFilters(await searchParams);
-  /* No further than the finder loads. Past it the run asks for more rows
-     than the API serves in one answer, which then sends the first page
-     alone and leaves no way on to the rest. */
-  const asked = { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
+  const asked = askedFilters(await searchParams);
   /* What the programme list is fixed to: this country, this field. */
   const scope = {
     country: [country.slug],
@@ -179,7 +222,7 @@ export default async function Page({ params, searchParams }: Params) {
       /* Every study level, so the six the page always shows are there even
          where nothing is listed at them here yet. */
       getCourseLevels().catch(() => null),
-      programmeList(asked, scope),
+      listedHere(country.slug, subject.slug, specialization.slug, JSON.stringify(asked)),
     ]);
   /* Drawn only where something is listed here; an empty catalogue leaves
      the page as it was. */
@@ -196,9 +239,11 @@ export default async function Page({ params, searchParams }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
-  /* Its own ticks; unticked, the levels of its courses; and only then the
-     six, which are shown but never claimed. */
+  /* Its own ticks together with the levels of its courses; and only then
+     the six, which are shown but never claimed. Its level pages come from
+     the same set, so "every destination" opens only a page that exists. */
   const offered = specializationOfferedLevels(specialization);
+  const pages = levelPages(offered, allLevels);
   const levelBlock = everyLevel(
     /* A failed grouped read whose fallback list came back empty also knows
        nothing is listed, and still shows the levels. */
@@ -292,9 +337,18 @@ export default async function Page({ params, searchParams }: Params) {
      narrows to one country when it is told which, and without it a reader
      who came for the United Kingdom landed on all ten. */
   const courseHref = (slug: string) => `/courses/${slug}?country=${country.slug}`;
+  /* The questions the page answers, as structured data, as on the
+     specialization's own page. */
+  const faqData = countryFaqJsonLd(faqs);
 
   return (
     <>
+      {faqData ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(faqData) }}
+        />
+      ) : null}
       <section className="hero hero--compact">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
@@ -431,7 +485,7 @@ export default async function Page({ params, searchParams }: Params) {
                   field: specialization.name,
                   where,
                   panels,
-                  offered: offered.length > 0,
+                  offered: pages.claimed,
                 })}
               </p>
             ) : total ? (
@@ -505,7 +559,7 @@ export default async function Page({ params, searchParams }: Params) {
               courseHref={(course) => courseHref(course.slug)}
               elsewhere={{
                 href: (level) =>
-                  subjectLevelHref({
+                  levelPageHref(pages, {
                     subject: subject.slug,
                     specialization: specialization.slug,
                     level,

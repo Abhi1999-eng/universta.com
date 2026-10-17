@@ -158,3 +158,16 @@ describe("SeoManagementHub deep link (ISS-018)", () => {
     expect(screen.queryByLabelText("SEO title")).not.toBeInTheDocument();
   });
 });
+
+/** A level page's own SEO is written inside its editor, reached from the
+ * subject or specialization it belongs to, so the hub says where. */
+describe("SeoManagementHub level pages entry", () => {
+  it("points to the subjects list for level-page SEO", async () => {
+    authFetch.mockResolvedValueOnce(jsonResponse([]));
+    render(<SeoManagementHub />);
+    const entry = screen.getByRole("link", { name: /Subject & specialization level pages/ });
+    expect(entry).toHaveAttribute("href", "/subjects");
+    expect(entry).toHaveTextContent("Study level pages template under Bulk SEO");
+    await waitFor(() => expect(authFetch).toHaveBeenCalled());
+  });
+});

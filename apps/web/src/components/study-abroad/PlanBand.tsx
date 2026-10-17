@@ -12,12 +12,17 @@ export function PlanBand({
   countrySlug,
   countryName,
   secondary,
+  more,
 }: {
   heading?: string;
   body?: string;
   countrySlug?: string;
   countryName?: string;
   secondary?: { href: string; label: string };
+  /** Further ways on beside `secondary`, in the same style: a
+   *  specialization's level page offers both its specialization and its
+   *  subject. */
+  more?: ReadonlyArray<{ href: string; label: string }>;
 }) {
   const { openAssessment } = useStudyAbroadShell();
 
@@ -48,6 +53,11 @@ export function PlanBand({
           >
             {secondary?.label ?? 'Browse the directory'}
           </a>
+          {(more ?? []).map((link) => (
+            <a className="btn btn--onnavy-ghost btn--lg" href={link.href} key={link.href}>
+              {link.label}
+            </a>
+          ))}
         </div>
 
         <p className="final__micro">

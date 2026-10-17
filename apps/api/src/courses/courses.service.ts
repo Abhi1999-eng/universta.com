@@ -45,6 +45,7 @@ import type {
 } from './dto/course.dto';
 import { COURSE_ENGLISH_TESTS } from './dto/course.dto';
 import type { SeoMetadataDto } from '../subjects/dto/subject.dto';
+import { seoText, validUrl, writeSeoRow } from '../subjects/subjects.shared';
 
 const MEDIA_SELECT = {
   id: true,
@@ -1647,19 +1648,23 @@ export class CoursesService {
   async putSeo(id: string, dto: SeoMetadataDto, request: AuthenticatedRequest) {
     const userId = actor(request);
     await this.adminCourse(id);
-    if (!isHttps(dto.canonicalUrl))
+    /* The same rule as a subject's: the editor offers a path on this site
+       ("/courses/mba"), the SEO resolver accepts it, and the admin's
+       message for this code says so. HTTPS only refused the path. */
+    if (!validUrl(dto.canonicalUrl))
       throw catalogBadRequest(
         'SEO_URL_INVALID',
-        'Canonical URL must use HTTPS',
+        'Canonical URL must be a site path beginning with / or an http(s) URL',
       );
-    const current = await this.prisma.seoMetadata.findUnique({
-      where: { ownerType_ownerId: { ownerType: 'COURSE', ownerId: id } },
-    });
-    const row = await this.prisma.seoMetadata.upsert({
-      where: { ownerType_ownerId: { ownerType: 'COURSE', ownerId: id } },
-      create: this.seoData(id, dto),
-      update: this.seoData(id, dto),
-    });
+    /* Written whole, as a subject's is: both course editors send the whole
+       form, so a field cleared there is cleared here. Checked against the
+       version the editor read, when it sends one. */
+    const { previous: current, row } = await writeSeoRow(
+      this.prisma,
+      'COURSE',
+      id,
+      dto,
+    );
     await writeAudit(
       this.prisma,
       request,
@@ -2658,14 +2663,19 @@ export class CoursesService {
           id: row.id,
           ownerType: row.ownerType,
           ownerId: row.ownerId,
-          seoTitle: row.seoTitle,
-          metaDescription: row.metaDescription,
+          /* Null when not written: a robots-only row keeps them empty. */
+          seoTitle: seoText(row.seoTitle),
+          metaDescription: seoText(row.metaDescription),
           canonicalUrl: row.canonicalUrl,
           focusKeyword: row.focusKeyword,
           ogTitle: row.ogTitle,
           ogDescription: row.ogDescription,
+          /* The admin's image pickers start from these ids; without them a
+             second save of the SEO dropped the image chosen before. */
+          ogMediaId: row.ogMediaId ?? null,
           twitterTitle: row.twitterTitle,
           twitterDescription: row.twitterDescription,
+          twitterMediaId: row.twitterMediaId ?? null,
           robotsIndex: row.robotsIndex,
           robotsFollow: row.robotsFollow,
           schemaJson: row.schemaJson,
@@ -2687,29 +2697,6 @@ export class CoursesService {
         },
       }),
     );
-  }
-  private seoData(
-    ownerId: string,
-    dto: SeoMetadataDto,
-  ): Prisma.SeoMetadataUncheckedCreateInput {
-    return {
-      ownerType: 'COURSE',
-      ownerId,
-      seoTitle: dto.seoTitle.trim(),
-      metaDescription: dto.metaDescription.trim(),
-      canonicalUrl: dto.canonicalUrl?.trim(),
-      focusKeyword: dto.focusKeyword?.trim(),
-      ogTitle: dto.ogTitle?.trim(),
-      ogDescription: dto.ogDescription?.trim(),
-      ogMediaId: dto.ogMediaId,
-      twitterTitle: dto.twitterTitle?.trim(),
-      twitterDescription: dto.twitterDescription?.trim(),
-      twitterMediaId: dto.twitterMediaId,
-      robotsIndex: dto.robotsIndex ?? true,
-      robotsFollow: dto.robotsFollow ?? true,
-      schemaJson: dto.schemaJson as Prisma.InputJsonValue | undefined,
-      hreflangJson: dto.hreflangJson as Prisma.InputJsonValue | undefined,
-    };
   }
   private courseJsonLd(course: any, seo: any) {
     return {

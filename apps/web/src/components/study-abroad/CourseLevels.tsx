@@ -23,13 +23,16 @@ import { formatNumber } from '@/lib/format';
  * country's courses under subjects this way; this is the same block with
  * levels as the groups.
  *
- * The six levels the client named are always here (see `everyLevel`); any
- * other level shows only where something is. An empty level is its name and
- * "0 courses" and nothing more: the section's lead, or the notice above it,
- * says once why nothing is listed, and a line under each level said it six
- * times over. Global subject pages link to the level's own listing, where
- * visitors can switch levels. A destination's pages pick one level at a
- * time instead, with its specializations beside its courses (`StudyLevels`).
+ * The levels the field is offered at are always here, listed or not, and
+ * the six the client named only for a field offered at none (see
+ * `everyLevel`); any other level shows only where something is. An empty
+ * level is its name and "0 courses" and nothing more: the section's lead,
+ * or the notice above it, says once why nothing is listed, and a line under
+ * each level said it six times over. Global subject pages link a level to
+ * its own page where the field has one -- where visitors can switch levels
+ * -- and to the course finder where it does not (`allHref` decides). A
+ * destination's pages pick one level at a time instead, with its
+ * specializations beside its courses (`StudyLevels`).
  */
 export function CourseLevels({
   groups,
