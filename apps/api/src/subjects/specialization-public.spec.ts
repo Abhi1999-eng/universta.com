@@ -14,6 +14,7 @@ const LEVELS = {
     name: 'PhD',
     educationOrder: 8,
     displayOrder: 0,
+    status: 'ACTIVE',
   },
   ug: {
     id: 'ug',
@@ -21,6 +22,7 @@ const LEVELS = {
     name: "Bachelor's",
     educationOrder: 4,
     displayOrder: 0,
+    status: 'ACTIVE',
   },
   pg: {
     id: 'pg',
@@ -28,6 +30,7 @@ const LEVELS = {
     name: "Master's",
     educationOrder: 6,
     displayOrder: 0,
+    status: 'ACTIVE',
   },
 };
 
