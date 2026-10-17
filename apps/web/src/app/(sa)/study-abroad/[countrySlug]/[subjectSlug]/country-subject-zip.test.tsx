@@ -195,6 +195,13 @@ describe('the ZIP-aligned country subject page', () => {
     expect(section(html, 'courses')).toContain('href="/study-abroad/uk/universities/university-of-york/courses/university-of-york-ba-history"');
   });
 
+  it('shows an overview typed as plain text under why to study it, not folded away', async () => {
+    fixture.overview = 'History asks how we got here and what it meant.';
+    const why = section(await render(), 'why');
+    expect(why).toContain('<div class="prose fieldwhy__lead"><p class="rich-text" style="white-space:pre-line">History asks how we got here and what it meant.</p></div>');
+    expect(why).not.toContain('More about');
+  });
+
   it('opens on why to study it, before its specializations', async () => {
     fixture.overview = '<p>History asks how we got here.</p><p>And what it meant.</p>';
     const html = await render();
