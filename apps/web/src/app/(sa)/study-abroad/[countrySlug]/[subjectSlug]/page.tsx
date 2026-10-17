@@ -10,7 +10,7 @@ import {
   NothingListedHere,
   SpecializationChips,
 } from '@/components/study-abroad/CountryFieldHero';
-import { RowCard, countLabel } from '@/components/study-abroad/RowCard';
+import { RowCard } from '@/components/study-abroad/RowCard';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { ConnectBand, MatchBand } from '@/components/study-abroad/DiscoveryBands';
 import { Longform } from '@/components/study-abroad/Longform';
@@ -25,13 +25,18 @@ import {
   getSubject,
 } from '@/lib/catalog';
 import {
+  climbingOrder,
   everyLevel,
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
   levelTotal,
   programmesHref,
+  subjectOfferedLevels,
 } from '@/lib/course-levels';
-import { CourseLevels } from '@/components/study-abroad/CourseLevels';
+import { StudyLevels } from '@/components/study-abroad/StudyLevels';
+import { SubjectSpecializations } from '@/components/study-abroad/SubjectSpecializations';
+import { studyLevelPanels, studyLevelsLead } from '@/lib/study-levels';
+import { subjectLevelHref } from '@/lib/subject-levels';
 import { DestinationProgrammes } from '@/components/study-abroad/DestinationProgrammes';
 import { programmeList } from '@/lib/programme-sample';
 import {
@@ -77,6 +82,9 @@ import {
  * all of it.
  */
 export const dynamic = 'force-dynamic';
+
+/** The specialization cards shown before "Show all"; three rows of three. */
+const SPECIALIZATIONS_SHOWN = 9;
 
 type Params = {
   params: Promise<{ countrySlug: string; subjectSlug: string }>;
@@ -183,12 +191,16 @@ export default async function Page({ params, searchParams }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
+  /* What an editor ticked on the subject; unticked, the levels its
+     specializations are offered at; and only then the six named ones,
+     which the page shows but never claims. */
+  const offered = subjectOfferedLevels(subject);
   const levelBlock = everyLevel(
     /* A failed grouped read whose fallback list came back empty also knows
        nothing is listed, and still shows the levels. */
     levels ?? (shown === 'none' ? [] : null),
     allLevels,
-    subject.offeredLevels,
+    offered,
   );
   const filed =
     shown === 'levels'
@@ -211,7 +223,7 @@ export default async function Page({ params, searchParams }: Params) {
     subjectSlug: subject.slug,
     countsHere: specializationCountsHere(filters, subject.slug),
   });
-  /* The hero sits over the programme list where there is one, so its
+  /* The hero's strip counts the programme list where there is one, so its
      specializations are counted from that list too: which of this
      subject's are taught here, and how many programmes each. The course
      guides' counts stay with the specialization cards below, which say
@@ -240,8 +252,14 @@ export default async function Page({ params, searchParams }: Params) {
     ),
   });
 
-  /* Retain the subject overview after the finder. Its first paragraph
-     often repeats the hero description, so do not print it twice. */
+  /* Each level with the specializations taught at it and its courses
+     here: what a student picking a level asks of it. */
+  const panels = levelBlock ? studyLevelPanels(levelBlock, subject.subSubjects) : [];
+  const levelOrder = climbingOrder(allLevels ?? []).map((level) => level.code);
+
+  /* The subject overview opens the page, under the hero. Its first
+     paragraph often repeats the hero description, so do not print it
+     twice. */
   const why = overviewParts(subject.overview, subject.shortDescription);
   const counselling = counsellingHref({
     source: 'subject',
@@ -295,8 +313,11 @@ export default async function Page({ params, searchParams }: Params) {
                 : null
             }
           >
+            {/* The subject, studied here; the courses are one part of the
+                page. The browser title keeps "courses in", the phrase
+                students search with. */}
             <h1 className="hero__h1">
-              {subject.name} courses in {heroWhere}
+              Study {subject.name} in {heroWhere}
             </h1>
             <p className="hero__sub">
               {subject.shortDescription?.trim() ||
@@ -318,191 +339,10 @@ export default async function Page({ params, searchParams }: Params) {
         </div>
       </section>
 
-      {listed ? (
-        <DestinationProgrammes
-          compact
-          base={base}
-          scope={scope}
-          filters={asked}
-          list={listed}
-          title={`${subject.name} programmes in ${where}`}
-          where={`in ${where}`}
-          searchHref={searchHere}
-          empty={
-            <p>
-              Or see{' '}
-              <Link className="textlink" href={`/subjects/${subject.slug}#destinations`}>
-                {subject.name} in other destinations
-              </Link>
-              .
-            </p>
-          }
-        />
-      ) : null}
-
-      {/* The catalogue's courses, each a guide to what the universities'
-          programmes above are instances of. Their counts are of courses,
-          so their links open the finder's course guides, which list that
-          many. */}
-      {shown === 'levels' && levels ? (
-        <section className="sec sec--tight wrap" id="programs">
-          <div className="sec-head left row-between">
-            <div>
-              <span className="eyebrow">{listed ? 'Courses by level' : 'Programmes'}</span>
-              <h2 className="sec-title">
-                {subject.name} courses in {where}, by level
-              </h2>
-              <p className="sec-lead">
-                {formatNumber(filed)} {filed === 1 ? 'course' : 'courses'} a
-                student going to {where} can apply to, each under the level it
-                is taught at.
-              </p>
-            </div>
-            <Link
-              className="linkcta"
-              href={levelCoursesHref({
-                subject: subject.slug,
-                country: country.slug,
-              })}
-            >
-              All {formatNumber(filed)} {filed === 1 ? 'course' : 'courses'}{' '}
-              <span className="linkcta__arrow" aria-hidden="true">
-                &rarr;
-              </span>
-            </Link>
-          </div>
-          <CourseLevels
-            groups={levelBlock ?? levels}
-            allHref={(level) =>
-              levelCoursesHref({
-                subject: subject.slug,
-                country: country.slug,
-                level,
-              })
-            }
-            courseHref={(course) => courseHref(course.slug)}
-          />
-        </section>
-      ) : null}
-
-      {shown === 'list' && courses ? (
-        <section className="sec sec--tight wrap" id="programs">
-          <div className="sec-head left row-between">
-            <div>
-              <span className="eyebrow">Programmes</span>
-              <h2 className="sec-title">
-                {subject.name} courses in {where}
-              </h2>
-            </div>
-            <Link
-              className="linkcta"
-              href={levelCoursesHref({
-                subject: subject.slug,
-                country: country.slug,
-              })}
-            >
-              All {formatNumber(courses.meta.total)}{' '}
-              {courses.meta.total === 1 ? 'course' : 'courses'}{' '}
-              <span className="linkcta__arrow" aria-hidden="true">
-                &rarr;
-              </span>
-            </Link>
-          </div>
-          <div className="h-grid">
-            {courses.data.map((course) => (
-              <RowCard
-                key={course.id}
-                href={courseHref(course.slug)}
-                title={course.name}
-                meta={course.courseLevel.name}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {/* Nothing taught here, said as such. The courses band used to vanish
-          and the page went from the specializations straight to other
-          subjects, so a reader could not tell "none listed" from "not
-          loaded". Only when both reads answered: a page that could not
-          reach the catalogue does not know there are none. */}
-      {shown === 'none' ? (
-        <section className="sec sec--tight wrap" id="programs">
-          <div className="sec-head left">
-            <div>
-              <span className="eyebrow">Programmes</span>
-              <h2 className="sec-title">
-                {subject.name} courses in {where}
-              </h2>
-            </div>
-          </div>
-          {/* Not said over programmes listed above it. */}
-          {none ? (
-            <NothingListedHere
-              field={subject.name}
-              where={where}
-              teaching={
-                universities.total
-                  ? { total: universities.total, items: universities.items }
-                  : undefined
-              }
-              links={[
-                ...(universities.total
-                  ? [
-                      {
-                        href: subjectUniversitiesHref(country.slug, subject.slug),
-                        label: `Universities teaching ${subject.name} in ${where}`,
-                      },
-                    ]
-                  : []),
-                {
-                  href: `/subjects/${subject.slug}#destinations`,
-                  label: `${subject.name} in other destinations`,
-                },
-                {
-                  href: `/study-abroad/${country.slug}/subjects`,
-                  label: `Other subjects in ${where}`,
-                },
-              ]}
-            />
-          ) : null}
-          {/* The levels still show, each saying it has nothing here yet,
-              so the page reads the same shape whatever is listed. */}
-          {levelBlock?.length ? (
-            <div className={none ? 'fieldnone__levels' : undefined}>
-              <CourseLevels
-                groups={levelBlock}
-                allHref={(level) =>
-                  levelCoursesHref({
-                    subject: subject.slug,
-                    country: country.slug,
-                    level,
-                  })
-                }
-                courseHref={(course) => courseHref(course.slug)}
-              />
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {/* The design hands the reader on to a search already narrowed to
-          what they are reading about, straight after the courses. Where
-          nothing is listed here the search opens on the field everywhere,
-          rather than on an empty result. */}
-      <MatchBand
-        heading={`Find ${subject.name} courses for your profile`}
-        lead={
-          none
-            ? `The course search has no ${subject.name} course in ${where} yet, so it opens on ${subject.name} in every destination. Narrow it by level, budget and intake.`
-            : `Now find the ${subject.name} programmes in ${where} that match your academic profile, budget and intake.`
-        }
-        href={none ? `/courses?subject=${subject.slug}` : searchHere}
-        talkHref={counselling}
-      />
-
-      <CountryTabs tabs={tabs} current="subjects" below />
-
+      {/* The subject first, as a student reads it: why study it here,
+          its branches, the levels it is offered at, and then the courses.
+          The finder used to open the page, so it read as a course list
+          with the subject underneath. */}
       {why.lead || why.rest ? (
         <section className="sec sec--tight wrap" id="why">
           <div className="sec-head left">
@@ -546,29 +386,205 @@ export default async function Page({ params, searchParams }: Params) {
               </p>
             </div>
             <div className="field-directory__links">
-              <a className="linkcta" href="#specialization-list">
-                Explore specializations <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
-              </a>
               <Link className="linkcta" href={`/subjects/${subject.slug}`}>
                 {subject.name} everywhere{' '}
-              <span className="linkcta__arrow" aria-hidden="true">
-                &rarr;
-              </span>
+                <span className="linkcta__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
               </Link>
             </div>
           </div>
-          <div className="h-grid" id="specialization-list">
-            {view.specializations.map((entry) => (
+          {/* Each card says the levels the branch is offered at and its
+              courses here, and the bar narrows them to one level. */}
+          <div id="specialization-list">
+            <SubjectSpecializations
+              subjectName={subject.name}
+              subjectSlug={subject.slug}
+              hrefBase={base}
+              branches={view.specializations.map((entry) => ({
+                ...entry,
+                publishedCourseCount: entry.here ?? 0,
+              }))}
+              levelOrder={levelOrder}
+              noun="course"
+              limit={SPECIALIZATIONS_SHOWN}
+              levelLabel="Specializations by study level"
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {/* The levels the subject is offered at, each with its
+          specializations and its courses here. Their counts are of
+          courses, so their links open the finder's course guides, which
+          list that many. */}
+      {shown === 'levels' || shown === 'none' ? (
+        <section className="sec sec--tight wrap" id="programs">
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">Study levels</span>
+              <h2 className="sec-title">
+                {subject.name} in {where}, by study level
+              </h2>
+              {panels.length ? (
+                <p className="sec-lead">
+                  {studyLevelsLead({
+                    field: subject.name,
+                    where,
+                    panels,
+                    offered: offered.length > 0,
+                  })}
+                </p>
+              ) : null}
+            </div>
+            {filed ? (
+              <Link
+                className="linkcta"
+                href={levelCoursesHref({
+                  subject: subject.slug,
+                  country: country.slug,
+                })}
+              >
+                {filed === 1 ? 'View 1 course' : `All ${formatNumber(filed)} courses`}{' '}
+                <span className="linkcta__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
+              </Link>
+            ) : null}
+          </div>
+          {/* Nothing taught here, said as such, and once. Not said over
+              programmes the universities list here. */}
+          {none ? (
+            <NothingListedHere
+              field={subject.name}
+              where={where}
+              teaching={
+                universities.total
+                  ? { total: universities.total, items: universities.items }
+                  : undefined
+              }
+              links={[
+                ...(universities.total
+                  ? [
+                      {
+                        href: subjectUniversitiesHref(country.slug, subject.slug),
+                        label: `Universities teaching ${subject.name} in ${where}`,
+                      },
+                    ]
+                  : []),
+                {
+                  href: `/subjects/${subject.slug}#destinations`,
+                  label: `${subject.name} in other destinations`,
+                },
+                {
+                  href: `/study-abroad/${country.slug}/subjects`,
+                  label: `Other subjects in ${where}`,
+                },
+              ]}
+            />
+          ) : null}
+          {panels.length ? (
+            <div className={none ? 'fieldnone__levels' : undefined}>
+              <StudyLevels
+                panels={panels}
+                where={`in ${where}`}
+                allHref={(level) =>
+                  levelCoursesHref({
+                    subject: subject.slug,
+                    country: country.slug,
+                    level,
+                  })
+                }
+                courseHref={(course) => courseHref(course.slug)}
+                specializationHref={(slug) => `${base}/${slug}`}
+                elsewhere={{
+                  href: (level) => subjectLevelHref({ subject: subject.slug, level }),
+                  label: (level) => `${level} in ${subject.name}, every destination`,
+                }}
+              />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* The grouped read failed: the six mixed courses it always showed. */}
+      {shown === 'list' && courses ? (
+        <section className="sec sec--tight wrap" id="programs">
+          <div className="sec-head left row-between">
+            <div>
+              <span className="eyebrow">Programmes</span>
+              <h2 className="sec-title">
+                {subject.name} courses in {where}
+              </h2>
+            </div>
+            <Link
+              className="linkcta"
+              href={levelCoursesHref({
+                subject: subject.slug,
+                country: country.slug,
+              })}
+            >
+              All {formatNumber(courses.meta.total)}{' '}
+              {courses.meta.total === 1 ? 'course' : 'courses'}{' '}
+              <span className="linkcta__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
+          </div>
+          <div className="h-grid">
+            {courses.data.map((course) => (
               <RowCard
-                key={entry.id}
-                href={`${base}/${entry.slug}`}
-                title={entry.name}
-                meta={countLabel(entry.here, 'course')}
+                key={course.id}
+                href={courseHref(course.slug)}
+                title={course.name}
+                meta={course.courseLevel.name}
               />
             ))}
           </div>
         </section>
       ) : null}
+
+      {/* The universities' programmes here, searchable, once the reader
+          knows what the field is and where it leads. Under its own visible
+          heading: it no longer follows the hero, and its cards would
+          otherwise read as more of the courses above. */}
+      {listed ? (
+        <DestinationProgrammes
+          base={base}
+          scope={scope}
+          filters={asked}
+          list={listed}
+          title={`${subject.name} programmes in ${where}`}
+          where={`in ${where}`}
+          searchHref={searchHere}
+          empty={
+            <p>
+              Or see{' '}
+              <Link className="textlink" href={`/subjects/${subject.slug}#destinations`}>
+                {subject.name} in other destinations
+              </Link>
+              .
+            </p>
+          }
+        />
+      ) : null}
+
+      {/* The design hands the reader on to a search already narrowed to
+          what they are reading about, straight after the courses. Where
+          nothing is listed here the search opens on the field everywhere,
+          rather than on an empty result. */}
+      <MatchBand
+        heading={`Find ${subject.name} courses for your profile`}
+        lead={
+          none
+            ? `The course search has no ${subject.name} course in ${where} yet, so it opens on ${subject.name} in every destination. Narrow it by level, budget and intake.`
+            : `Now find the ${subject.name} programmes in ${where} that match your academic profile, budget and intake.`
+        }
+        href={none ? `/courses?subject=${subject.slug}` : searchHere}
+        talkHref={counselling}
+      />
+
+      <CountryTabs tabs={tabs} current="subjects" below />
 
       {view.others.length ? (
         <section className="sec sec--tight wrap">

@@ -6,7 +6,7 @@ import {
   type Subject,
   type SubSubject,
 } from "@/lib/catalog";
-import { everyLevel, LEVEL_ROWS_FETCHED } from "@/lib/course-levels";
+import { everyLevel, LEVEL_ROWS_FETCHED, subjectOfferedLevels } from "@/lib/course-levels";
 import { programmeSample } from "@/lib/programme-sample";
 import { relatedSubjects } from "@/lib/related-subjects";
 import type { Metadata } from "next";
@@ -132,7 +132,7 @@ export default async function SubjectDetailPage({ params }: Props) {
         scholarships={scholarships}
         universities={universities.rows}
         universityTotal={universities.total}
-        levels={everyLevel(levels, allLevels, subject.offeredLevels)}
+        levels={everyLevel(levels, allLevels, subjectOfferedLevels(subject))}
         related={related}
         programmes={programmes}
       />

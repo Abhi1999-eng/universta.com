@@ -7,7 +7,9 @@ import { apiBaseUrl, webBaseUrl } from './helpers/e2e-urls';
  * An editor publishes a subject with Bachelor's and PhD ticked. Publish ends
  * the editing session: the list opens with a green confirmation. On the
  * website the level block follows the ticks -- Bachelor's and PhD, not the
- * six levels it used to show regardless -- even before a course is filed.
+ * six levels it used to show regardless -- even before a course is filed,
+ * and so does the subject's page in a destination, where a level is picked
+ * from a bar.
  *
  * The subject is named with this run's country prefix, so the acceptance
  * cleanup removes it with the rest of the run's records.
@@ -43,5 +45,21 @@ test.describe('subject publishing and its study levels', () => {
     await expect(block.getByText('PhD', { exact: false }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Foundation Program', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'MBA', exact: true })).toHaveCount(0);
+
+    /* In a destination the page is the subject's, studied there: its own
+       heading, and the ticked levels as the bar to pick from, each saying
+       it has nothing listed there yet. */
+    const countries = await request.get(`${apiBaseUrl}/api/v1/countries?limit=1`);
+    const country = ((await countries.json()) as { data: Array<{ slug: string; name: string }> }).data[0];
+    expect(country).toBeTruthy();
+    await page.goto(`${webBaseUrl}/study-abroad/${country.slug}/${slug}`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(new RegExp(`^Study ${name} in `));
+    const bar = page.getByRole('group', { name: 'Study level', exact: true });
+    await expect(bar.getByRole('button')).toHaveText(["Bachelor's", 'PhD']);
+    await bar.getByRole('button', { name: 'PhD' }).click();
+    await expect(bar.getByRole('button', { name: 'PhD' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#level-phd')).toBeVisible();
+    await expect(page.locator('#level-phd')).toContainText(/Not listed in .+ yet/);
+    await expect(page.locator('#level-ug')).toBeHidden();
   });
 });

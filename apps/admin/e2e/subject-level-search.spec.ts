@@ -1,10 +1,39 @@
-import { expect, test, type Page } from '@playwright/test';
-import { webBaseUrl } from './helpers/e2e-urls';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { apiBaseUrl, webBaseUrl } from './helpers/e2e-urls';
 
 const subject = '/subjects/computer-science';
 const specialization = `${subject}/software-engineering`;
-const levels = ['foundation', 'pathway', 'bachelors', 'masters', 'mba', 'phd'];
 const fixedQueryKeys = ['subject', 'specialization', 'subSubject', 'level', 'courseLevel'];
+
+/* The levels a subject's or a specialization's page offers, read from the
+   API the way the page reads them: a subject's ticks, else its
+   specializations' levels; a specialization's ticks, else the levels of
+   its courses, else its subject's ticks. Empty means the six named ones. */
+const LEVEL_SLUGS: Record<string, string> = {
+  FOUNDATION: 'foundation', PATHWAY: 'pathway', UG: 'bachelors', PG: 'masters', MBA: 'mba', PHD: 'phd',
+};
+type Level = { code: string | null };
+async function offeredLevelSlugs(request: APIRequestContext, base: string) {
+  const [, , subjectSlug, specializationSlug] = base.split('/');
+  const path = specializationSlug
+    ? `/api/v1/subjects/${subjectSlug}/specializations/${specializationSlug}`
+    : `/api/v1/subjects/${subjectSlug}`;
+  const response = await request.get(`${apiBaseUrl}${path}`);
+  expect(response.ok()).toBe(true);
+  const data = (await response.json()).data as {
+    offeredLevels?: Level[];
+    levels?: Level[];
+    subSubjects?: Array<{ levels?: Level[] }>;
+    subject?: { offeredLevels?: Level[] };
+  };
+  const offered = data.offeredLevels?.length
+    ? data.offeredLevels
+    : specializationSlug
+      ? data.levels?.length ? data.levels : (data.subject?.offeredLevels ?? [])
+      : (data.subSubjects ?? []).flatMap((branch) => branch.levels ?? []);
+  const codes = offered.length ? offered.map((level) => level.code ?? '') : Object.keys(LEVEL_SLUGS);
+  return [...new Set(codes.filter(Boolean).map((code) => LEVEL_SLUGS[code] ?? code.toLowerCase()))];
+}
 
 async function expectHighlightedInsidePanel(page: Page) {
   const search = page.getByRole('combobox', { name: 'Search Universta' });
@@ -21,17 +50,28 @@ async function expectHighlightedInsidePanel(page: Page) {
 }
 
 test.describe('subject level discovery', () => {
-  test('opens every level from subject and specialization pages, including empty levels', async ({ page }) => {
-    for (const [base, name, picked] of [
-      [subject, 'Computer Science', 'bachelors'],
-      [specialization, 'Software Engineering', 'mba'],
+  test('opens every level from subject and specialization pages, including empty levels', async ({ page, request }) => {
+    for (const [base, name] of [
+      [subject, 'Computer Science'],
+      [specialization, 'Software Engineering'],
     ]) {
       await page.goto(`${webBaseUrl}${base}`);
       const levelNav = page.getByRole('navigation', { name: 'Study levels' });
-      for (const level of levels) {
+      const links = levelNav.locator('a');
+      await expect(links.first()).toBeVisible();
+      const hrefs = await links.evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
+      expect(hrefs.length).toBeGreaterThan(1);
+      for (const href of hrefs) expect(href).toMatch(new RegExp(`^${base}/levels/[a-z0-9-]+\\?view=guides$`));
+      /* The bar offers the levels the record is offered at, whatever has
+         courses yet: ticked, or failing that, read from what is beneath it. */
+      for (const level of await offeredLevelSlugs(request, base)) {
         await expect(levelNav.locator(`a[href="${base}/levels/${level}?view=guides"]`)).toHaveCount(1);
       }
-      await levelNav.locator(`a[href="${base}/levels/${picked}?view=guides"]`).click();
+      /* An empty level still opens. */
+      const empty = levelNav.locator('a.chipbtn--none');
+      const target = (await empty.count()) ? empty.first() : links.first();
+      const picked = new URL((await target.getAttribute('href'))!, webBaseUrl).pathname.split('/').pop()!;
+      await target.click();
       await expect(page).toHaveURL(`${webBaseUrl}${base}/levels/${picked}?view=guides`);
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(name) })).toBeVisible();
       await expect(page.getByTestId('switch-guides')).toHaveAttribute('aria-current', 'page');

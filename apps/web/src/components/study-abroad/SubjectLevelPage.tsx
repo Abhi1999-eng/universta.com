@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getCourseFilterOptions, getCourseLevels, getCourses, getSpecialization, getSubject } from '@/lib/catalog';
-import { LEVELS_ALWAYS_SHOWN } from '@/lib/course-levels';
+import { levelsOnBar, specializationOfferedLevels, subjectOfferedLevels } from '@/lib/course-levels';
 import { checkGuideFilters, guideApiParams, guideListSearch, guidesAsProgrammes, isNarrowedCourses, PROGRAMME_MAX_PAGES, readGuideFilters, requestedView, withoutIgnored } from '@/lib/courses-params';
 import { formatNumber } from '@/lib/format';
 import { phaseProgrammes } from '@/lib/phase1';
@@ -132,6 +132,20 @@ export async function SubjectLevelPage({ params, searchParams }: {
     ...(specialization ? [{ label: specialization.name, href: `/subjects/${subject.slug}/${specialization.slug}` }] : []),
     { label: level.name },
   ];
+  /* The levels the field is offered at, as its own page shows them, and
+     any with courses: the bar offered all six whatever was ticked. */
+  const barLevels = levelsOnBar(
+    levels,
+    specialization
+      ? specializationOfferedLevels({ ...specialization, subject: { offeredLevels: subject.offeredLevels } })
+      : subjectOfferedLevels(subject),
+    [
+      ...(specialization
+        ? (specialization.levels ?? []).map((row) => row.code)
+        : (subject.courseCountsByLevel ?? []).filter((row) => row.count > 0).map((row) => row.level.code)),
+      level.code,
+    ],
+  );
   const levelQuery = view === 'guides'
     ? guideListSearch(guideFilters, { page: 1 }, { view: true })
     : courseListSearch(programmeFilters);
@@ -145,7 +159,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
           <p className="hero__sub">Explore published programmes by destination, university, fees, intake and entry requirements.</p>
         </div>
         <nav className="levelbar levelbar--wide" aria-label="Study levels">
-          {levels.filter((row) => LEVELS_ALWAYS_SHOWN.includes(row.code) || row.code === level.code).map((row) => <Link
+          {barLevels.map((row) => <Link
             className="chipbtn" key={row.id}
             href={`${subjectLevelHref({ subject: subject.slug, specialization: specialization?.slug, level: row.code })}${levelQuery}`}
             aria-current={row.code === level.code ? 'page' : undefined}

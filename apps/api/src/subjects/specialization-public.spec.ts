@@ -46,6 +46,7 @@ function prisma(calls: Record<string, unknown[]>) {
         slug: 'computer-science',
         name: 'Computer Science',
         shortDescription: null,
+        courseLevels: [{ courseLevel: LEVELS.phd }, { courseLevel: LEVELS.ug }],
       }),
     },
     subSubject: {
@@ -179,6 +180,9 @@ async function load() {
     }>;
     siblingTotal: number;
     universities: { total: number; data: Array<{ slug: string }> };
+    subject: Record<string, unknown> & {
+      offeredLevels: Array<{ code: string | null }>;
+    };
   };
   return { result, calls };
 }
@@ -253,5 +257,15 @@ describe('a specialization’s public record', () => {
     expect(ai.levels.map((row) => row.code)).toEqual(['UG', 'PG', 'PHD']);
     expect(hci).toMatchObject({ publishedCourseCount: 0, levels: [] });
     expect(result.siblingTotal).toBe(11);
+  });
+
+  it('sends the levels ticked on its subject, for a specialization with none of its own', async () => {
+    const { result } = await load();
+    expect(result.subject.offeredLevels.map((row) => row.code)).toEqual([
+      'UG',
+      'PHD',
+    ]);
+    /* The ticks travel as levels, not as the link rows they were read from. */
+    expect(result.subject).not.toHaveProperty('courseLevels');
   });
 });
