@@ -385,6 +385,22 @@ describe('an overview split into a lead and a read-more', () => {
     expect(overviewParts(html)).toEqual({ lead: null, rest: html });
   });
 
+  it('leads with an overview typed as plain text rather than folding all of it away', () => {
+    expect(overviewParts('Computer Science covers how software is built. Graduates move into data roles.')).toEqual({
+      lead: 'Computer Science covers how software is built. Graduates move into data roles.',
+      rest: null,
+    });
+    expect(overviewParts('One.\n\nTwo.\n\n  Three.  ')).toEqual({ lead: 'One.', rest: 'Two.\n\nThree.' });
+  });
+
+  it('drops a plain first paragraph the hero has already printed', () => {
+    expect(overviewParts('The study of computation.\n\nAlgorithms and systems.', 'The study of computation.')).toEqual({
+      lead: 'Algorithms and systems.',
+      rest: null,
+    });
+    expect(overviewParts('The study of computation.', 'The study of computation.')).toEqual({ lead: null, rest: null });
+  });
+
   it('is nothing at all without an overview', () => {
     expect(overviewParts(null)).toEqual({ lead: null, rest: null });
     expect(overviewParts('   ')).toEqual({ lead: null, rest: null });

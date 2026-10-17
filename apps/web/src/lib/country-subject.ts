@@ -265,8 +265,9 @@ export function figuresHere(input: {
  * The visible part runs up to and including the first paragraph, so a
  * heading travels with the paragraph under it. A first paragraph that only
  * repeats the short description -- which the hero has already printed --
- * is dropped rather than shown twice. Markup this cannot split cleanly is
- * left whole, in `rest`, and the page shows it the way it always did.
+ * is dropped rather than shown twice. Plain text splits at its blank lines.
+ * Markup this cannot split cleanly is left whole, in `rest`, and the page
+ * shows it the way it always did.
  */
 export function overviewParts(
   html: string | null | undefined,
@@ -274,6 +275,19 @@ export function overviewParts(
 ): { lead: string | null; rest: string | null } {
   const value = html?.trim();
   if (!value) return { lead: null, rest: null };
+  const repeated = shortDescription?.replace(/\s+/g, ' ').trim();
+  /* An overview typed as plain text, which the admin allows, has no blocks
+     to split, and the whole of it went under "More about…": the section
+     the page now opens on showed a heading and a closed toggle. Its
+     paragraphs are its blank-line breaks, read the same way. */
+  if (!/<\/?[a-z][^>]*>/i.test(value)) {
+    const paragraphs = value.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+    const kept =
+      repeated && paragraphs[0]?.replace(/\s+/g, ' ') === repeated
+        ? paragraphs.slice(1)
+        : paragraphs;
+    return { lead: kept[0] ?? null, rest: kept.slice(1).join('\n\n') || null };
+  }
   const blocks = value.match(
     /<(p|h[2-4]|ul|ol|blockquote)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
   );
@@ -281,7 +295,6 @@ export function overviewParts(
     return { lead: null, rest: value };
   const plain = (block: string) =>
     block.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-  const repeated = shortDescription?.replace(/\s+/g, ' ').trim();
   const kept =
     repeated && /^<p\b/i.test(blocks[0]) && plain(blocks[0]) === repeated
       ? blocks.slice(1)
