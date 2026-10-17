@@ -58,7 +58,7 @@ const links = (courseLevelIds: string[]) =>
     courseLevel: LEVELS[id as keyof typeof LEVELS],
   }));
 
-function subjectRow(courseLevelIds: string[]) {
+function subjectRow(courseLevelIds: string[], branchLevelIds: string[] = []) {
   return {
     ...subject,
     shortDescription: 'Computers.',
@@ -71,7 +71,17 @@ function subjectRow(courseLevelIds: string[]) {
     publishedAt: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-02'),
-    subSubjects: [],
+    subSubjects: branchLevelIds.length
+      ? [
+          {
+            id: 'ai',
+            name: 'Artificial Intelligence',
+            slug: 'artificial-intelligence',
+            status: 'PUBLISHED',
+            courseLevels: links(branchLevelIds),
+          },
+        ]
+      : [],
     _count: { courses: 0, countrySubjects: 0 },
     courseLevels: links(courseLevelIds),
   };
@@ -100,7 +110,11 @@ function row(courseLevelIds: string[]) {
 
 function prisma(
   calls: Record<string, unknown[]>,
-  options: { courseLevels?: string[]; subjectLevels?: string[] } = {},
+  options: {
+    courseLevels?: string[];
+    subjectLevels?: string[];
+    branchLevels?: string[];
+  } = {},
 ) {
   const record = (name: string) => (args: unknown) => {
     (calls[name] ??= []).push(args);
@@ -115,12 +129,15 @@ function prisma(
         ),
     },
     subject: {
-      findFirst: async () => subjectRow(options.subjectLevels ?? []),
-      findMany: async () => [subjectRow(options.subjectLevels ?? [])],
+      findFirst: async () =>
+        subjectRow(options.subjectLevels ?? [], options.branchLevels),
+      findMany: async () => [
+        subjectRow(options.subjectLevels ?? [], options.branchLevels),
+      ],
       count: async () => 1,
       update: async (args: { data: Record<string, unknown> }) => {
         record('subjectUpdate')(args);
-        return subjectRow(options.subjectLevels ?? []);
+        return subjectRow(options.subjectLevels ?? [], options.branchLevels);
       },
     },
     subSubject: {
@@ -318,6 +335,17 @@ describe('a study level switched off after it was ticked', () => {
     const specializations = await service.publicSpecializationList({});
     expect(specializations.data[0].levels.map((level) => level.code)).toEqual([
       'UG',
+    ]);
+  });
+
+  it("does not reach a subject's explorer row through a specialization ticked for it", async () => {
+    const service = new SubjectsService(
+      prisma({}, { subjectLevels: ['pg'], branchLevels: ['fd', 'phd'] }),
+    );
+    const subjects = await service.publicList({ page: 1, limit: 12 });
+    expect(subjects.data[0].levels.map((level) => level.code)).toEqual([
+      'PG',
+      'PHD',
     ]);
   });
 });
