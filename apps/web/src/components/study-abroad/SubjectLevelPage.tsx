@@ -137,7 +137,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
   const barLevels = levelsOnBar(
     levels,
     specialization
-      ? specializationOfferedLevels({ ...specialization, subject: { offeredLevels: subject.offeredLevels } })
+      ? specializationOfferedLevels(specialization)
       : subjectOfferedLevels(subject),
     [
       ...(specialization

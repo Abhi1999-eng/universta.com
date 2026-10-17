@@ -6,9 +6,9 @@ const specialization = `${subject}/software-engineering`;
 const fixedQueryKeys = ['subject', 'specialization', 'subSubject', 'level', 'courseLevel'];
 
 /* The levels a subject's or a specialization's page offers, read from the
-   API the way the page reads them: a subject's ticks, else its
+   API the way the page reads them: a subject's ticks together with its
    specializations' levels; a specialization's ticks, else the levels of
-   its courses, else its subject's ticks. Empty means the six named ones. */
+   its courses. Empty means the six named ones. */
 const LEVEL_SLUGS: Record<string, string> = {
   FOUNDATION: 'foundation', PATHWAY: 'pathway', UG: 'bachelors', PG: 'masters', MBA: 'mba', PHD: 'phd',
 };
@@ -24,15 +24,14 @@ async function offeredLevelSlugs(request: APIRequestContext, base: string) {
     offeredLevels?: Level[];
     levels?: Level[];
     subSubjects?: Array<{ levels?: Level[] }>;
-    subject?: { offeredLevels?: Level[] };
   };
-  /* A specialization: its ticks, else its course levels, else its subject's
-     ticks. A subject: its ticks together with its specializations' levels --
-     the subject's ticks only add. */
+  /* A specialization: its ticks, else its course levels. A subject: its
+     ticks together with its specializations' levels -- the subject's ticks
+     only add. */
   const offered = specializationSlug
     ? data.offeredLevels?.length
       ? data.offeredLevels
-      : data.levels?.length ? data.levels : (data.subject?.offeredLevels ?? [])
+      : (data.levels ?? [])
     : [
         ...(data.offeredLevels ?? []),
         ...(data.subSubjects ?? []).flatMap((branch) => branch.levels ?? []),

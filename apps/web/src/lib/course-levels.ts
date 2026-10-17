@@ -208,17 +208,21 @@ export function subjectOfferedLevels(subject: {
 /**
  * The levels a specialization is offered at: its own ticks; with none, the
  * levels its published courses are at (its `levels`, which then hold only
- * those), as its card on the subject's page says; and with neither, its
- * subject's ticks. Empty when none of them says.
+ * those), as its card on the subject's page says. Empty when neither says,
+ * and its pages then show the six named levels without claiming them --
+ * as its card, which names no level, and the subject's level panels,
+ * which list it under none.
+ *
+ * It no longer borrows its subject's ticks. Those are what the subject
+ * offers beyond its branches -- a Foundation year, say -- so a branch with
+ * nothing of its own claimed exactly the levels its siblings do not have.
  */
 export function specializationOfferedLevels(specialization: {
   offeredLevels?: readonly LevelRef[] | null;
   levels?: readonly LevelRef[] | null;
-  subject?: { offeredLevels?: readonly LevelRef[] | null } | null;
 }): LevelRef[] {
   if (specialization.offeredLevels?.length) return [...specialization.offeredLevels];
-  if (specialization.levels?.length) return [...specialization.levels];
-  return [...(specialization.subject?.offeredLevels ?? [])];
+  return [...(specialization.levels ?? [])];
 }
 
 /**
