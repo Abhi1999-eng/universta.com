@@ -32,6 +32,8 @@ import {
   specializationOfferedLevels,
 } from '@/lib/course-levels';
 import { StudyLevels } from '@/components/study-abroad/StudyLevels';
+import { FaqList, SectionBody } from '@/components/study-abroad/SpecializationContent';
+import { SECTION_EYEBROWS, sectionLines, sectionTitle } from '@/lib/specialization-content';
 import { studyLevelPanels, studyLevelsLead } from '@/lib/study-levels';
 import { subjectLevelHref } from '@/lib/subject-levels';
 import { DestinationProgrammes } from '@/components/study-abroad/DestinationProgrammes';
@@ -247,6 +249,14 @@ export default async function Page({ params, searchParams }: Params) {
     specialization.overview,
     specialization.shortDescription,
   );
+  /* Its own content -- what you study, where it leads, and the questions
+     students ask -- written once for the specialization and read here as
+     well as on its page, so a student who lands on it in a destination
+     does not leave without it. Sections with nothing in them stand down. */
+  const sections = (specialization.contentSections ?? []).filter(
+    (section) => sectionLines(section).length || section.media,
+  );
+  const faqs = specialization.faqs ?? [];
   /* The finder, narrowed to the same three, landing on its results. It no
      longer forwards a request like this to the old course pages, so the
      reader stays on the search, with the search's own names for them. */
@@ -382,6 +392,23 @@ export default async function Page({ params, searchParams }: Params) {
           </Longform>
         ) : null}
       </section>
+
+      {sections.map((section) => (
+        <section
+          className="sec sec--tight wrap"
+          id={`content-${section.sectionKey}`}
+          key={section.id}
+        >
+          <div className="sec-head left">
+            <div>
+              <span className="eyebrow">{SECTION_EYEBROWS[section.sectionKey] ?? 'About'}</span>
+              <h2 className="sec-title">{section.heading ?? sectionTitle(section.sectionKey)}</h2>
+              {section.subheading ? <p className="sec-lead">{section.subheading}</p> : null}
+            </div>
+          </div>
+          <SectionBody section={section} />
+        </section>
+      ))}
 
       {/* The levels it is offered at, each with its courses here, before
           the universities' programmes: the same order as its subject's
@@ -537,6 +564,18 @@ export default async function Page({ params, searchParams }: Params) {
         href={none ? searchEverywhere : searchHere}
         talkHref={counselling}
       />
+
+      {faqs.length ? (
+        <section className="sec sec--tight wrap" id="faqs">
+          <div className="sec-head left">
+            <div>
+              <span className="eyebrow">Questions</span>
+              <h2 className="sec-title">Straight answers about {specialization.name}</h2>
+            </div>
+          </div>
+          <FaqList faqs={faqs} />
+        </section>
+      ) : null}
 
       {siblings.length ? (
         <section className="sec sec--tight wrap">
