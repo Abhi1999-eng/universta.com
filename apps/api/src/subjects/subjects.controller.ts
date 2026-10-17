@@ -136,3 +136,21 @@ export class SubjectLevelPagesController {
     });
   }
 }
+
+/** Every destination page of a subject or a specialization the sitemap may
+ * list, with how many programmes each has. A path of its own: under
+ * /countries or /subjects it would be read as a country or a subject slug. */
+@ApiTags('subjects')
+@Controller('country-field-pages')
+export class CountryFieldPagesController {
+  constructor(private readonly subjects: SubjectsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'List the country subject and country specialization pages',
+  })
+  async list(@Req() request: RequestWithId) {
+    const result = await this.subjects.publicCountryFieldPages();
+    return successEnvelope(request, result.data, { total: result.total });
+  }
+}

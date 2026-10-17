@@ -30,6 +30,7 @@ import { FlashBanner, queueFlash, type Flash } from '@/features/shared/Flash';
 import { RichTextEditor } from '@/features/shared/RichTextEditor';
 import { richTextOrEmpty } from '@/features/shared/rich-text-value';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
+import { EnterSubmitGuard } from '@/features/shared/EnterSubmitGuard';
 import {
   blankUnifiedSeo,
   canonicalInputError,
@@ -174,11 +175,11 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
 
   function validate(intent: Intent, payload: ReturnType<typeof levelPagePayload>) {
     const next: string[] = [...faqIssues(faqs, { blankOrder: true })];
-    const configured = unifiedSeoConfigured(seo);
-    if (configured && (!seo.seoTitle.trim() || !seo.metaDescription.trim())) next.push('SEO title and meta description are both required when SEO is configured.');
-    /* The robots ticks are stored with the SEO record, which needs a title
-       and a description; unticked on their own they would be dropped. */
-    if (!configured && (!seo.robotsIndex || !seo.robotsFollow)) next.push('To keep this page out of search engines, also write its SEO title and meta description.');
+    /* Robots alone is a record of its own: unticking "Robots index" with
+       nothing written keeps the page out of search engines, and the title
+       and description fall back as if there were no record. It used to be
+       refused here until a title and a description were written too. */
+    if (unifiedSeoConfigured(seo) && (!seo.seoTitle.trim() || !seo.metaDescription.trim())) next.push('SEO title and meta description are both required when SEO is configured.');
     if (canonicalInputError(seo.canonicalUrl)) next.push('Canonical URL: use a site path beginning with / or an absolute HTTP(S) URL.');
     if (intent === 'publish' && !payload.intro && !payload.admissionNote && !payload.careersNote && !payload.faqs.some((row) => row.status === 'ACTIVE'))
       next.push('Write an intro, a note or an FAQ before publishing this level page.');
@@ -245,10 +246,9 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
 
       <EditorSectionNav root={contentEl} />
       <form onSubmit={submit} className="mt-8">
-        {/* Enter in a text field clicks the form's first submit button, which
-            would be Save draft / Move to draft and take a published page off
-            the site. This disabled one comes first, so Enter saves nothing. */}
-        <button type="submit" disabled hidden aria-hidden="true" />
+        {/* Enter in a text field would otherwise click Save draft / Move to
+            draft and take a published page off the site. */}
+        <EnterSubmitGuard />
         {/* One wrapper, so a page that is not offered is read-only as a whole. */}
         <fieldset ref={setContentEl} disabled={readOnly} className="min-w-0 space-y-6">
           <fieldset className="p-panel">

@@ -61,8 +61,11 @@ export function programmeTally(addresses: readonly ProgrammeAddress[]): Map<stri
  * page's robots setting is known, and a page that says noindex would be
  * announced on its programmes alone.
  *
- * The field's own robots setting, which the page also obeys, is not in the
- * list rows the sitemap reads, so it cannot be applied here.
+ * The field's own robots setting, which the page also obeys, comes on the
+ * list rows (`robotsIndex`): a subject's says no for its level pages and its
+ * specializations', and a specialization's for its own. A row from an older
+ * API carries none, and its pages are judged as before. The rows carry the
+ * setting an editor saved on the record, not a bulk template's.
  */
 export function indexableLevelPaths({
   subjects,
@@ -71,11 +74,16 @@ export function indexableLevelPaths({
   tally,
   written,
 }: {
-  subjects: ReadonlyArray<{ slug: string; levels?: readonly LevelRow[] | null }>;
+  subjects: ReadonlyArray<{
+    slug: string;
+    levels?: readonly LevelRow[] | null;
+    robotsIndex?: boolean | null;
+  }>;
   specializations: ReadonlyArray<{
     slug: string;
     subject: { slug: string };
     levels?: readonly LevelRow[] | null;
+    robotsIndex?: boolean | null;
   }>;
   catalogue: ReadonlyArray<{ code: string }>;
   tally: ReadonlyMap<string, number>;
@@ -92,11 +100,16 @@ export function indexableLevelPaths({
   const template = written.templateRobotsIndex;
   const found: Array<{ path: string; lastModified?: string }> = [];
   const seen = new Set<string>();
+  /* Each subject's own setting, which its specializations' level pages
+     obey as well as its own. */
+  const subjectRobots = new Map(subjects.map((row) => [row.slug, row.robotsIndex]));
   const consider = (
     subject: string,
     specialization: string | null,
     levels: readonly LevelRow[] | null | undefined,
+    fieldRobots: ReadonlyArray<boolean | null | undefined>,
   ) => {
+    if (fieldRobots.some((value) => value === false)) return;
     const pages = levelPages(levels, catalogue);
     if (!pages.claimed) return;
     for (const level of catalogue) {
@@ -119,7 +132,11 @@ export function indexableLevelPaths({
       found.push(page ? { path, lastModified: page.updatedAt } : { path });
     }
   };
-  for (const row of subjects) consider(row.slug, null, row.levels);
-  for (const row of specializations) consider(row.subject.slug, row.slug, row.levels);
+  for (const row of subjects) consider(row.slug, null, row.levels, [row.robotsIndex]);
+  for (const row of specializations)
+    consider(row.subject.slug, row.slug, row.levels, [
+      row.robotsIndex,
+      subjectRobots.get(row.subject.slug),
+    ]);
   return found;
 }

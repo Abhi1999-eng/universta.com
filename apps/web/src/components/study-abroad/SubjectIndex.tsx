@@ -7,6 +7,7 @@ import type { Subject, SubSubject } from '@/lib/catalog';
 import { sortByLevelOrder } from '@/lib/level-order';
 import { matchCount, searchSubjectIndex } from '@/lib/subject-index-search';
 import { SubjectIndexSearch } from './SubjectIndexSearch';
+import { CardMedia, PopularBadge } from './CardMedia';
 
 /** Where the cards begin: the search brings it into view. */
 const RESULTS_ID = 'taxonomy';
@@ -134,6 +135,10 @@ export function SubjectIndex({
           <div className="subjindex">
             {rows.map(({ subject, specs }) => (
               <article className="subjcard" key={subject.id}>
+                {/* Its listing image and its "Popular" mark, where an
+                    editor set them: the design's card carries the mark
+                    beside the name. */}
+                <CardMedia media={subject.listingMedia} className="subjcard__media" />
                 <div className="subjcard__head">
                   {/* The reference draws a different glyph per subject. Ours
                       are set per record in the Admin, so a subject with an
@@ -185,6 +190,7 @@ export function SubjectIndex({
                       ) : null}
                     </p>
                   </div>
+                  <PopularBadge featured={subject.featured} />
                 </div>
                 {subject.shortDescription ? (
                   <p className="subjcard__desc">{subject.shortDescription}</p>

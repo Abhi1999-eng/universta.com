@@ -9,13 +9,16 @@ import {
 import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
 import {
+  getCountryFieldPages,
   getCourseLevels,
   getCourses,
   getLevelPageIndex,
   getSpecializations,
   getSubjects,
+  type CountryFieldPageRow,
   type SpecializationRow,
 } from "@/lib/catalog";
+import { countryFieldPaths } from "@/lib/country-field-page";
 import { indexableLevelPaths, programmeTally } from "@/lib/level-page-index";
 import { siteOrigin } from "@/lib/site-origin";
 import { specializationHasOwnWords } from "@/lib/specialization-written";
@@ -207,6 +210,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       specializations,
       courseLevels,
       levelPageIndex,
+      countryFieldPages,
     ] = await Promise.all([
       Promise.all(
         resources.map((resource) => phaseListAll<AnyRecord>(resource)),
@@ -223,6 +227,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       everySpecialization().catch(() => [] as SpecializationRow[]),
       getCourseLevels().catch(() => []),
       getLevelPageIndex().catch(() => null),
+      /* Every field in every destination, in one read; a failure drops
+         those pages and nothing else. */
+      getCountryFieldPages().catch(() => [] as CountryFieldPageRow[]),
     ]);
     /* A few destinations at a time: with every destination listed there
        are twice as many of these reads, and all at once the API would shed
@@ -261,15 +268,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           (city) => `/study-in-${country.slug}/${city.slug}`,
         ),
       ),
-      ...subjects.map((row) => `/subjects/${row.slug}`),
+      /* A subject's page, unless its own robots setting says no: the page
+         obeys it. A row that does not say is kept, as before. */
+      ...subjects
+        .filter((row) => row.robotsIndex !== false)
+        .map((row) => `/subjects/${row.slug}`),
       /* A subject's list of its specializations, where it has any. */
       ...subjects
         .filter((row) => row.publishedSubSubjectCount > 0)
         .map((row) => `/subjects/${row.slug}/specializations`),
       /* A specialization's page only where something is written on it:
-         one with nothing of its own is noindex (see its page). */
+         one with nothing of its own is noindex (see its page), and so is
+         one whose own robots setting says no. */
       ...specializations
-        .filter(specializationHasOwnWords)
+        .filter((row) => specializationHasOwnWords(row) && row.robotsIndex !== false)
         .map((row) => `/subjects/${row.subject.slug}/${row.slug}`),
       ...courses.map((row) => `/courses/${row.slug}`),
       /* Each university's course list, where it lists a programme, and
@@ -290,6 +302,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const route of [
       ...dynamicRoutes.map((path) => ({ path, lastModified: undefined as string | undefined })),
       ...levelRoutes,
+      /* Each field in each destination, as its page indexes it, with when
+         it last changed. */
+      ...countryFieldPaths(countryFieldPages),
     ]) {
       if (seen.has(route.path)) continue;
       seen.add(route.path);

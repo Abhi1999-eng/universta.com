@@ -133,6 +133,7 @@ describe('country editor save and publish flow', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/countries'));
+    expect(replace).not.toHaveBeenCalled();
     expect(peekFlash()).toMatchObject({
       tone: 'success',
       message: 'Malta published successfully.',
@@ -205,5 +206,24 @@ describe('country editor save and publish flow', () => {
     );
     expect(push).not.toHaveBeenCalled();
     expect(screen.queryByText('Draft saved.')).toBeNull();
+  });
+
+  /* Enter in a text field clicked the form's first submit button -- Move to
+     draft, on a live country -- and took it off the site. */
+  it('saves nothing when Enter is pressed in a text field of a published country', async () => {
+    seed(published);
+    mocks.getCountry.mockResolvedValue({ data: published });
+    mocks.unpublishCountry.mockResolvedValue({ data: draft });
+    await openEditor();
+
+    await userEvent.type(screen.getByLabelText(/Tagline/), 'Mediterranean campus{Enter}');
+    await userEvent.type(screen.getByDisplayValue('Malta'), '{Enter}');
+    expect(mocks.updateCountry).not.toHaveBeenCalled();
+    expect(mocks.unpublishCountry).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Move to draft' }));
+    expect(await screen.findByText('Country moved to draft.')).toBeInTheDocument();
+    expect(mocks.updateCountry).toHaveBeenCalledTimes(1);
+    expect(mocks.updateCountry.mock.calls[0][1]).toMatchObject({ tagline: 'Mediterranean campus' });
   });
 });

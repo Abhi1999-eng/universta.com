@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { CountryGuideLinks } from '@/components/study-abroad/CountryGuideLinks';
 import { CountryConsultants } from '@/components/study-abroad/CountryConsultants';
@@ -43,12 +44,14 @@ import { programmeList } from '@/lib/programme-sample';
 import {
   isNarrowedCourseList,
   readCourseFilters,
+  type CourseFilters,
 } from '@/lib/university-courses';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
 import { subjectIconPath } from '@/lib/subject-icon';
 import { counsellingHref } from '@/lib/counselling-link';
+import { countryFieldDescription, countryFieldIndexed } from '@/lib/country-field-page';
 import {
   countrySubjectPage,
   figuresHere,
@@ -93,14 +96,39 @@ type Params = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-async function load(countrySlug: string, subjectSlug: string) {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+/* Read once a request: the metadata and the page both start here. */
+const load = cache(async (countrySlug: string, subjectSlug: string) => {
   const [page, subject] = await Promise.all([
     getStudyAbroadCountry(countrySlug),
     getSubject(subjectSlug).catch(() => null),
   ]);
   if (!page?.country || !subject) return null;
   return { page, country: page.country, subject };
+});
+
+/** The programme filters the address asks for, no further than the finder
+ *  loads. Past it the run asks for more rows than the API serves in one
+ *  answer, which then sends the first page alone and leaves no way on to
+ *  the rest. */
+function askedFilters(raw: SearchParams): CourseFilters {
+  const read = readCourseFilters(raw);
+  return { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
 }
+
+/* The universities' programmes here, as the address filters them, read
+   once a request: the description counts them and the page lists them.
+   Keyed by the filters written out, which the metadata and the page build
+   alike from the same address, so they ask for the very same list. Its
+   summary is counted over this country and this field, not the reader's
+   filters, so a filtered address still reads the page's own figures. */
+const listedHere = cache((countrySlug: string, subjectSlug: string, asked: string) =>
+  programmeList(JSON.parse(asked) as CourseFilters, {
+    country: [countrySlug],
+    subject: [subjectSlug],
+  }),
+);
 
 export async function generateMetadata({
   params,
@@ -116,22 +144,32 @@ export async function generateMetadata({
   const { country, subject } = loaded;
   const where = inCountry(country.name, country.iso2Code);
   const heroWhere = country.iso2Code?.toUpperCase() === 'GB' ? 'the UK' : where;
+  const raw = await searchParams;
+  /* The same list the page draws, so the count is the one it shows. */
+  const listed = await listedHere(country.slug, subject.slug, JSON.stringify(askedFilters(raw)));
   return {
     title: { absolute: `${subject.name} courses in ${heroWhere} | Universta` },
-    description:
-      subject.shortDescription ??
-      `The specializations, universities and programmes available in ${subject.name} for students going to ${where}.`,
+    /* Its own, in every destination: the subject's short description was
+       the same sentence on all of them, and its SEO description is
+       written for its page across every destination. */
+    description: countryFieldDescription({
+      field: subject.name,
+      where,
+      programmes: listed?.summary.programmes,
+      universities: listed?.summary.universities,
+      specializations: (subject.subSubjects ?? []).length,
+    }),
     /* A searched, filtered, sorted or further-loaded programme list is a
        slice of the page, which is indexed whole: left out of the index,
        its links still followed, and naming no canonical, as the university
-       lists do it. */
-    ...(isNarrowedCourseList(await searchParams)
-      ? { robots: { index: false, follow: true } }
-      : {
+       lists do it. The sitemap reads the same rule. */
+    ...(countryFieldIndexed({ narrowed: isNarrowedCourseList(raw) })
+      ? {
           alternates: {
             canonical: `/study-abroad/${country.slug}/${subject.slug}`,
           },
-        }),
+        }
+      : { robots: { index: false, follow: true } }),
   };
 }
 
@@ -143,11 +181,7 @@ export default async function Page({ params, searchParams }: Params) {
   const where = inCountry(country.name, country.iso2Code);
   const heroWhere = country.iso2Code?.toUpperCase() === 'GB' ? 'the UK' : where;
   const base = `/study-abroad/${country.slug}/${subject.slug}`;
-  const read = readCourseFilters(await searchParams);
-  /* No further than the finder loads. Past it the run asks for more rows
-     than the API serves in one answer, which then sends the first page
-     alone and leaves no way on to the rest. */
-  const asked = { ...read, page: Math.min(read.page, PROGRAMME_MAX_PAGES) };
+  const asked = askedFilters(await searchParams);
   /* What the programme list is fixed to: this country, this field. */
   const scope = { country: [country.slug], subject: [subject.slug] };
 
@@ -175,7 +209,7 @@ export default async function Page({ params, searchParams }: Params) {
     /* Every study level, so the six the page always shows are there even
        where nothing is listed at them here yet. */
     getCourseLevels().catch(() => null),
-    programmeList(asked, scope),
+    listedHere(country.slug, subject.slug, JSON.stringify(asked)),
   ]);
   /* Drawn only where something is listed here; an empty catalogue leaves
      the page as it was. */

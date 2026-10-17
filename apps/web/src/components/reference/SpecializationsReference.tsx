@@ -5,6 +5,7 @@ import { levelCoursesHref } from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
 import { sortByLevelOrder } from '@/lib/level-order';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
+import { CardMedia, PopularBadge } from '@/components/study-abroad/CardMedia';
 import { SpecializationSearch } from './SpecializationSearch';
 
 /** The client-approved specializations page.
@@ -197,9 +198,14 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
               {popular.map((item) => (
                 <article className="speccard speccard--hl" key={item.id}>
                   <div className="speccard__btn">
+                    <CardMedia media={item.listingMedia} className="speccard__media" />
                     <span className="speccard__top">
                       <span className="label">Specialization</span>
-                      <span className="badge badge--req">Popular</span>
+                      {/* What this band ranks by. "Popular" is the
+                          editor's Featured mark, on the cards below; one
+                          word with two meanings put it on a card here and
+                          left it off the same card there. */}
+                      <span className="badge badge--req">Most courses</span>
                     </span>
                     <h3 className="speccard__name">
                       <Link href={specHref(item.slug)}>{item.name}</Link>
@@ -281,8 +287,14 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                    link into, so it stays on the card itself. */
                 <article className="speccard" id={item.slug} key={item.id}>
                   <div className="speccard__btn">
+                    {/* Its listing image and its "Popular" mark, where an
+                        editor set them. The band above ranks by courses
+                        and says so on its cards; "Popular" is only this
+                        mark, the editor's. */}
+                    <CardMedia media={item.listingMedia} className="speccard__media" />
                     <span className="speccard__top">
                       <span className="label">Specialization</span>
+                      <PopularBadge featured={item.featured} />
                     </span>
                     <h3 className="speccard__name">
                       <Link href={specHref(item.slug)}>{item.name}</Link>

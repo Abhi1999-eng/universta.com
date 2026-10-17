@@ -708,6 +708,25 @@ describe('saving part of a level page', () => {
     });
   });
 
+  /* Keeping a page out of search needs no title or description: the
+     resolver fills them as for a page with no SEO of its own. */
+  it('stores a robots-only SEO and reads its title and description back as null', async () => {
+    const { service, db } = await written();
+    const detail = await service.upsert(
+      SUBJECT,
+      'ug',
+      { seo: { robotsIndex: false } },
+      request,
+    );
+    expect(detail.page?.seo).toMatchObject({
+      seoTitle: null,
+      metaDescription: null,
+      robotsIndex: false,
+      robotsFollow: true,
+    });
+    expect(db.seo).toHaveLength(1);
+  });
+
   it('moves the version on when only the questions or only the SEO change', async () => {
     const { service, first, calls } = await written();
     const afterFaqs = await service.upsert(

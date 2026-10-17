@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import {
+  CountryFieldPagesController,
   SpecializationsController,
   SubjectLevelPagesController,
   SubjectsController,
@@ -17,6 +18,7 @@ import { SeoManagementModule } from '../seo-management/seo-management.module';
     SubjectsController,
     SpecializationsController,
     SubjectLevelPagesController,
+    CountryFieldPagesController,
     AdminSubjectsController,
     AdminSpecializationsController,
   ],

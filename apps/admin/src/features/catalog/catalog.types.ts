@@ -265,8 +265,9 @@ export interface EditorialSeo {
   id: string;
   ownerType: string;
   ownerId: string;
-  seoTitle: string;
-  metaDescription: string;
+  /** Null on a row that only sets the robots ticks. */
+  seoTitle: string | null;
+  metaDescription: string | null;
   canonicalUrl: string | null;
   focusKeyword: string | null;
   ogTitle: string | null;
@@ -330,6 +331,10 @@ export interface SubjectRecord {
   /** The levels its published courses already stand at, for the editor to
    * show beside the ticks. Only on a single record, not a list. */
   impliedCourseLevels?: CatalogLevel[];
+  /** The levels the site offers it at: its own ticks, its published
+   * specializations' ticks and its published courses' levels, active ones
+   * only, in education order. On the admin list rows. */
+  offeredLevels?: OfferedLevel[];
   status: string;
   publishedAt: string | null;
   createdAt: string;
@@ -346,6 +351,13 @@ export interface CatalogLevel {
   name: string;
   code: string | null;
 }
+/** A level a subject or a specialization is offered at, as the list rows
+ * carry it. */
+export interface OfferedLevel {
+  id: string;
+  code: string;
+  name: string;
+}
 export interface SubSubjectRecord {
   id: string;
   /** `status` comes on the admin rows, so the list can tell a specialization
@@ -361,6 +373,9 @@ export interface SubSubjectRecord {
   displayOrder: number;
   courseLevels?: CatalogLevel[];
   impliedCourseLevels?: CatalogLevel[];
+  /** Its own ticks and its published courses' levels, active ones only, in
+   * education order. On the admin list rows. */
+  offeredLevels?: OfferedLevel[];
   status: string;
   publishedAt: string | null;
   createdAt: string;

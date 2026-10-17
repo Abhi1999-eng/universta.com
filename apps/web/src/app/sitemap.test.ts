@@ -28,7 +28,12 @@ const api = vi.hoisted(() => ({
         levelCode?: string | null;
       }>
     | Error,
-  subjects: [] as Array<{ slug: string; levels?: Array<{ code: string; name: string }>; publishedSubSubjectCount?: number }>,
+  subjects: [] as Array<{
+    slug: string;
+    levels?: Array<{ code: string; name: string }>;
+    publishedSubSubjectCount?: number;
+    robotsIndex?: boolean | null;
+  }>,
   /** The published specializations, or the error reading them gives. */
   specializations: [] as
     | Array<{
@@ -37,6 +42,7 @@ const api = vi.hoisted(() => ({
         levels: Array<{ code: string; name: string }>;
         shortDescription?: string | null;
         overview?: string | null;
+        robotsIndex?: boolean | null;
       }>
     | Error,
   specializationReads: [] as Array<Record<string, string>>,
@@ -60,6 +66,17 @@ const api = vi.hoisted(() => ({
       }
     | Error
     | null,
+  /** Every field in every destination, or the error reading them gives. */
+  countryFieldPages: [] as
+    | Array<{
+        countrySlug: string;
+        subjectSlug: string;
+        specializationSlug: string | null;
+        programmes: number;
+        updatedAt: string;
+      }>
+    | Error,
+  countryFieldReads: 0,
 }));
 
 /* A list served a page at a time, as the API serves it: `limit` rows a page
@@ -124,6 +141,11 @@ vi.mock('@/lib/catalog', () => ({
     if (!api.levelIndex) throw new Error('404');
     return api.levelIndex;
   },
+  getCountryFieldPages: async () => {
+    api.countryFieldReads += 1;
+    if (api.countryFieldPages instanceof Error) throw api.countryFieldPages;
+    return api.countryFieldPages;
+  },
 }));
 
 const { default: sitemap } = await import('./sitemap');
@@ -152,6 +174,8 @@ beforeEach(() => {
   api.courseLevels = ['FOUNDATION', 'PATHWAY', 'UG', 'PG', 'MBA', 'PHD'].map((code) => ({ code }));
   /* Read, with nothing written. */
   api.levelIndex = { rows: [], templateRobotsIndex: null };
+  api.countryFieldPages = [];
+  api.countryFieldReads = 0;
 });
 
 const paths = async () =>
@@ -464,5 +488,123 @@ describe('level pages in the sitemap', () => {
     const all = await paths();
     expect(all.filter((path) => path === '/subjects/computing/bachelors')).toHaveLength(1);
     expect(all.filter((path) => path === '/subjects/computing')).toHaveLength(1);
+  });
+});
+
+/**
+ * A field in one destination -- /study-abroad/{country}/{subject} and its
+ * specializations -- had no place in the sitemap. They come from one read
+ * of the pages the site renders, and go out as their pages index them.
+ */
+describe('fields in a destination in the sitemap', () => {
+  const rows = [
+    { countrySlug: 'japan', subjectSlug: 'law', specializationSlug: null, programmes: 4, updatedAt: '2026-10-10T00:00:00.000Z' },
+    { countrySlug: 'japan', subjectSlug: 'law', specializationSlug: 'tax-law', programmes: 0, updatedAt: '2026-10-12T00:00:00.000Z' },
+    { countrySlug: 'zambia', subjectSlug: 'law', specializationSlug: null, programmes: 0, updatedAt: '2026-10-11T00:00:00.000Z' },
+  ];
+  const fieldPaths = async () =>
+    (await paths()).filter((path) => /^\/study-abroad\/[^/]+\/law(?:\/|$)/.test(path));
+
+  /* The API lists a destination's fields only where its guide is public --
+     the same gate as the destination list, region and all -- so every
+     destination named in these rows is a listed one too. */
+  beforeEach(() => {
+    api.countries = [...api.countries, { slug: 'japan' }];
+  });
+
+  it('announces each one the site renders, with when it last changed, from one read', async () => {
+    api.countryFieldPages = rows;
+    const entries = await sitemap();
+    const found = entries.filter((entry) => /\/study-abroad\/[^/]+\/law/.test(entry.url));
+    expect(found.map((entry) => [new URL(entry.url).pathname, entry.lastModified])).toEqual([
+      ['/study-abroad/japan/law', '2026-10-10T00:00:00.000Z'],
+      ['/study-abroad/japan/law/tax-law', '2026-10-12T00:00:00.000Z'],
+      ['/study-abroad/zambia/law', '2026-10-11T00:00:00.000Z'],
+    ]);
+    expect(api.countryFieldReads).toBe(1);
+  });
+
+  /* The page is indexed at its bare address whether or not anything is
+     listed there yet, so the sitemap does not second-guess it. */
+  it('announces one with nothing listed yet, as its page indexes it', async () => {
+    api.countryFieldPages = [rows[2]];
+    expect(await fieldPaths()).toEqual(['/study-abroad/zambia/law']);
+  });
+
+  it('keeps everything else when they cannot be read', async () => {
+    api.subjects = [{ slug: 'law' }];
+    api.countryFieldPages = new Error('503');
+    const all = await paths();
+    expect(all.filter((path) => /^\/study-abroad\/[^/]+\/law/.test(path))).toEqual([]);
+    expect(all).toContain('/study-abroad/united-kingdom');
+    expect(all).toContain('/subjects/law');
+  });
+
+  it('announces each one once', async () => {
+    api.countryFieldPages = [rows[0], rows[0]];
+    expect(await fieldPaths()).toEqual(['/study-abroad/japan/law']);
+  });
+});
+
+/**
+ * A subject or specialization whose own SEO says noindex: its page obeys
+ * it, and so do its level pages -- a subject's no covers its
+ * specializations' level pages too. The sitemap used to announce them all,
+ * since the list rows did not say.
+ */
+describe('a field whose own robots setting says no', () => {
+  const UG = { code: 'UG', name: "Bachelor's" };
+  const at = (count: number, specializationSlug: string | null = null, subjectSlug = 'computing') =>
+    Array.from({ length: count }, (_, index) => ({
+      slug: `${subjectSlug}-${specializationSlug ?? 'none'}-${index}`,
+      universitySlug: 'university-of-warwick',
+      countrySlug: 'united-kingdom',
+      updatedAt: '2026-10-05T00:00:00.000Z',
+      subjectSlug,
+      specializationSlug,
+      levelCode: 'UG',
+    }));
+  const underComputing = async () =>
+    (await paths()).filter((path) => path.startsWith('/subjects/computing'));
+
+  beforeEach(() => {
+    api.subjects = [{ slug: 'computing', levels: [UG], publishedSubSubjectCount: 1 }];
+    api.specializations = [
+      { slug: 'ai', subject: { slug: 'computing' }, levels: [UG], shortDescription: 'Machines that learn.' },
+    ];
+    api.addresses = [...at(3), ...at(3, 'ai')];
+  });
+
+  it('announces all of them while nothing says no, or a row does not say', async () => {
+    const expected = [
+      '/subjects/computing',
+      '/subjects/computing/specializations',
+      '/subjects/computing/ai',
+      '/subjects/computing/bachelors',
+      '/subjects/computing/ai/bachelors',
+    ];
+    expect(await underComputing()).toEqual(expected);
+    api.subjects[0].robotsIndex = null;
+    (api.specializations as Array<{ robotsIndex?: boolean | null }>)[0].robotsIndex = true;
+    expect(await underComputing()).toEqual(expected);
+  });
+
+  it('leaves out a subject’s page and every level page under it when the subject says no', async () => {
+    api.subjects[0].robotsIndex = false;
+    /* The specialization's own page obeys its own setting alone, and the
+       list of specializations is not the subject's page. */
+    expect(await underComputing()).toEqual([
+      '/subjects/computing/specializations',
+      '/subjects/computing/ai',
+    ]);
+  });
+
+  it('leaves out a specialization’s page and its level pages when it says no', async () => {
+    (api.specializations as Array<{ robotsIndex?: boolean | null }>)[0].robotsIndex = false;
+    expect(await underComputing()).toEqual([
+      '/subjects/computing',
+      '/subjects/computing/specializations',
+      '/subjects/computing/bachelors',
+    ]);
   });
 });

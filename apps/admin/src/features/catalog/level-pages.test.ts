@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   LEVEL_PAGE_MIN_FAQS,
+  LEVELS_COLUMN_TITLE,
+  listedLevelNames,
   levelPageBytes,
   levelPageEditorHref,
   levelPageFaqBlank,
@@ -152,6 +154,16 @@ describe('levelPagePayload', () => {
     expect(payload.seo).not.toHaveProperty('expectedUpdatedAt');
   });
 
+  /* The API keeps a robots-only record: the page stays out of search
+     engines with nothing written, and its title and description fall back. */
+  it('sends a robots tick taken off on its own, with no title or description', () => {
+    const payload = levelPagePayload({ content: blank, faqs: [], seo: { ...blankUnifiedSeo, robotsIndex: false }, intent: 'draft', page: null });
+    expect(payload.seo).toEqual(expect.objectContaining({ robotsIndex: false, robotsFollow: true }));
+    expect(payload.seo?.seoTitle).toBeUndefined();
+    expect(payload.seo?.metaDescription).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(payload.seo))).toEqual({ robotsIndex: false, robotsFollow: true });
+  });
+
   it('sends the FAQs in the order levelPageFaqs gives them', () => {
     const faqs = [row('B', '1'), row('A', '0')];
     expect(levelPagePayload({ content: blank, faqs, seo: blankUnifiedSeo, intent: 'draft', page: null }).faqs).toEqual(levelPageFaqs(faqs));
@@ -159,5 +171,31 @@ describe('levelPagePayload', () => {
 
   it('measures the body in bytes, as the proxy does', () => {
     expect(levelPageBytes({ a: 'é' })).toBe(JSON.stringify({ a: 'é' }).length + 1);
+  });
+});
+
+/* The admin lists' Levels column shows what the site offers a record at, not
+   only its own ticks: a subject with no ticks whose specializations tick
+   Bachelor's read "—" in the list and "Bachelor's" on the site. */
+describe('listedLevelNames', () => {
+  const ug = { id: 'lvl-ug', code: 'UG', name: "Bachelor's" };
+  const pg = { id: 'lvl-pg', code: 'PG', name: "Master's" };
+
+  it('lists the offered levels, in the order sent', () => {
+    expect(listedLevelNames({ offeredLevels: [ug, pg], courseLevels: [] })).toEqual(["Bachelor's", "Master's"]);
+  });
+
+  it('says nothing is offered when the offered set is empty, whatever is ticked', () => {
+    expect(listedLevelNames({ offeredLevels: [], courseLevels: [pg] })).toEqual([]);
+  });
+
+  it('falls back to the ticks when the row does not carry the offered set', () => {
+    expect(listedLevelNames({ courseLevels: [pg] })).toEqual(["Master's"]);
+    expect(listedLevelNames({})).toEqual([]);
+  });
+
+  it('explains where the levels come from', () => {
+    expect(LEVELS_COLUMN_TITLE.subject).toMatch(/ticked on it.*specializations.*courses/);
+    expect(LEVELS_COLUMN_TITLE.specialization).toMatch(/ticked on it.*courses/);
   });
 });

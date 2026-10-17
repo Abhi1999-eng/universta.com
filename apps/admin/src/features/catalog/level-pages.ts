@@ -1,7 +1,7 @@
-import type { LevelPageDetail, LevelPageOwner, LevelPageStatus, LevelSource } from './catalog.types';
+import type { CatalogLevel, LevelPageDetail, LevelPageOwner, LevelPageStatus, LevelSource, OfferedLevel } from './catalog.types';
 import { faqBlank, faqUsed, type FaqDraft } from './editorial/ContentBlocks';
 import { richTextOrEmpty } from '@/features/shared/rich-text-value';
-import { seoPayload, unifiedSeoConfigured, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
+import { seoPayload, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 
 /**
  * What the level-pages card and the level-page editor share: where each one
@@ -19,7 +19,7 @@ export const LEVEL_PAGE_MIN_FAQS = 3;
 /** The most FAQs one page saves; the API refuses more. */
 export const LEVEL_PAGE_MAX_FAQS = 30;
 /** The admin's proxy refuses a body over 64 KB. Stopping a little short of it
- * lets the editor say what to shorten, rather than "Invalid catalog request". */
+ * lets the editor say what to shorten, rather than only that it is too large. */
 export const LEVEL_PAGE_MAX_BYTES = 60_000;
 
 export function ownerEditorHref(owner: LevelPageOwner, id: string) {
@@ -40,6 +40,21 @@ export function levelPagesAnchor(owner: LevelPageOwner) {
 export function levelPageTitle(detail: Pick<LevelPageDetail, 'level' | 'subject' | 'specialization'>) {
   return `${detail.level.name} in ${detail.specialization?.name ?? detail.subject.name}`;
 }
+
+/** The levels a row of the admin subject or specialization list shows: the
+ * ones the site offers it at, which is more than its own ticks -- a subject
+ * with no ticks of its own whose specializations tick Bachelor's read "—"
+ * here and "Bachelor's" on the site. A row from an API that does not send
+ * the offered set yet falls back to the ticks. */
+export function listedLevelNames(row: { offeredLevels?: OfferedLevel[]; courseLevels?: CatalogLevel[] }): string[] {
+  return (row.offeredLevels ?? row.courseLevels ?? []).map((level) => level.name);
+}
+
+/** The tooltip on the lists' Levels column: where those levels come from. */
+export const LEVELS_COLUMN_TITLE: Record<LevelPageOwner, string> = {
+  subject: 'The study levels the site offers each subject at: the levels ticked on it, the levels ticked on its published specializations, and the levels of its published courses.',
+  specialization: 'The study levels the site offers each specialization at: the levels ticked on it and the levels of its published courses.',
+};
 
 const SOURCE_LABELS: Record<LevelSource, string> = {
   TICKED: 'Ticked here',
@@ -106,7 +121,9 @@ export function levelPageFaqs(faqs: FaqDraft[]) {
  *
  * - The FAQ list replaces the stored one whole, so a removed row is simply
  *   left out and no FAQ ids are sent: they change on every save.
- * - SEO left blank is sent as null, which removes a stored record.
+ * - SEO left blank, with both robots ticks on, is sent as null, which
+ *   removes a stored record. A robots tick taken off with nothing written
+ *   is sent as a record of its own (see unifiedSeoWanted).
  * - `expectedUpdatedAt` is the page's version, or null before the first save,
  *   which tells the API "there is no page yet": a page another tab wrote in
  *   the meantime is then refused as changed rather than overwritten.
@@ -131,7 +148,7 @@ export function levelPagePayload({
     careersNote: richTextOrEmpty(content.careersNote),
     status,
     faqs: levelPageFaqs(faqs),
-    seo: unifiedSeoConfigured(seo) ? seoPayload(seo) : null,
+    seo: unifiedSeoWanted(seo) ? seoPayload(seo) : null,
     expectedUpdatedAt: page?.updatedAt ?? null,
   };
 }

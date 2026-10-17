@@ -175,4 +175,58 @@ describe('same-origin catalog BFF', () => {
     const blocked = await proxyCatalogRoute(request('/api/v1/admin/continents/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'continents:delete:id');
     expect(((await blocked.json()) as { error: { details: unknown } }).error.details).toBeNull();
   });
+
+  /* A subject's delete refused for its courses carries two counts, so the
+     admin can say whether live courses or deleted ones are in the way. */
+  it('passes the course counts of a refused subject delete, and nothing else', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'SUBJECT_IN_USE', message: 'raw', details: { liveCourses: 1.7, deletedCourses: 3, courses: [{ name: 'leak' }] } }, requestId: 'use-1' })));
+    const blocked = await proxyCatalogRoute(request('/api/v1/admin/subjects/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'subjects:delete:id');
+    expect(blocked.status).toBe(409);
+    const payload = (await blocked.json()) as { error: { message: string; details: unknown } };
+    expect(payload.error.message).toBe('A subject referenced by courses cannot be deleted');
+    expect(payload.error.details).toEqual({ liveCourses: 1, deletedCourses: 3 });
+    expect(JSON.stringify(payload)).not.toContain('leak');
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'SUBJECT_IN_USE', message: 'raw', details: { liveCourses: 'two' } }, requestId: 'use-2' })));
+    const malformed = await proxyCatalogRoute(request('/api/v1/admin/subjects/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'subjects:delete:id');
+    expect(((await malformed.json()) as { error: { details: unknown } }).error.details).toBeNull();
+  });
+
+  /* Over 64 KB is refused here, before the API. It used to answer as
+     VALIDATION_ERROR -- "Invalid catalog request" -- which said nothing about
+     size; the API's own 413 shares the same wording. */
+  it('says a body over 64 KB is too large, by its length or its declared length', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(upstream()); vi.stubGlobal('fetch', fetchMock);
+    const huge = JSON.stringify({ name: 'Computing', overview: 'x'.repeat(70 * 1024) });
+    const tooLarge = await proxyCatalogRoute(request('/api/v1/admin/subjects/id', { method: 'PATCH', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: huge }), 'subjects:update:id');
+    expect(tooLarge.status).toBe(413);
+    const payload = (await tooLarge.json()) as { error: { code: string; message: string } };
+    expect(payload.error).toMatchObject({ code: 'REQUEST_TOO_LARGE', message: 'This page is too large to save in one go. Shorten the longest text or split it.' });
+    const declared = await proxyCatalogRoute(request('/api/v1/admin/subjects/id', { method: 'PATCH', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json', 'content-length': String(65 * 1024) }, body: '{}' }), 'subjects:update:id');
+    expect(declared.status).toBe(413);
+    expect(((await declared.json()) as { error: { code: string } }).error.code).toBe('REQUEST_TOO_LARGE');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(413, { data: null, meta: null, error: { code: 'REQUEST_TOO_LARGE', message: 'raw', details: null }, requestId: 'big-1' })));
+    const upstreamTooLarge = await proxyCatalogRoute(request('/api/v1/admin/subjects/id', { method: 'PATCH', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'subjects:update:id');
+    expect(((await upstreamTooLarge.json()) as { error: { message: string } }).error.message).toBe('This page is too large to save in one go. Shorten the longest text or split it.');
+  });
+
+  /* The SEO of a subject, a specialization and a course saves against the
+     version its editor read: the row's updatedAt, or null for "there was
+     none". Both must reach the API, and a refusal must say what happened. */
+  it('forwards the SEO version, null included, and names a stale one', async () => {
+    for (const [operation, path] of [['subjects-seo:put:id', '/api/v1/admin/subjects/id/seo'], ['specializations-seo:put:id', '/api/v1/admin/specializations/id/seo'], ['courses-seo:put:id', '/api/v1/admin/courses/id/seo']] as const) {
+      const fetchMock = vi.fn().mockResolvedValue(upstream(200, { data: { id: 'seo-1' }, meta: null, error: null, requestId: 'seo' })); vi.stubGlobal('fetch', fetchMock);
+      await proxyCatalogRoute(request(path, { method: 'PUT', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: JSON.stringify({ robotsIndex: false, robotsFollow: true, expectedUpdatedAt: null }) }), operation);
+      const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+      expect(url.pathname).toBe(path);
+      /* Robots alone, with no title or description, travels as it is. */
+      expect(JSON.parse(init.body as string)).toEqual({ robotsIndex: false, robotsFollow: true, expectedUpdatedAt: null });
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'SEO_STALE_VERSION', message: 'raw', details: null }, requestId: 'seo-stale' })));
+    const stale = await proxyCatalogRoute(request('/api/v1/admin/subjects/id/seo', { method: 'PUT', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: JSON.stringify({ seoTitle: 'T', metaDescription: 'D', expectedUpdatedAt: '2026-10-17T10:00:00.000Z' }) }), 'subjects-seo:put:id');
+    expect(stale.status).toBe(409);
+    expect(((await stale.json()) as { error: { code: string; message: string } }).error).toMatchObject({ code: 'SEO_STALE_VERSION', message: 'The SEO changed in another session. Reload before saving' });
+  });
 });

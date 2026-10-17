@@ -5,7 +5,7 @@ import type { ResolvedSeo } from './seo-management';
 const baseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
 async function request<T>(path: string): Promise<{ data: T; meta: PageMeta }> { const response = await fetch(new URL(`/api/v1${path}`, baseUrl), { cache: 'no-store', headers: { accept: 'application/json' } }); const body = await response.json() as Envelope<T>; if (!response.ok || body.error || body.data === null) throw new Error(body.error?.message ?? 'Catalog service unavailable'); return { data: body.data, meta: (body.meta ?? { page: 1, limit: 100, total: Array.isArray(body.data) ? body.data.length : 0, totalPages: 1 }) as PageMeta }; }
 export interface Media { id: string; url: string; alt: string | null; title: string | null; width: number | null; height: number | null; }
-export interface Subject { id: string; name: string; slug: string; shortDescription: string | null; overview: string | null; iconMedia: Media | null; listingMedia: Media | null; heroMedia: Media | null; featured: boolean; displayOrder: number; publishedCourseCount: number; publishedSubSubjectCount: number; availableCountryCount: number; /** The levels the subject is offered at, as the API counts them on list and detail rows: its ticks, its published specializations' levels and the levels of its published courses -- the rule its level pages follow. */ levels?: Array<{ code: string | null; name: string }>; }
+export interface Subject { id: string; name: string; slug: string; shortDescription: string | null; overview: string | null; iconMedia: Media | null; listingMedia: Media | null; heroMedia: Media | null; featured: boolean; displayOrder: number; publishedCourseCount: number; publishedSubSubjectCount: number; availableCountryCount: number; /** The levels the subject is offered at, as the API counts them on list and detail rows: its ticks, its published specializations' levels and the levels of its published courses -- the rule its level pages follow. */ levels?: Array<{ code: string | null; name: string }>; /** On list rows: the subject's own robots setting, as an editor saved it on its SEO; null with none saved. A row from an older API leaves it out. Its page obeys it, so the sitemap does too. */ robotsIndex?: boolean | null; }
 export interface SubSubject { id: string; name: string; slug: string; shortDescription: string | null; overview: string | null; iconMedia: Media | null; listingMedia: Media | null; featured: boolean; displayOrder: number; }
 export interface SubjectTest { code: string; name: string; countries: number; minScore: string | null; }
 /** A specialization as its subject's page sees it: the branch, plus how many
@@ -77,7 +77,7 @@ export interface CourseFilterOptions {
 export function getSubjects(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<Subject[]>(`/subjects${query ? `?${query}` : ''}`); }
 export function getSubject(slug: string) { return request<SubjectDetail>(`/subjects/${encodeURIComponent(slug)}`).then((result) => result.data); }
 export interface SpecializationDetail extends SubSubject { subject: { id: string; name: string; slug: string; shortDescription: string | null; /** The levels ticked on the subject, which a specialization with none of its own is offered at. */ offeredLevels?: Array<{ id: string; name: string; code: string | null }> }; seo?: Seo | null; /** The levels an editor ticked; the level block shows these even where nothing is filed yet. */ offeredLevels?: Array<{ id: string; name: string; code: string | null }>; /** Ticked, or standing behind a published course. */ levels?: Array<{ id: string; name: string; code: string | null }>; /** Its own content, as a course has. */ contentSections?: Array<{ id: string; sectionKey: string; sectionType: string; heading: string | null; subheading: string | null; bodyJson: { paragraphs?: unknown } | null; media: Media | null; displayOrder: number }>; faqs?: Array<{ id: string; question: string; answer: string }>; siblings: Array<{ id: string; name: string; slug: string }>; /** Every other published specialization of the subject; `siblings` is capped at twelve. */ siblingTotal?: number | null; countries: Array<{ id: string; name: string; slug: string; iso2Code: string | null }>; courses: Course[]; }
-export interface SpecializationRow extends SubSubject { subject: { id: string; name: string; slug: string }; publishedCourseCount: number; levels: Array<{ id: string; name: string; code: string | null }>; }
+export interface SpecializationRow extends SubSubject { subject: { id: string; name: string; slug: string }; publishedCourseCount: number; levels: Array<{ id: string; name: string; code: string | null }>; /** The specialization's own robots setting, as an editor saved it on its SEO; null with none saved. A row from an older API leaves it out. */ robotsIndex?: boolean | null; }
 export function getSpecialization(subjectSlug: string, slug: string) { return request<SpecializationDetail>(`/subjects/${encodeURIComponent(subjectSlug)}/specializations/${encodeURIComponent(slug)}`).then((result) => result.data); }
 export function getSpecializations(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<SpecializationRow[]>(`/specializations${query ? `?${query}` : ''}`); }
 export function getCourseLevels() { return request<Array<{ id: string; code: string; name: string; description: string | null; educationOrder?: number | null; displayOrder?: number | null }>>('/course-levels').then((result) => result.data); }
@@ -146,3 +146,19 @@ export function getLevelPageIndex() {
   });
 }
 export type LevelPageIndex = Awaited<ReturnType<typeof getLevelPageIndex>>;
+
+/** A country subject or country specialization page the site renders: a
+ *  published destination and a published field, the pair's link active.
+ *  `programmes` counts the published offerings for the pair there. */
+export interface CountryFieldPageRow {
+  countrySlug: string;
+  subjectSlug: string;
+  specializationSlug: string | null;
+  programmes: number;
+  updatedAt: string;
+}
+/** Every country subject and country specialization page, in one read, for
+ *  the sitemap. */
+export function getCountryFieldPages() {
+  return request<CountryFieldPageRow[]>('/country-field-pages').then((result) => result.data);
+}

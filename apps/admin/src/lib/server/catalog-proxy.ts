@@ -116,6 +116,9 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_RELATED_INVALID: 'Related courses cannot include the source course or duplicates',
   COURSE_RELATED_NOT_FOUND: 'One or more related courses were not found',
   COURSE_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
+  /* A subject's, a specialization's or a course's SEO saves against the
+     version its editor read, so two sessions no longer overwrite each other. */
+  SEO_STALE_VERSION: 'The SEO changed in another session. Reload before saving',
   SUB_SUBJECT_SEO_STALE_VERSION: 'SEO metadata changed in another session. Reload before saving',
   COUNTRY_INVALID: 'A selected destination does not exist. Reload and choose again',
   SUB_SUBJECT_SECTION_DUPLICATE: 'This content section key is already used on this specialization',
@@ -151,7 +154,10 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   DATABASE_UNAVAILABLE: 'The catalogue database could not be reached. Nothing was saved; try again shortly',
   INTERNAL_ERROR: 'The catalogue service failed on this request. Nothing was saved; try again, and report the code below if it repeats',
   RATE_LIMITED: 'Too many requests in a row. Wait a moment and try again',
-  REQUEST_TOO_LARGE: 'This record is too large to send. Shorten the longest text fields and save again',
+  /* Both this proxy's own 64 KB limit and the API's answer with it. It used
+     to come back from the proxy as VALIDATION_ERROR -- "Invalid catalog
+     request" -- which said nothing about size at all. */
+  REQUEST_TOO_LARGE: 'This page is too large to save in one go. Shorten the longest text or split it.',
   BAD_REQUEST: 'The catalogue rejected this request as malformed',
   CONFLICT: 'This conflicts with a record that already exists',
   COUNTRY_SUBJECT_INVALID: 'One or more selected subjects are unavailable. Reload and choose them again',
@@ -623,9 +629,33 @@ function dependencyDetails(details: unknown): DependencyDetails | null {
   };
 }
 
+/* A subject delete refused for its courses says how many still use it and
+ * how many deleted ones still point at it. A deleted course is kept in the
+ * database and the admin lists none, so without the second count an editor
+ * was told "referenced by courses" about a subject whose course list was
+ * empty. Two counts, rebuilt into a fixed shape like the one above. */
+export interface SubjectInUseDetails {
+  liveCourses: number;
+  deletedCourses: number;
+}
+
+function courseCount(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : null;
+}
+
+function subjectInUseDetails(details: unknown): SubjectInUseDetails | null {
+  if (!details || typeof details !== 'object') return null;
+  const raw = details as { liveCourses?: unknown; deletedCourses?: unknown };
+  const liveCourses = courseCount(raw.liveCourses);
+  const deletedCourses = courseCount(raw.deletedCourses);
+  if (liveCourses === null || deletedCourses === null) return null;
+  return { liveCourses, deletedCourses };
+}
+
 export function safeDetails(code: string, details: unknown): unknown {
   if (code === 'VALIDATION_ERROR' || READINESS_CODE.test(code)) return details;
   if (code === 'CONTINENT_IN_USE') return dependencyDetails(details);
+  if (code === 'SUBJECT_IN_USE') return subjectInUseDetails(details);
   return null;
 }
 
@@ -675,9 +705,9 @@ export async function proxyCatalogRoute(request: NextRequest, operation: Catalog
   let body: string | undefined;
   if (details.method !== 'GET') {
     const declaredLength = Number(request.headers.get('content-length') ?? 0);
-    if (declaredLength > MAX_BODY_BYTES) return errorResponse(413, requestId, 'VALIDATION_ERROR');
+    if (declaredLength > MAX_BODY_BYTES) return errorResponse(413, requestId, 'REQUEST_TOO_LARGE');
     const raw = await request.text();
-    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return errorResponse(413, requestId, 'VALIDATION_ERROR');
+    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return errorResponse(413, requestId, 'REQUEST_TOO_LARGE');
     let parsed: unknown = {};
     if (raw.trim()) {
       try {

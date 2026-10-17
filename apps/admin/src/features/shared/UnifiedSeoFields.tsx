@@ -56,7 +56,8 @@ export function canonicalInputError(value: string): string | null {
 }
 
 /** Whether anything has been written in the SEO fields. The robots ticks
- * do not count: on their own they are not a record the API will store. */
+ * do not count: written text is what makes the title and the description
+ * required, and the country editor saves no row without it. */
 export function unifiedSeoConfigured(value: UnifiedSeoDraft): boolean {
   return Boolean(
     value.seoTitle.trim() ||
@@ -70,6 +71,16 @@ export function unifiedSeoConfigured(value: UnifiedSeoDraft): boolean {
     value.twitterDescription.trim() ||
     value.twitterMediaId,
   );
+}
+
+/** Whether a subject, specialization, course or level page needs an SEO row
+ * saved: something written, or a robots tick taken off. The API stores a row with
+ * only the robots ticks -- no title or description, which then fall back as
+ * if there were no row -- so unticking "Robots index" on its own keeps the
+ * page out of search engines. Before, that row was never sent: nothing was
+ * stored and the tick came back on reload. */
+export function unifiedSeoWanted(value: UnifiedSeoDraft): boolean {
+  return unifiedSeoConfigured(value) || !value.robotsIndex || !value.robotsFollow;
 }
 
 /** A stored SEO record as the fields show it; no record is the blank form. */
@@ -174,8 +185,10 @@ export function UnifiedSeoFields({ value, onChange, media, note, noun = 'Country
 export function seoPayload(value: UnifiedSeoDraft) {
   const optional = (input: string) => (input.trim() ? input.trim() : undefined);
   return {
-    seoTitle: value.seoTitle.trim(),
-    metaDescription: value.metaDescription.trim(),
+    /* Left out when blank: a robots-only row has neither (see
+       unifiedSeoWanted). Every other save requires both before it is sent. */
+    seoTitle: optional(value.seoTitle),
+    metaDescription: optional(value.metaDescription),
     canonicalUrl: optional(value.canonicalUrl),
     focusKeyword: optional(value.focusKeyword),
     ogTitle: optional(value.ogTitle),

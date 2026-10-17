@@ -224,6 +224,15 @@ export function SubjectGuide({
               </div>
             </div>
           </div>
+          {/* The hero image an editor set on the subject, under its name
+              and its two ways in; a subject without one keeps the hero as
+              it was. */}
+          {subject.heroMedia?.url ? (
+            <figure className="subjhero__media">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={subject.heroMedia.url} alt={subject.heroMedia.alt ?? ''} loading="eager" />
+            </figure>
+          ) : null}
         </div>
       </section>
 

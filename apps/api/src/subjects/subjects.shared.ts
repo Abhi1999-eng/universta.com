@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { catalogConflict } from '../catalog/catalog.errors';
+import { isUniqueConstraintError } from '../catalog/catalog.constants';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SeoMetadataDto } from './dto/subject.dto';
@@ -99,6 +100,13 @@ export function validUrl(value: string | undefined | null): boolean {
   return !value || /^https?:\/\//i.test(value) || /^\/(?!\/)\S*$/.test(value);
 }
 
+/* A row saved without a title or a description keeps them as empty text
+   (the columns are not nullable); every reader is handed null, which the
+   resolver and the admin's editor both read as "not written". */
+export function seoText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
 /** An SEO row as the admin and the resolver read it. */
 export function toSeo(row: any) {
   return row
@@ -106,8 +114,8 @@ export function toSeo(row: any) {
         id: row.id,
         ownerType: row.ownerType,
         ownerId: row.ownerId,
-        seoTitle: row.seoTitle,
-        metaDescription: row.metaDescription,
+        seoTitle: seoText(row.seoTitle),
+        metaDescription: seoText(row.metaDescription),
         canonicalUrl: row.canonicalUrl,
         focusKeyword: row.focusKeyword,
         ogTitle: row.ogTitle,
@@ -148,8 +156,9 @@ export function seoData(
   return {
     ownerId,
     ownerType,
-    seoTitle: dto.seoTitle.trim(),
-    metaDescription: dto.metaDescription.trim(),
+    /* Empty when not written: a robots-only row (see SeoMetadataDto). */
+    seoTitle: dto.seoTitle?.trim() ?? '',
+    metaDescription: dto.metaDescription?.trim() ?? '',
     canonicalUrl: dto.canonicalUrl?.trim() || null,
     focusKeyword: dto.focusKeyword?.trim() || null,
     ogTitle: dto.ogTitle?.trim() || null,
@@ -163,4 +172,72 @@ export function seoData(
     schemaJson: dto.schemaJson as Prisma.InputJsonValue | undefined,
     hreflangJson: dto.hreflangJson as Prisma.InputJsonValue | undefined,
   };
+}
+
+export const SEO_STALE_MESSAGE =
+  'The SEO changed in another session. Reload before saving';
+
+/**
+ * Saves a record's SEO row, checked against the version its editor read.
+ *
+ * `expectedUpdatedAt` is the row's `updatedAt` from that read: null says
+ * "there was no row", so a row written since is a conflict, and a version
+ * for a row deleted since is one too. Left out, nothing is checked and the
+ * row is upserted as it always was. The check is made by the write itself
+ * -- the update lands only while the row is still the one read -- so two
+ * saves that both passed the read cannot both land.
+ *
+ * Returns the row as it was before (for the audit log) and as it is now,
+ * with its pictures, for the response.
+ */
+export async function writeSeoRow(
+  prisma: PrismaService,
+  ownerType: string,
+  ownerId: string,
+  dto: SeoMetadataDto,
+) {
+  const key = { ownerType_ownerId: { ownerType, ownerId } };
+  const data = seoData(ownerId, ownerType, dto);
+  const include = {
+    ogMedia: { select: MEDIA_SELECT },
+    twitterMedia: { select: MEDIA_SELECT },
+  };
+  const previous = await prisma.seoMetadata.findUnique({ where: key });
+  const expected = dto.expectedUpdatedAt;
+  if (expected === undefined) {
+    const row = await prisma.seoMetadata.upsert({
+      where: key,
+      create: data,
+      update: data,
+      include,
+    });
+    return { previous, row };
+  }
+  const stale =
+    expected === null
+      ? previous !== null
+      : !previous ||
+        previous.updatedAt.getTime() !== new Date(expected).getTime();
+  if (stale) throw catalogConflict('SEO_STALE_VERSION', SEO_STALE_MESSAGE);
+  if (previous) {
+    const updated = await prisma.seoMetadata.updateMany({
+      where: { id: previous.id, updatedAt: previous.updatedAt },
+      data,
+    });
+    const row =
+      updated.count === 1
+        ? await prisma.seoMetadata.findUnique({ where: key, include })
+        : null;
+    if (!row) throw catalogConflict('SEO_STALE_VERSION', SEO_STALE_MESSAGE);
+    return { previous, row };
+  }
+  try {
+    const row = await prisma.seoMetadata.create({ data, include });
+    return { previous, row };
+  } catch (error) {
+    /* Two first saves at once: the second finds the row the first made. */
+    if (isUniqueConstraintError(error))
+      throw catalogConflict('SEO_STALE_VERSION', SEO_STALE_MESSAGE);
+    throw error;
+  }
 }

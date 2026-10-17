@@ -106,6 +106,32 @@ describe('the level pages worth announcing', () => {
 
   /* Without the written pages no page's robots setting is known, and one
      that says noindex would go out on its programmes alone. */
+  it('leaves out every level page of a field whose own robots setting says no', () => {
+    const tally = new Map([['computing||UG', 3], ['computing|ai|UG', 3], ['computing|ml|UG', 3]]);
+    const specializations = [
+      { slug: 'ai', subject: { slug: 'computing' }, levels: [UG], robotsIndex: false },
+      { slug: 'ml', subject: { slug: 'computing' }, levels: [UG], robotsIndex: null },
+    ];
+    expect(paths({ subjects: [{ slug: 'computing', levels: [UG], robotsIndex: true }], specializations, tally })).toEqual([
+      '/subjects/computing/bachelors',
+      '/subjects/computing/ml/bachelors',
+    ]);
+    /* A subject's no covers its specializations' level pages, as the page
+       reads the subject's setting beside the specialization's. */
+    expect(paths({ subjects: [{ slug: 'computing', levels: [UG], robotsIndex: false }], specializations, tally })).toEqual([]);
+  });
+
+  it('judges a field whose row does not say as before', () => {
+    const tally = new Map([['computing||UG', 3], ['computing|ai|UG', 3]]);
+    expect(
+      paths({
+        subjects: [{ slug: 'computing', levels: [UG] }],
+        specializations: [{ slug: 'ai', subject: { slug: 'computing' }, levels: [UG] }],
+        tally,
+      }),
+    ).toEqual(['/subjects/computing/bachelors', '/subjects/computing/ai/bachelors']);
+  });
+
   it('announces none while the written pages cannot be read', () => {
     const subjects = [{ slug: 'computing', levels: [UG] }];
     const tally = new Map([['computing||UG', 5]]);

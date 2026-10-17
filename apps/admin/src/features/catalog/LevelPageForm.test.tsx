@@ -429,12 +429,36 @@ describe('checks before saving', () => {
     expect(sentPayload().faqs.map((row) => [row.question, row.displayOrder])).toEqual([['Is it in English?', 0], ['Is there a field trip?', 1]]);
   });
 
-  it('will not drop an unticked Robots index without a title and description to keep it with', async () => {
+  /* Unticking "Robots index" with nothing written keeps the page out of
+     search engines; the API stores robots alone. It used to be refused
+     until a title and a description were written as well. */
+  it('saves an unticked Robots index on its own, and keeps it on reading the page back', async () => {
     const user = userEvent.setup();
     render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
     await user.click(await screen.findByRole('checkbox', { name: 'Robots index' }));
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
-    expect(await screen.findByText('To keep this page out of search engines, also write its SEO title and meta description.')).toBeInTheDocument();
+
+    await waitFor(() => expect(mocks.saveLevelPage).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/To keep this page out of search engines/)).toBeNull();
+    expect(screen.queryByText('SEO title and meta description are both required when SEO is configured.')).toBeNull();
+    expect(JSON.parse(JSON.stringify(sentPayload().seo))).toEqual({ robotsIndex: false, robotsFollow: true });
+    expect(await screen.findByText('Draft saved. It stays off the site until you publish it.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Robots index' })).not.toBeChecked();
+
+    /* Ticked back on with nothing written, the record is removed. */
+    await user.click(screen.getByRole('checkbox', { name: 'Robots index' }));
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(mocks.saveLevelPage).toHaveBeenCalledTimes(2));
+    expect(sentPayload(1).seo).toBeNull();
+  });
+
+  it('still asks for both a title and a description once anything is written', async () => {
+    const user = userEvent.setup();
+    render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
+    await user.click(await screen.findByRole('checkbox', { name: 'Robots index' }));
+    await user.type(screen.getByRole('textbox', { name: 'Focus keyword' }), 'oceans');
+    fireEvent.submit(screen.getByRole('button', { name: 'Save draft' }).closest('form')!);
+    expect(await screen.findByText('SEO title and meta description are both required when SEO is configured.')).toBeInTheDocument();
     expect(mocks.saveLevelPage).not.toHaveBeenCalled();
   });
 

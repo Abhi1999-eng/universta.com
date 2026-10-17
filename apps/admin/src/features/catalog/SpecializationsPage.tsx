@@ -12,6 +12,7 @@ import {
 } from './catalog-client';
 import type { PageMeta, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
+import { LEVELS_COLUMN_TITLE, listedLevelNames } from './level-pages';
 import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
 import { useRouter } from 'next/navigation';
 import { useHandedOverToast } from '@/features/shared/Flash';
@@ -282,7 +283,7 @@ export function SpecializationsPage() {
                 <th scope="col" className="w-8"><SelectAllCheckbox checked={selection.allSelected} onChange={selection.toggleAll} /></th>
                 <th scope="col">Specialization</th>
                 <th scope="col">Subject</th>
-                <th scope="col">Levels</th>
+                <th scope="col"><span title={LEVELS_COLUMN_TITLE.specialization} className="cursor-help underline decoration-dotted underline-offset-4">Levels</span></th>
                 <th scope="col">Status</th>
                 <th scope="col">Updated</th>
                 <th scope="col" className="p-td-actions">Actions</th>
@@ -301,7 +302,7 @@ export function SpecializationsPage() {
                     {subjectDraft(row) ? (
                       <span
                         className="p-chip ml-2 align-middle text-xs"
-                        title="Its subject is a draft, so this specialization is not on the site. Publish the subject first."
+                        title={`Its subject is a draft, so this specialization is not on the site. Publish the subject first.${row.status === 'PUBLISHED' ? '' : ' Publishing the subject does not publish this specialization: publish it here or in its editor afterwards.'}`}
                       >
                         Subject is draft
                       </span>
@@ -321,8 +322,8 @@ export function SpecializationsPage() {
                     </Link>
                   </td>
                   <td>
-                    {row.courseLevels?.length ? (
-                      row.courseLevels.map((level) => level.name).join(', ')
+                    {listedLevelNames(row).length ? (
+                      listedLevelNames(row).join(', ')
                     ) : (
                       <span className="p-muted">—</span>
                     )}

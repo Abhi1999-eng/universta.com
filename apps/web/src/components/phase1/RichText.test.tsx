@@ -127,3 +127,172 @@ describe('a tag cut off at the end of a value', () => {
     expect(richTextToPlainText(value)).toBe('Scores must be < 6');
   });
 });
+
+/**
+ * Rich text usually reaches the page already sanitised by the API, its
+ * attribute values escaped. Escaping them again turned an image address's
+ * `&amp;` into `&amp;amp;`, which the browser reads as a different address.
+ * A value is now read as the browser reads it, checked as that, and written
+ * back once -- so sanitising twice is sanitising once.
+ */
+describe('sanitising what is already sanitised', () => {
+  const served = [
+    '<p><img src="https://cdn.example/a.jpg?w=640&amp;h=480" alt="Tom &amp; Jerry &quot;live&quot;"></p>',
+    '<p><a href="/courses?subject=law&amp;country=japan" rel="noopener noreferrer">Law in Japan</a></p>',
+    '<p>Fees &amp; funding, 3 &lt; 5</p>',
+    '<p><img src="/api/v1/media/a.webp" alt="caf&eacute;"></p>',
+    '<p><a href="https://example.com/?q=&amp;lt;b&amp;gt;">Q</a></p>',
+  ];
+
+  it.each(served)('changes nothing on a second pass over %s', (value) => {
+    const once = safeRichText(value);
+    expect(safeRichText(once)).toBe(once);
+  });
+
+  it('keeps an image address the API already escaped as it was', () => {
+    const once = safeRichText(served[0]);
+    expect(once).toContain('src="https://cdn.example/a.jpg?w=640&amp;h=480"');
+    expect(once).not.toContain('&amp;amp;');
+    const image = new DOMParser().parseFromString(once, 'text/html').querySelector('img');
+    expect(image?.getAttribute('src')).toBe('https://cdn.example/a.jpg?w=640&h=480');
+    expect(image?.getAttribute('alt')).toBe('Tom & Jerry "live"');
+  });
+
+  it('still escapes a raw "&" once, as before', () => {
+    expect(safeRichText('<img src="https://cdn.example/a.jpg?w=1&h=2" alt="A & B">')).toBe(
+      '<img src="https://cdn.example/a.jpg?w=1&amp;h=2" alt="A &amp; B">',
+    );
+  });
+
+  it('leaves an entity it does not know as the text it is', () => {
+    const image = new DOMParser()
+      .parseFromString(safeRichText(served[3]), 'text/html')
+      .querySelector('img');
+    expect(image?.getAttribute('alt')).toBe('caf&eacute;');
+  });
+});
+
+/**
+ * Reading entities in attribute values must not let an address past the
+ * check that the browser would then read as another: an encoded colon, an
+ * encoded second slash, or a tab or backslash the address parser drops or
+ * turns into a slash.
+ */
+describe('addresses that only look safe', () => {
+  const href = (value: string) =>
+    new DOMParser()
+      .parseFromString(safeRichText(value), 'text/html')
+      .querySelector('a')
+      ?.getAttribute('href') ?? null;
+
+  it.each([
+    '<a href="javascript&colon;alert(1)">x</a>',
+    '<a href="javascript&#58;alert(1)">x</a>',
+    '<a href="javascript&#x3A;alert(1)">x</a>',
+    '<a href="&#106;avascript:alert(1)">x</a>',
+  ])('keeps no script address from %s', (value) => {
+    expect(href(value)).toBeNull();
+    expect(parsed(safeRichText(value)).live).toEqual([]);
+  });
+
+  it.each([
+    '<a href="/&#47;evil.example">x</a>',
+    '<a href="/&#x2F;evil.example">x</a>',
+    '<a href="/\\evil.example">x</a>',
+    '<a href="/&#92;evil.example">x</a>',
+    '<a href="/\t/evil.example">x</a>',
+    '<a href="/&#9;/evil.example">x</a>',
+    '<a href="/&#10;/evil.example">x</a>',
+  ])('links nowhere from %s, which a browser reads as another host', (value) => {
+    expect(href(value)).toBeNull();
+  });
+
+  it('keeps an internal link whose query the API escaped', () => {
+    expect(href('<a href="/courses?subject=law&amp;level=pg">x</a>')).toBe('/courses?subject=law&level=pg');
+  });
+
+  it('reads an encoded https address as the address it is', () => {
+    expect(href('<a href="https&#58;//example.com/a">x</a>')).toBe('https://example.com/a');
+  });
+
+  it('adds no image from an encoded script address', () => {
+    expect(safeRichText('<img src="javascript&#58;alert(1)" alt="x">')).toBe('');
+  });
+});
+
+/**
+ * What is already stored. The admin's and the API's sanitisers each escaped
+ * an attribute the editor had escaped already, so a stored link carries
+ * `&amp;` and some carry `&amp;amp;`. The page reads one layer, as the
+ * browser would, and checks the address it is left with. It never reads a
+ * second: a value decoded until nothing changed could be checked as one
+ * address and reach the browser as another, and `&amp;lt;` written as
+ * text would become a tag.
+ */
+describe('attribute values as they are stored', () => {
+  const element = (html: string, selector: string) =>
+    new DOMParser().parseFromString(html, 'text/html').querySelector(selector);
+
+  it('gives a stored link with "&amp;" a plain "&" in its address', () => {
+    const stored = '<p><a href="https://x.y/?a=1&amp;b=2">Both</a></p>';
+    const html = renderToStaticMarkup(<RichText value={stored} />);
+    expect(html).toContain('href="https://x.y/?a=1&amp;b=2"');
+    expect(html).not.toContain('&amp;amp;');
+    expect(element(html, 'a')?.getAttribute('href')).toBe('https://x.y/?a=1&b=2');
+    expect(safeRichText(safeRichText(stored))).toBe(safeRichText(stored));
+  });
+
+  /* `/m.png` is not a Media Library address, so the image is dropped
+     whatever its query says: only https and /media/ or /api/v1/media/
+     images are kept. */
+  it('drops a stored image outside the Media Library, "&amp;amp;" or not', () => {
+    expect(safeRichText('<img src="/m.png?x=1&amp;amp;y=2">')).toBe('');
+    expect(renderToStaticMarkup(<RichText value={'<p>A</p><img src="/m.png?x=1&amp;amp;y=2">'} />)).toBe(
+      '<div class="rich-text"><p>A</p></div>',
+    );
+  });
+
+  /* Two layers stored, one read: the address keeps the one layer the
+     stored text still has, literally, and a second pass over the page's
+     markup leaves it there. Mending it is the stored row's repair, not a
+     second decode here. */
+  it('reads one layer of a stored "&amp;amp;", and only one', () => {
+    const stored = '<img src="/media/m.png?x=1&amp;amp;y=2" alt="Tom &amp;amp; Jerry">';
+    const once = safeRichText(stored);
+    expect(once).toBe('<img src="/media/m.png?x=1&amp;amp;y=2" alt="Tom &amp;amp; Jerry">');
+    expect(element(once, 'img')?.getAttribute('src')).toBe('/media/m.png?x=1&amp;y=2');
+    expect(element(once, 'img')?.getAttribute('alt')).toBe('Tom &amp; Jerry');
+    expect(safeRichText(once)).toBe(once);
+
+    const link = safeRichText('<a href="https://x.y/?a=1&amp;amp;b=2">x</a>');
+    expect(element(link, 'a')?.getAttribute('href')).toBe('https://x.y/?a=1&amp;b=2');
+    expect(safeRichText(link)).toBe(link);
+  });
+
+  /* The check is made on the value after its one decode, and that value
+     is what the browser is given: a script address or another host
+     escaped twice is still text after one read, and never becomes the
+     address the browser follows. */
+  it.each([
+    '<a href="javascript&amp;#58;alert(1)">x</a>',
+    '<a href="javascript&amp;colon;alert(1)">x</a>',
+    '<a href="&amp;#106;avascript:alert(1)">x</a>',
+    '<a href="https&amp;#58;//evil.example">x</a>',
+  ])('links nowhere from the twice-escaped %s', (value) => {
+    const html = safeRichText(value);
+    expect(element(html, 'a')?.getAttribute('href') ?? null).toBeNull();
+    expect(parsed(html).live).toEqual([]);
+  });
+
+  it('keeps a twice-escaped slash on this site', () => {
+    const html = safeRichText('<a href="/&amp;#47;evil.example">x</a>');
+    const href = element(html, 'a')?.getAttribute('href') ?? '';
+    expect(href).toBe('/&#47;evil.example');
+    expect(new URL(href, 'https://universta.com').host).toBe('universta.com');
+    expect(safeRichText(html)).toBe(html);
+  });
+
+  it('adds no image from a twice-escaped script address', () => {
+    expect(safeRichText('<img src="javascript&amp;#58;alert(1)" alt="x">')).toBe('');
+  });
+});

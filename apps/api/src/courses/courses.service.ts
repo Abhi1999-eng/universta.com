@@ -45,7 +45,7 @@ import type {
 } from './dto/course.dto';
 import { COURSE_ENGLISH_TESTS } from './dto/course.dto';
 import type { SeoMetadataDto } from '../subjects/dto/subject.dto';
-import { seoData, validUrl } from '../subjects/subjects.shared';
+import { seoText, validUrl, writeSeoRow } from '../subjects/subjects.shared';
 
 const MEDIA_SELECT = {
   id: true,
@@ -1656,14 +1656,15 @@ export class CoursesService {
         'SEO_URL_INVALID',
         'Canonical URL must be a site path beginning with / or an http(s) URL',
       );
-    const current = await this.prisma.seoMetadata.findUnique({
-      where: { ownerType_ownerId: { ownerType: 'COURSE', ownerId: id } },
-    });
-    const row = await this.prisma.seoMetadata.upsert({
-      where: { ownerType_ownerId: { ownerType: 'COURSE', ownerId: id } },
-      create: this.seoData(id, dto),
-      update: this.seoData(id, dto),
-    });
+    /* Written whole, as a subject's is: both course editors send the whole
+       form, so a field cleared there is cleared here. Checked against the
+       version the editor read, when it sends one. */
+    const { previous: current, row } = await writeSeoRow(
+      this.prisma,
+      'COURSE',
+      id,
+      dto,
+    );
     await writeAudit(
       this.prisma,
       request,
@@ -2662,8 +2663,9 @@ export class CoursesService {
           id: row.id,
           ownerType: row.ownerType,
           ownerId: row.ownerId,
-          seoTitle: row.seoTitle,
-          metaDescription: row.metaDescription,
+          /* Null when not written: a robots-only row keeps them empty. */
+          seoTitle: seoText(row.seoTitle),
+          metaDescription: seoText(row.metaDescription),
           canonicalUrl: row.canonicalUrl,
           focusKeyword: row.focusKeyword,
           ogTitle: row.ogTitle,
@@ -2695,14 +2697,6 @@ export class CoursesService {
         },
       }),
     );
-  }
-  /* Written whole, as a subject's is: both course editors send the whole
-     form, so a field cleared there is cleared here. */
-  private seoData(
-    ownerId: string,
-    dto: SeoMetadataDto,
-  ): Prisma.SeoMetadataUncheckedCreateInput {
-    return seoData(ownerId, 'COURSE', dto);
   }
   private courseJsonLd(course: any, seo: any) {
     return {

@@ -5,7 +5,9 @@ import {
   blankUnifiedSeo,
   canonicalInputError,
   seoDraftFromRecord,
+  seoPayload,
   unifiedSeoConfigured,
+  unifiedSeoWanted,
   UnifiedSeoFields,
   type UnifiedSeoDraft,
 } from './UnifiedSeoFields';
@@ -78,5 +80,37 @@ describe('UnifiedSeoFields', () => {
   it('still says Country where no noun is given', () => {
     draw({ value: { ...blankUnifiedSeo, focusKeyword: 'canada' } });
     expect(screen.getByRole('alert')).toHaveTextContent('before this Country can be saved.');
+  });
+});
+
+/* Unticking "Robots index" on its own is a choice an editor makes: it keeps a
+   thin page out of search engines. The subject, specialization and course
+   SEO stores such a row with no title or description, so the editors save
+   it -- before, it was never sent, and the tick came back on reload. */
+describe('robots-only SEO', () => {
+  it('wants a row for a robots tick taken off, with nothing written', () => {
+    expect(unifiedSeoWanted(blankUnifiedSeo)).toBe(false);
+    expect(unifiedSeoWanted({ ...blankUnifiedSeo, robotsIndex: false })).toBe(true);
+    expect(unifiedSeoWanted({ ...blankUnifiedSeo, robotsFollow: false })).toBe(true);
+    expect(unifiedSeoWanted({ ...blankUnifiedSeo, focusKeyword: 'oceans' })).toBe(true);
+    /* Written text is still what makes the title and description required. */
+    expect(unifiedSeoConfigured({ ...blankUnifiedSeo, robotsIndex: false })).toBe(false);
+  });
+
+  it('sends no title or description when none is written', () => {
+    const payload = seoPayload({ ...blankUnifiedSeo, robotsIndex: false });
+    expect(payload).toMatchObject({ robotsIndex: false, robotsFollow: true });
+    expect(payload.seoTitle).toBeUndefined();
+    expect(payload.metaDescription).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(payload))).toEqual({ robotsIndex: false, robotsFollow: true });
+  });
+
+  it('still sends a written title and description, trimmed', () => {
+    expect(seoPayload({ ...blankUnifiedSeo, seoTitle: ' Oceans ', metaDescription: ' Study the sea. ' })).toMatchObject({ seoTitle: 'Oceans', metaDescription: 'Study the sea.' });
+  });
+
+  it('reads a robots-only row back as blank text with the tick off', () => {
+    const row = { seoTitle: null, metaDescription: null, canonicalUrl: null, focusKeyword: null, ogTitle: null, ogDescription: null, ogMediaId: null, twitterTitle: null, twitterDescription: null, twitterMediaId: null, robotsIndex: false, robotsFollow: true } as unknown as EditorialSeo;
+    expect(seoDraftFromRecord(row)).toEqual({ ...blankUnifiedSeo, robotsIndex: false });
   });
 });

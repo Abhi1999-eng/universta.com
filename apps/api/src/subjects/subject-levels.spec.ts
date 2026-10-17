@@ -163,6 +163,10 @@ function prisma(
       findMany: async () => [],
     },
     countryCourse: { findMany: async () => [] },
+    /* The public lists read each record's own robots setting, and the
+       bulk template's for records without one. */
+    seoMetadata: { findMany: async () => [] },
+    seoBulkTemplate: { findUnique: async () => null },
     mediaAsset: { count: async () => 0 },
     auditLog: { create: async () => null },
   } as unknown as PrismaService;

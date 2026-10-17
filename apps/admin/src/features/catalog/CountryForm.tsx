@@ -61,6 +61,8 @@ import {
 import { CatalogDialog } from "./CatalogDialog";
 import { FieldLabel } from "@/features/shared/FieldLabel";
 import { UnifiedEditorActions } from "@/features/shared/UnifiedEditorActions";
+import { EnterSubmitGuard } from "@/features/shared/EnterSubmitGuard";
+import { showCreatedAddress } from "@/features/shared/created-address";
 import { variablesForContext } from "@/features/shared/variable-autocomplete";
 import type { EditorEntityContext } from "@/features/shared/useEntityAutocomplete";
 import { nextAutoSlug, slugFromText } from "@/lib/slug";
@@ -788,7 +790,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             slug: nextAutoSlug({
               sourceValue: String(value),
               currentSlug: current.slug,
-              existingRecord: Boolean(countryId),
+              existingRecord: Boolean(countryId || record),
               manuallyOverridden: slugEdited,
             }),
           }
@@ -1247,8 +1249,10 @@ export function CountryForm({ countryId }: { countryId?: string }) {
        * whole sequence succeeds. Holding the pre-write token made that retry
        * fail as "changed in another session" when nothing else had touched it.
        * It also pins a newly created country's id, so a retry updates it
-       * instead of trying to create the same slug twice. */
+       * instead of trying to create the same slug twice, and puts its address
+       * in the address bar, so a reload opens it rather than a blank form. */
       setRecord(saved);
+      if (!record) showCreatedAddress(`/countries/${saved.id}`);
       /* Every save, not only the one that created the row. A profile card the
        * author filled in is part of what the button in front of them says it
        * saves, and skipping it here is what made Work and visa values vanish on
@@ -1278,7 +1282,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           tone: "success",
           message: `${saved.name} published successfully.`,
         });
-        router.push("/countries");
+        /* A country made in this session holds this history entry under the
+         * Create route (showCreatedAddress); pushing would leave it behind,
+         * and Back would show a blank Create form at its address. */
+        if (countryId) router.push("/countries");
+        else router.replace("/countries");
         return;
       }
       setNotice({
@@ -1391,6 +1399,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
       ) : null}
       <EditorSectionNav root={formEl} />
       <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+        <EnterSubmitGuard />
         <Card
           eyebrow="Country"
           title="Identity & listing"

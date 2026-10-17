@@ -171,7 +171,10 @@ function prisma({
     countryCourse: { findMany: async () => [], groupBy: async () => [] },
     countrySubject: { findMany: async () => [] },
     countryLanguageRequirement: { findMany: async () => [] },
-    seoMetadata: { findUnique: async () => null },
+    /* The lists read each record's own robots setting too, and the bulk
+       template's for records without one. */
+    seoMetadata: { findUnique: async () => null, findMany: async () => [] },
+    seoBulkTemplate: { findUnique: async () => null },
   } as unknown as PrismaService;
 }
 

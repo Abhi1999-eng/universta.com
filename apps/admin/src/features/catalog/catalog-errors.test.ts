@@ -4,6 +4,7 @@ import {
   catalogErrorText,
   catalogFieldErrors,
   catalogFieldLabel,
+  subjectInUseText,
 } from './catalog-errors';
 import { fieldErrorsFromServer } from './country-field-rules';
 
@@ -112,5 +113,36 @@ describe('putting a message back on its own field', () => {
         details: [{ field: 'tagline', message: 'A tagline is required to publish.' }],
       }),
     ).toEqual({ tagline: 'A tagline is required to publish.' });
+  });
+});
+
+/* A subject delete refused for its courses: the API sends how many still
+   use it and how many deleted ones still point at it. A deleted course is
+   kept in the database and listed nowhere in the admin, so the second count
+   is what explains an empty course list. */
+describe('subjectInUseText', () => {
+  const inUse = (details: unknown) => ({ name: 'CatalogMutationError', message: 'A subject referenced by courses cannot be deleted', code: 'SUBJECT_IN_USE', status: 409, details });
+
+  it('counts the courses that still use the subject', () => {
+    expect(subjectInUseText(inUse({ liveCourses: 3, deletedCourses: 0 }))).toBe('3 courses still use this subject. Move them to another subject first.');
+    expect(subjectInUseText(inUse({ liveCourses: 1, deletedCourses: 0 }))).toBe('1 course still uses this subject. Move it to another subject first.');
+  });
+
+  it('says plainly when only deleted courses are in the way', () => {
+    expect(subjectInUseText(inUse({ liveCourses: 0, deletedCourses: 2 }))).toBe('2 deleted courses still point at this subject; they must be removed from the database first.');
+    expect(subjectInUseText(inUse({ liveCourses: 0, deletedCourses: 1 }))).toBe('1 deleted course still points at this subject; it must be removed from the database first.');
+  });
+
+  it('names both when both are in the way', () => {
+    expect(subjectInUseText(inUse({ liveCourses: 1, deletedCourses: 4 }))).toBe(
+      '1 course still uses this subject. Move it to another subject first. 4 deleted courses still point at this subject; they must be removed from the database first.',
+    );
+  });
+
+  it('leaves any other failure, or missing counts, to the headline', () => {
+    expect(subjectInUseText(inUse(null))).toBeNull();
+    expect(subjectInUseText(inUse({ liveCourses: 0, deletedCourses: 0 }))).toBeNull();
+    expect(subjectInUseText({ ...inUse({ liveCourses: 2, deletedCourses: 0 }), code: 'SUBJECT_STALE_VERSION' })).toBeNull();
+    expect(subjectInUseText(new Error('offline'))).toBeNull();
   });
 });

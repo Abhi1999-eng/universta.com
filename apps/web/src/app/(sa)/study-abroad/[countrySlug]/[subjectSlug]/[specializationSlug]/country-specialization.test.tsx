@@ -7,6 +7,9 @@ const fixture = vi.hoisted(() => ({
   /** Its ticks, and its ticks with its courses' levels, when a test says. */
   offered: null as unknown[] | null,
   levels: null as unknown[] | null,
+  /** The specialization's resolved SEO, as its detail serves it. */
+  seo: null as null | { metaDescription: string; source?: { description?: string } },
+  programmes: 0,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -53,6 +56,7 @@ vi.mock('@/lib/catalog', () => ({
     ...(fixture.levels ? { levels: fixture.levels } : {}),
     contentSections: fixture.sections,
     faqs: fixture.faqs,
+    seo: fixture.seo,
     siblings: [],
     siblingTotal: 0,
     countries: [],
@@ -66,13 +70,13 @@ vi.mock('@/lib/catalog', () => ({
 vi.mock('@/lib/phase1', () => ({
   phaseProgrammes: async () => ({
     data: [],
-    meta: { page: 1, limit: 18, total: 0, totalPages: 0 },
+    meta: { page: 1, limit: 18, total: fixture.programmes, totalPages: fixture.programmes ? 1 : 0 },
     facets: { countries: [], subjects: [], universities: [], cities: [], intakes: [], specializations: [] },
-    summary: { programmes: 0, universities: 0, cities: 0 },
+    summary: { programmes: fixture.programmes, universities: fixture.programmes ? 2 : 0, cities: 0 },
   }),
 }));
 
-const { default: Page } = await import('./page');
+const { default: Page, generateMetadata } = await import('./page');
 const render = async () => renderToStaticMarkup(await Page({
   params: Promise.resolve({
     countrySlug: 'japan',
@@ -112,6 +116,8 @@ beforeEach(() => {
   fixture.faqs = [];
   fixture.offered = null;
   fixture.levels = null;
+  fixture.seo = null;
+  fixture.programmes = 0;
 });
 
 describe('a specialization in a destination', () => {
@@ -171,5 +177,65 @@ describe('a specialization in a destination', () => {
     expect(section(html, 'level-phd')).toContain(
       'href="/subjects/computer-science-it/artificial-intelligence/phd"',
     );
+  });
+});
+
+/**
+ * The page's meta description was the specialization's short description,
+ * the same on every destination. Each destination now says its own.
+ */
+describe('the country specialization page’s description', () => {
+  const metadata = (search: Record<string, string> = {}) =>
+    generateMetadata({
+      params: Promise.resolve({
+        countrySlug: 'japan',
+        subjectSlug: 'computer-science-it',
+        specializationSlug: 'artificial-intelligence',
+      }),
+      searchParams: Promise.resolve(search),
+    });
+
+  it('names the specialization, its subject, the destination and what the page lists there', async () => {
+    fixture.programmes = 5;
+    fixture.faqs = [{ id: 'f1', question: 'Is it hard?', answer: 'Yes.', status: 'ACTIVE' }];
+    expect((await metadata()).description).toBe(
+      'Study Artificial Intelligence in Japan, a specialization within Computer Science & IT: 5 programmes at 2 universities, the study levels it is offered at, answers to common questions and advice on applying.',
+    );
+  });
+
+  it('names no count where nothing is listed', async () => {
+    expect((await metadata()).description).toBe(
+      'Study Artificial Intelligence in Japan, a specialization within Computer Science & IT: the study levels it is offered at and advice on applying.',
+    );
+  });
+
+  /* The specialization's SEO description is written for its page across
+     every destination; after this one's name it read "Study Artificial
+     Intelligence in Japan. Compare Artificial Intelligence degrees
+     abroad". However it was written, the page says its own. */
+  it.each(['manual', 'bulk'])(
+    'says what the page lists here, not the specialization’s SEO description (%s)',
+    async (source) => {
+      fixture.programmes = 5;
+      fixture.faqs = [{ id: 'f1', question: 'Is it hard?', answer: 'Yes.', status: 'ACTIVE' }];
+      fixture.seo = {
+        metaDescription: 'Compare Artificial Intelligence degrees abroad.',
+        source: { description: source },
+      };
+      const description = (await metadata()).description;
+      expect(description).toBe(
+        'Study Artificial Intelligence in Japan, a specialization within Computer Science & IT: 5 programmes at 2 universities, the study levels it is offered at, answers to common questions and advice on applying.',
+      );
+      expect(description).not.toContain('abroad');
+    },
+  );
+
+  it('keeps its indexing as it was: whole, indexed with its canonical; narrowed, not', async () => {
+    const whole = await metadata();
+    expect(whole.robots).toBeUndefined();
+    expect(whole.alternates).toEqual({
+      canonical: '/study-abroad/japan/computer-science-it/artificial-intelligence',
+    });
+    expect((await metadata({ sort: 'name' })).robots).toEqual({ index: false, follow: true });
   });
 });

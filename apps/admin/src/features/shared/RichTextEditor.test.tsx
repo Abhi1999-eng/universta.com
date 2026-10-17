@@ -181,4 +181,79 @@ describe('sanitizeEditorHtml', () => {
     );
     expect(sanitizeEditorHtml('<img src="javascript:alert(1)">')).toBe('');
   });
+
+  /* Jodit hands its markup over already encoded. Escaping that again stored
+     `&amp;amp;`, one more layer on every blur, and the link or image went to
+     the wrong address. */
+  it('writes an encoded href, src and alt back with one layer of escaping', () => {
+    expect(sanitizeEditorHtml('<a href="https://example.com/?a=1&amp;b=2">x</a>')).toBe(
+      '<a href="https://example.com/?a=1&amp;b=2" rel="noopener noreferrer">x</a>',
+    );
+    expect(
+      sanitizeEditorHtml('<img src="https://cdn.example.org/a.jpg?w=1&amp;h=2" alt="Tom &amp; Jerry">'),
+    ).toBe('<img src="https://cdn.example.org/a.jpg?w=1&amp;h=2" alt="Tom &amp; Jerry">');
+    /* A bare `&`, as imported HTML may carry it, is escaped once too. */
+    expect(sanitizeEditorHtml('<a href="https://example.com/?a=1&b=2">x</a>')).toContain(
+      'href="https://example.com/?a=1&amp;b=2"',
+    );
+  });
+
+  it('changes nothing on a second pass, however often the field is left', () => {
+    const inputs = [
+      '<p><a href="https://example.com/?a=1&amp;b=2&#38;c=3">x</a></p>',
+      '<img src="/media/a.jpg?w=1&h=2" alt="Tom &amp; Jerry &quot;TJ&quot;">',
+      '<img src="https://cdn.example.org/a.jpg" alt="a &amp;lt; b &nbsp; &#0; c">',
+      '<a href="mailto:team@example.org?subject=Hi&amp;body=There">x</a>',
+    ];
+    for (const input of inputs) {
+      const once = sanitizeEditorHtml(input);
+      expect(sanitizeEditorHtml(once)).toBe(once);
+      expect(sanitizeEditorHtml(sanitizeEditorHtml(sanitizeEditorHtml(once)))).toBe(once);
+    }
+  });
+
+  /* What the browser reads back is the address the author typed, through
+     the editor's own serialisation and any number of blurs. */
+  it('keeps the address the browser reads through repeated edit cycles', () => {
+    const host = document.createElement('div');
+    const link = document.createElement('a');
+    link.setAttribute('href', 'https://example.com/?a=1&b=2');
+    link.textContent = 'x';
+    const image = document.createElement('img');
+    image.setAttribute('src', 'https://cdn.example.org/a.jpg?w=1&h=2');
+    image.setAttribute('alt', 'Tom & Jerry <3 "TJ"');
+    host.append(link, image);
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      host.innerHTML = sanitizeEditorHtml(host.innerHTML);
+      expect(host.querySelector('a')!.getAttribute('href')).toBe('https://example.com/?a=1&b=2');
+      expect(host.querySelector('img')!.getAttribute('src')).toBe('https://cdn.example.org/a.jpg?w=1&h=2');
+      expect(host.querySelector('img')!.getAttribute('alt')).toBe('Tom & Jerry <3 "TJ"');
+    }
+  });
+
+  /* One decode only: `&amp;lt;` is the text `&lt;`, not a `<`, and a value
+     stored with an extra layer keeps it rather than growing another. */
+  it('decodes an attribute once, never twice', () => {
+    expect(sanitizeEditorHtml('<img src="/media/a.jpg" alt="a &amp;lt; b">')).toBe(
+      '<img src="/media/a.jpg" alt="a &amp;lt; b">',
+    );
+    expect(sanitizeEditorHtml('<a href="https://example.com/?a=1&amp;amp;b=2">x</a>')).toContain(
+      'href="https://example.com/?a=1&amp;amp;b=2"',
+    );
+  });
+
+  /* The address checks read the decoded value, as the browser will. */
+  it('refuses an encoded script or off-site address once decoded', () => {
+    expect(sanitizeEditorHtml('<a href="&#106;avascript:alert(1)">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<a href="&#x6A;avascript:alert(1)">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<a href="&#9;javascript:alert(1)">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<a href="java&#9;script:alert(1)">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<a href="java&#x0A;script:alert(1)">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<img src="&#106;avascript:alert(1)">')).toBe('');
+    expect(sanitizeEditorHtml('<a href="&#47;&#47;evil.example">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<a href="//evil.example">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<a href="/\\evil.example">x</a>')).toBe('<a>x</a>');
+    expect(sanitizeEditorHtml('<img src="&#47;/evil.example/a.png">')).toBe('');
+  });
 });

@@ -36,10 +36,10 @@ import {
   actorId,
   assertActiveImages,
   media,
-  seoData,
   toSeo,
   validUrl,
   versionMatches,
+  writeSeoRow,
   type MediaRecord,
 } from './subjects.shared';
 import type {
@@ -168,6 +168,11 @@ const RESERVED_SUBJECT_SLUGS = new Set([
   'universities',
 ]);
 
+/* The most destination pages of fields one read of them lists. A sitemap
+   file holds ten times this (50,000 addresses), and the rest of the site
+   needs room in it too. */
+const COUNTRY_FIELD_PAGE_LIMIT = 5000;
+
 const SUB_SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
   listingMedia: { select: MEDIA_SELECT },
@@ -276,10 +281,51 @@ export class SubjectsService {
         take: query.limit,
       }),
     ]);
+    const robotsIndex = await this.listRobots(
+      'SUBJECT',
+      'subject',
+      rows.map((row) => row.id),
+    );
     return {
-      data: await Promise.all(rows.map((row) => this.toPublic(row))),
+      data: await Promise.all(
+        rows.map(async (row) => ({
+          ...(await this.toPublic(row)),
+          robotsIndex: robotsIndex(row.id),
+        })),
+      ),
       meta: paginationMeta(query.page, query.limit, total),
     };
+  }
+
+  /**
+   * Each record's robots setting, for a page of a public list, decided the
+   * way its own page decides it: what an editor set on its SEO, else the
+   * bulk template's setting for its kind, else null (the site's default
+   * then decides). The sitemap reads it to leave out a page kept out of
+   * search. A record with no SEO row used to read null here even where the
+   * template said noindex, so the sitemap announced a page that told search
+   * engines to skip it. Two reads for the page, not one per row.
+   */
+  private async listRobots(
+    ownerType: string,
+    entityType: 'subject' | 'specialization',
+    ids: string[],
+  ): Promise<(id: string) => boolean | null> {
+    if (!ids.length) return () => null;
+    const [rows, template] = await Promise.all([
+      this.prisma.seoMetadata.findMany({
+        where: { ownerType, ownerId: { in: ids } },
+        select: { ownerId: true, robotsIndex: true },
+      }),
+      this.prisma.seoBulkTemplate.findUnique({
+        where: { entityType },
+        select: { robotsIndex: true },
+      }),
+    ]);
+    const own = new Map(rows.map((row) => [row.ownerId, row.robotsIndex]));
+    const templateRobotsIndex =
+      typeof template?.robotsIndex === 'boolean' ? template.robotsIndex : null;
+    return (id) => own.get(id) ?? templateRobotsIndex;
   }
 
   /**
@@ -624,6 +670,53 @@ export class SubjectsService {
     return stats;
   }
 
+  /**
+   * The levels each record on a page of the admin lists is offered at, by
+   * the rule the site's pages follow: what is ticked (for a subject, on it
+   * and on its published specializations -- `ticked`, from the rows'
+   * include) and the levels of its published courses. Active levels only,
+   * in the order a student climbs them. The courses are one grouped read
+   * for the whole page and their levels one more, not a read per row.
+   */
+  private async offeredByRow(
+    key: 'subjectId' | 'subSubjectId',
+    rows: Array<{
+      id: string;
+      ticked: Array<OrderedLevel & { id: string }>;
+    }>,
+  ) {
+    const ids = rows.map((row) => row.id);
+    const taught = ids.length
+      ? await this.prisma.course.groupBy({
+          by: ['subjectId', 'subSubjectId', 'courseLevelId'],
+          where: {
+            ...(key === 'subjectId'
+              ? { subjectId: { in: ids } }
+              : { subSubjectId: { in: ids } }),
+            ...TAUGHT,
+          },
+        })
+      : [];
+    const known = await this.levelsById(
+      taught.map((entry) => entry.courseLevelId),
+    );
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        dedupeLevels([
+          ...row.ticked,
+          ...taught.flatMap((entry) => {
+            const level =
+              entry[key] === row.id ? known.get(entry.courseLevelId) : null;
+            return level ? [level] : [];
+          }),
+        ])
+          .sort(byEducationOrder)
+          .map(publicLevel),
+      ]),
+    );
+  }
+
   /** The levels behind a set of ids, with what they are ordered by. */
   private async levelsById(ids: string[]) {
     const unique = [...new Set(ids)];
@@ -838,7 +931,14 @@ export class SubjectsService {
     ]);
     /* How many programmes each branch on this page has, and which levels teach
        them -- one grouped query for the page rather than one per row. */
-    const branchStats = await this.branchStats(rows.map((row) => row.id));
+    const [branchStats, robotsIndex] = await Promise.all([
+      this.branchStats(rows.map((row) => row.id)),
+      this.listRobots(
+        SUB_SUBJECT_SEO_OWNER,
+        'specialization',
+        rows.map((row) => row.id),
+      ),
+    ]);
     return {
       data: await Promise.all(
         rows.map(async (row) => ({
@@ -848,6 +948,7 @@ export class SubjectsService {
             name: row.subject.name,
             slug: row.subject.slug,
           },
+          robotsIndex: robotsIndex(row.id),
           publishedCourseCount: branchStats.get(row.id)?.count ?? 0,
           levels: await this.unionLevels(
             this.tickedLevels(row.courseLevels),
@@ -857,6 +958,219 @@ export class SubjectsService {
       ),
       meta: { total, page, limit: take },
     };
+  }
+
+  /**
+   * Every destination page of a field the sitemap may list --
+   * /study-abroad/<country>/<subject> and /study-abroad/<country>/<subject>/
+   * <specialization> -- for a published destination and a published field
+   * (a specialization under a published subject) where the destination
+   * lists the field or teaches it. Listing is the country's link to it;
+   * teaching is a live programme there, which counts even where nobody
+   * ticked the link.
+   *
+   * `programmes` is how many live programmes are filed under the field at
+   * that destination's universities, the list its page shows: live
+   * themselves, at a live university in that country. `updatedAt` is the
+   * latest of the country, the field and those programmes.
+   *
+   * A fixed number of reads for the whole catalogue: the programmes are
+   * counted in one grouped read, per university and course, and put in
+   * their places with one read of each. At most COUNTRY_FIELD_PAGE_LIMIT
+   * rows, the ones with programmes kept first; `total` counts them all.
+   */
+  async publicCountryFieldPages() {
+    const now = new Date();
+    const published = { status: 'PUBLISHED', deletedAt: null };
+    /* A destination the public country reads open: published, and filed
+       under no region or under an active one. A published country under an
+       archived region has no page of its own, so neither do its fields --
+       listing them sent the sitemap to addresses that answer 404. */
+    const liveCountry = {
+      ...published,
+      OR: [
+        { continentId: null },
+        { continent: { status: 'ACTIVE', deletedAt: null } },
+      ],
+    } satisfies Prisma.CountryWhereInput;
+    const stamp = { id: true, slug: true, updatedAt: true } as const;
+    const [
+      countries,
+      subjects,
+      specializations,
+      subjectLinks,
+      specializationLinks,
+      offerings,
+    ] = await Promise.all([
+      this.prisma.country.findMany({ where: liveCountry, select: stamp }),
+      this.prisma.subject.findMany({ where: published, select: stamp }),
+      this.prisma.subSubject.findMany({
+        where: { ...published, subject: published },
+        select: { ...stamp, subjectId: true },
+      }),
+      this.prisma.countrySubject.findMany({
+        where: { country: liveCountry, subject: published },
+        select: { countryId: true, subjectId: true },
+      }),
+      this.prisma.countrySubSubject.findMany({
+        where: {
+          country: liveCountry,
+          subSubject: { ...published, subject: published },
+        },
+        select: { countryId: true, subSubjectId: true },
+      }),
+      this.prisma.universityCourseOffering.groupBy({
+        by: ['universityId', 'genericCourseId'],
+        where: {
+          ...liveAt(now),
+          university: { ...liveAt(now), country: liveCountry },
+          genericCourse: { subject: published },
+        },
+        _count: { _all: true },
+        _max: { updatedAt: true },
+      }),
+    ]);
+    const [universities, courses] = offerings.length
+      ? await Promise.all([
+          this.prisma.university.findMany({
+            where: {
+              id: {
+                in: [...new Set(offerings.map((row) => row.universityId))],
+              },
+            },
+            select: { id: true, slug: true, countryId: true },
+          }),
+          this.prisma.course.findMany({
+            where: {
+              id: {
+                in: [...new Set(offerings.map((row) => row.genericCourseId))],
+              },
+            },
+            select: { id: true, subjectId: true, subSubjectId: true },
+          }),
+        ])
+      : [[], []];
+
+    /* Only addresses the router can open: a hand-typed slug anywhere in
+       one is left out, and so is a subject slugged like one of the fixed
+       pages under a destination. */
+    const countryById = new Map(
+      countries
+        .filter((row) => isCanonicalPublicSlug(row.slug))
+        .map((row) => [row.id, row]),
+    );
+    const subjectById = new Map(
+      subjects
+        .filter(
+          (row) =>
+            isCanonicalPublicSlug(row.slug) &&
+            !RESERVED_SUBJECT_SLUGS.has(row.slug),
+        )
+        .map((row) => [row.id, row]),
+    );
+    const specializationById = new Map(
+      specializations
+        .filter(
+          (row) =>
+            isCanonicalPublicSlug(row.slug) && subjectById.has(row.subjectId),
+        )
+        .map((row) => [row.id, row]),
+    );
+
+    /* Programmes per destination and field. A course under a
+       specialization counts for its subject's page too, as that page's
+       list shows it. A university whose own address the router cannot
+       open is not listed there, so its programmes are not counted. */
+    const universityById = new Map(universities.map((row) => [row.id, row]));
+    const courseById = new Map(courses.map((row) => [row.id, row]));
+    const taught = new Map<
+      string,
+      { programmes: number; latest: Date | null }
+    >();
+    const count = (key: string, programmes: number, latest: Date | null) => {
+      const entry = taught.get(key) ?? { programmes: 0, latest: null };
+      entry.programmes += programmes;
+      if (latest && (!entry.latest || latest > entry.latest))
+        entry.latest = latest;
+      taught.set(key, entry);
+    };
+    for (const row of offerings) {
+      const university = universityById.get(row.universityId);
+      const course = courseById.get(row.genericCourseId);
+      if (!university || !course || !isCanonicalPublicSlug(university.slug))
+        continue;
+      count(
+        `${university.countryId}|${course.subjectId}|`,
+        row._count._all,
+        row._max.updatedAt,
+      );
+      if (course.subSubjectId)
+        count(
+          `${university.countryId}|${course.subjectId}|${course.subSubjectId}`,
+          row._count._all,
+          row._max.updatedAt,
+        );
+    }
+
+    const keys = new Set<string>([
+      ...subjectLinks.map((row) => `${row.countryId}|${row.subjectId}|`),
+      ...specializationLinks.flatMap((row) => {
+        const specialization = specializationById.get(row.subSubjectId);
+        return specialization
+          ? [`${row.countryId}|${specialization.subjectId}|${row.subSubjectId}`]
+          : [];
+      }),
+      ...taught.keys(),
+    ]);
+    const latest = (...dates: Array<Date | null | undefined>) =>
+      new Date(
+        Math.max(...dates.map((date) => (date ? date.getTime() : 0))),
+      ).toISOString();
+    const rows = [...keys].flatMap((key) => {
+      const [countryId, subjectId, specializationId] = key.split('|');
+      const country = countryById.get(countryId);
+      const subject = subjectById.get(subjectId);
+      const specialization = specializationId
+        ? specializationById.get(specializationId)
+        : null;
+      if (
+        !country ||
+        !subject ||
+        specialization === undefined ||
+        (specialization && specialization.subjectId !== subject.id)
+      )
+        return [];
+      const here = taught.get(key);
+      return [
+        {
+          countrySlug: country.slug,
+          subjectSlug: subject.slug,
+          specializationSlug: specialization?.slug ?? null,
+          programmes: here?.programmes ?? 0,
+          updatedAt: latest(
+            country.updatedAt,
+            subject.updatedAt,
+            specialization?.updatedAt,
+            here?.latest,
+          ),
+        },
+      ];
+    });
+    const byAddress = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+      a.countrySlug.localeCompare(b.countrySlug) ||
+      a.subjectSlug.localeCompare(b.subjectSlug) ||
+      (a.specializationSlug ?? '').localeCompare(b.specializationSlug ?? '');
+    const kept =
+      rows.length > COUNTRY_FIELD_PAGE_LIMIT
+        ? [...rows]
+            .sort(
+              (a, b) =>
+                Number(b.programmes > 0) - Number(a.programmes > 0) ||
+                byAddress(a, b),
+            )
+            .slice(0, COUNTRY_FIELD_PAGE_LIMIT)
+        : rows;
+    return { data: kept.sort(byAddress), total: rows.length };
   }
 
   async publicDetail(slug: string) {
@@ -1060,8 +1374,25 @@ export class SubjectsService {
         take: query.limit,
       }),
     ]);
+    /* What the site offers each at, beside its own ticks: the list's
+       "Levels" column read the ticks alone and disagreed with the site. */
+    const offered = await this.offeredByRow(
+      'subjectId',
+      rows.map((row) => ({
+        id: row.id,
+        ticked: [
+          ...activeTicks(row.courseLevels),
+          ...(row.subSubjects ?? [])
+            .filter((child) => child.status === 'PUBLISHED')
+            .flatMap((child) => activeTicks(child.courseLevels)),
+        ].map((link) => link.courseLevel),
+      })),
+    );
     return {
-      data: rows.map((row) => this.toAdmin(row)),
+      data: rows.map((row) => ({
+        ...this.toAdmin(row),
+        offeredLevels: offered.get(row.id) ?? [],
+      })),
       meta: paginationMeta(query.page, query.limit, total),
     };
   }
@@ -1319,14 +1650,25 @@ export class SubjectsService {
       'SUBJECT_STALE_VERSION',
     );
     /* Every course row counts, a deleted one too: a course still points at
-       its subject, and the subject cannot leave the database under it. */
-    const count = await this.prisma.course.count({
-      where: { subjectId: id },
-    });
-    if (count)
+       its subject, and the subject cannot leave the database under it. The
+       refusal says how many of each, because the admin's course list hides
+       deleted courses: a subject whose only courses were deleted looked
+       unused there and still could not be deleted, with nothing saying
+       why. The deleted ones are not removed here -- that is a choice for
+       an editor, not a side effect of deleting something else. */
+    const [liveCourses, deletedCourses] = await Promise.all([
+      this.prisma.course.count({ where: { subjectId: id, deletedAt: null } }),
+      this.prisma.course.count({
+        where: { subjectId: id, deletedAt: { not: null } },
+      }),
+    ]);
+    if (liveCourses || deletedCourses)
       throw catalogConflict(
         'SUBJECT_IN_USE',
-        'A subject referenced by courses cannot be deleted',
+        liveCourses
+          ? 'A subject referenced by courses cannot be deleted'
+          : 'Deleted courses still point at this subject; they must be removed first',
+        { liveCourses, deletedCourses },
       );
     /* Deleting removes the subject from the database for good, with its
        specializations and everything filed under them -- levels, sections,
@@ -1440,8 +1782,18 @@ export class SubjectsService {
         take: query.limit,
       }),
     ]);
+    const offered = await this.offeredByRow(
+      'subSubjectId',
+      rows.map((row) => ({
+        id: row.id,
+        ticked: activeTicks(row.courseLevels).map((link) => link.courseLevel),
+      })),
+    );
     return {
-      data: rows.map((row) => this.toSubSubjectAdmin(row)),
+      data: rows.map((row) => ({
+        ...this.toSubSubjectAdmin(row),
+        offeredLevels: offered.get(row.id) ?? [],
+      })),
       meta: paginationMeta(query.page, query.limit, total),
     };
   }
@@ -1473,15 +1825,13 @@ export class SubjectsService {
         'SEO_URL_INVALID',
         'Canonical URL must be a site path beginning with / or an http(s) URL',
       );
-    const key = { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id };
-    const current = await this.prisma.seoMetadata.findUnique({
-      where: { ownerType_ownerId: key },
-    });
-    const row = await this.prisma.seoMetadata.upsert({
-      where: { ownerType_ownerId: key },
-      create: this.seoData(id, SUB_SUBJECT_SEO_OWNER, dto),
-      update: this.seoData(id, SUB_SUBJECT_SEO_OWNER, dto),
-    });
+    /* Checked against the version the editor read, when it sends one. */
+    const { previous: current, row } = await writeSeoRow(
+      this.prisma,
+      SUB_SUBJECT_SEO_OWNER,
+      id,
+      dto,
+    );
     await writeAudit(
       this.prisma,
       request,
@@ -2282,14 +2632,13 @@ export class SubjectsService {
         'SEO_URL_INVALID',
         'Canonical URL must be a site path beginning with / or an http(s) URL',
       );
-    const current = await this.prisma.seoMetadata.findUnique({
-      where: { ownerType_ownerId: { ownerType: 'SUBJECT', ownerId: id } },
-    });
-    const row = await this.prisma.seoMetadata.upsert({
-      where: { ownerType_ownerId: { ownerType: 'SUBJECT', ownerId: id } },
-      create: this.seoData(id, 'SUBJECT', dto),
-      update: this.seoData(id, 'SUBJECT', dto),
-    });
+    /* Checked against the version the editor read, when it sends one. */
+    const { previous: current, row } = await writeSeoRow(
+      this.prisma,
+      'SUBJECT',
+      id,
+      dto,
+    );
     await writeAudit(
       this.prisma,
       request,
@@ -2813,13 +3162,5 @@ export class SubjectsService {
         },
       }),
     );
-  }
-
-  private seoData(
-    ownerId: string,
-    ownerType: string,
-    dto: SeoMetadataDto,
-  ): Prisma.SeoMetadataUncheckedCreateInput {
-    return seoData(ownerId, ownerType, dto);
   }
 }

@@ -219,6 +219,42 @@ describe('first save child persistence', () => {
     expect(costCall[2].tuitionMin).toBe('9000');
   });
 
+  /* The country was already adopted once created; its address now follows
+     at once too, so a reload after a failed card opens it rather than a
+     blank form beside a half-saved draft. */
+  it('shows a new country at its own address once created, and retries as an update', async () => {
+    const addressBar = vi.spyOn(window.history, 'replaceState');
+    mocks.putCountryProfile.mockRejectedValueOnce(Object.assign(new Error('The currency must be a three-letter code such as EUR'), { code: 'PROFILE_CURRENCY_INVALID', status: 400, details: null }));
+    mocks.updateCountry.mockResolvedValue({ data: created });
+    await openNewCountry();
+    await userEvent.type(screen.getByLabelText(/^Country name/), 'Malta');
+    await userEvent.type(screen.getByLabelText(/^Tuition minimum/), '9000');
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+    await waitFor(() => expect(mocks.putCountryProfile).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(addressBar).toHaveBeenCalledWith(null, '', '/countries/country-new'));
+    expect(replace).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/countries/country-new'));
+    expect(mocks.createCountry).toHaveBeenCalledTimes(1);
+    expect(mocks.updateCountry).toHaveBeenCalledTimes(1);
+    expect(mocks.updateCountry.mock.calls[0][0]).toBe('country-new');
+  });
+
+  /* The adopted entry holds the Create route under the country's address.
+     Pushing the list past it left Back on a blank Create form there. */
+  it('replaces the adopted history entry when a new country is published', async () => {
+    mocks.publishCountry.mockResolvedValue({ data: { ...created, status: 'PUBLISHED' } });
+    await openNewCountry();
+    await userEvent.type(screen.getByLabelText(/^Country name/), 'Malta');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/countries'));
+    expect(push).not.toHaveBeenCalled();
+    expect(mocks.publishCountry).toHaveBeenCalledWith('country-new', created.updatedAt);
+  });
+
   it('does not create child records for cards nobody touched', async () => {
     await openNewCountry();
 

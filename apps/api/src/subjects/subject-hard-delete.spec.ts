@@ -29,7 +29,13 @@ const branch = {
   updatedAt,
 };
 
-function prisma(calls: string[], { courses = 0 }: { courses?: number } = {}) {
+function prisma(
+  calls: string[],
+  {
+    courses = 0,
+    deletedCourses = 0,
+  }: { courses?: number; deletedCourses?: number } = {},
+) {
   const op = (name: string) => (args: unknown) => {
     calls.push(`${name} ${JSON.stringify(args)}`);
     return Promise.resolve({});
@@ -58,10 +64,14 @@ function prisma(calls: string[], { courses = 0 }: { courses?: number } = {}) {
       update: op('subSubject.update'),
     },
     seoMetadata: { deleteMany: op('seoMetadata.deleteMany') },
+    /* `courses` live course rows and `deletedCourses` soft-deleted ones;
+       a count without `deletedAt` counts both. */
     course: {
-      count: async (args: unknown) => {
+      count: async (args: { where: { deletedAt?: unknown } }) => {
         calls.push(`course.count ${JSON.stringify(args)}`);
-        return courses;
+        if (args.where.deletedAt === null) return courses;
+        if (args.where.deletedAt) return deletedCourses;
+        return courses + deletedCourses;
       },
     },
     $transaction: async (ops: Promise<unknown>[]) => {
@@ -164,16 +174,50 @@ describe('deleting a subject', () => {
     );
   });
 
-  it('is refused while any course row, a deleted one too, still points at it', async () => {
+  it('is refused while a live course still points at it, and says how many of each', async () => {
     const calls: string[] = [];
     await expect(
-      new SubjectsService(prisma(calls, { courses: 1 })).remove(
+      new SubjectsService(
+        prisma(calls, { courses: 2, deletedCourses: 1 }),
+      ).remove('cs', expected, request),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: {
+        code: 'SUBJECT_IN_USE',
+        message: 'A subject referenced by courses cannot be deleted',
+        details: { liveCourses: 2, deletedCourses: 1 },
+      },
+    });
+    expect(calls).toContain(
+      'course.count {"where":{"subjectId":"cs","deletedAt":null}}',
+    );
+    expect(calls).toContain(
+      'course.count {"where":{"subjectId":"cs","deletedAt":{"not":null}}}',
+    );
+    expect(calls.some((call) => call.startsWith('subject.delete'))).toBe(false);
+  });
+
+  /* The admin's course list hides deleted courses, so a subject whose only
+     courses were deleted looked unused there and still could not go, with
+     nothing saying why. They are named now, and left in place: removing
+     them is not a side effect of deleting the subject. */
+  it('is refused while only deleted courses point at it, and says so', async () => {
+    const calls: string[] = [];
+    await expect(
+      new SubjectsService(prisma(calls, { deletedCourses: 3 })).remove(
         'cs',
         expected,
         request,
       ),
-    ).rejects.toMatchObject({ response: { code: 'SUBJECT_IN_USE' } });
-    expect(calls).toContain('course.count {"where":{"subjectId":"cs"}}');
-    expect(calls.some((call) => call.startsWith('subject.delete'))).toBe(false);
+    ).rejects.toMatchObject({
+      response: {
+        code: 'SUBJECT_IN_USE',
+        message:
+          'Deleted courses still point at this subject; they must be removed first',
+        details: { liveCourses: 0, deletedCourses: 3 },
+      },
+    });
+    expect(calls.some((call) => call.startsWith('course.delete'))).toBe(false);
+    expect(calls.some((call) => call.startsWith('$transaction'))).toBe(false);
   });
 });

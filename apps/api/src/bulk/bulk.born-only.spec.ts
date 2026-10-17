@@ -105,7 +105,7 @@ describe('a country arriving through the sheet', () => {
 });
 
 describe('a subject arriving through the sheet', () => {
-  const relations = { status: 'DRAFT', rows: [] };
+  const relations = { rows: [] };
 
   it('reaches every destination when the row is new', async () => {
     const { touched, client } = tx();

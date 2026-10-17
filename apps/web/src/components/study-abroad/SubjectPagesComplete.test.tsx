@@ -756,7 +756,7 @@ describe('level links that open pages that exist', () => {
  *  levels and its programmes -- went with the subject page's box: the
  *  client asked for both to go. */
 describe('a specialization’s hero', () => {
-  it('opens on its name under its subject, with no facts strip below', () => {
+  it('opens on its name, with no facts strip below', () => {
     const html = renderToStaticMarkup(
       <SpecializationGuide
         specialization={{ ...specialization, offeredLevels: [PG], levels: [UG, PG] } as never}
@@ -772,6 +772,28 @@ describe('a specialization’s hero', () => {
     expect(html).not.toContain('unisnap');
     expect(html).not.toContain('Parent subject');
     expect(html).not.toMatch(/<span class="label">Study levels<\/span>/);
+  });
+
+  /* The client had the "Specialization · <subject>" line over the
+     heading taken off, as the subject page's was: the name is the first
+     line. The trail and "All <subject>" still lead back to the subject. */
+  it('opens on its name, with no line above it, and keeps the ways back to its subject', () => {
+    const html = renderToStaticMarkup(
+      <SpecializationGuide specialization={specialization as never} scholarships={[]} />,
+    );
+    expect(html).not.toContain('hero__eyebrow');
+    expect(html).not.toMatch(/Specialization<b>·<\/b>/);
+    expect(html).toMatch(
+      /<\/span>(?:<!-- -->)*<div><h1 class="hero__h1">Study Software Engineering abroad<\/h1>/,
+    );
+    expect(html).toContain(
+      '<a href="/subjects/computer-science">Computer Science</a>' +
+        '<span class="crumbs__sep" aria-hidden="true">/</span>' +
+        '<span aria-current="page">Software Engineering</span>',
+    );
+    expect(html).toMatch(
+      /<a class="btn btn--lg btn--ghost" href="\/subjects\/computer-science">All (?:<!-- -->)?Computer Science<\/a>/,
+    );
   });
 });
 

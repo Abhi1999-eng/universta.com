@@ -11,6 +11,8 @@ const fixture = vi.hoisted(() => ({
   country: { id: 'gb', name: 'United Kingdom', slug: 'uk', iso2Code: 'GB', subjects: [] },
   programmes: 1,
   guides: 1,
+  /** The subject's resolved SEO, as its detail serves it. */
+  seo: null as null | { metaDescription: string; source?: { description?: string } },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -61,6 +63,7 @@ vi.mock('@/lib/catalog', () => ({
     shortDescription: fixture.description,
     overview: fixture.overview,
     iconMedia: null,
+    seo: fixture.seo,
     offeredLevels: fixture.offered,
     subSubjects: specializations.map((entry, index) => ({
       ...entry,
@@ -132,6 +135,7 @@ beforeEach(() => {
   fixture.country = { id: 'gb', name: 'United Kingdom', slug: 'uk', iso2Code: 'GB', subjects: [] };
   fixture.programmes = 1;
   fixture.guides = 1;
+  fixture.seo = null;
 });
 
 describe('the ZIP-aligned country subject page', () => {
@@ -332,5 +336,69 @@ describe('the study levels on a country subject page', () => {
     /* The level with a course opens first; the other waits behind its chip. */
     expect(html).toMatch(/<div><section class="coursegroup studylevel scrollstop" id="level-ug"/);
     expect(html).toMatch(/<div hidden=""><section class="coursegroup studylevel scrollstop coursegroup--empty" id="level-phd"/);
+  });
+});
+
+/**
+ * The page's meta description was the subject's short description, the same
+ * on every destination. Each destination now says its own.
+ */
+describe('the country subject page’s description', () => {
+  const metadata = (search: Record<string, string> = {}) =>
+    generateMetadata({
+      params: Promise.resolve({ countrySlug: fixture.country.slug, subjectSlug }),
+      searchParams: Promise.resolve(search),
+    });
+
+  it('names the subject, the destination and what the page lists there', async () => {
+    fixture.description = 'The same sentence on every destination.';
+    expect((await metadata()).description).toBe(
+      `Study ${subjectName} in the United Kingdom: 1 programme at 1 university, 60 specializations, the study levels it is offered at and advice on applying.`,
+    );
+  });
+
+  it('names no programme count where nothing is listed', async () => {
+    fixture.programmes = 0;
+    expect((await metadata()).description).toBe(
+      `Study ${subjectName} in the United Kingdom: 60 specializations, the study levels it is offered at and advice on applying.`,
+    );
+  });
+
+  /* The subject's SEO description is written for its page across every
+     destination; after this one's name it read "Study X in the United
+     Kingdom. Compare X degrees abroad". Written by hand, by a bulk
+     template or by the resolver's fallback, the page says its own. */
+  it.each(['manual', 'bulk', 'fallback'])(
+    'says what the page lists here, not the subject’s SEO description (%s)',
+    async (source) => {
+      fixture.seo = {
+        metaDescription: `Compare ${subjectName} degrees abroad.`,
+        source: { description: source },
+      };
+      const description = (await metadata()).description;
+      expect(description).toBe(
+        `Study ${subjectName} in the United Kingdom: 1 programme at 1 university, 60 specializations, the study levels it is offered at and advice on applying.`,
+      );
+      expect(description).not.toContain('abroad');
+    },
+  );
+
+  it('differs from one destination to the next', async () => {
+    const uk = (await metadata()).description;
+    fixture.country = { id: 'jp', name: 'Japan', slug: 'japan', iso2Code: 'JP', subjects: [] };
+    const japan = (await metadata()).description;
+    expect(japan).toContain('in Japan');
+    expect(japan).not.toBe(uk);
+  });
+
+  it('keeps its indexing as it was: whole, indexed with its canonical; narrowed, not', async () => {
+    const whole = await metadata();
+    expect(whole.robots).toBeUndefined();
+    expect(whole.alternates).toEqual({ canonical: `/study-abroad/uk/${subjectSlug}` });
+    fixture.programmes = 0;
+    expect((await metadata()).robots).toBeUndefined();
+    const narrowed = await metadata({ q: 'history' });
+    expect(narrowed.robots).toEqual({ index: false, follow: true });
+    expect(narrowed.alternates).toBeUndefined();
   });
 });

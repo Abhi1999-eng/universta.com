@@ -197,21 +197,28 @@ export function SpecializationGuide({
               specialization: this page had the text alone, starting at the
               page edge, and did not look like the page one step above it. */}
           <div className="subjhero">
+            {/* Its own icon where an editor set one, as its page in a
+                destination already shows it; the generic mark otherwise. */}
             <span className="subjhero__icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              >
-                <path d="M4 5h16v14H4z M4 9h16" />
-              </svg>
+              {specialization.iconMedia?.url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={specialization.iconMedia.url} alt="" />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                >
+                  <path d="M4 5h16v14H4z M4 9h16" />
+                </svg>
+              )}
             </span>
+            {/* The name is the first line, as on the subject page: the client
+                had the "Specialization · <subject>" line over it taken off.
+                The trail above and "All <subject>" below still lead back to
+                the subject. */}
             <div>
-            <p className="hero__eyebrow">
-              Specialization<b>·</b>
-              <Link href={subjectPath}>{subject.name}</Link>
-            </p>
             <h1 className="hero__h1">Study {specialization.name} abroad</h1>
             {specialization.shortDescription ? (
               <p className="hero__sub">{specialization.shortDescription}</p>
