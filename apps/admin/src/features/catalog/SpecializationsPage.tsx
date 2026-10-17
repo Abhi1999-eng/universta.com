@@ -18,6 +18,12 @@ import { useHandedOverToast } from '@/features/shared/Flash';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubSubjectRecord } | null;
 
+/* A specialization's page needs its subject published too, so a published
+   specialization under a draft subject is not on the site, and "View on site"
+   would open a 404. A row from an API that does not send the subject's
+   status yet is taken as live, as it was before. */
+const subjectDraft = (row: SubSubjectRecord) => row.subject.status !== undefined && row.subject.status !== 'PUBLISHED';
+
 /** Every specialization, across subjects, with its own list the way subjects
  * and courses have theirs. The client asked for specializations to be reached
  * and written on their own rather than only from inside a subject.
@@ -290,8 +296,16 @@ export function SpecializationsPage() {
                     <Link href={`/specializations/${row.id}`} className="p-link font-semibold">{row.name}</Link>
                     <span className="p-hint block">
                       /{row.subject.slug}/{row.slug}
-                      {row.status === 'PUBLISHED' ? <> · <ViewOnSite path={`/subjects/${row.subject.slug}/${row.slug}`} /></> : null}
+                      {row.status === 'PUBLISHED' && !subjectDraft(row) ? <> · <ViewOnSite path={`/subjects/${row.subject.slug}/${row.slug}`} /></> : null}
                     </span>
+                    {subjectDraft(row) ? (
+                      <span
+                        className="p-chip ml-2 align-middle text-xs"
+                        title="Its subject is a draft, so this specialization is not on the site. Publish the subject first."
+                      >
+                        Subject is draft
+                      </span>
+                    ) : null}
                     {row.shortDescription?.trim() ? null : (
                       <span
                         className="p-chip ml-2 align-middle text-xs"
@@ -386,7 +400,7 @@ export function SpecializationsPage() {
           title={pending.kind === 'delete' ? 'Delete specialization?' : 'Change specialization visibility?'}
           description={
             pending.kind === 'delete'
-              ? `This removes ${pending.row.name} from the database for good, with its sections and FAQs, and frees its slug. It cannot be undone. Type ${pending.row.name} to confirm.`
+              ? `This removes ${pending.row.name} from the database for good, with its sections, FAQs and level pages, and frees its slug. It cannot be undone. Type ${pending.row.name} to confirm.`
               : pending.kind === 'publish'
                 ? 'Its subject must already be published. This action is audited and changes public visibility.'
                 : 'This action is audited and changes public visibility.'

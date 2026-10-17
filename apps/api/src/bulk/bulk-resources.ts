@@ -27,6 +27,7 @@ import {
   deriveForUniversity,
 } from '../catalog/derive-links';
 import { formerLevelCode } from '../course-levels/former-level-names';
+import { SUBJECT_LEVEL_PAGE_SEO_OWNER } from '../subjects/level-pages.shared';
 import {
   exportOfferingDetails,
   OFFERING_EXTRA_COLUMNS,
@@ -167,7 +168,13 @@ export interface BulkResourceDefinition {
 /** The subset of a transaction the purge hooks use. */
 export type PurgeTx = Record<
   string,
-  { deleteMany: (args: { where: unknown }) => Promise<{ count: number }> }
+  {
+    deleteMany: (args: { where: unknown }) => Promise<{ count: number }>;
+    findMany: (args: {
+      where: unknown;
+      select: { id: true };
+    }) => Promise<Array<{ id: string }>>;
+  }
 >;
 
 const relationLabels: Record<string, string> = {
@@ -1138,8 +1145,32 @@ type SubSubjectTable = {
 
 const subjects: BulkResourceDefinition = {
   /* A specialization cannot exist without its subject, so it goes with it.
-     A course referencing the subject is independent and blocks instead. */
+     A course referencing the subject is independent and blocks instead.
+     The level pages cascade with the subject and its specializations, but
+     the SEO rows of all three have no foreign key: left behind, a row still
+     counted as a use of its image, which then could not be archived. They
+     are found before anything is deleted -- every level page carries its
+     subject's id, a specialization's too -- and removed here, as a single
+     subject's delete removes them. */
   async purgeChildren(tx, ids) {
+    const idsOf = (rows: Array<{ id: string }>) => rows.map((row) => row.id);
+    const where = { subjectId: { in: ids } };
+    const [specializationIds, levelPageIds] = await Promise.all([
+      tx.subSubject.findMany({ where, select: { id: true } }).then(idsOf),
+      tx.subjectLevelPage.findMany({ where, select: { id: true } }).then(idsOf),
+    ]);
+    await tx.seoMetadata.deleteMany({
+      where: {
+        OR: [
+          { ownerType: 'SUBJECT', ownerId: { in: ids } },
+          { ownerType: 'SUB_SUBJECT', ownerId: { in: specializationIds } },
+          {
+            ownerType: SUBJECT_LEVEL_PAGE_SEO_OWNER,
+            ownerId: { in: levelPageIds },
+          },
+        ],
+      },
+    });
     await tx.countrySubject.deleteMany({ where: { subjectId: { in: ids } } });
     await tx.countrySubSubject.deleteMany({
       where: { subSubject: { subjectId: { in: ids } } },

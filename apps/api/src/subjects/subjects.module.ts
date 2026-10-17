@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import {
   SpecializationsController,
+  SubjectLevelPagesController,
   SubjectsController,
 } from './subjects.controller';
 import { AdminSubjectsController } from './admin-subjects.controller';
 import { AdminSpecializationsController } from './admin-specializations.controller';
 import { SubjectsService } from './subjects.service';
+import { SubjectLevelPagesService } from './level-pages.service';
 import { SeoManagementModule } from '../seo-management/seo-management.module';
 
 @Module({
@@ -14,10 +16,11 @@ import { SeoManagementModule } from '../seo-management/seo-management.module';
   controllers: [
     SubjectsController,
     SpecializationsController,
+    SubjectLevelPagesController,
     AdminSubjectsController,
     AdminSpecializationsController,
   ],
-  providers: [SubjectsService],
-  exports: [SubjectsService],
+  providers: [SubjectsService, SubjectLevelPagesService],
+  exports: [SubjectsService, SubjectLevelPagesService],
 })
 export class SubjectsModule {}

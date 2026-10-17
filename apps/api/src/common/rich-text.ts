@@ -38,6 +38,14 @@ const safeImage = (value: string) =>
 /** Portable allowlisted HTML emitted by the shared Admin WYSIWYG. */
 export function sanitizeRichText(value: unknown) {
   if (typeof value !== 'string') return value;
+  /* Every tag kept is rebuilt from scratch below -- only `style`
+     text-align, a checked `href` or `src` and an `alt` are copied across,
+     escaped, so no `on...` handler ever survives -- and so holds no "<" or
+     ">" of its own. The tag pass only sees a tag closed with ">", though:
+     one left open at the end, '<p>Intro</p><img src=x onerror="alert(1)"',
+     came through as written and a browser read it as an <img> with its
+     handler. Any "<" that does not start a kept tag is text, and is escaped
+     as text. */
   return value
     .replace(/<(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
     .replace(/<\/?[^>]+>/g, (tag) => {
@@ -64,7 +72,8 @@ export function sanitizeRichText(value: unknown) {
       return safeImage(src)
         ? `<img src="${escape(src)}" alt="${escape(alt)}">`
         : '';
-    });
+    })
+    .replace(/<(?![a-z/][^<>]*>)/gi, '&lt;');
 }
 
 function safeAlignment(tag: string) {

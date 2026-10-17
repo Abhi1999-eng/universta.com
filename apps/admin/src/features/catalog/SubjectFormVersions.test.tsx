@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   listEvery: vi.fn(),
   getSubjectCountries: vi.fn(),
   saveSubjectCountries: vi.fn(),
+  listLevelPages: vi.fn(),
+  deleteLevelPage: vi.fn(),
 }));
 vi.mock('./catalog-client', () => mocks);
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace, refresh: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/', }));
@@ -93,6 +95,7 @@ beforeEach(() => {
   });
   mocks.publishSubSubject.mockResolvedValue({ data: child('spec-v2', 'PUBLISHED') });
   mocks.unpublishSubSubject.mockResolvedValue({ data: child('spec-v3', 'DRAFT') });
+  mocks.listLevelPages.mockResolvedValue({ data: [], meta: null });
 });
 
 describe('subject form and its specializations', () => {
@@ -157,5 +160,39 @@ describe('subject form and its specializations', () => {
     await waitFor(() => expect(mocks.updateSubject).toHaveBeenCalledTimes(1));
     expect(push).not.toHaveBeenCalled();
     expect(peekFlash()).toBeNull();
+  });
+
+  /* The Level pages card sits under the study-level ticks and lists what the
+     API says is offered, so it follows the ticks once they are saved and
+     says so until then. */
+  it('shows the Level pages card, and reads its rows again after a save', async () => {
+    mocks.listCourseLevels.mockResolvedValue({
+      data: [{ id: 'lvl-ug', code: 'UG', name: "Bachelor's", description: null, educationOrder: 3, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' }],
+      meta: null,
+    });
+    const user = userEvent.setup();
+    render(<SubjectForm id="subject-1" />);
+    await screen.findByRole('button', { name: 'Publish' });
+
+    expect(screen.getByRole('heading', { name: 'Level pages' })).toBeInTheDocument();
+    await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledWith('subject', 'subject-1'));
+    expect(await screen.findByText(/No study level is offered yet/)).toBeInTheDocument();
+    expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+
+    await user.click(await screen.findByRole('checkbox', { name: "Bachelor's" }));
+    expect(screen.getByText('Study level changes show here after you save.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledTimes(2));
+    expect(mocks.updateSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-ug'] });
+    expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+  });
+
+  it('names the subject in the SEO alert, not a country', async () => {
+    const user = userEvent.setup();
+    render(<SubjectForm id="subject-1" />);
+    await screen.findByRole('button', { name: 'Publish' });
+    await user.type(screen.getByRole('textbox', { name: 'Focus keyword' }), 'oceans');
+    expect(screen.getByText('SEO title and Meta description are required before this subject can be saved.')).toBeInTheDocument();
   });
 });

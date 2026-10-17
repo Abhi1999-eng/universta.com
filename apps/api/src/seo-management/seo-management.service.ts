@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { levelPageSeoRecord } from '../subjects/level-pages.shared';
 import {
   SEO_BULK_ENTITY_TYPES,
   SEO_ENTITY_DEFINITIONS,
@@ -30,9 +31,14 @@ const TEMPLATE_LIMITS: Record<
 const SAFE_CANONICAL = /^(\/(?!\/)[^\s]*|https:\/\/[^\s]+)$/;
 const GOOGLE_TOKEN = /^[A-Za-z0-9._-]{6,255}$/;
 /* The types whose stored values are checked for echoes of the defaults:
-   see `resolve`. A university's and a course's page build a better title
-   and description of their own when nothing was written for them. */
-const ECHO_CHECKED = new Set<SeoBulkEntityType>(['university', 'offering']);
+   see `resolve`. A university's, a course's and a study level's page build
+   a better title and description of their own when nothing was written for
+   them. */
+const ECHO_CHECKED = new Set<SeoBulkEntityType>([
+  'university',
+  'offering',
+  'levelPage',
+]);
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -325,6 +331,14 @@ export class SeoManagementService {
             : text(defaultSeo.defaultDescription)
               ? 'default'
               : 'fallback',
+        /* Where the canonical came from, so a page that works out a better
+           address of its own (a narrowed list, say) knows whether anyone
+           chose this one. */
+        canonical: manualCanonical
+          ? 'manual'
+          : renderedCanonical && SAFE_CANONICAL.test(renderedCanonical)
+            ? 'bulk'
+            : 'fallback',
       },
     };
   }
@@ -498,6 +512,20 @@ export class SeoManagementService {
       values.universityName = directString(record, 'name');
       values.universitySlug = directString(record, 'slug');
     }
+    if (entityType === 'levelPage') {
+      /* The record is levelPageSeoRecord's: the level and its field are
+         nested, and `name` is the page's whole title, so the generic
+         readings of name and slug above do not apply. */
+      const subject = nested(record, 'subject');
+      const specialization = nested(record, 'specialization');
+      values.levelName = directString(nested(record, 'courseLevel'), 'name');
+      values.levelSlug = directString(record, 'levelSlug');
+      values.subjectName = directString(subject, 'name');
+      values.subjectSlug = directString(subject, 'slug');
+      values.specializationName = directString(specialization, 'name');
+      values.specializationSlug = directString(specialization, 'slug');
+      values.fieldName = values.specializationName ?? values.subjectName;
+    }
     return values;
   }
 
@@ -517,6 +545,8 @@ export class SeoManagementService {
       job: directString(record, 'title'),
       event: directString(record, 'title'),
       successStory: directString(record, 'title'),
+      /* "Master's in Computer Science", built by levelPageSeoRecord. */
+      levelPage: directString(record, 'name'),
     };
     return byType[entityType] ?? 'Universta';
   }
@@ -578,6 +608,18 @@ export class SeoManagementService {
         return `/events/${slug}`;
       case 'successStory':
         return `/success-stories/${slug}`;
+      case 'levelPage': {
+        /* The level straight after its field: /subjects/<s>/<level>, or
+           /subjects/<s>/<specialization>/<level>. */
+        const subjectSlug = directString(nested(record, 'subject'), 'slug');
+        const specializationSlug = directString(
+          nested(record, 'specialization'),
+          'slug',
+        );
+        return `/subjects/${encodeURIComponent(subjectSlug ?? '')}${
+          specializationSlug ? `/${encodeURIComponent(specializationSlug)}` : ''
+        }/${encodeURIComponent(directString(record, 'levelSlug') ?? '')}`;
+      }
     }
   }
 
@@ -671,6 +713,8 @@ export class SeoManagementService {
           where,
           include: { country: true, city: true },
         });
+      case 'levelPage':
+        return this.levelPagePreview();
       case 'successStory':
         return this.prisma.successStory.findFirst({
           where,
@@ -681,6 +725,51 @@ export class SeoManagementService {
           },
         });
     }
+  }
+
+  /**
+   * A level page to preview the "Study level pages" template on: the one
+   * written most recently that is live, else the first published subject
+   * at its lowest level switched on -- every field has level pages before
+   * anyone writes one, so the preview works from the start.
+   */
+  private async levelPagePreview(): Promise<RecordData | null> {
+    const published = { status: 'PUBLISHED', deletedAt: null };
+    const page = await this.prisma.subjectLevelPage.findFirst({
+      where: {
+        status: 'PUBLISHED',
+        subject: published,
+        courseLevel: { status: 'ACTIVE' },
+        OR: [{ subSubjectId: null }, { subSubject: published }],
+      },
+      include: { subject: true, subSubject: true, courseLevel: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (page)
+      return levelPageSeoRecord({
+        pageId: page.id,
+        subject: page.subject,
+        specialization: page.subSubject,
+        level: page.courseLevel,
+      });
+    const [subject, level] = await Promise.all([
+      this.prisma.subject.findFirst({
+        where: published,
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      }),
+      this.prisma.courseLevel.findFirst({
+        where: { status: 'ACTIVE' },
+        orderBy: [{ educationOrder: 'asc' }, { displayOrder: 'asc' }],
+      }),
+    ]);
+    return subject && level
+      ? levelPageSeoRecord({
+          pageId: null,
+          subject,
+          specialization: null,
+          level,
+        })
+      : null;
   }
 }
 

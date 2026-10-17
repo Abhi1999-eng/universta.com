@@ -93,6 +93,72 @@ describe('same-origin catalog BFF', () => {
     expect((await refused.json()).error.message).toBe('A ticked study level no longer exists. Reload the page and tick the study levels again');
   });
 
+  /* A level page is one record saved in one PUT: its text, status, the whole
+     FAQ list and its SEO. The branch for it sits before the generic
+     `subjects:` one, which would otherwise read "level-pages" as an action. */
+  describe('level pages', () => {
+    const auth = { authorization: 'Bearer access-token', 'content-type': 'application/json' };
+    async function sent(operation: Parameters<typeof proxyCatalogRoute>[1], init: RequestInit = { headers: auth }) {
+      const fetchMock = vi.fn().mockResolvedValue(upstream(200, { data: {}, meta: null, error: null, requestId: 'lp-1' }));
+      vi.stubGlobal('fetch', fetchMock);
+      await proxyCatalogRoute(request('/api/v1/admin/level-pages', init), operation);
+      const [url, upstreamInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
+      return { url: url.toString(), method: upstreamInit.method, body: upstreamInit.body ? JSON.parse(upstreamInit.body as string) as Record<string, unknown> : undefined };
+    }
+
+    it('maps each of the eight operations to its path and method', async () => {
+      expect(await sent('subjects:level-pages:list:s1')).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/subjects/s1/level-pages', method: 'GET', body: undefined });
+      expect(await sent('subjects:level-pages:get:s1:lvl1')).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/subjects/s1/level-pages/lvl1', method: 'GET', body: undefined });
+      expect((await sent('subjects:level-pages:put:s1:lvl1', { method: 'PUT', headers: auth, body: '{}' })).method).toBe('PUT');
+      expect((await sent('subjects:level-pages:delete:s1:lvl1', { method: 'DELETE', headers: auth, body: '{}' })).method).toBe('DELETE');
+      expect(await sent('specializations:level-pages:list:sp1')).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/specializations/sp1/level-pages', method: 'GET', body: undefined });
+      expect(await sent('specializations:level-pages:get:sp1:lvl1')).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/specializations/sp1/level-pages/lvl1', method: 'GET', body: undefined });
+      const put = await sent('specializations:level-pages:put:sp1:lvl1', { method: 'PUT', headers: auth, body: '{}' });
+      expect([put.url, put.method]).toEqual(['http://127.0.0.1:4000/api/v1/admin/specializations/sp1/level-pages/lvl1', 'PUT']);
+      const removed = await sent('specializations:level-pages:delete:sp1:lvl1', { method: 'DELETE', headers: auth, body: JSON.stringify({ expectedUpdatedAt: 'v1', createdByUserId: 'secret' }) });
+      expect(removed).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/specializations/sp1/level-pages/lvl1', method: 'DELETE', body: { expectedUpdatedAt: 'v1' } });
+    });
+
+    it('forwards the nested FAQs and SEO whole, and strips unknown top-level keys', async () => {
+      const faqs = [{ question: 'Is it taught in English?', answer: '<p>Mostly.</p>', status: 'ACTIVE', displayOrder: 0 }];
+      const seo = { seoTitle: "Master's in Computing", metaDescription: 'Study it.', robotsIndex: true, robotsFollow: true };
+      const { body } = await sent('subjects:level-pages:put:s1:lvl1', {
+        method: 'PUT',
+        headers: auth,
+        body: JSON.stringify({ intro: '<p>Hi</p>', admissionNote: '', careersNote: '', status: 'PUBLISHED', faqs, seo, expectedUpdatedAt: null, subjectId: 'other', createdByUserId: 'secret' }),
+      });
+      expect(body).toEqual({ intro: '<p>Hi</p>', admissionNote: '', careersNote: '', status: 'PUBLISHED', faqs, seo, expectedUpdatedAt: null });
+    });
+
+    it('encodes the ids it puts in the path', async () => {
+      expect((await sent('subjects:level-pages:get:a/b:c?d')).url).toBe('http://127.0.0.1:4000/api/v1/admin/subjects/a%2Fb/level-pages/c%3Fd');
+    });
+
+    it('leaves the neighbouring subject operations where they were', async () => {
+      expect((await sent('subjects:get:s1')).url).toBe('http://127.0.0.1:4000/api/v1/admin/subjects/s1');
+      expect((await sent('subjects:countries:get:s1')).url).toBe('http://127.0.0.1:4000/api/v1/admin/subjects/s1/countries');
+      const seo = await sent('subjects-seo:put:s1', { method: 'PUT', headers: auth, body: JSON.stringify({ seoTitle: 'T', metaDescription: 'D', faqs: [] }) });
+      expect(seo).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/subjects/s1/seo', method: 'PUT', body: { seoTitle: 'T', metaDescription: 'D' } });
+    });
+
+    it('says what went wrong in the operator\u2019s words, and keeps the readiness list', async () => {
+      const answer = async (code: string, details: unknown = null, status = 409) => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(status, { data: null, meta: null, error: { code, message: 'raw', details }, requestId: 'lp-2' })));
+        const response = await proxyCatalogRoute(request('/api/v1/admin/subjects/s1/level-pages/l1', { method: 'PUT', headers: auth, body: '{}' }), 'subjects:level-pages:put:s1:l1');
+        return ((await response.json()) as { error: { message: string; details: unknown } }).error;
+      };
+      expect((await answer('LEVEL_PAGE_STALE_VERSION')).message).toBe('This level page changed in another session. Reload before saving');
+      expect((await answer('LEVEL_PAGE_LEVEL_NOT_OFFERED')).message).toBe('This study level is not offered here any more, so its page cannot be saved. Tick the level and save the subject or specialization first');
+      expect((await answer('LEVEL_PAGE_INVALID', { index: 2 }, 400)).message).toBe('Each question needs a question and an answer');
+      expect((await answer('SEO_URL_INVALID')).message).toBe('Canonical URL must be a site path beginning with / or an http(s) URL');
+      expect((await answer('COURSE_LEVEL_SLUG_TAKEN')).message).toBe("A specialization already uses this level's address. Rename that specialization first");
+      expect((await answer('SUBJECT_SLUG_RESERVED')).message).toBe('That slug is a fixed page address on the site. Choose another slug');
+      const notReady = await answer('LEVEL_PAGE_NOT_READY', [{ field: 'intro', message: 'Write an intro, a note or an FAQ' }], 422);
+      expect(notReady.message).toBe('Write an intro, a note or an FAQ before publishing this level page');
+      expect(notReady.details).toEqual([{ field: 'intro', message: 'Write an intro, a note or an FAQ' }]);
+    });
+  });
+
   it('rebuilds continent dependency details and drops everything else upstream sends', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'CONTINENT_IN_USE', message: 'raw', details: { countriesCount: 2.9, secret: 'mysql://secret', countries: [{ id: 'c1', name: 'Canada', slug: 'canada', status: 'PUBLISHED', internalNote: 'leak' }] } }, requestId: 'dep-1' })));
     const blocked = await proxyCatalogRoute(request('/api/v1/admin/continents/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'continents:delete:id');

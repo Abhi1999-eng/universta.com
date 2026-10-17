@@ -24,6 +24,7 @@ import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens
 import {
   courseDeadlines,
   courseFacets,
+  effectiveLevel,
   matchesCourseQuery,
   NEIGHBOUR_TAKE,
   parseCourseQuery,
@@ -2144,6 +2145,18 @@ export class ExpandedService {
           university: {
             select: { slug: true, country: { select: { slug: true } } },
           },
+          /* What the level pages' programme counts are built from: the
+             field the course is filed under, and the level it is taught
+             at here -- the offering's own if an editor set one, the
+             course's otherwise. */
+          courseLevel: { select: { code: true, name: true } },
+          genericCourse: {
+            select: {
+              courseLevel: { select: { code: true, name: true } },
+              subject: { select: { slug: true } },
+              subSubject: { select: { slug: true } },
+            },
+          },
         },
       }),
     ]);
@@ -2159,6 +2172,19 @@ export class ExpandedService {
         universitySlug: row.university.slug,
         countrySlug: row.university.country.slug,
         updatedAt: row.updatedAt,
+        subjectSlug: row.genericCourse?.subject?.slug ?? null,
+        specializationSlug: row.genericCourse?.subSubject?.slug ?? null,
+        /* effectiveLevel reads only the two levels; the name and slug are
+           there for its row type. */
+        levelCode:
+          effectiveLevel({
+            name: row.slug,
+            slug: row.slug,
+            courseLevel: row.courseLevel,
+            genericCourse: row.genericCourse
+              ? { courseLevel: row.genericCourse.courseLevel }
+              : null,
+          })?.code ?? null,
       }));
     return { data, meta: meta(page, limit, total) };
   }

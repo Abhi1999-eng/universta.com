@@ -56,6 +56,10 @@ describe('programmes across universities (e2e)', () => {
   let empty = '';
   let untaught = '';
   let unlisted = '';
+  /* What the sitemap's addresses carry for the level pages. */
+  let subjectSlug = '';
+  let levelCode = '';
+  let ownLevelCode = '';
 
   const get = (path: string) =>
     request(app.getHttpServer()).get(`/api/v1/phase1${path}`);
@@ -79,6 +83,15 @@ describe('programmes across universities (e2e)', () => {
     });
     if (!level || !subject)
       throw new Error('A level and a subject are required');
+    /* A second level, which one programme sets as its own. */
+    const ownLevel = await prisma.courseLevel.findFirst({
+      where: { id: { not: level.id } },
+      orderBy: { educationOrder: 'asc' },
+    });
+    if (!ownLevel) throw new Error('Two levels are required');
+    subjectSlug = subject.slug;
+    levelCode = level.code;
+    ownLevelCode = ownLevel.code;
     const continent = await prisma.continent.findFirst({
       where: { deletedAt: null },
     });
@@ -208,7 +221,11 @@ describe('programmes across universities (e2e)', () => {
       },
     });
     const funded = await offer('Funded', south.id, fee(20000, 'CAD'));
-    const drafted = await offer('Drafted', south.id, fee(10000, 'AUD'));
+    /* Taught at a level of its own, not its course's. */
+    const drafted = await offer('Drafted', south.id, {
+      ...fee(10000, 'AUD'),
+      courseLevelId: ownLevel.id,
+    });
     await offer('Abroad', abroad.id);
     await offer('AtDraft', draft.id);
     await offer('AtHidden', hidden.id);
@@ -423,11 +440,29 @@ describe('programmes across universities (e2e)', () => {
       href: `/courses?university=pr-e2e-north-${suffix}`,
     });
     const addresses = await get('/programmes/addresses?limit=5000').expect(200);
-    const ours = (addresses.body.data as Array<{ slug: string }>)
+    const rows = addresses.body.data as Array<{
+      slug: string;
+      subjectSlug: string | null;
+      specializationSlug: string | null;
+      levelCode: string | null;
+    }>;
+    const ours = rows
       .map((row) => row.slug)
       .filter((slug) => slug.includes(suffix));
     expect(ours.sort()).toEqual(
       [slugs.Scored, slugs.Funded, slugs.Drafted, slugs.Abroad].sort(),
     );
+    /* Each names the field it is filed under and the level it is taught
+       at here, so the sitemap can count a level page's programmes. */
+    const bySlug = new Map(rows.map((row) => [row.slug, row]));
+    expect(bySlug.get(slugs.Scored)).toMatchObject({
+      subjectSlug,
+      specializationSlug: null,
+      levelCode,
+    });
+    expect(bySlug.get(slugs.Drafted)).toMatchObject({
+      subjectSlug,
+      levelCode: ownLevelCode,
+    });
   });
 });

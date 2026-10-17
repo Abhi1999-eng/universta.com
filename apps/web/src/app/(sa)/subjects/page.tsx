@@ -27,8 +27,8 @@ export default async function SubjectsIndexPage() {
       .then((result) => result.data as SubjectIndexRow[])
       .catch(() => []),
     /* The public levels list is in the order a student climbs them, which
-       is the order the level bar reads in. Without it the bar keeps the
-       order the subjects supply. */
+       is the order each card names its levels in. Without it a card keeps
+       the order its subject supplies. */
     getCourseLevels()
       .then((rows) => rows.map((row) => row.code))
       .catch(() => []),

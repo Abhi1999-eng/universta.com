@@ -1,3 +1,5 @@
+import { hasLevelPage, type LevelPages } from '@/lib/course-levels';
+
 /** Public level addresses stay readable while the catalogue keeps its codes. */
 const LEVEL_SLUGS: Record<string, string> = {
   FOUNDATION: 'foundation',
@@ -27,6 +29,19 @@ export function subjectLevelHref({ subject, specialization, level, guides = fals
 }) {
   const field = `/subjects/${encodeURIComponent(subject)}${specialization ? `/${encodeURIComponent(specialization)}` : ''}`;
   return `${field}/${encodeURIComponent(subjectLevelSlug(level))}${guides ? '?view=guides' : ''}`;
+}
+
+/**
+ * A field's page at one level, where it has one; null where it does not.
+ * Every link to a level page goes through this, so none opens a level the
+ * field is not offered at -- that address is a 404 -- and a caller falls
+ * back to the course finder or draws no link.
+ */
+export function levelPageHref(
+  pages: LevelPages,
+  args: Parameters<typeof subjectLevelHref>[0],
+): string | null {
+  return hasLevelPage(pages, args.level) ? subjectLevelHref(args) : null;
 }
 
 export function findSubjectLevel<T extends { code: string }>(levels: T[], slug: string): T | undefined {

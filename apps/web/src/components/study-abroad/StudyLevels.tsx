@@ -32,8 +32,10 @@ export function StudyLevels({
   courseHref: (course: Course) => string;
   /** A specialization of the field, in this destination. */
   specializationHref?: (slug: string) => string;
-  /** The level in every destination, for a level with nothing here. */
-  elsewhere?: { href: (levelCode: string) => string; label: (levelName: string) => string };
+  /** The level in every destination, for a level with nothing here. A
+   *  null href means the field has no page at that level, and no link is
+   *  drawn. */
+  elsewhere?: { href: (levelCode: string) => string | null; label: (levelName: string) => string };
   /** Whether a course row names its specialization. */
   branch?: boolean;
 }) {
@@ -52,6 +54,7 @@ export function StudyLevels({
       panels={panels.map(({ group, specializations }) => {
         const anchor = levelAnchor(group.level.code);
         const noun = group.count === 1 ? 'course' : 'courses';
+        const elsewhereHref = !group.count && elsewhere ? elsewhere.href(group.level.code) : null;
         return (
           <section
             className={`coursegroup studylevel scrollstop${group.count ? '' : ' coursegroup--empty'}`}
@@ -100,9 +103,9 @@ export function StudyLevels({
               branch={branch}
             />
 
-            {!group.count && elsewhere ? (
+            {elsewhere && elsewhereHref ? (
               <p className="studylevel__elsewhere">
-                <Link className="linkcta" href={elsewhere.href(group.level.code)}>
+                <Link className="linkcta" href={elsewhereHref}>
                   {elsewhere.label(group.level.name)}{' '}
                   <span className="linkcta__arrow" aria-hidden="true">
                     &rarr;

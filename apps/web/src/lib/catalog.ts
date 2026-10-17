@@ -1,16 +1,18 @@
 export interface PageMeta { page: number; limit: number; total: number; totalPages: number; }
 export interface Envelope<T> { data: T | null; meta: unknown; error: { code: string; message: string; details: unknown } | null; requestId: string; timestamp: string; }
+import type { ResolvedSeo } from './seo-management';
+
 const baseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
 async function request<T>(path: string): Promise<{ data: T; meta: PageMeta }> { const response = await fetch(new URL(`/api/v1${path}`, baseUrl), { cache: 'no-store', headers: { accept: 'application/json' } }); const body = await response.json() as Envelope<T>; if (!response.ok || body.error || body.data === null) throw new Error(body.error?.message ?? 'Catalog service unavailable'); return { data: body.data, meta: (body.meta ?? { page: 1, limit: 100, total: Array.isArray(body.data) ? body.data.length : 0, totalPages: 1 }) as PageMeta }; }
 export interface Media { id: string; url: string; alt: string | null; title: string | null; width: number | null; height: number | null; }
-export interface Subject { id: string; name: string; slug: string; shortDescription: string | null; overview: string | null; iconMedia: Media | null; listingMedia: Media | null; heroMedia: Media | null; featured: boolean; displayOrder: number; publishedCourseCount: number; publishedSubSubjectCount: number; availableCountryCount: number; }
+export interface Subject { id: string; name: string; slug: string; shortDescription: string | null; overview: string | null; iconMedia: Media | null; listingMedia: Media | null; heroMedia: Media | null; featured: boolean; displayOrder: number; publishedCourseCount: number; publishedSubSubjectCount: number; availableCountryCount: number; /** The levels the subject is offered at, as the API counts them on list and detail rows: its ticks, its published specializations' levels and the levels of its published courses -- the rule its level pages follow. */ levels?: Array<{ code: string | null; name: string }>; }
 export interface SubSubject { id: string; name: string; slug: string; shortDescription: string | null; overview: string | null; iconMedia: Media | null; listingMedia: Media | null; featured: boolean; displayOrder: number; }
 export interface SubjectTest { code: string; name: string; countries: number; minScore: string | null; }
 /** A specialization as its subject's page sees it: the branch, plus how many
  *  published programmes it has and which levels teach them. */
 export interface SubjectBranch extends SubSubject { publishedCourseCount: number; levels: Array<{ id: string; name: string; code: string | null }>; }
 export interface SubjectDetail extends Subject { subSubjects: SubjectBranch[]; countries: Array<{ id: string; name: string; slug: string; iso2Code: string | null }>; tests: SubjectTest[]; courseCountsByLevel: Array<{ level: { id: string; name: string; code: string | null }; count: number }>; /** The levels an editor ticked; the level block shows these even where nothing is filed yet. */ offeredLevels?: Array<{ id: string; name: string; code: string | null }>; featuredCourses: Course[]; seo: Seo | null; }
-export interface Seo { seoTitle: string; metaDescription: string; titleSuffix?: string | null; source?: { title?: string; description?: string }; canonicalUrl: string | null; ogTitle: string | null; ogDescription: string | null; ogMedia: Media | null; twitterTitle: string | null; twitterDescription: string | null; robotsIndex: boolean; robotsFollow: boolean; schemaJson: Record<string, unknown> | null; }
+export interface Seo { seoTitle: string; metaDescription: string; titleSuffix?: string | null; source?: { title?: string; description?: string; canonical?: string }; canonicalUrl: string | null; ogTitle: string | null; ogDescription: string | null; ogMedia: Media | null; twitterTitle: string | null; twitterDescription: string | null; robotsIndex: boolean; robotsFollow: boolean; schemaJson: Record<string, unknown> | null; }
 export interface Course { id: string; name: string; slug: string; shortName: string | null; qualificationName: string | null; shortDescription: string | null; subject: { id: string; name: string; slug: string; }; subSubject: { id: string; name: string; slug: string } | null; courseLevel: { id: string; name: string; code: string; }; studyModes: Array<{ id: string; name: string; code: string }>; duration: { min: string | null; max: string | null; unit: string | null }; credits: string | null; featuredMedia: Media | null; featured: boolean; availableCountryCount: number; selectedCountry: { id: string; name: string; slug: string } | null; selectedTuition: { min: string | null; max: string | null; currencyCode: string | null; period: string } | null; selectedIntakes: Array<{ intake?: { id: string; name: string; slug: string; shortLabel: string | null; startMonth?: number | null; endMonth?: number | null }; applicationDeadline: string | null; deadlineNotes: string | null; status: string }>; scholarshipAvailable: boolean | null; displayOrder: number; }
 /**
  * What one destination asks of an applicant to this course.
@@ -88,3 +90,59 @@ export function getCoursesByLevel(params: { subject: string; subSubject?: string
 export function getCourseFilterOptions(params: Record<string, string> = {}) { const query = new URLSearchParams(params).toString(); return request<CourseFilterOptions>(`/courses/filter-options${query ? `?${query}` : ''}`).then((result) => result.data); }
 export function getCourse(slug: string, country?: string) { const query = country ? `?country=${encodeURIComponent(country)}` : ''; return request<CourseDetail>(`/courses/${encodeURIComponent(slug)}${query}`).then((result) => result.data); }
 export function getCourseSuggestions(q: string) { return request<Array<Pick<Course, 'id' | 'name' | 'slug' | 'subject' | 'courseLevel'>>>(`/courses/suggestions?q=${encodeURIComponent(q)}`).then((result) => result.data); }
+
+/**
+ * What an editor wrote for one field at one study level -- a subject's
+ * Master's page, or a specialization's -- and its search settings, already
+ * resolved: the page's own SEO, else the Level pages template, else the
+ * fallback. `content` is null until a page is published; a draft's words
+ * and its own SEO stay off the site. The API does not ask whether the field
+ * is offered at the level: the website decides that, and 404s first.
+ */
+export interface SubjectLevelPageContent { id: string; intro: string | null; admissionNote: string | null; careersNote: string | null; faqs: Array<{ id: string; question: string; answer: string }>; updatedAt: string; }
+export interface SubjectLevelPageData {
+  subject: { id: string; name: string; slug: string };
+  specialization: { id: string; name: string; slug: string } | null;
+  level: { id: string; code: string; name: string; slug: string; description: string | null };
+  content: SubjectLevelPageContent | null;
+  /** Published, with an intro and at least three active questions: enough
+   *  of its own to be indexed whatever the catalogue lists at it. */
+  hasOwnContent: boolean;
+  seo: ResolvedSeo | null;
+}
+export function getSubjectLevelPage({ subject, specialization, level }: { subject: string; specialization?: string; level: string }) {
+  const field = specialization
+    ? `/subjects/${encodeURIComponent(subject)}/specializations/${encodeURIComponent(specialization)}`
+    : `/subjects/${encodeURIComponent(subject)}`;
+  return request<SubjectLevelPageData>(`${field}/level-pages/${encodeURIComponent(level)}`).then((result) => result.data);
+}
+
+/** A published level page the sitemap may announce: under a published
+ *  field, at an active level the field is still offered at. */
+export interface LevelPageIndexRow {
+  path: string;
+  subjectSlug: string;
+  specializationSlug: string | null;
+  levelCode: string;
+  levelSlug: string;
+  hasOwnContent: boolean;
+  /** The page's own robots setting, else the Level pages template's; null
+   *  when neither says. */
+  robotsIndex: boolean | null;
+  updatedAt: string;
+}
+/**
+ * Every written level page, and what the Level pages template says about
+ * robots -- which also governs the pages nobody has written. One read for
+ * the whole catalogue.
+ */
+export function getLevelPageIndex() {
+  return request<LevelPageIndexRow[]>('/subject-level-pages').then((result) => {
+    const meta = result.meta as unknown as { templateRobotsIndex?: boolean | null } | null;
+    return {
+      rows: result.data,
+      templateRobotsIndex: typeof meta?.templateRobotsIndex === 'boolean' ? meta.templateRobotsIndex : null,
+    };
+  });
+}
+export type LevelPageIndex = Awaited<ReturnType<typeof getLevelPageIndex>>;

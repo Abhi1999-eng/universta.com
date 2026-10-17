@@ -3130,6 +3130,16 @@
 }
 .sa .statstrip--field div { min-width: 0; }
 .sa .statstrip--field b { overflow-wrap: anywhere; }
+/* A field's page at one level stacks its figures, its level bar, its
+   specializations at the level and the way up to its subject in the hero.
+   The strip's bottom rule is the bar's top one, and the bar's own margin
+   is the gap before the chips. */
+.sa .statstrip + .levelbar--wide { margin-top: 0; border-top: 0; }
+.sa .levelbar--wide + .specchips { margin-top: 0; }
+.sa .levelup { margin-top: 14px; }
+/* The level page's own words lead into its list as one white band: a
+   single rule between them, not the two each band brings. */
+.sa .levelintro + .coursefinder { border-top: 0; }
 /* "Why study…" and "Studying…": the paragraph read straight away, with the
    rest under the design's read-more. */
 .sa .fieldwhy__lead { max-width: 74ch; }

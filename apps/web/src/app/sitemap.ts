@@ -8,8 +8,17 @@ import {
 } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCountryCities } from "@/lib/locations";
-import { getCourses, getSubjects } from "@/lib/catalog";
+import {
+  getCourseLevels,
+  getCourses,
+  getLevelPageIndex,
+  getSpecializations,
+  getSubjects,
+  type SpecializationRow,
+} from "@/lib/catalog";
+import { indexableLevelPaths, programmeTally } from "@/lib/level-page-index";
 import { siteOrigin } from "@/lib/site-origin";
+import { specializationHasOwnWords } from "@/lib/specialization-written";
 import {
   countryUniversitiesHref,
   offeringHref,
@@ -116,24 +125,50 @@ async function everyPage<T>(
 }
 
 /**
- * Each live programme's page, and each university's course list that has
- * one -- the indexable pages the course catalogue is made of, which the
- * sitemap never announced. A university with no programme has no list
- * worth announcing. The programmes are an addition to the sitemap, so a
- * failure to read them costs them alone.
+ * Every live programme's address, read once: it feeds the programme pages
+ * below and the count of programmes behind each level page. The
+ * programmes are an addition to the sitemap, so a failure to read them
+ * costs them alone -- and the level pages that would have counted them.
  */
-async function programmeRoutes() {
-  const addresses = await everyPage<ProgrammeAddress>(
+function programmeAddresses() {
+  return everyPage<ProgrammeAddress>(
     phaseProgrammeAddresses,
     ADDRESS_PAGE,
     ADDRESS_PAGES,
   ).catch(() => [] as ProgrammeAddress[]);
+}
+
+/**
+ * Each live programme's page, and each university's course list that has
+ * one -- the indexable pages the course catalogue is made of, which the
+ * sitemap never announced. A university with no programme has no list
+ * worth announcing.
+ */
+function programmeRoutes(addresses: ProgrammeAddress[]) {
   const lists = new Set<string>();
   const pages = addresses.map((row) => {
     lists.add(universityCoursesHref(row.countrySlug, row.universitySlug));
     return offeringHref(row.countrySlug, row.universitySlug, row.slug);
   });
   return [...lists, ...pages];
+}
+
+/**
+ * Every published specialization, a page at a time and one page after
+ * another. Its list says how many there are but not how many pages, and
+ * the API reads each row's levels separately, so a hundred rows are a
+ * hundred queries: several pages at once would be the burst it sheds. A
+ * failure drops the specializations and their level pages, nothing else.
+ */
+async function everySpecialization(): Promise<SpecializationRow[]> {
+  const read = (page: number) =>
+    getSpecializations({ limit: String(CATALOGUE_PAGE), page: String(page) });
+  const first = await read(1);
+  const total = Number((first.meta as { total?: unknown } | null)?.total);
+  const pages = Number.isFinite(total) ? Math.ceil(total / CATALOGUE_PAGE) : 1;
+  const rows = [...first.data];
+  for (let page = 2; page <= pages; page += 1) rows.push(...(await read(page)).data);
+  return rows;
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -147,6 +182,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/contact",
     "/faq",
     "/subjects",
+    "/specializations",
     "/courses",
     "/universities",
     "/scholarships",
@@ -167,15 +203,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       countries,
       subjects,
       courses,
-      programmes,
+      addresses,
+      specializations,
+      courseLevels,
+      levelPageIndex,
     ] = await Promise.all([
       Promise.all(
         resources.map((resource) => phaseListAll<AnyRecord>(resource)),
       ),
       everyPage(getCountries, CATALOGUE_PAGE),
-      getSubjects({ limit: "100" }),
+      /* Every subject, not the first hundred. */
+      everyPage(getSubjects, CATALOGUE_PAGE),
       everyPage(getCourses, CATALOGUE_PAGE),
-      programmeRoutes(),
+      programmeAddresses(),
+      /* Each of these fails on its own, dropping only what it feeds: the
+         specializations and their level pages, or every level page -- the
+         written ones carry the robots settings the rest are checked
+         against, so without them none is announced. */
+      everySpecialization().catch(() => [] as SpecializationRow[]),
+      getCourseLevels().catch(() => []),
+      getLevelPageIndex().catch(() => null),
     ]);
     /* A few destinations at a time: with every destination listed there
        are twice as many of these reads, and all at once the API would shed
@@ -214,17 +261,46 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           (city) => `/study-in-${country.slug}/${city.slug}`,
         ),
       ),
-      ...subjects.data.map((row) => `/subjects/${row.slug}`),
+      ...subjects.map((row) => `/subjects/${row.slug}`),
+      /* A subject's list of its specializations, where it has any. */
+      ...subjects
+        .filter((row) => row.publishedSubSubjectCount > 0)
+        .map((row) => `/subjects/${row.slug}/specializations`),
+      /* A specialization's page only where something is written on it:
+         one with nothing of its own is noindex (see its page). */
+      ...specializations
+        .filter(specializationHasOwnWords)
+        .map((row) => `/subjects/${row.subject.slug}/${row.slug}`),
       ...courses.map((row) => `/courses/${row.slug}`),
       /* Each university's course list, where it lists a programme, and
          each programme's page, at its nested address. */
-      ...programmes,
-    ].map((path) => ({
-      url: new URL(path, base).toString(),
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }));
-    return [...staticRoutes, ...dynamicRoutes];
+      ...programmeRoutes(addresses),
+    ];
+    /* The level pages the pages themselves would index, with when an
+       editor last changed them. */
+    const levelRoutes = indexableLevelPaths({
+      subjects,
+      specializations,
+      catalogue: courseLevels,
+      tally: programmeTally(addresses),
+      written: levelPageIndex,
+    });
+    const seen = new Set<string>();
+    const entries: MetadataRoute.Sitemap = [];
+    for (const route of [
+      ...dynamicRoutes.map((path) => ({ path, lastModified: undefined as string | undefined })),
+      ...levelRoutes,
+    ]) {
+      if (seen.has(route.path)) continue;
+      seen.add(route.path);
+      entries.push({
+        url: new URL(route.path, base).toString(),
+        ...(route.lastModified ? { lastModified: route.lastModified } : {}),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      });
+    }
+    return [...staticRoutes, ...entries];
   } catch {
     return staticRoutes;
   }

@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import type { CourseLevelGroup, SpecializationDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
-import { subjectLevelHref } from '@/lib/subject-levels';
+import { levelPageHref } from '@/lib/subject-levels';
 import { inCountry } from '@/lib/country-article';
 import {
   levelCoursesHref,
   levelTotal,
   programmesHref,
+  specializationLevelPages,
 } from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
 import { SECTION_EYEBROWS, sectionLines, sectionTitle } from '@/lib/specialization-content';
@@ -83,6 +84,7 @@ export type SpecializationRecord = Omit<SpecializationDetail, 'siblings' | 'coun
 export function SpecializationGuide({
   specialization: record,
   levels = null,
+  catalogue = null,
   scholarships = [],
   programmes = null,
 }: {
@@ -90,6 +92,10 @@ export function SpecializationGuide({
   /** Its courses filed under their study levels. Absent when that read
    *  failed; the mixed run of courses is shown instead, as before. */
   levels?: CourseLevelGroup[] | null;
+  /** The catalogue's study levels, the active ones: a level it is offered
+   *  at that has been switched off opens no page. Null when that read
+   *  failed. */
+  catalogue?: ReadonlyArray<{ code: string }> | null;
   /** Awards recorded against its subject. Scholarships are recorded per
    *  subject, not per specialization, and the section says so. */
   scholarships?: ScholarshipCard[];
@@ -145,6 +151,8 @@ export function SpecializationGuide({
   const courses = specialization.courses ?? [];
   const groups = levels ?? [];
   const filed = levelTotal(groups);
+  /* The levels it has pages for: its own ticks with its courses' levels. */
+  const pages = specializationLevelPages(specialization, catalogue);
   /* Its own content, as a course has: each section is a band of its own,
      named by its key, after the overview; the FAQs come before the funding
      hand-off. */
@@ -350,12 +358,19 @@ export function SpecializationGuide({
                 levelPages
                 groups={groups}
                 branch={false}
+                /* A level's own page where the specialization has one;
+                   otherwise the finder's guides, narrowed to it. */
                 allHref={(level) =>
-                  subjectLevelHref({
+                  levelPageHref(pages, {
                     subject: subject.slug,
                     specialization: specialization.slug,
                     level,
                     guides: true,
+                  }) ??
+                  levelCoursesHref({
+                    subject: subject.slug,
+                    subSubject: specialization.slug,
+                    level,
                   })
                 }
               />

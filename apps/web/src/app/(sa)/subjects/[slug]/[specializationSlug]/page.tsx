@@ -7,11 +7,14 @@ import { everyLevel, LEVEL_ROWS_FETCHED, specializationOfferedLevels } from '@/l
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
 import { RecordVisit } from '@/components/study-abroad/ContinueJourney';
+import { countryFaqJsonLd } from '@/lib/country-faq';
 import { jsonLdString } from '@/lib/json-ld';
 import { phaseList } from '@/lib/phase1';
 import { programmeSample } from '@/lib/programme-sample';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 import { resolvedMetadata, templatedTitle } from '@/lib/seo-management';
+import { specializationHasOwnWords } from '@/lib/specialization-written';
+import { breadcrumbJsonLd } from '@/lib/university-json-ld';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +27,10 @@ type Props = {
    level: /subjects/computing/artificial-intelligence or
    /subjects/computing/masters. A specialization is looked up first; only a
    path that names no specialization is read as a level. The API keeps
-   specialization slugs off the level slugs, so the two never meet. */
+   specialization slugs off the level slugs, so the two never meet. A level
+   segment renders only where the subject is offered at that level (or,
+   offered at none, at one of the six named levels); any other is a 404,
+   decided by the level page itself. */
 async function isLevel(segment: string) {
   const levels = await getCourseLevels().catch(() => null);
   return Boolean(levels && findSubjectLevel(levels, segment));
@@ -61,16 +67,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     canonical,
   );
   /* A specialization can be published with nothing written about it, and
-     a page with nothing of its own is not worth sending crawlers to. An
-     editor's own description, in the record or in its SEO, counts as
-     something written; a bulk template's does not. */
-  const written = Boolean(
-    specialization.shortDescription?.trim() ||
-      specialization.overview?.trim() ||
-      specialization.contentSections?.length ||
-      specialization.faqs?.length ||
-      specialization.seo?.source?.description === 'manual',
-  );
+     a page with nothing of its own is not worth sending crawlers to. The
+     sitemap asks the same question of the same helper. */
+  const written = specializationHasOwnWords(specialization);
   return {
     ...resolved,
     /* `resolvedMetadata` appends the site name, and this route family's
@@ -84,8 +83,12 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function SpecializationDetailPage({ params, searchParams }: Props) {
   const { slug, specializationSlug } = await params;
   const specialization = await load(slug, specializationSlug);
+  /* Called, not returned as an element: a level the subject is not
+     offered at then throws its 404 inside this route's own render, before
+     anything streams, so the response is a real 404 -- as on the
+     specialization's own level route, which is the component itself. */
   if (!specialization && (await isLevel(specializationSlug)))
-    return <SubjectLevelPage params={Promise.resolve({ slug, levelSlug: specializationSlug })} searchParams={searchParams} />;
+    return SubjectLevelPage({ params: Promise.resolve({ slug, levelSlug: specializationSlug }), searchParams });
   if (!specialization) notFound();
 
   const [levels, scholarships, allLevels, programmes] = await Promise.all([
@@ -118,26 +121,22 @@ export default async function SpecializationDetailPage({ params, searchParams }:
     }),
   ]);
 
-  const breadcrumb = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: '/' },
-      { '@type': 'ListItem', position: 2, name: 'Subjects', item: '/subjects' },
-      {
-        '@type': 'ListItem',
-        position: 3,
-        name: specialization.subject.name,
-        item: `/subjects/${specialization.subject.slug}`,
-      },
-      {
-        '@type': 'ListItem',
-        position: 4,
-        name: specialization.name,
-        item: `/subjects/${specialization.subject.slug}/${specialization.slug}`,
-      },
+  const selfPath = `/subjects/${specialization.subject.slug}/${specialization.slug}`;
+  /* The crumbs the hero draws, with absolute addresses, as the level pages
+     and a university's pages give theirs: a relative `item` is not a URL
+     to a crawler. */
+  const breadcrumb = breadcrumbJsonLd(
+    [
+      { label: 'Home', href: '/' },
+      { label: 'Subjects', href: '/subjects' },
+      { label: specialization.subject.name, href: `/subjects/${specialization.subject.slug}` },
+      { label: specialization.name },
     ],
-  };
+    selfPath,
+  );
+  /* The questions the page answers, as structured data, as a country's
+     and a university's pages give theirs. */
+  const faqData = countryFaqJsonLd(specialization.faqs ?? []);
 
   return (
     <>
@@ -145,14 +144,21 @@ export default async function SpecializationDetailPage({ params, searchParams }:
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
       />
+      {faqData ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(faqData) }}
+        />
+      ) : null}
       <RecordVisit
         kind="specialization"
-        href={`/subjects/${specialization.subject.slug}/${specialization.slug}`}
+        href={selfPath}
         title={specialization.name}
       />
       <SpecializationGuide
         specialization={specialization}
         levels={everyLevel(levels, allLevels, specializationOfferedLevels(specialization))}
+        catalogue={allLevels}
         scholarships={scholarships}
         programmes={programmes}
       />

@@ -25,6 +25,8 @@ import {
 import type { CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubSubjectRecord, SubjectRecord } from './catalog.types';
 import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
+import { LevelPagesCard } from './LevelPagesCard';
+import { sameIds } from './level-pages';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -49,6 +51,11 @@ export function SubjectForm({ id }: { id?: string }) {
   const [media, setMedia] = useState<EditorialMedia[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
+  /* The ticks as last saved, and a counter bumped on each save: the Level
+     pages card reads the offered levels from the API, so it only follows the
+     ticks once they are saved, and says so until then. */
+  const [savedLevelIds, setSavedLevelIds] = useState<string[]>([]);
+  const [levelPagesKey, setLevelPagesKey] = useState(0);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
   const [countryIds, setCountryIds] = useState<string[]>([]);
   const [derivedCountryIds, setDerivedCountryIds] = useState<string[]>([]);
@@ -95,6 +102,7 @@ export function SubjectForm({ id }: { id?: string }) {
         setCountryIds(countryLinks.data.map((link) => link.country.id));
         setDerivedCountryIds(countryLinks.data.filter((link) => link.source === 'DERIVED').map((link) => link.country.id));
         setLevelIds((subject.courseLevels ?? []).map((level) => level.id));
+        setSavedLevelIds((subject.courseLevels ?? []).map((level) => level.id));
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
         setForm({
@@ -192,6 +200,10 @@ export function SubjectForm({ id }: { id?: string }) {
       setRecord(settled.record);
       setSpecializations(settled.children);
       setDirty(false);
+      /* Saving can change the offered levels twice over: the ticks, and the
+         specializations this save published or moved to draft. */
+      setSavedLevelIds(settled.record.courseLevels ? settled.record.courseLevels.map((level) => level.id) : levelIds);
+      setLevelPagesKey((value) => value + 1);
       /* Publish ends the editing session: back to the list, with the green
          confirmation there. A draft save keeps the operator where they are. */
       if (intent === 'publish') {
@@ -236,6 +248,8 @@ export function SubjectForm({ id }: { id?: string }) {
         </fieldset>
 
         <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} hint="The levels ticked on its specializations show on the subject's pages on their own. Tick here any level the subject is offered at beyond them, or every level while it has no specializations. Levels with a published course show either way." onChange={(next) => { setLevelIds(next); setDirty(true); }} />
+
+        <LevelPagesCard owner="subject" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED'} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
 
         <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
 
@@ -282,7 +296,7 @@ export function SubjectForm({ id }: { id?: string }) {
           ) : null}
         </fieldset>
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
+        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="subject" />
         <UnifiedEditorActions cancelHref="/subjects" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

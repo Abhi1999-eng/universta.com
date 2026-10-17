@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export type CatalogProxyOperation = 'country-tags:list' | 'country-tags:create' | 'country-features:list' | 'country-features:create' | 'country-english-tests:list' | 'country-english-tests:create' | 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | `subjects:countries:get:${string}` | `subjects:countries:put:${string}` | `specializations:countries:get:${string}` | `specializations:countries:put:${string}` | 'specializations:list' | `specializations:get:${string}` | `specializations-seo:get:${string}` | `specializations-seo:put:${string}` | `specializations-seo:delete:${string}` | `specializations:sections:list:${string}` | `specializations:sections:create:${string}` | `specializations:sections:update:${string}:${string}` | `specializations:sections:delete:${string}:${string}` | `specializations:faqs:list:${string}` | `specializations:faqs:create:${string}` | `specializations:faqs:update:${string}:${string}` | `specializations:faqs:delete:${string}:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
+export type CatalogProxyOperation = 'country-tags:list' | 'country-tags:create' | 'country-features:list' | 'country-features:create' | 'country-english-tests:list' | 'country-english-tests:create' | 'continents:list' | 'continents:create' | `continents:get:${string}` | `continents:update:${string}` | `continents:delete:${string}` | 'countries:list' | 'countries:create' | `countries:get:${string}` | `countries:curation-options:${string}` | `countries:update:${string}` | `countries:publish:${string}` | `countries:unpublish:${string}` | `countries:delete:${string}` | `country-profiles:all:${string}` | `country-profiles:get:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:put:${string}:${'cost' | 'work' | 'language' | 'intakes' | 'statistics'}` | `country-profiles:delete:${string}:${'cost' | 'work' | 'language' | 'statistics'}` | `editorial:${string}` | 'intakes:list' | 'subjects:list' | 'subjects:create' | `subjects:get:${string}` | `subjects:update:${string}` | `subjects:publish:${string}` | `subjects:unpublish:${string}` | `subjects:delete:${string}` | `subsubjects:list:${string}` | `subsubjects:create:${string}` | `subsubjects:get:${string}:${string}` | `subsubjects:update:${string}:${string}` | `subsubjects:publish:${string}:${string}` | `subsubjects:unpublish:${string}:${string}` | `subsubjects:delete:${string}:${string}` | `subjects-seo:get:${string}` | `subjects-seo:put:${string}` | `subjects-seo:delete:${string}` | `subjects:countries:get:${string}` | `subjects:countries:put:${string}` | `specializations:countries:get:${string}` | `specializations:countries:put:${string}` | `subjects:level-pages:list:${string}` | `subjects:level-pages:get:${string}:${string}` | `subjects:level-pages:put:${string}:${string}` | `subjects:level-pages:delete:${string}:${string}` | `specializations:level-pages:list:${string}` | `specializations:level-pages:get:${string}:${string}` | `specializations:level-pages:put:${string}:${string}` | `specializations:level-pages:delete:${string}:${string}` | 'specializations:list' | `specializations:get:${string}` | `specializations-seo:get:${string}` | `specializations-seo:put:${string}` | `specializations-seo:delete:${string}` | `specializations:sections:list:${string}` | `specializations:sections:create:${string}` | `specializations:sections:update:${string}:${string}` | `specializations:sections:delete:${string}:${string}` | `specializations:faqs:list:${string}` | `specializations:faqs:create:${string}` | `specializations:faqs:update:${string}:${string}` | `specializations:faqs:delete:${string}:${string}` | 'course-levels:list' | 'course-levels:create' | `course-levels:get:${string}` | `course-levels:update:${string}` | `course-levels:delete:${string}` | 'study-modes:list' | 'study-modes:create' | `study-modes:get:${string}` | `study-modes:update:${string}` | `study-modes:delete:${string}` | 'courses:list' | 'courses:create' | `courses:get:${string}` | `courses:update:${string}` | `courses:publish:${string}` | `courses:unpublish:${string}` | `courses:delete:${string}` | `courses:modes:${string}` | `courses:countries:list:${string}` | `courses:countries:create:${string}` | `courses:countries:update:${string}:${string}` | `courses:countries:delete:${string}:${string}` | `courses:intakes:list:${string}:${string}` | `courses:intakes:put:${string}:${string}` | `courses:sections:list:${string}` | `courses:sections:create:${string}` | `courses:sections:update:${string}:${string}` | `courses:sections:delete:${string}:${string}` | `courses:faqs:list:${string}` | `courses:faqs:create:${string}` | `courses:faqs:update:${string}:${string}` | `courses:faqs:delete:${string}:${string}` | `courses:related:list:${string}` | `courses:related:put:${string}` | `courses-seo:get:${string}` | `courses-seo:put:${string}` | `courses-seo:delete:${string}`;
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UPSTREAM_TIMEOUT_MS = 5_000;
@@ -124,7 +124,18 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   SUB_SUBJECT_SECTION_INVALID: 'This content section cannot be saved as written',
   SUB_SUBJECT_FAQ_STALE_VERSION: 'This FAQ changed in another session. Reload before saving',
   SUB_SUBJECT_FAQ_NOT_FOUND: 'FAQ not found',
-  SEO_URL_INVALID: 'SEO canonical URL must use HTTPS',
+  /* A level page saves whole -- text, FAQs and SEO under one version -- so a
+     stale page is one message, not one per FAQ. */
+  LEVEL_PAGE_STALE_VERSION: 'This level page changed in another session. Reload before saving',
+  LEVEL_PAGE_LEVEL_NOT_OFFERED: 'This study level is not offered here any more, so its page cannot be saved. Tick the level and save the subject or specialization first',
+  LEVEL_PAGE_NOT_READY: 'Write an intro, a note or an FAQ before publishing this level page',
+  LEVEL_PAGE_INVALID: 'Each question needs a question and an answer',
+  /* A level's code is also the address of its page under every field, so it
+     cannot be one a specialization already uses; and four subject slugs are
+     fixed words in the destination addresses. */
+  COURSE_LEVEL_SLUG_TAKEN: "A specialization already uses this level's address. Rename that specialization first",
+  SUBJECT_SLUG_RESERVED: 'That slug is a fixed page address on the site. Choose another slug',
+  SEO_URL_INVALID: 'Canonical URL must be a site path beginning with / or an http(s) URL',
   MEDIA_INVALID: 'Selected media is not an active image',
   /* An operator reads these, not a developer. They name the card's own words
    * -- "tuition", "working hours" -- rather than the column, and say what to
@@ -281,6 +292,25 @@ function operationDetails(operation: CatalogProxyOperation): {
       path: `/api/v1/admin/${resource}/${encodeURIComponent(id ?? '')}/countries`,
       query: [],
       body: action === 'get' ? [] : ['countryIds'],
+    };
+  }
+  /* The page a subject or a specialization has at each study level it is
+     offered at. It sits here, before the generic `subjects:` branch below,
+     which would otherwise read "level-pages" as an action and send a DELETE
+     to /subjects/level-pages. One PUT carries the whole page -- its text,
+     status, FAQs and SEO -- under one version, so the nested `faqs[]` and
+     `seo{}` pass through whole: only the top-level keys are filtered here,
+     and the API's DTOs whitelist what is inside them. */
+  if (operation.startsWith('subjects:level-pages:') || operation.startsWith('specializations:level-pages:')) {
+    const [resource, , action, id, levelId] = operation.split(':');
+    const leaf = levelId ? `/${encodeURIComponent(levelId)}` : '';
+    return {
+      method: action === 'list' || action === 'get' ? 'GET' : action === 'put' ? 'PUT' : 'DELETE',
+      path: `/api/v1/admin/${resource}/${encodeURIComponent(id ?? '')}/level-pages${leaf}`,
+      query: [],
+      body: action === 'put'
+        ? ['intro', 'admissionNote', 'careersNote', 'status', 'faqs', 'seo', 'expectedUpdatedAt']
+        : action === 'delete' ? ['expectedUpdatedAt'] : [],
     };
   }
   if (operation.startsWith('subjects-seo:')) {

@@ -7,6 +7,9 @@ const protectedPaths = [
   '/countries',
   '/courses',
   '/subjects',
+  /* A specialization's editor and its level pages live under their own
+     address, not under /subjects. */
+  '/specializations',
   '/catalog-masters',
   '/leads',
   '/phase1',

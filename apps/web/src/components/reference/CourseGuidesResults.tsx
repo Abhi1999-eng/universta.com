@@ -75,6 +75,11 @@ export type CourseGuidesResultsProps = {
    *  link to their programmes, since for any other the link would open an
    *  empty list. */
   taught?: readonly string[];
+  /** Where the list is, for its empty sentence: "for Computing at
+   *  Bachelor's". */
+  where?: string;
+  /** Said under the empty sentence: where else the reader might look. */
+  empty?: ReactNode;
 };
 
 /** The approved reveal: twelve to begin with, twelve more each time, and the
@@ -766,8 +771,27 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
           ) : null}
 
           {courses.length === 0 ? (
+            /* It said "matches these filters" on a level with nothing
+               published and nothing ticked; now it says which of the three
+               it is, as the programmes' list does. */
             <div className="dir__none" data-testid="course-empty">
-              <p>No course matches these filters. Remove a filter to see more.</p>
+              <p>
+                {activeCount ? (
+                  `No course${props.where ? ` ${props.where}` : ''} matches these filters. Remove a filter to see more.`
+                ) : filters.q ? (
+                  `No course${props.where ? ` ${props.where}` : ''} matches this search. Try another search.`
+                ) : meta.total > 0 ? (
+                  <>
+                    The list ends before this page.{' '}
+                    <Link href={`${pageHref(1)}#discovery`}>Back to the start of the list</Link>.
+                  </>
+                ) : (
+                  `No course guides${props.where ? ` ${props.where}` : ''} are published yet.`
+                )}
+              </p>
+              {/* On its own, so what a page hands in is never one of a
+                  list of children. */}
+              {props.empty ? <div>{props.empty}</div> : null}
               <p>
                 Or <AssessmentLink>run the assessment</AssessmentLink> and we will match
                 you against programmes directly.

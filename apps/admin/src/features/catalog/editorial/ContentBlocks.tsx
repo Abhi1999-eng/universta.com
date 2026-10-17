@@ -124,11 +124,13 @@ export function sectionIssues(rows: SectionDraft[], keys: readonly string[]) {
   });
   return next;
 }
-export function faqIssues(rows: FaqDraft[]) {
+/** `blankOrder`: a blank display order is allowed and means the row's place
+ * on screen, as on a level page. */
+export function faqIssues(rows: FaqDraft[], { blankOrder = false }: { blankOrder?: boolean } = {}) {
   const next: string[] = [];
   rows.filter(faqUsed).forEach((row, index) => {
     if (!row.question.trim() || !row.answer.trim()) next.push(`FAQ ${index + 1}: both question and answer are required.`);
-    if (!/^\d+$/.test(row.displayOrder)) next.push(`FAQ ${index + 1}: display order must be a whole number.`);
+    if (!(blankOrder && row.displayOrder.trim() === '') && !/^\d+$/.test(row.displayOrder)) next.push(`FAQ ${index + 1}: display order must be a whole number.`);
   });
   return next;
 }

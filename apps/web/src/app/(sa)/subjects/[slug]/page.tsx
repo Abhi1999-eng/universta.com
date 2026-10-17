@@ -18,6 +18,7 @@ import { RecordVisit } from "@/components/study-abroad/ContinueJourney";
 import { phaseList } from "@/lib/phase1";
 
 import { jsonLdString } from "@/lib/json-ld";
+import { breadcrumbJsonLd } from "@/lib/university-json-ld";
 import { resolvedMetadata, templatedTitle } from "@/lib/seo-management";
 import { toScholarshipCards } from "@/lib/scholarship-card";
 
@@ -101,20 +102,16 @@ export default async function SubjectDetailPage({ params }: Props) {
     iconMedia: row.iconMedia ?? null,
   }));
 
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "/" },
-      { "@type": "ListItem", position: 2, name: "Subjects", item: "/subjects" },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: subject.name,
-        item: `/subjects/${subject.slug}`,
-      },
+  /* The crumbs the hero draws, with absolute addresses: a relative `item`
+     is not a URL to a crawler. */
+  const breadcrumb = breadcrumbJsonLd(
+    [
+      { label: "Home", href: "/" },
+      { label: "Subjects", href: "/subjects" },
+      { label: subject.name },
     ],
-  };
+    `/subjects/${subject.slug}`,
+  );
 
   return (
     <>
@@ -133,6 +130,7 @@ export default async function SubjectDetailPage({ params }: Props) {
         universities={universities.rows}
         universityTotal={universities.total}
         levels={everyLevel(levels, allLevels, subjectOfferedLevels(subject))}
+        catalogue={allLevels}
         related={related}
         programmes={programmes}
       />

@@ -12,6 +12,7 @@ export const SEO_BULK_ENTITY_TYPES = [
   'job',
   'event',
   'successStory',
+  'levelPage',
 ] as const;
 
 export type SeoBulkEntityType = (typeof SEO_BULK_ENTITY_TYPES)[number];
@@ -160,6 +161,30 @@ export const SEO_ENTITY_DEFINITIONS: SeoEntityDefinition[] = [
       { key: 'universityName', label: 'University name' },
       { key: 'countryName', label: 'Country name' },
       { key: 'courseName', label: 'Course name' },
+    ],
+  },
+  {
+    /* A study level's own page in a subject or a specialization. One
+       template serves both kinds: {fieldName} is the specialization on a
+       specialization's page and the subject on a subject's, so
+       "{levelName} in {fieldName}" reads "Master's in Computer Science" and
+       "Master's in Artificial Intelligence". */
+    key: 'levelPage',
+    label: 'Study level pages',
+    variables: [
+      { key: 'levelName', label: 'Study level' },
+      { key: 'levelSlug', label: 'Study level slug' },
+      {
+        key: 'fieldName',
+        label: 'Specialization, or the subject on a subject page',
+      },
+      { key: 'subjectName', label: 'Subject name' },
+      { key: 'subjectSlug', label: 'Subject slug' },
+      {
+        key: 'specializationName',
+        label: 'Specialization name (empty on a subject page)',
+      },
+      { key: 'specializationSlug', label: 'Specialization slug' },
     ],
   },
 ];

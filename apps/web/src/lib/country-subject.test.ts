@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countrySubjectPage,
+  durationFigure,
   figuresHere,
   intakeFigure,
   listedIntakes,
@@ -357,6 +358,43 @@ describe('the figures strip', () => {
 
   it('is empty where the destination has nothing to count', () => {
     expect(figuresHere({ programmes: 0, universities: 0, intakes: null })).toEqual([]);
+  });
+
+  it('counts the destinations after the universities, and the duration last', () => {
+    expect(
+      figuresHere({ programmes: 9, universities: 3, countries: 2, intakes: 'Sep', duration: '1–2 years' }),
+    ).toEqual([
+      { label: 'Programmes', value: '9' },
+      { label: 'Universities', value: '3' },
+      { label: 'Destinations', value: '2' },
+      { label: 'Intakes', value: 'Sep' },
+      { label: 'Duration', value: '1–2 years' },
+    ]);
+    expect(figuresHere({ programmes: 1, universities: 1, countries: 1, intakes: null })).toEqual([
+      { label: 'Programme', value: '1' },
+      { label: 'University', value: '1' },
+      { label: 'Destination', value: '1' },
+    ]);
+    expect(figuresHere({ programmes: 4, universities: null, countries: 0, intakes: null, duration: null })).toEqual([
+      { label: 'Programmes', value: '4' },
+    ]);
+  });
+});
+
+describe('the duration figure', () => {
+  it('is the one length band every programme falls in', () => {
+    expect(durationFigure([{ label: '1–2 years', count: 9 }])).toBe('1–2 years');
+  });
+
+  it('is nothing when the lengths spread over bands', () => {
+    expect(durationFigure([{ label: 'Up to 1 year', count: 2 }, { label: '1–2 years', count: 7 }])).toBeNull();
+  });
+
+  it('ignores a band nothing falls in, and has nothing for no bands', () => {
+    expect(durationFigure([{ label: 'Up to 1 year', count: 0 }, { label: 'More than 2 years', count: 3 }])).toBe(
+      'More than 2 years',
+    );
+    expect(durationFigure([])).toBeNull();
   });
 });
 

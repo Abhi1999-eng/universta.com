@@ -66,6 +66,9 @@ vi.mock('@/lib/catalog', () => ({
       ...entry,
       levels: index === 0 ? fixture.firstLevels : [],
     })),
+    /* As the API counts them: the Bachelor's course below is the
+       subject's, so it counts towards the levels it is offered at. */
+    courseCountsByLevel: fixture.guides ? [{ level: levels[2], count: 1 }] : [],
   }),
   getCoursesByLevel: async () => fixture.guides ? [{
     level: levels[2],
@@ -238,9 +241,12 @@ describe('the ZIP-aligned country subject page', () => {
     expect(first).toContain('1 course');
   });
 
-  it('keeps the six study levels and the guide link scoped to the country and subject', async () => {
+  it('keeps the levels its courses are at and the guide link scoped to the country and subject', async () => {
     const html = await render();
-    for (const level of levels) expect(html).toContain(`id="level-${level.code.toLowerCase()}"`);
+    /* Nothing ticked, but a Bachelor's course: offered at Bachelor's. */
+    expect(html).toContain('id="level-ug"');
+    for (const level of levels.filter((row) => row.code !== 'UG'))
+      expect(html).not.toContain(`id="level-${level.code.toLowerCase()}"`);
     expect(html).toContain('href="/courses?country=uk&amp;subject=arts-humanities-social-sciences&amp;level=UG&amp;view=guides"');
   });
 
@@ -284,9 +290,25 @@ describe('the study levels on a country subject page', () => {
   });
 
   it('shows the six named levels when nothing says what it is offered at, without claiming them', async () => {
+    fixture.guides = 0;
     const html = await render();
     expect(panelIds(html)).toHaveLength(6);
     expect(section(html, 'programs')).not.toContain('offered at');
+  });
+
+  it('with nothing ticked but a course, shows only the level the course is at', async () => {
+    const html = await render();
+    expect(panelIds(html)).toEqual(['level-ug']);
+    expect(section(html, 'programs')).toContain("is offered at Bachelor&#x27;s.");
+  });
+
+  it('links each of the six empty levels to the subject’s page at it, every destination', async () => {
+    fixture.guides = 0;
+    const html = await render();
+    for (const level of levels) {
+      const slug = { UG: 'bachelors', PG: 'masters' }[level.code] ?? level.code.toLowerCase();
+      expect(panel(html, level.code)).toContain(`href="/subjects/${subjectSlug}/${slug}"`);
+    }
   });
 
   it('names the specializations offered at each level, linked in this country', async () => {

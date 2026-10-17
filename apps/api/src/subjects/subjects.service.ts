@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { attachDefaultTaxonomy } from '../countries/country-taxonomy-reconciler';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,6 +27,21 @@ import {
   type DestinationCountry,
   type OrderedLevel,
 } from './public-order';
+import {
+  PUBLIC_LEVEL_SLUGS,
+  SUBJECT_LEVEL_PAGE_SEO_OWNER,
+} from './level-pages.shared';
+import {
+  MEDIA_SELECT,
+  actorId,
+  assertActiveImages,
+  media,
+  seoData,
+  toSeo,
+  validUrl,
+  versionMatches,
+  type MediaRecord,
+} from './subjects.shared';
 import type {
   CreateSubSubjectDto,
   CreateSubjectDto,
@@ -62,16 +77,6 @@ function liveAt(now: Date) {
   };
 }
 
-const MEDIA_SELECT = {
-  id: true,
-  publicUrl: true,
-  altText: true,
-  title: true,
-  width: true,
-  height: true,
-  status: true,
-  deletedAt: true,
-} as const;
 const COUNTRY_LINK_SELECT = {
   id: true,
   name: true,
@@ -99,6 +104,17 @@ function activeTicks<T extends { courseLevel: { status: string } }>(
 ): T[] {
   return (links ?? []).filter((link) => link.courseLevel.status === 'ACTIVE');
 }
+
+/* A published course at a level still switched on: what puts a level on
+   a subject or a specialization from its courses. A course at a switched-off
+   level cannot be opened on the site, so its level offers nothing -- the
+   level pages already read it so, and the site 404s every level of a field
+   told it was offered at one. */
+const TAUGHT = {
+  status: 'PUBLISHED',
+  deletedAt: null,
+  courseLevel: { status: 'ACTIVE' },
+} satisfies Prisma.CourseWhereInput;
 
 /* A ticked level, with what it is ordered by. */
 const LEVEL_LINK_INCLUDE = {
@@ -141,16 +157,16 @@ const SUBJECT_INCLUDE = {
 /* The `seo_metadata` row of a specialization is filed under this owner
    type, as a subject's is under SUBJECT. */
 const SUB_SUBJECT_SEO_OWNER = 'SUB_SUBJECT';
-/* The readable address a level's page has on the site (apps/web
-   subject-levels.ts); any other level is addressed by its code. */
-const PUBLIC_LEVEL_SLUGS: Record<string, string> = {
-  FOUNDATION: 'foundation',
-  PATHWAY: 'pathway',
-  UG: 'bachelors',
-  PG: 'masters',
-  MBA: 'mba',
-  PHD: 'phd',
-};
+/* A subject's page is also reached inside a destination,
+   /study-abroad/<country>/<subject>, where these words are fixed pages of
+   their own. A subject slugged like one of them could never be opened
+   there. */
+const RESERVED_SUBJECT_SLUGS = new Set([
+  'consultants',
+  'scholarships',
+  'subjects',
+  'universities',
+]);
 
 const SUB_SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
@@ -161,62 +177,12 @@ const SUB_SUBJECT_INCLUDE = {
   },
 } satisfies Prisma.SubSubjectInclude;
 
-type MediaRecord = {
-  id: string;
-  publicUrl: string;
-  altText: string | null;
-  title: string | null;
-  width: number | null;
-  height: number | null;
-  status: string;
-  deletedAt: Date | null;
-} | null;
 type SubjectRecord = Prisma.SubjectGetPayload<{
   include: typeof SUBJECT_INCLUDE;
 }>;
 type SubSubjectRecord = Prisma.SubSubjectGetPayload<{
   include: typeof SUB_SUBJECT_INCLUDE;
 }>;
-
-function actorId(request: AuthenticatedRequest): string {
-  const id = request.user?.sub;
-  if (!id)
-    throw new ForbiddenException({
-      code: 'FORBIDDEN',
-      message: 'Super Admin access is required',
-      details: null,
-    });
-  return id;
-}
-
-function media(record: MediaRecord) {
-  return record && record.status === 'ACTIVE' && !record.deletedAt
-    ? {
-        id: record.id,
-        url: record.publicUrl,
-        alt: record.altText ?? record.title ?? '',
-        title: record.title,
-        width: record.width,
-        height: record.height,
-      }
-    : null;
-}
-
-function versionMatches(
-  current: Date,
-  expected: string | undefined,
-  code: string,
-): void {
-  if (expected && current.getTime() !== new Date(expected).getTime())
-    throw catalogConflict(
-      code,
-      'The record changed in another session. Reload before saving',
-    );
-}
-
-function validUrl(value: string | undefined): boolean {
-  return !value || /^https?:\/\//i.test(value);
-}
 
 /**
  * The language tests a subject's destinations actually accept.
@@ -638,8 +604,7 @@ export class SubjectsService {
         ...(Array.isArray(scope)
           ? { subSubjectId: { in: scope } }
           : { subjectId: scope.subjectId, subSubjectId: { not: null } }),
-        status: 'PUBLISHED',
-        deletedAt: null,
+        ...TAUGHT,
       },
       _count: { _all: true },
     });
@@ -826,20 +791,41 @@ export class SubjectsService {
          under several subjects. Callers that resolve a bare slug take the
          first and say so. */
       ...(query.slug?.trim() ? { slug: query.slug.trim().toLowerCase() } : {}),
-      /* A level narrows to the branches that actually have a published
-         programme at it, rather than to branches merely tagged with it. */
+      /* A level narrows to the branches offered at it: ticked for it by an
+         editor (on a level still switched on), or with a published
+         programme at it -- the same rule the card's levels line and the
+         level pages follow. It used to read programmes only, so a branch
+         ticked for a level but with no courses yet was missing from its
+         own level's list. */
       ...(query.level?.trim()
         ? {
-            courses: {
-              some: {
-                status: 'PUBLISHED',
-                deletedAt: null,
-                courseLevel: { code: query.level.trim().toUpperCase() },
+            OR: [
+              {
+                courseLevels: {
+                  some: {
+                    courseLevel: {
+                      code: query.level.trim().toUpperCase(),
+                      status: 'ACTIVE',
+                    },
+                  },
+                },
               },
-            },
+              {
+                courses: {
+                  some: {
+                    status: 'PUBLISHED',
+                    deletedAt: null,
+                    courseLevel: {
+                      code: query.level.trim().toUpperCase(),
+                      status: 'ACTIVE',
+                    },
+                  },
+                },
+              },
+            ],
           }
         : {}),
-    };
+    } satisfies Prisma.SubSubjectWhereInput;
     const [rows, total] = await Promise.all([
       this.prisma.subSubject.findMany({
         where,
@@ -905,11 +891,7 @@ export class SubjectsService {
       }),
       this.prisma.course.groupBy({
         by: ['courseLevelId'],
-        where: {
-          subjectId: subject.id,
-          status: 'PUBLISHED',
-          deletedAt: null,
-        },
+        where: { subjectId: subject.id, ...TAUGHT },
         _count: { _all: true },
       }),
       /* The same count, broken down one level further, so a specialization can
@@ -1097,6 +1079,7 @@ export class SubjectsService {
     const userId = actorId(request);
     const name = dto.name.trim();
     const slug = dto.slug?.trim() || slugify(name);
+    this.assertSubjectSlugFree(slug);
     await this.validateMedia([
       dto.iconMediaId,
       dto.listingMediaId,
@@ -1178,6 +1161,8 @@ export class SubjectsService {
       dto.expectedUpdatedAt,
       'SUBJECT_STALE_VERSION',
     );
+    const nextSlug = dto.slug?.trim() || current.slug;
+    if (nextSlug !== current.slug) this.assertSubjectSlugFree(nextSlug);
     await this.validateMedia([
       dto.iconMediaId,
       dto.listingMediaId,
@@ -1190,7 +1175,7 @@ export class SubjectsService {
         ? { courseLevels: this.levelWrite(levelIds, current.courseLevels) }
         : {}),
       name: dto.name.trim(),
-      slug: dto.slug?.trim() || current.slug,
+      slug: nextSlug,
       ...(dto.shortDescription !== undefined
         ? { shortDescription: dto.shortDescription.trim() }
         : {}),
@@ -1345,21 +1330,29 @@ export class SubjectsService {
       );
     /* Deleting removes the subject from the database for good, with its
        specializations and everything filed under them -- levels, sections,
-       FAQs, destination links (cascaded by the schema) and SEO rows (no
-       foreign key, so removed here) -- so its name and slug are free to use
-       again. It used to be a soft delete that kept the slug taken. */
-    const branchIds = (
-      await this.prisma.subSubject.findMany({
-        where: { subjectId: id },
-        select: { id: true },
-      })
-    ).map((branch) => branch.id);
+       FAQs, destination links, level pages (cascaded by the schema) and SEO
+       rows (no foreign key, so removed here) -- so its name and slug are
+       free to use again. It used to be a soft delete that kept the slug
+       taken. Every level page carries its subject's id, a specialization's
+       too, so one read finds them all. */
+    const [branchIds, levelPageIds] = await Promise.all([
+      this.prisma.subSubject
+        .findMany({ where: { subjectId: id }, select: { id: true } })
+        .then((rows) => rows.map((branch) => branch.id)),
+      this.prisma.subjectLevelPage
+        .findMany({ where: { subjectId: id }, select: { id: true } })
+        .then((rows) => rows.map((page) => page.id)),
+    ]);
     await this.prisma.$transaction([
       this.prisma.seoMetadata.deleteMany({
         where: {
           OR: [
             { ownerType: 'SUBJECT', ownerId: id },
             { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: { in: branchIds } },
+            {
+              ownerType: SUBJECT_LEVEL_PAGE_SEO_OWNER,
+              ownerId: { in: levelPageIds },
+            },
           ],
         },
       }),
@@ -1375,7 +1368,12 @@ export class SubjectsService {
       id,
       'DELETE',
       { name: row.name, slug: row.slug, status: row.status },
-      { deleted: true, permanent: true, specializations: branchIds.length },
+      {
+        deleted: true,
+        permanent: true,
+        specializations: branchIds.length,
+        levelPages: levelPageIds.length,
+      },
       'Subject deleted permanently',
     );
     return { deleted: true };
@@ -1473,7 +1471,7 @@ export class SubjectsService {
     if (!validUrl(dto.canonicalUrl))
       throw catalogConflict(
         'SEO_URL_INVALID',
-        'Canonical URL must use HTTP or HTTPS',
+        'Canonical URL must be a site path beginning with / or an http(s) URL',
       );
     const key = { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id };
     const current = await this.prisma.seoMetadata.findUnique({
@@ -2092,6 +2090,17 @@ export class SubjectsService {
    * first, so a specialization slugged like a level would hide that level's
    * page. Its slug may not be one of the levels' public slugs or codes.
    */
+  /** A subject's slug may not be one of the words fixed under a
+   * destination's address (RESERVED_SUBJECT_SLUGS). Checked only when the
+   * slug is set or changed, so a subject saved before the rule still saves. */
+  private assertSubjectSlugFree(slug: string) {
+    if (RESERVED_SUBJECT_SLUGS.has(slug.toLowerCase()))
+      throw catalogConflict(
+        'SUBJECT_SLUG_RESERVED',
+        `"${slug}" is a fixed page address on the site. Choose another slug for this subject.`,
+      );
+  }
+
   private async assertSlugNotALevel(slug: string) {
     const levels = await this.prisma.courseLevel.findMany({
       select: { code: true },
@@ -2220,13 +2229,28 @@ export class SubjectsService {
         'A sub-subject referenced by courses cannot be deleted',
       );
     /* Removed from the database for good, so its name and slug are free
-       again under the subject. Its levels, sections, FAQs and destination
-       links go with it (cascaded by the schema); a deleted course that
-       still named it keeps its subject and loses only the specialization.
-       Its SEO row has no foreign key and is removed here. */
+       again under the subject. Its levels, sections, FAQs, destination
+       links and level pages go with it (cascaded by the schema); a deleted
+       course that still named it keeps its subject and loses only the
+       specialization. Its SEO row and its level pages' have no foreign key
+       and are removed here. */
+    const levelPageIds = (
+      await this.prisma.subjectLevelPage.findMany({
+        where: { subSubjectId: id },
+        select: { id: true },
+      })
+    ).map((page) => page.id);
     await this.prisma.$transaction([
       this.prisma.seoMetadata.deleteMany({
-        where: { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id },
+        where: {
+          OR: [
+            { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id },
+            {
+              ownerType: SUBJECT_LEVEL_PAGE_SEO_OWNER,
+              ownerId: { in: levelPageIds },
+            },
+          ],
+        },
       }),
       this.prisma.subSubject.delete({ where: { id } }),
     ]);
@@ -2239,7 +2263,7 @@ export class SubjectsService {
       id,
       'DELETE',
       { name: row.name, slug: row.slug, status: row.status },
-      { deleted: true, permanent: true },
+      { deleted: true, permanent: true, levelPages: levelPageIds.length },
       'Sub-Subject deleted permanently',
     );
     return { deleted: true };
@@ -2256,7 +2280,7 @@ export class SubjectsService {
     if (!validUrl(dto.canonicalUrl))
       throw catalogConflict(
         'SEO_URL_INVALID',
-        'Canonical URL must use HTTP or HTTPS',
+        'Canonical URL must be a site path beginning with / or an http(s) URL',
       );
     const current = await this.prisma.seoMetadata.findUnique({
       where: { ownerType_ownerId: { ownerType: 'SUBJECT', ownerId: id } },
@@ -2559,7 +2583,7 @@ export class SubjectsService {
   private async impliedLevels(where: Prisma.CourseWhereInput) {
     const rows = await this.prisma.course.groupBy({
       by: ['courseLevelId'],
-      where: { ...where, status: 'PUBLISHED', deletedAt: null },
+      where: { ...where, ...TAUGHT },
     });
     const levels = await this.levelsById(rows.map((row) => row.courseLevelId));
     return this.inEducationOrder(
@@ -2572,23 +2596,7 @@ export class SubjectsService {
   }
 
   private async validateMedia(ids: Array<string | undefined>) {
-    const requested = [
-      ...new Set(ids.filter((id): id is string => Boolean(id))),
-    ];
-    if (!requested.length) return;
-    const count = await this.prisma.mediaAsset.count({
-      where: {
-        id: { in: requested },
-        status: 'ACTIVE',
-        mediaType: 'IMAGE',
-        deletedAt: null,
-      },
-    });
-    if (count !== requested.length)
-      throw catalogConflict(
-        'MEDIA_INVALID',
-        'Selected media is not an active image',
-      );
+    await assertActiveImages(this.prisma, ids);
   }
 
   private orderBy(sort?: string): Array<{
@@ -2647,7 +2655,7 @@ export class SubjectsService {
        study-level filter. Derived from published courses rather than
        declared on the subject, so it cannot drift from the catalogue. */
       this.prisma.course.findMany({
-        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+        where: { subjectId: row.id, ...TAUGHT },
         select: {
           courseLevel: {
             select: {
@@ -2757,6 +2765,9 @@ export class SubjectsService {
         id: row.subject.id,
         name: row.subject.name,
         slug: row.subject.slug,
+        /* The list offers "View on site" only while the subject is
+           published too: a specialization's page lives under it. */
+        status: row.subject.status,
       },
       courseLevels: this.tickedLevels(row.courseLevels),
       status: row.status,
@@ -2789,29 +2800,7 @@ export class SubjectsService {
   }
 
   private toSeo(row: any) {
-    return row
-      ? {
-          id: row.id,
-          ownerType: row.ownerType,
-          ownerId: row.ownerId,
-          seoTitle: row.seoTitle,
-          metaDescription: row.metaDescription,
-          canonicalUrl: row.canonicalUrl,
-          focusKeyword: row.focusKeyword,
-          ogTitle: row.ogTitle,
-          ogDescription: row.ogDescription,
-          twitterTitle: row.twitterTitle,
-          twitterDescription: row.twitterDescription,
-          robotsIndex: row.robotsIndex,
-          robotsFollow: row.robotsFollow,
-          schemaJson: row.schemaJson,
-          hreflangJson: row.hreflangJson,
-          ogMedia: media(row.ogMedia),
-          twitterMedia: media(row.twitterMedia),
-          createdAt: row.createdAt?.toISOString(),
-          updatedAt: row.updatedAt?.toISOString(),
-        }
-      : null;
+    return toSeo(row);
   }
 
   private async getSeoFor(ownerType: string, ownerId: string) {
@@ -2831,23 +2820,6 @@ export class SubjectsService {
     ownerType: string,
     dto: SeoMetadataDto,
   ): Prisma.SeoMetadataUncheckedCreateInput {
-    return {
-      ownerId,
-      ownerType,
-      seoTitle: dto.seoTitle.trim(),
-      metaDescription: dto.metaDescription.trim(),
-      canonicalUrl: dto.canonicalUrl?.trim(),
-      focusKeyword: dto.focusKeyword?.trim(),
-      ogTitle: dto.ogTitle?.trim(),
-      ogDescription: dto.ogDescription?.trim(),
-      ogMediaId: dto.ogMediaId,
-      twitterTitle: dto.twitterTitle?.trim(),
-      twitterDescription: dto.twitterDescription?.trim(),
-      twitterMediaId: dto.twitterMediaId,
-      robotsIndex: dto.robotsIndex ?? true,
-      robotsFollow: dto.robotsFollow ?? true,
-      schemaJson: dto.schemaJson as Prisma.InputJsonValue | undefined,
-      hreflangJson: dto.hreflangJson as Prisma.InputJsonValue | undefined,
-    };
+    return seoData(ownerId, ownerType, dto);
   }
 }

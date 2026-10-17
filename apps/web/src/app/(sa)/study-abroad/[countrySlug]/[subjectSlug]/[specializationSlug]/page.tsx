@@ -27,6 +27,7 @@ import {
   everyLevel,
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
+  levelPages,
   levelTotal,
   programmesHref,
   specializationOfferedLevels,
@@ -35,7 +36,7 @@ import { StudyLevels } from '@/components/study-abroad/StudyLevels';
 import { FaqList, SectionBody } from '@/components/study-abroad/SpecializationContent';
 import { SECTION_EYEBROWS, sectionLines, sectionTitle } from '@/lib/specialization-content';
 import { studyLevelPanels, studyLevelsLead } from '@/lib/study-levels';
-import { subjectLevelHref } from '@/lib/subject-levels';
+import { levelPageHref } from '@/lib/subject-levels';
 import { DestinationProgrammes } from '@/components/study-abroad/DestinationProgrammes';
 import { programmeList } from '@/lib/programme-sample';
 import {
@@ -46,6 +47,8 @@ import { getStudyAbroadCountry } from '@/lib/study-abroad';
 import { formatNumber } from '@/lib/format';
 import { inCountry } from '@/lib/country-article';
 import { counsellingHref } from '@/lib/counselling-link';
+import { countryFaqJsonLd } from '@/lib/country-faq';
+import { jsonLdString } from '@/lib/json-ld';
 import {
   figuresHere,
   intakeFigure,
@@ -196,9 +199,11 @@ export default async function Page({ params, searchParams }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
-  /* Its own ticks; unticked, the levels of its courses; and only then the
-     six, which are shown but never claimed. */
+  /* Its own ticks together with the levels of its courses; and only then
+     the six, which are shown but never claimed. Its level pages come from
+     the same set, so "every destination" opens only a page that exists. */
   const offered = specializationOfferedLevels(specialization);
+  const pages = levelPages(offered, allLevels);
   const levelBlock = everyLevel(
     /* A failed grouped read whose fallback list came back empty also knows
        nothing is listed, and still shows the levels. */
@@ -292,9 +297,18 @@ export default async function Page({ params, searchParams }: Params) {
      narrows to one country when it is told which, and without it a reader
      who came for the United Kingdom landed on all ten. */
   const courseHref = (slug: string) => `/courses/${slug}?country=${country.slug}`;
+  /* The questions the page answers, as structured data, as on the
+     specialization's own page. */
+  const faqData = countryFaqJsonLd(faqs);
 
   return (
     <>
+      {faqData ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(faqData) }}
+        />
+      ) : null}
       <section className="hero hero--compact">
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
@@ -431,7 +445,7 @@ export default async function Page({ params, searchParams }: Params) {
                   field: specialization.name,
                   where,
                   panels,
-                  offered: offered.length > 0,
+                  offered: pages.claimed,
                 })}
               </p>
             ) : total ? (
@@ -505,7 +519,7 @@ export default async function Page({ params, searchParams }: Params) {
               courseHref={(course) => courseHref(course.slug)}
               elsewhere={{
                 href: (level) =>
-                  subjectLevelHref({
+                  levelPageHref(pages, {
                     subject: subject.slug,
                     specialization: specialization.slug,
                     level,

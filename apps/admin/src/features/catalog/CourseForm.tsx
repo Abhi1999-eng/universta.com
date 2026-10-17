@@ -828,7 +828,7 @@ export function CourseForm({ id }: { id?: string }) {
           <RelatedCoursePicker courses={allCourses} selected={relatedIds} excludeId={record?.id} onToggle={toggleRelated} />
         </EditorCard>
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
+        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="course" />
         <UnifiedEditorActions cancelHref="/courses" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

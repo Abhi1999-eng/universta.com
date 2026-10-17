@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const fixture = vi.hoisted(() => ({
   sections: [] as unknown[],
   faqs: [] as unknown[],
+  /** Its ticks, and its ticks with its courses' levels, when a test says. */
+  offered: null as unknown[] | null,
+  levels: null as unknown[] | null,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -46,7 +49,8 @@ vi.mock('@/lib/catalog', () => ({
     overview: 'AI studies how to build systems that perceive, reason and learn.',
     iconMedia: null,
     subject: { id: 'cs', name: 'Computer Science & IT', slug: 'computer-science-it', shortDescription: null },
-    offeredLevels: levels,
+    offeredLevels: fixture.offered ?? levels,
+    ...(fixture.levels ? { levels: fixture.levels } : {}),
     contentSections: fixture.sections,
     faqs: fixture.faqs,
     siblings: [],
@@ -106,6 +110,8 @@ const careers = {
 beforeEach(() => {
   fixture.sections = [];
   fixture.faqs = [];
+  fixture.offered = null;
+  fixture.levels = null;
 });
 
 describe('a specialization in a destination', () => {
@@ -139,5 +145,31 @@ describe('a specialization in a destination', () => {
 
   it('has no questions band without questions', async () => {
     expect(await render()).not.toContain('id="faqs"');
+  });
+
+  it('gives its questions as FAQPage data, answers as plain text', async () => {
+    fixture.faqs = [{ id: 'f1', question: 'Can I study AI in Japan in English?', answer: '<p>Yes. Many are taught in <strong>English</strong>.</p>' }];
+    const html = await render();
+    const data = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));
+    const faqs = data.find((entry) => entry['@type'] === 'FAQPage');
+    expect(faqs.mainEntity).toEqual([{
+      '@type': 'Question',
+      name: 'Can I study AI in Japan in English?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. Many are taught in English.' },
+    }]);
+  });
+
+  it('gives no FAQPage data without questions', async () => {
+    expect(await render()).not.toContain('FAQPage');
+  });
+
+  it('shows the levels its courses are at beside its ticks, each linking to its page everywhere', async () => {
+    fixture.offered = [levels[0]];
+    fixture.levels = [levels[0], levels[1]];
+    const html = await render();
+    expect(html).toContain('id="level-phd"');
+    expect(section(html, 'level-phd')).toContain(
+      'href="/subjects/computer-science-it/artificial-intelligence/phd"',
+    );
   });
 });

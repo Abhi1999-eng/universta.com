@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type { Subject, SubSubject } from '@/lib/catalog';
-import { mergeLevels, sortByLevelOrder } from '@/lib/level-order';
+import { sortByLevelOrder } from '@/lib/level-order';
 import { matchCount, searchSubjectIndex } from '@/lib/subject-index-search';
 import { SubjectIndexSearch } from './SubjectIndexSearch';
 
@@ -27,10 +27,8 @@ export type SubjectIndexRow = Subject & {
  * either its own name or one of its branches matches, and the branches it
  * shows narrow to the matches so the reason it survived is visible.
  *
- * The reference also carries a study-level filter across the top. It is
- * built from the levels each subject's published courses are taught at, in
- * the order a student climbs them (`levelOrder`, the public course-levels
- * list); merged in the order they were met, it opened on PhD.
+ * Each card names the levels its subject is taught at, in the order a
+ * student climbs them (`levelOrder`, the public course-levels list).
  */
 /** "Explore Arts, Humanities & Social " -- all but the name's last word. */
 function lead(name: string) {
@@ -55,7 +53,6 @@ export function SubjectIndex({
   const params = useSearchParams();
   const urlQuery = params.get('q') ?? '';
   const [query, setQuery] = useState(urlQuery);
-  const [level, setLevel] = useState('all');
 
   /* The field follows the URL, so a shared link, a refresh and the back
      button all land on the same filtered page rather than an empty one.
@@ -78,28 +75,8 @@ export function SubjectIndex({
     if (next.toString() !== params.toString()) router.push(target);
   };
 
-  /* The filter offers only the levels the catalogue actually teaches, so it
-     never shows a button that can empty the page. */
-  const levels = useMemo(
-    () => mergeLevels(subjects.map((subject) => subject.levels), levelOrder),
-    [subjects, levelOrder],
-  );
-
-  /* The level narrows the subjects first; the search then reads what is
-     left, so the count above the grid is the count of what is shown. */
-  const atLevel = useMemo(
-    () =>
-      subjects.filter(
-        (subject) =>
-          level === 'all' ||
-          (subject.levels ?? []).some((entry) => entry.code === level),
-      ),
-    [subjects, level],
-  );
-  const result = useMemo(() => searchSubjectIndex(atLevel, query), [atLevel, query]);
+  const result = useMemo(() => searchSubjectIndex(subjects, query), [subjects, query]);
   const rows = result.rows as Array<{ subject: SubjectIndexRow; specs: SubSubject[] }>;
-
-  const examples = ['Computer Science', 'Artificial Intelligence', 'Engineering', 'Law'];
 
   return (
     <>
@@ -113,10 +90,6 @@ export function SubjectIndex({
             <span aria-current="page">Subjects</span>
           </nav>
           <div className="hero__lead">
-            <p className="hero__eyebrow">
-              Find your field<b>·</b>
-              {subjects.length} subjects
-            </p>
             <h1 className="hero__h1">What do you want to study?</h1>
             <p className="hero__sub">
               Explore subjects and specializations, then discover study pathways
@@ -130,52 +103,11 @@ export function SubjectIndex({
             result={result}
             resultsId={RESULTS_ID}
           />
-          <p className="bigsearch__ex">
-            <span className="label">Try</span>
-            {examples.map((example) => (
-              <button
-                key={example}
-                className="chipbtn chipbtn--sm"
-                type="button"
-                onClick={() => setQuery(example)}
-              >
-                {example}
-              </button>
-            ))}
-          </p>
         </div>
       </section>
 
       <section className="sec sec--white" id={RESULTS_ID}>
         <div className="wrap">
-          {levels.length > 1 ? (
-            <div
-              className="levelbar levelbar--wide"
-              role="group"
-              aria-label="Study level"
-            >
-              <span className="filters__label">Study level</span>
-              <button
-                className="chipbtn"
-                type="button"
-                aria-pressed={level === 'all'}
-                onClick={() => setLevel('all')}
-              >
-                All
-              </button>
-              {levels.map((entry) => (
-                <button
-                  key={entry.code}
-                  className="chipbtn"
-                  type="button"
-                  aria-pressed={level === entry.code}
-                  onClick={() => setLevel(entry.code)}
-                >
-                  {entry.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
           {/* The reference heads a search's answer with the term, how many
               things answered and the way back to everything. */}
           {result.searching ? (

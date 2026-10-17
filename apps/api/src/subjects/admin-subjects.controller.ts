@@ -28,6 +28,8 @@ import {
   UpdateSubSubjectDto,
   UpdateSubjectDto,
 } from './dto/subject.dto';
+import { UpsertLevelPageDto } from './dto/level-page.dto';
+import { SubjectLevelPagesService } from './level-pages.service';
 import { SubjectsService } from './subjects.service';
 
 @ApiBearerAuth()
@@ -36,7 +38,10 @@ import { SubjectsService } from './subjects.service';
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class AdminSubjectsController {
-  constructor(private readonly subjects: SubjectsService) {}
+  constructor(
+    private readonly subjects: SubjectsService,
+    private readonly levelPages: SubjectLevelPagesService,
+  ) {}
 
   @Get() async list(
     @Req() request: AuthenticatedRequest,
@@ -189,6 +194,61 @@ export class AdminSubjectsController {
     return successEnvelope(
       request,
       await this.subjects.putSubjectCountries(id, dto, request),
+    );
+  }
+
+  /* The study levels' own pages under this subject: one per level it is
+     offered at. `:courseLevelId` is looked up rather than checked as a v4
+     UUID -- the Foundation and Pathway levels were made by MySQL's UUID(). */
+  @Get(':id/level-pages') async levelPageList(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.levelPages.list({ kind: 'subject', id }),
+    );
+  }
+  @Get(':id/level-pages/:courseLevelId') async levelPage(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('courseLevelId') courseLevelId: string,
+  ) {
+    return successEnvelope(
+      request,
+      await this.levelPages.get({ kind: 'subject', id }, courseLevelId),
+    );
+  }
+  @Put(':id/level-pages/:courseLevelId') async putLevelPage(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('courseLevelId') courseLevelId: string,
+    @Body() dto: UpsertLevelPageDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.levelPages.upsert(
+        { kind: 'subject', id },
+        courseLevelId,
+        dto,
+        request,
+      ),
+    );
+  }
+  @Delete(':id/level-pages/:courseLevelId') async deleteLevelPage(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('courseLevelId') courseLevelId: string,
+    @Body() dto: SubjectActionDto,
+  ) {
+    return successEnvelope(
+      request,
+      await this.levelPages.remove(
+        { kind: 'subject', id },
+        courseLevelId,
+        dto,
+        request,
+      ),
     );
   }
 

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SettingsService } from '../settings/settings.service';
 import { SeoManagementService } from './seo-management.service';
+import { levelPageSeoRecord } from '../subjects/level-pages.shared';
 
 function createService(options?: {
   template?: Record<string, unknown> | null;
@@ -297,5 +298,179 @@ describe('SeoManagementService resolver', () => {
         }),
       }),
     );
+  });
+});
+
+describe('SEO for a study level page', () => {
+  const subject = {
+    id: 'cs',
+    name: 'Computer Science',
+    slug: 'computer-science',
+  };
+  const specialization = {
+    id: 'ai',
+    name: 'Artificial Intelligence',
+    slug: 'artificial-intelligence',
+  };
+  const masters = {
+    id: 'pg',
+    code: 'PG',
+    name: "Master's",
+    description: null,
+  };
+  const subjectPage = levelPageSeoRecord({
+    pageId: 'page-1',
+    subject,
+    specialization: null,
+    level: masters,
+  });
+  const specializationPage = levelPageSeoRecord({
+    pageId: 'page-2',
+    subject,
+    specialization,
+    level: masters,
+  });
+  const template = {
+    entityType: 'levelPage',
+    seoTitleTemplate: '{levelName} in {fieldName}',
+    metaDescriptionTemplate: 'Study {levelName} in {fieldName} abroad.',
+  };
+
+  it('renders one template for both kinds of page, the field being the closest one', async () => {
+    const { service } = createService({ template });
+    await expect(
+      service.resolve('levelPage', subjectPage, null),
+    ).resolves.toMatchObject({
+      seoTitle: "Master's in Computer Science",
+      metaDescription: "Study Master's in Computer Science abroad.",
+      source: { title: 'bulk', description: 'bulk' },
+    });
+    await expect(
+      service.resolve('levelPage', specializationPage, null),
+    ).resolves.toMatchObject({
+      seoTitle: "Master's in Artificial Intelligence",
+    });
+  });
+
+  it('falls back to the page’s own title and address with no template', async () => {
+    const { service } = createService();
+    await expect(
+      service.resolve('levelPage', subjectPage, null),
+    ).resolves.toMatchObject({
+      seoTitle: "Master's in Computer Science",
+      canonicalUrl: '/subjects/computer-science/masters',
+      source: { title: 'fallback', canonical: 'fallback' },
+    });
+    await expect(
+      service.resolve('levelPage', specializationPage, null),
+    ).resolves.toMatchObject({
+      seoTitle: "Master's in Artificial Intelligence",
+      canonicalUrl:
+        '/subjects/computer-science/artificial-intelligence/masters',
+    });
+  });
+
+  it('says where the canonical came from: written, a template, or the fallback', async () => {
+    const withTemplate = createService({
+      template: {
+        ...template,
+        canonicalTemplate: '/subjects/{subjectSlug}/{levelSlug}',
+      },
+    });
+    await expect(
+      withTemplate.service.resolve('levelPage', specializationPage, null),
+    ).resolves.toMatchObject({
+      canonicalUrl: '/subjects/computer-science/masters',
+      source: { canonical: 'bulk' },
+    });
+    await expect(
+      withTemplate.service.resolve('levelPage', specializationPage, {
+        canonicalUrl: '/subjects/computer-science/artificial-intelligence',
+      }),
+    ).resolves.toMatchObject({
+      canonicalUrl: '/subjects/computer-science/artificial-intelligence',
+      source: { canonical: 'manual' },
+    });
+    /* Every other kind of record reports it too. */
+    const { service } = createService();
+    await expect(
+      service.resolve(
+        'subject',
+        { id: 'cs', name: 'Computer Science', slug: 'computer-science' },
+        null,
+      ),
+    ).resolves.toMatchObject({ source: { canonical: 'fallback' } });
+  });
+
+  it('accepts only the level page’s own variables in its template', async () => {
+    const { service } = createService();
+    await expect(
+      service.saveTemplate('levelPage', {
+        seoTitleTemplate: '{levelName} in {fieldName}',
+      }),
+    ).resolves.toMatchObject({ entityType: 'levelPage' });
+    await expect(
+      service.saveTemplate('levelPage', {
+        seoTitleTemplate: '{levelName} in {countryName}',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'INVALID_SEO_TEMPLATE' }),
+    });
+  });
+
+  it('reads a stored title that only repeats the fallback as not written', async () => {
+    const { service } = createService({ template });
+    await expect(
+      service.resolve('levelPage', specializationPage, {
+        seoTitle: "Master's in Artificial Intelligence",
+        metaDescription: 'Global default description.',
+      }),
+    ).resolves.toMatchObject({
+      seoTitle: "Master's in Artificial Intelligence",
+      metaDescription: "Study Master's in Artificial Intelligence abroad.",
+      source: { title: 'bulk', description: 'bulk' },
+    });
+  });
+
+  it('is listed among the bulk templates', async () => {
+    const { service } = createService();
+    const templates = await service.adminTemplates();
+    expect(templates.find((row) => row.key === 'levelPage')).toMatchObject({
+      label: 'Study level pages',
+      template: null,
+    });
+  });
+
+  it('previews on a published subject at its first level before any page is written', async () => {
+    const { service, prisma } = createService();
+    Object.assign(prisma, {
+      subjectLevelPage: { findFirst: jest.fn().mockResolvedValue(null) },
+      subject: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'cs',
+          name: 'Computer Science',
+          slug: 'computer-science',
+        }),
+      },
+      courseLevel: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'fd',
+          code: 'FOUNDATION',
+          name: 'Foundation Program',
+          description: null,
+        }),
+      },
+    });
+    await expect(
+      service.preview('levelPage', {
+        seoTitleTemplate: '{levelName} in {fieldName}',
+      }),
+    ).resolves.toMatchObject({
+      record: { label: 'Foundation Program in Computer Science' },
+      resolved: {
+        seoTitle: 'Foundation Program in Computer Science',
+        canonicalUrl: '/subjects/computer-science/foundation',
+      },
+    });
   });
 });

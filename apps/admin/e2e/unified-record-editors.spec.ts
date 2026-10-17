@@ -43,10 +43,22 @@ test.describe('unified record editors', () => {
 
     await expect(page.getByRole('heading', { name: 'Create subject' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Specializations' })).toBeVisible();
+    // Level pages are written once the subject exists; the card says so.
+    await expect(page.getByRole('heading', { name: 'Level pages', exact: true })).toBeVisible();
+    await expect(page.getByText(/Save the subject first; a page can then be written/)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /save seo/i })).toHaveCount(0);
+  });
+
+  test('Specialization shows its Level pages card before the first draft save', async ({ page }) => {
+    await page.goto('/specializations/new');
+
+    await expect(page.getByRole('heading', { name: 'Create specialization' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Level pages', exact: true })).toBeVisible();
+    await expect(page.getByText(/Save the specialization first; a page can then be written/)).toBeVisible();
+    await expect(page.getByRole('link', { name: /^(Write|Edit) the .+ page$/ })).toHaveCount(0);
   });
 
   test('Country exposes source-owned data guidance, configuration, editorial content and SEO before the first draft save', async ({ page }) => {

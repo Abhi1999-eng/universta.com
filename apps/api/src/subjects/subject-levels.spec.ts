@@ -385,3 +385,76 @@ describe('a study level switched off after it was ticked', () => {
     ]);
   });
 });
+
+describe('the flat specialization list narrowed to a level', () => {
+  it('matches a specialization ticked for the level as well as one with a published programme at it', async () => {
+    const calls: Record<string, unknown[]> = {};
+    const base = prisma(calls);
+    const service = new SubjectsService({
+      ...base,
+      subSubject: {
+        ...base.subSubject,
+        findMany: async (args: unknown) => {
+          (calls.findMany ??= []).push(args);
+          return [];
+        },
+        count: async () => 0,
+      },
+    } as unknown as PrismaService);
+    await service.publicSpecializationList({ level: 'pg' });
+    expect((calls.findMany[0] as { where: unknown }).where).toMatchObject({
+      OR: [
+        {
+          courseLevels: {
+            some: { courseLevel: { code: 'PG', status: 'ACTIVE' } },
+          },
+        },
+        {
+          courses: {
+            some: {
+              status: 'PUBLISHED',
+              deletedAt: null,
+              courseLevel: { code: 'PG' },
+            },
+          },
+        },
+      ],
+    });
+  });
+});
+
+describe("a subject's slug", () => {
+  it('may not be one of the fixed words under a destination', async () => {
+    for (const slug of [
+      'consultants',
+      'scholarships',
+      'subjects',
+      'universities',
+    ])
+      await expect(
+        new SubjectsService(prisma({})).create(
+          { name: 'Subjects', slug },
+          request,
+        ),
+      ).rejects.toMatchObject({
+        response: { code: 'SUBJECT_SLUG_RESERVED' },
+      });
+    await expect(
+      new SubjectsService(prisma({})).update(
+        'cs',
+        { name: 'Computer Science', slug: 'scholarships' },
+        request,
+      ),
+    ).rejects.toMatchObject({ response: { code: 'SUBJECT_SLUG_RESERVED' } });
+  });
+
+  it('is not checked again when it stays as it is', async () => {
+    const calls: Record<string, unknown[]> = {};
+    await new SubjectsService(prisma(calls)).update(
+      'cs',
+      { name: 'Computer Science', slug: 'computer-science' },
+      request,
+    );
+    expect(calls.subjectUpdate).toHaveLength(1);
+  });
+});

@@ -237,6 +237,63 @@ describe('purgeAcceptanceRecords', () => {
     expect(await prisma.subject.findUnique({ where: { id: subject.id } })).toBeNull();
   });
 
+  it('clears a subject’s level pages and their SEO before the subject', async () => {
+    /* A level page goes with its subject or specialization by foreign key,
+       but its SEO row has none: left to the cascade, the row would outlive
+       the page. Another run's page and SEO row must survive the purge. */
+    const level = await prisma.courseLevel.findFirst({ select: { id: true } });
+    if (!level) throw new Error('the local database must be seeded before this test');
+    const makeSubject = (runId: string, suffix: string) =>
+      prisma.subject.create({
+        data: {
+          name: `${acceptanceCountryName(runId)} Level Page Subject`,
+          slug: `${acceptanceSlugPrefix(runId)}-level-page-subject-${suffix}`,
+          status: 'DRAFT',
+        },
+      });
+    const subject = await makeSubject(THIS_RUN, 'mine');
+    const foreign = await makeSubject(OTHER_RUN, 'theirs');
+    const child = await prisma.subSubject.create({
+      data: { subjectId: subject.id, name: 'Level Page Specialization', slug: 'level-page-specialization', status: 'DRAFT' },
+    });
+    const subjectPage = await prisma.subjectLevelPage.create({
+      data: { subjectId: subject.id, scopeKey: '', courseLevelId: level.id, intro: '<p>Mine.</p>' },
+    });
+    const childPage = await prisma.subjectLevelPage.create({
+      data: { subjectId: subject.id, subSubjectId: child.id, scopeKey: child.id, courseLevelId: level.id, faqs: { create: [{ question: 'Q?', answer: 'A.' }] } },
+    });
+    const foreignPage = await prisma.subjectLevelPage.create({
+      data: { subjectId: foreign.id, scopeKey: '', courseLevelId: level.id },
+    });
+    const seo = (ownerId: string) =>
+      prisma.seoMetadata.create({ data: { ownerType: 'SUBJECT_LEVEL_PAGE', ownerId, seoTitle: 'Level page', metaDescription: 'Level page.' } });
+    const mineSeo = await seo(subjectPage.id);
+    const childSeo = await seo(childPage.id);
+    const foreignSeo = await seo(foreignPage.id);
+
+    try {
+      const before = await countAcceptanceRecords(THIS_RUN);
+      expect({ pages: before.browserLevelPages, seo: before.browserLevelPageSeo }).toEqual({ pages: 2, seo: 2 });
+
+      const removed = await purgeAcceptanceRecords(THIS_RUN);
+
+      expect({ pages: removed.browserLevelPages, seo: removed.browserLevelPageSeo }).toEqual({ pages: 2, seo: 2 });
+      expect(await prisma.subject.findUnique({ where: { id: subject.id } })).toBeNull();
+      expect(await prisma.subjectLevelPage.count({ where: { id: { in: [subjectPage.id, childPage.id] } } })).toBe(0);
+      expect(await prisma.subjectLevelPageFaq.count({ where: { pageId: childPage.id } })).toBe(0);
+      expect(await prisma.seoMetadata.count({ where: { id: { in: [mineSeo.id, childSeo.id] } } })).toBe(0);
+      expect(
+        await prisma.seoMetadata.findUnique({ where: { id: foreignSeo.id } }),
+        'a concurrent run’s level-page SEO must survive',
+      ).not.toBeNull();
+      expect(await prisma.subjectLevelPage.findUnique({ where: { id: foreignPage.id } })).not.toBeNull();
+    } finally {
+      // The other run's page goes with its subject.
+      await prisma.seoMetadata.deleteMany({ where: { id: foreignSeo.id } });
+      await prisma.subject.deleteMany({ where: { id: foreign.id } });
+    }
+  });
+
   it('reports zero owned records once cleanup has run', async () => {
     await purgeAcceptanceRecords(THIS_RUN);
     const counts = await countAcceptanceRecords(THIS_RUN);

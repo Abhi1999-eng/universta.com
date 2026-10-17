@@ -6,12 +6,15 @@ const specialization = `${subject}/software-engineering`;
 const fixedQueryKeys = ['subject', 'specialization', 'subSubject', 'level', 'courseLevel'];
 
 /* The levels a subject's or a specialization's page offers, read from the
-   API the way the page reads them: a subject's ticks together with its
-   specializations' levels; a specialization's ticks, else the levels of
-   its courses. Empty means the six named ones. */
+   API by the rule the website, the admin's Level pages card and the sitemap
+   all follow: a subject's ticks together with its specializations' levels
+   and the levels of its own published courses; a specialization's ticks
+   together with the levels of its courses. Empty means the six named ones,
+   which render but are not claimed. A level outside the set is a 404. */
 const LEVEL_SLUGS: Record<string, string> = {
   FOUNDATION: 'foundation', PATHWAY: 'pathway', UG: 'bachelors', PG: 'masters', MBA: 'mba', PHD: 'phd',
 };
+const levelSlug = (code: string) => LEVEL_SLUGS[code] ?? code.toLowerCase();
 type Level = { code: string | null };
 async function offeredLevelSlugs(request: APIRequestContext, base: string) {
   const [, , subjectSlug, specializationSlug] = base.split('/');
@@ -24,21 +27,29 @@ async function offeredLevelSlugs(request: APIRequestContext, base: string) {
     offeredLevels?: Level[];
     levels?: Level[];
     subSubjects?: Array<{ levels?: Level[] }>;
+    courseCountsByLevel?: Array<{ level: Level; count: number }>;
   };
-  /* A specialization: its ticks, else its course levels. A subject: its
-     ticks together with its specializations' levels -- the subject's ticks
-     only add. */
   const offered = specializationSlug
-    ? data.offeredLevels?.length
-      ? data.offeredLevels
-      : (data.levels ?? [])
+    ? [...(data.offeredLevels ?? []), ...(data.levels ?? [])]
     : [
         ...(data.offeredLevels ?? []),
         ...(data.subSubjects ?? []).flatMap((branch) => branch.levels ?? []),
+        ...(data.courseCountsByLevel ?? []).filter((row) => row.count > 0).map((row) => row.level),
       ];
   const codes = offered.length ? offered.map((level) => level.code ?? '') : Object.keys(LEVEL_SLUGS);
-  return [...new Set(codes.filter(Boolean).map((code) => LEVEL_SLUGS[code] ?? code.toLowerCase()))];
+  return [...new Set(codes.filter(Boolean).map(levelSlug))];
 }
+
+/* Every level the catalogue lists, as its readable slug. */
+async function catalogueLevelSlugs(request: APIRequestContext) {
+  const response = await request.get(`${apiBaseUrl}/api/v1/course-levels`);
+  expect(response.ok()).toBe(true);
+  return ((await response.json()).data as Array<{ code: string }>).map((level) => levelSlug(level.code));
+}
+
+/* An alias address and the level it stands for, among the levels the page
+   is offered at: an alias for a level it is not offered at is a 404. */
+const ALIASES: Array<[string, string]> = [['ug', 'bachelors'], ['pg', 'masters']];
 
 async function expectHighlightedInsidePanel(page: Page) {
   const search = page.getByRole('combobox', { name: 'Search Universta' });
@@ -67,11 +78,10 @@ test.describe('subject level discovery', () => {
       const hrefs = await links.evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
       expect(hrefs.length).toBeGreaterThan(1);
       for (const href of hrefs) expect(href).toMatch(new RegExp(`^${base}/[a-z0-9-]+\\?view=guides$`));
-      /* The bar offers the levels the record is offered at, whatever has
-         courses yet: ticked, or failing that, read from what is beneath it. */
-      for (const level of await offeredLevelSlugs(request, base)) {
-        await expect(levelNav.locator(`a[href="${base}/${level}?view=guides"]`)).toHaveCount(1);
-      }
+      /* The bar offers exactly the levels the record is offered at, ticked
+         or with courses beneath it, and no other. */
+      const offered = await offeredLevelSlugs(request, base);
+      expect(hrefs.map((href) => href.slice(base.length + 1).replace('?view=guides', '')).sort()).toEqual([...offered].sort());
       /* An empty level still opens. */
       const empty = levelNav.locator('a.chipbtn--none');
       const target = (await empty.count()) ? empty.first() : links.first();
@@ -91,11 +101,15 @@ test.describe('subject level discovery', () => {
     }
   });
 
-  test('canonicalizes UG and PG aliases without losing nonfixed filters', async ({ page }) => {
-    for (const [base, alias, canonical] of [
-      [subject, 'ug', 'bachelors'],
-      [specialization, 'pg', 'masters'],
-    ]) {
+  test('canonicalizes UG and PG aliases without losing nonfixed filters', async ({ page, request }) => {
+    const cases: Array<[string, string, string]> = [];
+    for (const base of [subject, specialization]) {
+      const offered = await offeredLevelSlugs(request, base);
+      const pair = ALIASES.find(([, canonical]) => offered.includes(canonical));
+      if (pair) cases.push([base, ...pair]);
+    }
+    test.skip(!cases.length, 'Neither page is offered at Bachelor\'s or Master\'s in this catalogue');
+    for (const [base, alias, canonical] of cases) {
       const query = new URLSearchParams({
         country: 'canada', q: 'computer', view: 'guides',
         subject: 'business', level: 'PHD', courseLevel: 'MBA',
@@ -113,14 +127,37 @@ test.describe('subject level discovery', () => {
     }
   });
 
-  test('sends the old /levels/ addresses to the level page that replaced them, filters and all', async ({ page }) => {
+  test('sends the old /levels/ addresses to the level page that replaced them, filters and all', async ({ page, request }) => {
     for (const base of [subject, specialization]) {
-      await page.goto(`${webBaseUrl}${base}/levels/masters?view=guides&country=canada`);
-      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/masters`);
+      const [level] = await offeredLevelSlugs(request, base);
+      await page.goto(`${webBaseUrl}${base}/levels/${level}?view=guides&country=canada`);
+      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/${level}`);
       const params = new URL(page.url()).searchParams;
       expect(params.get('view')).toBe('guides');
       expect(params.get('country')).toBe('canada');
     }
+  });
+
+  test('returns 404 for a catalogue level the page is not offered at, and for its alias', async ({ page, request }) => {
+    const catalogue = await catalogueLevelSlugs(request);
+    let checked = 0;
+    for (const base of [subject, specialization]) {
+      const offered = await offeredLevelSlugs(request, base);
+      const missing = catalogue.find((level) => !offered.includes(level));
+      if (!missing) continue;
+      checked += 1;
+      const response = await page.goto(`${webBaseUrl}${base}/${missing}`);
+      expect(response?.status(), `${base}/${missing}`).toBe(404);
+      await expect(page.getByRole('heading', { name: 'We could not find that page' })).toBeVisible();
+      /* An alias for a level it is not offered at is not found either,
+         rather than redirected to a page that is not. */
+      const alias = ALIASES.find(([, canonical]) => !offered.includes(canonical));
+      if (alias) {
+        const aliased = await page.goto(`${webBaseUrl}${base}/${alias[0]}`);
+        expect(aliased?.status(), `${base}/${alias[0]}`).toBe(404);
+      }
+    }
+    test.skip(!checked, 'Both pages are offered at every catalogue level');
   });
 
   test('returns 404 for an unknown subject, specialization, or level', async ({ page }) => {
@@ -136,9 +173,12 @@ test.describe('subject level discovery', () => {
   });
 
   for (const view of ['programmes', 'guides'] as const) {
-    test(`clears ${view} filters within the specialization and level path`, async ({ page }) => {
+    test(`clears ${view} filters within the specialization and level path`, async ({ page, request }) => {
       await page.setViewportSize({ width: 1280, height: 900 });
-      const base = `${specialization}/masters`;
+      /* A level the specialization is offered at: any other is a 404. */
+      const offered = await offeredLevelSlugs(request, specialization);
+      const level = offered.includes('masters') ? 'masters' : offered[0];
+      const base = `${specialization}/${level}`;
       const query = new URLSearchParams({
         country: 'canada', q: 'no-matching-programme-xyz',
         subject: 'business', specialization: 'cybersecurity', level: 'PHD',
@@ -165,7 +205,7 @@ test.describe('subject level discovery', () => {
         .toBe(view === 'guides' ? null : 'no-matching-programme-xyz');
       await expect(page.getByRole('heading', { level: 1, name: /Software Engineering/ })).toBeVisible();
       await expect(page.getByRole('navigation', { name: 'Study levels' })
-        .locator('a[aria-current="page"]')).toHaveAttribute('href', new RegExp('/masters(?:\\?|$)'));
+        .locator('a[aria-current="page"]')).toHaveAttribute('href', new RegExp(`/${level}(?:\\?|$)`));
     });
   }
 });

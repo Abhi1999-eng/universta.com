@@ -61,6 +61,11 @@ async function scopedSuggestions(params: URLSearchParams, query: string, scope: 
     }).catch(() => ({ data: [] })),
   ]);
   const cards = toOfferingCards(answer.data);
+  /* A scope of one subject, one level and at most one specialization is
+     sent only by a level page's own lists, whose page has already been
+     proved to exist (a field's page at a level it is offered at), so the
+     university suggestions can point back into it. Nothing else sends a
+     level scope. */
   const subject = scope.subject?.split(',');
   const specialization = scope.subSubject?.split(',');
   const level = scope.level?.split(',');

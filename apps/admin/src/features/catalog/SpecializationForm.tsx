@@ -48,6 +48,8 @@ import {
 import type { CatalogLevel, CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubjectRecord, SubSubjectRecord } from './catalog.types';
 import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
+import { LevelPagesCard } from './LevelPagesCard';
+import { sameIds } from './level-pages';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -88,6 +90,10 @@ export function SpecializationForm({ id }: { id?: string }) {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
+  /* The ticks as last saved, and a counter bumped on each save, for the
+     Level pages card; see SubjectForm. */
+  const [savedLevelIds, setSavedLevelIds] = useState<string[]>([]);
+  const [levelPagesKey, setLevelPagesKey] = useState(0);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
   const [countryIds, setCountryIds] = useState<string[]>([]);
   const [derivedCountryIds, setDerivedCountryIds] = useState<string[]>([]);
@@ -140,6 +146,7 @@ export function SpecializationForm({ id }: { id?: string }) {
         setSections(loadedSections.length ? loadedSections : [sectionBlank(SECTION_KEYS[0])]);
         setFaqs(loadedFaqs.length ? loadedFaqs : [faqBlank()]);
         setLevelIds((row.courseLevels ?? []).map((level) => level.id));
+        setSavedLevelIds((row.courseLevels ?? []).map((level) => level.id));
         setImpliedLevels(row.impliedCourseLevels ?? []);
         setExistingSeo(seoResult.data);
         setSeo(seoFromRecord(seoResult.data));
@@ -271,6 +278,8 @@ export function SpecializationForm({ id }: { id?: string }) {
         saved = (await unpublishSubSubject(subjectId, saved.id, saved.updatedAt)).data;
       setRecord(saved);
       setLevelIds((saved.courseLevels ?? []).map((level) => level.id));
+      setSavedLevelIds((saved.courseLevels ?? []).map((level) => level.id));
+      setLevelPagesKey((value) => value + 1);
       setForm((current) => ({ ...current, slug: saved.slug, shortDescription: saved.shortDescription ?? '', overview: saved.overview ?? '' }));
       setDirty(false);
       /* Publish ends the editing session: back to the list, with the green
@@ -337,13 +346,15 @@ export function SpecializationForm({ id }: { id?: string }) {
 
         <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
+        <LevelPagesCard owner="specialization" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED' && (record.subject.status === undefined || record.subject.status === 'PUBLISHED')} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
+
         <DestinationTicks idPrefix="specialization" countries={countries} value={countryIds} derived={derivedCountryIds} hint={id ? undefined : 'A new specialization starts with the countries its subject is offered in. Untick the ones it is not taught in; a country with a published course in it stays ticked on its own.'} onChange={(next) => { destinationsTouched.current = true; setCountryIds(next); setDirty(true); }} />
 
         <ContentSectionsCard idPrefix="specialization" rows={sections} keys={SECTION_KEYS} media={media} onChange={updateSection} onAdd={() => { setSections((rows) => [...rows, sectionBlank('')]); setDirty(true); }} onRemove={removeSection} />
 
         <FaqsCard idPrefix="specialization" rows={faqs} onChange={updateFaq} onAdd={() => { setFaqs((rows) => [...rows, faqBlank()]); setDirty(true); }} onRemove={removeFaq} />
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} />
+        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="specialization" />
         <UnifiedEditorActions cancelHref="/specializations" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

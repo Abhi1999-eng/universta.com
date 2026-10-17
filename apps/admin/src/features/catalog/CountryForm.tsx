@@ -76,6 +76,7 @@ import {
   type Flash,
 } from "@/features/shared/Flash";
 import { RichTextEditor } from "@/features/shared/RichTextEditor";
+import { richTextOrEmpty } from "@/features/shared/rich-text-value";
 import {
   CURRENCY_OPTIONS,
   currencyByCode,
@@ -315,10 +316,9 @@ const optional = (value: string) => (value.trim() ? value.trim() : undefined);
  * already understands, so send that instead and keep omission meaning
  * unchanged for other callers. */
 const clearable = (value: string) => (value.trim() ? value.trim() : null);
-/** Rich text with no words in it -- an emptied editor keeps "<p><br></p>" --
- * is sent as "", which the API stores as nothing. */
-export const richTextOrEmpty = (value: string) =>
-  value.replace(/<[^>]*>|&nbsp;/gi, "").trim() ? value.trim() : "";
+/* `richTextOrEmpty` lives with the shared editor helpers now; it is still
+ * exported from here for the callers and tests that import it this way. */
+export { richTextOrEmpty };
 const hasSeo = (value: UnifiedSeoDraft) =>
   Boolean(
     value.seoTitle.trim() ||

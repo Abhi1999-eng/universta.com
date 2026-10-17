@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
+import Link from 'next/link';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Course, CourseFilterOptions } from '@/lib/catalog';
@@ -191,5 +192,54 @@ describe('course guides in a fixed subject level', () => {
     const options = container.querySelectorAll('[role=option]');
     act(() => options[index].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })));
     expect(push).toHaveBeenLastCalledWith(expected);
+  });
+});
+
+/**
+ * An empty list says which of the three it is: filters that match nothing,
+ * a search that matches nothing, or nothing published. It used to say
+ * "matches these filters" on a level with nothing published at all.
+ */
+describe('an empty list of course guides', () => {
+  const nothing = { courses: [], meta: { page: 1, limit: 12, total: 0, totalPages: 0 } };
+  const said = (doc: Document) => doc.querySelector('[data-testid=course-empty] p')!.textContent!.replace(/\s+/g, ' ').trim();
+  const where = "for Computing at Bachelor's";
+
+  it('says nothing is published where nothing is, and not that filters match nothing', () => {
+    const doc = page(props({}, { ...nothing, base, scope, where }));
+    expect(said(doc)).toBe("No course guides for Computing at Bachelor's are published yet.");
+    expect(doc.body.textContent).not.toContain('matches these filters');
+    expect(said(page(props({}, nothing)))).toBe('No course guides are published yet.');
+  });
+
+  it('says a search found nothing', () => {
+    expect(said(page(props({ q: 'zzz' }, { ...nothing, where })))).toBe(
+      "No course for Computing at Bachelor's matches this search. Try another search.",
+    );
+  });
+
+  it('keeps the filters’ sentence, word for word without a place', () => {
+    expect(said(page(props({ country: 'united-kingdom' }, nothing)))).toBe(
+      'No course matches these filters. Remove a filter to see more.',
+    );
+    expect(said(page(props({ country: 'united-kingdom', q: 'zzz' }, { ...nothing, where })))).toBe(
+      "No course for Computing at Bachelor's matches these filters. Remove a filter to see more.",
+    );
+  });
+
+  it('sends a page past the end back to the start of the list', () => {
+    const doc = page(props({ page: '9' }, { courses: [], meta: { page: 9, limit: 12, total: 25, totalPages: 3 }, base, scope }));
+    expect(said(doc)).toBe('The list ends before this page. Back to the start of the list.');
+    const back = url(link(doc, 'Back to the start of the list'));
+    expect(back.pathname).toBe(base);
+    expect(back.searchParams.has('page')).toBe(false);
+    expect(back.hash).toBe('#discovery');
+  });
+
+  it('draws where else to look, and always the assessment', () => {
+    const doc = page(props({}, { ...nothing, empty: <Link href="/subjects/computing">Computing at every study level</Link> }));
+    expect(link(doc, 'Computing at every study level').getAttribute('href')).toBe('/subjects/computing');
+    for (const raw of [{}, { q: 'zzz' }, { country: 'united-kingdom' }] as Array<Record<string, string>>)
+      expect(page(props(raw, nothing)).body.textContent).toContain('run the assessment');
   });
 });

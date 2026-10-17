@@ -726,6 +726,7 @@ model Subject {
   courses         Course[]
   countrySubjects CountrySubject[]
   courseLevels    SubjectCourseLevel[]
+  levelPages      SubjectLevelPage[]
   leads           Lead[]
 
   studentPreferences StudentProfile[] @relation("StudentPreferredSubject")
@@ -772,6 +773,7 @@ model SubSubject {
   courseLevels    SubSubjectCourseLevel[]
   contentSections SubSubjectContentSection[]
   faqs            SubSubjectFaq[]
+  levelPages      SubjectLevelPage[]
 
   @@unique([subjectId, name])
   @@unique([subjectId, slug])
@@ -834,6 +836,7 @@ model CourseLevel {
   universityCourseOfferings UniversityCourseOffering[]
   subjects                  SubjectCourseLevel[]
   subSubjects               SubSubjectCourseLevel[]
+  levelPages                SubjectLevelPage[]
 
   studentPreferences StudentProfile[] @relation("StudentPreferredCourseLevel")
 
@@ -1610,6 +1613,63 @@ model SubSubjectFaq {
 
   @@index([subSubjectId, status, displayOrder], map: "sub_subject_faqs_owner_status_order_idx")
   @@map("sub_subject_faqs")
+}
+
+/// A study level's own page within a subject or one of its specializations:
+/// /subjects/<subject>/<level> or /subjects/<subject>/<specialization>/<level>.
+/// Everything else on that page is worked out from the catalogue; this is what
+/// an editor writes for it. Created the first time an editor saves the page,
+/// and removed with its subject, specialization or study level. Its SEO lives
+/// in seo_metadata under owner type SUBJECT_LEVEL_PAGE, which has no foreign
+/// key, so the services remove that row themselves.
+///
+/// `scopeKey` makes "one row per page" a plain unique index: '' for the
+/// subject's own page, the specialization's id for a specialization's.
+/// `subSubjectId` cannot carry the index, because MySQL never treats two
+/// NULLs as equal -- the same reason Continent has `deletedKey`. The service
+/// keeps scopeKey = subSubjectId ?? ''.
+model SubjectLevelPage {
+  id            String   @id @default(uuid()) @db.Char(36)
+  subjectId     String   @map("subject_id") @db.Char(36)
+  subSubjectId  String?  @map("sub_subject_id") @db.Char(36)
+  scopeKey      String   @default("") @map("scope_key") @db.Char(36)
+  courseLevelId String   @map("course_level_id") @db.Char(36)
+  /// Sanitised WYSIWYG HTML (common/rich-text.ts); null when nothing is written.
+  intro         String?  @db.LongText
+  admissionNote String?  @map("admission_note") @db.LongText
+  careersNote   String?  @map("careers_note") @db.LongText
+  /// DRAFT or PUBLISHED. A draft page is kept for its editor and never shown.
+  status        String   @default("DRAFT") @db.VarChar(30)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  subject     Subject               @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subSubject  SubSubject?           @relation(fields: [subSubjectId], references: [id], onDelete: Cascade)
+  courseLevel CourseLevel           @relation(fields: [courseLevelId], references: [id], onDelete: Cascade)
+  faqs        SubjectLevelPageFaq[]
+
+  @@unique([subjectId, scopeKey, courseLevelId], map: "subject_level_pages_page_key")
+  @@index([subSubjectId], map: "subject_level_pages_sub_subject_id_idx")
+  @@index([courseLevelId], map: "subject_level_pages_course_level_id_idx")
+  @@map("subject_level_pages")
+}
+
+/// A level page's questions. The list is owned by its page and replaced whole
+/// on every save, so ids change each time and nothing may link to them.
+model SubjectLevelPageFaq {
+  id           String   @id @default(uuid()) @db.Char(36)
+  pageId       String   @map("page_id") @db.Char(36)
+  question     String   @db.VarChar(1000)
+  answer       String   @db.LongText
+  status       String   @default("ACTIVE") @db.VarChar(30)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  page SubjectLevelPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, displayOrder], map: "subject_level_page_faqs_page_order_idx")
+  @@map("subject_level_page_faqs")
 }
 
 model CourseFaq {

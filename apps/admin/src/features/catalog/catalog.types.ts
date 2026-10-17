@@ -348,7 +348,9 @@ export interface CatalogLevel {
 }
 export interface SubSubjectRecord {
   id: string;
-  subject: { id: string; name: string; slug: string };
+  /** `status` comes on the admin rows, so the list can tell a specialization
+   * whose subject is still a draft -- its page is not on the site yet. */
+  subject: { id: string; name: string; slug: string; status?: string };
   name: string;
   slug: string;
   shortDescription: string | null;
@@ -363,6 +365,73 @@ export interface SubSubjectRecord {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/* A subject's or a specialization's page at one study level, such as
+   /subjects/computing/masters. The page lists its programmes on its own; what
+   an editor writes here adds an intro, notes, FAQs and SEO of its own. Which
+   levels get a page is the API's call (its ticks, its published
+   specializations' ticks, its published courses), never the admin's. */
+export type LevelPageOwner = 'subject' | 'specialization';
+/** Why a level is offered: ticked on this record, ticked on a published
+ * specialization of the subject, or a published course stands at it. */
+export type LevelSource = 'TICKED' | 'SPECIALIZATION' | 'COURSES';
+export type LevelPageStatus = 'DRAFT' | 'PUBLISHED';
+export interface LevelRef {
+  id: string;
+  code: string;
+  name: string;
+  /** The level's part of the page address: `masters`, `bachelors`. */
+  slug: string;
+  description: string | null;
+  status: string;
+}
+export interface LevelPageRow {
+  level: LevelRef;
+  /** False for a page kept from before its level stopped being offered here;
+   * it is off the site, and listed so its content can still be deleted. */
+  offered: boolean;
+  /** Empty when the level is not offered. */
+  sources: LevelSource[];
+  /** The public address, e.g. /subjects/computing/ai/masters. */
+  path: string;
+  page: null | {
+    id: string;
+    status: LevelPageStatus;
+    hasIntro: boolean;
+    hasAdmissionNote: boolean;
+    hasCareersNote: boolean;
+    /** Active FAQs only. */
+    faqCount: number;
+    hasSeo: boolean;
+    /** Published, with an intro and enough active FAQs to be indexed before
+     * the page lists any programmes. Decided by the API. */
+    searchReady: boolean;
+    updatedAt: string;
+  };
+}
+export interface LevelPageDetail {
+  subject: { id: string; name: string; slug: string; status: string };
+  specialization: { id: string; name: string; slug: string; status: string } | null;
+  level: LevelRef;
+  offered: boolean;
+  sources: LevelSource[];
+  path: string;
+  page: null | {
+    id: string;
+    status: LevelPageStatus;
+    intro: string | null;
+    admissionNote: string | null;
+    careersNote: string | null;
+    /** The same shape a course's FAQs take, so the shared FAQ card reads
+     * them as they are. Their ids change on every save: the list is
+     * replaced whole. */
+    faqs: CourseFaqRecord[];
+    seo: EditorialSeo | null;
+    searchReady: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 export interface MasterRecord {
   id: string;

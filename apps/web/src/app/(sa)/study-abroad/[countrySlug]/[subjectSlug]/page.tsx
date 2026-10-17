@@ -29,6 +29,7 @@ import {
   everyLevel,
   LEVEL_ROWS_FETCHED,
   levelCoursesHref,
+  levelPages,
   levelTotal,
   programmesHref,
   subjectOfferedLevels,
@@ -36,7 +37,7 @@ import {
 import { StudyLevels } from '@/components/study-abroad/StudyLevels';
 import { SubjectSpecializations } from '@/components/study-abroad/SubjectSpecializations';
 import { studyLevelPanels, studyLevelsLead } from '@/lib/study-levels';
-import { subjectLevelHref } from '@/lib/subject-levels';
+import { levelPageHref } from '@/lib/subject-levels';
 import { DestinationProgrammes } from '@/components/study-abroad/DestinationProgrammes';
 import { programmeList } from '@/lib/programme-sample';
 import {
@@ -195,6 +196,9 @@ export default async function Page({ params, searchParams }: Params) {
      specializations are offered at; and only then the six named ones,
      which the page shows but never claims. */
   const offered = subjectOfferedLevels(subject);
+  /* The subject's level pages, from the same set: the "every destination"
+     link opens only a level the subject has a page for. */
+  const pages = levelPages(offered, allLevels);
   const levelBlock = everyLevel(
     /* A failed grouped read whose fallback list came back empty also knows
        nothing is listed, and still shows the levels. */
@@ -432,7 +436,7 @@ export default async function Page({ params, searchParams }: Params) {
                     field: subject.name,
                     where,
                     panels,
-                    offered: offered.length > 0,
+                    offered: pages.claimed,
                   })}
                 </p>
               ) : null}
@@ -498,7 +502,7 @@ export default async function Page({ params, searchParams }: Params) {
                 courseHref={(course) => courseHref(course.slug)}
                 specializationHref={(slug) => `${base}/${slug}`}
                 elsewhere={{
-                  href: (level) => subjectLevelHref({ subject: subject.slug, level }),
+                  href: (level) => levelPageHref(pages, { subject: subject.slug, level }),
                   label: (level) => `${level} in ${subject.name}, every destination`,
                 }}
               />

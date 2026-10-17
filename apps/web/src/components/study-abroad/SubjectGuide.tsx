@@ -6,12 +6,12 @@ import type {
   SubjectDetail,
 } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
-import { subjectLevelHref } from '@/lib/subject-levels';
+import { levelPageHref } from '@/lib/subject-levels';
 import {
   levelCoursesHref,
   levelTotal,
   programmesHref,
-  subjectOfferedLevels,
+  subjectLevelPages,
 } from '@/lib/course-levels';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import { universityHref } from '@/lib/university-links';
@@ -78,6 +78,7 @@ export function SubjectGuide({
   universities = [],
   universityTotal,
   levels: levelGroups = null,
+  catalogue = null,
   related = [],
   programmes = null,
 }: {
@@ -93,6 +94,10 @@ export function SubjectGuide({
    *  order. Absent when that read failed; the six mixed courses the subject
    *  carries are shown instead, as they were before. */
   levels?: CourseLevelGroup[] | null;
+  /** The catalogue's study levels, the active ones: a level the subject is
+   *  offered at that has been switched off opens no page. Null when that
+   *  read failed. */
+  catalogue?: ReadonlyArray<{ code: string }> | null;
   /** Subjects that share a specialization with this one, closest first. */
   related?: RelatedSubject[];
   /** The first of the universities' programmes in it, and how many there
@@ -113,24 +118,12 @@ export function SubjectGuide({
   const destinationCount = subject.availableCountryCount ?? teaching.length;
   const courses: Course[] = subject.featuredCourses ?? [];
   const groups = levelGroups ?? [];
-  /* The levels with something listed. `groups` also holds the levels the
-     page always shows, empty ones included, which the block draws and the
-     figures must not count as taught. */
-  const taught = groups.filter((group) => group.count > 0);
+  /* The levels the subject has pages for -- ticked on it, together with
+     its specializations' -- so the block links only to those. */
+  const pages = subjectLevelPages(subject, catalogue);
   /* In academic order where the grouped read supplied it; the subject's own
      counts arrive in that order too. */
-  /* Where the subject is offered at levels -- ticked on it, together with
-     its specializations' -- the block's groups are exactly those plus any
-     with courses, so they are the levels it is offered at: the strip said
-     "Master's" alone beside a block listing Bachelor's, Master's and PhD.
-     Offered at none, the groups hold the six shown regardless, which the
-     figures must not claim. */
-  const offered = subjectOfferedLevels(subject).length > 0;
-  const levels = offered && groups.length
-    ? groups.map((group) => ({ level: group.level, count: group.count }))
-    : taught.length
-      ? taught.map((group) => ({ level: group.level, count: group.count }))
-      : (subject.courseCountsByLevel ?? []);
+  const levels = groups.length ? groups : (subject.courseCountsByLevel ?? []);
   const levelOrder = levels.flatMap((row) => (row.level.code ? [row.level.code] : []));
   const filed = levelTotal(groups);
   const tests = subject.tests ?? [];
@@ -170,32 +163,6 @@ export function SubjectGuide({
   const counted = (count: number) =>
     `${formatNumber(count)} ${count === 1 ? noun : `${noun}s`}`;
 
-  /* Only the figures this record actually has: a strip of dashes says less
-     than a shorter strip does. */
-  const stats = [
-    specializations.length
-      ? { label: 'Specializations', value: formatNumber(specializations.length) }
-      : null,
-    levels.length
-      ? { label: 'Study levels', value: levels.map((row) => row.level.name).join(', ') }
-      : null,
-    sampled
-      ? { label: 'Programmes profiled', value: formatNumber(sampled.total) }
-      : null,
-    subject.publishedCourseCount
-      ? {
-          label: sampled ? 'Courses' : 'Programmes profiled',
-          value: formatNumber(subject.publishedCourseCount),
-        }
-      : null,
-    universityCount
-      ? { label: 'Universities', value: formatNumber(universityCount) }
-      : null,
-    destinationCount
-      ? { label: 'Destinations', value: formatNumber(destinationCount) }
-      : null,
-  ].filter(Boolean) as Array<{ label: string; value: string }>;
-
   const order: string[] = [];
   if (hasOverview) order.push('about');
   if (specializations.length) order.push('specializations');
@@ -203,7 +170,10 @@ export function SubjectGuide({
   if (sampled) order.push('courses');
   if (groups.length || courses.length) order.push('programs');
   if (tests.length) order.push('tests');
-  if (scholarships.length) order.push('scholarship-funding');
+  /* Funding, then the consultants hand-off; with no awards recorded the
+     hand-off stands alone, as on a specialization's page -- the reference
+     shows consultants on every subject page, awards or not. */
+  order.push(scholarships.length ? 'scholarship-funding' : 'consultants');
   if (related.length) order.push('related-subjects');
 
   const n = (id: string) => {
@@ -229,11 +199,6 @@ export function SubjectGuide({
               <SubjectGlyph media={subject.iconMedia} />
             </span>
             <div>
-              <p className="hero__eyebrow">
-                Subject<b>·</b>
-                {specializations.length}{' '}
-                {specializations.length === 1 ? 'specialization' : 'specializations'}
-              </p>
               <h1 className="hero__h1">Study {subject.name} abroad</h1>
               {subject.shortDescription ? (
                 <p className="hero__sub">{subject.shortDescription}</p>
@@ -261,24 +226,6 @@ export function SubjectGuide({
           </div>
         </div>
       </section>
-
-      {/* The reference states the shape of a subject before it explains it:
-          how many branches, which levels, and how much of it we have profiled.
-          Each figure stands down on its own rather than showing a zero. */}
-      {stats.length ? (
-        <section className="sec sec--white sec--tight">
-          <div className="wrap">
-            <div className="unisnap unisnap--fit">
-              {stats.map((row) => (
-                <div className="unisnap__cell" key={row.label}>
-                  <span className="label">{row.label}</span>
-                  <b>{row.value}</b>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       {hasOverview ? (
         <section className={band('about')} id="about">
@@ -452,8 +399,12 @@ export function SubjectGuide({
               <CourseLevels
                 levelPages
                 groups={groups}
+                /* A level's own page where the subject has one; a level
+                   with courses but no page (an offering filed at another
+                   level than its course) opens the finder's guides. */
                 allHref={(level) =>
-                  subjectLevelHref({ subject: subject.slug, level, guides: true })
+                  levelPageHref(pages, { subject: subject.slug, level, guides: true }) ??
+                  levelCoursesHref({ subject: subject.slug, level })
                 }
               />
             ) : (
@@ -529,7 +480,13 @@ export function SubjectGuide({
             <ConsultantsCta field={subject.name} />
           </div>
         </section>
-      ) : null}
+      ) : (
+        <section className={`${band('consultants')} sec--tight`} id="consultants">
+          <div className="wrap">
+            <ConsultantsCta field={subject.name} />
+          </div>
+        </section>
+      )}
 
       {/* The reference ends a subject with its neighbours, so a reader on the
           wrong page can step sideways rather than back to the full list. It
