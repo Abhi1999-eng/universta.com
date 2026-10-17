@@ -171,7 +171,7 @@ describe('the programme results block', () => {
 
   it('distinguishes an unpublished scoped level from a page past the end', () => {
     const empty = {
-      base: '/subjects/computer-science/levels/mba',
+      base: '/subjects/computer-science/mba',
       where: 'for Computer Science at MBA',
       cards: [],
       meta: { page: 1, limit: 18, total: 0, totalPages: 0 },

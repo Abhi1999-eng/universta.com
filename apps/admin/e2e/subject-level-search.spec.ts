@@ -66,26 +66,26 @@ test.describe('subject level discovery', () => {
       await expect(links.first()).toBeVisible();
       const hrefs = await links.evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
       expect(hrefs.length).toBeGreaterThan(1);
-      for (const href of hrefs) expect(href).toMatch(new RegExp(`^${base}/levels/[a-z0-9-]+\\?view=guides$`));
+      for (const href of hrefs) expect(href).toMatch(new RegExp(`^${base}/[a-z0-9-]+\\?view=guides$`));
       /* The bar offers the levels the record is offered at, whatever has
          courses yet: ticked, or failing that, read from what is beneath it. */
       for (const level of await offeredLevelSlugs(request, base)) {
-        await expect(levelNav.locator(`a[href="${base}/levels/${level}?view=guides"]`)).toHaveCount(1);
+        await expect(levelNav.locator(`a[href="${base}/${level}?view=guides"]`)).toHaveCount(1);
       }
       /* An empty level still opens. */
       const empty = levelNav.locator('a.chipbtn--none');
       const target = (await empty.count()) ? empty.first() : links.first();
       const picked = new URL((await target.getAttribute('href'))!, webBaseUrl).pathname.split('/').pop()!;
       await target.click();
-      await expect(page).toHaveURL(`${webBaseUrl}${base}/levels/${picked}?view=guides`);
+      await expect(page).toHaveURL(`${webBaseUrl}${base}/${picked}?view=guides`);
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(name) })).toBeVisible();
       await expect(page.getByTestId('switch-guides')).toHaveAttribute('aria-current', 'page');
       await expect(page.getByRole('navigation', { name: 'Study levels' })
-        .locator('a[aria-current="page"]')).toHaveAttribute('href', `${base}/levels/${picked}?view=guides`);
+        .locator('a[aria-current="page"]')).toHaveAttribute('href', `${base}/${picked}?view=guides`);
 
       // The page remains usable when the selected level has no programmes.
       await page.getByTestId('switch-programmes').click();
-      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/levels/${picked}`);
+      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/${picked}`);
       await expect(page.getByTestId('switch-programmes')).toHaveAttribute('aria-current', 'page');
       expect(new URL(page.url()).searchParams.has('view')).toBe(false);
     }
@@ -101,23 +101,33 @@ test.describe('subject level discovery', () => {
         subject: 'business', level: 'PHD', courseLevel: 'MBA',
         ...(base === specialization ? { specialization: 'cybersecurity', subSubject: 'data-science' } : {}),
       });
-      await page.goto(`${webBaseUrl}${base}/levels/${alias}?${query}`);
-      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/levels/${canonical}`);
+      await page.goto(`${webBaseUrl}${base}/${alias}?${query}`);
+      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/${canonical}`);
       const params = new URL(page.url()).searchParams;
       expect(params.get('country')).toBe('canada');
       expect(params.get('q')).toBe('computer');
       expect(params.get('view')).toBe('guides');
       for (const key of fixedQueryKeys) expect(params.has(key), key).toBe(false);
       await expect(page.getByRole('navigation', { name: 'Study levels' })
-        .locator('a[aria-current="page"]')).toHaveAttribute('href', new RegExp(`/levels/${canonical}\\?`));
+        .locator('a[aria-current="page"]')).toHaveAttribute('href', new RegExp(`/${canonical}\\?`));
+    }
+  });
+
+  test('sends the old /levels/ addresses to the level page that replaced them, filters and all', async ({ page }) => {
+    for (const base of [subject, specialization]) {
+      await page.goto(`${webBaseUrl}${base}/levels/masters?view=guides&country=canada`);
+      await expect.poll(() => new URL(page.url()).pathname).toBe(`${base}/masters`);
+      const params = new URL(page.url()).searchParams;
+      expect(params.get('view')).toBe('guides');
+      expect(params.get('country')).toBe('canada');
     }
   });
 
   test('returns 404 for an unknown subject, specialization, or level', async ({ page }) => {
     for (const path of [
-      '/subjects/not-a-published-subject/levels/bachelors',
-      `${subject}/not-a-published-specialization/levels/bachelors`,
-      `${specialization}/levels/not-a-study-level`,
+      '/subjects/not-a-published-subject/bachelors',
+      `${subject}/not-a-published-specialization/bachelors`,
+      `${specialization}/not-a-study-level`,
     ]) {
       const response = await page.goto(`${webBaseUrl}${path}`);
       expect(response?.status(), path).toBe(404);
@@ -128,7 +138,7 @@ test.describe('subject level discovery', () => {
   for (const view of ['programmes', 'guides'] as const) {
     test(`clears ${view} filters within the specialization and level path`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 900 });
-      const base = `${specialization}/levels/masters`;
+      const base = `${specialization}/masters`;
       const query = new URLSearchParams({
         country: 'canada', q: 'no-matching-programme-xyz',
         subject: 'business', specialization: 'cybersecurity', level: 'PHD',
@@ -155,7 +165,7 @@ test.describe('subject level discovery', () => {
         .toBe(view === 'guides' ? null : 'no-matching-programme-xyz');
       await expect(page.getByRole('heading', { level: 1, name: /Software Engineering/ })).toBeVisible();
       await expect(page.getByRole('navigation', { name: 'Study levels' })
-        .locator('a[aria-current="page"]')).toHaveAttribute('href', new RegExp('/levels/masters(?:\\?|$)'));
+        .locator('a[aria-current="page"]')).toHaveAttribute('href', new RegExp('/masters(?:\\?|$)'));
     });
   }
 });

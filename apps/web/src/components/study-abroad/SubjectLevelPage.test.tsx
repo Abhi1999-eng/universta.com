@@ -115,7 +115,7 @@ describe('a subject or specialization at one study level', () => {
     const asked = vi.mocked(phaseProgrammes).mock.calls[0][0];
     expect(asked).toMatchObject({ subject: 'computing', level: 'UG', within: 'level,subject', country: 'uk', q: 'computer', limit: '36' });
     const props = lastProgrammes();
-    expect(props.base).toBe('/subjects/computing/levels/bachelors');
+    expect(props.base).toBe('/subjects/computing/bachelors');
     expect(props.scope).toEqual({ subject: ['computing'], level: ['UG'] });
     expect(props.filters).toMatchObject({ subject: [], level: [], country: ['uk'], q: 'computer', page: 2 });
     expect(props.suggestions).toContain('subject=computing');
@@ -133,7 +133,7 @@ describe('a subject or specialization at one study level', () => {
     expect(guideCalls).toContainEqual(expect.objectContaining({ subject: 'computing', subSubject: 'computer-science', level: 'UG', country: 'uk', page: '2' }));
     expect(guideCalls.every((params) => params?.subject === 'computing' && params?.level === 'UG' && params?.subSubject === 'computer-science')).toBe(true);
     const props = lastGuides();
-    expect(props.base).toBe('/subjects/computing/computer-science/levels/bachelors');
+    expect(props.base).toBe('/subjects/computing/computer-science/bachelors');
     expect(props.scope).toEqual({ subject: ['computing'], subSubject: ['computer-science'], level: ['UG'] });
     expect(props.filters).toMatchObject({ subject: [], subSubject: [], level: [], country: ['uk'], page: 2 });
     expect(props.paged).toBe(true);
@@ -160,7 +160,7 @@ describe('a subject or specialization at one study level', () => {
     expect(lastGuides().courses).toEqual([]);
     expect(lastGuides().meta.total).toBe(0);
     for (const slug of ['foundation', 'pathway', 'bachelors', 'masters', 'mba', 'phd'])
-      expect(html).toContain(`/subjects/computing/levels/${slug}`);
+      expect(html).toContain(`/subjects/computing/${slug}`);
   });
 
   it.each([
@@ -181,7 +181,7 @@ describe('a subject or specialization at one study level', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       const redirect = new URL((error as Error).message.replace('REDIRECT:', ''), 'https://universta.test');
-      expect(redirect.pathname).toBe(`/subjects/computing/computer-science/levels/${canonical}`);
+      expect(redirect.pathname).toBe(`/subjects/computing/computer-science/${canonical}`);
       expect(redirect.searchParams.getAll('q')).toEqual(['computer', 'science']);
       expect(redirect.searchParams.get('country')).toBe('uk');
       expect(redirect.searchParams.get('page')).toBe('2');
@@ -197,7 +197,7 @@ describe('a subject or specialization at one study level', () => {
     state.programmesMissing = true;
     const html = await render();
     expect(html).toContain('Programmes are temporarily unavailable.');
-    expect(html).toContain('href="/subjects/computing/levels/bachelors"');
+    expect(html).toContain('href="/subjects/computing/bachelors"');
     expect(renders.programmes).not.toHaveBeenCalled();
   });
 });
@@ -205,7 +205,7 @@ describe('a subject or specialization at one study level', () => {
 describe('subject level metadata', () => {
   it('canonicals the base path while ignoring conflicting copies of its fixed dimensions', async () => {
     const meta = await metadata({ subject: 'law', level: 'PHD' });
-    expect(meta.alternates).toEqual({ canonical: '/subjects/computing/levels/bachelors' });
+    expect(meta.alternates).toEqual({ canonical: '/subjects/computing/bachelors' });
     expect(meta.robots).toEqual({ index: true, follow: true });
     expect(meta.title).toEqual({ absolute: "Bachelor's in Computing | Universta" });
   });
@@ -218,7 +218,7 @@ describe('subject level metadata', () => {
 
   it('uses the nested canonical and excludes a missing field from indexing', async () => {
     const scoped = await metadata({ specialization: 'other' }, { specializationSlug: 'computer-science', levelSlug: 'pg' });
-    expect(scoped.alternates).toEqual({ canonical: '/subjects/computing/computer-science/levels/masters' });
+    expect(scoped.alternates).toEqual({ canonical: '/subjects/computing/computer-science/masters' });
     expect(scoped.title).toEqual({ absolute: "Master's in Computer Science | Universta" });
     const missing = await metadata({}, { slug: 'missing' });
     expect(missing.robots).toEqual({ index: false, follow: true });

@@ -336,7 +336,7 @@ export function SubjectsPage() {
           title={pending.kind === 'delete' ? 'Delete subject?' : 'Change subject visibility?'}
           description={
             pending.kind === 'delete'
-              ? `Type ${pending.row.name} to confirm soft deletion.`
+              ? `This removes ${pending.row.name} from the database for good, with its specializations, sections and FAQs, and frees its slug. It cannot be undone. Type ${pending.row.name} to confirm.`
               : 'This action is audited and changes public visibility.'
           }
           onClose={() => {

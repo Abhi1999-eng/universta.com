@@ -131,6 +131,16 @@ const SUBJECT_INCLUDE = {
 /* The `seo_metadata` row of a specialization is filed under this owner
    type, as a subject's is under SUBJECT. */
 const SUB_SUBJECT_SEO_OWNER = 'SUB_SUBJECT';
+/* The readable address a level's page has on the site (apps/web
+   subject-levels.ts); any other level is addressed by its code. */
+const PUBLIC_LEVEL_SLUGS: Record<string, string> = {
+  FOUNDATION: 'foundation',
+  PATHWAY: 'pathway',
+  UG: 'bachelors',
+  PG: 'masters',
+  MBA: 'mba',
+  PHD: 'phd',
+};
 
 const SUB_SUBJECT_INCLUDE = {
   iconMedia: { select: MEDIA_SELECT },
@@ -1318,24 +1328,39 @@ export class SubjectsService {
       dto.expectedUpdatedAt,
       'SUBJECT_STALE_VERSION',
     );
+    /* Every course row counts, a deleted one too: a course still points at
+       its subject, and the subject cannot leave the database under it. */
     const count = await this.prisma.course.count({
-      where: { subjectId: id, deletedAt: null },
+      where: { subjectId: id },
     });
     if (count)
       throw catalogConflict(
         'SUBJECT_IN_USE',
         'A subject referenced by courses cannot be deleted',
       );
-    const updated = await this.prisma.subject.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-        status: 'DRAFT',
-        publishedAt: null,
-        updatedByUserId: userId,
-      },
-      include: SUBJECT_INCLUDE,
-    });
+    /* Deleting removes the subject from the database for good, with its
+       specializations and everything filed under them -- levels, sections,
+       FAQs, destination links (cascaded by the schema) and SEO rows (no
+       foreign key, so removed here) -- so its name and slug are free to use
+       again. It used to be a soft delete that kept the slug taken. */
+    const branchIds = (
+      await this.prisma.subSubject.findMany({
+        where: { subjectId: id },
+        select: { id: true },
+      })
+    ).map((branch) => branch.id);
+    await this.prisma.$transaction([
+      this.prisma.seoMetadata.deleteMany({
+        where: {
+          OR: [
+            { ownerType: 'SUBJECT', ownerId: id },
+            { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: { in: branchIds } },
+          ],
+        },
+      }),
+      this.prisma.subSubject.deleteMany({ where: { subjectId: id } }),
+      this.prisma.subject.delete({ where: { id } }),
+    ]);
     await writeAudit(
       this.prisma,
       request,
@@ -1344,9 +1369,9 @@ export class SubjectsService {
       'SUBJECT',
       id,
       'DELETE',
-      { name: row.name, status: row.status },
-      { deleted: true, status: updated.status },
-      'Subject soft-deleted',
+      { name: row.name, slug: row.slug, status: row.status },
+      { deleted: true, permanent: true, specializations: branchIds.length },
+      'Subject deleted permanently',
     );
     return { deleted: true };
   }
@@ -1932,6 +1957,7 @@ export class SubjectsService {
     await this.ensureSubject(subjectId);
     const name = dto.name.trim();
     const slug = dto.slug?.trim() || slugify(name);
+    await this.assertSlugNotALevel(slug);
     await this.validateMedia([dto.iconMediaId, dto.listingMediaId]);
     const levelIds = await this.validateLevels(dto.courseLevelIds);
     try {
@@ -1996,6 +2022,8 @@ export class SubjectsService {
       dto.expectedUpdatedAt,
       'SUB_SUBJECT_STALE_VERSION',
     );
+    const nextSlug = dto.slug?.trim() || current.slug;
+    if (nextSlug !== current.slug) await this.assertSlugNotALevel(nextSlug);
     await this.validateMedia([dto.iconMediaId, dto.listingMediaId]);
     const levelIds = await this.validateLevels(dto.courseLevelIds);
     try {
@@ -2003,7 +2031,7 @@ export class SubjectsService {
         where: { id },
         data: {
           name: dto.name.trim(),
-          slug: dto.slug?.trim() || current.slug,
+          slug: nextSlug,
           ...(levelIds
             ? {
                 courseLevels: {
@@ -2055,6 +2083,30 @@ export class SubjectsService {
         );
       throw error;
     }
+  }
+
+  /**
+   * A specialization's page and a study level's page share the place after
+   * the subject: /subjects/computing/artificial-intelligence and
+   * /subjects/computing/masters. The site reads a path as a specialization
+   * first, so a specialization slugged like a level would hide that level's
+   * page. Its slug may not be one of the levels' public slugs or codes.
+   */
+  private async assertSlugNotALevel(slug: string) {
+    const levels = await this.prisma.courseLevel.findMany({
+      select: { code: true },
+    });
+    const taken = new Set(['levels', 'specializations', 'undergraduate']);
+    for (const { code } of levels) {
+      if (!code) continue;
+      taken.add(code.toLowerCase());
+      taken.add(PUBLIC_LEVEL_SLUGS[code.toUpperCase()] ?? code.toLowerCase());
+    }
+    if (taken.has(slug.toLowerCase()))
+      throw catalogConflict(
+        'SUB_SUBJECT_SLUG_RESERVED',
+        `"${slug}" is the address of a study level page. Choose another slug for this specialization.`,
+      );
   }
 
   async publishSubSubject(
@@ -2167,16 +2219,17 @@ export class SubjectsService {
         'SUB_SUBJECT_IN_USE',
         'A sub-subject referenced by courses cannot be deleted',
       );
-    const updated = await this.prisma.subSubject.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-        status: 'DRAFT',
-        publishedAt: null,
-        updatedByUserId: userId,
-      },
-      include: SUB_SUBJECT_INCLUDE,
-    });
+    /* Removed from the database for good, so its name and slug are free
+       again under the subject. Its levels, sections, FAQs and destination
+       links go with it (cascaded by the schema); a deleted course that
+       still named it keeps its subject and loses only the specialization.
+       Its SEO row has no foreign key and is removed here. */
+    await this.prisma.$transaction([
+      this.prisma.seoMetadata.deleteMany({
+        where: { ownerType: SUB_SUBJECT_SEO_OWNER, ownerId: id },
+      }),
+      this.prisma.subSubject.delete({ where: { id } }),
+    ]);
     await writeAudit(
       this.prisma,
       request,
@@ -2185,9 +2238,9 @@ export class SubjectsService {
       'SUB_SUBJECT',
       id,
       'DELETE',
-      { name: row.name, status: row.status },
-      { deleted: true, status: updated.status },
-      'Sub-Subject soft-deleted',
+      { name: row.name, slug: row.slug, status: row.status },
+      { deleted: true, permanent: true },
+      'Sub-Subject deleted permanently',
     );
     return { deleted: true };
   }

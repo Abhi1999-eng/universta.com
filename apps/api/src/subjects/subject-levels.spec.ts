@@ -78,12 +78,16 @@ function prisma(
         record('levelCount')(args);
         return options.activeLevels ?? args.where.id.in.length;
       },
-      findMany: async (args: { where: { id: { in: string[] } } }) =>
-        args.where.id.in.flatMap((id) =>
-          LEVELS[id as keyof typeof LEVELS]
-            ? [LEVELS[id as keyof typeof LEVELS]]
-            : [],
-        ),
+      /* Every level when unfiltered (the reserved-slug check), else the
+         ones asked for by id. */
+      findMany: async (args: { where?: { id: { in: string[] } } }) =>
+        args.where
+          ? args.where.id.in.flatMap((id) =>
+              LEVELS[id as keyof typeof LEVELS]
+                ? [LEVELS[id as keyof typeof LEVELS]]
+                : [],
+            )
+          : Object.values(LEVELS),
     },
     subject: { findFirst: async () => subject },
     subSubject: {
@@ -195,5 +199,37 @@ describe('study levels ticked on a specialization', () => {
     expect(result.impliedCourseLevels.map((level) => level.code)).toEqual([
       'PHD',
     ]);
+  });
+});
+
+describe('a specialization slugged like a study level', () => {
+  it('is refused, since the level page lives at the same address', async () => {
+    const service = new SubjectsService(prisma({}));
+    for (const slug of ['masters', 'bachelors', 'ug', 'phd', 'levels'])
+      await expect(
+        service.createSubSubject(
+          'cs',
+          { name: 'Masters', slug, courseLevelIds: [] },
+          request,
+        ),
+      ).rejects.toMatchObject({
+        response: { code: 'SUB_SUBJECT_SLUG_RESERVED' },
+      });
+  });
+
+  it('is refused when generated from a name like a level, and allowed otherwise', async () => {
+    const calls: Record<string, unknown[]> = {};
+    const service = new SubjectsService(prisma(calls));
+    await expect(
+      service.createSubSubject('cs', { name: 'PhD' }, request),
+    ).rejects.toMatchObject({
+      response: { code: 'SUB_SUBJECT_SLUG_RESERVED' },
+    });
+    await service.createSubSubject(
+      'cs',
+      { name: 'Artificial Intelligence' },
+      request,
+    );
+    expect(calls.create).toHaveLength(1);
   });
 });
