@@ -20,15 +20,30 @@ export function SectionBody({ section }: { section: Section }) {
       ) : null}
       {section.sectionType === 'RICH_TEXT'
         ? lines.map((line, index) => <RichText key={index} value={line} />)
-        : section.sectionType === 'CHECKLIST' || section.sectionType === 'STEPS'
+        : section.sectionType === 'STEPS'
           ? (
-              <ul>
-                {lines.map((line, index) => (
-                  <li key={index}>{line}</li>
-                ))}
-              </ul>
+              /* Steps are an order, and read as one; a checklist is a set.
+                 Inside .rich-text so the list markers the site's reset
+                 strips come back, as they do in every authored list. */
+              <div className="rich-text">
+                <ol>
+                  {lines.map((line, index) => (
+                    <li key={index}>{line}</li>
+                  ))}
+                </ol>
+              </div>
             )
-          : lines.map((line, index) => <p key={index}>{line}</p>)}
+          : section.sectionType === 'CHECKLIST'
+            ? (
+                <div className="rich-text">
+                  <ul>
+                    {lines.map((line, index) => (
+                      <li key={index}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            : lines.map((line, index) => <p key={index}>{line}</p>)}
     </div>
   );
 }
