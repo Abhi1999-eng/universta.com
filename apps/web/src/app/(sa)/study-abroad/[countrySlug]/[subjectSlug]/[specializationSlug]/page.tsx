@@ -196,8 +196,8 @@ export default async function Page({ params, searchParams }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
-  /* Its own ticks; unticked, the levels of its courses, then its
-     subject's; and only then the six, which are shown but never claimed. */
+  /* Its own ticks; unticked, the levels of its courses; and only then the
+     six, which are shown but never claimed. */
   const offered = specializationOfferedLevels(specialization);
   const levelBlock = everyLevel(
     /* A failed grouped read whose fallback list came back empty also knows

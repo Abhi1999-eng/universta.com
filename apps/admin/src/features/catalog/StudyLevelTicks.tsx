@@ -12,12 +12,15 @@ export function StudyLevelTicks({
   levels,
   value,
   implied = [],
+  hint = 'Tick the levels this is offered at. Levels that already have a published course show on the site either way.',
   onChange,
 }: {
   idPrefix: string;
   levels: MasterRecord[];
   value: string[];
   implied?: CatalogLevel[];
+  /** What the ticks do here, under the heading. */
+  hint?: string;
   onChange: (next: string[]) => void;
 }) {
   const ordered = [...levels].sort(
@@ -30,7 +33,7 @@ export function StudyLevelTicks({
       <legend className="sr-only">Study levels</legend>
       <p className="p-eyebrow">Study levels</p>
       <h3 className="mt-2 text-xl font-semibold">Study levels</h3>
-      <p className="p-sub">Tick the levels this is offered at. Levels that already have a published course show on the site either way.</p>
+      <p className="p-sub">{hint}</p>
       {ordered.length === 0 ? (
         <p className="p-hint mt-4">No active study level yet. Add levels under “All levels” first.</p>
       ) : (

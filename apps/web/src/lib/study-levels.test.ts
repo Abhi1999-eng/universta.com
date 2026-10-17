@@ -25,13 +25,33 @@ const group = (level: typeof UG, count: number, courses: Course[]): CourseLevelG
 });
 
 describe('the levels a subject is offered at', () => {
-  it('is what was ticked on the subject, whatever its specializations say', () => {
+  it('is what was ticked on the subject together with its specializations’ levels', () => {
     expect(
       subjectOfferedLevels({ offeredLevels: [UG, PHD], subSubjects: [{ levels: [MBA] }] }).map((l) => l.code),
-    ).toEqual(['UG', 'PHD']);
+    ).toEqual(['UG', 'PHD', 'MBA']);
   });
 
-  it('falls back to its specializations’ levels, each once', () => {
+  it('never loses a specialization’s level to a narrower tick on the subject', () => {
+    /* Ticked for Master's alone, with a Data Science branch at Bachelor's
+       and Master's and an AI branch at Master's and PhD. */
+    expect(
+      subjectOfferedLevels({
+        offeredLevels: [PG],
+        subSubjects: [{ levels: [UG, PG] }, { levels: [PG, PHD] }],
+      }).map((l) => l.code),
+    ).toEqual(['PG', 'UG', 'PHD']);
+  });
+
+  it('adds a level the subject offers beyond its specializations', () => {
+    expect(
+      subjectOfferedLevels({
+        offeredLevels: [FOUNDATION, UG],
+        subSubjects: [{ levels: [UG, PG] }],
+      }).map((l) => l.code),
+    ).toEqual(['FOUNDATION', 'UG', 'PG']);
+  });
+
+  it('is its specializations’ levels, each once, when nothing is ticked on it', () => {
     expect(
       subjectOfferedLevels({ offeredLevels: [], subSubjects: [{ levels: [PG, PHD] }, { levels: [PHD, UG] }] }).map(
         (l) => l.code,
@@ -47,18 +67,21 @@ describe('the levels a subject is offered at', () => {
 describe('the levels a specialization is offered at', () => {
   it('is its own ticks, whatever its courses or subject say', () => {
     expect(
-      specializationOfferedLevels({ offeredLevels: [PG], levels: [PG, PHD], subject: { offeredLevels: [UG] } }),
+      specializationOfferedLevels({ offeredLevels: [PG], levels: [PG, PHD] }),
     ).toEqual([PG]);
   });
 
   it('unticked, is the levels its courses are at, as its card says', () => {
-    expect(specializationOfferedLevels({ offeredLevels: [], levels: [PHD], subject: { offeredLevels: [UG] } })).toEqual([
+    expect(specializationOfferedLevels({ offeredLevels: [], levels: [PHD] })).toEqual([
       PHD,
     ]);
   });
 
-  it('with neither, is its subject’s ticks, and else nothing', () => {
-    expect(specializationOfferedLevels({ offeredLevels: [], levels: [], subject: { offeredLevels: [UG] } })).toEqual([UG]);
+  it('with neither, is nothing -- it does not borrow its subject’s ticks', () => {
+    /* The subject's ticks are what it offers beyond its branches, a
+       Foundation year say; a branch with no levels of its own must not
+       claim them. Its pages show the six named levels, unclaimed. */
+    expect(specializationOfferedLevels({ offeredLevels: [], levels: [] })).toEqual([]);
     expect(specializationOfferedLevels({})).toEqual([]);
   });
 });

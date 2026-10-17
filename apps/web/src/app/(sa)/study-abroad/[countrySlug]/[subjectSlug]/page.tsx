@@ -191,7 +191,7 @@ export default async function Page({ params, searchParams }: Params) {
   const shown = programmesHere(levels, courses);
   /* What the level block draws: the levels with courses here, and the
      always-shown ones that have none. `levels` stays what is listed. */
-  /* What an editor ticked on the subject; unticked, the levels its
+  /* What an editor ticked on the subject together with the levels its
      specializations are offered at; and only then the six named ones,
      which the page shows but never claims. */
   const offered = subjectOfferedLevels(subject);

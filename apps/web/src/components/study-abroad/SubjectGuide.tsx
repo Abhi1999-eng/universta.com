@@ -119,8 +119,8 @@ export function SubjectGuide({
   const taught = groups.filter((group) => group.count > 0);
   /* In academic order where the grouped read supplied it; the subject's own
      counts arrive in that order too. */
-  /* Where the subject is offered at levels -- ticked on it, or failing that
-     on its specializations -- the block's groups are exactly those plus any
+  /* Where the subject is offered at levels -- ticked on it, together with
+     its specializations' -- the block's groups are exactly those plus any
      with courses, so they are the levels it is offered at: the strip said
      "Master's" alone beside a block listing Bachelor's, Master's and PhD.
      Offered at none, the groups hold the six shown regardless, which the

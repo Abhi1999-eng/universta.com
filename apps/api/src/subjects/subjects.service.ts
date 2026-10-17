@@ -124,7 +124,16 @@ const SUBJECT_INCLUDE = {
    * picker never issues a query per row. */
   subSubjects: {
     where: { deletedAt: null },
-    select: { id: true, name: true, slug: true, status: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      status: true,
+      /* What each branch is ticked for: a subject is offered at those
+         levels too, whatever is ticked on it. Loaded with the row, so the
+         explorer's listing does not ask once per subject. */
+      courseLevels: { include: LEVEL_LINK_INCLUDE },
+    },
     orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
   },
   _count: { select: { courses: true, countrySubjects: true } },
@@ -989,11 +998,17 @@ export class SubjectsService {
           count: row._count._all,
         };
       })
-      /* A level an editor ticked is offered even before a course is filed
-         under it: it joins the list with nothing counted yet. */
+      /* A level an editor ticked -- on the subject or on one of its
+         published specializations -- is offered even before a course is
+         filed under it: it joins the list with nothing counted yet. The
+         subject's own ticks only add to its specializations' levels. */
       .concat(
-        activeTicks(subject.courseLevels)
-          .map((link) => link.courseLevel)
+        dedupeLevels([
+          ...activeTicks(subject.courseLevels).map((link) => link.courseLevel),
+          ...children.flatMap((child) =>
+            activeTicks(child.courseLevels).map((link) => link.courseLevel),
+          ),
+        ])
           .filter(
             (level) => !levels.some((row) => row.courseLevelId === level.id),
           )
@@ -2555,45 +2570,45 @@ export class SubjectsService {
   }
 
   private async toPublic(row: SubjectRecord) {
-    const [courseCount, subSubjectCount, countries, levels] = await Promise.all(
-      [
-        this.prisma.course.count({
-          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-        }),
-        this.prisma.subSubject.count({
-          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-        }),
-        this.prisma.countryCourse.findMany({
-          where: {
-            course: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-            status: 'ACTIVE',
-            deletedAt: null,
-            availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
-            country: { status: 'PUBLISHED', deletedAt: null },
-          },
-          select: { countryId: true },
-          distinct: ['countryId'],
-        }),
-        /* The levels this subject is actually taught at, for the explorer's
-         study-level filter. Derived from published courses rather than
-         declared on the subject, so it cannot drift from the catalogue. */
-        this.prisma.course.findMany({
-          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
-          select: {
-            courseLevel: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                educationOrder: true,
-                displayOrder: true,
-              },
+    /* Its published branches, from the row's own include (live ones only):
+       counted, listed, and their ticks added to the subject's levels. */
+    const branches = (row.subSubjects ?? []).filter(
+      (child) => child.status === 'PUBLISHED',
+    );
+    const [courseCount, countries, levels] = await Promise.all([
+      this.prisma.course.count({
+        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+      }),
+      this.prisma.countryCourse.findMany({
+        where: {
+          course: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+          status: 'ACTIVE',
+          deletedAt: null,
+          availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+          country: { status: 'PUBLISHED', deletedAt: null },
+        },
+        select: { countryId: true },
+        distinct: ['countryId'],
+      }),
+      /* The levels this subject is actually taught at, for the explorer's
+       study-level filter. Derived from published courses rather than
+       declared on the subject, so it cannot drift from the catalogue. */
+      this.prisma.course.findMany({
+        where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+        select: {
+          courseLevel: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              educationOrder: true,
+              displayOrder: true,
             },
           },
-          distinct: ['courseLevelId'],
-        }),
-      ],
-    );
+        },
+        distinct: ['courseLevelId'],
+      }),
+    ]);
     return {
       id: row.id,
       name: row.name,
@@ -2606,7 +2621,7 @@ export class SubjectsService {
       featured: row.isFeatured,
       displayOrder: row.displayOrder,
       publishedCourseCount: courseCount,
-      publishedSubSubjectCount: subSubjectCount,
+      publishedSubSubjectCount: branches.length,
       availableCountryCount: countries.length,
       /* The subject explorer searches specializations alongside subjects, so
          a listing row carries its branches rather than making the page ask
@@ -2617,17 +2632,20 @@ export class SubjectsService {
          levels back in whatever order it met them. */
       levels: dedupeLevels([
         ...activeTicks(row.courseLevels).map((link) => link.courseLevel),
+        /* What its published specializations are ticked for: the subject
+           is offered at those too, whatever is ticked on it. */
+        ...branches.flatMap((branch) =>
+          activeTicks(branch.courseLevels).map((link) => link.courseLevel),
+        ),
         ...levels.map((entry) => entry.courseLevel).filter(Boolean),
       ])
         .sort(byEducationOrder)
         .map((level) => ({ code: level.code, name: level.name })),
-      subSubjects: (row.subSubjects ?? [])
-        .filter((child) => child.status === 'PUBLISHED')
-        .map((child) => ({
-          id: child.id,
-          name: child.name,
-          slug: child.slug,
-        })),
+      subSubjects: branches.map((child) => ({
+        id: child.id,
+        name: child.name,
+        slug: child.slug,
+      })),
     };
   }
 
@@ -2645,7 +2663,10 @@ export class SubjectsService {
       id: row.id,
       name: row.name,
       slug: row.slug,
-      subSubjects: row.subSubjects ?? [],
+      /* Without their level links, which only the public levels read. */
+      subSubjects: (row.subSubjects ?? []).map(
+        ({ id, name, slug, status }) => ({ id, name, slug, status }),
+      ),
       /* "Most used" is ordered by these, so they have to be real counts
        * rather than a display hint. */
       courseCount: row._count?.courses ?? 0,
