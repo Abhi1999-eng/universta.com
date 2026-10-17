@@ -235,7 +235,7 @@ export function SubjectForm({ id }: { id?: string }) {
           </div>
         </fieldset>
 
-        <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
+        <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} hint="The levels ticked on its specializations show on the subject's pages on their own. Tick here any level the subject is offered at beyond them, or every level while it has no specializations. Levels with a published course show either way." onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
         <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
 

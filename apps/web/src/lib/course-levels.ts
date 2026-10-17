@@ -178,23 +178,30 @@ export function climbingOrder<T extends CatalogueLevel>(levels: readonly T[]): T
 }
 
 /**
- * The levels a subject is offered at, for the pages that show them.
+ * The levels a subject is offered at, for the pages that show them: what an
+ * editor ticked on the subject, together with every level its
+ * specializations are offered at. A subject whose AI branch is ticked for
+ * Master's and PhD is offered at those whether or not the subject says so.
  *
- * What an editor ticked on the subject is the answer. Where nothing is
- * ticked, the levels its specializations are offered at stand in: a subject
- * whose AI branch is ticked for Master's and PhD is offered at those. Empty
- * only when neither says anything, and the page then shows the six levels
- * the client named (see `LEVELS_ALWAYS_SHOWN`).
+ * The subject's own ticks only ever add. They used to replace the
+ * specializations' levels, so a subject ticked for Master's alone hid its
+ * Data Science branch's Bachelor's from the level bar and the destination's
+ * panels while that branch's card still said "Bachelor's". The ticks are
+ * for what the subject offers beyond its branches -- a Foundation year, say
+ * -- or for a subject with no branches yet. Empty only when neither says
+ * anything, and the page then shows the six levels the client named (see
+ * `LEVELS_ALWAYS_SHOWN`).
  */
 export function subjectOfferedLevels(subject: {
   offeredLevels?: readonly LevelRef[] | null;
   subSubjects?: ReadonlyArray<{ levels?: readonly LevelRef[] | null }> | null;
 }): LevelRef[] {
-  if (subject.offeredLevels?.length) return [...subject.offeredLevels];
   const seen = new Map<string, LevelRef>();
-  for (const branch of subject.subSubjects ?? [])
-    for (const level of branch.levels ?? [])
-      if (level.code && !seen.has(level.code)) seen.set(level.code, level);
+  const add = (level: LevelRef) => {
+    if (level.code && !seen.has(level.code)) seen.set(level.code, level);
+  };
+  for (const level of subject.offeredLevels ?? []) add(level);
+  for (const branch of subject.subSubjects ?? []) for (const level of branch.levels ?? []) add(level);
   return [...seen.values()];
 }
 

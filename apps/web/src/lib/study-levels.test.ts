@@ -25,13 +25,33 @@ const group = (level: typeof UG, count: number, courses: Course[]): CourseLevelG
 });
 
 describe('the levels a subject is offered at', () => {
-  it('is what was ticked on the subject, whatever its specializations say', () => {
+  it('is what was ticked on the subject together with its specializations’ levels', () => {
     expect(
       subjectOfferedLevels({ offeredLevels: [UG, PHD], subSubjects: [{ levels: [MBA] }] }).map((l) => l.code),
-    ).toEqual(['UG', 'PHD']);
+    ).toEqual(['UG', 'PHD', 'MBA']);
   });
 
-  it('falls back to its specializations’ levels, each once', () => {
+  it('never loses a specialization’s level to a narrower tick on the subject', () => {
+    /* Ticked for Master's alone, with a Data Science branch at Bachelor's
+       and Master's and an AI branch at Master's and PhD. */
+    expect(
+      subjectOfferedLevels({
+        offeredLevels: [PG],
+        subSubjects: [{ levels: [UG, PG] }, { levels: [PG, PHD] }],
+      }).map((l) => l.code),
+    ).toEqual(['PG', 'UG', 'PHD']);
+  });
+
+  it('adds a level the subject offers beyond its specializations', () => {
+    expect(
+      subjectOfferedLevels({
+        offeredLevels: [FOUNDATION, UG],
+        subSubjects: [{ levels: [UG, PG] }],
+      }).map((l) => l.code),
+    ).toEqual(['FOUNDATION', 'UG', 'PG']);
+  });
+
+  it('is its specializations’ levels, each once, when nothing is ticked on it', () => {
     expect(
       subjectOfferedLevels({ offeredLevels: [], subSubjects: [{ levels: [PG, PHD] }, { levels: [PHD, UG] }] }).map(
         (l) => l.code,

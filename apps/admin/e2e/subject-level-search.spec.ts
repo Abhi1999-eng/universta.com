@@ -26,11 +26,17 @@ async function offeredLevelSlugs(request: APIRequestContext, base: string) {
     subSubjects?: Array<{ levels?: Level[] }>;
     subject?: { offeredLevels?: Level[] };
   };
-  const offered = data.offeredLevels?.length
-    ? data.offeredLevels
-    : specializationSlug
-      ? data.levels?.length ? data.levels : (data.subject?.offeredLevels ?? [])
-      : (data.subSubjects ?? []).flatMap((branch) => branch.levels ?? []);
+  /* A specialization: its ticks, else its course levels, else its subject's
+     ticks. A subject: its ticks together with its specializations' levels --
+     the subject's ticks only add. */
+  const offered = specializationSlug
+    ? data.offeredLevels?.length
+      ? data.offeredLevels
+      : data.levels?.length ? data.levels : (data.subject?.offeredLevels ?? [])
+    : [
+        ...(data.offeredLevels ?? []),
+        ...(data.subSubjects ?? []).flatMap((branch) => branch.levels ?? []),
+      ];
   const codes = offered.length ? offered.map((level) => level.code ?? '') : Object.keys(LEVEL_SLUGS);
   return [...new Set(codes.filter(Boolean).map((code) => LEVEL_SLUGS[code] ?? code.toLowerCase()))];
 }

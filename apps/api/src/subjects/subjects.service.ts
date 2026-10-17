@@ -979,11 +979,17 @@ export class SubjectsService {
           count: row._count._all,
         };
       })
-      /* A level an editor ticked is offered even before a course is filed
-         under it: it joins the list with nothing counted yet. */
+      /* A level an editor ticked -- on the subject or on one of its
+         published specializations -- is offered even before a course is
+         filed under it: it joins the list with nothing counted yet. The
+         subject's own ticks only add to its specializations' levels. */
       .concat(
-        (subject.courseLevels ?? [])
-          .map((link) => link.courseLevel)
+        dedupeLevels([
+          ...(subject.courseLevels ?? []).map((link) => link.courseLevel),
+          ...children.flatMap((child) =>
+            (child.courseLevels ?? []).map((link) => link.courseLevel),
+          ),
+        ])
           .filter(
             (level) => !levels.some((row) => row.courseLevelId === level.id),
           )
@@ -2529,8 +2535,8 @@ export class SubjectsService {
   }
 
   private async toPublic(row: SubjectRecord) {
-    const [courseCount, subSubjectCount, countries, levels] = await Promise.all(
-      [
+    const [courseCount, subSubjectCount, countries, levels, branchTicks] =
+      await Promise.all([
         this.prisma.course.count({
           where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
         }),
@@ -2566,8 +2572,13 @@ export class SubjectsService {
           },
           distinct: ['courseLevelId'],
         }),
-      ],
-    );
+        /* The levels its published specializations are ticked for: the
+           subject is offered at those too, whatever is ticked on it. */
+        this.prisma.subSubject.findMany({
+          where: { subjectId: row.id, status: 'PUBLISHED', deletedAt: null },
+          select: { courseLevels: { include: LEVEL_LINK_INCLUDE } },
+        }),
+      ]);
     return {
       id: row.id,
       name: row.name,
@@ -2591,6 +2602,9 @@ export class SubjectsService {
          levels back in whatever order it met them. */
       levels: dedupeLevels([
         ...(row.courseLevels ?? []).map((link) => link.courseLevel),
+        ...branchTicks.flatMap((branch) =>
+          branch.courseLevels.map((link) => link.courseLevel),
+        ),
         ...levels.map((entry) => entry.courseLevel).filter(Boolean),
       ])
         .sort(byEducationOrder)
