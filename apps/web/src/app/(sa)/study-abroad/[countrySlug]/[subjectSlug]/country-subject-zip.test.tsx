@@ -264,13 +264,15 @@ describe('the study levels on a country subject page', () => {
   const panelIds = (html: string) =>
     [...html.matchAll(/<section class="coursegroup studylevel[^"]*" id="(level-[^"]+)"/g)].map((m) => m[1]);
 
-  it('shows only the levels ticked on the subject, plus any with a course here', async () => {
+  it('shows the levels ticked on the subject, its specializations’ levels and any with a course here', async () => {
     fixture.offered = [byCode('PG'), byCode('PHD')];
     fixture.firstLevels = [byCode('MBA')];
     const html = await render();
-    /* The Bachelor's course is listed here, so its level shows too; the
-       specialization's MBA does not, since the subject's ticks win. */
-    expect(panelIds(html)).toEqual(['level-ug', 'level-pg', 'level-phd']);
+    /* The Bachelor's course is listed here, so its level shows too; so does
+       the specialization's MBA, which the subject's narrower ticks used to
+       hide while its card still said MBA. The subject's ticks only add. */
+    expect(panelIds(html)).toEqual(['level-ug', 'level-pg', 'level-mba', 'level-phd']);
+    expect(panel(html, 'MBA')).toContain(`href="/study-abroad/uk/${subjectSlug}/specialization-1">Specialization 1</a>`);
   });
 
   it('with nothing ticked on the subject, shows the levels its specializations are offered at', async () => {
