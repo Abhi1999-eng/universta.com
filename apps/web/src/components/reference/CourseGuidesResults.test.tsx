@@ -14,7 +14,7 @@ vi.mock('@/components/study-abroad/StudyAbroadShell', () => ({
 }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const base = '/subjects/computer-science/software-engineering/levels/bachelors';
+const base = '/subjects/computer-science/software-engineering/bachelors';
 const scope = { subject: ['computer-science'], subSubject: ['software-engineering'], level: ['UG'] };
 const guide: Course = {
   id: 'guide-1', name: 'BSc Software Engineering', slug: 'bsc-software-engineering',

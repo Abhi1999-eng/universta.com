@@ -20,11 +20,11 @@ describe('subject study-level addresses', () => {
   });
 
   it('keeps study levels outside the specialization segment and marks guide listings explicitly', () => {
-    expect(subjectLevelHref({ subject: 'computing', level: 'UG' })).toBe('/subjects/computing/levels/bachelors');
+    expect(subjectLevelHref({ subject: 'computing', level: 'UG' })).toBe('/subjects/computing/bachelors');
     expect(subjectLevelHref({ subject: 'computing', specialization: 'computer-science', level: 'PG', guides: true }))
-      .toBe('/subjects/computing/computer-science/levels/masters?view=guides');
+      .toBe('/subjects/computing/computer-science/masters?view=guides');
     expect(subjectLevelHref({ subject: 'arts & design', specialization: 'film/tv', level: 'PHD' }))
-      .toBe('/subjects/arts%20%26%20design/film%2Ftv/levels/phd');
+      .toBe('/subjects/arts%20%26%20design/film%2Ftv/phd');
   });
 
   it.each([

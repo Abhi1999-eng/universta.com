@@ -12,6 +12,13 @@ export function subjectLevelSlug(code: string) {
   return LEVEL_SLUGS[code.toUpperCase()] ?? code.toLowerCase();
 }
 
+/**
+ * A field's page at one level: the level straight after the subject or the
+ * specialization, `/subjects/computing/masters`. It used to sit under a
+ * `/levels/` segment; those addresses redirect here permanently (see
+ * next.config.ts). A level and a specialization share the place after the
+ * subject, so the API keeps specialization slugs off the level slugs.
+ */
 export function subjectLevelHref({ subject, specialization, level, guides = false }: {
   subject: string;
   specialization?: string;
@@ -19,7 +26,7 @@ export function subjectLevelHref({ subject, specialization, level, guides = fals
   guides?: boolean;
 }) {
   const field = `/subjects/${encodeURIComponent(subject)}${specialization ? `/${encodeURIComponent(specialization)}` : ''}`;
-  return `${field}/levels/${encodeURIComponent(subjectLevelSlug(level))}${guides ? '?view=guides' : ''}`;
+  return `${field}/${encodeURIComponent(subjectLevelSlug(level))}${guides ? '?view=guides' : ''}`;
 }
 
 export function findSubjectLevel<T extends { code: string }>(levels: T[], slug: string): T | undefined {

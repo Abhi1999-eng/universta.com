@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getCourseLevels, getCoursesByLevel, getSpecialization } from '@/lib/catalog';
+import { SubjectLevelPage, subjectLevelMetadata } from '@/components/study-abroad/SubjectLevelPage';
+import { findSubjectLevel } from '@/lib/subject-levels';
 import { everyLevel, LEVEL_ROWS_FETCHED, specializationOfferedLevels } from '@/lib/course-levels';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { SpecializationGuide } from '@/components/study-abroad/SpecializationGuide';
@@ -15,7 +17,18 @@ export const dynamic = 'force-dynamic';
 
 type Props = {
   params: Promise<{ slug: string; specializationSlug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+/* The place after the subject holds either a specialization or a study
+   level: /subjects/computing/artificial-intelligence or
+   /subjects/computing/masters. A specialization is looked up first; only a
+   path that names no specialization is read as a level. The API keeps
+   specialization slugs off the level slugs, so the two never meet. */
+async function isLevel(segment: string) {
+  const levels = await getCourseLevels().catch(() => null);
+  return Boolean(levels && findSubjectLevel(levels, segment));
+}
 
 /* A specialization slug is unique within its subject, not across the table, so
    both halves of the path are part of the lookup. */
@@ -27,10 +40,12 @@ async function load(subjectSlug: string, slug: string) {
   }
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug, specializationSlug } = await params;
   const canonical = `/subjects/${slug}/${specializationSlug}`;
   const specialization = await load(slug, specializationSlug);
+  if (!specialization && (await isLevel(specializationSlug)))
+    return subjectLevelMetadata(Promise.resolve({ slug, levelSlug: specializationSlug }), searchParams);
   if (!specialization)
     return {
       title: 'Specialization not found',
@@ -66,9 +81,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function SpecializationDetailPage({ params }: Props) {
+export default async function SpecializationDetailPage({ params, searchParams }: Props) {
   const { slug, specializationSlug } = await params;
   const specialization = await load(slug, specializationSlug);
+  if (!specialization && (await isLevel(specializationSlug)))
+    return <SubjectLevelPage params={Promise.resolve({ slug, levelSlug: specializationSlug })} searchParams={searchParams} />;
   if (!specialization) notFound();
 
   const [levels, scholarships, allLevels, programmes] = await Promise.all([

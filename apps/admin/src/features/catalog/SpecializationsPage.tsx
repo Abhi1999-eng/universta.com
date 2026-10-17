@@ -386,7 +386,7 @@ export function SpecializationsPage() {
           title={pending.kind === 'delete' ? 'Delete specialization?' : 'Change specialization visibility?'}
           description={
             pending.kind === 'delete'
-              ? `Type ${pending.row.name} to confirm soft deletion.`
+              ? `This removes ${pending.row.name} from the database for good, with its sections and FAQs, and frees its slug. It cannot be undone. Type ${pending.row.name} to confirm.`
               : pending.kind === 'publish'
                 ? 'Its subject must already be published. This action is audited and changes public visibility.'
                 : 'This action is audited and changes public visibility.'

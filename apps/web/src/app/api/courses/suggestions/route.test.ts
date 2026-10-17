@@ -78,7 +78,7 @@ describe('scoped course suggestions', () => {
       'MSc Computer Science 1 · University of Warwick', 'MSc Computer Science 2 · University of Warwick',
     ]);
     expect(data[1].href).toBe(
-      '/subjects/computer-science/software-engineering/levels/masters?university=university-of-warwick',
+      '/subjects/computer-science/software-engineering/masters?university=university-of-warwick',
     );
     expect(data[2].href).toBe(
       '/study-abroad/united-kingdom/universities/university-of-warwick/courses/msc-computer-science-1',

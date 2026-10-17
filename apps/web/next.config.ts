@@ -63,6 +63,20 @@ const nextConfig: NextConfig = {
          and a finder's filters reach /courses. */
       { source: '/compare-courses', destination: '/compare/courses', permanent: true },
       { source: '/course-finder', destination: '/courses', permanent: true },
+      /* A field's level page lost its `/levels/` segment: the level now
+         follows the subject or specialization directly. Permanent and
+         query-preserving, so shared links and indexed pages land on the same
+         level with the same filters. */
+      {
+        source: '/subjects/:slug/levels/:levelSlug',
+        destination: '/subjects/:slug/:levelSlug',
+        permanent: true,
+      },
+      {
+        source: '/subjects/:slug/:specializationSlug/levels/:levelSlug',
+        destination: '/subjects/:slug/:specializationSlug/:levelSlug',
+        permanent: true,
+      },
     ];
   },
   // The App Router's file-system matcher does not register a route for a

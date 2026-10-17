@@ -305,7 +305,7 @@ describe('the study levels on a country subject page', () => {
     const phd = panel(html, 'PHD');
     expect(phd).toContain('Not listed in the United Kingdom yet');
     expect(html).not.toContain('0 courses');
-    expect(phd).toContain('href="/subjects/arts-humanities-social-sciences/levels/phd"');
+    expect(phd).toContain('href="/subjects/arts-humanities-social-sciences/phd"');
     expect(section(html, 'programs')).toContain('PhD has no course listed in the United Kingdom yet.');
     /* The level with a course opens first; the other waits behind its chip. */
     expect(html).toMatch(/<div><section class="coursegroup studylevel scrollstop" id="level-ug"/);

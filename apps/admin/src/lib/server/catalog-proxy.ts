@@ -75,6 +75,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   SUBJECT_IN_USE: 'A subject referenced by courses cannot be deleted',
   SUB_SUBJECT_NOT_FOUND: 'Sub-Subject not found',
   SUB_SUBJECT_CONFLICT: 'Sub-Subject name or slug already exists',
+  SUB_SUBJECT_SLUG_RESERVED: 'That slug is the address of a study level page (such as "masters" or "mba"). Choose another slug for this specialization',
   SUB_SUBJECT_STALE_VERSION: 'The Sub-Subject changed in another session. Reload before saving',
   SUB_SUBJECT_NOT_READY: 'Complete Sub-Subject fields before publishing',
   SUB_SUBJECT_IN_USE: 'A Sub-Subject referenced by courses cannot be deleted',
