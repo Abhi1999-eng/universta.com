@@ -9,6 +9,7 @@ import {
   programmesHref,
 } from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
+import { SECTION_EYEBROWS, sectionLines, sectionTitle } from '@/lib/specialization-content';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { universityHref } from '@/lib/university-links';
@@ -30,6 +31,7 @@ import { PlanBand } from './PlanBand';
 import { allProgrammes, ProgrammeSample } from './ProgrammeSample';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
+import { FaqList, SectionBody } from './SpecializationContent';
 
 /** A sibling as the record now sends it: enough to fill a card. Older
  *  records send the name alone, and the card shows what there is. */
@@ -78,41 +80,6 @@ export type SpecializationRecord = Omit<SpecializationDetail, 'siblings' | 'coun
  * numbered run is built from what actually renders, so the numbering never
  * skips.
  */
-/* The lines a section's body holds: paragraphs for text, items for a
-   checklist, the step text for steps. */
-function sectionLines(section: {
-  sectionType: string;
-  bodyJson: { paragraphs?: unknown; items?: unknown; steps?: unknown } | null;
-}): string[] {
-  const body = section.bodyJson;
-  if (!body) return [];
-  const strings = (value: unknown) =>
-    Array.isArray(value) ? value.filter((line): line is string => typeof line === 'string' && line.trim() !== '') : [];
-  if (section.sectionType === 'CHECKLIST' && strings(body.items).length) return strings(body.items);
-  if (section.sectionType === 'STEPS' && Array.isArray(body.steps))
-    return body.steps
-      .map((step) => (step && typeof step === 'object' ? (step as { text?: unknown }).text : step))
-      .filter((line): line is string => typeof line === 'string' && line.trim() !== '');
-  return strings(body.paragraphs);
-}
-
-const SECTION_EYEBROWS: Record<string, string> = {
-  'what-you-study': 'What you study',
-  curriculum: 'Curriculum',
-  skills: 'Skills',
-  'career-outcomes': 'Careers',
-  'admission-requirements': 'Admission',
-  documents: 'Documents',
-  'application-process': 'Applying',
-  'why-choose': 'Why choose it',
-  'top-destinations': 'Destinations',
-};
-
-function sectionTitle(key: string) {
-  const words = key.replace(/-/g, ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
 export function SpecializationGuide({
   specialization: record,
   levels = null,
@@ -274,7 +241,6 @@ export function SpecializationGuide({
 
       {sections.map((section) => {
         const id = `content-${section.sectionKey}`;
-        const lines = sectionLines(section);
         return (
           <section className={band(id)} id={id} key={section.id}>
             <div className="wrap">
@@ -284,23 +250,7 @@ export function SpecializationGuide({
                 title={section.heading ?? sectionTitle(section.sectionKey)}
                 lead={section.subheading}
               />
-              <div className="prose">
-                {section.media?.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={section.media.url} alt={section.media.alt ?? ''} loading="lazy" />
-                ) : null}
-                {section.sectionType === 'RICH_TEXT'
-                  ? lines.map((line, index) => <RichText key={index} value={line} />)
-                  : section.sectionType === 'CHECKLIST' || section.sectionType === 'STEPS'
-                    ? (
-                        <ul>
-                          {lines.map((line, index) => (
-                            <li key={index}>{line}</li>
-                          ))}
-                        </ul>
-                      )
-                    : lines.map((line, index) => <p key={index}>{line}</p>)}
-              </div>
+              <SectionBody section={section} />
             </div>
           </section>
         );
@@ -538,21 +488,7 @@ export function SpecializationGuide({
               eyebrow="Questions"
               title={`Straight answers about ${specialization.name}`}
             />
-            <div className="faq">
-              {faqs.map((faq) => (
-                <details className="faq__item" key={faq.id}>
-                  <summary className="faq__q">
-                    {faq.question}
-                    <span className="faq__plus" aria-hidden="true">
-                      +
-                    </span>
-                  </summary>
-                  <div className="faq__a prose">
-                    <RichText value={faq.answer} />
-                  </div>
-                </details>
-              ))}
-            </div>
+            <FaqList faqs={faqs} />
           </div>
         </section>
       ) : null}
