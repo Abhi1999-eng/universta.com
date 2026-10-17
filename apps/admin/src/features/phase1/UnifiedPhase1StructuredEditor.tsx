@@ -7,7 +7,8 @@ import { Phase1StructuredEditor } from './Phase1StructuredEditor';
 type Props = {
   resource: string;
   recordId?: string;
-  onSaved: () => Promise<void>;
+  /** Says which button saved it, and what the API returned. */
+  onSaved: (intent: 'draft' | 'publish', saved?: Record<string, unknown>) => Promise<void>;
   onCancel: () => void;
 };
 
@@ -27,6 +28,9 @@ type Props = {
 export function UnifiedPhase1StructuredEditor(props: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState<HTMLFormElement | null>(null);
+  /* The inner editor saves through the form's own submit, so the button that
+     started it is remembered here and passed on with the result. */
+  const intent = useRef<'draft' | 'publish'>('draft');
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -35,8 +39,9 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
     return () => window.clearTimeout(timer);
   }, [props.recordId, props.resource]);
 
-  function submit(intent: 'draft' | 'publish') {
+  function submit(next: 'draft' | 'publish') {
     if (!form) return;
+    intent.current = next;
 
     const publishLabel = Array.from(form.querySelectorAll('label')).find((node) =>
       node.textContent?.includes('Publish state'),
@@ -44,13 +49,13 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
     const select = publishLabel?.querySelector<HTMLSelectElement>('select');
     if (!select) return;
 
-    const next = intent === 'publish' ? 'PUBLISHED' : 'DRAFT';
-    if (select.value !== next) {
+    const status = next === 'publish' ? 'PUBLISHED' : 'DRAFT';
+    if (select.value !== status) {
       const setter = Object.getOwnPropertyDescriptor(
         HTMLSelectElement.prototype,
         'value',
       )?.set;
-      setter?.call(select, next);
+      setter?.call(select, status);
       select.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
@@ -93,7 +98,12 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
 
   return (
     <div ref={root} className="unified-phase1-editor">
-      <Phase1StructuredEditor {...props} />
+      <Phase1StructuredEditor
+        resource={props.resource}
+        recordId={props.recordId}
+        onCancel={props.onCancel}
+        onSaved={(saved) => props.onSaved(intent.current, saved)}
+      />
       {actions}
       <style jsx global>{`
         .unified-phase1-editor [data-testid='structured-editor-save-row'] {

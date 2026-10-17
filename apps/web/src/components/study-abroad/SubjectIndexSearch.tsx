@@ -55,7 +55,7 @@ export function SubjectIndexSearch<T extends Row>({
   const subjectOptions: Option[] = result.subjects.slice(0, SUBJECTS_LISTED).map((subject) => ({
     id: `s-${subject.id}`,
     label: subject.name,
-    meta: `${(subject.subSubjects ?? []).length} specializations`,
+    meta: `${(subject.subSubjects ?? []).length} ${(subject.subSubjects ?? []).length === 1 ? 'specialization' : 'specializations'}`,
     href: `/subjects/${subject.slug}`,
   }));
   const specOptions: Option[] = result.specializations

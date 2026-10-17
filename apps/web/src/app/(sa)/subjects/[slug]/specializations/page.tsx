@@ -27,12 +27,12 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
   // Every other public route declares a canonical; this one declared none,
   // leaving its preferred URL ambiguous to search engines.
   const alternates = { canonical: `/subjects/${slug}/specializations` };
-  if (!subject) return { title: 'Specialisations not found', alternates };
+  if (!subject) return { title: 'Specializations not found', alternates };
   return {
     /* This route family's layout appends the site name through its title
        template, so the page states only its own name. */
-    title: `${subject.name} specialisations`,
-    description: `Explore published ${subject.name} specialisations and course pathways.`,
+    title: `${subject.name} specializations`,
+    description: `Explore published ${subject.name} specializations and course pathways.`,
     alternates,
   };
 }
@@ -60,7 +60,7 @@ export default async function SubjectSpecializationsPage({ params, searchParams 
       .catch(() => []),
   ]);
 
-  // Real per-specialisation course counts, keyed by slug.
+  // Real per-specialization course counts, keyed by slug.
   const counts = Object.fromEntries(
     (filterOptions?.subSubjects ?? []).map((entry) => [entry.value, entry.count]),
   );

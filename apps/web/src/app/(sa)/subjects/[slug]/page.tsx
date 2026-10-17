@@ -132,7 +132,7 @@ export default async function SubjectDetailPage({ params }: Props) {
         scholarships={scholarships}
         universities={universities.rows}
         universityTotal={universities.total}
-        levels={everyLevel(levels, allLevels)}
+        levels={everyLevel(levels, allLevels, subject.offeredLevels)}
         related={related}
         programmes={programmes}
       />

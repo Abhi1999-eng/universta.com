@@ -188,6 +188,7 @@ export default async function Page({ params, searchParams }: Params) {
        nothing is listed, and still shows the levels. */
     levels ?? (shown === 'none' ? [] : null),
     allLevels,
+    subject.offeredLevels,
   );
   const filed =
     shown === 'levels'
@@ -364,7 +365,7 @@ export default async function Page({ params, searchParams }: Params) {
                 country: country.slug,
               })}
             >
-              All {formatNumber(filed)}{' '}
+              All {formatNumber(filed)} {filed === 1 ? 'course' : 'courses'}{' '}
               <span className="linkcta__arrow" aria-hidden="true">
                 &rarr;
               </span>
@@ -401,6 +402,7 @@ export default async function Page({ params, searchParams }: Params) {
               })}
             >
               All {formatNumber(courses.meta.total)}{' '}
+              {courses.meta.total === 1 ? 'course' : 'courses'}{' '}
               <span className="linkcta__arrow" aria-hidden="true">
                 &rarr;
               </span>

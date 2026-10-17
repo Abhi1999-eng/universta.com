@@ -167,6 +167,27 @@ describe('every level the client named, listed or not', () => {
     expect(everyLevel([], catalogue)).toHaveLength(6);
   });
 
+  /* An editor ticked Bachelor's, Master's and PhD on the subject: the block
+     follows the ticks, not the six, and still shows a level with courses. */
+  it('shows the ticked levels instead of the six when an editor ticked some', () => {
+    const ticked = [{ code: 'UG' }, { code: 'PG' }, { code: 'PHD' }];
+    expect(
+      everyLevel([group('PG', "Master's", 1)], catalogue, ticked)!.map((row) => [row.level.code, row.count]),
+    ).toEqual([
+      ['UG', 0],
+      ['PG', 1],
+      ['PHD', 0],
+    ]);
+    expect(
+      everyLevel([group('DIPLOMA', 'Diploma', 2)], catalogue, [{ code: 'PG' }])!.map((row) => row.level.code),
+    ).toEqual(['PG', 'DIPLOMA']);
+  });
+
+  it('falls back to the six when nothing is ticked', () => {
+    expect(everyLevel([], catalogue, [])).toHaveLength(6);
+    expect(everyLevel([], catalogue, null)).toHaveLength(6);
+  });
+
   it('knows nothing when the grouped read failed, and adds nothing', () => {
     expect(everyLevel(null, catalogue)).toBeNull();
   });

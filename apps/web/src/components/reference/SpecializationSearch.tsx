@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-/** Specialisation search for the approved specialisations hero.
+/** Specialization search for the approved specializations hero.
  *
  * The term goes into the URL so the filtered list is shareable and survives a
  * reload, and the results region takes focus on submit — otherwise a keyboard
@@ -71,7 +71,7 @@ export function SpecializationSearch({ query, subject }: { query: string; subjec
           className="bigsearch__input"
           type="text"
           aria-label="Search specializations"
-          placeholder={`Search ${subject} specialisations…`}
+          placeholder={`Search ${subject} specializations…`}
           value={value}
           onChange={(event) => setValue(event.target.value)}
         />

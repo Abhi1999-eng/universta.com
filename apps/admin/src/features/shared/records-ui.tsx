@@ -124,7 +124,9 @@ export function RowMenu({ items, label = 'More actions' }: { items: RowMenuItem[
 
 export type Toast = {
   id: number;
-  tone: 'ok' | 'error';
+  /* `success` is the green confirmation that an editor's Publish landed;
+     `ok` stays the quiet navy note for row actions. */
+  tone: 'ok' | 'success' | 'error';
   text: string;
   action?: { label: string; onSelect: () => void };
 };
@@ -140,7 +142,7 @@ export function useToasts() {
     (tone: Toast['tone'], text: string, action?: Toast['action']) => {
       const id = ++counter.current;
       setToasts((current) => [...current.slice(-3), { id, tone, text, action }]);
-      if (tone === 'ok') window.setTimeout(() => dismiss(id), 5000);
+      if (tone !== 'error') window.setTimeout(() => dismiss(id), 5000);
     },
     [dismiss],
   );
@@ -155,7 +157,7 @@ export function Toasts({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id:
   return (
     <div className="p-toasts" role="status" aria-live="polite">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`p-toast${toast.tone === 'error' ? ' p-toast--error' : ''}`}>
+        <div key={toast.id} data-toast-tone={toast.tone} className={`p-toast${toast.tone === 'error' ? ' p-toast--error' : toast.tone === 'success' ? ' p-toast--success' : ''}`}>
           <span className="flex-1">{toast.text}</span>
           {toast.action ? (
             <button type="button" className="p-btn p-btn--ghost p-btn--sm" onClick={toast.action.onSelect}>

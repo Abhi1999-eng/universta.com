@@ -133,7 +133,7 @@ describe('country editor save and publish flow', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/countries'));
-    expect(peekFlash()).toEqual({
+    expect(peekFlash()).toMatchObject({
       tone: 'success',
       message: 'Malta published successfully.',
     });

@@ -277,6 +277,7 @@
 .pa .p-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 90; display: grid; gap: 8px; max-width: min(380px, calc(100vw - 32px)); }
 .pa .p-toast { display: flex; gap: 10px; align-items: center; background: var(--navy); color: #fff; padding: 12px 14px; border-radius: 10px; box-shadow: var(--sh-lg); font-size: .9rem; animation: p-in .2s ease; }
 .pa .p-toast--error { background: #7A1A12; }
+.pa .p-toast--success { background: #0E7A3E; }
 .pa .p-toast.is-out { opacity: 0; transform: translateY(6px); transition: .25s; }
 
 @keyframes p-in { from { opacity: 0; transform: translateY(8px); } }.pa .p-modal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; }

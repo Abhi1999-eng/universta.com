@@ -63,6 +63,7 @@ import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } f
 import { catalogErrorText } from './catalog-errors';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 import { RelatedCoursePicker } from './RelatedCoursePicker';
+import { queueFlash } from '@/features/shared/Flash';
 
 type Intent = 'draft' | 'publish';
 type CoreState = {
@@ -722,6 +723,13 @@ export function CourseForm({ id }: { id?: string }) {
         : (refreshed.status === 'PUBLISHED' ? (await unpublishCourse(refreshed.id, refreshed.updatedAt)).data : refreshed);
       setRecord(finalRecord);
       setDirty(false);
+      /* Publish ends the editing session: back to the list, with the green
+         confirmation there. A draft save keeps the operator where they are. */
+      if (intent === 'publish') {
+        queueFlash({ tone: 'success', message: `${finalRecord.name} published successfully.` });
+        router.push('/courses');
+        return;
+      }
       if (!id) router.replace(`/courses/${finalRecord.id}`);
       router.refresh();
     } catch (cause: unknown) {

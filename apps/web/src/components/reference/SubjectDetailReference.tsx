@@ -10,7 +10,7 @@ import { formatNumber } from '@/lib/format';
  * curriculum, careers, hiring industries, admission requirements, a monthly
  * cost estimate, a career-outlook dashboard, future scope, student stories, a
  * "is this right for you" quiz and a resource rail. Universta stores a subject
- * as a name, description, overview, specialisations, level breakdown and the
+ * as a name, description, overview, specializations, level breakdown and the
  * courses attached to it — so the blocks that have data are rendered and the
  * rest are dropped rather than filled with invented career and salary claims.
  *
@@ -46,7 +46,7 @@ function courseSubtitle(course: Course) {
 
 export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
   const { subject, countries, universities, scholarships, relatedSubjects } = props;
-  const specialisations = subject.subSubjects ?? [];
+  const specializations = subject.subSubjects ?? [];
   const levels = (subject.courseCountsByLevel ?? []).filter((entry) => entry.count > 0);
   const courses = subject.featuredCourses ?? [];
 
@@ -60,7 +60,7 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
   const nav = [
     ['glance', 'At a glance'],
     subject.overview && ['about', `About ${subject.name}`],
-    specialisations.length && ['specializations', 'Specialisations'],
+    specializations.length && ['specializations', 'Specializations'],
     levels.length && ['levels', 'Degree levels'],
     courses.length && ['courses', 'Courses'],
     countries.length && ['countries', 'Destinations'],
@@ -91,7 +91,7 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
             </div>
             <div className="hm">
               <div className="v">{subject.publishedSubSubjectCount || '—'}</div>
-              <div className="k">Specialisations</div>
+              <div className="k">Specializations</div>
             </div>
             <div className="hm">
               <div className="v">{subject.availableCountryCount || '—'}</div>
@@ -106,12 +106,12 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
             <Link href={`/courses?subject=${subject.slug}#discovery`} className="btn btn-white btn-lg">
               Explore courses
             </Link>
-            {specialisations.length ? (
+            {specializations.length ? (
               <Link
                 href={`/subjects/${subject.slug}/specializations`}
                 className="btn btn-glass btn-lg"
               >
-                View specialisations
+                View specializations
               </Link>
             ) : null}
           </div>
@@ -132,7 +132,7 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
                 <div className="kv">{formatNumber(subject.publishedCourseCount) || '—'}</div>
               </div>
               <div className="kpi">
-                <div className="kk">Specialisations</div>
+                <div className="kk">Specializations</div>
                 <div className="kv">{subject.publishedSubSubjectCount || '—'}</div>
               </div>
               <div className="kpi">
@@ -173,19 +173,19 @@ export function SubjectDetailReference(props: SubjectDetailReferenceProps) {
           ) : null}
 
           {/* SPECIALISATIONS */}
-          {specialisations.length ? (
+          {specializations.length ? (
             <section className="block" id="specializations">
               <div className="block-head row-between">
                 <div>
                   <span className="eyebrow">Focus areas</span>
-                  <h2>Specialisations</h2>
+                  <h2>Specializations</h2>
                 </div>
                 <Link className="link-more" href={`/subjects/${subject.slug}/specializations`}>
-                  All specialisations →
+                  All specializations →
                 </Link>
               </div>
               <div className="grid g2">
-                {specialisations.slice(0, 8).map((item) => (
+                {specializations.slice(0, 8).map((item) => (
                   <Link
                     key={item.id}
                     className="card spec-card"

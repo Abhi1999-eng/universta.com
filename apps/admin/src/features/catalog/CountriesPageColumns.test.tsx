@@ -116,8 +116,8 @@ describe('countries list is compact enough to reach its actions', () => {
     queueFlash({ tone: 'success', message: 'Malta published successfully.' });
     render(<CountriesPage />);
 
-    const banner = await screen.findByText('Malta published successfully.');
-    expect(banner.closest('[data-flash-tone]')).toHaveAttribute('data-flash-tone', 'success');
+    const toast = await screen.findByText('Malta published successfully.');
+    expect(toast.closest('[data-toast-tone]')).toHaveAttribute('data-toast-tone', 'success');
   });
 
   it('shows a handed-over confirmation once, not again on the next visit', async () => {

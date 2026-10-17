@@ -52,7 +52,8 @@ type Row = Record<string, unknown> & { id?: string };
 type Props = {
   resource: string;
   recordId?: string;
-  onSaved: () => Promise<void>;
+  /** Called with the record the API returned, so the list can name it. */
+  onSaved: (saved?: Row) => Promise<void>;
   onCancel: () => void;
 };
 const StructuredEditorDisabledContext = createContext(false);
@@ -366,13 +367,13 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       else payload[key] = null;
     }
     try {
-      await api<Row>(recordId ? `${resource}/${recordId}` : resource, {
+      const saved = await api<Row>(recordId ? `${resource}/${recordId}` : resource, {
         method: recordId ? 'PATCH' : 'POST',
         body: JSON.stringify(payload),
       });
       setMessageTone('success');
       setMessage(recordId ? 'Record updated.' : 'Draft created.');
-      await onSaved();
+      await onSaved(saved);
     } catch (error: unknown) {
       setMessageTone('error');
       setMessage(error instanceof Error ? error.message : 'Unable to save record');

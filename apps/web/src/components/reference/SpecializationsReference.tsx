@@ -7,7 +7,7 @@ import { sortByLevelOrder } from '@/lib/level-order';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { SpecializationSearch } from './SpecializationSearch';
 
-/** The client-approved specialisations page.
+/** The client-approved specializations page.
  *
  * The reference has no page of its own for this: a subject lists its
  * specializations inline. So this is built from that page's vocabulary --
@@ -15,18 +15,18 @@ import { SpecializationSearch } from './SpecializationSearch';
  * than invented, and the behaviour the catalogue specs pin is unchanged: the
  * results region is still `#all` and still takes focus on submit, every card
  * still carries its slug as an anchor, and each card still opens the courses
- * filtered to that specialisation.
+ * filtered to that specialization.
  *
  * Its main job is the hand-off, so each card's name and its main call to
- * action open that specialisation's own page, as the reference and the
- * design both link a specialisation; the filtered course search is the
+ * action open that specialization's own page, as the reference and the
+ * design both link a specialization; the filtered course search is the
  * card's second link. The destinations open the subject in that country,
  * the reference's subject-in-country page, rather than a course search.
  */
 
 export type SpecializationsReferenceProps = {
   subject: SubjectDetail;
-  /** Real per-specialisation course counts from the course filter options. */
+  /** Real per-specialization course counts from the course filter options. */
   counts: Record<string, number>;
   /** The destinations with programmes in this subject, most first. */
   countries: Array<{ value: string; label: string; count: number }>;
@@ -52,16 +52,16 @@ function levelLine(
 
 const FAQS = [
   {
-    q: 'What is a specialisation?',
-    a: 'A specialisation is a named strand inside a subject — Artificial Intelligence inside Computer Science, for example. Courses are mapped to one, so filtering by a specialisation narrows the catalogue to the programmes that actually teach it.',
+    q: 'What is a specialization?',
+    a: 'A specialization is a named strand inside a subject — Artificial Intelligence inside Computer Science, for example. Courses are mapped to one, so filtering by a specialization narrows the catalogue to the programmes that actually teach it.',
   },
   {
-    q: 'Do I have to choose a specialisation before I apply?',
+    q: 'Do I have to choose a specialization before I apply?',
     a: 'Not always. Some programmes ask you to declare one at application, others let you choose after a common first year. The course record states which applies.',
   },
   {
-    q: 'Can I compare courses across specialisations?',
-    a: 'Yes. Shortlist courses from any specialisation and compare them side by side on tuition, duration, intakes and study modes.',
+    q: 'Can I compare courses across specializations?',
+    a: 'Yes. Shortlist courses from any specialization and compare them side by side on tuition, duration, intakes and study modes.',
   },
 ];
 
@@ -80,17 +80,17 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
     levelCoursesHref({ subject: subject.slug, subSubject: slug });
   const term = query.trim().toLowerCase();
   const all = subject.subSubjects ?? [];
-  const specialisations = term
+  const specializations = term
     ? all.filter((item) => item.name.toLowerCase().includes(term))
     : all;
-  const ranked = [...specialisations].sort(
+  const ranked = [...specializations].sort(
     (a, b) => (counts[b.slug] ?? 0) - (counts[a.slug] ?? 0),
   );
   // While a search is running the whole page is the result set, so the
   // "popular" shortcut into it would only repeat what is already below.
   const popular = term ? [] : ranked.slice(0, 6);
 
-  /** Counselling booked from a specialisation list keeps its subject. */
+  /** Counselling booked from a specialization list keeps its subject. */
   const counselling = counsellingHref({
     source: 'subject',
     subject: subject.slug,
@@ -134,18 +134,18 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
             <span className="crumbs__sep" aria-hidden="true">
               /
             </span>
-            <span aria-current="page">Specialisations</span>
+            <span aria-current="page">Specializations</span>
           </nav>
 
           <div className="hero__lead">
             <p className="hero__eyebrow">
               Narrow your path<b>·</b>
-              {specialisations.length} specialisations<b>·</b>
+              {specializations.length} specializations<b>·</b>
               {formatNumber(subject.publishedCourseCount)} courses
             </p>
-            <h1 className="hero__h1">Explore {subject.name} specialisations</h1>
+            <h1 className="hero__h1">Explore {subject.name} specializations</h1>
             <p className="hero__sub">
-              Each specialisation below opens the published courses mapped to
+              Each specialization below opens the published courses mapped to
               it, with the universities and destinations that teach them.
             </p>
           </div>
@@ -154,7 +154,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
 
           <div className="btn-row" style={{ marginTop: 22 }}>
             <a href="#all" className="btn btn--lg">
-              Explore specialisations{' '}
+              Explore specializations{' '}
               <span className="btn__arrow" aria-hidden="true">
                 →
               </span>
@@ -178,7 +178,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                 <p className="eyebrow">
                   <span className="eyebrow__n">{n('popular')}</span> Most courses
                 </p>
-                <h2 className="sec-title">Popular {subject.name} specialisations</h2>
+                <h2 className="sec-title">Popular {subject.name} specializations</h2>
               </div>
               <div>
                 <p className="sec-lead">
@@ -186,7 +186,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                 </p>
                 <p className="sec-head__cta">
                   <a className="linkcta" href="#all">
-                    All specialisations{' '}
+                    All specializations{' '}
                     <span aria-hidden="true">→</span>
                   </a>
                 </p>
@@ -220,7 +220,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                     </span>
                     <span className="speccard__links">
                       <Link className="speccard__cta" href={specHref(item.slug)}>
-                        Explore specialisation <span aria-hidden="true">→</span>
+                        Explore specialization <span aria-hidden="true">→</span>
                       </Link>
                       <Link
                         className="speccard__alt"
@@ -246,25 +246,25 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
               <p className="eyebrow">
                 <span className="eyebrow__n">{n('all')}</span> Every focus area
               </p>
-              <h2 className="sec-title">All {subject.name} specialisations</h2>
+              <h2 className="sec-title">All {subject.name} specializations</h2>
             </div>
             <div>
               <p className="sec-lead">
                 {term
-                  ? `${specialisations.length} specialisation${specialisations.length === 1 ? '' : 's'} matching “${query}”.`
-                  : specialisations.length
-                    ? `${specialisations.length} published specialisation${specialisations.length === 1 ? '' : 's'}, each with its own course list.`
-                    : 'No specialisations are published for this subject yet.'}
+                  ? `${specializations.length} specialization${specializations.length === 1 ? '' : 's'} matching “${query}”.`
+                  : specializations.length
+                    ? `${specializations.length} published specialization${specializations.length === 1 ? '' : 's'}, each with its own course list.`
+                    : 'No specializations are published for this subject yet.'}
               </p>
             </div>
           </div>
 
-          {specialisations.length === 0 ? (
+          {specializations.length === 0 ? (
             <div className="h-empty h-empty--box" data-testid="specialization-empty">
               <h3>
                 {term
-                  ? 'No specialisations match that search'
-                  : 'No specialisations published yet'}
+                  ? 'No specializations match that search'
+                  : 'No specializations published yet'}
               </h3>
               <p>Browse every {subject.name} course instead.</p>
               <Link className="btn" href={`/courses?subject=${subject.slug}#discovery`}>
@@ -302,7 +302,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                     </span>
                     <span className="speccard__links">
                       <Link className="speccard__cta" href={specHref(item.slug)}>
-                        Explore specialisation <span aria-hidden="true">→</span>
+                        Explore specialization <span aria-hidden="true">→</span>
                       </Link>
                       <Link className="speccard__alt" href={coursesHref(item.slug)}>
                         Explore courses
@@ -325,7 +325,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                 <p className="eyebrow">
                   <span className="eyebrow__n">{n('courses')}</span> Programmes
                 </p>
-                <h2 className="sec-title">Courses across these specialisations</h2>
+                <h2 className="sec-title">Courses across these specializations</h2>
               </div>
               <div>
                 <p className="sec-lead">
@@ -518,7 +518,7 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
 
       <PlanBand
         heading="Not sure which strand fits?"
-        body={`A counsellor can help you pick a ${subject.name} specialisation that matches your background, your grades and where you want to study.`}
+        body={`A counsellor can help you pick a ${subject.name} specialization that matches your background, your grades and where you want to study.`}
         secondary={{ href: counselling, label: 'Book free counselling' }}
       />
 

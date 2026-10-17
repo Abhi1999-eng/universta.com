@@ -196,6 +196,7 @@ export default async function Page({ params, searchParams }: Params) {
        nothing is listed, and still shows the levels. */
     levels ?? (shown === 'none' ? [] : null),
     allLevels,
+    specialization.offeredLevels,
   );
   const total = levels ? levelTotal(levels) : (courses?.meta.total ?? 0);
 
@@ -435,7 +436,7 @@ export default async function Page({ params, searchParams }: Params) {
               finder's course guides, which list that many. */}
           {total ? (
             <Link className="linkcta" href={guidesHere}>
-              {listed ? `All ${formatNumber(total)} courses` : 'Open in search'}{' '}
+              {listed ? `All ${formatNumber(total)} ${total === 1 ? 'course' : 'courses'}` : 'Open in search'}{' '}
               <span className="linkcta__arrow" aria-hidden="true">
                 &rarr;
               </span>

@@ -118,9 +118,17 @@ export function SubjectGuide({
   const taught = groups.filter((group) => group.count > 0);
   /* In academic order where the grouped read supplied it; the subject's own
      counts arrive in that order too. */
-  const levels = taught.length
-    ? taught.map((group) => ({ level: group.level, count: group.count }))
-    : (subject.courseCountsByLevel ?? []);
+  /* Where an editor ticked the levels, the block's groups are exactly those
+     plus any with courses, so they are the levels it is offered at: the
+     strip said "Master's" alone beside a block listing Bachelor's, Master's
+     and PhD. Unticked, the groups hold the six shown regardless, which the
+     figures must not claim. */
+  const offered = (subject.offeredLevels ?? []).length > 0;
+  const levels = offered && groups.length
+    ? groups.map((group) => ({ level: group.level, count: group.count }))
+    : taught.length
+      ? taught.map((group) => ({ level: group.level, count: group.count }))
+      : (subject.courseCountsByLevel ?? []);
   const levelOrder = levels.flatMap((row) => (row.level.code ? [row.level.code] : []));
   const filed = levelTotal(groups);
   const tests = subject.tests ?? [];
@@ -221,7 +229,8 @@ export function SubjectGuide({
             <div>
               <p className="hero__eyebrow">
                 Subject<b>·</b>
-                {specializations.length} specializations
+                {specializations.length}{' '}
+                {specializations.length === 1 ? 'specialization' : 'specializations'}
               </p>
               <h1 className="hero__h1">Study {subject.name} abroad</h1>
               {subject.shortDescription ? (
@@ -281,9 +290,11 @@ export function SubjectGuide({
                   read as taught in all of them; they are in 20. */}
               <p className="subjabout__facts datum">
                 {formatNumber(subject.publishedCourseCount) || '—'}{' '}
-                {noun}s ·{' '}
-                {specializations.length || '—'} specializations ·{' '}
-                {destinationCount ? formatNumber(destinationCount) : '—'} destinations
+                {subject.publishedCourseCount === 1 ? noun : `${noun}s`} ·{' '}
+                {specializations.length || '—'}{' '}
+                {specializations.length === 1 ? 'specialization' : 'specializations'} ·{' '}
+                {destinationCount ? formatNumber(destinationCount) : '—'}{' '}
+                {destinationCount === 1 ? 'destination' : 'destinations'}
               </p>
             </SectionHead>
             {split?.rest ? (

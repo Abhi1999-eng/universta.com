@@ -299,10 +299,20 @@ export function Phase1Manager({ resource }: { resource: string }) {
     await Promise.all([load(), loadCounts()]);
   }
 
-  async function afterSave() {
+  async function afterSave(intent?: 'draft' | 'publish', saved?: Record<string, unknown>) {
     await Promise.all([load(), loadCounts()]);
     setCreating(false);
     setEditingId(null);
+    /* Publishing a university closes the editor onto the list; a green toast
+       says it went live, as Countries, Subjects, Specializations and Courses
+       do. Other Phase 1 lists keep their current behaviour for now. */
+    if (intent === 'publish' && resource === 'universities') {
+      const name = typeof saved?.name === 'string' && saved.name ? saved.name : 'University';
+      toast('success', `${name} published successfully.`);
+      /* After the editor has left the page: scrolling while it was still
+         laid out stopped part-way down the list. */
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+    }
   }
 
   async function createMenu(event: React.FormEvent) {

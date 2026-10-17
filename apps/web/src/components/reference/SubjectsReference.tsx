@@ -11,11 +11,11 @@ import { formatNumber } from '@/lib/format';
  *
  * The template's "150+ subjects · 300,000+ programs", average salaries, global
  * demand percentages, employer logos and career-outcome dashboard are prototype
- * copy. Universta publishes subjects with real course, specialisation and
+ * copy. Universta publishes subjects with real course, specialization and
  * destination counts and nothing else, so the counts are real and the salary,
  * demand and employer blocks are omitted — as is the subject-category tier,
  * which has no equivalent in the catalogue (a subject's children are
- * specialisations, and those have their own page).
+ * specializations, and those have their own page).
  *
  * Search writes to the URL and the server re-queries, so a filtered subject
  * list is shareable; the prototype filtered a hard-coded in-page array. */
@@ -36,7 +36,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const WHY = [
   { h: 'Published records', p: 'Every subject links to real courses.' },
-  { h: 'Real counts', p: 'Course, specialisation and destination totals.' },
+  { h: 'Real counts', p: 'Course, specialization and destination totals.' },
   { h: 'Compare side by side', p: 'Shortlist courses from any subject.' },
   { h: 'Destination context', p: 'See where a subject is actually taught.' },
   { h: 'Funding in one place', p: 'Scholarships linked to the same catalogue.' },
@@ -44,8 +44,8 @@ const WHY = [
 
 const FAQS = [
   {
-    q: 'What is the difference between a subject and a specialisation?',
-    a: 'A subject is the broad discipline — Computer Science, for example. A specialisation is a named strand inside it, such as Artificial Intelligence. Each subject page lists its published specialisations.',
+    q: 'What is the difference between a subject and a specialization?',
+    a: 'A subject is the broad discipline — Computer Science, for example. A specialization is a named strand inside it, such as Artificial Intelligence. Each subject page lists its published specializations.',
   },
   {
     q: 'How do I find courses in a subject?',
@@ -189,7 +189,7 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
           <p>
             Your subject shapes your course shortlist, your destination and the funding you can
             apply for. Browse every published discipline below, or search for one by name — each
-            subject opens onto its specialisations, its courses and the destinations that teach it.
+            subject opens onto its specializations, its courses and the destinations that teach it.
           </p>
         </div>
       </section>
@@ -225,7 +225,7 @@ export function SubjectsReference(props: SubjectsReferenceProps) {
                         </span>
                         {subject.publishedSubSubjectCount ? (
                           <span>
-                            <b>{subject.publishedSubSubjectCount}</b> specialisations
+                            <b>{subject.publishedSubSubjectCount}</b> specializations
                           </span>
                         ) : null}
                         {subject.availableCountryCount ? (
