@@ -84,6 +84,15 @@ describe('same-origin catalog BFF', () => {
     expect((await malformed.json()).error.code).toBe('CATALOG_REQUEST_FAILED');
   });
 
+  /* A level switched off since the editor opened is ignored on save; only one
+     deleted outright is still refused, and the editor is told what to do. */
+  it('says what to do when a ticked study level no longer exists', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'COURSE_LEVEL_INVALID', message: 'raw', details: null }, requestId: 'level-1' })));
+    const refused = await proxyCatalogRoute(request('/api/v1/admin/subjects/subject-1', { method: 'PATCH', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Marine Sciences', courseLevelIds: ['gone'] }) }), 'subjects:update:subject-1');
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).error.message).toBe('A ticked study level no longer exists. Reload the page and tick the study levels again');
+  });
+
   it('rebuilds continent dependency details and drops everything else upstream sends', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstream(409, { data: null, meta: null, error: { code: 'CONTINENT_IN_USE', message: 'raw', details: { countriesCount: 2.9, secret: 'mysql://secret', countries: [{ id: 'c1', name: 'Canada', slug: 'canada', status: 'PUBLISHED', internalNote: 'leak' }] } }, requestId: 'dep-1' })));
     const blocked = await proxyCatalogRoute(request('/api/v1/admin/continents/id', { method: 'DELETE', headers: { authorization: 'Bearer access-token', 'content-type': 'application/json' }, body: '{}' }), 'continents:delete:id');

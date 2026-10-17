@@ -82,6 +82,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_LEVEL_CONFLICT: 'Course level code or name already exists',
   COURSE_LEVEL_STALE_VERSION: 'The course level changed in another session. Reload before saving',
   COURSE_LEVEL_IN_USE: 'This course level is still used by courses',
+  COURSE_LEVEL_INVALID: 'A ticked study level no longer exists. Reload the page and tick the study levels again',
   STUDY_MODE_NOT_FOUND: 'Study mode not found',
   STUDY_MODE_CONFLICT: 'Study mode code or name already exists',
   STUDY_MODE_STALE_VERSION: 'The study mode changed in another session. Reload before saving',
