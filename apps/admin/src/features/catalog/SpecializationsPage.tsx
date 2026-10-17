@@ -14,6 +14,7 @@ import type { PageMeta, SubjectRecord, SubSubjectRecord } from './catalog.types'
 import { catalogErrorText } from './catalog-errors';
 import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
 import { useRouter } from 'next/navigation';
+import { useHandedOverToast } from '@/features/shared/Flash';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: SubSubjectRecord } | null;
 
@@ -42,6 +43,8 @@ export function SpecializationsPage() {
   const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
   const [busy, setBusy] = useState<Record<string, string>>({});
   const { toasts, push: toast, dismiss } = useToasts();
+  const showPublished = useCallback((message: string) => toast('success', message), [toast]);
+  useHandedOverToast(showPublished);
   const router = useRouter();
 
   const load = useCallback(() => {
@@ -305,7 +308,7 @@ export function SpecializationsPage() {
                   </td>
                   <td>
                     {row.courseLevels?.length ? (
-                      row.courseLevels.map((level) => level.code ?? level.name).join(', ')
+                      row.courseLevels.map((level) => level.name).join(', ')
                     ) : (
                       <span className="p-muted">—</span>
                     )}

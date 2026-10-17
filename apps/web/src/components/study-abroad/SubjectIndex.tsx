@@ -232,7 +232,9 @@ export function SubjectIndex({
                     <p className="subjcard__meta">
                       {subject.publishedSubSubjectCount ??
                         (subject.subSubjects ?? []).length}{' '}
-                      specializations
+                      {(subject.publishedSubSubjectCount ?? (subject.subSubjects ?? []).length) === 1
+                        ? 'specialization'
+                        : 'specializations'}
                       {subject.levels?.length ? (
                         <>
                           {' · '}
@@ -287,7 +289,8 @@ export function SubjectIndex({
                       profiled" reads as a fact about the subject. */}
                   {subject.publishedCourseCount ? (
                     <span className="subjcard__count datum">
-                      {subject.publishedCourseCount} programmes profiled
+                      {subject.publishedCourseCount}{' '}
+                      {subject.publishedCourseCount === 1 ? 'programme' : 'programmes'} profiled
                     </span>
                   ) : null}
                 </div>

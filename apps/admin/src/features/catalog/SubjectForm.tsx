@@ -33,6 +33,7 @@ import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { catalogErrorText } from './catalog-errors';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
+import { queueFlash } from '@/features/shared/Flash';
 
 type Intent = 'draft' | 'publish';
 const inputClass = 'p-input';
@@ -191,6 +192,13 @@ export function SubjectForm({ id }: { id?: string }) {
       setRecord(settled.record);
       setSpecializations(settled.children);
       setDirty(false);
+      /* Publish ends the editing session: back to the list, with the green
+         confirmation there. A draft save keeps the operator where they are. */
+      if (intent === 'publish') {
+        queueFlash({ tone: 'success', message: `${settled.record.name} published successfully.` });
+        router.push('/subjects');
+        return;
+      }
       if (!id) router.replace(`/subjects/${settled.record.id}`);
       router.refresh();
     } catch (cause: unknown) {

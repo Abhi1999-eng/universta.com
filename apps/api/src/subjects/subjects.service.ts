@@ -468,6 +468,9 @@ export class SubjectsService {
         question: row.question,
         answer: row.answer,
       })),
+      /* Only what an editor ticked, for a page's level block; `levels`
+         below also counts the ones standing behind a published course. */
+      offeredLevels: this.tickedLevels(specialization.courseLevels),
       /* The levels it is offered at: ticked by an editor, or standing
          behind a published course. */
       levels: await this.unionLevels(
@@ -977,6 +980,9 @@ export class SubjectsService {
       .map((row) => ({ level: publicLevel(row.level), count: row.count }));
     return {
       ...(await this.toPublic(subject)),
+      /* Only what an editor ticked: the levels a page shows for this subject
+         even where no course is filed at them yet. */
+      offeredLevels: this.tickedLevels(subject.courseLevels),
       subSubjects: await Promise.all(
         children.map(async (child) => ({
           ...this.toSubSubjectPublic(child),

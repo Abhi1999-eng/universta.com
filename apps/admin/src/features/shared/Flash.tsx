@@ -18,7 +18,11 @@ import { useEffect, useSyncExternalStore } from 'react';
  */
 
 export type FlashTone = 'success' | 'neutral';
-export type Flash = { tone: FlashTone; message: string };
+export type Flash = { tone: FlashTone; message: string; at?: number };
+
+/* A list page shows a handed-over confirmation only if it arrives promptly:
+   one left waiting while the operator wandered elsewhere is no longer news. */
+const HANDOVER_TTL_MS = 15_000;
 
 let pending: Flash | null = null;
 const listeners = new Set<() => void>();
@@ -29,7 +33,7 @@ function announce() {
 
 /** Hands a confirmation to whichever admin page renders next. */
 export function queueFlash(flash: Flash) {
-  pending = flash;
+  pending = { ...flash, at: flash.at ?? Date.now() };
   announce();
 }
 
@@ -58,6 +62,20 @@ function subscribe(listener: () => void) {
 export function useHandedOverFlash(): [Flash | null, () => void] {
   const flash = useSyncExternalStore(subscribe, peekFlash, () => null);
   return [flash, clearFlash];
+}
+
+/** For list pages that confirm in a toast: publishing from an editor sends
+ * the operator back to the list, and this turns the confirmation the editor
+ * handed over into the list's corner toast. It is taken once, so a later
+ * visit does not replay it. */
+export function useHandedOverToast(show: (message: string) => void) {
+  useEffect(() => {
+    const flash = pending;
+    if (!flash) return;
+    pending = null;
+    announce();
+    if (flash.at === undefined || Date.now() - flash.at <= HANDOVER_TTL_MS) show(flash.message);
+  }, [show]);
 }
 
 /* The reference's own alert tones. `neutral` has no variant there, so it

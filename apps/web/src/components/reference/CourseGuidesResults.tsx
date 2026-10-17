@@ -90,7 +90,7 @@ const GROUP_LABELS: Record<GuideMultiKey, string> = {
   country: 'Destination',
   level: 'Degree level',
   subject: 'Subject',
-  subSubject: 'Specialisation',
+  subSubject: 'Specialization',
   studyMode: 'Study mode',
   intake: 'Intake month',
   englishTest: 'English test',

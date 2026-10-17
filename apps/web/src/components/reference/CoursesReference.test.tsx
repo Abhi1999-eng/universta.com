@@ -226,7 +226,7 @@ describe('/courses, the programme finder', () => {
     const eyebrow = page.querySelector('.hero__eyebrow')?.textContent;
     expect(eyebrow).toContain('20 destinations');
     expect(eyebrow).toContain('1 subject');
-    expect(eyebrow).toContain('1 specialisation');
+    expect(eyebrow).toContain('1 specialization');
   });
 
   it('switches between programmes and course guides, each with its count', () => {
@@ -258,7 +258,7 @@ describe('/courses, the programme finder', () => {
     expect(page.querySelector('.cf-switch')).toBeNull();
     expect(page.querySelector('[data-testid=course-guide-grid]')).not.toBeNull();
     const stats = [...page.querySelectorAll('.statstrip span')].map((node) => node.textContent);
-    expect(stats).toEqual(['Courses', 'Destinations', 'Subjects', 'Specialisations']);
+    expect(stats).toEqual(['Courses', 'Destinations', 'Subjects', 'Specializations']);
     /* Without programmes the guides are the page, so their own address
        does not name a view. */
     expect(page.querySelector('input[name=view]')).toBeNull();
@@ -273,7 +273,7 @@ describe('/courses, the programme finder', () => {
       'Browse courses by subject',
       'Browse courses by degree level',
       'Browse courses by study destination',
-      'Explore by specialisation',
+      'Explore by specialization',
       'Courses by study mode',
       'Courses by intake',
       'Everything you need to choose with confidence',

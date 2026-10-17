@@ -192,7 +192,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
   const summary = programmes?.summary;
   const guideOptions = guideCatalogue?.options;
-  const genericSpecialisations = guideOptions ? byValue(guideOptions.subSubjects) : [];
+  const genericSpecializations = guideOptions ? byValue(guideOptions.subSubjects) : [];
 
   /* Four facts, inline, as the approved hero has them -- and only the ones
      this catalogue can actually count. A figure with nothing behind it is
@@ -210,7 +210,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
           { value: guideCatalogue?.total ?? 0, label: 'Courses' },
           { value: guideOptions?.countries.length ?? 0, label: 'Destinations' },
           { value: guideOptions?.subjects.length ?? 0, label: 'Subjects' },
-          { value: genericSpecialisations.length, label: 'Specialisations' },
+          { value: genericSpecializations.length, label: 'Specializations' },
         ]
   ).filter((stat) => stat.value > 0);
 
@@ -219,7 +219,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
       ? [
           countLabel(summary.countries, 'destination'),
           countLabel(programmes.facets.subject.length, 'subject'),
-          countLabel(programmes.facets.specialization.length, 'specialisation'),
+          countLabel(programmes.facets.specialization.length, 'specialization'),
         ]
       : [
           countLabel(guideCatalogue?.total, 'course'),
@@ -228,7 +228,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
   ).filter((part): part is string => Boolean(part));
 
   /* The template's "Try" row is five hand-written example searches. These are
-     the catalogue's own busiest specialisations, so a chip never offers a term
+     the catalogue's own busiest specializations, so a chip never offers a term
      the search cannot answer. */
   const tryChips: BrowseItem[] = programmes
     ? byCount(programmes.facets.specialization)
@@ -239,7 +239,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
           meta: null,
           href: programmesHref({ specialization: [option.value] }),
         }))
-    : genericSpecialisations.slice(0, 5).map((option) => ({
+    : genericSpecializations.slice(0, 5).map((option) => ({
         key: option.value,
         title: option.label,
         meta: null,
@@ -295,7 +295,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
             meta: countLabel(option.count, noun),
             href: programmesHref({ country: [option.value] }),
           })),
-        specialisations: byCount(programmes.facets.specialization)
+        specializations: byCount(programmes.facets.specialization)
           .slice(0, 8)
           .map((option) => ({
             key: option.value,
@@ -334,7 +334,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
             .join(' · '),
           href: guidesHref({ country: [option.value] }),
         })),
-        specialisations: genericSpecialisations.slice(0, 8).map((option) => ({
+        specializations: genericSpecializations.slice(0, 8).map((option) => ({
           key: option.value,
           title: option.label,
           meta: option.subject.name,
@@ -629,7 +629,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
                       {subject.publishedSubSubjectCount || subject.availableCountryCount ? (
                         <p className="subjcard__meta">
                           {[
-                            countLabel(subject.publishedSubSubjectCount, 'specialisation'),
+                            countLabel(subject.publishedSubSubjectCount, 'specialization'),
                             countLabel(subject.availableCountryCount, 'destination'),
                           ]
                             .filter(Boolean)
@@ -714,12 +714,12 @@ export function CoursesReference(props: CoursesReferenceProps) {
       ) : null}
 
       {/* SPECIALISATIONS */}
-      {browse.specialisations.length ? (
-        <section className="sec" id="specialisations">
+      {browse.specializations.length ? (
+        <section className="sec" id="specializations">
           <div className="wrap">
-            <SectionHead eyebrow="Fields of study" title="Explore by specialisation" />
+            <SectionHead eyebrow="Fields of study" title="Explore by specialization" />
             <div className="h-grid h-grid--4">
-              {browse.specialisations.map((item) => (
+              {browse.specializations.map((item) => (
                 <RowCard
                   key={item.key}
                   href={item.href}

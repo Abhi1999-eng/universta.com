@@ -166,8 +166,10 @@ export type CatalogueLevel = {
 };
 
 /**
- * The catalogue's level groups, with an empty group for each always-shown
- * level it sent none for, in the order a student climbs them.
+ * The catalogue's level groups, with an empty group for each level the
+ * subject or specialization is offered at (what an editor ticked; the six
+ * always-shown levels when nothing is ticked) that it sent none for, in the
+ * order a student climbs them.
  *
  * Null while the grouped read failed: the page does not know what is listed
  * and keeps its fallback rather than drawing every level empty. Without the
@@ -176,6 +178,7 @@ export type CatalogueLevel = {
 export function everyLevel(
   groups: CourseLevelGroup[] | null,
   levels: readonly CatalogueLevel[] | null,
+  offered?: ReadonlyArray<{ code: string | null }> | null,
 ): CourseLevelGroup[] | null {
   if (!groups) return null;
   if (!levels?.length) return groups;
@@ -187,11 +190,16 @@ export function everyLevel(
     .sort((left, right) => left.at - right.at)
     .map(({ level }) => level);
   const known = new Set(ordered.map((level) => level.code));
+  /* The levels shown with nothing filed under them: the ones an editor
+     ticked on the subject or specialization. With none ticked, the six the
+     client named, so a page never shows no levels at all. */
+  const ticked = (offered ?? []).flatMap((level) => (level.code ? [level.code] : []));
+  const shownEmpty = new Set<string>(ticked.length ? ticked : LEVELS_ALWAYS_SHOWN);
   return [
     ...ordered.flatMap((level): CourseLevelGroup[] => {
       const group = byCode.get(level.code);
       if (group) return [group];
-      if (!LEVELS_ALWAYS_SHOWN.includes(level.code)) return [];
+      if (!shownEmpty.has(level.code)) return [];
       return [
         {
           level: {

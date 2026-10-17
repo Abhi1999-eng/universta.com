@@ -381,7 +381,7 @@ export function StudyAbroadShell({
           <div className="cs__foot">
             <span className="cs__count">
               {destinations
-                ? `${destinations.counts.available} guides · ${destinations.counts.total} destinations`
+                ? `${destinations.counts.available} ${destinations.counts.available === 1 ? 'guide' : 'guides'} · ${destinations.counts.total} ${destinations.counts.total === 1 ? 'destination' : 'destinations'}`
                 : ''}
             </span>
             <Link className="linkcta" href="/study-abroad" onClick={closeSelector}>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   createSpecializationFaq,
@@ -12,6 +12,7 @@ import {
   deleteSpecializationSeo,
   getSpecialization,
   getSpecializationCountries,
+  getSubjectCountries,
   getSpecializationSeo,
   listAllSubjects,
   listCountries,
@@ -55,6 +56,7 @@ import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { catalogErrorText } from './catalog-errors';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
+import { queueFlash } from '@/features/shared/Flash';
 
 type Intent = 'draft' | 'publish';
 
@@ -153,6 +155,22 @@ export function SpecializationForm({ id }: { id?: string }) {
     void load();
     return () => { active = false; };
   }, [id]);
+
+  /* A new specialization starts where its subject is taught: a subject
+     starts with every destination ticked, and a branch of it opening with
+     none ticked read as "offered nowhere". The editor narrows it from
+     there; once they touch the ticks, a change of subject leaves them be. */
+  const destinationsTouched = useRef(false);
+  useEffect(() => {
+    if (id || !form.subjectId || destinationsTouched.current) return undefined;
+    let active = true;
+    getSubjectCountries(form.subjectId)
+      .then((links) => {
+        if (active && !destinationsTouched.current) setCountryIds(links.data.map((link) => link.country.id));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [id, form.subjectId]);
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } };
@@ -255,6 +273,13 @@ export function SpecializationForm({ id }: { id?: string }) {
       setLevelIds((saved.courseLevels ?? []).map((level) => level.id));
       setForm((current) => ({ ...current, slug: saved.slug, shortDescription: saved.shortDescription ?? '', overview: saved.overview ?? '' }));
       setDirty(false);
+      /* Publish ends the editing session: back to the list, with the green
+         confirmation there. A draft save keeps the operator where they are. */
+      if (intent === 'publish') {
+        queueFlash({ tone: 'success', message: `${saved.name} published successfully.` });
+        router.push('/specializations');
+        return;
+      }
       if (!id) router.replace(`/specializations/${saved.id}`);
       router.refresh();
     } catch (cause: unknown) {
@@ -312,7 +337,7 @@ export function SpecializationForm({ id }: { id?: string }) {
 
         <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
-        <DestinationTicks idPrefix="specialization" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} />
+        <DestinationTicks idPrefix="specialization" countries={countries} value={countryIds} derived={derivedCountryIds} hint={id ? undefined : 'A new specialization starts with the countries its subject is offered in. Untick the ones it is not taught in; a country with a published course in it stays ticked on its own.'} onChange={(next) => { destinationsTouched.current = true; setCountryIds(next); setDirty(true); }} />
 
         <ContentSectionsCard idPrefix="specialization" rows={sections} keys={SECTION_KEYS} media={media} onChange={updateSection} onAdd={() => { setSections((rows) => [...rows, sectionBlank('')]); setDirty(true); }} onRemove={removeSection} />
 

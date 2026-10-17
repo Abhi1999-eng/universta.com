@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const specialization = await load(slug, specializationSlug);
   if (!specialization)
     return {
-      title: 'Specialisation not found',
+      title: 'Specialization not found',
       alternates: { canonical },
     };
   /* The record's own SEO first, then the bulk template, then what the page
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     specialization.seo,
     `Study ${specialization.name} abroad`,
     specialization.shortDescription ??
-      `${specialization.name} is a specialisation within ${specialization.subject.name}. See where you can study it.`,
+      `${specialization.name} is a specialization within ${specialization.subject.name}. See where you can study it.`,
     canonical,
   );
   /* A specialization can be published with nothing written about it, and
@@ -135,7 +135,7 @@ export default async function SpecializationDetailPage({ params }: Props) {
       />
       <SpecializationGuide
         specialization={specialization}
-        levels={everyLevel(levels, allLevels)}
+        levels={everyLevel(levels, allLevels, specialization.offeredLevels)}
         scholarships={scholarships}
         programmes={programmes}
       />

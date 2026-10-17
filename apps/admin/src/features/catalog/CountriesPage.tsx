@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { CatalogDialog, CatalogError, CatalogLoading } from './CatalogDialog';
-import { FlashBanner, useHandedOverFlash, type Flash } from '@/features/shared/Flash';
+import { FlashBanner, useHandedOverToast, type Flash } from '@/features/shared/Flash';
 import { deleteCountry, listContinents, listCountries, listCountryTags, listAllSubjects, publishCountry, unpublishCountry } from './catalog-client';
 import type { ContinentRecord, CountryRecord, CountryTagRecord, PageMeta, SubjectRecord } from './catalog.types';
 import { catalogErrorText } from './catalog-errors';
@@ -30,22 +30,20 @@ export function CountriesPage() {
   const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  /* One banner for both sources: a confirmation this page raised itself, and
-   * one the country editor handed over when publishing sent the operator
-   * here. */
-  const [handedOver, dismissHandedOver] = useHandedOverFlash();
+  /* A confirmation this page raised itself shows as a banner; the one the
+   * country editor hands over when Publish sends the operator here is the
+   * green corner toast, as on every list an editor publishes back to. */
   const [ownFlash, setOwnFlash] = useState<Flash | null>(null);
-  const flash = ownFlash ?? handedOver;
-  const dismissFlash = useCallback(() => {
-    setOwnFlash(null);
-    dismissHandedOver();
-  }, [dismissHandedOver]);
+  const flash = ownFlash;
+  const dismissFlash = useCallback(() => setOwnFlash(null), []);
   const [pending, setPending] = useState<PendingAction>(null);
   const [pendingValue, setPendingValue] = useState('');
   const [working, setWorking] = useState(false);
   const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
   const [busy, setBusy] = useState<Record<string, string>>({});
   const { toasts, push: toast, dismiss } = useToasts();
+  const showPublished = useCallback((message: string) => toast('success', message), [toast]);
+  useHandedOverToast(showPublished);
   const router = useRouter();
 
   const load = useCallback((signal?: AbortSignal) => {

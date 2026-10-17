@@ -24,6 +24,7 @@ import type {
 import { catalogErrorText } from './catalog-errors';
 import { BulkBar, ListSummary, RowCheckbox, RowMenu, SelectAllCheckbox, StatusBadge, Toasts, ViewOnSite, bulkSummary, formatUpdated, useFiltersInUrl, useRowSelection, useToasts } from '@/features/shared/records-ui';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useHandedOverToast } from '@/features/shared/Flash';
 
 type Pending = { kind: 'publish' | 'unpublish' | 'delete'; row: CourseRecord } | null;
 
@@ -56,6 +57,8 @@ export function CoursesPage() {
   const [counts, setCounts] = useState<{ published: number; draft: number } | null>(null);
   const [busy, setBusy] = useState<Record<string, string>>({});
   const { toasts, push: toast, dismiss } = useToasts();
+  const showPublished = useCallback((message: string) => toast('success', message), [toast]);
+  useHandedOverToast(showPublished);
   const router = useRouter();
 
   const load = useCallback(() => {

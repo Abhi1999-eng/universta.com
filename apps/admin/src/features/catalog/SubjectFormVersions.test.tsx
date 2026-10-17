@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubjectForm } from './SubjectForm';
+import { clearFlash, peekFlash } from '@/features/shared/Flash';
 
 /**
  * A subject's specializations are written in their own editor now; the
@@ -74,6 +75,7 @@ const child = (updatedAt: string, status: string, shortDescription: string | nul
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearFlash();
   mocks.getSubject.mockResolvedValue({ data: subject });
   mocks.getSubjectSeo.mockResolvedValue({ data: null });
   mocks.listAllSubSubjects.mockResolvedValue([child('spec-v1', 'DRAFT')]);
@@ -136,5 +138,24 @@ describe('subject form and its specializations', () => {
     await user.click(screen.getByRole('button', { name: 'Move to draft' }));
     await waitFor(() => expect(mocks.unpublishSubSubject).toHaveBeenCalledTimes(1));
     expect(mocks.unpublishSubSubject).toHaveBeenCalledWith('subject-1', 'spec-1', 'spec-v2');
+  });
+
+  it('goes back to the list with a green confirmation once published', async () => {
+    const user = userEvent.setup();
+    render(<SubjectForm id="subject-1" />);
+    await user.click(await screen.findByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/subjects'));
+    expect(peekFlash()).toMatchObject({ tone: 'success', message: 'Marine Sciences published successfully.' });
+  });
+
+  it('stays in the editor when a draft is saved', async () => {
+    const user = userEvent.setup();
+    render(<SubjectForm id="subject-1" />);
+    await user.click(await screen.findByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(mocks.updateSubject).toHaveBeenCalledTimes(1));
+    expect(push).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
   });
 });
