@@ -15,14 +15,17 @@ import {
   subjectOfferedLevels,
 } from '@/lib/course-levels';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
+import { levelPickSentence, studyLevelPanels, type StudyLevelPanel } from '@/lib/study-levels';
+import { aboutLine, levelFacts } from '@/lib/level-panel-info';
 import { universityHref } from '@/lib/university-links';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { formatNumber } from '@/lib/format';
 import { sortByLevelOrder } from '@/lib/level-order';
 import { CourseCards } from './CourseCards';
-import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
 import { LevelLinks } from './LevelLinks';
+import { StudyLevels } from './StudyLevels';
+import { LevelInfo } from './LevelInfo';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import { firstSentence, splitLead } from './CountryGuideSections';
 import {
@@ -84,6 +87,7 @@ export function SubjectGuide({
   catalogue = null,
   related = [],
   programmes = null,
+  levelIntros = {},
 }: {
   subject: SubjectDetail;
   scholarships: ScholarshipCard[];
@@ -100,12 +104,14 @@ export function SubjectGuide({
   /** The catalogue's study levels, the active ones: a level the subject is
    *  offered at that has been switched off opens no page. Null when that
    *  read failed. */
-  catalogue?: ReadonlyArray<{ code: string }> | null;
+  catalogue?: ReadonlyArray<{ code: string; description?: string | null }> | null;
   /** Subjects that share a specialization with this one, closest first. */
   related?: RelatedSubject[];
   /** The first of the universities' programmes in it, and how many there
    *  are. Null when there are none or they could not be read. */
   programmes?: Programmes | null;
+  /** The intros editors wrote on its level pages, by level code. */
+  levelIntros?: Record<string, string>;
 }) {
   const specializations = subject.subSubjects ?? [];
   /* The places that teach it first, most programmes first: the band used to
@@ -128,9 +134,10 @@ export function SubjectGuide({
      counts arrive in that order too. */
   const levels = groups.length ? groups : (subject.courseCountsByLevel ?? []);
   const levelOrder = levels.flatMap((row) => (row.level.code ? [row.level.code] : []));
-  /* The same levels linked from under the heading, by their own pages'
-     plain addresses: the block's links open the course-guide view of each,
-     which is noindex, so a level page had no link from its own subject. */
+  /* The subject's page at each level, by its plain address. Each level's
+     panel ends with it; the panel's heading opens the course-guide view,
+     which is noindex, so without this a level page had no link from its
+     own subject. */
   /* The order the links follow: the catalogue's, where it was read; else
      the subject's `levels`, which the API sends in climbing order; else the
      block's. The block's alone lacks the levels nothing is filed at (the
@@ -147,6 +154,44 @@ export function SubjectGuide({
     sortByLevelOrder(subjectOfferedLevels(subject), linkOrder),
     { subject: subject.slug },
     catalogue,
+  );
+  /* The levels as a toggle, one panel each: its courses, the
+     specializations taught at it, and its own page. */
+  const panels = studyLevelPanels(groups, specializations);
+  const ownPage = new Map(levelLinks.map((link) => [link.code, link.href]));
+  /* A level page with no panel: only when a read failed (no groups, or
+     no catalogue to add the levels nothing is filed at). It is still
+     linked, in a row of its own. */
+  const unpanelled = levelLinks.filter(
+    (link) => !groups.some((group) => group.level.code.toUpperCase() === link.code),
+  );
+  /* What each level's panel says first: its own page's intro where an
+     editor wrote one, else the level's description in the catalogue, and
+     the facts the page's reads already hold. */
+  const levelAbout = (code: string) =>
+    aboutLine(richTextToPlainText(levelIntros[code.toUpperCase()] ?? '')) ??
+    aboutLine(catalogue?.find((level) => level.code.toUpperCase() === code.toUpperCase())?.description);
+  const levelIntro = (panel: StudyLevelPanel) => (
+    <LevelInfo
+      about={levelAbout(panel.group.level.code)}
+      facts={levelFacts({
+        group: panel.group,
+        programmes: programmes?.byLevel?.[panel.group.level.code.toUpperCase()] ?? null,
+      })}
+    />
+  );
+  /* Each specialization's own level pages, so a chip in a level's panel
+     opens the specialization at that level -- and only where it has a
+     page there, else the specialization itself. */
+  const branchPages = new Map(
+    specializations.map((branch) => [
+      branch.slug,
+      new Map(
+        levelPageLinks(branch.levels, { subject: subject.slug, specialization: branch.slug }, catalogue).map(
+          (link) => [link.code, link.href],
+        ),
+      ),
+    ]),
   );
   const filed = levelTotal(groups);
   const tests = subject.tests ?? [];
@@ -191,7 +236,7 @@ export function SubjectGuide({
   if (specializations.length) order.push('specializations');
   if (countries.length) order.push('destinations');
   if (sampled) order.push('courses');
-  if (groups.length || courses.length) order.push('programs');
+  if (groups.length || courses.length || levelLinks.length) order.push('programs');
   if (tests.length) order.push('tests');
   /* Funding, then the consultants hand-off; with no awards recorded the
      hand-off stands alone, as on a specialization's page -- the reference
@@ -245,13 +290,6 @@ export function SubjectGuide({
                   Browse universities
                 </Link>
               </div>
-              {/* Its page at each level it is offered at. */}
-              <LevelLinks
-                variant="chips"
-                label="Choose a level"
-                links={levelLinks}
-                field={subject.name}
-              />
             </div>
           </div>
           {/* The hero image an editor set on the subject, under its name
@@ -311,6 +349,7 @@ export function SubjectGuide({
               branches={specializations}
               levelOrder={levelOrder}
               noun={noun}
+              levelLabel="Specializations by study level"
               levelLinks={{
                 catalogue: (catalogue ?? []).map((level) => level.code),
                 order: linkOrder,
@@ -389,7 +428,7 @@ export function SubjectGuide({
         </section>
       ) : null}
 
-      {groups.length || courses.length ? (
+      {groups.length || courses.length || levelLinks.length ? (
         <section className={band('programs')} id="programs">
           <div className="wrap">
             {/* Beside the programmes above, these are the catalogue's
@@ -412,10 +451,10 @@ export function SubjectGuide({
                         sampled
                           ? filed === 1 ? 'course' : 'courses'
                           : filed === 1 ? 'programme' : 'programmes'
-                      }, each under the level it is taught at.`
+                      }, each under the level it is taught at.${levelPickSentence(panels)}`
                     : sampled
-                      ? `No ${subject.name} course is listed yet. Courses are filed under these study levels as they are added.`
-                      : `No ${subject.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
+                      ? `No ${subject.name} course is listed yet. Courses are filed under these study levels as they are added.${levelPickSentence(panels)}`
+                      : `No ${subject.name} programme is listed yet. Programmes are filed under these study levels as they are added.${levelPickSentence(panels)}`
                   : levels.length
                     ? levels
                         .map((row) => `${row.level.name} (${row.count})`)
@@ -439,20 +478,41 @@ export function SubjectGuide({
               ) : null}
             </SectionHead>
             {groups.length ? (
-              <CourseLevels
-                levelPages
-                groups={groups}
-                /* A level's own page where the subject has one; a level
-                   with courses but no page (an offering filed at another
-                   level than its course) opens the finder's guides. */
+              /* The levels as a toggle, as a subject in a destination draws
+                 them: one level at a time, its specializations, its courses
+                 and, last, its own page. */
+              <StudyLevels
+                panels={panels}
+                /* A level's course guides, on its own page where the
+                   subject has one; a level with courses but no page (an
+                   offering filed at another level than its course) opens
+                   the finder's guides. */
                 allHref={(level) =>
                   levelPageHref(pages, { subject: subject.slug, level, guides: true }) ??
                   levelCoursesHref({ subject: subject.slug, level })
                 }
+                courseHref={(course) => `/courses/${course.slug}`}
+                specializationHref={(slug, level) =>
+                  branchPages.get(slug)?.get(level.toUpperCase()) ?? `/subjects/${subject.slug}/${slug}`
+                }
+                elsewhere={{
+                  href: (level) => ownPage.get(level.toUpperCase()) ?? null,
+                  label: (level) => `Explore ${level} in ${subject.name}`,
+                  button: true,
+                }}
+                intro={levelIntro}
               />
-            ) : (
+            ) : courses.length ? (
               <CourseCards courses={courses} />
-            )}
+            ) : null}
+            {/* Its level pages with no panel above, which only a failed read
+                leaves: still linked, never lost. */}
+            <LevelLinks
+              variant="chips"
+              label={groups.length ? 'Other levels' : 'Choose a level'}
+              links={unpanelled}
+              field={subject.name}
+            />
           </div>
         </section>
       ) : null}

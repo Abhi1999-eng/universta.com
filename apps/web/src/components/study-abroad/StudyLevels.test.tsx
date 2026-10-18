@@ -69,3 +69,46 @@ describe('a destination’s study levels', () => {
     );
   });
 });
+
+/**
+ * The same toggle on a field's own page, which covers every destination:
+ * no place in its counts, and an empty level still opens its list.
+ */
+describe('a field’s own study levels', () => {
+  const renderOwn = (panels: StudyLevelPanel[], extra: Record<string, unknown> = {}) =>
+    renderToStaticMarkup(
+      <StudyLevels
+        panels={panels}
+        allHref={(code) => `/courses?level=${code}`}
+        courseHref={(course) => `/courses/${course.slug}`}
+        {...extra}
+      />,
+    );
+
+  it('reads a count with no place', () => {
+    const html = renderOwn([{ group: { ...panel('UG', "Bachelor's").group, count: 2 }, specializations: [] }]);
+    expect(html).toMatch(/coursegroup__n">2(?:<!-- -->)? (?:<!-- -->)?courses<\/span>/);
+    expect(html).not.toContain('Not listed');
+  });
+
+  it('links an empty level’s list as "0 courses"', () => {
+    const html = renderOwn([panel('PHD', 'PhD')]);
+    expect(html).toContain('<a class="coursegroup__head" href="/courses?level=PHD">');
+    expect(html).toContain('0 courses');
+    expect(html).not.toContain('coursegroup__noarrow');
+    expect(html).not.toContain('Not listed');
+  });
+
+  it('hands the level to a specialization’s link', () => {
+    const html = renderOwn(
+      [
+        {
+          ...panel('UG', "Bachelor's"),
+          specializations: [{ id: 'ds', name: 'Data Science', slug: 'data-science', here: 1 }],
+        },
+      ],
+      { specializationHref: (slug: string, code: string) => `/subjects/cs/${slug}/${code}` },
+    );
+    expect(html).toContain('href="/subjects/cs/data-science/UG">Data Science<em>1</em></a>');
+  });
+});

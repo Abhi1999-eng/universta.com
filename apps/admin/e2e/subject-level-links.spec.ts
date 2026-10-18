@@ -3,8 +3,9 @@ import { apiBaseUrl, webBaseUrl } from './helpers/e2e-urls';
 
 /**
  * Links to the level pages from the subjects and specializations that own
- * them: the /subjects cards, the /specializations cards, and the "Choose a
- * level" chips under a subject's or a specialization's heading. Each one is
+ * them: the /subjects cards, the /specializations cards, and the level
+ * toggle on a subject's or a specialization's page, whose every panel ends
+ * with "{Level} in {Field} →". Each one is
  * a level the field is offered at, by its plain address (never the noindex
  * `?view=guides` copy), and each one opens.
  *
@@ -108,7 +109,7 @@ test.describe('links to the level pages', () => {
     }
   });
 
-  test('a subject’s and a specialization’s heading link their own level pages', async ({ page, request }) => {
+  test('a subject’s and a specialization’s level panels link their own level pages', async ({ page, request }) => {
     const [subjects, branches, active] = await Promise.all([
       read<Field[]>(request, '/subjects?limit=100'),
       read<Branch[]>(request, '/specializations?limit=200'),
@@ -123,19 +124,20 @@ test.describe('links to the level pages', () => {
       [`/subjects/${branch!.subject.slug}/${branch!.slug}`, branch!.name, branch!.levels],
     ] as const) {
       await page.goto(`${webBaseUrl}${base}`);
-      /* Its own name, apart from the courses-by-level bar's "Study levels". */
-      const nav = page.getByRole('navigation', { name: `${name} by level`, exact: true });
-      await expect(nav).toBeVisible();
-      const shown = await nav.locator('a').evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
+      /* Every panel's own-page link, hidden panels included: exactly the
+         levels the field is offered at, each opening. */
+      const own = page.locator('#programs .studylevel__elsewhere a');
+      const shown = await own.evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
       expect(shown, base).toEqual(expected(base, levels as Level[] | undefined, active));
       await expectEachOpens(request, shown);
-      /* The courses-by-level bar further down keeps its own name, and its
-         count-bearing links stay on the course guides the counts are of. */
-      const bar = page.getByRole('navigation', { name: 'Study levels' });
-      if (await bar.count()) {
-        for (const href of await bar.locator('a').evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? '')))
-          expect(href).toMatch(/\?view=guides$|^\/courses\?/);
-      }
+      /* Nothing is left under the heading: the levels are that section. */
+      await expect(page.locator('.hero .levelchips')).toHaveCount(0);
+      /* The panels' headings keep their counts on the course guides. */
+      for (const href of await page
+        .locator('#programs a.coursegroup__head')
+        .evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? '')))
+        expect(href).toMatch(/\?view=guides$|^\/courses\?/);
+      expect(await page.getByRole('group', { name: 'Study level', exact: true }).count()).toBeLessThanOrEqual(1);
 
       /* A specialization card with level links still opens as a whole,
          from the arrow of its "Explore specialization →" too, which moves
@@ -151,9 +153,39 @@ test.describe('links to the level pages', () => {
         await page.goto(`${webBaseUrl}${base}`);
       }
 
-      await nav.locator('a').first().click();
+      /* Pick the first level on the toggle, then open its own page. */
+      const first = own.first();
+      const id = await first.evaluate((a) => a.closest('section.studylevel')!.id);
+      const button = page.locator(`#programs button[aria-controls="${id}"]`);
+      if (await button.count()) {
+        await button.click();
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+      }
+      await expect(first).toBeVisible();
+      await first.click();
       await expect(page).toHaveURL(`${webBaseUrl}${shown[0]}`);
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
     }
+  });
+
+  test('the level toggle shows one level at a time, on a phone too', async ({ page, request }) => {
+    const [subjects, active] = await Promise.all([read<Field[]>(request, '/subjects?limit=100'), catalogue(request)]);
+    const subject = subjects.find((row) => expected('', row.levels, active).length > 1);
+    test.skip(!subject, 'no subject is offered at two levels');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${webBaseUrl}/subjects/${subject!.slug}`);
+    const bar = page.getByRole('group', { name: 'Study level', exact: true });
+    const buttons = bar.getByRole('button');
+    const count = await buttons.count();
+    expect(count).toBeGreaterThan(1);
+    for (let index = 0; index < count; index += 1) {
+      const button = buttons.nth(index);
+      const id = (await button.getAttribute('aria-controls'))!;
+      await button.click();
+      await expect(button).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator(`#${id}`)).toBeVisible();
+      await expect(page.locator('#programs section.studylevel:visible')).toHaveCount(1);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   });
 });

@@ -72,21 +72,31 @@ test.describe('subject level discovery', () => {
       [specialization, 'Software Engineering'],
     ]) {
       await page.goto(`${webBaseUrl}${base}`);
-      const levelNav = page.getByRole('navigation', { name: 'Study levels' });
-      const links = levelNav.locator('a');
-      await expect(links.first()).toBeVisible();
-      const hrefs = await links.evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
+      /* The levels are a toggle: one button per level, each opening its
+         panel, whose heading opens that level's course guides. */
+      const bar = page.getByRole('group', { name: 'Study level', exact: true });
+      const buttons = bar.getByRole('button');
+      await expect(buttons.first()).toBeVisible();
+      const hrefs = await page
+        .locator('#programs section.studylevel a.coursegroup__head')
+        .evaluateAll((anchors) => anchors.map((a) => a.getAttribute('href') ?? ''));
       expect(hrefs.length).toBeGreaterThan(1);
+      expect(await buttons.count()).toBe(hrefs.length);
       for (const href of hrefs) expect(href).toMatch(new RegExp(`^${base}/[a-z0-9-]+\\?view=guides$`));
-      /* The bar offers exactly the levels the record is offered at, ticked
-         or with courses beneath it, and no other. */
+      /* The toggle offers exactly the levels the record is offered at,
+         ticked or with courses beneath it, and no other. */
       const offered = await offeredLevelSlugs(request, base);
       expect(hrefs.map((href) => href.slice(base.length + 1).replace('?view=guides', '')).sort()).toEqual([...offered].sort());
       /* An empty level still opens. */
-      const empty = levelNav.locator('a.chipbtn--none');
-      const target = (await empty.count()) ? empty.first() : links.first();
-      const picked = new URL((await target.getAttribute('href'))!, webBaseUrl).pathname.split('/').pop()!;
+      const empty = bar.locator('button.chipbtn--none');
+      const target = (await empty.count()) ? empty.first() : buttons.first();
+      const id = (await target.getAttribute('aria-controls'))!;
       await target.click();
+      await expect(target).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator(`#${id}`)).toBeVisible();
+      const head = page.locator(`#${id} a.coursegroup__head`);
+      const picked = new URL((await head.getAttribute('href'))!, webBaseUrl).pathname.split('/').pop()!;
+      await head.click();
       await expect(page).toHaveURL(`${webBaseUrl}${base}/${picked}?view=guides`);
       await expect(page.getByRole('heading', { level: 1, name: new RegExp(name) })).toBeVisible();
       await expect(page.getByTestId('switch-guides')).toHaveAttribute('aria-current', 'page');

@@ -47,6 +47,9 @@ export type ProgrammeSample = {
   total: number;
   universities: number;
   cities: number;
+  /** How many of them are at each study level, by level code ("PG" -> 3),
+   *  from the same read's counts. Empty where the API sent none. */
+  byLevel?: Record<string, number>;
 };
 
 export async function programmeSample(
@@ -65,6 +68,11 @@ export async function programmeSample(
       total: list.meta.total,
       universities: list.summary.universities,
       cities: list.summary.cities,
+      byLevel: Object.fromEntries(
+        list.facets.level
+          .filter((option) => option.count > 0)
+          .map((option) => [option.value.toUpperCase(), option.count]),
+      ),
     };
   } catch {
     return null;

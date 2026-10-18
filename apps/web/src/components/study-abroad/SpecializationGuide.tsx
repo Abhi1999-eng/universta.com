@@ -12,14 +12,17 @@ import {
 import { formatNumber } from '@/lib/format';
 import { SECTION_EYEBROWS, sectionLines, sectionTitle } from '@/lib/specialization-content';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
+import { levelPickSentence, studyLevelPanels, type StudyLevelPanel } from '@/lib/study-levels';
+import { aboutLine, levelFacts } from '@/lib/level-panel-info';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
 import { universityHref } from '@/lib/university-links';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { ConsultantsCta } from './ConsultantsCta';
 import { CourseCards } from './CourseCards';
-import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
 import { LevelLinks } from './LevelLinks';
+import { StudyLevels } from './StudyLevels';
+import { LevelInfo } from './LevelInfo';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import {
   destinationsLead,
@@ -88,6 +91,7 @@ export function SpecializationGuide({
   catalogue = null,
   scholarships = [],
   programmes = null,
+  levelIntros = {},
 }: {
   specialization: SpecializationDetail | SpecializationRecord;
   /** Its courses filed under their study levels. Absent when that read
@@ -96,13 +100,15 @@ export function SpecializationGuide({
   /** The catalogue's study levels, the active ones: a level it is offered
    *  at that has been switched off opens no page. Null when that read
    *  failed. */
-  catalogue?: ReadonlyArray<{ code: string }> | null;
+  catalogue?: ReadonlyArray<{ code: string; description?: string | null }> | null;
   /** Awards recorded against its subject. Scholarships are recorded per
    *  subject, not per specialization, and the section says so. */
   scholarships?: ScholarshipCard[];
   /** The first of the universities' programmes in it, and how many there
    *  are. Null when there are none or they could not be read. */
   programmes?: Programmes | null;
+  /** The intros editors wrote on its level pages, by level code. */
+  levelIntros?: Record<string, string>;
 }) {
   const specialization = record as SpecializationRecord;
   const { subject, siblings } = specialization;
@@ -154,9 +160,10 @@ export function SpecializationGuide({
   const filed = levelTotal(groups);
   /* The levels it has pages for: its own ticks with its courses' levels. */
   const pages = specializationLevelPages(specialization, catalogue);
-  /* Its page at each of those levels, linked from under its heading by the
-     plain address: the level block links the course-guide view of each,
-     which is noindex, so these pages had no link from the specialization. */
+  /* Its page at each of those levels, by the plain address. Each level's
+     panel ends with it; the panel's heading opens the course-guide view,
+     which is noindex, so without this these pages had no link from the
+     specialization. */
   const levelLinks = levelPageLinks(
     /* The set its pages come from (`specializationOfferedLevels`: its ticks
        with its courses' levels), but its `levels` first -- the API's union,
@@ -165,6 +172,29 @@ export function SpecializationGuide({
     [...(specialization.levels ?? []), ...(specialization.offeredLevels ?? [])],
     { subject: subject.slug, specialization: specialization.slug },
     catalogue,
+  );
+  /* The levels as a toggle, one panel each: its courses and its own page. */
+  const panels = studyLevelPanels(groups);
+  const ownPage = new Map(levelLinks.map((link) => [link.code, link.href]));
+  /* What each level's panel says first: its own page's intro where an
+     editor wrote one, else the level's description in the catalogue, and
+     the facts the page's reads already hold. */
+  const levelAbout = (code: string) =>
+    aboutLine(richTextToPlainText(levelIntros[code.toUpperCase()] ?? '')) ??
+    aboutLine(catalogue?.find((level) => level.code.toUpperCase() === code.toUpperCase())?.description);
+  const levelIntro = (panel: StudyLevelPanel) => (
+    <LevelInfo
+      about={levelAbout(panel.group.level.code)}
+      facts={levelFacts({
+        group: panel.group,
+        programmes: programmes?.byLevel?.[panel.group.level.code.toUpperCase()] ?? null,
+      })}
+    />
+  );
+  /* A level page with no panel, which only a failed read leaves: still
+     linked, in a row of its own. */
+  const unpanelled = levelLinks.filter(
+    (link) => !groups.some((group) => group.level.code.toUpperCase() === link.code),
   );
   /* Its own content, as a course has: each section is a band of its own,
      named by its key, after the overview; the FAQs come before the funding
@@ -177,7 +207,7 @@ export function SpecializationGuide({
   if (hasOverview) order.push('about');
   for (const section of sections) order.push(`content-${section.sectionKey}`);
   if (taught) order.push('courses');
-  if (groups.length || courses.length) order.push('programs');
+  if (groups.length || courses.length || levelLinks.length) order.push('programs');
   if (countries.length) order.push('destinations');
   if (siblings.length) order.push('related');
   if (faqs.length) order.push('faqs');
@@ -247,12 +277,6 @@ export function SpecializationGuide({
                 All {subject.name}
               </Link>
             </div>
-            <LevelLinks
-              variant="chips"
-              label="Choose a level"
-              links={levelLinks}
-              field={specialization.name}
-            />
             </div>
           </div>
         </div>
@@ -318,7 +342,7 @@ export function SpecializationGuide({
         </section>
       ) : null}
 
-      {groups.length || courses.length ? (
+      {groups.length || courses.length || levelLinks.length ? (
         <section className={band('programs')} id="programs">
           <div className="wrap">
             {/* Beside the programmes above, these are the catalogue's
@@ -341,11 +365,13 @@ export function SpecializationGuide({
                         taught
                           ? filed === 1 ? 'course' : 'courses'
                           : filed === 1 ? 'programme' : 'programmes'
-                      }, each under the level it is taught at.`
+                      }, each under the level it is taught at.${levelPickSentence(panels)}`
                     : taught
-                      ? `No ${specialization.name} course is listed yet. Courses are filed under these study levels as they are added.`
-                      : `No ${specialization.name} programme is listed yet. Programmes are filed under these study levels as they are added.`
-                  : `Published ${taught ? 'courses' : 'programmes'} recorded against this specialization.`
+                      ? `No ${specialization.name} course is listed yet. Courses are filed under these study levels as they are added.${levelPickSentence(panels)}`
+                      : `No ${specialization.name} programme is listed yet. Programmes are filed under these study levels as they are added.${levelPickSentence(panels)}`
+                  : courses.length
+                    ? `Published ${taught ? 'courses' : 'programmes'} recorded against this specialization.`
+                    : undefined
               }
             >
               {/* The reference ends its course list with "View all N
@@ -380,12 +406,21 @@ export function SpecializationGuide({
               ) : null}
             </SectionHead>
             {groups.length ? (
-              <CourseLevels
-                levelPages
-                groups={groups}
+              /* The levels as a toggle, as it is drawn in a destination: one
+                 level at a time, its courses and, last, its own page. */
+              <StudyLevels
+                panels={panels}
                 branch={false}
-                /* A level's own page where the specialization has one;
-                   otherwise the finder's guides, narrowed to it. */
+                courseHref={(course) => `/courses/${course.slug}`}
+                elsewhere={{
+                  href: (level) => ownPage.get(level.toUpperCase()) ?? null,
+                  label: (level) => `Explore ${level} in ${specialization.name}`,
+                  button: true,
+                }}
+                intro={levelIntro}
+                /* A level's course guides, on its own page where the
+                   specialization has one; otherwise the finder's guides,
+                   narrowed to it. */
                 allHref={(level) =>
                   levelPageHref(pages, {
                     subject: subject.slug,
@@ -400,9 +435,17 @@ export function SpecializationGuide({
                   })
                 }
               />
-            ) : (
+            ) : courses.length ? (
               <CourseCards courses={courses} />
-            )}
+            ) : null}
+            {/* Its level pages with no panel above, which only a failed read
+                leaves: still linked, never lost. */}
+            <LevelLinks
+              variant="chips"
+              label={groups.length ? 'Other levels' : 'Choose a level'}
+              links={unpanelled}
+              field={specialization.name}
+            />
           </div>
         </section>
       ) : null}

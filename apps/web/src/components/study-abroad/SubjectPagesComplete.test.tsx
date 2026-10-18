@@ -41,7 +41,20 @@ const chipHrefs = (html: string) =>
 /** Where a card's level links go, in the order they are drawn. */
 const levelLinkHrefs = (html: string) =>
   [...html.matchAll(/<a class="levellinks__a"[^>]* href="([^"]+)"/g)].map((match) => match[1]);
-/** Where the level chips under a page's heading go, in order. */
+/** Each level panel's link to the field's own level page, in order. */
+const ownLevelHrefs = (html: string) =>
+  [...html.matchAll(/<p class="studylevel__elsewhere"><a class="[^"]*" href="([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+/** One level's panel: from its section to the next one's end. */
+const levelPanel = (html: string, code: string) => {
+  const start = html.indexOf(`id="level-${code.toLowerCase()}"`);
+  return start < 0 ? '' : html.slice(start, html.indexOf('</section>', start));
+};
+/** The page's hero: everything before the first section closes. */
+const heroOf = (html: string) => html.slice(0, html.indexOf('</section>'));
+/** Where the row of level-page chips goes, in order: the levels section's
+ *  row for level pages with no panel, which only a failed read leaves. */
 const levelChipHrefs = (html: string) => {
   const nav = html.match(/<nav class="specchips levelchips"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? '';
   return [...nav.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
@@ -177,9 +190,15 @@ describe('a subject’s page', () => {
     );
   });
 
-  it('links its own level pages under its heading, by their plain addresses', () => {
+  it('links its own level pages in its levels section when its courses could not be read', () => {
     /* Ticked nowhere, but its specialization is at Diploma, Bachelor's and
-       PhD and its courses at those and Master's. */
+       PhD and its courses at those and Master's. No grouped read here, so
+       there is no toggle: the levels section keeps a row of its level
+       pages, and nothing is left under the heading. */
+    expect(heroOf(html)).not.toContain('levelchips');
+    expect(heroOf(html)).not.toContain('Choose a level');
+    expect(html.indexOf('levelchips')).toBeGreaterThan(html.indexOf('id="programs"'));
+    expect(html).toContain('<span class="label">Choose a level</span>');
     expect(levelChipHrefs(html)).toEqual([
       '/subjects/computer-science/diploma',
       '/subjects/computer-science/bachelors',
@@ -188,11 +207,11 @@ describe('a subject’s page', () => {
     ]);
     expect(html).toContain('<nav class="specchips levelchips" aria-label="Computer Science by level">');
     expect(html).toContain('aria-label="Master&#x27;s in Computer Science"');
-    /* Not the name the courses-by-level bar answers to. */
-    expect(html).not.toMatch(/<nav class="specchips levelchips" aria-label="[^"]*[Ss]tudy levels/);
+    /* Not the name the level toggle answers to. */
+    expect(html).not.toMatch(/<nav class="specchips levelchips" aria-label="[^"]*[Ss]tudy level/);
   });
 
-  it('keeps its level links in climbing order where the catalogue could not be read', () => {
+  it('keeps every level page linked, in climbing order, where the catalogue could not be read', () => {
     /* Courses only at MBA: the grouped read sends that level alone, and
        the levels it is ticked at with nothing filed came after it. */
     const html = renderToStaticMarkup(
@@ -211,15 +230,21 @@ describe('a subject’s page', () => {
         catalogue={null}
       />,
     );
+    /* MBA, the one level with courses, has its panel and ends with its own
+       page; the levels nothing is filed at have no panel without the
+       catalogue, and keep their links in a row after the toggle. */
+    expect(ownLevelHrefs(html)).toEqual(['/subjects/computer-science/mba']);
+    expect(levelPanel(html, 'MBA')).toContain('href="/subjects/computer-science/mba">Explore MBA in Computer Science');
+    expect(html).toContain('<span class="label">Other levels</span>');
     expect(levelChipHrefs(html)).toEqual(
-      ['bachelors', 'masters', 'mba', 'phd'].map((slug) => `/subjects/computer-science/${slug}`),
+      ['bachelors', 'masters', 'phd'].map((slug) => `/subjects/computer-science/${slug}`),
     );
     expect(levelLinkHrefs(html)).toEqual(
       ['bachelors', 'mba', 'phd'].map((slug) => `/subjects/computer-science/software-engineering/${slug}`),
     );
   });
 
-  it('links no level under its heading when it is offered at none', () => {
+  it('links no level page when it is offered at none', () => {
     const none = renderToStaticMarkup(
       <SubjectGuide
         subject={{ ...subject, subSubjects: [], courseCountsByLevel: [], offeredLevels: [] } as SubjectDetail}
@@ -228,9 +253,10 @@ describe('a subject’s page', () => {
     );
     expect(levelChipHrefs(none)).toEqual([]);
     expect(none).not.toContain('levelchips');
+    expect(none).not.toContain('studylevel__elsewhere');
   });
 
-  it('links only the levels the catalogue keeps, and orders them as it does', () => {
+  it('links only the levels the catalogue keeps, and orders them as it does, when its courses could not be read', () => {
     const kept = renderToStaticMarkup(
       <SubjectGuide
         subject={subject}
@@ -238,7 +264,7 @@ describe('a subject’s page', () => {
         catalogue={[{ code: 'UG' }, { code: 'PG' }, { code: 'PHD' }]}
       />,
     );
-    /* Diploma is switched off: no page, so no link, on the hero or a card. */
+    /* Diploma is switched off: no page, so no link, in the row or on a card. */
     expect(levelChipHrefs(kept)).toEqual([
       '/subjects/computer-science/bachelors',
       '/subjects/computer-science/masters',
@@ -519,11 +545,12 @@ describe('a specialization’s page', () => {
     );
   });
 
-  it('links no level under its heading when it is offered at none', () => {
+  it('links no level page when it is offered at none', () => {
     expect(levelChipHrefs(html)).toEqual([]);
+    expect(html).not.toContain('studylevel__elsewhere');
   });
 
-  it('links its own level pages under its heading, by their plain addresses', () => {
+  it('links its own level pages in its levels section when its courses could not be read', () => {
     const offered = renderToStaticMarkup(
       <SpecializationGuide
         specialization={
@@ -546,12 +573,13 @@ describe('a specialization’s page', () => {
     expect(offered).toContain(
       '<nav class="specchips levelchips" aria-label="Software Engineering by level">',
     );
+    expect(heroOf(offered)).not.toContain('levelchips');
     /* The facts strip the client had taken off stays off. */
     expect(offered).not.toContain('specialization-facts');
     expect(offered).not.toContain('<span class="label">Study levels</span>');
   });
 
-  it('keeps the order its levels came in where the catalogue could not be read', () => {
+  it('keeps the order its levels came in where neither its courses nor the catalogue could be read', () => {
     const unread = renderToStaticMarkup(
       <SpecializationGuide
         specialization={{ ...specialization, offeredLevels: [PHD], levels: [UG, PHD] } as never}
@@ -1020,5 +1048,309 @@ describe('a subject’s consultants hand-off', () => {
     const html = renderToStaticMarkup(<SubjectGuide subject={subject} scholarships={[scholarship]} />);
     expect(html).not.toMatch(/id="consultants"/);
     expect(html).toContain('Talk to a consultant about Computer Science');
+  });
+});
+
+/**
+ * A subject's and a specialization's study levels as a toggle, as a subject
+ * in a destination draws them: one level at a time, with the
+ * specializations taught at it, its courses and, last, its own level page.
+ * The client asked for the small "Choose a level" row under the heading to
+ * be a whole section like that.
+ */
+describe('the study levels as a toggle on a subject’s page', () => {
+  const catalogue = [
+    { id: 'f', code: 'FOUNDATION', name: 'Foundation Program', educationOrder: 1 },
+    { id: 'p', code: 'PATHWAY', name: 'Pathway Program', educationOrder: 2 },
+    { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 },
+    { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 },
+    { id: 'm', code: 'MBA', name: 'MBA', educationOrder: 5 },
+    { id: 'h', code: 'PHD', name: 'PhD', educationOrder: 6 },
+  ];
+  const branch = (id: string, name: string, slug: string, levels: typeof UG[]) => ({
+    id,
+    name,
+    slug,
+    shortDescription: null,
+    publishedCourseCount: 1,
+    levels,
+  });
+  const ai = branch('ai', 'Artificial Intelligence', 'artificial-intelligence', [PG, PHD]);
+  const ds = branch('ds', 'Data Science', 'data-science', [UG, PG]);
+  const cyber = branch('cy', 'Cybersecurity', 'cybersecurity', [UG, PG]);
+  const cs = {
+    ...subject,
+    subSubjects: [ai, ds, cyber],
+    courseCountsByLevel: [],
+    offeredLevels: [],
+    featuredCourses: [],
+  } as unknown as SubjectDetail;
+  const filed = (code: string, name: string, slug: string, under: { id: string; name: string; slug: string }) =>
+    ({
+      id: `${code}-${slug}`,
+      name,
+      slug,
+      subject: { id: 'cs', name: 'Computer Science', slug: 'computer-science' },
+      subSubject: { id: under.id, name: under.name, slug: under.slug },
+      courseLevel: { id: code, name: code, code },
+      studyModes: [],
+      duration: null,
+      selectedTuition: null,
+      availableCountryCount: 1,
+    }) as never;
+  const group = (level: typeof UG, courses: never[]) => ({
+    level: { ...level, educationOrder: 0 },
+    count: courses.length,
+    courses,
+  });
+  const render = (
+    groups: ReturnType<typeof group>[],
+    subjectOverride: SubjectDetail = cs,
+    levelCatalogue: typeof catalogue | null = catalogue,
+  ) =>
+    renderToStaticMarkup(
+      <SubjectGuide
+        subject={subjectOverride}
+        scholarships={[]}
+        catalogue={levelCatalogue}
+        levels={everyLevel(groups as never, levelCatalogue, subjectOfferedLevels(subjectOverride))}
+      />,
+    );
+  const html = render([
+    group(UG, [filed('UG', 'BSc Data Science', 'bsc-ds', ds)]),
+    group(PG, [filed('PG', 'MSc AI', 'msc-ai', ai)]),
+    group(PHD, [filed('PHD', 'PhD AI', 'phd-ai', ai)]),
+  ]);
+
+  it('draws one level toggle, and no bar of links over every level', () => {
+    expect(html.match(/role="group" aria-label="Study level"/g)).toHaveLength(1);
+    /* The specialization filter above answers to its own name. */
+    expect(html).toContain('aria-label="Specializations by study level"');
+    expect(html).not.toContain('<nav class="levelbar');
+    expect(html).toMatch(/aria-pressed="true" aria-controls="level-ug"/);
+    expect(html).toContain('aria-controls="level-pg"');
+    expect(html).toContain('aria-controls="level-phd"');
+  });
+
+  it('opens the first level and keeps the others in the page, hidden', () => {
+    expect(html).toContain('<div><section class="coursegroup studylevel scrollstop" id="level-ug"');
+    expect(html).toContain('<div hidden=""><section class="coursegroup studylevel scrollstop" id="level-pg"');
+  });
+
+  it('opens a level’s courses on its course guides, with no destination in its count', () => {
+    expect(levelPanel(html, 'UG')).toContain('href="/subjects/computer-science/bachelors?view=guides"');
+    expect(html).not.toContain('Not listed');
+    expect(html).not.toContain('every destination');
+  });
+
+  it('links each specialization taught at a level to its page at that level', () => {
+    const ug = levelPanel(html, 'UG');
+    expect(ug).toContain('href="/subjects/computer-science/data-science/bachelors">Data Science<em>1</em></a>');
+    expect(ug).toContain('href="/subjects/computer-science/cybersecurity/bachelors">Cybersecurity</a>');
+    expect(ug.indexOf('/data-science/bachelors')).toBeLessThan(ug.indexOf('/cybersecurity/bachelors'));
+    const phd = levelPanel(html, 'PHD');
+    expect(phd).toContain('/artificial-intelligence/phd');
+    expect(phd).not.toContain('/data-science/phd');
+  });
+
+  it('ends each level with its own page, by its plain address', () => {
+    const pg = levelPanel(html, 'PG');
+    expect(pg).toContain(
+      '<p class="studylevel__elsewhere"><a class="btn btn--sm btn--wrap" href="/subjects/computer-science/masters">Explore Master&#x27;s in Computer Science',
+    );
+    expect(pg.indexOf('masters?view=guides')).toBeLessThan(pg.indexOf('href="/subjects/computer-science/masters"'));
+    expect(ownLevelHrefs(html)).toEqual([
+      '/subjects/computer-science/bachelors',
+      '/subjects/computer-science/masters',
+      '/subjects/computer-science/phd',
+    ]);
+  });
+
+  it('says a line about each level, and a few facts, before its specializations', () => {
+    const informed = renderToStaticMarkup(
+      <SubjectGuide
+        subject={cs}
+        scholarships={[]}
+        catalogue={catalogue.map((level) =>
+          level.code === 'UG' ? { ...level, description: 'An undergraduate degree, usually three or four years.' } : level,
+        )}
+        levels={everyLevel(
+          [
+            group(UG, [filed('UG', 'BSc Data Science', 'bsc-ds', ds)]),
+            group(PG, [filed('PG', 'MSc AI', 'msc-ai', ai)]),
+          ] as never,
+          catalogue,
+          subjectOfferedLevels(cs),
+        )}
+        levelIntros={{ PG: '<p>A Master&#x27;s in Computer Science &amp; IT takes one or two years. You go deeper. Most end with a thesis.</p>' }}
+        programmes={{ cards: [], total: 4, universities: 1, cities: 1, byLevel: { PG: 3 } }}
+      />,
+    );
+    const pg = levelPanel(informed, 'PG');
+    /* The level page's own intro, two sentences of it, as text. */
+    expect(pg).toContain(
+      '<p class="levelinfo__about">A Master&#x27;s in Computer Science &amp; IT takes one or two years. You go deeper.</p>',
+    );
+    expect(pg).not.toContain('Most end with a thesis');
+    expect(pg).toContain('<dt>Programmes at universities</dt><dd>3</dd>');
+    expect(pg.indexOf('levelinfo')).toBeLessThan(pg.indexOf('studylevel__specs'));
+    /* No intro written: the catalogue's description of the level. */
+    expect(levelPanel(informed, 'UG')).toContain(
+      '<p class="levelinfo__about">An undergraduate degree, usually three or four years.</p>',
+    );
+    /* No programmes counted at it: no programmes fact, never a zero. */
+    expect(levelPanel(informed, 'UG')).not.toContain('Programmes at universities');
+    /* Nothing written and nothing listed: nothing to say. */
+    expect(levelPanel(informed, 'PHD')).not.toContain('levelinfo');
+  });
+
+  it('leaves nothing under the heading: the levels are this section now', () => {
+    expect(heroOf(html)).not.toContain('levelchips');
+    expect(heroOf(html)).not.toContain('Choose a level');
+    expect(html).not.toContain('levelchips');
+  });
+
+  it('says how to use the toggle in its lead', () => {
+    expect(html).toContain(
+      '3 programmes, each under the level it is taught at. Pick a level to see its specializations and courses.',
+    );
+  });
+
+  it('opens on the first level with courses, and an empty level still opens its list', () => {
+    const later = render([group(PG, [filed('PG', 'MSc AI', 'msc-ai', ai), filed('PG', 'MSc DS', 'msc-ds', ds)])]);
+    expect(later).toContain(
+      '<div hidden=""><section class="coursegroup studylevel scrollstop coursegroup--empty" id="level-ug"',
+    );
+    expect(later).toContain('<div><section class="coursegroup studylevel scrollstop" id="level-pg"');
+    expect(later).toMatch(/<button type="button" class="chipbtn chipbtn--none"[^>]*aria-controls="level-ug"/);
+    const ug = levelPanel(later, 'UG');
+    expect(ug).toContain('href="/subjects/computer-science/bachelors?view=guides"');
+    expect(ug).toContain('0 courses');
+    expect(ug).toContain('Bachelor&#x27;s in Computer Science');
+  });
+
+  it('opens a specialization’s own page where it has no page at that level', () => {
+    const odd = render([
+      group(UG, [filed('UG', 'BSc Data Science', 'bsc-ds', ds)]),
+      group(PHD, [filed('PHD', 'PhD DS', 'phd-ds', ds)]),
+    ]);
+    expect(levelPanel(odd, 'PHD')).toContain('href="/subjects/computer-science/data-science">Data Science');
+    expect(odd).not.toContain('/data-science/phd');
+  });
+
+  it('gives a level with courses but no page a panel that opens the finder, and no level page', () => {
+    const diploma = render([
+      group(UG, [filed('UG', 'BSc Data Science', 'bsc-ds', ds)]),
+      group(DIPLOMA, [filed('DIPLOMA', 'Diploma A', 'dip-a', ds), filed('DIPLOMA', 'Diploma B', 'dip-b', ds)]),
+    ]);
+    expect(diploma).toContain('aria-controls="level-diploma"');
+    const panel = levelPanel(diploma, 'DIPLOMA');
+    expect(panel).toContain('/courses?subject=computer-science&amp;level=DIPLOMA&amp;view=guides');
+    expect(panel).not.toContain('studylevel__elsewhere');
+    expect(diploma).not.toContain('/subjects/computer-science/diploma');
+  });
+
+  it('claims no level page on a subject offered at nothing', () => {
+    const unoffered = {
+      ...cs,
+      subSubjects: cs.subSubjects.map((row) => ({ ...row, levels: [] })),
+    } as SubjectDetail;
+    const none = render([], unoffered);
+    expect(none.match(/class="chipbtn chipbtn--none"/g)).toHaveLength(6);
+    expect(none.match(/0 courses/g)).toHaveLength(6);
+    expect(none).toContain('href="/subjects/computer-science/foundation?view=guides"');
+    expect(none).not.toContain('studylevel__elsewhere');
+    expect(none).not.toContain('levelchips');
+    expect(none.match(/is listed yet/g)).toHaveLength(1);
+  });
+
+  it('keeps its level pages linked when its courses could not be read', () => {
+    const unread = renderToStaticMarkup(
+      <SubjectGuide subject={cs} scholarships={[]} catalogue={catalogue} levels={null} />,
+    );
+    const section = unread.slice(unread.indexOf('id="programs"'));
+    expect(section).toContain('<nav class="specchips levelchips" aria-label="Computer Science by level">');
+    expect(section).toContain('<span class="label">Choose a level</span>');
+    expect(unread).not.toContain('role="group" aria-label="Study level"');
+    expect(levelChipHrefs(unread)).toEqual([
+      '/subjects/computer-science/bachelors',
+      '/subjects/computer-science/masters',
+      '/subjects/computer-science/phd',
+    ]);
+  });
+});
+
+describe('the study levels as a toggle on a specialization’s page', () => {
+  const catalogue = [
+    { id: 'u', code: 'UG', name: "Bachelor's", educationOrder: 3 },
+    { id: 'g', code: 'PG', name: "Master's", educationOrder: 4 },
+    { id: 'h', code: 'PHD', name: 'PhD', educationOrder: 6 },
+  ];
+  const se = { ...specialization, offeredLevels: [PG], levels: [PG, PHD] };
+  const course = (code: string, slug: string) =>
+    ({
+      id: slug,
+      name: `${code} in Software Engineering`,
+      slug,
+      subject: { id: 'cs', name: 'Computer Science', slug: 'computer-science' },
+      subSubject: { id: 'se', name: 'Software Engineering', slug: 'software-engineering' },
+      courseLevel: { id: code, name: code, code },
+      studyModes: [],
+      duration: null,
+      selectedTuition: null,
+      availableCountryCount: 1,
+    }) as never;
+  const html = renderToStaticMarkup(
+    <SpecializationGuide
+      specialization={se as never}
+      scholarships={[]}
+      catalogue={catalogue}
+      levels={
+        everyLevel(
+          [
+            { level: { ...PG, educationOrder: 4 }, count: 1, courses: [course('PG', 'msc-se')] },
+            { level: { ...PHD, educationOrder: 6 }, count: 1, courses: [course('PHD', 'phd-se')] },
+          ] as never,
+          catalogue,
+          [PG, PHD],
+        )
+      }
+    />,
+  );
+
+  it('draws one level toggle with a button per level it has a page at', () => {
+    expect(html.match(/role="group" aria-label="Study level"/g)).toHaveLength(1);
+    expect(html.match(/<button type="button" class="chipbtn[^"]*"[^>]*aria-controls="level-/g)).toHaveLength(2);
+    /* No specializations within a specialization. */
+    expect(html).not.toContain('studylevel__specs');
+  });
+
+  it('ends each level with its own page, by its plain address', () => {
+    expect(ownLevelHrefs(html)).toEqual([
+      '/subjects/computer-science/software-engineering/masters',
+      '/subjects/computer-science/software-engineering/phd',
+    ]);
+    expect(html).toContain('Explore Master&#x27;s in Software Engineering');
+    expect(html).toContain('Explore PhD in Software Engineering');
+    expect(html).toContain('href="/subjects/computer-science/software-engineering/masters?view=guides"');
+    expect(html).not.toContain('every destination');
+  });
+
+  it('says how to use the toggle, and leaves nothing under the heading', () => {
+    expect(html).toContain('2 published programmes, each under the level it is taught at. Pick a level to see its courses.');
+    expect(heroOf(html)).not.toContain('levelchips');
+  });
+
+  it('claims no level page on a specialization offered at nothing', () => {
+    const none = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={specialization as never}
+        scholarships={[]}
+        catalogue={catalogue}
+        levels={everyLevel([], catalogue, [])}
+      />,
+    );
+    expect(none).not.toContain('studylevel__elsewhere');
+    expect(none).not.toContain('levelchips');
   });
 });
