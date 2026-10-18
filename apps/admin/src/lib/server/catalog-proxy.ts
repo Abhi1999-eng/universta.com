@@ -316,7 +316,7 @@ function operationDetails(operation: CatalogProxyOperation): {
       path: `/api/v1/admin/${resource}/${encodeURIComponent(id ?? '')}/level-pages${leaf}`,
       query: [],
       body: action === 'put'
-        ? ['intro', 'admissionNote', 'careersNote', 'status', 'faqs', 'seo', 'expectedUpdatedAt']
+        ? ['intro', 'admissionNote', 'careersNote', 'industries', 'employers', 'lookingAhead', 'status', 'faqs', 'seo', 'expectedUpdatedAt']
         : action === 'delete' ? ['expectedUpdatedAt'] : [],
     };
   }

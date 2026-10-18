@@ -93,6 +93,9 @@ test.describe('level pages written in the admin', () => {
     await box(page, 'Intro').fill(intro);
     await box(page, 'Admission note').fill('Most programmes ask for biology or chemistry at school.');
     await box(page, 'Careers note').fill('Graduates work in conservation, fisheries and research.');
+    await box(page, 'Industries').fill('Fisheries, shipping and offshore energy.');
+    await box(page, 'Employers').fill('Port authorities and marine research institutes.');
+    await box(page, 'Looking ahead').fill('Demand grows with offshore wind and ocean monitoring.');
     const faqs = [
       ['Is fieldwork part of the degree?', 'Yes, most programmes include time at sea.'],
       ['Do I need to dive?', 'Not usually; some modules offer it.'],
@@ -121,6 +124,13 @@ test.describe('level pages written in the admin', () => {
     await page.goto(`${webBaseUrl}/subjects/${slug}/bachelors`);
     await expect(page.getByText(intro)).toBeVisible();
     await expect(page.getByText(faqs[0][0])).toBeVisible();
+    /* Each written section is a band of its own, under its own heading. */
+    for (const heading of ['Career pathways', 'Industries', 'Employers', 'Looking ahead'])
+      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    await expect(page.getByText('Fisheries, shipping and offshore energy.')).toBeVisible();
+    await expect(page.getByText('Port authorities and marine research institutes.')).toBeVisible();
+    await expect(page.getByText('Demand grows with offshore wind and ocean monitoring.')).toBeVisible();
+    await expect(page.getByText('Named for illustration only; not a ranking, endorsement or partnership.')).toBeVisible();
 
     /* Move to draft stays on the editor. */
     await page.goto(`/subjects/${subjectId}`);

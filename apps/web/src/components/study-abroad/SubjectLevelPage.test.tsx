@@ -23,6 +23,8 @@ const state = vi.hoisted(() => ({
   specializationLevels: null as Array<{ id: string; code: string; name: string }> | null,
   /** What the API holds for the page an editor writes, or null for none. */
   levelPage: null as unknown,
+  /** The destinations the level's programmes are in, as the API counts them. */
+  countries: [] as Array<{ value: string; label: string; count: number }>,
 }));
 const renders = vi.hoisted(() => ({ programmes: vi.fn(), guides: vi.fn() }));
 /* React's `cache` does not memoize outside a server render, and the page
@@ -116,6 +118,9 @@ const written = (over: Partial<SubjectLevelPageData> = {}): SubjectLevelPageData
     intro: '<p>Why a Bachelor’s in Computing pays off.</p>',
     admissionNote: '<p>Entry asks for maths.</p>',
     careersNote: '<p>Graduates go into software.</p>',
+    industries: '<p>Software and finance.</p>',
+    employers: '<p>Banks and studios.</p>',
+    lookingAhead: '<p>Demand keeps growing.</p>',
     faqs,
     updatedAt: '2026-10-17T00:00:00.000Z',
   },
@@ -179,7 +184,7 @@ vi.mock('@/lib/phase1', () => ({
       meta: { page: 1, limit: 18, total, totalPages: total ? 1 : 0 },
       summary: { programmes: total, universities: total ? 3 : 0, cities: total ? 2 : 0, countries: total ? 2 : 0 },
       facets: {
-        countries: [], universities: [], cities: [], subjects: [], levels: [],
+        countries: total ? state.countries : [], universities: [], cities: [], subjects: [], levels: [],
         specializations: total ? [
           { value: 'computer-science', label: 'Computer Science', count: 6 },
           { value: 'data-science', label: 'Data Science', count: 0 },
@@ -214,6 +219,17 @@ const jsonLd = (html: string) =>
   [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]) as Record<string, unknown>);
 const barHrefs = (html: string) =>
   [...(html.match(/<nav class="levelbar levelbar--wide"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? '').matchAll(/href="([^"?]+)/g)].map((match) => match[1]);
+/** One section of the page, from its opening tag to its close. */
+const section = (html: string, marker: string) => {
+  const at = html.indexOf(marker);
+  return at < 0 ? '' : html.slice(at, html.indexOf('</section>', at));
+};
+const hero = (html: string) => section(html, 'class="hero hero--compact"');
+/** The page's sections in the order drawn, by id (the hero and the closing
+ *  band by their own markers). */
+const run = (html: string) =>
+  [...html.matchAll(/<section class="(hero hero--compact|sec[^"]*)"(?: id="([^"]+)")?|data-testid="plan"/g)]
+    .map((match) => (match[0] === 'data-testid="plan"' ? 'plan' : match[2] ?? 'hero'));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -228,6 +244,7 @@ beforeEach(() => {
   state.specializationRobots = undefined;
   state.specializationLevels = null;
   state.levelPage = null;
+  state.countries = [];
 });
 
 describe('a subject or specialization at one study level', () => {
@@ -405,6 +422,13 @@ describe('the level page’s hero', () => {
     expect(html).toContain('<a class="specchip" href="/subjects/computing/data-science/bachelors">Data Science</a>');
     expect(html).not.toContain('law-tech');
     expect(html).not.toContain('class="levelup"');
+    /* In a band of their own after the hero, under its heading. */
+    expect(html.indexOf('id="specializations"')).toBeGreaterThan(html.indexOf('class="hero hero--compact"'));
+    expect(hero(html)).not.toContain('specchips');
+    const chips = section(html, 'id="specializations"');
+    expect(chips).toContain('<h2 class="sec-title">Specializations at Bachelor&#x27;s</h2>');
+    expect(chips).toContain('href="/subjects/computing/computer-science/bachelors"');
+    expect(chips).not.toContain('class="label"');
   });
 
   it('hands a specialization’s reader on to its siblings and up to its subject', async () => {
@@ -412,9 +436,17 @@ describe('the level page’s hero', () => {
     expect(html).toContain('Other Computing specializations at Bachelor&#x27;s');
     expect(html).toContain('href="/subjects/computing/data-science/bachelors"');
     expect(html).not.toContain('href="/subjects/computing/computer-science/bachelors">Computer Science');
-    const chips = html.slice(html.indexOf('specchips'), html.indexOf('</section>'));
+    const chips = section(html, 'id="specializations"');
+    expect(chips).toContain('href="/subjects/computing/data-science/bachelors"');
     expect(chips).not.toContain('<em>');
-    expect(html).toMatch(/<p class="levelup"><a class="linkcta" href="\/subjects\/computing\/bachelors">Bachelor&#x27;s in Computing/);
+    /* The way up stays in the hero. */
+    expect(hero(html)).toMatch(/<p class="levelup"><a class="linkcta" href="\/subjects\/computing\/bachelors">Bachelor&#x27;s in Computing/);
+  });
+
+  it('draws no specializations band where none is offered at the level', async () => {
+    const html = await render({}, { levelSlug: 'mba' });
+    expect(html).not.toContain('id="specializations"');
+    expect(html).not.toMatch(/href="\/subjects\/computing\/[a-z-]+-science\/mba"/);
   });
 });
 
@@ -531,24 +563,41 @@ describe('subject level metadata', () => {
 });
 
 describe('what an editor writes for a level page', () => {
-  it('draws the intro under the hero and the notes and questions after the list', async () => {
+  it('runs a subject’s page from why to study it, through careers and where, to its list and questions', async () => {
     state.levelPage = written();
+    state.countries = [{ value: 'uk', label: 'United Kingdom', count: 6 }];
     const html = await render();
-    const at = (marker: string) => html.indexOf(marker);
+    expect(run(html)).toEqual([
+      'hero', 'overview', 'specializations', 'careers', 'industries', 'employers', 'admission', 'looking-ahead',
+      'where-to-study', 'discovery', 'faqs', 'more', 'plan',
+    ]);
+    for (const heading of [
+      'Why study a Bachelor&#x27;s in Computing?',
+      'Specializations at Bachelor&#x27;s',
+      'Career pathways',
+      'Industries',
+      'Employers',
+      'Getting into Bachelor&#x27;s in Computing',
+      'Looking ahead',
+      'Where to study a Bachelor&#x27;s in Computing',
+      'Questions about Bachelor&#x27;s in Computing',
+      'More on Computing',
+    ]) expect(html).toContain(`<h2 class="sec-title">${heading}</h2>`);
+    /* The intro is a band a reader sees, no longer a heading for a screen
+       reader alone. */
     expect(html).toContain('Why a Bachelor’s in Computing pays off.');
-    expect(at('id="overview"')).toBeGreaterThan(at('class="hero hero--compact"'));
-    expect(at('id="overview"')).toBeLessThan(at('id="discovery"'));
-    expect(at('id="discovery"')).toBeLessThan(at('id="admission"'));
-    expect(at('id="admission"')).toBeLessThan(at('id="careers"'));
-    expect(at('id="careers"')).toBeLessThan(at('id="faqs"'));
-    expect(at('id="faqs"')).toBeLessThan(at('data-testid="plan"'));
-    expect(html).toContain('Getting into Bachelor&#x27;s in Computing');
-    expect(html).toContain('Where Bachelor&#x27;s in Computing can lead');
-    expect(html).toContain('Questions about Bachelor&#x27;s in Computing');
-    /* Paper and white alternate from the white list above. */
-    expect(html).toMatch(/<section class="sec sec--paper" id="admission">/);
-    expect(html).toMatch(/<section class="sec sec--white" id="careers">/);
-    expect(html).toMatch(/<section class="sec sec--paper" id="faqs">/);
+    expect(html).not.toMatch(/<h2 class="sr-only">[^<]*About Bachelor/);
+    for (const text of ['Graduates go into software.', 'Software and finance.', 'Banks and studios.', 'Entry asks for maths.', 'Demand keeps growing.'])
+      expect(html).toContain(text);
+    /* The employers are always followed by what naming them means. */
+    expect(section(html, 'id="employers"')).toMatch(
+      /Banks and studios\.[\s\S]*<p class="trust__note">Named for illustration only; not a ranking, endorsement or partnership\.<\/p>/,
+    );
+    /* Paper next to the white list, above and below, alternating outwards. */
+    expect(html).toContain('<section class="sec sec--paper" id="where-to-study">');
+    expect(html).toContain('<section class="sec sec--white" id="looking-ahead">');
+    expect(html).toContain('<section class="sec sec--paper" id="faqs">');
+    expect(html).toContain('<section class="sec sec--white" id="more">');
     const questions = jsonLd(html).find((data) => data['@type'] === 'FAQPage')!;
     expect((questions.mainEntity as Array<{ name: string; acceptedAnswer: { text: string } }>).map((entry) => [entry.name, entry.acceptedAnswer.text])).toEqual([
       ['Do I need maths?', 'Answer 1.'],
@@ -557,24 +606,55 @@ describe('what an editor writes for a level page', () => {
     ]);
   });
 
+  it('runs a specialization’s page from why and where to its list, then the rest', async () => {
+    state.levelPage = written({ specialization: { id: specialization.id, name: specialization.name, slug: specialization.slug } });
+    state.countries = [{ value: 'uk', label: 'United Kingdom', count: 6 }];
+    const html = await render({}, { specializationSlug: 'computer-science' });
+    expect(run(html)).toEqual([
+      'hero', 'overview', 'where-to-study', 'discovery', 'admission', 'careers', 'industries', 'employers', 'looking-ahead',
+      'specializations', 'parent-subject', 'faqs', 'more', 'plan',
+    ]);
+    expect(html).toContain('<h2 class="sec-title">Why study a Bachelor&#x27;s in Computer Science?</h2>');
+    expect(html).toContain('<h2 class="sec-title">Getting into Bachelor&#x27;s in Computer Science</h2>');
+    expect(html).toContain('<section class="sec sec--paper" id="where-to-study">');
+    expect(html).toContain('<section class="sec sec--paper" id="admission">');
+  });
+
+  it('keeps the list’s anchor, so the switcher still lands on it', async () => {
+    state.levelPage = written();
+    const html = await render();
+    expect(html).toContain('<section class="sec sec--white sec--tight coursefinder" id="discovery">');
+    expect(html).toMatch(/data-testid="switch-guides"/);
+    expect(html).toMatch(/href="\/subjects\/computing\/bachelors\?view=guides#discovery"/);
+  });
+
   it('draws each part only where something is written', async () => {
     state.levelPage = written({
-      content: { ...written().content!, intro: '<p> </p>', careersNote: null, faqs: [] },
+      content: { ...written().content!, intro: '<p> </p>', careersNote: null, industries: null, employers: null, lookingAhead: null, faqs: [] },
     });
     const html = await render();
-    expect(html).not.toContain('id="overview"');
+    for (const id of ['overview', 'careers', 'industries', 'employers', 'looking-ahead', 'faqs'])
+      expect(html).not.toContain(`id="${id}"`);
     expect(html).toContain('id="admission"');
-    expect(html).not.toContain('id="careers"');
-    expect(html).not.toContain('id="faqs"');
+    expect(html).not.toContain('Named for illustration only');
     expect(jsonLd(html).some((data) => data['@type'] === 'FAQPage')).toBe(false);
-    /* The one band left opens on paper. */
-    expect(html).toMatch(/<section class="sec sec--paper" id="admission">/);
+  });
+
+  it('reads a page from an API that sends none of the newer sections', async () => {
+    const { industries, employers, lookingAhead, ...older } = written().content!;
+    void industries; void employers; void lookingAhead;
+    state.levelPage = written({ content: older });
+    const html = await render();
+    expect(html).toContain('id="overview"');
+    expect(html).toContain('id="careers"');
+    for (const id of ['industries', 'employers', 'looking-ahead']) expect(html).not.toContain(`id="${id}"`);
   });
 
   it('draws nothing of a page that is not published', async () => {
     state.levelPage = written({ content: null, hasOwnContent: false });
     const html = await render();
-    for (const id of ['overview', 'admission', 'careers', 'faqs']) expect(html).not.toContain(`id="${id}"`);
+    for (const id of ['overview', 'admission', 'careers', 'industries', 'employers', 'looking-ahead', 'faqs'])
+      expect(html).not.toContain(`id="${id}"`);
   });
 
   it('ignores a page for another level', async () => {
@@ -628,5 +708,87 @@ describe('what an editor writes for a level page', () => {
   it('follows its own robots follow setting', async () => {
     state.levelPage = written({ seo: { ...written().seo!, robotsFollow: false } });
     expect((await metadata()).robots).toEqual({ index: true, follow: false });
+  });
+});
+
+describe('where to study', () => {
+  it('lists only the destinations with programmes, most first, each opening on the field there', async () => {
+    state.countries = [
+      { value: 'japan', label: 'Japan', count: 3 },
+      { value: 'uk', label: 'United Kingdom', count: 6 },
+      { value: 'fr', label: 'France', count: 0 },
+    ];
+    const html = await render();
+    const band = section(html, 'id="where-to-study"');
+    expect(band).toContain('Where to study a Bachelor&#x27;s in Computing');
+    expect(band.indexOf('href="/study-abroad/uk/computing#level-ug"')).toBeGreaterThan(-1);
+    expect(band.indexOf('href="/study-abroad/uk/computing#level-ug"')).toBeLessThan(band.indexOf('href="/study-abroad/japan/computing#level-ug"'));
+    expect(band).toContain('<span class="h-card__t">United Kingdom</span><span class="h-card__m">6 programmes</span>');
+    expect(band).toContain('<span class="h-card__m">3 programmes</span>');
+    expect(html).not.toContain('study-abroad/fr');
+  });
+
+  it('opens on the specialization in each destination from a specialization’s page', async () => {
+    state.countries = [{ value: 'uk', label: 'United Kingdom', count: 1 }];
+    const html = await render({}, { specializationSlug: 'computer-science' });
+    expect(section(html, 'id="where-to-study"')).toContain('href="/study-abroad/uk/computing/computer-science#level-ug"');
+    expect(html).toContain('1 programme<');
+  });
+
+  it('is not drawn when no destination is listed, or the programmes could not be read', async () => {
+    expect(await render()).not.toContain('id="where-to-study"');
+    for (const map of memo.maps) map.clear();
+    state.countries = [{ value: 'uk', label: 'United Kingdom', count: 6 }];
+    state.programmesMissing = true;
+    expect(await render()).not.toContain('id="where-to-study"');
+  });
+});
+
+describe('more on the field', () => {
+  it('links a subject’s other level pages by their plain addresses, then the subject', async () => {
+    const band = section(await render(), 'id="more"');
+    expect(band).toContain('More on Computing');
+    expect([...band.matchAll(/class="specchip"[^>]* href="([^"]+)"/g)].map((match) => match[1])).toEqual([
+      '/subjects/computing/masters',
+      '/subjects/computing/mba',
+    ]);
+    expect(band).not.toContain('href="/subjects/computing/bachelors"');
+    expect(band).not.toContain('view=guides');
+    expect(band).toMatch(/<a class="linkcta" href="\/subjects\/computing">About Computing/);
+  });
+
+  it('links a specialization’s other level pages, then the specialization', async () => {
+    const band = section(await render({}, { specializationSlug: 'computer-science' }), 'id="more"');
+    expect(band).toContain('More on Computer Science');
+    expect([...band.matchAll(/class="specchip"[^>]* href="([^"]+)"/g)].map((match) => match[1])).toEqual([
+      '/subjects/computing/computer-science/masters',
+    ]);
+    expect(band).toMatch(/<a class="linkcta" href="\/subjects\/computing\/computer-science">About Computer Science/);
+  });
+
+  it('links only the field where it claims no level', async () => {
+    state.bare = true;
+    const band = section(await render(), 'id="more"');
+    expect(band).not.toContain('specchip');
+    expect(band).toMatch(/<a class="linkcta" href="\/subjects\/computing">About Computing/);
+  });
+});
+
+describe('the parent subject card', () => {
+  it('opens a specialization’s subject at the same level', async () => {
+    const band = section(await render({}, { specializationSlug: 'computer-science' }), 'id="parent-subject"');
+    expect(band).toContain('href="/subjects/computing/bachelors"');
+    expect(band).toContain('<span class="h-card__t">Bachelor&#x27;s in Computing</span>');
+    expect(band).toContain('All Computing specializations at Bachelor&#x27;s');
+  });
+
+  it('is not on a subject’s own page', async () => {
+    expect(await render()).not.toContain('id="parent-subject"');
+  });
+
+  it('is not drawn where the subject claims no level', async () => {
+    state.bare = true;
+    state.specializationLevels = [];
+    expect(await render({}, { specializationSlug: 'computer-science' })).not.toContain('id="parent-subject"');
   });
 });

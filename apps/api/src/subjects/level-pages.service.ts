@@ -63,6 +63,19 @@ type Offered = {
   sources: Map<string, Set<LevelSource>>;
 };
 
+/* What an editor writes for a page besides its questions: each is sanitised
+   rich text, null when nothing is written. Any one of them, or a live
+   question, is enough to publish; only the intro counts for search. */
+const TEXT_FIELDS = [
+  'intro',
+  'admissionNote',
+  'careersNote',
+  'industries',
+  'employers',
+  'lookingAhead',
+] as const;
+type TextField = (typeof TEXT_FIELDS)[number];
+
 const PUBLISHED = { status: 'PUBLISHED', deletedAt: null } as const;
 const STALE_MESSAGE =
   'This level page changed in another session. Reload before saving';
@@ -76,8 +89,9 @@ const FAQ_ORDER = [
 /**
  * A study level's own page within a subject or a specialization --
  * /subjects/computing/masters, /subjects/computing/ai/masters -- and what an
- * editor writes for it: an intro, an admission note, a careers note, its
- * questions and its SEO, saved together under one version.
+ * editor writes for it: an intro, an admission note, a careers note, the
+ * industries and employers its graduates go to, a look ahead, its questions
+ * and its SEO, saved together under one version.
  *
  * Which levels a field has a page at is worked out here, the same way the
  * website works it out (apps/web course-levels.ts): a subject is offered at
@@ -147,6 +161,9 @@ export class SubjectLevelPagesService {
                 hasIntro: page.intro !== null,
                 hasAdmissionNote: page.admissionNote !== null,
                 hasCareersNote: page.careersNote !== null,
+                hasIndustries: page.industries !== null,
+                hasEmployers: page.employers !== null,
+                hasLookingAhead: page.lookingAhead !== null,
                 faqCount: page._count.faqs,
                 hasSeo: withSeo.has(page.id),
                 searchReady: hasOwnContent({
@@ -228,32 +245,27 @@ export class SubjectLevelPagesService {
       ]);
     }
 
+    /* A text left out of the body is left as it is. */
+    const texts: Partial<Record<TextField, string | null>> = {};
+    for (const key of TEXT_FIELDS)
+      if (dto[key] !== undefined) texts[key] = richTextOrNull(dto[key]);
     /* `status` is always written, so the page's updatedAt moves on every
        save -- also one that changed only the questions or the SEO -- and
        one version covers all of it. */
     const data = {
-      ...(dto.intro !== undefined ? { intro: richTextOrNull(dto.intro) } : {}),
-      ...(dto.admissionNote !== undefined
-        ? { admissionNote: richTextOrNull(dto.admissionNote) }
-        : {}),
-      ...(dto.careersNote !== undefined
-        ? { careersNote: richTextOrNull(dto.careersNote) }
-        : {}),
+      ...texts,
       status: dto.status ?? current?.status ?? 'DRAFT',
     };
     /* Published means something shows: checked on the page as it will be
        once this save lands, the parts not sent as they are now. */
     if (data.status === 'PUBLISHED') {
-      const kept = <K extends 'intro' | 'admissionNote' | 'careersNote'>(
-        key: K,
-      ) => (key in data ? data[key] : current?.[key]) ?? null;
+      const kept = <K extends TextField>(key: K) =>
+        (key in data ? data[key] : current?.[key]) ?? null;
       const liveFaqs = (faqs ?? current?.faqs ?? []) as Array<{
         status: string;
       }>;
       if (
-        !kept('intro') &&
-        !kept('admissionNote') &&
-        !kept('careersNote') &&
+        !TEXT_FIELDS.some((key) => kept(key)) &&
         !liveFaqs.some((faq) => faq.status === 'ACTIVE')
       )
         throw catalogNotReady(
@@ -263,7 +275,7 @@ export class SubjectLevelPagesService {
             {
               field: 'intro',
               message:
-                'Write an intro, an admission note, a careers note or a question first',
+                'Write an intro, a note (admission, careers, industries, employers or looking ahead) or a question first',
             },
           ],
         );
@@ -513,6 +525,9 @@ export class SubjectLevelPagesService {
             intro: page.intro,
             admissionNote: page.admissionNote,
             careersNote: page.careersNote,
+            industries: page.industries,
+            employers: page.employers,
+            lookingAhead: page.lookingAhead,
             faqs: page.faqs,
             updatedAt: page.updatedAt.toISOString(),
           }
@@ -809,6 +824,9 @@ export class SubjectLevelPagesService {
             intro: page.intro,
             admissionNote: page.admissionNote,
             careersNote: page.careersNote,
+            industries: page.industries,
+            employers: page.employers,
+            lookingAhead: page.lookingAhead,
             faqs: page.faqs.map((faq) => ({
               id: faq.id,
               question: faq.question,
@@ -887,6 +905,9 @@ export class SubjectLevelPagesService {
       intro: string | null;
       admissionNote: string | null;
       careersNote: string | null;
+      industries: string | null;
+      employers: string | null;
+      lookingAhead: string | null;
     },
     faqs: number,
   ) {
@@ -898,6 +919,9 @@ export class SubjectLevelPagesService {
       introLength: page.intro?.length ?? 0,
       admissionNoteLength: page.admissionNote?.length ?? 0,
       careersNoteLength: page.careersNote?.length ?? 0,
+      industriesLength: page.industries?.length ?? 0,
+      employersLength: page.employers?.length ?? 0,
+      lookingAheadLength: page.lookingAhead?.length ?? 0,
       faqs,
     };
   }

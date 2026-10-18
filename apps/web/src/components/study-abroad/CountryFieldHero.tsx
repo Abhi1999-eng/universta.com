@@ -155,12 +155,13 @@ export function SpecializationChips({
   label = 'Specializations taught here',
 }: {
   chips: Array<{ id: string; name: string; href: string; count?: number }>;
-  label?: string;
+  /** Null under a section's own heading, which already says it. */
+  label?: string | null;
 }) {
   if (!chips.length) return null;
   return (
     <div className="specchips">
-      <span className="label">{label}</span>
+      {label ? <span className="label">{label}</span> : null}
       <div className="specchips__row">
         {chips.map((chip) => (
           <Link className={chip.count ? 'specchip specchip--live' : 'specchip'} href={chip.href} key={chip.id}>

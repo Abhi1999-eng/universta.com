@@ -1,0 +1,143 @@
+# Level page content (2026-10-18)
+
+Written in our own words with applicationabroad's subject page as the structure (client: "abhi same content use kro level mai bhi"). Each field's one set of copy goes on **every** level page of that field for now.
+
+Checked against applicationabroad: no shared run of 6+ words in any set, no list copied in the same order, and the employers are real organisations. The pages stay noindex until each has its own intro plus 3 FAQs, so the shared text is not indexed as duplicates.
+
+Fields in the level page editor (Admin › subject or specialization › Level pages › Write): **Intro** (shown as "Why study …?"), **Careers note** (shown as "Career pathways"), **Industries**, **Employers**, **Looking ahead**. Admission note and FAQs are left empty for now.
+
+## Psychology
+
+Level pages: `/subjects/psychology/bachelors`, `/subjects/psychology/masters`
+
+### Intro ("Why study …?")
+
+```html
+<p>Psychology asks why people act as they do, and tests the answers with evidence. You study mental health, the brain and nervous system, how children develop, personality, language, memory and how people behave in groups. Much of any course is about how that evidence is gathered: you design and run studies, work with data and learn to tell when a finding is weaker than it looks.</p><p>Those habits are useful beyond psychology: planning research, working with numbers and interview data, writing clearly and handling people's personal information with care. A <a href="/subjects/psychology/bachelors">bachelor's in psychology</a> gives you a broad base; a <a href="/subjects/psychology/masters">master's</a> lets you focus on one area, such as clinical, organisational or educational psychology, and is often the next step towards professional training.</p><p>Ideas about family, emotion and mental illness differ between countries, which makes psychology rewarding to study abroad. Living with other assumptions can help you see which findings hold everywhere and which do not. You also see how another health system responds to people in distress.</p>
+```
+
+### Careers note ("Career pathways")
+
+```html
+<ul><li>Research assistant</li><li>UX researcher</li><li>Clinical psychologist</li><li>Educational psychologist</li><li>Forensic psychologist</li><li>Organisational psychologist</li><li>Sport and exercise psychologist</li><li>Clinical neuropsychologist</li><li>Addiction counsellor</li><li>Probation officer</li><li>Psychometrician</li><li>Human factors specialist</li><li>Behavioural insights adviser</li></ul>
+```
+
+### Industries
+
+```html
+<ul><li><strong>Health and social care</strong>: Psychologists and therapists treat mental health conditions in hospitals, clinics and charities; most clinical posts need a further degree and supervised practice.</li><li><strong>Education</strong>: Psychologists and support staff work with schools and universities on learning difficulties, behaviour and student wellbeing.</li><li><strong>Technology</strong>: Researchers study how people use apps, websites and devices, and turn those findings into products that are easier to use.</li><li><strong>Human resources and consulting</strong>: Graduates work on recruitment, staff assessment, training and workplace wellbeing, applying what is known about motivation and teams.</li><li><strong>Sport and exercise</strong>: Sport and exercise psychologists work with athletes, coaches and teams on motivation, confidence, pressure and coming back from injury.</li><li><strong>Charities and humanitarian aid</strong>: In aid agencies and charities, graduates help deliver psychological and social support to children, refugees and people affected by conflict or disaster.</li><li><strong>Criminal justice</strong>: Forensic psychologists and case workers assess the risk a person may pose, run rehabilitation programmes and advise courts and parole boards.</li><li><strong>Universities and research institutes</strong>: Research groups in universities and hospitals employ graduates to run experiments and analyse results; university teaching posts usually need a doctorate.</li></ul>
+```
+
+### Employers
+
+```html
+<ul><li>National Health Service (NHS), UK</li><li>NIMHANS, Bengaluru, India</li><li>Institute of Mental Health, Singapore</li><li>HM Prison and Probation Service, England and Wales</li><li>Australian Institute of Sport</li><li>Max Planck Society, Germany</li><li>Google</li><li>Deloitte</li><li>UNICEF</li><li>Médecins Sans Frontières</li></ul>
+```
+
+### Looking ahead
+
+```html
+<p>Many health systems want mental health care offered through family doctors, schools and community clinics, but there are too few psychologists to staff them. One response is to share the work: in many places psychologists now train and supervise wellbeing practitioners, teachers and community health workers, so leading others is becoming part of the job.</p><p>Ageing populations add work on dementia, recovery after stroke and living with long-term illness, which draws on health psychology and neuropsychology. Therapy by video or app reaches people far from a clinic, but practitioners often need to be registered where their client lives, not only in their own country.</p><p>In many countries psychologist is a protected title, and qualifying usually takes several more years after a first degree, so ask before you enrol whether the country where you hope to work will accept the qualification. If research, business or policy appeals more, statistics and some coding will probably be among your most useful skills.</p>
+```
+
+## Computer Science & IT
+
+Level pages: `/subjects/computer-science-it/bachelors`, `/subjects/computer-science-it/masters`, `/subjects/computer-science-it/phd`
+
+### Intro ("Why study …?")
+
+```html
+<p>Computer Science and IT is the study of how computers and software work, and how people and organisations put them to use: designing algorithms, writing programs, running networks and systems, and managing data. A bachelor's degree usually starts with programming, mathematics and computer systems, then often lets you specialise in areas such as <a href="/subjects/computer-science-it/data-science">data science</a>, <a href="/subjects/computer-science-it/artificial-intelligence">artificial intelligence</a> or <a href="/subjects/computer-science-it/cybersecurity">cybersecurity</a>.</p><p>You learn to split a large problem into smaller parts, reason precisely, test your own work and explain technical choices to non-specialists. Teaching is often practical, with lab sessions and group projects. Many degrees end with a final-year project or thesis, and some include an industry placement.</p><p>Studying abroad can open up modules, labs and research groups you may not find at home, and, where your visa allows, internships in your host country. Working with classmates from other countries is good practice in agreeing on a design and dividing the work. The contacts you make can help when you look for work after graduating.</p>
+```
+
+### Careers note ("Career pathways")
+
+```html
+<ul><li>Software Developer</li><li>Data Analyst</li><li>Information Security Analyst</li><li>Full-Stack Developer</li><li>Cloud Engineer</li><li>Site Reliability Engineer</li><li>Embedded Software Engineer</li><li>Machine Learning Engineer</li><li>Systems Administrator</li><li>Data Scientist</li><li>IT Business Analyst</li><li>Software Test Engineer</li><li>Technical Product Manager</li><li>Research Engineer</li></ul>
+```
+
+### Industries
+
+```html
+<ul><li><strong>Banking, insurance and payments</strong>: Banks, insurers and payment companies need developers and analysts for secure transaction systems, fraud detection, and trading and risk tools.</li><li><strong>Software products and platforms</strong>: Product companies hire engineers to design, build and maintain the apps, services and tools that businesses and the public rely on.</li><li><strong>Retail and e-commerce</strong>: Retailers and online marketplaces depend on staff who build and run websites, recommendation systems, stock and delivery software, and customer analytics.</li><li><strong>Health and medical technology</strong>: Hospitals, health-tech firms and device makers employ graduates on patient record systems, medical imaging software and data pipelines for clinical research.</li><li><strong>Telecommunications</strong>: Network operators need engineers to design, run and secure the systems that carry calls, mobile data and broadband.</li><li><strong>Technology consulting and outsourcing</strong>: Consultancies and outsourcing firms place new hires on client projects, such as moving systems to the cloud or building custom software.</li><li><strong>Government and public services</strong>: Government departments and agencies hire technologists to build digital services for citizens, look after large records systems and defend against cyberattacks.</li><li><strong>Research and higher education</strong>: Research institutes and universities take on research engineers and scientific programmers to work on problems from climate models to language technology.</li></ul>
+```
+
+### Employers
+
+```html
+<ul><li>Samsung Electronics</li><li>Wipro</li><li>Microsoft</li><li>JPMorgan Chase</li><li>Capgemini</li><li>Siemens</li><li>Flipkart</li><li>Ericsson</li><li>Deloitte</li><li>CERN</li></ul>
+```
+
+### Looking ahead
+
+```html
+<p>Tools built on <a href="/subjects/computer-science-it/artificial-intelligence">artificial intelligence</a> already suggest and write code, and more routine programming work is likely to be automated over the next decade. Graduates who can frame a problem clearly, check that a solution is correct and secure, and notice when an automated answer is wrong should be in a stronger position.</p><p>Failures in <a href="/subjects/computer-science-it/cybersecurity">cybersecurity</a>, privacy and cloud services are expensive and public, so many organisations are spending more on preventing them. Laws such as the EU AI Act and India's Digital Personal Data Protection Act set legal duties for how AI systems are built and used and how personal data is handled, so employers value graduates who can build software that meets them.</p><p>If you are choosing now, check that a programme teaches mathematics, algorithms and computer systems properly; these stay useful longer than any single language or tool. Look for plenty of real project work. You will keep learning new tools long after you graduate.</p>
+```
+
+## Data Science
+
+Level pages: `/subjects/computer-science-it/data-science/masters`
+
+### Intro ("Why study …?")
+
+```html
+<p>Data science is the work of turning raw, often messy data into evidence people can act on. It combines statistics, programming and an understanding of the field the data comes from, and is often taught within <a href="/subjects/computer-science-it">Computer Science & IT</a>, statistics or mathematics departments.</p><p>You learn to collect, clean and explore data, build and test statistical and machine learning models, and explain what the results do and do not show. Most programmes use Python or R alongside SQL, and cover probability, linear algebra, data visualisation and the ethics of handling personal data. Many also overlap with <a href="/subjects/computer-science-it/artificial-intelligence">Artificial Intelligence</a>, so you can often choose modules that lean towards building models or towards analysis and reporting.</p><p>Studying abroad means working with classmates, datasets and research problems from another country, and practising how to explain findings to people from different backgrounds. That matters in a field where much of the work ends up with non-specialists who must decide what to do next.</p>
+```
+
+### Careers note ("Career pathways")
+
+```html
+<ul><li>Data Scientist</li><li>Data Analyst</li><li>Machine Learning Engineer</li><li>Data Engineer</li><li>Analytics Engineer</li><li>Business Intelligence Analyst</li><li>Product Analyst</li><li>Statistician</li><li>Quantitative Analyst</li><li>Research Scientist</li><li>Data Visualisation Specialist</li><li>Risk Analyst</li></ul>
+```
+
+### Industries
+
+```html
+<ul><li><strong>Technology and internet services</strong>: Graduates build recommendation, search and forecasting models, and analyse how people use apps and websites to guide product decisions.</li><li><strong>Banking, finance and insurance</strong>: Data scientists model credit risk, detect fraudulent transactions and help banks and insurers price products and meet reporting rules.</li><li><strong>Healthcare and life sciences</strong>: Analysts work with patient records, clinical trial results and genomic data to support research, diagnosis and hospital planning.</li><li><strong>Retail and e-commerce</strong>: Graduates forecast demand, set prices, manage stock across stores and warehouses, and measure how promotions change what customers buy.</li><li><strong>Consulting and professional services</strong>: Graduates join analytics teams that help clients in many sectors use their own data to cut costs and plan ahead.</li><li><strong>Government and public sector</strong>: Data teams in public bodies analyse census, transport and health data to inform policy and plan public services.</li><li><strong>Telecommunications and media</strong>: Analysts predict which customers may leave, plan network capacity and study what audiences watch, read or listen to.</li><li><strong>Energy, manufacturing and logistics</strong>: Graduates use sensor and operations data to predict equipment faults, plan delivery routes and reduce waste and energy use.</li></ul>
+```
+
+### Employers
+
+```html
+<ul><li>Google</li><li>Microsoft</li><li>JPMorgan Chase</li><li>Tata Consultancy Services</li><li>Flipkart</li><li>Alibaba Group</li><li>Rakuten</li><li>Spotify</li><li>Novartis</li><li>Siemens</li></ul>
+```
+
+### Looking ahead
+
+```html
+<p>Data science is changing as tools that once needed expert coding become easier to use. Automated machine learning and AI assistants now handle some routine modelling and reporting, so the value of the work is moving towards framing the right question, judging data quality and explaining uncertainty clearly. Interest is also growing in data engineering, model monitoring and the governance of data, as more organisations run models in live systems and as many countries tighten rules on privacy and automated decisions.</p><p>If you are choosing the field now, it makes sense to build a strong base in statistics and programming rather than relying on particular tools, which are likely to change. Projects in an applied area such as health, finance or climate give your skills context, and some grounding in <a href="/subjects/computer-science-it/cybersecurity">Cybersecurity</a> and data protection is increasingly useful. Expect to keep learning well after you graduate.</p>
+```
+
+## Artificial Intelligence
+
+Level pages: `/subjects/computer-science-it/artificial-intelligence/masters`, `/subjects/computer-science-it/artificial-intelligence/phd`
+
+### Intro ("Why study …?")
+
+```html
+<p>Artificial intelligence is the study of how to build computer systems that perceive, reason, learn and act on information in ways that would normally need human judgement. It sits within <a href="/subjects/computer-science-it">Computer Science & IT</a> and draws heavily on mathematics and statistics, with links to linguistics, neuroscience and philosophy.</p><p>You learn how machine learning models are designed, trained and evaluated, along with topics such as neural networks, natural language processing, computer vision, search and planning, and reinforcement learning. Along the way you build skills in programming, often in Python, as well as linear algebra, probability, handling large datasets and judging whether a model's output can be trusted. There is a large overlap with <a href="/subjects/computer-science-it/data-science">Data Science</a>, and many programmes also cover the responsible and safe use of AI.</p><p>Studying abroad puts you alongside researchers and classmates from many countries, gives you access to different research groups and computing facilities, and shows you how AI is built, adopted and regulated beyond your home country.</p>
+```
+
+### Careers note ("Career pathways")
+
+```html
+<ul><li>Machine Learning Engineer</li><li>AI Engineer</li><li>Data Scientist</li><li>Applied Scientist</li><li>Research Scientist (AI)</li><li>Research Engineer</li><li>Computer Vision Engineer</li><li>Natural Language Processing Engineer</li><li>MLOps Engineer</li><li>Robotics Software Engineer</li><li>AI Product Manager</li><li>AI Solutions Architect</li><li>AI Governance and Ethics Specialist</li></ul>
+```
+
+### Industries
+
+```html
+<ul><li><strong>Technology and software</strong>: Graduates build and improve search, recommendation, language and vision features inside software products, cloud platforms and developer tools.</li><li><strong>Banking and financial services</strong>: Graduates build models that detect fraud, assess credit risk, automate document checks and support customer service.</li><li><strong>Healthcare and life sciences</strong>: Graduates help develop tools that read medical images, support diagnosis and speed up drug discovery, working closely with clinicians and scientists.</li><li><strong>Automotive, robotics and manufacturing</strong>: Engineers work on perception and control for autonomous vehicles, warehouse robots and factory systems that inspect products and predict faults.</li><li><strong>Retail and e-commerce</strong>: Graduates build recommendation engines, demand forecasts and pricing models, and improve search so customers find products more easily.</li><li><strong>Consulting and IT services</strong>: Graduates help organisations in many sectors choose, build and roll out AI systems, often adapting existing models to their own data.</li><li><strong>Research and higher education</strong>: Researchers in university and industry labs develop new methods, test how models behave and study how to make them safer.</li><li><strong>Government and public sector</strong>: Graduates apply AI to public services, transport and climate data, and help shape the rules and standards that govern its use.</li></ul>
+```
+
+### Employers
+
+```html
+<ul><li>Google DeepMind</li><li>Microsoft</li><li>NVIDIA</li><li>Tata Consultancy Services</li><li>Flipkart</li><li>Samsung Electronics</li><li>Toyota</li><li>Siemens</li><li>JPMorgan Chase</li><li>AstraZeneca</li></ul>
+```
+
+### Looking ahead
+
+```html
+<p>AI has moved quickly from research labs into everyday products. Much of the current work is about using large, general-purpose models well: adapting them to specific tasks, connecting them to other software, checking their outputs and running them at a sensible cost.</p><p>Governments in several regions are also introducing rules on how AI is built and used, so safety, fairness, privacy and security are becoming part of the job rather than an afterthought. Securing AI systems, and using AI to defend others, is one area where the field increasingly overlaps with <a href="/subjects/computer-science-it/cybersecurity">Cybersecurity</a>.</p><p>If you are choosing AI now, the specific tools you learn may well change before you graduate, so the lasting value lies in the foundations: mathematics, sound programming, careful evaluation and a clear sense of what a model cannot do. It also helps to pair AI with an area you care about, such as health, finance or climate.</p>
+```

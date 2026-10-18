@@ -18,6 +18,7 @@ import {
   LEVEL_PAGE_MAX_FAQS,
   levelPageBytes,
   levelPageFaqBlank,
+  levelPageHasWords,
   levelPagePayload,
   levelPagesAnchor,
   levelPageTitle,
@@ -43,7 +44,7 @@ import { ViewOnSite } from '@/features/shared/records-ui';
 
 type Intent = 'draft' | 'publish';
 
-const blankContent: LevelPageContent = { intro: '', admissionNote: '', careersNote: '' };
+const blankContent: LevelPageContent = { intro: '', admissionNote: '', careersNote: '', industries: '', employers: '', lookingAhead: '' };
 
 /** The editor's state for a page as the API returned it. A page not written
  * yet opens with one blank FAQ, as every FAQ card does. */
@@ -55,6 +56,9 @@ function draftFrom(detail: LevelPageDetail) {
       intro: page?.intro ?? '',
       admissionNote: page?.admissionNote ?? '',
       careersNote: page?.careersNote ?? '',
+      industries: page?.industries ?? '',
+      employers: page?.employers ?? '',
+      lookingAhead: page?.lookingAhead ?? '',
     },
     faqs: faqs.length ? faqs : [levelPageFaqBlank()],
     seo: seoDraftFromRecord(page?.seo ?? null),
@@ -71,9 +75,11 @@ const shownFaq = (row: FaqDraft) => faqUsed(row) && row.status === 'ACTIVE' && B
  *
  * The page lists its programmes, specializations and facts from the catalogue
  * whether or not anything is written here. What is written adds an overview,
- * an admission note, a careers note, FAQs and SEO of its own, and all of it is
- * saved in one request under one version: the FAQ list is replaced whole, and
- * blank SEO removes a stored record.
+ * an admission note, a careers note, the industries and employers it leads
+ * to, a look ahead, FAQs and SEO of its own, and all of it is saved in one
+ * request under one version: the FAQ list is replaced whole, and blank SEO
+ * removes a stored record. Only the intro and the FAQs count towards search;
+ * any written part is enough to publish.
  *
  * A page kept for a level that is no longer offered here is shown read-only:
  * it is off the site, and the card it came from can delete it.
@@ -181,7 +187,7 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
        refused here until a title and a description were written too. */
     if (unifiedSeoConfigured(seo) && (!seo.seoTitle.trim() || !seo.metaDescription.trim())) next.push('SEO title and meta description are both required when SEO is configured.');
     if (canonicalInputError(seo.canonicalUrl)) next.push('Canonical URL: use a site path beginning with / or an absolute HTTP(S) URL.');
-    if (intent === 'publish' && !payload.intro && !payload.admissionNote && !payload.careersNote && !payload.faqs.some((row) => row.status === 'ACTIVE'))
+    if (intent === 'publish' && !levelPageHasWords(payload))
       next.push('Write an intro, a note or an FAQ before publishing this level page.');
     if (payload.faqs.length > LEVEL_PAGE_MAX_FAQS) next.push(`A level page holds at most ${LEVEL_PAGE_MAX_FAQS} FAQs; this one has ${payload.faqs.length}.`);
     if (levelPageBytes(payload) > LEVEL_PAGE_MAX_BYTES) next.push('This page is too long to save in one go. Shorten the intro, the notes or the longest answers.');
@@ -228,7 +234,7 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
         <div>
           <h2 id="level-page-form-heading" className="p-h1">{levelPageTitle(detail)}</h2>
           <p className="p-sub">
-            This page lists its programmes, specializations and facts from the catalogue on its own. What you write here adds an overview, admission and careers notes, FAQs and SEO of its own. Everything on this page saves together.
+            This page lists its programmes, specializations, destinations and facts from the catalogue on its own. What you write here adds an overview, admission, careers, industries, employers and looking-ahead sections, FAQs and SEO of its own. Everything on this page saves together.
             {ownerLive && detail.offered ? <> <ViewOnSite path={detail.path} /></> : null}
           </p>
           <p className="p-hint mt-2">{readiness}</p>
@@ -260,16 +266,28 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
               <div>
                 <RichTextEditor label="Intro" value={content.intro} onChange={edit('intro')} enableImages={false} readOnly={readOnly} minHeight="min-h-40" />
                 <p className="p-hint mt-1">
-                  The page&apos;s overview, under its heading and the level&apos;s standard line{description ? <>: “{description}” (from Admin &gt; Study levels)</> : null}.
+                  The page&apos;s opening section, “Why study …?”, right under its heading and the level&apos;s standard line{description ? <>: “{description}” (from Admin &gt; Study levels)</> : null}.
                 </p>
               </div>
               <div>
                 <RichTextEditor label="Admission note" value={content.admissionNote} onChange={edit('admissionNote')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />
-                <p className="p-hint mt-1">What admission at this level asks for in this field.</p>
+                <p className="p-hint mt-1">What admission at this level asks for in this field. Shows as “Getting into {levelPageTitle(detail)}”.</p>
               </div>
               <div>
                 <RichTextEditor label="Careers note" value={content.careersNote} onChange={edit('careersNote')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />
-                <p className="p-hint mt-1">Where this level in this field tends to lead.</p>
+                <p className="p-hint mt-1">Where this level in this field tends to lead. Shows as “Career pathways”.</p>
+              </div>
+              <div>
+                <RichTextEditor label="Industries" value={content.industries} onChange={edit('industries')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />
+                <p className="p-hint mt-1">The sectors these graduates go into. Shows as “Industries”, after Career pathways.</p>
+              </div>
+              <div>
+                <RichTextEditor label="Employers" value={content.employers} onChange={edit('employers')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />
+                <p className="p-hint mt-1">Organisations that hire these graduates. Shows as “Employers”, always followed by: “Named for illustration only; not a ranking, endorsement or partnership.”</p>
+              </div>
+              <div>
+                <RichTextEditor label="Looking ahead" value={content.lookingAhead} onChange={edit('lookingAhead')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />
+                <p className="p-hint mt-1">How the field and demand for it are changing. Shows as “Looking ahead”.</p>
               </div>
             </div>
           </fieldset>

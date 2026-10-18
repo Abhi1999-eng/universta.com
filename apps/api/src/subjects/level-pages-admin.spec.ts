@@ -261,6 +261,9 @@ function fakeDb(seed: Partial<Record<string, Row[]>> = {}) {
           intro: null,
           admissionNote: null,
           careersNote: null,
+          industries: null,
+          employers: null,
+          lookingAhead: null,
           status: 'DRAFT',
           ...data,
           createdAt: stamp,
@@ -453,6 +456,9 @@ describe('the levels a field has a page at', () => {
       intro: '<p>Old.</p>',
       admissionNote: null,
       careersNote: null,
+      industries: null,
+      employers: null,
+      lookingAhead: null,
       status: 'PUBLISHED',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -462,7 +468,14 @@ describe('the levels a field has a page at', () => {
       level: { code: 'MBA' },
       offered: false,
       sources: [],
-      page: { id: 'old', status: 'PUBLISHED', hasIntro: true },
+      page: {
+        id: 'old',
+        status: 'PUBLISHED',
+        hasIntro: true,
+        hasIndustries: false,
+        hasEmployers: false,
+        hasLookingAhead: false,
+      },
     });
   });
 
@@ -507,6 +520,38 @@ describe('the levels a field has a page at', () => {
     await service.upsert(SUBJECT, 'ug', { status: 'DRAFT' }, request);
     expect(await ready()).toMatchObject({ searchReady: false });
   });
+
+  it('does not call a page search-ready on its new sections alone', async () => {
+    const { service } = fakeDb();
+    const detail = await service.upsert(
+      SUBJECT,
+      'ug',
+      {
+        industries: '<p>Fintech.</p>',
+        employers: '<p>Banks.</p>',
+        lookingAhead: '<p>Growing.</p>',
+        faqs: [faq(1), faq(2), faq(3)],
+        status: 'PUBLISHED',
+      },
+      request,
+    );
+    expect(detail.page).toMatchObject({
+      status: 'PUBLISHED',
+      intro: null,
+      searchReady: false,
+    });
+    expect(
+      (await service.list(SUBJECT)).find((row) => row.level.code === 'UG')
+        ?.page,
+    ).toMatchObject({
+      hasIntro: false,
+      hasIndustries: true,
+      hasEmployers: true,
+      hasLookingAhead: true,
+      faqCount: 3,
+      searchReady: false,
+    });
+  });
 });
 
 describe('writing a level page for the first time', () => {
@@ -547,6 +592,9 @@ describe('writing a level page for the first time', () => {
         intro: '<p onclick="steal()">Hello<script>alert(1)</script></p>',
         admissionNote: '<p> </p>',
         careersNote: '<p><img src="/media/chart.png" alt="Pay"></p>',
+        industries: '<p onclick="x()">Fintech<script>1</script></p>',
+        employers: '<p> </p>',
+        lookingAhead: '<p>AI demand grows.</p>',
         faqs: [
           {
             question: '<b>Is it hard?</b>',
@@ -560,6 +608,9 @@ describe('writing a level page for the first time', () => {
       intro: '<p>Hello</p>',
       admissionNote: null,
       careersNote: '<p><img src="/media/chart.png" alt="Pay"></p>',
+      industries: '<p>Fintech</p>',
+      employers: null,
+      lookingAhead: '<p>AI demand grows.</p>',
       faqs: [
         { question: 'Is it hard?', answer: '<p>Yes</p>', status: 'ACTIVE' },
       ],
@@ -634,6 +685,8 @@ describe('saving part of a level page', () => {
       {
         intro: '<p>Intro.</p>',
         admissionNote: '<p>Admission.</p>',
+        industries: '<p>Banks.</p>',
+        employers: '<p>Barclays.</p>',
         faqs: [faq(1), faq(2)],
         seo: { seoTitle: 'Study CS', metaDescription: 'Why.' },
       },
@@ -647,12 +700,14 @@ describe('saving part of a level page', () => {
     const detail = await service.upsert(
       SUBJECT,
       'ug',
-      { admissionNote: '' },
+      { admissionNote: '', employers: '' },
       request,
     );
     expect(detail.page).toMatchObject({
       intro: '<p>Intro.</p>',
       admissionNote: null,
+      industries: '<p>Banks.</p>',
+      employers: null,
     });
     expect(detail.page?.faqs).toHaveLength(2);
   });
@@ -754,10 +809,16 @@ describe('saving part of a level page', () => {
   it('audits an update with what the page was and is', async () => {
     const { service, db } = await written();
     await service.upsert(SUBJECT, 'ug', { status: 'PUBLISHED' }, request);
+    /* Sizes, not the words: '<p>Banks.</p>' and '<p>Barclays.</p>'. */
+    const sizes = {
+      industriesLength: 13,
+      employersLength: 16,
+      lookingAheadLength: 0,
+    };
     expect(db.audits.at(-1)).toMatchObject({
       action: 'UPDATE',
-      oldValues: { status: 'DRAFT', faqs: 2 },
-      newValues: { status: 'PUBLISHED', faqs: 2, hasSeo: true },
+      oldValues: { status: 'DRAFT', faqs: 2, ...sizes },
+      newValues: { status: 'PUBLISHED', faqs: 2, hasSeo: true, ...sizes },
     });
   });
 });
@@ -955,13 +1016,20 @@ describe('what a level page save refuses', () => {
       service.upsert(
         SUBJECT,
         'ug',
-        { status: 'PUBLISHED', intro: '<p> </p>', faqs: [faq(1, 'INACTIVE')] },
+        {
+          status: 'PUBLISHED',
+          intro: '<p> </p>',
+          industries: '<p> </p>',
+          faqs: [faq(1, 'INACTIVE')],
+        },
         request,
       ),
     ).rejects.toMatchObject({
       status: 422,
       response: {
         code: 'LEVEL_PAGE_NOT_READY',
+        message:
+          'Write an intro, a note or an FAQ before publishing this level page',
         details: [expect.objectContaining({ field: 'intro' })],
       },
     });
@@ -974,6 +1042,44 @@ describe('what a level page save refuses', () => {
         request,
       ),
     ).resolves.toMatchObject({ page: { status: 'PUBLISHED' } });
+  });
+
+  it('nothing when a page is published with one new section as its only words', async () => {
+    for (const key of ['industries', 'employers', 'lookingAhead'] as const) {
+      const { service } = fakeDb();
+      await expect(
+        service.upsert(
+          SUBJECT,
+          'ug',
+          { status: 'PUBLISHED', [key]: '<p>Words.</p>' },
+          request,
+        ),
+      ).resolves.toMatchObject({
+        page: { status: 'PUBLISHED', [key]: '<p>Words.</p>' },
+      });
+    }
+  });
+
+  it('nothing when a page is published on a new section written earlier, but does once it is cleared', async () => {
+    const { service } = fakeDb();
+    await service.upsert(
+      SUBJECT,
+      'ug',
+      { lookingAhead: '<p>Growing.</p>' },
+      request,
+    );
+    await expect(
+      service.upsert(SUBJECT, 'ug', { status: 'PUBLISHED' }, request),
+    ).resolves.toMatchObject({ page: { status: 'PUBLISHED' } });
+    await service.upsert(SUBJECT, 'ug', { status: 'DRAFT' }, request);
+    await expect(
+      service.upsert(
+        SUBJECT,
+        'ug',
+        { status: 'PUBLISHED', lookingAhead: '' },
+        request,
+      ),
+    ).rejects.toMatchObject({ response: { code: 'LEVEL_PAGE_NOT_READY' } });
   });
 
   it('a script canonical, and accepts a path on this site', async () => {
@@ -1132,6 +1238,20 @@ describe('the body a level page save accepts', () => {
         seo: { seoTitle: 'T', metaDescription: 'D', expectedUpdatedAt: 'x' },
       }),
     ).toEqual(['seo']);
+  });
+
+  it('takes the new sections as text or null and refuses one over 20000 characters', async () => {
+    expect(
+      await errors({
+        industries: null,
+        employers: '<p>x</p>',
+        lookingAhead: '',
+      }),
+    ).toEqual([]);
+    expect(await errors({ lookingAhead: 'x'.repeat(20001) })).toEqual([
+      'lookingAhead',
+    ]);
+    expect(await errors({ industries: 42 })).toEqual(['industries']);
   });
 
   it('refuses a status other than draft or published, and null questions', async () => {

@@ -12,7 +12,7 @@ const basePath = '/subjects/marine-sciences';
 
 type Page = NonNullable<LevelPageRow['page']>;
 const page = (overrides: Partial<Page> = {}): Page => ({
-  id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false,
+  id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false, hasIndustries: false, hasEmployers: false, hasLookingAhead: false,
   faqCount: 1, hasSeo: false, searchReady: false, updatedAt: 'v1', ...overrides,
 });
 /* A row as the API sends it: offered because it is ticked, unless told otherwise. */

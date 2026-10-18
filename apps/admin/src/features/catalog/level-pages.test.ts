@@ -7,6 +7,7 @@ import {
   levelPageEditorHref,
   levelPageFaqBlank,
   levelPageFaqs,
+  levelPageHasWords,
   levelPagePayload,
   levelPagesAnchor,
   levelPageTitle,
@@ -20,7 +21,7 @@ import { blankUnifiedSeo } from '@/features/shared/UnifiedSeoFields';
 
 const subject = { id: 'subject-1', name: 'Marine Sciences', slug: 'marine-sciences', status: 'PUBLISHED' };
 const level = { id: 'lvl-ug', code: 'UG', name: "Bachelor's", slug: 'bachelors', description: null, status: 'ACTIVE' };
-const blank = { intro: '', admissionNote: '', careersNote: '' };
+const blank = { intro: '', admissionNote: '', careersNote: '', industries: '', employers: '', lookingAhead: '' };
 
 describe('where level pages live', () => {
   it('addresses both owners and their card', () => {
@@ -102,7 +103,14 @@ describe('levelPageFaqs', () => {
 describe('levelPagePayload', () => {
   it('sends a first save with no FAQ ids, blank SEO as null and "no page yet" as the version', () => {
     const payload = levelPagePayload({
-      content: { intro: '<p><br></p>', admissionNote: ' <p>Grades.</p> ', careersNote: '<p>&nbsp;</p>' },
+      content: {
+        intro: '<p><br></p>',
+        admissionNote: ' <p>Grades.</p> ',
+        careersNote: '<p>&nbsp;</p>',
+        industries: '<p> </p>',
+        employers: ' <p>Banks.</p> ',
+        lookingAhead: '',
+      },
       faqs: [faqBlank()],
       seo: blankUnifiedSeo,
       intent: 'draft',
@@ -112,6 +120,9 @@ describe('levelPagePayload', () => {
       intro: '',
       admissionNote: '<p>Grades.</p>',
       careersNote: '',
+      industries: '',
+      employers: '<p>Banks.</p>',
+      lookingAhead: '',
       status: 'DRAFT',
       faqs: [],
       seo: null,
@@ -169,8 +180,34 @@ describe('levelPagePayload', () => {
     expect(levelPagePayload({ content: blank, faqs, seo: blankUnifiedSeo, intent: 'draft', page: null }).faqs).toEqual(levelPageFaqs(faqs));
   });
 
+  /* The text keys go first and in the page's own order, so a body read in
+     the network tab follows the editor top to bottom. */
+  it('sends every written part, in the editor’s order', () => {
+    expect(Object.keys(levelPagePayload({ content: blank, faqs: [], seo: blankUnifiedSeo, intent: 'draft', page: null }))).toEqual([
+      'intro', 'admissionNote', 'careersNote', 'industries', 'employers', 'lookingAhead', 'status', 'faqs', 'seo', 'expectedUpdatedAt',
+    ]);
+  });
+
   it('measures the body in bytes, as the proxy does', () => {
     expect(levelPageBytes({ a: 'é' })).toBe(JSON.stringify({ a: 'é' }).length + 1);
+  });
+});
+
+/* A page needs something to show before it is published. Any written part
+   will do; only the intro and the FAQs count towards search (searchGap). */
+describe('levelPageHasWords', () => {
+  const payload = (content: Partial<typeof blank>, faqs: FaqDraft[] = []) =>
+    levelPagePayload({ content: { ...blank, ...content }, faqs, seo: blankUnifiedSeo, intent: 'publish', page: null });
+
+  it('has none on a blank page, or one with only an inactive FAQ or empty markup', () => {
+    expect(levelPageHasWords(payload({}))).toBe(false);
+    expect(levelPageHasWords(payload({ industries: '<p> </p>', employers: '<p><br></p>' }))).toBe(false);
+    expect(levelPageHasWords(payload({}, [{ ...row('Q?', '0'), status: 'INACTIVE' }]))).toBe(false);
+  });
+
+  it('has words with any one written part, the new sections included, or an active FAQ', () => {
+    for (const key of Object.keys(blank) as Array<keyof typeof blank>) expect(levelPageHasWords(payload({ [key]: '<p>Words.</p>' }))).toBe(true);
+    expect(levelPageHasWords(payload({}, [row('Q?', '0')]))).toBe(true);
   });
 });
 

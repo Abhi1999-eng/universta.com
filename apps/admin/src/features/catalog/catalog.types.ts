@@ -416,6 +416,9 @@ export interface LevelPageRow {
     hasIntro: boolean;
     hasAdmissionNote: boolean;
     hasCareersNote: boolean;
+    hasIndustries: boolean;
+    hasEmployers: boolean;
+    hasLookingAhead: boolean;
     /** Active FAQs only. */
     faqCount: number;
     hasSeo: boolean;
@@ -438,6 +441,9 @@ export interface LevelPageDetail {
     intro: string | null;
     admissionNote: string | null;
     careersNote: string | null;
+    industries: string | null;
+    employers: string | null;
+    lookingAhead: string | null;
     /** The same shape a course's FAQs take, so the shared FAQ card reads
      * them as they are. Their ids change on every save: the list is
      * replaced whole. */
