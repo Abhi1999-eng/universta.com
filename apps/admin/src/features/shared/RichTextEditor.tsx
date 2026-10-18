@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import type { EditorialMedia } from '@/features/catalog/catalog.types';
 import type { DynamicVariable } from './variable-autocomplete';
 import type { EditorEntityContext } from './useEntityAutocomplete';
+import { useEditorFieldsLocked } from './EditorFields';
 
 /**
  * The single rich-text control every Country field uses. Its props are the
@@ -54,7 +55,9 @@ const JoditRichText = dynamic(
 );
 
 export function RichTextEditor(props: RichTextEditorProps) {
-  return <JoditRichText {...props} />;
+  /* Read-only while the editor around it is locked for a save; see EditorFields. */
+  const locked = useEditorFieldsLocked();
+  return <JoditRichText {...props} readOnly={props.readOnly || locked} />;
 }
 
 /**

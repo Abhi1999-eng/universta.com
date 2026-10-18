@@ -59,6 +59,7 @@ import { RichTextEditor } from '@/features/shared/RichTextEditor';
 import { variablesForContext } from '@/features/shared/variable-autocomplete';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { EnterSubmitGuard } from '@/features/shared/EnterSubmitGuard';
+import { EditorFields } from '@/features/shared/EditorFields';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { showCreatedAddress } from '@/features/shared/created-address';
@@ -335,7 +336,7 @@ function bodyJson(text: string, type: string) {
 
 export function CourseForm({ id }: { id?: string }) {
   const router = useRouter();
-  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
+  const [fieldsEl, setFieldsEl] = useState<HTMLFieldSetElement | null>(null);
   const [record, setRecord] = useState<CourseRecord | null>(null);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [core, setCore] = useState<CoreState>(coreBlank);
@@ -739,6 +740,8 @@ export function CourseForm({ id }: { id?: string }) {
     let courseId: string | null = record?.id ?? null;
     /* The availability rows this save has written, for their versions. */
     const writtenMappings = new Set<string>();
+    /* Whether this save ends by leaving for another page; see the finally. */
+    let leaving = false;
     try {
       const corePayload = {
         subjectId: core.subjectId,
@@ -805,10 +808,12 @@ export function CourseForm({ id }: { id?: string }) {
       if (intent === 'publish') {
         queueFlash({ tone: 'success', message: `${finalRecord.name} published successfully.` });
         /* A new course replaces the entry it adopted; see SubjectForm. */
+        leaving = true;
         if (id) router.push('/courses'); else router.replace('/courses');
         return;
       }
-      if (!id) router.replace(`/courses/${finalRecord.id}`);
+      /* Its own editor takes over and reads it back; see SubjectForm. */
+      if (!id) { leaving = true; router.replace(`/courses/${finalRecord.id}`); }
       router.refresh();
     } catch (cause: unknown) {
       setError(catalogErrorText(cause, 'Unable to save course'));
@@ -830,8 +835,12 @@ export function CourseForm({ id }: { id?: string }) {
         }
       }
     } finally {
-      setSaving(false);
-      setSavingIntent(null);
+      /* Leaving, the fields stay locked until the next page replaces this
+         one; see EditorFields. */
+      if (!leaving) {
+        setSaving(false);
+        setSavingIntent(null);
+      }
     }
   }
 
@@ -853,64 +862,66 @@ export function CourseForm({ id }: { id?: string }) {
         {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : null}
       </div>
 
-      <EditorSectionNav root={formEl} />
-      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={fieldsEl} />
+      <form onSubmit={submit} className="mt-8">
         <EnterSubmitGuard />
-        <EditorCard eyebrow="Course" title="Basic information" description="Identity, classification and public summary.">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Select label="Subject" value={core.subjectId} onChange={(value) => setCoreField('subjectId', value)} options={subjects.map((row) => ({ id: row.id, label: `${row.name}${row.status !== 'PUBLISHED' ? ' · Draft' : ''}` }))} required />
-            <Select label="Specialization" value={core.subSubjectId} onChange={(value) => setCoreField('subSubjectId', value)} options={specializations.map((row) => ({ id: row.id, label: `${row.name}${row.status !== 'PUBLISHED' ? ' · Draft' : ''}` }))} emptyLabel="No specialization / General course" />
-            <Select label="Course level" value={core.courseLevelId} onChange={(value) => setCoreField('courseLevelId', value)} options={levels.map((row) => ({ id: row.id, label: row.name }))} required />
-            <Input label="Course name" value={core.name} onChange={(value) => setCoreField('name', value)} required />
-            <Input label="Slug" value={core.slug} onChange={(value) => setCoreField('slug', value)} placeholder="Generated from name" />
-            <Input label="Short name" value={core.shortName} onChange={(value) => setCoreField('shortName', value)} />
-            <Input label="Qualification" value={core.qualificationName} onChange={(value) => setCoreField('qualificationName', value)} />
-            <Input label="Course code" value={core.courseCode} onChange={(value) => setCoreField('courseCode', value)} />
-            <Input label="Short description" value={core.shortDescription} onChange={(value) => setCoreField('shortDescription', value)} textarea span />
-            <Input label="Overview" value={core.overview} onChange={(value) => setCoreField('overview', value)} richText variableContext="course" media={media} span />
-            <MediaPickerDialog label="Featured media" value={core.featuredMediaId} media={media} onChange={(value) => setCoreField('featuredMediaId', value)} />
-            <Input label="Display order" value={core.displayOrder} onChange={(value) => setCoreField('displayOrder', value)} type="number" />
-          </div>
-        </EditorCard>
+        <EditorFields locked={saving} ref={setFieldsEl}>
+          <EditorCard eyebrow="Course" title="Basic information" description="Identity, classification and public summary.">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Select label="Subject" value={core.subjectId} onChange={(value) => setCoreField('subjectId', value)} options={subjects.map((row) => ({ id: row.id, label: `${row.name}${row.status !== 'PUBLISHED' ? ' · Draft' : ''}` }))} required />
+              <Select label="Specialization" value={core.subSubjectId} onChange={(value) => setCoreField('subSubjectId', value)} options={specializations.map((row) => ({ id: row.id, label: `${row.name}${row.status !== 'PUBLISHED' ? ' · Draft' : ''}` }))} emptyLabel="No specialization / General course" />
+              <Select label="Course level" value={core.courseLevelId} onChange={(value) => setCoreField('courseLevelId', value)} options={levels.map((row) => ({ id: row.id, label: row.name }))} required />
+              <Input label="Course name" value={core.name} onChange={(value) => setCoreField('name', value)} required />
+              <Input label="Slug" value={core.slug} onChange={(value) => setCoreField('slug', value)} placeholder="Generated from name" />
+              <Input label="Short name" value={core.shortName} onChange={(value) => setCoreField('shortName', value)} />
+              <Input label="Qualification" value={core.qualificationName} onChange={(value) => setCoreField('qualificationName', value)} />
+              <Input label="Course code" value={core.courseCode} onChange={(value) => setCoreField('courseCode', value)} />
+              <Input label="Short description" value={core.shortDescription} onChange={(value) => setCoreField('shortDescription', value)} textarea span />
+              <Input label="Overview" value={core.overview} onChange={(value) => setCoreField('overview', value)} richText variableContext="course" media={media} span />
+              <MediaPickerDialog label="Featured media" value={core.featuredMediaId} media={media} onChange={(value) => setCoreField('featuredMediaId', value)} />
+              <Input label="Display order" value={core.displayOrder} onChange={(value) => setCoreField('displayOrder', value)} type="number" />
+            </div>
+          </EditorCard>
 
-        <EditorCard eyebrow="Delivery" title="Study details" description="Duration, credits, career summary and supported study modes.">
-          <div className="grid gap-5 sm:grid-cols-3">
-            <Input label="Duration minimum" value={core.durationMin} onChange={(value) => setCoreField('durationMin', value)} />
-            <Input label="Duration maximum" value={core.durationMax} onChange={(value) => setCoreField('durationMax', value)} />
-            <Select label="Duration unit" value={core.durationUnit} onChange={(value) => setCoreField('durationUnit', value)} options={[{ id: 'MONTHS', label: 'Months' }, { id: 'YEARS', label: 'Years' }]} />
-            <Input label="Credits" value={core.credits} onChange={(value) => setCoreField('credits', value)} />
-            <Input label="Popularity score" value={core.popularityScore} onChange={(value) => setCoreField('popularityScore', value)} />
-            <Input label="Career summary" value={core.careerSummary} onChange={(value) => setCoreField('careerSummary', value)} textarea span rows={4} />
-          </div>
-          <div className="mt-5">
-            <div className="flex flex-wrap items-center gap-2"><FieldLabel label="Study modes" required /><span className="p-hint">required to publish</span></div>
-            <div className="mt-3 flex flex-wrap gap-3">{modes.map((mode) => <label key={mode.id} className="flex items-center gap-2 rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={selectedModes.includes(mode.id)} onChange={() => toggleMode(mode.id)} /> {mode.name}</label>)}</div>
-          </div>
-        </EditorCard>
+          <EditorCard eyebrow="Delivery" title="Study details" description="Duration, credits, career summary and supported study modes.">
+            <div className="grid gap-5 sm:grid-cols-3">
+              <Input label="Duration minimum" value={core.durationMin} onChange={(value) => setCoreField('durationMin', value)} />
+              <Input label="Duration maximum" value={core.durationMax} onChange={(value) => setCoreField('durationMax', value)} />
+              <Select label="Duration unit" value={core.durationUnit} onChange={(value) => setCoreField('durationUnit', value)} options={[{ id: 'MONTHS', label: 'Months' }, { id: 'YEARS', label: 'Years' }]} />
+              <Input label="Credits" value={core.credits} onChange={(value) => setCoreField('credits', value)} />
+              <Input label="Popularity score" value={core.popularityScore} onChange={(value) => setCoreField('popularityScore', value)} />
+              <Input label="Career summary" value={core.careerSummary} onChange={(value) => setCoreField('careerSummary', value)} textarea span rows={4} />
+            </div>
+            <div className="mt-5">
+              <div className="flex flex-wrap items-center gap-2"><FieldLabel label="Study modes" required /><span className="p-hint">required to publish</span></div>
+              <div className="mt-3 flex flex-wrap gap-3">{modes.map((mode) => <label key={mode.id} className="flex items-center gap-2 rounded-xl border border-[#D9E0EA] px-4 py-3 text-sm font-semibold"><input type="checkbox" checked={selectedModes.includes(mode.id)} onChange={() => toggleMode(mode.id)} /> {mode.name}</label>)}</div>
+            </div>
+          </EditorCard>
 
-        <EditorCard eyebrow="Destinations" title="Country availability" description="The first availability form is always open. Add more countries only when needed.">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <p className="p-hint"><span className="p-danger">*</span> At least one complete Available/Limited country mapping is required to publish.</p>
-            <button type="button" onClick={() => { setMappings((rows) => [...rows, mappingBlank()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add another country</button>
-          </div>
-          <div className="space-y-5">{mappings.map((row, index) => <AvailabilityRow key={row.id ?? `mapping-${index}`} index={index} row={row} countries={countries} intakes={intakeOptions} onChange={(patch) => updateMapping(index, patch)} onRemove={() => removeMapping(index)} />)}</div>
-        </EditorCard>
+          <EditorCard eyebrow="Destinations" title="Country availability" description="The first availability form is always open. Add more countries only when needed.">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="p-hint"><span className="p-danger">*</span> At least one complete Available/Limited country mapping is required to publish.</p>
+              <button type="button" onClick={() => { setMappings((rows) => [...rows, mappingBlank()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add another country</button>
+            </div>
+            <div className="space-y-5">{mappings.map((row, index) => <AvailabilityRow key={row.id ?? `mapping-${index}`} index={index} row={row} countries={countries} intakes={intakeOptions} onChange={(patch) => updateMapping(index, patch)} onRemove={() => removeMapping(index)} />)}</div>
+          </EditorCard>
 
-        <EditorCard eyebrow="Editorial" title="Content sections" description="The first content section is open immediately. Add more sections only when needed.">
-          <div className="mb-5 flex justify-end"><button type="button" onClick={() => { setSections((rows) => [...rows, sectionBlank()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add another section</button></div>
-          <div className="space-y-5">{sections.map((row, index) => <ContentRow key={row.id ?? `section-${index}`} index={index} row={row} media={media} onChange={(patch) => updateSection(index, patch)} onRemove={() => removeSection(index)} />)}</div>
-        </EditorCard>
+          <EditorCard eyebrow="Editorial" title="Content sections" description="The first content section is open immediately. Add more sections only when needed.">
+            <div className="mb-5 flex justify-end"><button type="button" onClick={() => { setSections((rows) => [...rows, sectionBlank()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add another section</button></div>
+            <div className="space-y-5">{sections.map((row, index) => <ContentRow key={row.id ?? `section-${index}`} index={index} row={row} media={media} onChange={(patch) => updateSection(index, patch)} onRemove={() => removeSection(index)} />)}</div>
+          </EditorCard>
 
-        <EditorCard eyebrow="Questions" title="FAQs" description="The first FAQ form is open immediately. Leave it completely blank if this course needs no FAQ.">
-          <div className="mb-5 flex justify-end"><button type="button" onClick={() => { setFaqs((rows) => [...rows, faqBlank()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add another FAQ</button></div>
-          <div className="space-y-4">{faqs.map((row, index) => <div key={row.id ?? `faq-${index}`} className="p-panel"><div className="flex justify-between gap-3"><h4 className="font-semibold">FAQ {index + 1}</h4>{faqs.length > 1 || row.id ? <button type="button" onClick={() => removeFaq(index)} className="p-danger">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="Question" value={row.question} onChange={(value) => updateFaq(index, { question: value })} span required={Boolean(row.question || row.answer || row.id)} /><Input label="Answer" value={row.answer} onChange={(value) => updateFaq(index, { answer: value })} textarea span rows={4} required={Boolean(row.question || row.answer || row.id)} /><Select label="Status" value={row.status} onChange={(value) => updateFaq(index, { status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => updateFaq(index, { displayOrder: value })} type="number" /></div></div>)}</div>
-        </EditorCard>
+          <EditorCard eyebrow="Questions" title="FAQs" description="The first FAQ form is open immediately. Leave it completely blank if this course needs no FAQ.">
+            <div className="mb-5 flex justify-end"><button type="button" onClick={() => { setFaqs((rows) => [...rows, faqBlank()]); setDirty(true); }} className="p-btn p-btn--outline p-btn--sm">+ Add another FAQ</button></div>
+            <div className="space-y-4">{faqs.map((row, index) => <div key={row.id ?? `faq-${index}`} className="p-panel"><div className="flex justify-between gap-3"><h4 className="font-semibold">FAQ {index + 1}</h4>{faqs.length > 1 || row.id ? <button type="button" onClick={() => removeFaq(index)} className="p-danger">Remove</button> : null}</div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="Question" value={row.question} onChange={(value) => updateFaq(index, { question: value })} span required={Boolean(row.question || row.answer || row.id)} /><Input label="Answer" value={row.answer} onChange={(value) => updateFaq(index, { answer: value })} textarea span rows={4} required={Boolean(row.question || row.answer || row.id)} /><Select label="Status" value={row.status} onChange={(value) => updateFaq(index, { status: value })} options={[{ id: 'ACTIVE', label: 'Active' }, { id: 'INACTIVE', label: 'Inactive' }]} /><Input label="Display order" value={row.displayOrder} onChange={(value) => updateFaq(index, { displayOrder: value })} type="number" /></div></div>)}</div>
+          </EditorCard>
 
-        <EditorCard eyebrow="Discovery" title="Related courses" description="Courses shown as related on this course's page. Saved with the course.">
-          <RelatedCoursePicker courses={allCourses} selected={relatedIds} excludeId={record?.id} onToggle={toggleRelated} />
-        </EditorCard>
+          <EditorCard eyebrow="Discovery" title="Related courses" description="Courses shown as related on this course's page. Saved with the course.">
+            <RelatedCoursePicker courses={allCourses} selected={relatedIds} excludeId={record?.id} onToggle={toggleRelated} />
+          </EditorCard>
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="course" />
+          <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="course" />
+        </EditorFields>
         <UnifiedEditorActions cancelHref="/courses" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

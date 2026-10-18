@@ -168,6 +168,10 @@ test.describe('level pages written in the admin', () => {
     await page.getByRole('button', { name: 'Save draft' }).click();
     await page.waitForURL(new RegExp(`/specializations/${UUID}$`));
     const specializationId = page.url().split('/specializations/')[1];
+    /* The address and heading change mid-save; the specialization's own
+       editor then replaces the Create one, which stays locked until it has.
+       A link followed before that switch lands can lose out to it. */
+    await expect(box(page, 'Name')).toBeEnabled();
 
     const card = page.locator('#specialization-level-pages');
     await expect(card.getByRole('link', { name: 'Write the PhD page' })).toBeVisible();

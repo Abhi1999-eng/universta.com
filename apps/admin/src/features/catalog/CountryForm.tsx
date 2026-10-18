@@ -62,6 +62,7 @@ import { CatalogDialog } from "./CatalogDialog";
 import { FieldLabel } from "@/features/shared/FieldLabel";
 import { UnifiedEditorActions } from "@/features/shared/UnifiedEditorActions";
 import { EnterSubmitGuard } from "@/features/shared/EnterSubmitGuard";
+import { EditorFields } from "@/features/shared/EditorFields";
 import { showCreatedAddress } from "@/features/shared/created-address";
 import { variablesForContext } from "@/features/shared/variable-autocomplete";
 import type { EditorEntityContext } from "@/features/shared/useEntityAutocomplete";
@@ -412,7 +413,7 @@ const INLINE_ERROR_FIELDS = new Set([
 
 export function CountryForm({ countryId }: { countryId?: string }) {
   const router = useRouter();
-  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
+  const [fieldsEl, setFieldsEl] = useState<HTMLFieldSetElement | null>(null);
   const [record, setRecord] = useState<CountryRecord | null>(null);
   const [continents, setContinents] = useState<ContinentRecord[]>([]);
   const [subjectIds, setSubjectIds] = useState<string[]>([]);
@@ -1155,6 +1156,8 @@ export function CountryForm({ countryId }: { countryId?: string }) {
     setSavingIntent(intent);
     setError("");
     setNotice(null);
+    /* Whether this save ends by leaving for another page; see the finally. */
+    let leaving = false;
     try {
       const payload = {
         /* An unpicked continent is an empty select value, and the API reads
@@ -1285,6 +1288,7 @@ export function CountryForm({ countryId }: { countryId?: string }) {
         /* A country made in this session holds this history entry under the
          * Create route (showCreatedAddress); pushing would leave it behind,
          * and Back would show a blank Create form at its address. */
+        leaving = true;
         if (countryId) router.push("/countries");
         else router.replace("/countries");
         return;
@@ -1296,7 +1300,11 @@ export function CountryForm({ countryId }: { countryId?: string }) {
             ? "Country moved to draft."
             : "Draft saved.",
       });
-      if (!countryId) router.replace(`/countries/${saved.id}`);
+      /* Its own editor takes over and reads it back; see SubjectForm. */
+      if (!countryId) {
+        leaving = true;
+        router.replace(`/countries/${saved.id}`);
+      }
       router.refresh();
     } catch (cause: unknown) {
       /* The API names the offending field -- in `details` for a readiness
@@ -1338,8 +1346,12 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           : catalogErrorText(cause, "Unable to save country"),
       );
     } finally {
-      setSaving(false);
-      setSavingIntent(null);
+      /* Leaving, the fields stay locked until the next page replaces this
+       * one; see EditorFields. */
+      if (!leaving) {
+        setSaving(false);
+        setSavingIntent(null);
+      }
     }
   }
 
@@ -1397,749 +1409,751 @@ export function CountryForm({ countryId }: { countryId?: string }) {
           </ul>
         </div>
       ) : null}
-      <EditorSectionNav root={formEl} />
-      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={fieldsEl} />
+      <form onSubmit={submit} className="mt-8">
         <EnterSubmitGuard />
-        <Card
-          eyebrow="Country"
-          title="Identity & listing"
-          description="Core catalogue identity and public listing content. ISO and currency are filled from local canonical country metadata."
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Input
-              label="UID"
-              value={core.externalUid}
-              name="externalUid"
-              error={fieldErrors.externalUid}
-              onBlur={() => checkField("externalUid", core.externalUid)}
-              onChange={(value) => setCoreField("externalUid", value)}
-            />
-            <ContinentField
-              value={core.continentId}
-              continents={continents}
-              onSelect={(value) => setCoreField("continentId", value)}
-              onCreated={(created) => {
-                setContinents((rows) => [...rows, created]);
-                setCoreField("continentId", created.id);
-              }}
-            />
-            <Input
-              label="Country name"
-              value={core.name}
-              name="name"
-              error={fieldErrors.name}
-              onBlur={() => checkField("name", core.name)}
-              onChange={(value) => setCoreField("name", value)}
-            />
-            <Input
-              label="Slug"
-              value={core.slug}
-              name="slug"
-              error={fieldErrors.slug}
-              onBlur={() => checkField("slug", core.slug)}
-              onChange={(value) => setCoreField("slug", value)}
-            />
-            {/* Display order is no longer edited here: it is a listing concern,
-              * not country content. The value is still loaded and sent back
-              * unchanged, so existing ordering and imports keep working. */}
-            <Input
-              label="Page heading"
-              value={core.pageHeading}
-              name="pageHeading"
-              error={fieldErrors.pageHeading}
-              onBlur={() => checkField("pageHeading", core.pageHeading)}
-              onChange={(value) => setCoreField("pageHeading", value)}
-              span
-            />
-            <div className="sm:col-span-2">
-              <RichTextEditor
-                label="Short description"
-                value={core.shortDescription}
-                onChange={(value) => setCoreField("shortDescription", value)}
-                allowedVariables={variablesForContext("country")}
-                entityContext={entityContext}
-                enableImages={false}
-                minHeight="min-h-28"
+        <EditorFields locked={saving} ref={setFieldsEl}>
+          <Card
+            eyebrow="Country"
+            title="Identity & listing"
+            description="Core catalogue identity and public listing content. ISO and currency are filled from local canonical country metadata."
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Input
+                label="UID"
+                value={core.externalUid}
+                name="externalUid"
+                error={fieldErrors.externalUid}
+                onBlur={() => checkField("externalUid", core.externalUid)}
+                onChange={(value) => setCoreField("externalUid", value)}
               />
-              {fieldErrors.shortDescription ? (
-                <p role="alert" className="mt-1 p-danger">
-                  {fieldErrors.shortDescription}
-                </p>
-              ) : null}
-            </div>
-            <div className="sm:col-span-2">
-              <RichTextEditor
-                label="Overview"
-                value={core.overview}
-                onChange={(value) => setCoreField("overview", value)}
-                allowedVariables={variablesForContext("country")}
-                entityContext={entityContext}
-                media={media}
-                minHeight="min-h-40"
+              <ContinentField
+                value={core.continentId}
+                continents={continents}
+                onSelect={(value) => setCoreField("continentId", value)}
+                onCreated={(created) => {
+                  setContinents((rows) => [...rows, created]);
+                  setCoreField("continentId", created.id);
+                }}
+              />
+              <Input
+                label="Country name"
+                value={core.name}
+                name="name"
+                error={fieldErrors.name}
+                onBlur={() => checkField("name", core.name)}
+                onChange={(value) => setCoreField("name", value)}
+              />
+              <Input
+                label="Slug"
+                value={core.slug}
+                name="slug"
+                error={fieldErrors.slug}
+                onBlur={() => checkField("slug", core.slug)}
+                onChange={(value) => setCoreField("slug", value)}
+              />
+              {/* Display order is no longer edited here: it is a listing concern,
+                * not country content. The value is still loaded and sent back
+                * unchanged, so existing ordering and imports keep working. */}
+              <Input
+                label="Page heading"
+                value={core.pageHeading}
+                name="pageHeading"
+                error={fieldErrors.pageHeading}
+                onBlur={() => checkField("pageHeading", core.pageHeading)}
+                onChange={(value) => setCoreField("pageHeading", value)}
+                span
+              />
+              <div className="sm:col-span-2">
+                <RichTextEditor
+                  label="Short description"
+                  value={core.shortDescription}
+                  onChange={(value) => setCoreField("shortDescription", value)}
+                  allowedVariables={variablesForContext("country")}
+                  entityContext={entityContext}
+                  enableImages={false}
+                  minHeight="min-h-28"
+                />
+                {fieldErrors.shortDescription ? (
+                  <p role="alert" className="mt-1 p-danger">
+                    {fieldErrors.shortDescription}
+                  </p>
+                ) : null}
+              </div>
+              <div className="sm:col-span-2">
+                <RichTextEditor
+                  label="Overview"
+                  value={core.overview}
+                  onChange={(value) => setCoreField("overview", value)}
+                  allowedVariables={variablesForContext("country")}
+                  entityContext={entityContext}
+                  media={media}
+                  minHeight="min-h-40"
+                />
+              </div>
+              <Input
+                label="Tagline"
+                value={core.tagline}
+                name="tagline"
+                error={fieldErrors.tagline}
+                onBlur={() => checkField("tagline", core.tagline)}
+                onChange={(value) => setCoreField("tagline", value)}
+                span
               />
             </div>
-            <Input
-              label="Tagline"
-              value={core.tagline}
-              name="tagline"
-              error={fieldErrors.tagline}
-              onBlur={() => checkField("tagline", core.tagline)}
-              onChange={(value) => setCoreField("tagline", value)}
-              span
-            />
-          </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <Input
-              label="ISO"
-              value={core.iso2Code}
-              name="iso2Code"
-              error={fieldErrors.iso2Code}
-              onBlur={() => checkField("iso2Code", core.iso2Code)}
-              onChange={(value) =>
-                setCoreField("iso2Code", value.toUpperCase())
-              }
-              maxLength={2}
-              pattern="[A-Za-z]{2}"
-            />
-            {/* ISO3 is not edited here any more. It stays on the record and the
-              * API still derives it from a recognised country name, so nothing
-              * that reads it had to change. */}
-            <FlagPreview iso2={core.iso2Code} />
-            <Input
-              label="Capital"
-              value={core.capitalCity}
-              name="capitalCity"
-              error={fieldErrors.capitalCity}
-              onBlur={() => checkField("capitalCity", core.capitalCity)}
-              onChange={(value) => setCoreField("capitalCity", value)}
-            />
-            <Input
-              label="Official language"
-              value={core.officialLanguage}
-              name="officialLanguage"
-              error={fieldErrors.officialLanguage}
-              onBlur={() => checkField("officialLanguage", core.officialLanguage)}
-              onChange={(value) => setCoreField("officialLanguage", value)}
-            />
-            {/* Featured is not an author's decision, so the checkbox is gone
-              * from this editor. The value itself is untouched: it is still
-              * loaded from the record and sent back on every save, so a
-              * country that is already featured stays featured and the public
-              * `?featured=` filter keeps answering the same way. It is a grid
-              * cell that simply is not filled, so nothing is left holding a
-              * gap where it used to be. */}
-          </div>
-          <CurrencyRow
-            code={core.currencyCode}
-            name={core.currencyName}
-            symbol={core.currencySymbol}
-            onChange={(next) => {
-              setCoreField("currencyName", next.name);
-              setCoreField("currencyCode", next.code);
-              setCoreField("currencySymbol", next.symbol);
-            }}
-          />
-          {/* No image pickers here. The flag is derived from the ISO code --
-            * see FlagPreview above -- and the listing and hero images asked an
-            * operator to choose artwork that no reader ever sees: the approved
-            * design draws every mark in CSS and the country experience loads
-            * not one image. The only pages that read them, the old
-            * `/countries` listing and detail, have redirected to
-            * `/study-abroad` since that design shipped.
-            *
-            * All three ids stay on the record and are sent back untouched, so
-            * an import that sets them keeps working and nothing is lost if a
-            * later design wants them. */}
-          {/* Subjects are edited here again. The country guide publishes them
-            * as its "Popular subjects" section, so an editor needs somewhere
-            * to say which fields a destination is known for; until this came
-            * back, the only way in was a bulk import.
-            *
-            * Tags stay out of this editor. They are still loaded into `tagIds`
-            * and sent back unchanged on every save, so existing relations, the
-            * list filters and importers keep working exactly as before. */}
-          <div className="mt-6">
-            <CountryTaxonomyPicker
-              title="Subjects"
-              singular="Subject"
-              testId="country-subjects"
-              rows={subjects.map((row) => ({
-                id: row.id,
-                label: row.name,
-                usage: row.courseCount ?? 0,
-                children: (row.subSubjects ?? []).map((child) => ({
-                  id: child.id,
-                  label: child.name,
-                })),
-              }))}
-              selected={subjectIds}
-              onChange={setSubjectIds}
-              childTitle="specializations"
-              selectedChildren={subSubjectIds}
-              onChildrenChange={setSubSubjectIds}
-              onCreate={async (name): Promise<CreateOutcome> => {
-                const created = (
-                  await createSubject({ name, slug: slugFromText(name) })
-                ).data;
-                setSubjects((rows) => [...rows, created]);
-                return { kind: "created", id: created.id, label: created.name };
-              }}
-            />
-          </div>
-        </Card>
-        <Card
-          eyebrow="Configuration"
-          title="Study destination setup"
-          description="Only country-level editorial configuration belongs here. Tuition, rankings, statistics and admission scores are derived from published university and offering data."
-        >
-          <div className="space-y-6">
-            <CheckboxGroup
-              title="Features"
-              options={featureOptions.map((option) => ({
-                value: option.code,
-                label: option.name,
-              }))}
-              selected={configuration.featureCodes}
-              onToggle={(value) => toggleConfiguration("featureCodes", value)}
-              addLabel="Add a feature"
-              addPlaceholder="e.g. Scholarship friendly"
-              onAdd={(name) => addTaxonomyOption("feature", name)}
-            />
-            <CheckboxGroup
-              title="Accepted English tests"
-              options={testOptions.map((option) => ({
-                value: option.code,
-                label: option.name,
-              }))}
-              selected={configuration.acceptedTests}
-              onToggle={(value) => toggleConfiguration("acceptedTests", value)}
-              addLabel="Add an English test"
-              addPlaceholder="e.g. Duolingo"
-              onAdd={(name) => addTaxonomyOption("englishTest", name)}
-            />
-            <CheckboxGroup
-              title="Available intake months"
-              options={monthOptions.map((label, index) => ({
-                value: index + 1,
-                label,
-              }))}
-              selected={configuration.intakeMonths.map(String)}
-              onToggle={(value) =>
-                toggleConfiguration("intakeMonths", Number(value))
-              }
-            />
-            <CalculatorBuilder
-              value={configuration.calculatorConfig}
-              onChange={(value) => {
-                setConfiguration((current) => ({
-                  ...current,
-                  calculatorConfig: value,
-                }));
-                setDirty(true);
-              }}
-            />
-            <Input
-              label="Maximum post-study work permit (months)"
-              value={configuration.postStudyWorkPermitMonths}
-              onChange={(value) => {
-                setConfiguration((current) => ({
-                  ...current,
-                  postStudyWorkPermitMonths: value,
-                }));
-                setDirty(true);
-              }}
-              type="number"
-            />
-            <div className="grid gap-5 lg:grid-cols-2">
-              <RelationPicker
-                title="Popular Universities"
-                description="Published universities in this country only."
-                options={curationOptions?.universities ?? []}
-                selected={configuration.popularUniversityIds}
-                onToggle={(value) =>
-                  toggleConfiguration("popularUniversityIds", value)
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              <Input
+                label="ISO"
+                value={core.iso2Code}
+                name="iso2Code"
+                error={fieldErrors.iso2Code}
+                onBlur={() => checkField("iso2Code", core.iso2Code)}
+                onChange={(value) =>
+                  setCoreField("iso2Code", value.toUpperCase())
                 }
-                disabled={!record}
+                maxLength={2}
+                pattern="[A-Za-z]{2}"
               />
-              <RelationPicker
-                title="Popular Courses"
-                description="Published courses available in this country only."
-                options={curationOptions?.courses ?? []}
-                selected={configuration.popularCourseIds}
-                onToggle={(value) =>
-                  toggleConfiguration("popularCourseIds", value)
-                }
-                disabled={!record}
+              {/* ISO3 is not edited here any more. It stays on the record and the
+                * API still derives it from a recognised country name, so nothing
+                * that reads it had to change. */}
+              <FlagPreview iso2={core.iso2Code} />
+              <Input
+                label="Capital"
+                value={core.capitalCity}
+                name="capitalCity"
+                error={fieldErrors.capitalCity}
+                onBlur={() => checkField("capitalCity", core.capitalCity)}
+                onChange={(value) => setCoreField("capitalCity", value)}
+              />
+              <Input
+                label="Official language"
+                value={core.officialLanguage}
+                name="officialLanguage"
+                error={fieldErrors.officialLanguage}
+                onBlur={() => checkField("officialLanguage", core.officialLanguage)}
+                onChange={(value) => setCoreField("officialLanguage", value)}
+              />
+              {/* Featured is not an author's decision, so the checkbox is gone
+                * from this editor. The value itself is untouched: it is still
+                * loaded from the record and sent back on every save, so a
+                * country that is already featured stays featured and the public
+                * `?featured=` filter keeps answering the same way. It is a grid
+                * cell that simply is not filled, so nothing is left holding a
+                * gap where it used to be. */}
+            </div>
+            <CurrencyRow
+              code={core.currencyCode}
+              name={core.currencyName}
+              symbol={core.currencySymbol}
+              onChange={(next) => {
+                setCoreField("currencyName", next.name);
+                setCoreField("currencyCode", next.code);
+                setCoreField("currencySymbol", next.symbol);
+              }}
+            />
+            {/* No image pickers here. The flag is derived from the ISO code --
+              * see FlagPreview above -- and the listing and hero images asked an
+              * operator to choose artwork that no reader ever sees: the approved
+              * design draws every mark in CSS and the country experience loads
+              * not one image. The only pages that read them, the old
+              * `/countries` listing and detail, have redirected to
+              * `/study-abroad` since that design shipped.
+              *
+              * All three ids stay on the record and are sent back untouched, so
+              * an import that sets them keeps working and nothing is lost if a
+              * later design wants them. */}
+            {/* Subjects are edited here again. The country guide publishes them
+              * as its "Popular subjects" section, so an editor needs somewhere
+              * to say which fields a destination is known for; until this came
+              * back, the only way in was a bulk import.
+              *
+              * Tags stay out of this editor. They are still loaded into `tagIds`
+              * and sent back unchanged on every save, so existing relations, the
+              * list filters and importers keep working exactly as before. */}
+            <div className="mt-6">
+              <CountryTaxonomyPicker
+                title="Subjects"
+                singular="Subject"
+                testId="country-subjects"
+                rows={subjects.map((row) => ({
+                  id: row.id,
+                  label: row.name,
+                  usage: row.courseCount ?? 0,
+                  children: (row.subSubjects ?? []).map((child) => ({
+                    id: child.id,
+                    label: child.name,
+                  })),
+                }))}
+                selected={subjectIds}
+                onChange={setSubjectIds}
+                childTitle="specializations"
+                selectedChildren={subSubjectIds}
+                onChildrenChange={setSubSubjectIds}
+                onCreate={async (name): Promise<CreateOutcome> => {
+                  const created = (
+                    await createSubject({ name, slug: slugFromText(name) })
+                  ).data;
+                  setSubjects((rows) => [...rows, created]);
+                  return { kind: "created", id: created.id, label: created.name };
+                }}
               />
             </div>
-          </div>
-        </Card>
-        <Card
-          eyebrow="Admissions"
-          title="Study paths"
-          description="The levels a student can enter at, shown on the guide as “Find your study path”. Only what you add here is shown; with no level, the guide leaves the section out."
-        >
-          <div className="space-y-4">
-            {studyPaths.length ? (
-              studyPaths.map((row, index) => (
-                <div key={index} className="p-panel">
-                  <div className="flex justify-between">
-                    <h4 className="font-semibold">
-                      {row.name.trim() || `Level ${index + 1}`}
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => removeStudyPath(index)}
-                      className="p-danger"
-                      aria-label={`Remove ${row.name.trim() || `level ${index + 1}`}`}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                    <Input
-                      label="Level name"
-                      value={row.name}
-                      maxLength={60}
-                      onChange={(value) => updateStudyPath(index, { name: value })}
-                    />
-                    <Input
-                      label="Typical duration"
-                      value={row.duration}
-                      maxLength={80}
-                      onChange={(value) =>
-                        updateStudyPath(index, { duration: value })
-                      }
-                    />
-                    <Input
-                      label="What you need to enter"
-                      value={row.entry}
-                      maxLength={200}
-                      onChange={(value) => updateStudyPath(index, { entry: value })}
-                    />
-                    <div className="sm:col-span-3">
+          </Card>
+          <Card
+            eyebrow="Configuration"
+            title="Study destination setup"
+            description="Only country-level editorial configuration belongs here. Tuition, rankings, statistics and admission scores are derived from published university and offering data."
+          >
+            <div className="space-y-6">
+              <CheckboxGroup
+                title="Features"
+                options={featureOptions.map((option) => ({
+                  value: option.code,
+                  label: option.name,
+                }))}
+                selected={configuration.featureCodes}
+                onToggle={(value) => toggleConfiguration("featureCodes", value)}
+                addLabel="Add a feature"
+                addPlaceholder="e.g. Scholarship friendly"
+                onAdd={(name) => addTaxonomyOption("feature", name)}
+              />
+              <CheckboxGroup
+                title="Accepted English tests"
+                options={testOptions.map((option) => ({
+                  value: option.code,
+                  label: option.name,
+                }))}
+                selected={configuration.acceptedTests}
+                onToggle={(value) => toggleConfiguration("acceptedTests", value)}
+                addLabel="Add an English test"
+                addPlaceholder="e.g. Duolingo"
+                onAdd={(name) => addTaxonomyOption("englishTest", name)}
+              />
+              <CheckboxGroup
+                title="Available intake months"
+                options={monthOptions.map((label, index) => ({
+                  value: index + 1,
+                  label,
+                }))}
+                selected={configuration.intakeMonths.map(String)}
+                onToggle={(value) =>
+                  toggleConfiguration("intakeMonths", Number(value))
+                }
+              />
+              <CalculatorBuilder
+                value={configuration.calculatorConfig}
+                onChange={(value) => {
+                  setConfiguration((current) => ({
+                    ...current,
+                    calculatorConfig: value,
+                  }));
+                  setDirty(true);
+                }}
+              />
+              <Input
+                label="Maximum post-study work permit (months)"
+                value={configuration.postStudyWorkPermitMonths}
+                onChange={(value) => {
+                  setConfiguration((current) => ({
+                    ...current,
+                    postStudyWorkPermitMonths: value,
+                  }));
+                  setDirty(true);
+                }}
+                type="number"
+              />
+              <div className="grid gap-5 lg:grid-cols-2">
+                <RelationPicker
+                  title="Popular Universities"
+                  description="Published universities in this country only."
+                  options={curationOptions?.universities ?? []}
+                  selected={configuration.popularUniversityIds}
+                  onToggle={(value) =>
+                    toggleConfiguration("popularUniversityIds", value)
+                  }
+                  disabled={!record}
+                />
+                <RelationPicker
+                  title="Popular Courses"
+                  description="Published courses available in this country only."
+                  options={curationOptions?.courses ?? []}
+                  selected={configuration.popularCourseIds}
+                  onToggle={(value) =>
+                    toggleConfiguration("popularCourseIds", value)
+                  }
+                  disabled={!record}
+                />
+              </div>
+            </div>
+          </Card>
+          <Card
+            eyebrow="Admissions"
+            title="Study paths"
+            description="The levels a student can enter at, shown on the guide as “Find your study path”. Only what you add here is shown; with no level, the guide leaves the section out."
+          >
+            <div className="space-y-4">
+              {studyPaths.length ? (
+                studyPaths.map((row, index) => (
+                  <div key={index} className="p-panel">
+                    <div className="flex justify-between">
+                      <h4 className="font-semibold">
+                        {row.name.trim() || `Level ${index + 1}`}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => removeStudyPath(index)}
+                        className="p-danger"
+                        aria-label={`Remove ${row.name.trim() || `level ${index + 1}`}`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-3">
                       <Input
-                        label="Level description"
-                        value={row.summary}
-                        maxLength={400}
-                        textarea
-                        rows={2}
+                        label="Level name"
+                        value={row.name}
+                        maxLength={60}
+                        onChange={(value) => updateStudyPath(index, { name: value })}
+                      />
+                      <Input
+                        label="Typical duration"
+                        value={row.duration}
+                        maxLength={80}
                         onChange={(value) =>
-                          updateStudyPath(index, { summary: value })
+                          updateStudyPath(index, { duration: value })
                         }
                       />
+                      <Input
+                        label="What you need to enter"
+                        value={row.entry}
+                        maxLength={200}
+                        onChange={(value) => updateStudyPath(index, { entry: value })}
+                      />
+                      <div className="sm:col-span-3">
+                        <Input
+                          label="Level description"
+                          value={row.summary}
+                          maxLength={400}
+                          textarea
+                          rows={2}
+                          onChange={(value) =>
+                            updateStudyPath(index, { summary: value })
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="p-sub">
-                No study paths listed. The public page leaves the section out
-                until you add one.
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={addStudyPath}
-                disabled={studyPaths.length >= MAX_STUDY_PATHS}
-                className="p-btn p-btn--ghost p-btn--sm"
-              >
-                + Add level
-              </button>
-              {/* Offered only while one of the four is missing: with all of
-                  them here there is nothing for it to do. */}
-              {usualStudyPathsMissing ? (
+                ))
+              ) : (
+                <p className="p-sub">
+                  No study paths listed. The public page leaves the section out
+                  until you add one.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={fillUsualStudyPaths}
+                  onClick={addStudyPath}
                   disabled={studyPaths.length >= MAX_STUDY_PATHS}
                   className="p-btn p-btn--ghost p-btn--sm"
                 >
-                  Fill the four usual levels
+                  + Add level
                 </button>
-              ) : null}
-            </div>
-          </div>
-        </Card>
-        <Card
-          eyebrow="Admissions"
-          title="Documents required to study here"
-          description="What a student needs in hand for this destination. Nothing is added until you add it, and a destination that asks for something else can have its own."
-        >
-          <div className="space-y-4">
-            <div>
-              <p className="p-label">Suggestions</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {SUGGESTED_DOCUMENTS.filter(
-                  (name) => !documents.some((row) => row.name === name),
-                ).map((name) => (
+                {/* Offered only while one of the four is missing: with all of
+                    them here there is nothing for it to do. */}
+                {usualStudyPathsMissing ? (
                   <button
-                    key={name}
                     type="button"
-                    onClick={() => addDocument(name)}
-                    className="rounded-full border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold text-[#344054]"
+                    onClick={fillUsualStudyPaths}
+                    disabled={studyPaths.length >= MAX_STUDY_PATHS}
+                    className="p-btn p-btn--ghost p-btn--sm"
                   >
-                    + {name}
+                    Fill the four usual levels
                   </button>
-                ))}
+                ) : null}
               </div>
             </div>
-            {documents.length ? (
-              documents.map((row, index) => (
-                <div
-                  key={index}
-                  className="p-panel"
-                >
-                  <div className="flex justify-between">
-                    <h4 className="font-semibold">Document {index + 1}</h4>
+          </Card>
+          <Card
+            eyebrow="Admissions"
+            title="Documents required to study here"
+            description="What a student needs in hand for this destination. Nothing is added until you add it, and a destination that asks for something else can have its own."
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="p-label">Suggestions</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {SUGGESTED_DOCUMENTS.filter(
+                    (name) => !documents.some((row) => row.name === name),
+                  ).map((name) => (
                     <button
+                      key={name}
                       type="button"
-                      onClick={() => removeDocument(index)}
-                      className="p-danger"
+                      onClick={() => addDocument(name)}
+                      className="rounded-full border border-[#D9E0EA] px-3 py-1.5 text-xs font-semibold text-[#344054]"
                     >
-                      Remove
+                      + {name}
                     </button>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <Input
-                      label="Document name"
-                      value={row.name}
-                      onChange={(value) => updateDocument(index, { name: value })}
-                    />
-                    <BooleanField
-                      label="Required"
-                      checked={row.isRequired}
-                      onChange={(checked) =>
-                        updateDocument(index, { isRequired: checked })
-                      }
-                    />
-                    <div className="sm:col-span-2">
-                      <RichTextEditor
-                        label={`Details ${index + 1}`}
-                        ariaLabel={`Details ${index + 1}`}
-                        value={row.details}
-                        onChange={(value) =>
-                          updateDocument(index, { details: value })
-                        }
-                        allowedVariables={variablesForContext("country")}
-                        entityContext={entityContext}
-                        enableImages={false}
-                        minHeight="min-h-20"
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))
-            ) : (
-              <p className="p-sub">
-                No documents listed. The public page leaves the section out
-                until you add one.
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => addDocument("")}
-              className="p-btn p-btn--ghost p-btn--sm"
-            >
-              + Add document
-            </button>
-          </div>
-        </Card>
-        {/* Rendered from the start, with or without a country row. Its cards
-          * hold their values locally until the first save creates the parent,
-          * and `persistDrafts` below writes them then. */}
-        {/* The visa fee is quoted in the Country's currency, so the profile
-          * card is told which one that is rather than asking for it again --
-          * and it follows the selector above as soon as it changes. */}
-        <CountryProfilesEditor
-          ref={profilesRef}
-          countryId={record?.id}
-          currencyCode={core.currencyCode}
-          /* So an edit made only in a profile card counts as an unsaved
-           * change on the form that will write it. */
-          onDirty={markDirty}
-          entityContext={entityContext}
-        />
-        <Card
-          eyebrow="Editorial"
-          title="Content sections"
-          description="All public country sections are edited here; no separate section save."
-        >
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setSections((rows) => [...rows, { ...blankSection }]);
-                setDirty(true);
-              }}
-              className="p-btn p-btn--outline p-btn--sm"
-            >
-              + Add section
-            </button>
-          </div>
-          <div className="mt-5 space-y-5">
-            {sections.length === 0 ? (
-              <Empty text="No editorial sections yet." />
-            ) : (
-              sections.map((row, index) => (
-                <CountrySection
-                entityContext={entityContext}
-                  key={row.id ?? `section-${index}`}
-                  index={index}
-                  row={row}
-                  media={media}
-                  onChange={(patch) => updateSection(index, patch)}
-                  onRemove={() => removeSection(index)}
-                />
-              ))
-            )}
-          </div>
-        </Card>
-        <Card
-          eyebrow="Questions"
-          title="FAQs"
-          description="FAQs are part of the country save flow."
-        >
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setFaqs((rows) => [...rows, blankFaq()]);
-                setDirty(true);
-              }}
-              className="p-btn p-btn--outline p-btn--sm"
-            >
-              + Add FAQ
-            </button>
-          </div>
-          <div className="mt-5 space-y-4">
-            {faqs.length === 0 ? (
-              <Empty text="No FAQs yet." />
-            ) : (
-              faqs.map((row, index) => (
-                <div
-                  key={row.id ?? `faq-${index}`}
-                  className="p-panel"
-                >
-                  <div className="flex justify-between">
-                    <h4 className="font-semibold">FAQ {index + 1}</h4>
-                    <button
-                      type="button"
-                      onClick={() => removeFaq(index)}
-                      className="p-danger"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <Input
-                      label="Question"
-                      value={row.question}
-                      onChange={(value) =>
-                        updateFaq(index, { question: value })
-                      }
-                      span
-                    />
-                    <div className="sm:col-span-2">
-                      <RichTextEditor
-                        label="Answer"
-                        value={row.answer}
-                        onChange={(value) => updateFaq(index, { answer: value })}
-                        allowedVariables={variablesForContext("country")}
-                        entityContext={entityContext}
-                        enableImages={false}
-                        minHeight="min-h-28"
-                      />
+              </div>
+              {documents.length ? (
+                documents.map((row, index) => (
+                  <div
+                    key={index}
+                    className="p-panel"
+                  >
+                    <div className="flex justify-between">
+                      <h4 className="font-semibold">Document {index + 1}</h4>
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(index)}
+                        className="p-danger"
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <Input
-                      label="Category"
-                      value={row.category}
-                      onChange={(value) =>
-                        updateFaq(index, { category: value })
-                      }
-                    />
-                    <Input
-                      label="Display order"
-                      value={row.displayOrder}
-                      onChange={(value) =>
-                        updateFaq(index, { displayOrder: value })
-                      }
-                      type="number"
-                    />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-        <Card
-          eyebrow="Guidance"
-          title="Consultant cards"
-          description="Optional guidance cards are staged here and saved with the country."
-        >
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setCards((rows) => [...rows, blankCard()]);
-                setDirty(true);
-              }}
-              className="p-btn p-btn--outline p-btn--sm"
-            >
-              + Add guidance card
-            </button>
-          </div>
-          <div className="mt-5 space-y-5">
-            {cards.length === 0 ? (
-              <Empty text="No guidance cards yet." />
-            ) : (
-              cards.map((row, index) => (
-                <div
-                  key={row.id ?? `card-${index}`}
-                  className="p-panel"
-                >
-                  <div className="flex justify-between">
-                    <h4 className="font-semibold">Guidance card {index + 1}</h4>
-                    <button
-                      type="button"
-                      onClick={() => removeCard(index)}
-                      className="p-danger"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <Input
-                      label="Title"
-                      value={row.title}
-                      onChange={(value) =>
-                        updateCard(index, {
-                          title: value,
-                          /* `row.slug || slugify(value)` looked right and was
-                             not: the first keystroke filled the slug, and from
-                             the second onwards the slug was truthy and kept.
-                             Every card titled by typing ended up with a
-                             one-letter slug. This follows the same rule the
-                             country's own slug does -- derive until the
-                             operator takes it over. */
-                          slug: nextAutoSlug({
-                            sourceValue: value,
-                            currentSlug: row.slug,
-                            existingRecord: Boolean(row.id),
-                            manuallyOverridden: Boolean(row.slugEdited),
-                          }),
-                        })
-                      }
-                    />
-                    <Input
-                      label="Slug"
-                      value={row.slug}
-                      onChange={(value) =>
-                        updateCard(index, { slug: value, slugEdited: true })
-                      }
-                    />
-                    <div className="sm:col-span-2">
-                      <RichTextEditor
-                        label="Short description"
-                        value={row.shortDescription}
-                        onChange={(value) =>
-                          updateCard(index, { shortDescription: value })
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <Input
+                        label="Document name"
+                        value={row.name}
+                        onChange={(value) => updateDocument(index, { name: value })}
+                      />
+                      <BooleanField
+                        label="Required"
+                        checked={row.isRequired}
+                        onChange={(checked) =>
+                          updateDocument(index, { isRequired: checked })
                         }
-                        allowedVariables={variablesForContext("country")}
-                        entityContext={entityContext}
-                        enableImages={false}
-                        minHeight="min-h-24"
                       />
+                      <div className="sm:col-span-2">
+                        <RichTextEditor
+                          label={`Details ${index + 1}`}
+                          ariaLabel={`Details ${index + 1}`}
+                          value={row.details}
+                          onChange={(value) =>
+                            updateDocument(index, { details: value })
+                          }
+                          allowedVariables={variablesForContext("country")}
+                          entityContext={entityContext}
+                          enableImages={false}
+                          minHeight="min-h-20"
+                        />
+                      </div>
                     </div>
-                    <div className="sm:col-span-2">
-                      <RichTextEditor
-                        label="Overview"
-                        value={row.overview}
-                        onChange={(value) =>
-                          updateCard(index, { overview: value })
-                        }
-                        allowedVariables={variablesForContext("country")}
-                        entityContext={entityContext}
-                        enableImages={false}
-                        minHeight="min-h-28"
-                      />
-                    </div>
-                    <MediaPickerDialog
-                      label="Icon media"
-                      value={row.iconMediaId}
-                      media={media}
-                      onChange={(value) =>
-                        updateCard(index, { iconMediaId: value })
-                      }
-                    />
-                    <MediaPickerDialog
-                      label="Featured media"
-                      value={row.featuredMediaId}
-                      media={media}
-                      onChange={(value) =>
-                        updateCard(index, { featuredMediaId: value })
-                      }
-                    />
-                    <Input
-                      label="CTA label"
-                      value={row.ctaLabel}
-                      placeholder="View consultants"
-                      onChange={(value) =>
-                        updateCard(index, { ctaLabel: value })
-                      }
-                    />
-                    <Input
-                      label="CTA URL"
-                      value={row.ctaUrl}
-                      onChange={(value) => updateCard(index, { ctaUrl: value })}
-                    />
-                    <Input
-                      label="Display order"
-                      value={row.displayOrder}
-                      onChange={(value) =>
-                        updateCard(index, { displayOrder: value })
-                      }
-                      type="number"
-                    />
-                    {/* Cards are staged as drafts, and without this there was
-                      * no way to ever publish one: the public page shows only
-                      * ACTIVE cards, so every card built here stayed invisible. */}
-                    <Select
-                      label="Status"
-                      value={row.status}
-                      onChange={(value) => updateCard(index, { status: value })}
-                      /* A card goes public on PUBLISHED -- that is the status
-                       * the public page filters cards on. Sections and FAQs
-                       * publish on ACTIVE instead, so offering ACTIVE here
-                       * looked right and still left the card invisible. */
-                      options={[
-                        { id: "DRAFT", label: "Draft — not shown publicly" },
-                        { id: "PUBLISHED", label: "Published — shown on the country page" },
-                        { id: "INACTIVE", label: "Inactive — retired" },
-                      ]}
-                    />
-                    <BooleanField
-                      label="Free consultation"
-                      checked={row.isFreeConsultation}
-                      onChange={(checked) =>
-                        updateCard(index, { isFreeConsultation: checked })
-                      }
-                    />
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-        <UnifiedSeoFields
-          value={seo}
-          onChange={(next) => {
-            setSeo(next);
-            setDirty(true);
-          }}
-          media={media}
-        />
+                ))
+              ) : (
+                <p className="p-sub">
+                  No documents listed. The public page leaves the section out
+                  until you add one.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => addDocument("")}
+                className="p-btn p-btn--ghost p-btn--sm"
+              >
+                + Add document
+              </button>
+            </div>
+          </Card>
+          {/* Rendered from the start, with or without a country row. Its cards
+            * hold their values locally until the first save creates the parent,
+            * and `persistDrafts` below writes them then. */}
+          {/* The visa fee is quoted in the Country's currency, so the profile
+            * card is told which one that is rather than asking for it again --
+            * and it follows the selector above as soon as it changes. */}
+          <CountryProfilesEditor
+            ref={profilesRef}
+            countryId={record?.id}
+            currencyCode={core.currencyCode}
+            /* So an edit made only in a profile card counts as an unsaved
+             * change on the form that will write it. */
+            onDirty={markDirty}
+            entityContext={entityContext}
+          />
+          <Card
+            eyebrow="Editorial"
+            title="Content sections"
+            description="All public country sections are edited here; no separate section save."
+          >
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setSections((rows) => [...rows, { ...blankSection }]);
+                  setDirty(true);
+                }}
+                className="p-btn p-btn--outline p-btn--sm"
+              >
+                + Add section
+              </button>
+            </div>
+            <div className="mt-5 space-y-5">
+              {sections.length === 0 ? (
+                <Empty text="No editorial sections yet." />
+              ) : (
+                sections.map((row, index) => (
+                  <CountrySection
+                  entityContext={entityContext}
+                    key={row.id ?? `section-${index}`}
+                    index={index}
+                    row={row}
+                    media={media}
+                    onChange={(patch) => updateSection(index, patch)}
+                    onRemove={() => removeSection(index)}
+                  />
+                ))
+              )}
+            </div>
+          </Card>
+          <Card
+            eyebrow="Questions"
+            title="FAQs"
+            description="FAQs are part of the country save flow."
+          >
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setFaqs((rows) => [...rows, blankFaq()]);
+                  setDirty(true);
+                }}
+                className="p-btn p-btn--outline p-btn--sm"
+              >
+                + Add FAQ
+              </button>
+            </div>
+            <div className="mt-5 space-y-4">
+              {faqs.length === 0 ? (
+                <Empty text="No FAQs yet." />
+              ) : (
+                faqs.map((row, index) => (
+                  <div
+                    key={row.id ?? `faq-${index}`}
+                    className="p-panel"
+                  >
+                    <div className="flex justify-between">
+                      <h4 className="font-semibold">FAQ {index + 1}</h4>
+                      <button
+                        type="button"
+                        onClick={() => removeFaq(index)}
+                        className="p-danger"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <Input
+                        label="Question"
+                        value={row.question}
+                        onChange={(value) =>
+                          updateFaq(index, { question: value })
+                        }
+                        span
+                      />
+                      <div className="sm:col-span-2">
+                        <RichTextEditor
+                          label="Answer"
+                          value={row.answer}
+                          onChange={(value) => updateFaq(index, { answer: value })}
+                          allowedVariables={variablesForContext("country")}
+                          entityContext={entityContext}
+                          enableImages={false}
+                          minHeight="min-h-28"
+                        />
+                      </div>
+                      <Input
+                        label="Category"
+                        value={row.category}
+                        onChange={(value) =>
+                          updateFaq(index, { category: value })
+                        }
+                      />
+                      <Input
+                        label="Display order"
+                        value={row.displayOrder}
+                        onChange={(value) =>
+                          updateFaq(index, { displayOrder: value })
+                        }
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+          <Card
+            eyebrow="Guidance"
+            title="Consultant cards"
+            description="Optional guidance cards are staged here and saved with the country."
+          >
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setCards((rows) => [...rows, blankCard()]);
+                  setDirty(true);
+                }}
+                className="p-btn p-btn--outline p-btn--sm"
+              >
+                + Add guidance card
+              </button>
+            </div>
+            <div className="mt-5 space-y-5">
+              {cards.length === 0 ? (
+                <Empty text="No guidance cards yet." />
+              ) : (
+                cards.map((row, index) => (
+                  <div
+                    key={row.id ?? `card-${index}`}
+                    className="p-panel"
+                  >
+                    <div className="flex justify-between">
+                      <h4 className="font-semibold">Guidance card {index + 1}</h4>
+                      <button
+                        type="button"
+                        onClick={() => removeCard(index)}
+                        className="p-danger"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <Input
+                        label="Title"
+                        value={row.title}
+                        onChange={(value) =>
+                          updateCard(index, {
+                            title: value,
+                            /* `row.slug || slugify(value)` looked right and was
+                               not: the first keystroke filled the slug, and from
+                               the second onwards the slug was truthy and kept.
+                               Every card titled by typing ended up with a
+                               one-letter slug. This follows the same rule the
+                               country's own slug does -- derive until the
+                               operator takes it over. */
+                            slug: nextAutoSlug({
+                              sourceValue: value,
+                              currentSlug: row.slug,
+                              existingRecord: Boolean(row.id),
+                              manuallyOverridden: Boolean(row.slugEdited),
+                            }),
+                          })
+                        }
+                      />
+                      <Input
+                        label="Slug"
+                        value={row.slug}
+                        onChange={(value) =>
+                          updateCard(index, { slug: value, slugEdited: true })
+                        }
+                      />
+                      <div className="sm:col-span-2">
+                        <RichTextEditor
+                          label="Short description"
+                          value={row.shortDescription}
+                          onChange={(value) =>
+                            updateCard(index, { shortDescription: value })
+                          }
+                          allowedVariables={variablesForContext("country")}
+                          entityContext={entityContext}
+                          enableImages={false}
+                          minHeight="min-h-24"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <RichTextEditor
+                          label="Overview"
+                          value={row.overview}
+                          onChange={(value) =>
+                            updateCard(index, { overview: value })
+                          }
+                          allowedVariables={variablesForContext("country")}
+                          entityContext={entityContext}
+                          enableImages={false}
+                          minHeight="min-h-28"
+                        />
+                      </div>
+                      <MediaPickerDialog
+                        label="Icon media"
+                        value={row.iconMediaId}
+                        media={media}
+                        onChange={(value) =>
+                          updateCard(index, { iconMediaId: value })
+                        }
+                      />
+                      <MediaPickerDialog
+                        label="Featured media"
+                        value={row.featuredMediaId}
+                        media={media}
+                        onChange={(value) =>
+                          updateCard(index, { featuredMediaId: value })
+                        }
+                      />
+                      <Input
+                        label="CTA label"
+                        value={row.ctaLabel}
+                        placeholder="View consultants"
+                        onChange={(value) =>
+                          updateCard(index, { ctaLabel: value })
+                        }
+                      />
+                      <Input
+                        label="CTA URL"
+                        value={row.ctaUrl}
+                        onChange={(value) => updateCard(index, { ctaUrl: value })}
+                      />
+                      <Input
+                        label="Display order"
+                        value={row.displayOrder}
+                        onChange={(value) =>
+                          updateCard(index, { displayOrder: value })
+                        }
+                        type="number"
+                      />
+                      {/* Cards are staged as drafts, and without this there was
+                        * no way to ever publish one: the public page shows only
+                        * ACTIVE cards, so every card built here stayed invisible. */}
+                      <Select
+                        label="Status"
+                        value={row.status}
+                        onChange={(value) => updateCard(index, { status: value })}
+                        /* A card goes public on PUBLISHED -- that is the status
+                         * the public page filters cards on. Sections and FAQs
+                         * publish on ACTIVE instead, so offering ACTIVE here
+                         * looked right and still left the card invisible. */
+                        options={[
+                          { id: "DRAFT", label: "Draft — not shown publicly" },
+                          { id: "PUBLISHED", label: "Published — shown on the country page" },
+                          { id: "INACTIVE", label: "Inactive — retired" },
+                        ]}
+                      />
+                      <BooleanField
+                        label="Free consultation"
+                        checked={row.isFreeConsultation}
+                        onChange={(checked) =>
+                          updateCard(index, { isFreeConsultation: checked })
+                        }
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+          <UnifiedSeoFields
+            value={seo}
+            onChange={(next) => {
+              setSeo(next);
+              setDirty(true);
+            }}
+            media={media}
+          />
+        </EditorFields>
         <UnifiedEditorActions
           cancelHref="/countries"
           busy={saving}
