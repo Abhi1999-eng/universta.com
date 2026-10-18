@@ -132,18 +132,7 @@ describe("a study level's code against specialization slugs", () => {
     );
   });
 
-  it('checks the readable slug as well as the code', async () => {
-    const calls: string[] = [];
-    await expect(
-      new CourseLevelsService(prisma(calls, { takenSlug: 'masters' })).update(
-        'pg',
-        { code: 'PG2' },
-        request,
-      ),
-    ).resolves.toBeDefined();
-    expect(calls).toContain(
-      'subSubject.findFirst {"deletedAt":null,"slug":{"in":["pg2"]}}',
-    );
+  it('checks the readable slug as well as the code on create', async () => {
     await expect(
       new CourseLevelsService(prisma([], { takenSlug: 'masters' })).create(
         { code: 'PG', name: "Master's" },

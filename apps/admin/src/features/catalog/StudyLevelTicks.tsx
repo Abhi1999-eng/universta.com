@@ -35,7 +35,7 @@ export function StudyLevelTicks({
       <h3 className="mt-2 text-xl font-semibold">Study levels</h3>
       <p className="p-sub">{hint}</p>
       {ordered.length === 0 ? (
-        <p className="p-hint mt-4">No active study level yet. Add levels under “All levels” first.</p>
+        <p className="p-hint mt-4">No active study level yet. Add levels under “Study levels” first.</p>
       ) : (
         <div className="mt-4 flex flex-wrap gap-3">
           {ordered.map((level) => {

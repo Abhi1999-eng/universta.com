@@ -79,8 +79,8 @@ describe('exactly one sidebar entry is active', () => {
   it.each([
     ['/locations?tab=states', 'States / provinces'],
     ['/locations?tab=cities', 'Cities'],
-    ['/catalog-masters?section=course-levels', 'All levels'],
-    ['/catalog-masters?section=course-levels&new=1', 'All levels'],
+    ['/catalog-masters?section=course-levels', 'Study levels'],
+    ['/catalog-masters?section=course-levels&new=1', 'Study levels'],
     ['/catalog-masters?section=study-modes', 'Study modes'],
     ['/catalog-masters?section=intakes', 'Intakes'],
     ['/catalog-masters?section=scholarship-providers', 'Scholarship providers'],

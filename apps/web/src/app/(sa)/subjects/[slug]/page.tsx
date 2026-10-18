@@ -8,6 +8,7 @@ import {
 } from "@/lib/catalog";
 import { everyLevel, LEVEL_ROWS_FETCHED, subjectOfferedLevels } from "@/lib/course-levels";
 import { programmeSample } from "@/lib/programme-sample";
+import { levelPageIntros } from "@/lib/level-page-intros";
 import { relatedSubjects } from "@/lib/related-subjects";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -59,7 +60,7 @@ export default async function SubjectDetailPage({ params }: Props) {
 
   /* Scholarships are a cross-link, not the point of the page: a failure here
      drops the section rather than the route. */
-  const [scholarships, universities, levels, allSubjects, allLevels, programmes] = await Promise.all([
+  const [scholarships, universities, levels, allSubjects, allLevels, programmes, levelIntros] = await Promise.all([
     phaseList<AnyRecord>("scholarships", { subject: slug, limit: "6" })
       .then((result) => toScholarshipCards(result.data))
       .catch(() => []),
@@ -94,6 +95,9 @@ export default async function SubjectDetailPage({ params }: Props) {
        reference's subject page shows its courses, and how many there are
        in all. None, or a failed read, leaves the section out. */
     programmeSample({ subject: [slug] }),
+    /* What editors wrote on its level pages, for a line about each level
+       in its levels section. None, or a failed read, says less there. */
+    levelPageIntros({ subject: subject.slug }),
   ]);
   const related = relatedSubjects(subject, allSubjects).map((row) => ({
     id: row.id,
@@ -133,6 +137,7 @@ export default async function SubjectDetailPage({ params }: Props) {
         catalogue={allLevels}
         related={related}
         programmes={programmes}
+        levelIntros={levelIntros}
       />
     </>
   );

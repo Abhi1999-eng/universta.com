@@ -11,6 +11,7 @@ import { countryFaqJsonLd } from '@/lib/country-faq';
 import { jsonLdString } from '@/lib/json-ld';
 import { phaseList } from '@/lib/phase1';
 import { programmeSample } from '@/lib/programme-sample';
+import { levelPageIntros } from '@/lib/level-page-intros';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 import { resolvedMetadata, templatedTitle } from '@/lib/seo-management';
 import { specializationHasOwnWords } from '@/lib/specialization-written';
@@ -91,7 +92,7 @@ export default async function SpecializationDetailPage({ params, searchParams }:
     return SubjectLevelPage({ params: Promise.resolve({ slug, levelSlug: specializationSlug }), searchParams });
   if (!specialization) notFound();
 
-  const [levels, scholarships, allLevels, programmes] = await Promise.all([
+  const [levels, scholarships, allLevels, programmes, levelIntros] = await Promise.all([
     /* Its courses under their levels. Both halves of the pair go with the
        request: the specialization's slug alone would also match the branch
        of the same name under another subject. */
@@ -118,6 +119,12 @@ export default async function SpecializationDetailPage({ params, searchParams }:
     programmeSample({
       subject: [specialization.subject.slug],
       specialization: [specialization.slug],
+    }),
+    /* What editors wrote on its level pages, for a line about each level
+       in its levels section. None, or a failed read, says less there. */
+    levelPageIntros({
+      subject: specialization.subject.slug,
+      specialization: specialization.slug,
     }),
   ]);
 
@@ -161,6 +168,7 @@ export default async function SpecializationDetailPage({ params, searchParams }:
         catalogue={allLevels}
         scholarships={scholarships}
         programmes={programmes}
+        levelIntros={levelIntros}
       />
     </>
   );

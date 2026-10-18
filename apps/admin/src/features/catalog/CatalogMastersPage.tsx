@@ -17,7 +17,11 @@ import {
   updateCourseLevel,
   updateStudyMode,
 } from './catalog-client';
-import type { CatalogMutationError, MasterRecord } from './catalog.types';
+import type {
+  CatalogMutationError,
+  LevelUsage,
+  MasterRecord,
+} from './catalog.types';
 import { ScholarshipProvidersPanel } from './ScholarshipProvidersPanel';
 import { catalogErrorText } from './catalog-errors';
 
@@ -269,6 +273,27 @@ const empty = {
   educationOrder: '0',
 };
 
+const USAGE_PARTS: [keyof LevelUsage, string, string][] = [
+  ['subjects', 'subject', 'subjects'],
+  ['specializations', 'specialization', 'specializations'],
+  ['courses', 'course', 'courses'],
+  ['programmes', 'programme', 'programmes'],
+  ['levelPages', 'written level page', 'written level pages'],
+];
+
+/**
+ * Where a study level is used, in one line under its code: "Used in 3
+ * subjects · 2 specializations · 6 courses". A level used nowhere says so,
+ * and a row the API sent no counts for says nothing.
+ */
+export function levelUsageLine(usage?: LevelUsage): string | null {
+  if (!usage) return null;
+  const parts = USAGE_PARTS.filter(([key]) => usage[key] > 0).map(
+    ([key, one, many]) => `${usage[key]} ${usage[key] === 1 ? one : many}`,
+  );
+  return parts.length ? `Used in ${parts.join(' · ')}` : 'Not used yet';
+}
+
 export function CatalogMastersPage() {
   const focused = useSectionFocus([
     'course-levels',
@@ -291,6 +316,9 @@ export function CatalogMastersPage() {
   const [editing, setEditing] = useState<MasterRecord | null>(null);
   const [form, setForm] = useState(empty);
   const [pending, setPending] = useState<Pending>(null);
+  /* A study level's code is its pages' address (PG -> /masters), so it is
+     fixed once the level exists. A study mode's code can still change. */
+  const locked = kind === 'level' && editing !== null;
 
   const load = useCallback(() => {
     setLoading(true);
@@ -339,9 +367,15 @@ export function CatalogMastersPage() {
     setSaving(true);
     setError('');
     const data = {
-      code: form.code,
+      ...(locked ? {} : { code: form.code }),
       name: form.name,
-      description: form.description || undefined,
+      /* An emptied level description is cleared: it shows on the level's
+         pages, so stale text must be removable. */
+      description: form.description.trim()
+        ? form.description
+        : locked
+          ? null
+          : undefined,
       displayOrder: Number(form.displayOrder) || 0,
       ...(kind === 'level'
         ? { educationOrder: Number(form.educationOrder) || 0 }
@@ -411,14 +445,22 @@ export function CatalogMastersPage() {
         </div>
         <div className="mt-5 divide-y divide-[#E8ECF3]">
           {rows.map((row) => (
-            <div key={row.id} className="flex items-center justify-between gap-3 py-4">
-              <div>
+            <div
+              key={row.id}
+              className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
                 <p className="font-semibold">{row.name}</p>
                 <p className="p-hint">
                   {row.code} · {row.status}
                 </p>
+                {panelKind === 'level' && levelUsageLine(row.usage) ? (
+                  <p className="p-hint" data-testid="level-usage">
+                    {levelUsageLine(row.usage)}
+                  </p>
+                ) : null}
               </div>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
                 <button
                   type="button"
                   onClick={() => open(panelKind, row)}
@@ -454,12 +496,12 @@ export function CatalogMastersPage() {
   const show = (section: string) => !focused || focused === section;
   const title = focused
     ? ({
-        'course-levels': 'Course levels',
+        'course-levels': 'Study levels',
         'study-modes': 'Study modes',
         intakes: 'Intakes',
         'scholarship-providers': 'Scholarship providers',
       } as const)[focused]
-    : 'Course levels, study modes, intakes and scholarship providers';
+    : 'Study levels, study modes, intakes and scholarship providers';
 
   return (
     <section aria-labelledby="masters-heading" className="mx-auto w-full max-w-[1180px]">
@@ -467,8 +509,9 @@ export function CatalogMastersPage() {
         {title}
       </h2>
       <p className="p-sub">
-        The lists that course editors pick from and the website filters by. A
-        value still in use cannot be switched off or deleted.
+        {focused === 'course-levels'
+          ? 'The one list of study levels that subjects, specializations, courses, university programmes and the website all use. Add a level here once, then tick it anywhere.'
+          : 'The lists that course editors pick from and the website filters by. A value still in use cannot be switched off or deleted.'}
       </p>
 
       {error ? (
@@ -482,8 +525,14 @@ export function CatalogMastersPage() {
           <CatalogLoading label="Loading master data…" />
         </div>
       ) : (
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          {show('course-levels') ? panel('Course levels', 'level', levels) : null}
+        <div
+          className={
+            focused === 'course-levels'
+              ? 'mt-8 grid gap-6'
+              : 'mt-8 grid gap-6 lg:grid-cols-2'
+          }
+        >
+          {show('course-levels') ? panel('Study levels', 'level', levels) : null}
           {show('study-modes') ? panel('Study modes', 'mode', modes) : null}
           {show('intakes') ? <IntakesPanel /> : null}
           {show('scholarship-providers') ? (
@@ -496,8 +545,12 @@ export function CatalogMastersPage() {
 
       {editorOpen ? (
         <CatalogDialog
-          title={`${editing ? 'Edit' : 'Add'} ${kind === 'level' ? 'course level' : 'study mode'}`}
-          description="Use stable codes because courses and integrations reference them."
+          title={`${editing ? 'Edit' : 'Add'} ${kind === 'level' ? 'study level' : 'study mode'}`}
+          description={
+            kind === 'level'
+              ? 'The code is fixed once saved. The name, description and order can change any time.'
+              : 'Use stable codes because courses and integrations reference them.'
+          }
           onClose={() => {
             setEditing(null);
             setEditorOpen(false);
@@ -516,12 +569,21 @@ export function CatalogMastersPage() {
                   id="master-code"
                   required
                   pattern="[A-Z0-9_-]+"
+                  readOnly={locked}
+                  aria-describedby={kind === 'level' ? 'master-code-hint' : undefined}
                   className="p-input"
                   value={form.code}
                   onChange={(event) =>
                     setForm({ ...form, code: event.target.value.toUpperCase() })
                   }
                 />
+                {kind === 'level' ? (
+                  <p id="master-code-hint" className="p-hint mt-1 font-normal">
+                    {locked
+                      ? `Locked. Level page addresses use it: /subjects/…/${editing?.slug ?? form.code.toLowerCase()}. Change the name instead.`
+                      : "Can't be changed after you save. Level page addresses are built from it."}
+                  </p>
+                ) : null}
               </div>
               <div className="text-sm font-semibold">
                 <FieldLabel
@@ -548,11 +610,20 @@ export function CatalogMastersPage() {
               <textarea
                 id="master-description"
                 className="mt-2 min-h-20 w-full rounded-lg border border-[#D9E0EA] px-3 py-2 font-normal"
+                maxLength={kind === 'level' ? 500 : undefined}
+                aria-describedby={kind === 'level' ? 'master-description-hint' : undefined}
                 value={form.description}
                 onChange={(event) =>
                   setForm({ ...form, description: event.target.value })
                 }
               />
+              {kind === 'level' ? (
+                <p id="master-description-hint" className="p-hint mt-1 font-normal">
+                  Shown on this level&apos;s pages, and in the level section of
+                  subject and specialization pages when that page has no intro
+                  of its own. Plain text, up to 500 characters.
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="text-sm font-semibold">

@@ -70,6 +70,21 @@ export function studyLevelPanels(
   });
 }
 
+/**
+ * What a field's own levels section adds to its lead once its levels are a
+ * toggle: how to use it, and only when there is something to choose
+ * between. The leading space joins it to the sentence before.
+ */
+export function levelPickSentence(panels: readonly StudyLevelPanel[]): string {
+  if (panels.length < 2) return '';
+  const courses = panels.some((panel) => panel.group.count > 0);
+  const branches = panels.some((panel) => panel.specializations.length > 0);
+  if (courses && branches) return ' Pick a level to see its specializations and courses.';
+  if (courses) return ' Pick a level to see its courses.';
+  if (branches) return ' Pick a level to see the specializations taught at it.';
+  return '';
+}
+
 /** "Bachelor's", "Bachelor's and PhD", "Bachelor's, Master's and PhD". */
 export function namesInProse(names: readonly string[]) {
   if (names.length < 2) return names[0] ?? '';

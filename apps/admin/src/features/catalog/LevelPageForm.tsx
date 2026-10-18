@@ -260,7 +260,7 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
               <div>
                 <RichTextEditor label="Intro" value={content.intro} onChange={edit('intro')} enableImages={false} readOnly={readOnly} minHeight="min-h-40" />
                 <p className="p-hint mt-1">
-                  The page&apos;s overview, under its heading and the level&apos;s standard line{description ? <>: “{description}” (from Admin &gt; Course levels)</> : null}.
+                  The page&apos;s overview, under its heading and the level&apos;s standard line{description ? <>: “{description}” (from Admin &gt; Study levels)</> : null}.
                 </p>
               </div>
               <div>

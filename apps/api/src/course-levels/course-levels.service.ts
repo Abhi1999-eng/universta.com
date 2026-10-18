@@ -1,7 +1,11 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { catalogConflict, catalogNotFound } from '../catalog/catalog.errors';
+import {
+  catalogBadRequest,
+  catalogConflict,
+  catalogNotFound,
+} from '../catalog/catalog.errors';
 import {
   isUniqueConstraintError,
   paginationMeta,
@@ -35,6 +39,19 @@ function version(current: Date, expected: string | undefined) {
       'The course level changed in another session. Reload before saving',
     );
 }
+/**
+ * Where a level is used, for the admin's list: the subjects and
+ * specializations that tick it, the courses and university programmes at
+ * it, and the level pages an editor has written copy for. Deleted records
+ * don't count.
+ */
+export const LEVEL_USAGE = {
+  subjects: { where: { subject: { deletedAt: null } } },
+  subSubjects: { where: { subSubject: { deletedAt: null } } },
+  courses: { where: { deletedAt: null } },
+  universityCourseOfferings: { where: { deletedAt: null } },
+  levelPages: true,
+} satisfies Prisma.CourseLevelCountOutputTypeSelect;
 @Injectable()
 export class CourseLevelsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -45,7 +62,8 @@ export class CourseLevelsService {
    * reads the path as a specialization first, so a level whose address one
    * already uses would have no page under that subject. Specializations
    * are kept off the levels' addresses when they are named; this is the
-   * same rule from the level's side, for a new code or a changed one.
+   * same rule from the level's side, for a new code (a level's code is
+   * fixed once it is created).
    */
   private async assertCodeFree(code: string) {
     const taken = await this.prisma.subSubject.findFirst({
@@ -92,10 +110,11 @@ export class CourseLevelsService {
           }
         : {}),
     };
-    const [total, data] = await Promise.all([
+    const [total, rows] = await Promise.all([
       this.prisma.courseLevel.count({ where }),
       this.prisma.courseLevel.findMany({
         where,
+        include: { _count: { select: LEVEL_USAGE } },
         orderBy: [
           { educationOrder: 'asc' },
           { displayOrder: 'asc' },
@@ -105,6 +124,17 @@ export class CourseLevelsService {
         take: query.limit,
       }),
     ]);
+    const data = rows.map(({ _count, ...row }) => ({
+      ...row,
+      slug: publicLevelSlug(row.code),
+      usage: {
+        subjects: _count.subjects,
+        specializations: _count.subSubjects,
+        courses: _count.courses,
+        programmes: _count.universityCourseOfferings,
+        levelPages: _count.levelPages,
+      },
+    }));
     return { data, meta: paginationMeta(query.page, query.limit, total) };
   }
   async getAdmin(id: string) {
@@ -157,8 +187,18 @@ export class CourseLevelsService {
     const userId = actor(request);
     const current = await this.getAdmin(id);
     version(current.updatedAt, dto.expectedUpdatedAt);
-    if (dto.code && dto.code !== current.code)
-      await this.assertCodeFree(dto.code);
+    // A level's pages and links are built from its code (/subjects/x/masters),
+    // so the code is fixed once the level exists. Re-sending it unchanged is
+    // fine; the admin's older forms still do.
+    if (
+      dto.code !== undefined &&
+      dto.code.toUpperCase() !== current.code.toUpperCase()
+    )
+      throw catalogBadRequest(
+        'COURSE_LEVEL_CODE_LOCKED',
+        "A study level's code can't be changed after it is created, because its pages and links are built from it. Change the name instead",
+        { code: current.code },
+      );
     if (dto.status === 'INACTIVE' && current.status !== 'INACTIVE') {
       const dependent = await this.prisma.course.count({
         where: { courseLevelId: id, status: 'PUBLISHED', deletedAt: null },
@@ -173,7 +213,7 @@ export class CourseLevelsService {
       const row = await this.prisma.courseLevel.update({
         where: { id },
         data: {
-          code: dto.code ?? current.code,
+          code: current.code,
           name: dto.name ?? current.name,
           description: dto.description,
           educationOrder: dto.educationOrder ?? current.educationOrder,

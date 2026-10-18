@@ -84,6 +84,7 @@ const SAFE_ERROR_MESSAGES: Record<string, string> = {
   COURSE_LEVEL_STALE_VERSION: 'The course level changed in another session. Reload before saving',
   COURSE_LEVEL_IN_USE: 'This course level is still used by courses',
   COURSE_LEVEL_INVALID: 'A ticked study level no longer exists. Reload the page and tick the study levels again',
+  COURSE_LEVEL_CODE_LOCKED: "A study level's code can't be changed after it is created. Change the name instead",
   STUDY_MODE_NOT_FOUND: 'Study mode not found',
   STUDY_MODE_CONFLICT: 'Study mode code or name already exists',
   STUDY_MODE_STALE_VERSION: 'The study mode changed in another session. Reload before saving',
@@ -403,10 +404,12 @@ function operationDetails(operation: CatalogProxyOperation): {
     const base = `/api/v1/admin/${resource}`;
     const path = action === 'list' || action === 'create' ? base : `${base}/${id}`;
     return {
-      method: action === 'list' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE',
+      // A read is a GET: anything else unnamed fell through to DELETE, which
+      // would remove an unused level along with its ticks and level pages.
+      method: action === 'list' || action === 'get' ? 'GET' : action === 'create' ? 'POST' : action === 'update' ? 'PATCH' : 'DELETE',
       path,
       query: action === 'list' ? ['q', 'status', 'page', 'limit'] : [],
-      body: action === 'create' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status'] : action === 'update' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status', 'expectedUpdatedAt'] : ['expectedUpdatedAt'],
+      body: action === 'create' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status'] : action === 'update' ? ['code', 'name', 'description', 'educationOrder', 'displayOrder', 'status', 'expectedUpdatedAt'] : action === 'get' ? [] : ['expectedUpdatedAt'],
     };
   }
   if (operation.startsWith('courses:')) {

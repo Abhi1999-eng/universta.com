@@ -50,7 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "All subjects", href: "/subjects" },
       { label: "All specializations", href: "/specializations" },
-      { label: "All levels", href: "/catalog-masters?section=course-levels" },
+      { label: "Study levels", href: "/catalog-masters?section=course-levels" },
       { label: "Courses", href: "/courses" },
       { label: "Study modes", href: "/catalog-masters?section=study-modes" },
       { label: "Intakes", href: "/catalog-masters?section=intakes" },
@@ -189,7 +189,7 @@ function matchesBase(path: string, base: string): boolean {
  * Resolution, in order:
  *   1. deepest matching href wins, so /phase1/universities beats /phase1;
  *   1b. among entries sharing that path, the one whose query says more wins,
- *      so "Add level" (`?section=course-levels&new=1`) beats "All levels";
+ *      so "Add level" (`?section=course-levels&new=1`) beats "Study levels";
  *   2. among entries sharing that href, the real destination wins over a
  *      signpost -- a `note` marks an entry whose subject is managed elsewhere,
  *      so Subjects is selected rather than Specializations;

@@ -6,10 +6,10 @@ import { apiBaseUrl, webBaseUrl } from './helpers/e2e-urls';
 /**
  * An editor publishes a subject with Bachelor's and PhD ticked. Publish ends
  * the editing session: the list opens with a green confirmation. On the
- * website the level block follows the ticks -- Bachelor's and PhD, not the
+ * website the level toggle follows the ticks -- Bachelor's and PhD, not the
  * six levels it used to show regardless -- even before a course is filed,
- * and so does the subject's page in a destination, where a level is picked
- * from a bar.
+ * each level ending with its own page, and so does the subject's page in a
+ * destination.
  *
  * A level page exists only for a level the subject is offered at: its
  * PhD page opens, its MBA page is not found, and the destination's empty
@@ -43,10 +43,19 @@ test.describe('subject publishing and its study levels', () => {
     expect((body.data.offeredLevels ?? []).map((level) => level.name)).toEqual(["Bachelor's", 'PhD']);
 
     await page.goto(`${webBaseUrl}/subjects/${slug}`);
-    const levels = page.getByRole('navigation', { name: /study level/i });
-    const block = (await levels.count()) ? levels : page.locator('main');
-    await expect(block.getByText("Bachelor's", { exact: false }).first()).toBeVisible();
-    await expect(block.getByText('PhD', { exact: false }).first()).toBeVisible();
+    /* The subject's levels are a toggle: Bachelor's and PhD, nothing else,
+       each panel ending with the level's own page. */
+    const toggle = page.getByRole('group', { name: 'Study level', exact: true });
+    await expect(toggle.getByRole('button')).toHaveText(["Bachelor's", 'PhD']);
+    await expect(page.locator('#programs section.studylevel')).toHaveCount(2);
+    await expect(page.locator('#level-ug .studylevel__elsewhere a')).toHaveAttribute('href', `/subjects/${slug}/bachelors`);
+    await toggle.getByRole('button', { name: 'PhD' }).click();
+    await expect(toggle.getByRole('button', { name: 'PhD' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#level-phd')).toBeVisible();
+    await expect(page.locator('#level-ug')).toBeHidden();
+    await expect(page.locator('#level-phd a.coursegroup__head')).toHaveAttribute('href', `/subjects/${slug}/phd?view=guides`);
+    await expect(page.locator('#level-phd .studylevel__elsewhere a')).toHaveAttribute('href', `/subjects/${slug}/phd`);
+    await expect(page.locator('#level-phd')).not.toContainText('every destination');
     await expect(page.getByRole('heading', { name: 'Foundation Program', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'MBA', exact: true })).toHaveCount(0);
 
