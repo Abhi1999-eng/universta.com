@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubjectForm } from './SubjectForm';
@@ -96,6 +96,23 @@ beforeEach(() => {
   mocks.unpublishSubSubject.mockResolvedValue({ data: child('spec-v3', 'DRAFT') });
   mocks.listLevelPages.mockResolvedValue({ data: [], meta: null });
 });
+
+const studyLevel = (levelId: string, code: string, name: string, educationOrder: number) => ({ id: levelId, code, name, description: null, educationOrder, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' });
+const bachelors = studyLevel('lvl-ug', 'UG', "Bachelor's", 3);
+const doctorate = studyLevel('lvl-phd', 'PHD', 'PhD', 6);
+/* A row of the Level pages card as the API lists it. */
+const pageRow = (level: typeof bachelors, slug: string, patch: Record<string, unknown> = {}) => ({
+  level: { id: level.id, code: level.code, name: level.name, slug, description: null, status: 'ACTIVE' },
+  offered: true,
+  sources: ['TICKED'],
+  path: `/subjects/marine-sciences/${slug}`,
+  page: null,
+  ...patch,
+});
+const keptPage = { id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false, faqCount: 0, hasSeo: false, searchReady: false, updatedAt: 'page-v1' };
+const notSavedHint = /Rows marked “Not saved yet” follow your study level ticks\./;
+/* One level's row on the card; the ticks above carry the same names. */
+const cardRow = (name: string) => document.querySelector<HTMLElement>(`[data-level-row="${name}"]`);
 
 const seoRow = (patch: Record<string, unknown> = {}) => ({
   id: 'seo-1', ownerType: 'SUBJECT', ownerId: 'subject-1', seoTitle: null, metaDescription: null, canonicalUrl: null, focusKeyword: null, ogTitle: null, ogDescription: null, ogMediaId: null, twitterTitle: null, twitterDescription: null, twitterMediaId: null, robotsIndex: true, robotsFollow: true, schemaJson: null, hreflangJson: null, ogMedia: null, twitterMedia: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z',
@@ -197,14 +214,13 @@ describe('subject form and its specializations', () => {
     expect(peekFlash()).toBeNull();
   });
 
-  /* The Level pages card sits under the study-level ticks and lists what the
-     API says is offered, so it follows the ticks once they are saved and
-     says so until then. */
-  it('shows the Level pages card, and reads its rows again after a save', async () => {
-    mocks.listCourseLevels.mockResolvedValue({
-      data: [{ id: 'lvl-ug', code: 'UG', name: "Bachelor's", description: null, educationOrder: 3, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' }],
-      meta: null,
-    });
+  /* The Level pages card sits under the study-level ticks. Its rows are the
+     API's, as saved, and they follow the ticks as they are clicked: a level
+     ticked shows at once, marked "Not saved yet", and the API's own row
+     takes its place once the save is through. It used to show nothing until
+     the save, so a level could not be written the moment it was ticked. */
+  it('shows the Level pages card following the ticks, and reads its rows again after a save', async () => {
+    mocks.listCourseLevels.mockResolvedValue({ data: [bachelors], meta: null });
     const user = userEvent.setup();
     render(<SubjectForm id="subject-1" />);
     await screen.findByRole('button', { name: 'Publish' });
@@ -212,15 +228,35 @@ describe('subject form and its specializations', () => {
     expect(screen.getByRole('heading', { name: 'Level pages' })).toBeInTheDocument();
     await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledWith('subject', 'subject-1'));
     expect(await screen.findByText(/No study level is offered yet/)).toBeInTheDocument();
-    expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+    expect(screen.queryByText(notSavedHint)).toBeNull();
 
     await user.click(await screen.findByRole('checkbox', { name: "Bachelor's" }));
-    expect(screen.getByText('Study level changes show here after you save.')).toBeInTheDocument();
+    const row = cardRow("Bachelor's")!;
+    expect(within(row).getByText('Not saved yet')).toBeInTheDocument();
+    expect(within(row).getByText('/subjects/marine-sciences/bachelors')).toBeInTheDocument();
+    expect(within(row).getByText('Ticked here')).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: "Save and write the Bachelor's page" })).toHaveTextContent('Save and write');
+    expect(screen.getByText(notSavedHint)).toBeInTheDocument();
+    expect(screen.queryByText(/No study level is offered yet/)).toBeNull();
+    /* Ticking reads nothing; the API has nothing new to say until the save. */
+    expect(mocks.listLevelPages).toHaveBeenCalledTimes(1);
 
+    /* Unticked again, the row goes with its tick. */
+    await user.click(screen.getByRole('checkbox', { name: "Bachelor's" }));
+    expect(cardRow("Bachelor's")).toBeNull();
+    expect(screen.queryByText(notSavedHint)).toBeNull();
+
+    await user.click(screen.getByRole('checkbox', { name: "Bachelor's" }));
+    /* Once saved, the API lists the level as offered. */
+    mocks.listLevelPages.mockResolvedValue({ data: [pageRow(bachelors, 'bachelors')], meta: null });
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledTimes(2));
     expect(mocks.updateSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-ug'] });
-    expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+    await waitFor(() => expect(screen.queryByText(notSavedHint)).toBeNull());
+    const saved = cardRow("Bachelor's")!;
+    expect(within(saved).queryByText('Not saved yet')).toBeNull();
+    expect(within(saved).queryByRole('button', { name: /^Save and / })).toBeNull();
+    expect(within(saved).getByRole('link', { name: 'Write' })).toHaveAttribute('href', '/subjects/subject-1/level-pages/lvl-ug');
   });
 
   it('names the subject in the SEO alert, not a country', async () => {
@@ -322,10 +358,9 @@ describe('subject form and its specializations', () => {
      own editor is a fresh one that reads it back. "Edit subject" showed
      before it arrived, and an untick made in between was silently undone. */
   it('stays locked from a new subject\'s save until its own editor takes over', async () => {
-    const level = (levelId: string, name: string) => ({ id: levelId, code: levelId, name, description: null, educationOrder: 3, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' });
-    mocks.listCourseLevels.mockResolvedValue({ data: [level('lvl-ug', "Bachelor's"), level('lvl-phd', 'PhD')], meta: null });
+    mocks.listCourseLevels.mockResolvedValue({ data: [bachelors, doctorate], meta: null });
     mocks.createSubject.mockResolvedValue({
-      data: { ...subject, id: 'subject-new', updatedAt: 'new-v1', courseLevels: [level('lvl-ug', "Bachelor's"), level('lvl-phd', 'PhD')] },
+      data: { ...subject, id: 'subject-new', updatedAt: 'new-v1', courseLevels: [bachelors, doctorate] },
     });
     const user = userEvent.setup();
     const { container } = render(<SubjectForm />);
@@ -421,5 +456,129 @@ describe('subject form and its specializations', () => {
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(mocks.deleteSubjectSeo).toHaveBeenCalledWith('subject-1', '2026-10-02T00:00:00.000Z'));
     expect(mocks.saveSubjectSeo).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * "Save and write" on the Level pages card. A level just ticked has no page
+ * to write until its tick is saved -- the page editor refuses a level that
+ * is not offered -- so the button saves the subject as it stands and opens
+ * that level's page editor. A published subject stays published and a draft
+ * stays a draft: the button neither publishes nor moves to draft, and it
+ * does not go back to the list the way Publish does.
+ */
+describe('save and write from the Level pages card', () => {
+  beforeEach(() => {
+    mocks.listCourseLevels.mockResolvedValue({ data: [bachelors, doctorate], meta: null });
+  });
+
+  it('saves a published subject with the new tick, keeps it published, and opens the level\'s page', async () => {
+    mocks.getSubject.mockResolvedValue({ data: { ...subject, status: 'PUBLISHED' } });
+    mocks.updateSubject.mockResolvedValue({ data: { ...subject, status: 'PUBLISHED', updatedAt: 'subject-v2', courseLevels: [bachelors] } });
+    const user = userEvent.setup();
+    const { container } = render(<SubjectForm id="subject-1" />);
+    await screen.findByRole('button', { name: 'Move to draft' });
+    await user.click(await screen.findByRole('checkbox', { name: "Bachelor's" }));
+    await user.click(screen.getByRole('button', { name: "Save and write the Bachelor's page" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/subjects/subject-1/level-pages/lvl-ug'));
+    expect(mocks.updateSubject).toHaveBeenCalledTimes(1);
+    expect(mocks.updateSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-ug'], expectedUpdatedAt: 'subject-v1' });
+    expect(mocks.publishSubject).not.toHaveBeenCalled();
+    expect(mocks.unpublishSubject).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
+    /* Leaving, the fields stay locked until the page editor takes over. */
+    expect(container.querySelector('#subject-name')).toBeDisabled();
+  });
+
+  it('keeps a draft subject a draft, and opens the level\'s page', async () => {
+    const user = userEvent.setup();
+    render(<SubjectForm id="subject-1" />);
+    await screen.findByRole('button', { name: 'Publish' });
+    await user.click(await screen.findByRole('checkbox', { name: 'PhD' }));
+    await user.click(screen.getByRole('button', { name: 'Save and write the PhD page' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/subjects/subject-1/level-pages/lvl-phd'));
+    expect(mocks.updateSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-phd'] });
+    expect(mocks.publishSubject).not.toHaveBeenCalled();
+    expect(mocks.unpublishSubject).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
+  });
+
+  /* A page kept from before its level stopped being offered is off the
+     site; ticked again, the same save puts it back, and it opens to edit. */
+  it('saves and opens a kept page whose level is ticked again', async () => {
+    mocks.listLevelPages.mockResolvedValue({
+      data: [pageRow(doctorate, 'phd', { offered: false, sources: [], page: keptPage })],
+      meta: null,
+    });
+    const user = userEvent.setup();
+    render(<SubjectForm id="subject-1" />);
+    expect(await screen.findByText('Not offered now')).toBeInTheDocument();
+    await user.click(await screen.findByRole('checkbox', { name: 'PhD' }));
+
+    const row = cardRow('PhD')!;
+    expect(within(row).getByText('Ticked again. Its page is back on the site when you save.')).toBeInTheDocument();
+    expect(within(row).getByText('Not saved yet')).toBeInTheDocument();
+    expect(within(row).queryByText('Not offered now')).toBeNull();
+    await user.click(within(row).getByRole('button', { name: 'Save and edit the PhD page' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/subjects/subject-1/level-pages/lvl-phd'));
+    expect(mocks.updateSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-phd'] });
+    expect(mocks.publishSubject).not.toHaveBeenCalled();
+  });
+
+  /* A subject not saved yet lists its ticks too, at the address its slug
+     will give them; the button creates it. Its level's page replaces the
+     Create entry, as the subject's own editor does after a first save. */
+  it('creates a new subject with the tick, and replaces the Create entry with the level\'s page', async () => {
+    mocks.createSubject.mockResolvedValue({ data: { ...subject, id: 'subject-new', updatedAt: 'new-v1', courseLevels: [bachelors] } });
+    const user = userEvent.setup();
+    const { container } = render(<SubjectForm />);
+    expect(await screen.findByText(/No study level is ticked yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/Save the subject first; a page can then be written/)).toBeNull();
+    await user.type(container.querySelector<HTMLInputElement>('#subject-name')!, 'Marine Sciences');
+    await user.type(container.querySelector<HTMLTextAreaElement>('#subject-short')!, 'Oceans.');
+    await user.click(await screen.findByRole('checkbox', { name: "Bachelor's" }));
+
+    const row = cardRow("Bachelor's")!;
+    expect(within(row).getByText('/subjects/marine-sciences/bachelors')).toBeInTheDocument();
+    expect(within(row).getByText('Not saved yet')).toBeInTheDocument();
+    /* Nothing to read for a subject that does not exist yet. */
+    expect(mocks.listLevelPages).not.toHaveBeenCalled();
+    await user.click(within(row).getByRole('button', { name: "Save and write the Bachelor's page" }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/subjects/subject-new/level-pages/lvl-ug'));
+    expect(mocks.createSubject).toHaveBeenCalledTimes(1);
+    expect(mocks.createSubject.mock.calls[0][0]).toMatchObject({ courseLevelIds: ['lvl-ug'], slug: 'marine-sciences' });
+    expect(mocks.updateSubject).not.toHaveBeenCalled();
+    expect(mocks.publishSubject).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
+  });
+
+  it('saves nothing and goes nowhere when the subject fails its checks', async () => {
+    mocks.getSubject.mockResolvedValue({ data: { ...subject, status: 'PUBLISHED' } });
+    const user = userEvent.setup();
+    const { container } = render(<SubjectForm id="subject-1" />);
+    await screen.findByRole('button', { name: 'Move to draft' });
+    await user.click(await screen.findByRole('checkbox', { name: "Bachelor's" }));
+    await user.clear(container.querySelector<HTMLInputElement>('#subject-name')!);
+    await user.click(screen.getByRole('button', { name: "Save and write the Bachelor's page" }));
+
+    expect(await screen.findByText('Subject name is required.')).toBeInTheDocument();
+    expect(mocks.updateSubject).not.toHaveBeenCalled();
+    expect(mocks.publishSubject).not.toHaveBeenCalled();
+    expect(mocks.unpublishSubject).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    /* The tick waits, unsaved, with the fields free for the fix. */
+    expect(within(cardRow("Bachelor's")!).getByText('Not saved yet')).toBeInTheDocument();
+    expect(container.querySelector('#subject-name')).toBeEnabled();
   });
 });

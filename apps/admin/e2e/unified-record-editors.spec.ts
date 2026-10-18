@@ -43,21 +43,35 @@ test.describe('unified record editors', () => {
 
     await expect(page.getByRole('heading', { name: 'Create subject' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Specializations' })).toBeVisible();
-    // Level pages are written once the subject exists; the card says so.
-    await expect(page.getByRole('heading', { name: 'Level pages', exact: true })).toBeVisible();
-    await expect(page.getByText(/Save the subject first; a page can then be written/)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'SEO' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /save seo/i })).toHaveCount(0);
+
+    // Level pages follow the study level ticks before the subject exists: none
+    // ticked, none listed; a level ticked shows its row at once, with the one
+    // way to write it -- save the subject, then open its page.
+    const card = page.locator('#subject-level-pages');
+    await expect(card.getByRole('heading', { name: 'Level pages', exact: true })).toBeVisible();
+    await expect(card.getByText(/No study level is ticked yet/)).toBeVisible();
+    await page.getByRole('checkbox', { name: "Bachelor's", exact: true }).check();
+    await expect(card.getByRole('button', { name: "Save and write the Bachelor's page" })).toHaveText('Save and write');
+    await expect(card.getByText('Not saved yet', { exact: true })).toBeVisible();
+    await expect(card.getByText(/No study level is ticked yet/)).toHaveCount(0);
   });
 
   test('Specialization shows its Level pages card before the first draft save', async ({ page }) => {
     await page.goto('/specializations/new');
 
     await expect(page.getByRole('heading', { name: 'Create specialization' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Level pages', exact: true })).toBeVisible();
-    await expect(page.getByText(/Save the specialization first; a page can then be written/)).toBeVisible();
+    const card = page.locator('#specialization-level-pages');
+    await expect(card.getByRole('heading', { name: 'Level pages', exact: true })).toBeVisible();
+    await expect(card.getByText(/No study level is ticked yet/)).toBeVisible();
+    // A ticked level is listed at once; before the first save it can only be
+    // written through "Save and write", never a plain link to an editor that
+    // would refuse it.
+    await page.getByRole('checkbox', { name: 'PhD', exact: true }).check();
+    await expect(card.getByRole('button', { name: 'Save and write the PhD page' })).toHaveText('Save and write');
     await expect(page.getByRole('link', { name: /^(Write|Edit) the .+ page$/ })).toHaveCount(0);
   });
 

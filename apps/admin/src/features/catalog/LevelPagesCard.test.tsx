@@ -2,14 +2,17 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LevelPagesCard } from './LevelPagesCard';
-import type { LevelPageRow } from './catalog.types';
+import type { LevelPageRow, LevelRef, MasterRecord } from './catalog.types';
 import { clearFlash, queueFlash } from '@/features/shared/Flash';
 
 /**
  * The Level pages card on a subject's or a specialization's editor: one row
  * per level the API says is offered, what each page has, a link to write it,
- * and a way to delete what was written. It sits inside the owner's <form>,
- * so nothing in it may submit that form.
+ * and a way to delete what was written. The rows also follow the study-level
+ * ticks above before they are saved: a level ticked shows at once with "Save
+ * and write", a level unticked is marked as leaving. It sits inside the
+ * owner's <form>, so nothing in it submits that form but "Save and write",
+ * which saves the owner on purpose.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -36,8 +39,12 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-const ug = { id: 'lvl-ug', code: 'UG', name: "Bachelor's", slug: 'bachelors', description: null, status: 'ACTIVE' };
-const phd = { id: 'lvl-phd', code: 'PHD', name: 'PhD', slug: 'phd', description: null, status: 'ACTIVE' };
+const ug: LevelRef = { id: 'lvl-ug', code: 'UG', name: "Bachelor's", slug: 'bachelors', description: null, status: 'ACTIVE' };
+const pg: LevelRef = { id: 'lvl-pg', code: 'PG', name: "Master's", slug: 'masters', description: null, status: 'ACTIVE' };
+const phd: LevelRef = { id: 'lvl-phd', code: 'PHD', name: 'PhD', slug: 'phd', description: null, status: 'ACTIVE' };
+/* The active levels the ticks above are drawn from, in their order. */
+const master = (level: LevelRef, displayOrder: number): MasterRecord => ({ ...level, displayOrder, createdAt: 'c', updatedAt: 'u' });
+const levels = [master(ug, 0), master(pg, 1), master(phd, 2)];
 type Page = NonNullable<LevelPageRow['page']>;
 const page = (overrides: Partial<Page> = {}): Page => ({
   id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false,
@@ -53,9 +60,20 @@ const props = {
   ownerName: 'Marine Sciences',
   ownerPublished: false,
   refreshKey: 0,
-  ticksChanged: false,
+  levels,
+  ticked: ['lvl-ug'],
+  savedTicked: ['lvl-ug'],
+  basePath: '/subjects/marine-sciences',
   parentDirty: false,
 };
+
+/* One level's row, by the name it shows. */
+function levelRow(name: string) {
+  const found = [...document.querySelectorAll<HTMLElement>('li[data-level-row]')].find((item) => item.dataset.levelRow === name);
+  if (!found) throw new Error(`No row for ${name}`);
+  return found;
+}
+const rowNames = () => [...document.querySelectorAll<HTMLElement>('li[data-level-row]')].map((item) => item.dataset.levelRow);
 
 beforeEach(() => {
   clearFlash();
@@ -64,16 +82,39 @@ beforeEach(() => {
 });
 
 describe('before the owner is saved', () => {
-  it('asks for a save first and reads nothing', () => {
-    render(<LevelPagesCard {...props} ownerId={undefined} />);
+  it('lists the levels ticked so far from the ticks alone, and reads nothing', () => {
+    render(<LevelPagesCard {...props} ownerId={undefined} savedTicked={[]} />);
     expect(screen.getByRole('heading', { name: 'Level pages' })).toBeInTheDocument();
-    expect(screen.getByText(/Save the subject first/)).toBeInTheDocument();
+    const bachelors = levelRow("Bachelor's");
+    expect(within(bachelors).getByText('/subjects/marine-sciences/bachelors')).toBeInTheDocument();
+    expect(within(bachelors).getByText('Not saved yet')).toBeInTheDocument();
+    expect(within(bachelors).getByText('Ticked here')).toBeInTheDocument();
+    const save = within(bachelors).getByRole('button', { name: "Save and write the Bachelor's page" });
+    expect(save).toHaveTextContent(/^Save and write$/);
+    /* No editor to link to and nothing written to delete until it is saved. */
+    expect(within(bachelors).queryByRole('link')).toBeNull();
+    expect(screen.queryByRole('button', { name: /More actions/ })).toBeNull();
+    expect(screen.queryByText(/Save the subject first/)).toBeNull();
     expect(mocks.listLevelPages).not.toHaveBeenCalled();
   });
 
-  it('names a specialization in the same place', () => {
-    render(<LevelPagesCard {...props} owner="specialization" ownerId={undefined} />);
-    expect(screen.getByText(/Save the specialization first/)).toBeInTheDocument();
+  it('says when nothing is ticked yet, naming the owner', () => {
+    const { unmount } = render(<LevelPagesCard {...props} ownerId={undefined} ticked={[]} savedTicked={[]} />);
+    expect(
+      screen.getByText('No study level is ticked yet. Tick a level under Study levels above and it shows here; “Save and write” saves the subject and opens its page.'),
+    ).toBeInTheDocument();
+    unmount();
+
+    render(<LevelPagesCard {...props} owner="specialization" ownerId={undefined} ticked={[]} savedTicked={[]} />);
+    expect(screen.getByText(/“Save and write” saves the specialization and opens its page\./)).toBeInTheDocument();
+    expect(mocks.listLevelPages).not.toHaveBeenCalled();
+  });
+
+  it('shows no address while the new record has no slug', () => {
+    render(<LevelPagesCard {...props} ownerId={undefined} savedTicked={[]} basePath={null} />);
+    const bachelors = levelRow("Bachelor's");
+    expect(within(bachelors).getByRole('button', { name: "Save and write the Bachelor's page" })).toBeInTheDocument();
+    expect(bachelors).not.toHaveTextContent('/subjects/');
   });
 });
 
@@ -128,7 +169,7 @@ describe('the rows', () => {
       ],
       meta: null,
     });
-    render(<LevelPagesCard {...props} />);
+    render(<LevelPagesCard {...props} ticked={['lvl-ug', 'lvl-phd']} savedTicked={['lvl-ug', 'lvl-phd']} />);
     await screen.findByText('Intro · 3 FAQs');
     expect(screen.getAllByText('Published')).toHaveLength(2);
     expect(screen.getAllByText('Search-ready')).toHaveLength(1);
@@ -167,8 +208,10 @@ describe('the rows', () => {
 
   it('says when nothing is offered yet', async () => {
     mocks.listLevelPages.mockResolvedValue({ data: [], meta: null });
-    render(<LevelPagesCard {...props} />);
-    expect(await screen.findByText(/No study level is offered yet/)).toBeInTheDocument();
+    render(<LevelPagesCard {...props} ticked={[]} savedTicked={[]} />);
+    expect(
+      await screen.findByText('No study level is offered yet. Tick a level under Study levels above and it shows here, ready to write; a level with a published course shows here on its own.'),
+    ).toBeInTheDocument();
   });
 
   it('shows a failure inside the card, with a retry', async () => {
@@ -190,10 +233,132 @@ describe('the rows', () => {
     await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledTimes(2));
   });
 
-  it('says tick changes show after a save', async () => {
-    render(<LevelPagesCard {...props} ticksChanged />);
-    expect(screen.getByText('Study level changes show here after you save.')).toBeInTheDocument();
+  it('says what “Not saved yet” means only while a tick differs from the saved one', async () => {
+    const hint = 'Rows marked “Not saved yet” follow your study level ticks. Saving keeps them; “Save and write” saves and opens the page.';
+    const { unmount } = render(<LevelPagesCard {...props} />);
     await screen.findByRole('link', { name: "Write the Bachelor's page" });
+    expect(screen.queryByText(hint)).toBeNull();
+    expect(screen.queryByText('Not saved yet')).toBeNull();
+    unmount();
+
+    render(<LevelPagesCard {...props} ticked={['lvl-ug', 'lvl-phd']} />);
+    expect(await screen.findByText(hint)).toBeInTheDocument();
+    expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+  });
+});
+
+describe('following the study-level ticks before they are saved', () => {
+  it('shows a level just ticked at once, with a button that saves and opens its page', async () => {
+    render(<LevelPagesCard {...props} ownerPublished ticked={['lvl-ug', 'lvl-phd']} />);
+    await screen.findByRole('link', { name: "Write the Bachelor's page" });
+    const phdRow = levelRow('PhD');
+    expect(within(phdRow).getByText('Not saved yet')).toBeInTheDocument();
+    expect(within(phdRow).getByText('/subjects/marine-sciences/phd')).toBeInTheDocument();
+    expect(within(phdRow).getByText('Ticked here')).toBeInTheDocument();
+    /* Nothing is written for it yet, and saying so beside "Not saved yet"
+       would be noise; it is not on the site, so there is nothing to view. */
+    expect(within(phdRow).queryByText('Not written')).toBeNull();
+    expect(within(phdRow).queryByRole('link')).toBeNull();
+    const save = within(phdRow).getByRole('button', { name: 'Save and write the PhD page' });
+    expect(save).toHaveAttribute('type', 'submit');
+    expect(save).toHaveAttribute('name', 'intent');
+    expect(save).toHaveAttribute('value', 'write:lvl-phd');
+    expect(save).toHaveTextContent(/^Save and write$/);
+    /* The saved level is untouched by it. */
+    expect(within(levelRow("Bachelor's")).queryByText('Not saved yet')).toBeNull();
+    expect(within(levelRow("Bachelor's")).getByRole('link', { name: /View on site/ })).toBeInTheDocument();
+  });
+
+  it('places a level just ticked in the levels’ own order', async () => {
+    mocks.listLevelPages.mockResolvedValue({ data: [row(), row({ level: phd, path: '/subjects/marine-sciences/phd' })], meta: null });
+    render(<LevelPagesCard {...props} ticked={['lvl-ug', 'lvl-phd', 'lvl-pg']} savedTicked={['lvl-ug', 'lvl-phd']} />);
+    await screen.findByRole('button', { name: "Save and write the Master's page" });
+    expect(rowNames()).toEqual(["Bachelor's", "Master's", 'PhD']);
+  });
+
+  it('names a specialization on the button', async () => {
+    render(<LevelPagesCard {...props} owner="specialization" ownerId="spec-1" ticked={['lvl-ug', 'lvl-phd']} basePath="/subjects/marine-sciences/marine-biology" />);
+    const save = await screen.findByRole('button', { name: 'Save and write the PhD page' });
+    expect(save).toHaveAttribute('value', 'write:lvl-phd');
+    expect(within(levelRow('PhD')).getByText('/subjects/marine-sciences/marine-biology/phd')).toBeInTheDocument();
+  });
+
+  it('submits the owner’s form with the level it is for', async () => {
+    let submitter = '';
+    const submitted = vi.fn((event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      submitter = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value ?? '';
+    });
+    const user = userEvent.setup();
+    render(<form onSubmit={submitted}><LevelPagesCard {...props} ticked={['lvl-ug', 'lvl-phd']} /></form>);
+    await user.click(await screen.findByRole('button', { name: 'Save and write the PhD page' }));
+    expect(submitted).toHaveBeenCalledTimes(1);
+    expect(submitter).toBe('write:lvl-phd');
+  });
+
+  it('marks a written level unticked, and offered only by its tick, as going off the site', async () => {
+    mocks.listLevelPages.mockResolvedValue({ data: [row({ page: page() })], meta: null });
+    render(<LevelPagesCard {...props} ownerPublished ticked={[]} />);
+    /* Its page stays listed after the save, as "Not offered now", so it is
+       not struck out of the list. */
+    expect(await screen.findByText('Off the site when you save')).toBeInTheDocument();
+    expect(screen.queryByText('Removed when you save')).toBeNull();
+    const bachelors = levelRow("Bachelor's");
+    expect(within(bachelors).getByText("Bachelor's")).not.toHaveClass('line-through');
+    expect(within(bachelors).getByText('Unticked. Its page goes off the site when you save; what is written is kept.')).toBeInTheDocument();
+    /* What was written can still be opened and deleted; it can't be viewed
+       on the site, nor saved-and-written. */
+    expect(within(bachelors).getByRole('link', { name: "Edit the Bachelor's page" })).toBeInTheDocument();
+    expect(within(bachelors).queryByRole('link', { name: /View on site/ })).toBeNull();
+    expect(within(bachelors).queryByRole('button', { name: /^Save and / })).toBeNull();
+    expect(within(bachelors).queryByText('Ticked here')).toBeNull();
+    expect(within(bachelors).getByRole('button', { name: "More actions for the Bachelor's page" })).toBeInTheDocument();
+    /* No row carries "Not saved yet", so the hint about it stays away. */
+    expect(screen.queryByText(/Rows marked “Not saved yet” follow your study level ticks/)).toBeNull();
+  });
+
+  it('says a leaving level with nothing written simply leaves the list', async () => {
+    render(<LevelPagesCard {...props} ticked={[]} />);
+    expect(await screen.findByText('Unticked. It leaves this list when you save.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: "Write the Bachelor's page" })).toBeNull();
+  });
+
+  it('keeps a level a specialization also offers, whatever its tick', async () => {
+    mocks.listLevelPages.mockResolvedValue({ data: [row({ sources: ['TICKED', 'SPECIALIZATION'] })], meta: null });
+    render(<LevelPagesCard {...props} ticked={[]} />);
+    const link = await screen.findByRole('link', { name: "Write the Bachelor's page" });
+    expect(link).toHaveAttribute('href', '/subjects/subject-1/level-pages/lvl-ug');
+    const bachelors = levelRow("Bachelor's");
+    expect(within(bachelors).getByText('From a specialization')).toBeInTheDocument();
+    expect(within(bachelors).queryByText(/Ticked here/)).toBeNull();
+    expect(within(bachelors).getByText('Not saved yet')).toBeInTheDocument();
+    expect(screen.queryByText('Removed when you save')).toBeNull();
+  });
+
+  it('offers to save and edit a kept page whose level is ticked again', async () => {
+    mocks.listLevelPages.mockResolvedValue({
+      data: [row(), row({ level: phd, offered: false, sources: [], path: '/subjects/marine-sciences/phd', page: page({ id: 'page-2' }) })],
+      meta: null,
+    });
+    render(<LevelPagesCard {...props} ticked={['lvl-ug', 'lvl-phd']} />);
+    const save = await screen.findByRole('button', { name: 'Save and edit the PhD page' });
+    expect(save).toHaveTextContent(/^Save and edit$/);
+    expect(save).toHaveAttribute('value', 'write:lvl-phd');
+    const phdRow = levelRow('PhD');
+    expect(within(phdRow).getByText('Ticked again. Its page is back on the site when you save.')).toBeInTheDocument();
+    expect(within(phdRow).getByText('Not saved yet')).toBeInTheDocument();
+    expect(within(phdRow).getByText('Draft')).toBeInTheDocument();
+    expect(within(phdRow).queryByText('Not offered now')).toBeNull();
+    expect(within(phdRow).queryByRole('link', { name: 'Edit the PhD page' })).toBeNull();
+    expect(within(phdRow).getByRole('button', { name: 'More actions for the PhD page' })).toBeInTheDocument();
+  });
+
+  it('stays as the API sent it while the level list could not be read', async () => {
+    render(<LevelPagesCard {...props} levels={[]} ticked={['lvl-phd']} />);
+    expect(await screen.findByRole('link', { name: "Write the Bachelor's page" })).toBeInTheDocument();
+    expect(screen.queryByText('Not saved yet')).toBeNull();
+    expect(screen.queryByText('Removed when you save')).toBeNull();
+    expect(rowNames()).toEqual(["Bachelor's"]);
   });
 });
 

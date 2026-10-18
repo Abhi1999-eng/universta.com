@@ -1,4 +1,4 @@
-import type { CatalogLevel, LevelPageDetail, LevelPageOwner, LevelPageStatus, LevelSource, OfferedLevel } from './catalog.types';
+import type { CatalogLevel, LevelPageDetail, LevelPageOwner, LevelPageRow, LevelPageStatus, LevelSource, OfferedLevel } from './catalog.types';
 import { faqBlank, faqUsed, type FaqDraft } from './editorial/ContentBlocks';
 import { richTextOrEmpty } from '@/features/shared/rich-text-value';
 import { seoPayload, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
@@ -86,6 +86,123 @@ export function sameIds(a: string[], b: string[]) {
   const left = new Set(a);
   const right = new Set(b);
   return left.size === right.size && [...left].every((id) => right.has(id));
+}
+
+/** A level's part of its pages' address, as the API names it (PG ->
+ * "masters"). The admin's level list sends it; the fallback mirrors the
+ * API's rule for a list read before it did. */
+export function levelSlug(level: { code: string; slug?: string }) {
+  if (level.slug) return level.slug;
+  const named: Record<string, string> = { UG: 'bachelors', PG: 'masters', PHD: 'phd' };
+  return named[level.code.toUpperCase()] ?? level.code.toLowerCase();
+}
+
+/**
+ * Where a row of the Level pages card stands against the ticks above it:
+ * - `saved`: as stored; any tick change leaves it offered either way.
+ * - `new`: ticked here and not saved yet; its page can be written once the
+ *   ticks are saved.
+ * - `returning`: a page kept from before its level stopped being offered,
+ *   ticked again; back on the site once saved.
+ * - `leaving`: offered only because it was ticked, and now unticked; off the
+ *   site once saved (what was written is kept).
+ */
+export type LiveLevelState = 'saved' | 'new' | 'returning' | 'leaving';
+export interface LiveLevelRow {
+  level: { id: string; name: string };
+  /** The public address, or null while a new record has no slug yet. */
+  path: string | null;
+  page: LevelPageRow['page'];
+  /** On the site as things are saved now. */
+  offered: boolean;
+  /** Why it will be offered once the ticks are saved. */
+  sources: LevelSource[];
+  state: LiveLevelState;
+  /** Its tick here differs from the saved one. */
+  unsaved: boolean;
+}
+
+/**
+ * The card's rows as the ticks stand now, not only as they were last saved:
+ * the API says what is offered as stored, and the ticks above say what the
+ * editor is about to save. A level ticked here appears at once, a level
+ * unticked is marked as leaving, and a level a specialization or a course
+ * brings in stays whatever its tick.
+ *
+ * `levels` is the active level list the ticks are drawn from, in its order.
+ * While it is empty (its read failed) the ticks can't be named, so the rows
+ * stay as the API sent them.
+ */
+export function liveLevelRows({
+  rows,
+  levels,
+  ticked,
+  savedTicked,
+  basePath,
+}: {
+  rows: LevelPageRow[];
+  levels: Array<{ id: string; code: string; name: string; slug?: string }>;
+  ticked: string[];
+  savedTicked: string[];
+  basePath: string | null;
+}): LiveLevelRow[] {
+  const asSaved = (row: LevelPageRow): LiveLevelRow => ({
+    level: { id: row.level.id, name: row.level.name },
+    path: row.path,
+    page: row.page,
+    offered: row.offered,
+    sources: row.sources,
+    state: 'saved',
+    unsaved: false,
+  });
+  if (!levels.length) return rows.map(asSaved);
+  const now = new Set(ticked);
+  const before = new Set(savedTicked);
+  const known = new Map(levels.map((level, index) => [level.id, { level, index }]));
+  const seen = new Set<string>();
+  const live: LiveLevelRow[] = rows.map((row) => {
+    seen.add(row.level.id);
+    const id = row.level.id;
+    /* Only an active level offers anything; a tick on one switched off
+       since is left as the API reads it. */
+    if (!known.has(id)) return asSaved(row);
+    /* Only a tick moved since the last save changes a row. Rows read before
+       that save (the card reads them again after it) are otherwise taken as
+       they were sent, as the card always did while re-reading. */
+    if (now.has(id) === before.has(id)) return asSaved(row);
+    const others = row.sources.filter((source) => source !== 'TICKED');
+    const sources: LevelSource[] = now.has(id) ? ['TICKED', ...others] : others;
+    const willOffer = sources.length > 0;
+    return {
+      ...asSaved(row),
+      sources,
+      state: !row.offered && willOffer ? 'returning' : row.offered && !willOffer ? 'leaving' : 'saved',
+      unsaved: true,
+    };
+  });
+  for (const id of ticked) {
+    const entry = known.get(id);
+    /* A tick saved already but not in the rows yet: the rows were read before
+       that save, and the re-read brings it. */
+    if (!entry || seen.has(id) || before.has(id)) continue;
+    live.push({
+      level: { id, name: entry.level.name },
+      path: basePath ? `${basePath}/${levelSlug(entry.level)}` : null,
+      page: null,
+      offered: false,
+      sources: ['TICKED'],
+      state: 'new',
+      unsaved: true,
+    });
+  }
+  /* Offered (or about to be) first, each group in the levels' own order;
+     the API sorts its rows the same way. */
+  const willOffer = (row: LiveLevelRow) => row.sources.length > 0 && row.state !== 'leaving';
+  const place = (row: LiveLevelRow) => known.get(row.level.id)?.index ?? Number.MAX_SAFE_INTEGER;
+  return live
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => Number(willOffer(b.row)) - Number(willOffer(a.row)) || place(a.row) - place(b.row) || a.index - b.index)
+    .map(({ row }) => row);
 }
 
 export type LevelPageContent = { intro: string; admissionNote: string; careersNote: string };

@@ -107,9 +107,10 @@ describe('specialization editor and its level pages', () => {
     ]);
   });
 
-  it('asks a new specialization to be saved first, and reads nothing', async () => {
+  it('shows a new specialization its ticks alone, and reads nothing', async () => {
     render(<SpecializationForm />);
-    expect(await screen.findByText(/Save the specialization first/)).toBeInTheDocument();
+    expect(await screen.findByText(/No study level is ticked yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/Save the specialization first/)).toBeNull();
     expect(mocks.listLevelPages).not.toHaveBeenCalled();
   });
 

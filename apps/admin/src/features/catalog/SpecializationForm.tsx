@@ -49,7 +49,7 @@ import type { CatalogLevel, CountryRecord, EditorialMedia, EditorialSeo, MasterR
 import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
 import { LevelPagesCard } from './LevelPagesCard';
-import { sameIds } from './level-pages';
+import { levelPageEditorHref } from './level-pages';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -190,6 +190,9 @@ export function SpecializationForm({ id }: { id?: string }) {
 
   const status = record?.status ?? 'DRAFT';
   const subject = record?.subject ?? subjects.find((row) => row.id === form.subjectId) ?? null;
+  /* Where its level pages will live, by the slugs it is about to save. */
+  const slugNow = form.slug.trim() || record?.slug || '';
+  const specializationPath = subject && slugNow ? `/subjects/${subject.slug}/${slugNow}` : null;
   const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id || record), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
 
   const updateSection = (index: number, patch: Partial<SectionDraft>) => { setSections((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row))); setDirty(true); setIssues([]); };
@@ -268,7 +271,13 @@ export function SpecializationForm({ id }: { id?: string }) {
     event.preventDefault();
     if (saving) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: Intent = submitter?.value === 'publish' ? 'publish' : 'draft';
+    /* "Save and write" on the Level pages card: save as the record stands
+       (a published one stays published, a draft stays a draft), then open
+       that level's page, which can only be written once its tick is saved. */
+    const writeLevelId = submitter?.value.startsWith('write:') ? submitter.value.slice('write:'.length) : null;
+    const intent: Intent = writeLevelId
+      ? record?.status === 'PUBLISHED' ? 'publish' : 'draft'
+      : submitter?.value === 'publish' ? 'publish' : 'draft';
     if (!validate()) return;
     setSaving(true); setSavingIntent(intent); setError('');
     /* The specialization this save has written, once it has. */
@@ -333,6 +342,13 @@ export function SpecializationForm({ id }: { id?: string }) {
       setLevelPagesKey((value) => value + 1);
       setForm((current) => ({ ...current, slug: saved.slug, shortDescription: saved.shortDescription ?? '', overview: saved.overview ?? '' }));
       setDirty(false);
+      /* "Save and write": on to the level's page; see SubjectForm. */
+      if (writeLevelId) {
+        leaving = true;
+        const href = levelPageEditorHref('specialization', saved.id, writeLevelId);
+        if (id) router.push(href); else router.replace(href);
+        return;
+      }
       /* Publish ends the editing session: back to the list, with the green
          confirmation there. A draft save keeps the operator where they are. */
       if (intent === 'publish') {
@@ -350,6 +366,9 @@ export function SpecializationForm({ id }: { id?: string }) {
       /* Past its own write, the version may have moved on; re-reading keeps
          the retry an ordinary update. See SubjectForm. */
       if (writtenId) {
+        /* Its ticks are stored by now; the Level pages card reads its rows
+           again so they match. */
+        setLevelPagesKey((value) => value + 1);
         try {
           setRecord((await getSpecialization(writtenId)).data);
         } catch {
@@ -415,7 +434,7 @@ export function SpecializationForm({ id }: { id?: string }) {
 
           <StudyLevelTicks idPrefix="specialization" levels={levels} value={levelIds} implied={impliedLevels} onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
-          <LevelPagesCard owner="specialization" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED' && (record.subject.status === undefined || record.subject.status === 'PUBLISHED')} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
+          <LevelPagesCard owner="specialization" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED' && (record.subject.status === undefined || record.subject.status === 'PUBLISHED')} refreshKey={levelPagesKey} levels={levels} ticked={levelIds} savedTicked={savedLevelIds} basePath={specializationPath} parentDirty={dirty} />
 
           <DestinationTicks idPrefix="specialization" countries={countries} value={countryIds} derived={derivedCountryIds} hint={id ? undefined : 'A new specialization starts with the countries its subject is offered in. Untick the ones it is not taught in; a country with a published course in it stays ticked on its own.'} onChange={(next) => { destinationsTouched.current = true; setCountryIds(next); setDirty(true); }} />
 
