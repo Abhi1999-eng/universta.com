@@ -3136,9 +3136,6 @@
 /* The destination's flag in the hero's eyebrow, at the size the design
    draws it there (zip universities.css .cchip__mark--xs): beside an
    uppercase label it is a mark, not a picture. */
-.sa .fieldhero__eyebrow .cchip__mark { width: 24px; height: 17px; border-radius: 3px; }
-.sa .fieldhero__eyebrow a { color: var(--text); text-decoration: none; }
-.sa .fieldhero__eyebrow a:hover { color: var(--accent); }
 /* The trail and the buttons sit in the tile's column here, under the
    heading, so the column brings its own gap before the figures. */
 .sa .fieldhero .btn-row { margin-top: 18px; }

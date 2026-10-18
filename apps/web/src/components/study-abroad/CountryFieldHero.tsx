@@ -2,35 +2,31 @@ import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import type { Media } from '@/lib/catalog';
 import type { Figure } from '@/lib/country-subject';
-import { FlagMark } from './FlagMark';
 
 /**
  * The head of a field's page in one destination -- a subject in the United
  * Kingdom, or one of its specializations there -- drawn the way the design
- * draws it: the field's tile beside the heading, the destination's flag in
- * the eyebrow with what kind of page this is, then a strip of figures and
- * the specializations taught there.
+ * draws it: the field's tile beside the heading, then a strip of figures
+ * and the specializations taught there.
  *
  * The pages had the heading alone, so a subject in a country looked like a
  * plain listing rather than the subject page it is narrowed from.
+ *
+ * No line over the heading. It read "Subject · 3 specializations" beside a
+ * chip row that said "1 taught here", and the client had the same line
+ * taken off the subject and specialization pages outside a country; the
+ * heading already says where ("Study Computer Science in Japan").
  */
 export function CountryFieldHero({
-  country,
   icon,
-  kind,
-  detail,
   fallbackIconPath,
   children,
 }: {
-  country: { iso2Code?: string | null };
   /** The field's own icon. Without one the tile carries the generic mark
    *  the subject and specialization pages use. */
   icon: Media | null;
-  kind: 'Subject' | 'Specialization';
   /** A matching design glyph when no catalogue image has been uploaded. */
   fallbackIconPath?: string;
-  /** After the dot: "12 specializations", "within Computer Science". */
-  detail?: ReactNode;
   /** The heading, the trail and whatever follows them in the column. */
   children: ReactNode;
 }) {
@@ -46,19 +42,7 @@ export function CountryFieldHero({
           </svg>
         )}
       </span>
-      <div>
-        <p className="hero__eyebrow fieldhero__eyebrow">
-          <FlagMark iso2Code={country.iso2Code ?? null} bands={null} />
-          {kind}
-          {detail ? (
-            <>
-              <b>·</b>
-              {detail}
-            </>
-          ) : null}
-        </p>
-        {children}
-      </div>
+      <div>{children}</div>
     </div>
   );
 }

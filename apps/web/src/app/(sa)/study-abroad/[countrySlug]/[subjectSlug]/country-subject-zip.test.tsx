@@ -182,14 +182,19 @@ describe('the ZIP-aligned country subject page', () => {
     expect(hero).toContain(`href="/study-abroad/uk/${subjectSlug}/specialization-1"`);
   });
 
-  it('keeps the ZIP strip to four statistics and states taught specializations beside their chips', async () => {
+  it('keeps the ZIP strip to four statistics and counts specializations on their chips alone', async () => {
     const html = await render();
     const hero = html.slice(0, html.indexOf('</section>'));
     const strip = hero.match(/<div class="statstrip[^"]*">(.*?)<\/div><\/div>/)?.[1] ?? '';
     const figures = [...strip.matchAll(/<b[^>]*>([^<]+)<\/b><span>([^<]+)<\/span>/g)]
       .map((cell) => `${cell[1]} ${cell[2]}`);
     expect(figures).toEqual(['1 Programme', '1 University', '1 City', 'Sep Intakes']);
-    expect(hero).toContain('<span class="label">Specializations · 1 taught here</span>');
+    /* The chips carry the counts; a count on their label read as a second
+       figure beside the section's own. */
+    expect(hero).toContain('<span class="label">Specializations</span>');
+    expect(hero).not.toContain('taught here</span>');
+    /* No "Subject · 9 specializations" line over the heading. */
+    expect(hero).not.toContain('hero__eyebrow');
     expect(hero).toContain('Specialization 1<em>1</em>');
   });
 

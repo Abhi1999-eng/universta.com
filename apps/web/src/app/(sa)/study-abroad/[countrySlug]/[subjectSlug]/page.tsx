@@ -341,15 +341,8 @@ export default async function Page({ params, searchParams }: Params) {
           </nav>
 
           <CountryFieldHero
-            country={country}
             icon={subject.iconMedia}
-            kind="Subject"
             fallbackIconPath={subjectIconPath(subject.slug)}
-            detail={
-              view.specializations.length
-                ? `${view.specializations.length} ${view.specializations.length === 1 ? 'specialization' : 'specializations'}`
-                : null
-            }
           >
             {/* The subject, studied here; the courses are one part of the
                 page. The browser title keeps "courses in", the phrase
@@ -365,8 +358,12 @@ export default async function Page({ params, searchParams }: Params) {
 
           <FiguresStrip figures={figures} />
 
+          {/* Each chip carries its own count here. The label counted too --
+              "1 taught here", of programmes -- over a section below that
+              says "2 of them have courses listed", of course guides, and
+              the two read as one figure that disagreed with itself. */}
           <SpecializationChips
-            label={hero.taughtHere ? `Specializations · ${hero.taughtHere} taught here` : 'Specializations'}
+            label="Specializations"
             chips={hero.specializations.slice(0, 6).map((entry) => ({
               id: entry.id,
               name: entry.name,
