@@ -448,6 +448,15 @@ export interface LevelPageDetail {
     updatedAt: string;
   };
 }
+/** Where a study level is used, as the admin's levels list reports it. */
+export interface LevelUsage {
+  subjects: number;
+  specializations: number;
+  courses: number;
+  programmes: number;
+  /** Level pages an editor has written copy for (draft or live). */
+  levelPages: number;
+}
 export interface MasterRecord {
   id: string;
   code: string;
@@ -458,6 +467,9 @@ export interface MasterRecord {
   status: string;
   createdAt: string;
   updatedAt: string;
+  /** A study level's address on its level pages: PG -> "masters". */
+  slug?: string;
+  usage?: LevelUsage;
 }
 export interface CourseRecord {
   id: string;

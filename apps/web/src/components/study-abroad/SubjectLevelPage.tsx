@@ -213,7 +213,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
   const levelQuery = view === 'guides'
     ? guideListSearch(guideFilters, { page: 1 }, { view: true })
     : courseListSearch(programmeFilters);
-  /* What the level is, as an editor describes it in Admin, Course levels;
+  /* What the level is, as an editor describes it in Admin, Study levels;
      the fixed line where nothing is written. Plain text, so printed as
      text. */
   const lead = level.description?.trim() || 'Explore published programmes by destination, university, fees, intake and entry requirements.';

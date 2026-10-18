@@ -68,7 +68,7 @@ describe('AdminShell', () => {
       ['Continents', '/continents'],
       ['All subjects', '/subjects'],
       ['All specializations', '/specializations'],
-      ['All levels', '/catalog-masters?section=course-levels'],
+      ['Study levels', '/catalog-masters?section=course-levels'],
       ['Courses', '/courses'],
       ['University claim requests', '/university-claims'],
       ['A/B experiments', '/experiments'],

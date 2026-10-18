@@ -64,19 +64,27 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
   'countries.displayOrder': commonFieldHelp.displayOrder,
   'countries.isFeatured': commonFieldHelp.featured,
 
-  // ---- Course levels / Study modes (Catalog masters) ----
+  // ---- Study levels / Study modes (Catalog masters) ----
   'course-levels.code': {
-    purpose: 'A stable, machine-readable identifier for this course level.',
-    input: 'A short, unique code.',
+    purpose: 'The fixed identifier of this study level.',
+    input: 'A short, unique code. It cannot be changed once the level is created.',
     dataType: 'Text',
     required: 'Required.',
     format: 'Uppercase letters, numbers, underscores and hyphens only.',
-    example: 'POSTGRADUATE',
-    frontendEffect: 'Referenced internally by course offerings and integrations.',
-    caution: 'Courses and offerings reference this code — changing it after go-live can break existing links between records.',
+    example: 'PG',
+    frontendEffect: 'Level page addresses are built from it: UG → /bachelors, PG → /masters, PHD → /phd; any other code is lower-cased (DIPLOMA → /diploma). Bulk sheets and filters also find levels by it.',
+    caution: 'Locked after creation: changing it would break every level page address and saved filter. Rename the level instead.',
   },
   'course-levels.name': commonFieldHelp.name,
-  'course-levels.description': commonFieldHelp.description,
+  'course-levels.description': {
+    purpose: 'A short plain description of this study level.',
+    input: 'One or two plain sentences about what the level is.',
+    dataType: 'Text',
+    required: 'Optional.',
+    format: 'Plain text, up to 500 characters. Level sections show the first two sentences.',
+    example: "A one- or two-year postgraduate degree taken after a bachelor's.",
+    frontendEffect: 'Shown under the heading of every page for this level, and in the level section of subject and specialization pages when that page has no intro of its own.',
+  },
   'course-levels.educationOrder': {
     purpose: 'Where this level sits in the academic progression (used for level-aware sorting/filtering).',
     input: 'A whole number — lower numbers are earlier in the academic progression.',

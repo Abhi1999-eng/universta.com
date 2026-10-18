@@ -134,6 +134,15 @@ describe('same-origin catalog BFF', () => {
       expect((await sent('subjects:level-pages:get:a/b:c?d')).url).toBe('http://127.0.0.1:4000/api/v1/admin/subjects/a%2Fb/level-pages/c%3Fd');
     });
 
+    /* A read of one level or mode used to fall through to DELETE, which
+       would have removed an unused level with its ticks and level pages. */
+    it('reads one study level or study mode with a GET', async () => {
+      expect(await sent('course-levels:get:l1')).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/course-levels/l1', method: 'GET', body: undefined });
+      expect(await sent('study-modes:get:m1')).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/study-modes/m1', method: 'GET', body: undefined });
+      const update = await sent('course-levels:update:l1', { method: 'PATCH', headers: auth, body: JSON.stringify({ name: 'Masters', expectedUpdatedAt: 'v1', slug: 'x' }) });
+      expect(update).toEqual({ url: 'http://127.0.0.1:4000/api/v1/admin/course-levels/l1', method: 'PATCH', body: { name: 'Masters', expectedUpdatedAt: 'v1' } });
+    });
+
     it('leaves the neighbouring subject operations where they were', async () => {
       expect((await sent('subjects:get:s1')).url).toBe('http://127.0.0.1:4000/api/v1/admin/subjects/s1');
       expect((await sent('subjects:countries:get:s1')).url).toBe('http://127.0.0.1:4000/api/v1/admin/subjects/s1/countries');
@@ -153,6 +162,7 @@ describe('same-origin catalog BFF', () => {
       expect((await answer('SEO_URL_INVALID')).message).toBe('Canonical URL must be a site path beginning with / or an http(s) URL');
       expect((await answer('COURSE_LEVEL_SLUG_TAKEN')).message).toBe("A specialization already uses this level's address. Rename that specialization first");
       expect((await answer('SUBJECT_SLUG_RESERVED')).message).toBe('That slug is a fixed page address on the site. Choose another slug');
+      expect((await answer('COURSE_LEVEL_CODE_LOCKED', { code: 'PG' }, 400)).message).toBe("A study level's code can't be changed after it is created. Change the name instead");
       const notReady = await answer('LEVEL_PAGE_NOT_READY', [{ field: 'intro', message: 'Write an intro, a note or an FAQ' }], 422);
       expect(notReady.message).toBe('Write an intro, a note or an FAQ before publishing this level page');
       expect(notReady.details).toEqual([{ field: 'intro', message: 'Write an intro, a note or an FAQ' }]);

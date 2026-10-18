@@ -6,7 +6,7 @@ import type { CourseLevelGroup } from './catalog';
  * short preview of the level's own page rather than only a list.
  *
  * The line is the level page's own intro where an editor wrote one, else
- * the catalogue's description of the level (Admin, All levels), else none.
+ * the catalogue's description of the level (Admin, Study levels), else none.
  * Only facts that are recorded are stated; none is ever a zero.
  */
 export type LevelFact = { label: string; value: string };
