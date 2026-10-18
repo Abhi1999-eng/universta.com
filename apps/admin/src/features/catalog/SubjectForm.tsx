@@ -24,7 +24,7 @@ import type { CountryRecord, EditorialMedia, EditorialSeo, MasterRecord, SubSubj
 import { DestinationTicks } from './DestinationTicks';
 import { StudyLevelTicks } from './StudyLevelTicks';
 import { LevelPagesCard } from './LevelPagesCard';
-import { sameIds } from './level-pages';
+import { levelPageEditorHref } from './level-pages';
 import { MediaPickerDialog } from './editorial/MediaPickerDialog';
 import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
@@ -54,8 +54,8 @@ export function SubjectForm({ id }: { id?: string }) {
   const [levels, setLevels] = useState<MasterRecord[]>([]);
   const [levelIds, setLevelIds] = useState<string[]>([]);
   /* The ticks as last saved, and a counter bumped on each save: the Level
-     pages card reads the offered levels from the API, so it only follows the
-     ticks once they are saved, and says so until then. */
+     pages card reads the offered levels from the API as saved, and marks
+     what the ticks change until they are. */
   const [savedLevelIds, setSavedLevelIds] = useState<string[]>([]);
   const [levelPagesKey, setLevelPagesKey] = useState(0);
   const [countries, setCountries] = useState<CountryRecord[]>([]);
@@ -128,6 +128,9 @@ export function SubjectForm({ id }: { id?: string }) {
   }, [dirty]);
 
   const status = record?.status ?? 'DRAFT';
+  /* Where its level pages will live, by the slug it is about to save. */
+  const slugNow = form.slug.trim() || record?.slug || '';
+  const subjectPath = slugNow ? `/subjects/${slugNow}` : null;
   const set = (key: keyof typeof form, value: string | boolean) => { if (key === 'slug') setSlugEdited(true); setForm((current) => ({ ...current, [key]: value, ...(key === 'name' ? { slug: nextAutoSlug({ sourceValue: String(value), currentSlug: current.slug, existingRecord: Boolean(id || record), manuallyOverridden: slugEdited }) } : {}) })); setDirty(true); setIssues([]); };
   function validate() {
     const next: string[] = [];
@@ -156,7 +159,13 @@ export function SubjectForm({ id }: { id?: string }) {
     event.preventDefault();
     if (saving) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: Intent = submitter?.value === 'publish' ? 'publish' : 'draft';
+    /* "Save and write" on the Level pages card: save as the record stands
+       (a published one stays published, a draft stays a draft), then open
+       that level's page, which can only be written once its tick is saved. */
+    const writeLevelId = submitter?.value.startsWith('write:') ? submitter.value.slice('write:'.length) : null;
+    const intent: Intent = writeLevelId
+      ? record?.status === 'PUBLISHED' ? 'publish' : 'draft'
+      : submitter?.value === 'publish' ? 'publish' : 'draft';
     if (!validate()) return;
     setSaving(true); setSavingIntent(intent); setError('');
     /* The subject this save has written, once it has. */
@@ -207,6 +216,15 @@ export function SubjectForm({ id }: { id?: string }) {
          Level pages card reads the offered levels again. */
       setSavedLevelIds(settled.courseLevels ? settled.courseLevels.map((level) => level.id) : levelIds);
       setLevelPagesKey((value) => value + 1);
+      /* "Save and write": on to the level's page, now that its tick is
+         stored. A subject made in this session leaves its Create entry
+         behind, as below. */
+      if (writeLevelId) {
+        leaving = true;
+        const href = levelPageEditorHref('subject', settled.id, writeLevelId);
+        if (id) router.push(href); else router.replace(href);
+        return;
+      }
       /* Publish ends the editing session: back to the list, with the green
          confirmation there, which names the specializations still in draft.
          A draft save keeps the operator where they are. */
@@ -232,6 +250,9 @@ export function SubjectForm({ id }: { id?: string }) {
          itself is not re-read: that refusal is the other session's change,
          and the editor is told to reload. */
       if (writtenId) {
+        /* Its ticks are stored by now; the Level pages card reads its rows
+           again so they match. */
+        setLevelPagesKey((value) => value + 1);
         try {
           setRecord((await getSubject(writtenId)).data);
         } catch {
@@ -278,7 +299,7 @@ export function SubjectForm({ id }: { id?: string }) {
 
           <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} hint="The levels ticked on its specializations show on the subject's pages on their own. Tick here any level the subject is offered at beyond them, or every level while it has no specializations. Levels with a published course show either way." onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
-          <LevelPagesCard owner="subject" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED'} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
+          <LevelPagesCard owner="subject" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED'} refreshKey={levelPagesKey} levels={levels} ticked={levelIds} savedTicked={savedLevelIds} basePath={subjectPath} parentDirty={dirty} />
 
           <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
 

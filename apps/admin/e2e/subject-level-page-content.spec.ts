@@ -7,12 +7,14 @@ import { webBaseUrl } from './helpers/e2e-urls';
  * Level pages, written in the admin: a subject's (or a specialization's) page
  * at one study level, such as /subjects/<slug>/bachelors.
  *
- * The rows on the Level pages card follow the saved ticks, as the API works
- * them out. Writing a page happens on a page of its own; publishing it comes
- * back to the card with a green toast, moving it to draft stays put, a second
- * tab saving over the first is refused, and deleting its content returns the
- * row to "Not written". The website shows what was written once the subject
- * and the page are both published.
+ * The rows on the Level pages card are the saved ticks, as the API works them
+ * out, adjusted by the ticks as they are clicked: a level unticked is marked
+ * "Removed when you save" and leaves on save. Writing a page happens on a
+ * page of its own; publishing it comes back to the card with a green toast,
+ * moving it to draft stays put, a second tab saving over the first is
+ * refused, and deleting its content returns the row to "Not written". The
+ * website shows what was written once the subject and the page are both
+ * published.
  *
  * Every subject here is named with this run's country prefix, so the
  * acceptance cleanup removes it -- its level pages and their SEO with it.
@@ -67,13 +69,16 @@ test.describe('level pages written in the admin', () => {
     await expect(row(card, "Bachelor's")).toContainText('Not written');
     await expect(row(card, "Bachelor's")).toContainText('Ticked here');
 
-    /* Unticking shows only after the save. */
+    /* Unticking marks the row at once; it leaves the card on save. */
     await page.getByRole('checkbox', { name: 'PhD', exact: true }).uncheck();
-    await expect(card.getByText('Study level changes show here after you save.')).toBeVisible();
-    await expect(card.getByRole('link', { name: 'Write the PhD page' })).toBeVisible();
-    await page.getByRole('button', { name: 'Save draft' }).click();
-    await expect(card.getByText('Study level changes show here after you save.')).toHaveCount(0);
+    await expect(row(card, 'PhD')).toContainText('Removed when you save');
+    /* The leaving row says what the save does; the "Not saved yet" hint is
+       for rows that carry that chip, and none does. */
+    await expect(card.getByText(/follow your study level ticks/)).toHaveCount(0);
     await expect(card.getByRole('link', { name: 'Write the PhD page' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Save draft' }).click();
+    await expect(card.getByText(/follow your study level ticks/)).toHaveCount(0);
+    await expect(row(card, 'PhD')).toHaveCount(0);
     await expect(card.getByRole('link', { name: "Write the Bachelor's page" })).toBeVisible();
 
     /* Write the Bachelor's page. */

@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SpecializationForm } from './SpecializationForm';
-import { clearFlash } from '@/features/shared/Flash';
+import { clearFlash, peekFlash } from '@/features/shared/Flash';
 
 /**
  * How a specialization's editor saves: the record first, then its sections,
@@ -74,6 +74,19 @@ const seoRow = (patch: Record<string, unknown> = {}) => ({
   ...patch,
 });
 const refusal = (message: string, code: string, status = 422) => Object.assign(new Error(message), { code, status, details: null });
+const phd = { id: 'lvl-phd', code: 'PHD', name: 'PhD', description: null, educationOrder: 6, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' };
+const phdTick = { id: 'lvl-phd', name: 'PhD', code: 'PHD' };
+/* The PhD row of the Level pages card as the API lists it. */
+const phdRow = {
+  level: { id: 'lvl-phd', code: 'PHD', name: 'PhD', slug: 'phd', description: null, status: 'ACTIVE' },
+  offered: true,
+  sources: ['TICKED'],
+  path: '/subjects/marine-sciences/marine-biology/phd',
+  page: null,
+};
+const notSavedHint = /Rows marked “Not saved yet” follow your study level ticks\./;
+/* One level's row on the card; the ticks above carry the same names. */
+const cardRow = (name: string) => document.querySelector<HTMLElement>(`[data-level-row="${name}"]`);
 
 beforeEach(() => {
   clearFlash();
@@ -169,32 +182,71 @@ describe('specialization editor save flow', () => {
   });
 
   /* Once created, its ticks are stored even when a later step fails, so the
-     Level pages card lists the new record's pages rather than asking for a
-     save that already happened. */
+     Level pages card lists the new record's pages as the API has them,
+     ready to write, rather than as a tick still waiting for a save. */
   it('lists the new record\'s level pages after a later step fails', async () => {
-    const phd = { id: 'lvl-phd', code: 'PHD', name: 'PhD', description: null, educationOrder: 6, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' };
     mocks.listCourseLevels.mockResolvedValue({ data: [phd], meta: null });
-    mocks.createSubSubject.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v1', courseLevels: [{ id: 'lvl-phd', name: 'PhD', code: 'PHD' }] }) });
+    mocks.createSubSubject.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v1', courseLevels: [phdTick] }) });
     mocks.publishSubSubject.mockRejectedValueOnce(refusal('Complete Sub-Subject fields before publishing', 'SUB_SUBJECT_NOT_READY'));
-    mocks.getSpecialization.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v2', courseLevels: [{ id: 'lvl-phd', name: 'PhD', code: 'PHD' }] }) });
+    mocks.getSpecialization.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v2', courseLevels: [phdTick] }) });
+    mocks.listLevelPages.mockResolvedValue({ data: [phdRow], meta: null });
     const user = userEvent.setup();
     await startNew(user);
     await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+
+    /* Before the save, the tick alone puts the row there. */
+    const ticked = cardRow('PhD')!;
+    expect(within(ticked).getByText('Not saved yet')).toBeInTheDocument();
+    expect(within(ticked).getByText('/subjects/marine-sciences/marine-biology/phd')).toBeInTheDocument();
+    expect(within(ticked).getByRole('button', { name: 'Save and write the PhD page' })).toBeInTheDocument();
+    expect(screen.getByText(notSavedHint)).toBeInTheDocument();
+    expect(mocks.listLevelPages).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Publish' }));
 
     expect(await screen.findByText('Complete Sub-Subject fields before publishing')).toBeInTheDocument();
     expect(mocks.createSubSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-phd'] });
     await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledWith('specialization', 'spec-new'));
-    expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+    expect(await screen.findByRole('link', { name: 'Write the PhD page' })).toHaveAttribute('href', '/specializations/spec-new/level-pages/lvl-phd');
+    expect(within(cardRow('PhD')!).queryByText('Not saved yet')).toBeNull();
+    expect(screen.queryByText(notSavedHint)).toBeNull();
+  });
+
+  /* A level offered only because it was ticked goes when it is unticked. The
+     row says so before the save, and leaves the list after it. */
+  it('marks a level unticked as leaving, until the save takes it off', async () => {
+    mocks.listCourseLevels.mockResolvedValue({ data: [phd], meta: null });
+    mocks.getSpecialization.mockResolvedValue({ data: specialization({ courseLevels: [phdTick] }) });
+    mocks.listLevelPages.mockResolvedValue({ data: [phdRow], meta: null });
+    const user = userEvent.setup();
+    render(<SpecializationForm id="spec-1" />);
+    await screen.findByRole('link', { name: 'Write the PhD page' });
+    expect(screen.queryByText(notSavedHint)).toBeNull();
+
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+    const row = cardRow('PhD')!;
+    expect(within(row).getByText('Removed when you save')).toBeInTheDocument();
+    expect(within(row).getByText('Unticked. It leaves this list when you save.')).toBeInTheDocument();
+    expect(within(row).queryByRole('link', { name: 'Write the PhD page' })).toBeNull();
+    expect(within(row).queryByRole('button', { name: /^Save and / })).toBeNull();
+    /* The row says what the save does itself; the hint is about "Not saved
+       yet" rows, and there are none. */
+    expect(screen.queryByText(notSavedHint)).toBeNull();
+
+    mocks.listLevelPages.mockResolvedValue({ data: [], meta: null });
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledTimes(2));
+    expect(mocks.updateSubSubject.mock.calls[0][2]).toMatchObject({ courseLevelIds: [] });
+    expect(await screen.findByText(/No study level is offered yet/)).toBeInTheDocument();
+    expect(cardRow('PhD')).toBeNull();
+    expect(screen.queryByText(notSavedHint)).toBeNull();
   });
 
   /* /specializations/new and /specializations/[id] are separate routes, so
      its own editor is a fresh one that reads it back. "Edit specialization"
      showed before it arrived, and an untick made in between was undone. */
   it('stays locked from a new specialization\'s save until its own editor takes over', async () => {
-    const phd = { id: 'lvl-phd', code: 'PHD', name: 'PhD', description: null, educationOrder: 6, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' };
     mocks.listCourseLevels.mockResolvedValue({ data: [phd], meta: null });
-    mocks.createSubSubject.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v1', courseLevels: [{ id: 'lvl-phd', name: 'PhD', code: 'PHD' }] }) });
+    mocks.createSubSubject.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v1', courseLevels: [phdTick] }) });
     const user = userEvent.setup();
     await startNew(user);
     await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
@@ -275,5 +327,102 @@ describe('specialization editor save flow', () => {
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(mocks.saveSpecializationSeo).toHaveBeenCalledTimes(1));
     expect(mocks.saveSpecializationSeo.mock.calls[0][1]).toMatchObject({ seoTitle: 'Marine Biology', expectedUpdatedAt: '2026-10-02T00:00:00.000Z' });
+  });
+});
+
+/**
+ * "Save and write" on the Level pages card, as on a subject's: a level just
+ * ticked can only be written once its tick is saved, so the button saves the
+ * specialization as it stands -- published stays published, a draft stays a
+ * draft -- and opens that level's page editor instead of the list.
+ */
+describe('save and write from the Level pages card', () => {
+  beforeEach(() => {
+    mocks.listCourseLevels.mockResolvedValue({ data: [phd], meta: null });
+  });
+
+  it('saves a published specialization with the new tick, keeps it published, and opens the level\'s page', async () => {
+    mocks.getSpecialization.mockResolvedValue({ data: specialization({ status: 'PUBLISHED' }) });
+    mocks.updateSubSubject.mockResolvedValue({ data: specialization({ status: 'PUBLISHED', updatedAt: 'spec-v2', courseLevels: [phdTick] }) });
+    const user = userEvent.setup();
+    render(<SpecializationForm id="spec-1" />);
+    await screen.findByRole('button', { name: 'Move to draft' });
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+    await user.click(screen.getByRole('button', { name: 'Save and write the PhD page' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/specializations/spec-1/level-pages/lvl-phd'));
+    expect(mocks.updateSubSubject).toHaveBeenCalledTimes(1);
+    expect(mocks.updateSubSubject.mock.calls[0].slice(0, 2)).toEqual(['subject-1', 'spec-1']);
+    expect(mocks.updateSubSubject.mock.calls[0][2]).toMatchObject({ courseLevelIds: ['lvl-phd'], expectedUpdatedAt: 'spec-v1' });
+    expect(mocks.publishSubSubject).not.toHaveBeenCalled();
+    expect(mocks.unpublishSubSubject).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
+    /* Leaving, the fields stay locked until the page editor takes over. */
+    expect(screen.getByRole('textbox', { name: /^Name/ })).toBeDisabled();
+  });
+
+  it('keeps a draft specialization a draft, and opens the level\'s page', async () => {
+    mocks.updateSubSubject.mockResolvedValue({ data: specialization({ updatedAt: 'spec-v2', courseLevels: [phdTick] }) });
+    const user = userEvent.setup();
+    render(<SpecializationForm id="spec-1" />);
+    await screen.findByRole('button', { name: 'Publish' });
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+    await user.click(screen.getByRole('button', { name: 'Save and write the PhD page' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/specializations/spec-1/level-pages/lvl-phd'));
+    expect(mocks.updateSubSubject.mock.calls[0][2]).toMatchObject({ courseLevelIds: ['lvl-phd'] });
+    expect(mocks.publishSubSubject).not.toHaveBeenCalled();
+    expect(mocks.unpublishSubSubject).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
+  });
+
+  /* A new specialization lists its ticks at the address its subject and
+     slug will give them; the button creates it, and its level's page
+     replaces the Create entry. */
+  it('creates a new specialization with the tick, and replaces the Create entry with the level\'s page', async () => {
+    mocks.createSubSubject.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v1', courseLevels: [phdTick] }) });
+    const user = userEvent.setup();
+    await startNew(user);
+    expect(screen.getByText(/No study level is ticked yet/)).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+
+    const row = cardRow('PhD')!;
+    expect(within(row).getByText('/subjects/marine-sciences/marine-biology/phd')).toBeInTheDocument();
+    expect(within(row).getByText('Not saved yet')).toBeInTheDocument();
+    await user.click(within(row).getByRole('button', { name: 'Save and write the PhD page' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/specializations/spec-new/level-pages/lvl-phd'));
+    expect(mocks.createSubSubject).toHaveBeenCalledTimes(1);
+    expect(mocks.createSubSubject.mock.calls[0][0]).toBe('subject-1');
+    expect(mocks.createSubSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-phd'], slug: 'marine-biology' });
+    expect(mocks.updateSubSubject).not.toHaveBeenCalled();
+    expect(mocks.publishSubSubject).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+    expect(peekFlash()).toBeNull();
+  });
+
+  it('saves nothing and goes nowhere when the specialization fails its checks', async () => {
+    mocks.getSpecialization.mockResolvedValue({ data: specialization({ status: 'PUBLISHED' }) });
+    const user = userEvent.setup();
+    render(<SpecializationForm id="spec-1" />);
+    await screen.findByRole('button', { name: 'Move to draft' });
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+    await user.clear(screen.getByRole('textbox', { name: /^Name/ }));
+    await user.click(screen.getByRole('button', { name: 'Save and write the PhD page' }));
+
+    expect(await screen.findByText('Specialization name is required.')).toBeInTheDocument();
+    expect(mocks.updateSubSubject).not.toHaveBeenCalled();
+    expect(mocks.publishSubSubject).not.toHaveBeenCalled();
+    expect(mocks.unpublishSubSubject).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    /* The tick waits, unsaved, with the fields free for the fix. */
+    expect(within(cardRow('PhD')!).getByText('Not saved yet')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^Name/ })).toBeEnabled();
   });
 });
