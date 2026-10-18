@@ -10,36 +10,32 @@ import {
 /**
  * The head of a subject's or a specialization's page in one destination,
  * drawn as the design draws it: the field's tile, the flag and the kind of
- * page in the eyebrow, the figures, and the specializations taught there.
+ * page: its tile and heading, the figures, and the specializations taught there.
  */
 
-const uk = { iso2Code: 'GB' };
-
 describe('the hero', () => {
-  it('says what kind of page it is, and within what', () => {
+  /* The client had the line over the heading taken off the subject and
+     specialization pages; the country pages follow. */
+  it('sets the field’s tile beside its heading, with no line over it', () => {
     const html = renderToStaticMarkup(
-      <CountryFieldHero country={uk} icon={null} kind="Specialization" detail="within Computer Science">
+      <CountryFieldHero icon={null}>
         <h1>Study Software Engineering in the United Kingdom</h1>
       </CountryFieldHero>,
     );
     expect(html).toContain('class="subjhero fieldhero"');
     expect(html).toContain('subjhero__icon');
-    expect(html).toMatch(/hero__eyebrow fieldhero__eyebrow[^>]*>.*Specialization<b>·<\/b>within Computer Science/);
+    expect(html).not.toContain('hero__eyebrow');
+    expect(html).not.toContain('<b>·</b>');
     expect(html).toContain('<h1>Study Software Engineering in the United Kingdom</h1>');
   });
 
   it("draws the field's own icon when it has one", () => {
     const html = renderToStaticMarkup(
-      <CountryFieldHero
-        country={uk}
-        icon={{ url: '/media/cs.svg' } as never}
-        kind="Subject"
-      >
+      <CountryFieldHero icon={{ url: '/media/cs.svg' } as never}>
         <h1>Study Computer Science in the United Kingdom</h1>
       </CountryFieldHero>,
     );
     expect(html).toContain('src="/media/cs.svg"');
-    expect(html).not.toContain('<b>·</b>');
   });
 });
 

@@ -6,20 +6,23 @@ import type {
   SubjectDetail,
 } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
-import { levelPageHref } from '@/lib/subject-levels';
+import { levelPageHref, levelPageLinks } from '@/lib/subject-levels';
 import {
   levelCoursesHref,
   levelTotal,
   programmesHref,
   subjectLevelPages,
+  subjectOfferedLevels,
 } from '@/lib/course-levels';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import { universityHref } from '@/lib/university-links';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { formatNumber } from '@/lib/format';
+import { sortByLevelOrder } from '@/lib/level-order';
 import { CourseCards } from './CourseCards';
 import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
+import { LevelLinks } from './LevelLinks';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import { firstSentence, splitLead } from './CountryGuideSections';
 import {
@@ -125,6 +128,26 @@ export function SubjectGuide({
      counts arrive in that order too. */
   const levels = groups.length ? groups : (subject.courseCountsByLevel ?? []);
   const levelOrder = levels.flatMap((row) => (row.level.code ? [row.level.code] : []));
+  /* The same levels linked from under the heading, by their own pages'
+     plain addresses: the block's links open the course-guide view of each,
+     which is noindex, so a level page had no link from its own subject. */
+  /* The order the links follow: the catalogue's, where it was read; else
+     the subject's `levels`, which the API sends in climbing order; else the
+     block's. The block's alone lacks the levels nothing is filed at (the
+     grouped read sends only levels with courses), and put those last. */
+  const linkOrder = catalogue?.length
+    ? catalogue.map((level) => level.code)
+    : [
+        ...new Set([
+          ...(subject.levels ?? []).flatMap((level) => (level.code ? [level.code] : [])),
+          ...levelOrder,
+        ]),
+      ];
+  const levelLinks = levelPageLinks(
+    sortByLevelOrder(subjectOfferedLevels(subject), linkOrder),
+    { subject: subject.slug },
+    catalogue,
+  );
   const filed = levelTotal(groups);
   const tests = subject.tests ?? [];
   const overview = subject.overview?.trim();
@@ -222,6 +245,13 @@ export function SubjectGuide({
                   Browse universities
                 </Link>
               </div>
+              {/* Its page at each level it is offered at. */}
+              <LevelLinks
+                variant="chips"
+                label="Choose a level"
+                links={levelLinks}
+                field={subject.name}
+              />
             </div>
           </div>
           {/* The hero image an editor set on the subject, under its name
@@ -281,6 +311,10 @@ export function SubjectGuide({
               branches={specializations}
               levelOrder={levelOrder}
               noun={noun}
+              levelLinks={{
+                catalogue: (catalogue ?? []).map((level) => level.code),
+                order: linkOrder,
+              }}
             />
           </div>
         </section>

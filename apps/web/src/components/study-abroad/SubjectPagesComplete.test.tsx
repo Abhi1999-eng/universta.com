@@ -38,11 +38,21 @@ const chipHrefs = (html: string) =>
     .map((match) => match[0].match(/href="([^"]+)"/)?.[1] ?? '')
     .filter((href) => href.startsWith('/study-abroad/'));
 
+/** Where a card's level links go, in the order they are drawn. */
+const levelLinkHrefs = (html: string) =>
+  [...html.matchAll(/<a class="levellinks__a"[^>]* href="([^"]+)"/g)].map((match) => match[1]);
+/** Where the level chips under a page's heading go, in order. */
+const levelChipHrefs = (html: string) => {
+  const nav = html.match(/<nav class="specchips levelchips"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? '';
+  return [...nav.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+};
+
 const level = (code: string, name: string) => ({ id: code.toLowerCase(), code, name });
 const UG = level('UG', "Bachelor's");
 const PG = level('PG', "Master's");
 const PHD = level('PHD', 'PhD');
 const DIPLOMA = level('DIPLOMA', 'Diploma');
+const MBA_LEVEL = level('MBA', 'MBA');
 
 const destinations = [
   { id: 'us', name: 'United States', slug: 'united-states', iso2Code: 'US', courseCount: 6 },
@@ -152,8 +162,92 @@ describe('a subject’s page', () => {
     expect(repeated).toContain('<p class="ov__lead">It asks what can be computed and how well.</p>');
   });
 
-  it('lists the specialization’s levels in climbing order', () => {
-    expect(html).toContain('Diploma, Bachelor&#x27;s, PhD');
+  it('links the specialization’s levels, in climbing order, to its page at each', () => {
+    expect(levelLinkHrefs(html)).toEqual([
+      '/subjects/computer-science/software-engineering/diploma',
+      '/subjects/computer-science/software-engineering/bachelors',
+      '/subjects/computer-science/software-engineering/phd',
+    ]);
+    expect(html).toContain('aria-label="Diploma in Software Engineering"');
+    /* One anchor can not hold another: the card's name carries its link,
+       stretched over the card, and the card is no longer one anchor. */
+    expect(html).not.toMatch(/<a [^>]*class="speccard__btn"/);
+    expect(html).toContain(
+      '<a class="speccard__name card-stretch__link" href="/subjects/computer-science/software-engineering">Software Engineering</a>',
+    );
+  });
+
+  it('links its own level pages under its heading, by their plain addresses', () => {
+    /* Ticked nowhere, but its specialization is at Diploma, Bachelor's and
+       PhD and its courses at those and Master's. */
+    expect(levelChipHrefs(html)).toEqual([
+      '/subjects/computer-science/diploma',
+      '/subjects/computer-science/bachelors',
+      '/subjects/computer-science/masters',
+      '/subjects/computer-science/phd',
+    ]);
+    expect(html).toContain('<nav class="specchips levelchips" aria-label="Computer Science by level">');
+    expect(html).toContain('aria-label="Master&#x27;s in Computer Science"');
+    /* Not the name the courses-by-level bar answers to. */
+    expect(html).not.toMatch(/<nav class="specchips levelchips" aria-label="[^"]*[Ss]tudy levels/);
+  });
+
+  it('keeps its level links in climbing order where the catalogue could not be read', () => {
+    /* Courses only at MBA: the grouped read sends that level alone, and
+       the levels it is ticked at with nothing filed came after it. */
+    const html = renderToStaticMarkup(
+      <SubjectGuide
+        subject={
+          {
+            ...subject,
+            subSubjects: [{ ...subject.subSubjects[0], levels: [PHD, MBA_LEVEL, UG] }],
+            courseCountsByLevel: [{ level: MBA_LEVEL, count: 1 }],
+            levels: [UG, PG, MBA_LEVEL, PHD],
+            offeredLevels: [UG, PG, MBA_LEVEL, PHD],
+          } as SubjectDetail
+        }
+        scholarships={[]}
+        levels={[{ level: MBA_LEVEL, count: 1, courses: [] } as never]}
+        catalogue={null}
+      />,
+    );
+    expect(levelChipHrefs(html)).toEqual(
+      ['bachelors', 'masters', 'mba', 'phd'].map((slug) => `/subjects/computer-science/${slug}`),
+    );
+    expect(levelLinkHrefs(html)).toEqual(
+      ['bachelors', 'mba', 'phd'].map((slug) => `/subjects/computer-science/software-engineering/${slug}`),
+    );
+  });
+
+  it('links no level under its heading when it is offered at none', () => {
+    const none = renderToStaticMarkup(
+      <SubjectGuide
+        subject={{ ...subject, subSubjects: [], courseCountsByLevel: [], offeredLevels: [] } as SubjectDetail}
+        scholarships={[]}
+      />,
+    );
+    expect(levelChipHrefs(none)).toEqual([]);
+    expect(none).not.toContain('levelchips');
+  });
+
+  it('links only the levels the catalogue keeps, and orders them as it does', () => {
+    const kept = renderToStaticMarkup(
+      <SubjectGuide
+        subject={subject}
+        scholarships={[]}
+        catalogue={[{ code: 'UG' }, { code: 'PG' }, { code: 'PHD' }]}
+      />,
+    );
+    /* Diploma is switched off: no page, so no link, on the hero or a card. */
+    expect(levelChipHrefs(kept)).toEqual([
+      '/subjects/computer-science/bachelors',
+      '/subjects/computer-science/masters',
+      '/subjects/computer-science/phd',
+    ]);
+    expect(levelLinkHrefs(kept)).toEqual([
+      '/subjects/computer-science/software-engineering/bachelors',
+      '/subjects/computer-science/software-engineering/phd',
+    ]);
   });
 
   it('closes with its related subjects, and a way to all of them', () => {
@@ -425,6 +519,52 @@ describe('a specialization’s page', () => {
     );
   });
 
+  it('links no level under its heading when it is offered at none', () => {
+    expect(levelChipHrefs(html)).toEqual([]);
+  });
+
+  it('links its own level pages under its heading, by their plain addresses', () => {
+    const offered = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={
+          {
+            ...specialization,
+            /* Ticked for Master's; its courses add Bachelor's. The API's
+               union comes in climbing order, the ticks do not. */
+            offeredLevels: [PG],
+            levels: [UG, PG],
+          } as never
+        }
+        scholarships={[]}
+        catalogue={[{ code: 'FOUNDATION' }, { code: 'UG' }, { code: 'PG' }, { code: 'PHD' }]}
+      />,
+    );
+    expect(levelChipHrefs(offered)).toEqual([
+      '/subjects/computer-science/software-engineering/bachelors',
+      '/subjects/computer-science/software-engineering/masters',
+    ]);
+    expect(offered).toContain(
+      '<nav class="specchips levelchips" aria-label="Software Engineering by level">',
+    );
+    /* The facts strip the client had taken off stays off. */
+    expect(offered).not.toContain('specialization-facts');
+    expect(offered).not.toContain('<span class="label">Study levels</span>');
+  });
+
+  it('keeps the order its levels came in where the catalogue could not be read', () => {
+    const unread = renderToStaticMarkup(
+      <SpecializationGuide
+        specialization={{ ...specialization, offeredLevels: [PHD], levels: [UG, PHD] } as never}
+        scholarships={[]}
+        catalogue={null}
+      />,
+    );
+    expect(levelChipHrefs(unread)).toEqual([
+      '/subjects/computer-science/software-engineering/bachelors',
+      '/subjects/computer-science/software-engineering/phd',
+    ]);
+  });
+
   it('names its destinations as the design does, each opening it there', () => {
     expect(html).toContain(
       '<a href="/study-abroad/canada/computer-science/software-engineering">Software Engineering in Canada</a>',
@@ -439,7 +579,14 @@ describe('a specialization’s page', () => {
 
   it('fills each related card: a line, its levels, its programmes', () => {
     expect(html).toContain('<span class="speccard__desc">Machines that reason.</span>');
-    expect(html).toContain('Bachelor&#x27;s, Master&#x27;s, PhD');
+    /* Each level opens that specialization's page at it. */
+    expect(levelLinkHrefs(html)).toEqual([
+      '/subjects/computer-science/artificial-intelligence/bachelors',
+      '/subjects/computer-science/artificial-intelligence/masters',
+      '/subjects/computer-science/artificial-intelligence/phd',
+    ]);
+    expect(html).toContain('aria-label="PhD in Artificial Intelligence"');
+    expect(html).not.toMatch(/<a [^>]*class="speccard__btn"/);
     expect(html).toContain('4 programmes');
     expect(html).toContain('Explore specialization');
     expect(html).toContain('All Computer Science specializations (12)');
@@ -494,9 +641,32 @@ describe('a subject’s specializations page', () => {
     );
   });
 
-  it('prints the levels where the subject’s initials used to be', () => {
-    expect(html).toContain('<span class="speccard__levels">Diploma, Bachelor&#x27;s, PhD</span>');
+  it('prints the levels where the subject’s initials used to be, each linked to its page', () => {
+    /* The "Most courses" band and the full list draw the same card. */
+    expect(levelLinkHrefs(html)).toEqual(
+      ['diploma', 'bachelors', 'phd', 'diploma', 'bachelors', 'phd'].map(
+        (slug) => `/subjects/computer-science/software-engineering/${slug}`,
+      ),
+    );
+    expect(html).toContain('aria-label="Bachelor&#x27;s in Software Engineering"');
     expect(html).not.toContain('>CS<');
+  });
+
+  it('keeps the subject’s name, unlinked, on a card offered at no level', () => {
+    const bare = renderToStaticMarkup(
+      <SpecializationsReference
+        subject={{ ...subject, subSubjects: [{ ...branches[0], levels: [] }] } as SubjectDetail}
+        counts={{}}
+        countries={[]}
+        query=""
+        universities={[]}
+        courses={[]}
+        scholarships={[]}
+        levelOrder={[]}
+      />,
+    );
+    expect(levelLinkHrefs(bare)).toEqual([]);
+    expect(bare).toContain('<span class="speccard__levels">Computer Science</span>');
   });
 
   it('opens a destination as the subject in that country', () => {
@@ -530,12 +700,51 @@ describe('the subjects explorer', () => {
   ];
   const ORDER = ['FOUNDATION', 'UG', 'PG', 'PHD'];
 
-  it('names each card’s levels in climbing order', () => {
+  it('links each card’s levels, in climbing order, to the subject’s page at each', () => {
     searchParams.current = new URLSearchParams();
     const html = renderToStaticMarkup(
       <SubjectIndex subjects={rows as never} levelOrder={ORDER} />,
     );
-    expect(html).toContain('Bachelor&#x27;s, PhD');
+    expect(levelLinkHrefs(html)).toEqual([
+      '/subjects/computer-science/bachelors',
+      '/subjects/computer-science/phd',
+      '/subjects/engineering/foundation',
+    ]);
+    expect(html).toContain('aria-label="Bachelor&#x27;s in Computer Science"');
+    expect(html).not.toContain('?view=guides');
+  });
+
+  it('links every level a subject is offered at, not the first three and a count', () => {
+    searchParams.current = new URLSearchParams();
+    const wide = [
+      {
+        ...rows[0],
+        levels: [
+          { code: 'PHD', name: 'PhD' },
+          { code: 'FOUNDATION', name: 'Foundation Program' },
+          { code: 'PG', name: "Master's" },
+          { code: 'UG', name: "Bachelor's" },
+        ],
+      },
+    ];
+    const html = renderToStaticMarkup(<SubjectIndex subjects={wide as never} levelOrder={ORDER} />);
+    expect(levelLinkHrefs(html)).toEqual([
+      '/subjects/computer-science/foundation',
+      '/subjects/computer-science/bachelors',
+      '/subjects/computer-science/masters',
+      '/subjects/computer-science/phd',
+    ]);
+    expect(html).not.toMatch(/\+\d/);
+  });
+
+  it('links no level on a subject offered at none, or at a level switched off', () => {
+    searchParams.current = new URLSearchParams();
+    const bare = [
+      { ...rows[0], levels: [] },
+      { ...rows[1], levels: [{ code: 'DIPLOMA', name: 'Diploma' }] },
+    ];
+    const html = renderToStaticMarkup(<SubjectIndex subjects={bare as never} levelOrder={ORDER} />);
+    expect(levelLinkHrefs(html)).toEqual([]);
   });
 
   /* The client had the explorer's count line, its suggested searches and
@@ -552,7 +761,9 @@ describe('the subjects explorer', () => {
     expect(html).not.toMatch(/>Try</);
     expect(html).not.toContain('aria-label="Study level"');
     expect(html).not.toContain('aria-pressed');
-    expect(html).not.toContain('>Foundation Program<');
+    /* A level is a card's link to its subject's page, never a filter. */
+    expect(html).not.toMatch(/<button[^>]*>Foundation Program</);
+    expect(html).not.toContain('chipbtn');
     /* Every subject is a card. */
     expect(html.match(/<article class="subjcard"/g)).toHaveLength(2);
   });

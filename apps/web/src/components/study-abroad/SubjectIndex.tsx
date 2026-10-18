@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type { Subject, SubSubject } from '@/lib/catalog';
-import { sortByLevelOrder } from '@/lib/level-order';
+import { levelPageLinks } from '@/lib/subject-levels';
 import { matchCount, searchSubjectIndex } from '@/lib/subject-index-search';
 import { SubjectIndexSearch } from './SubjectIndexSearch';
 import { CardMedia, PopularBadge } from './CardMedia';
+import { LevelLinks } from './LevelLinks';
 
 /** Where the cards begin: the search brings it into view. */
 const RESULTS_ID = 'taxonomy';
@@ -29,7 +30,8 @@ export type SubjectIndexRow = Subject & {
  * shows narrow to the matches so the reason it survived is visible.
  *
  * Each card names the levels its subject is taught at, in the order a
- * student climbs them (`levelOrder`, the public course-levels list).
+ * student climbs them (`levelOrder`, the public course-levels list), and
+ * each level links to the subject's page at that level.
  */
 /** "Explore Arts, Humanities & Social " -- all but the name's last word. */
 function lead(name: string) {
@@ -78,6 +80,21 @@ export function SubjectIndex({
 
   const result = useMemo(() => searchSubjectIndex(subjects, query), [subjects, query]);
   const rows = result.rows as Array<{ subject: SubjectIndexRow; specs: SubSubject[] }>;
+
+  /* Each card's levels, linked to the subject's page at each: the levels it
+     is offered at (its `levels`, the set its level pages are built from),
+     among the catalogue's active ones and in the order a student climbs
+     them. A subject offered at nothing links none. */
+  const levelLinksById = useMemo(() => {
+    const catalogue = levelOrder.map((code) => ({ code }));
+    return new Map(
+      subjects.map((subject) => [
+        subject.id,
+        levelPageLinks(subject.levels, { subject: subject.slug }, catalogue),
+      ]),
+    );
+  }, [subjects, levelOrder]);
+  const levelLinks = (subject: SubjectIndexRow) => levelLinksById.get(subject.id) ?? [];
 
   return (
     <>
@@ -172,20 +189,13 @@ export function SubjectIndex({
                       {(subject.publishedSubSubjectCount ?? (subject.subSubjects ?? []).length) === 1
                         ? 'specialization'
                         : 'specializations'}
-                      {subject.levels?.length ? (
+                      {levelLinks(subject).length ? (
                         <>
                           {' · '}
-                          {/* A summary, not an inventory: our level names are
-                              full titles ("Post Graduate Diploma in
-                              Management"), and five of them turned this line
-                              into a paragraph. */}
-                          {sortByLevelOrder(subject.levels, levelOrder)
-                            .slice(0, 3)
-                            .map((entry) => entry.name)
-                            .join(', ')}
-                          {subject.levels.length > 3
-                            ? ` +${subject.levels.length - 3}`
-                            : ''}
+                          {/* Each level opens the subject's page at it. All
+                              of them: a level summed up as "+1" was a page
+                              nothing here linked to. */}
+                          <LevelLinks links={levelLinks(subject)} field={subject.name} />
                         </>
                       ) : null}
                     </p>

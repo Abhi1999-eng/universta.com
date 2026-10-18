@@ -375,16 +375,7 @@ export default async function Page({ params, searchParams }: Params) {
             <span aria-current="page">{specialization.name}</span>
           </nav>
 
-          <CountryFieldHero
-            country={country}
-            icon={specialization.iconMedia}
-            kind="Specialization"
-            detail={
-              <>
-                within <Link href={subjectHref}>{subject.name}</Link>
-              </>
-            }
-          >
+          <CountryFieldHero icon={specialization.iconMedia}>
             <h1 className="hero__h1">
               Study {specialization.name} in {where}
             </h1>

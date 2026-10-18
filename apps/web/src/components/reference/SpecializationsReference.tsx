@@ -4,6 +4,8 @@ import { counsellingHref } from '@/lib/counselling-link';
 import { levelCoursesHref } from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
 import { sortByLevelOrder } from '@/lib/level-order';
+import { levelPageLinks } from '@/lib/subject-levels';
+import { LevelLinks } from '@/components/study-abroad/LevelLinks';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { CardMedia, PopularBadge } from '@/components/study-abroad/CardMedia';
 import { SpecializationSearch } from './SpecializationSearch';
@@ -49,6 +51,29 @@ function levelLine(
   return sortByLevelOrder(levels ?? [], order)
     .map((level) => level.name)
     .join(', ');
+}
+
+/**
+ * A branch's levels, each linked to its page at that level
+ * (`/subjects/{subject}/{branch}/masters`). Where it is offered at none,
+ * the line it printed before, unlinked.
+ */
+function BranchLevels({
+  item,
+  subject,
+  order,
+  fallback,
+}: {
+  item: SubjectBranch;
+  subject: string;
+  order: string[];
+  fallback: string;
+}) {
+  const links = levelPageLinks(sortByLevelOrder(item.levels ?? [], order), {
+    subject,
+    specialization: item.slug,
+  });
+  return links.length ? <LevelLinks links={links} field={item.name} /> : <>{fallback}</>;
 }
 
 const FAQS = [
@@ -218,7 +243,12 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                           them; this slot used to hold the subject's
                           initials ("CS"). */}
                       <span className="speccard__levels">
-                        {levelLine(item.levels, levelOrder)}
+                        <BranchLevels
+                          item={item}
+                          subject={subject.slug}
+                          order={levelOrder}
+                          fallback={levelLine(item.levels, levelOrder)}
+                        />
                       </span>
                       <span className="speccard__count datum">
                         {counts[item.slug] ? courseLabel(counts[item.slug]) : 'No courses yet'}
@@ -306,7 +336,12 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
                       {/* Its levels where any are recorded; the subject's
                           name, as before, where none are. */}
                       <span className="speccard__levels">
-                        {levelLine(item.levels, levelOrder) || subject.name}
+                        <BranchLevels
+                          item={item}
+                          subject={subject.slug}
+                          order={levelOrder}
+                          fallback={levelLine(item.levels, levelOrder) || subject.name}
+                        />
                       </span>
                       <span className="speccard__count datum">
                         {counts[item.slug] ? courseLabel(counts[item.slug]) : 'No courses yet'}

@@ -327,7 +327,7 @@ describe('a subject in one destination', () => {
         '3 Cities',
         'Sep Intakes',
       ]);
-      expect(html).toContain('Specializations · 2 taught here');
+      expect(html).toContain('<span class="label">Specializations</span>');
       expect(chips(html)).toEqual([
         'Software Engineering 4 /study-abroad/united-kingdom/computer-science/software-engineering',
         'Artificial Intelligence 1 /study-abroad/united-kingdom/computer-science/artificial-intelligence',
@@ -350,7 +350,7 @@ describe('a subject in one destination', () => {
         '11 Universities',
         'Jul, Aug, Sep Intakes',
       ]);
-      expect(html).toContain('Specializations · 2 taught here');
+      expect(html).toContain('<span class="label">Specializations</span>');
       expect(chips(html)).toEqual([
         'Software Engineering 2 /study-abroad/united-kingdom/computer-science/software-engineering',
         'Machine Learning 1 /study-abroad/united-kingdom/computer-science/machine-learning',
