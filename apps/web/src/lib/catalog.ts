@@ -99,7 +99,13 @@ export function getCourseSuggestions(q: string) { return request<Array<Pick<Cour
  * and its own SEO stay off the site. The API does not ask whether the field
  * is offered at the level: the website decides that, and 404s first.
  */
-export interface SubjectLevelPageContent { id: string; intro: string | null; admissionNote: string | null; careersNote: string | null; faqs: Array<{ id: string; question: string; answer: string }>; updatedAt: string; }
+export interface SubjectLevelPageContent {
+  id: string; intro: string | null; admissionNote: string | null; careersNote: string | null;
+  /** Where its graduates work, who hires them and where the field is going.
+   *  Optional: an API from before these sections sends none. */
+  industries?: string | null; employers?: string | null; lookingAhead?: string | null;
+  faqs: Array<{ id: string; question: string; answer: string }>; updatedAt: string;
+}
 export interface SubjectLevelPageData {
   subject: { id: string; name: string; slug: string };
   specialization: { id: string; name: string; slug: string } | null;

@@ -254,6 +254,9 @@ function writePage(
     intro: '<p>Why study it.</p>',
     admissionNote: null,
     careersNote: null,
+    industries: null,
+    employers: null,
+    lookingAhead: null,
     status: 'PUBLISHED',
     updatedAt: new Date('2026-10-17T10:00:00.000Z'),
     ...page,
@@ -446,6 +449,53 @@ describe("a level page's public record", () => {
       ).toBe(expected);
     }
   });
+
+  const sections = {
+    industries: '<p>Software and finance.</p>',
+    employers: '<p>Banks and studios.</p>',
+    lookingAhead: '<p>Demand keeps growing.</p>',
+  };
+
+  it("sends a published page's new sections", async () => {
+    const { service, db } = fakeDb();
+    writePage(db, { id: 'p1', courseLevelId: 'pg', ...sections });
+    expect(
+      (await service.publicPage('computer-science', 'masters')).content,
+    ).toMatchObject({ id: 'p1', ...sections });
+  });
+
+  it('sends the new sections as null when nothing is written', async () => {
+    const { service, db } = fakeDb();
+    writePage(db, { id: 'p1', courseLevelId: 'pg' });
+    expect(
+      (await service.publicPage('computer-science', 'masters')).content,
+    ).toMatchObject({ industries: null, employers: null, lookingAhead: null });
+  });
+
+  it('shows nothing of the new sections of a draft', async () => {
+    const { service, db } = fakeDb();
+    writePage(db, {
+      id: 'p1',
+      courseLevelId: 'pg',
+      status: 'DRAFT',
+      ...sections,
+    });
+    expect(
+      (await service.publicPage('computer-science', 'masters')).content,
+    ).toBeNull();
+  });
+
+  it('has no own content on the new sections alone', async () => {
+    const { service, db } = fakeDb();
+    writePage(
+      db,
+      { id: 'p1', courseLevelId: 'pg', intro: null, ...sections },
+      active(3),
+    );
+    expect(
+      (await service.publicPage('computer-science', 'masters')).hasOwnContent,
+    ).toBe(false);
+  });
 });
 
 describe('the level pages the sitemap may list', () => {
@@ -484,6 +534,26 @@ describe('the level pages the sitemap may list', () => {
     });
     expect(result.data[0].hasOwnContent).toBe(false);
     expect(result.total).toBe(2);
+  });
+
+  it('does not count the new sections towards search', async () => {
+    const { service, db } = fakeDb();
+    writePage(
+      db,
+      {
+        id: 'ug',
+        courseLevelId: 'ug',
+        intro: null,
+        industries: '<p>Software.</p>',
+        employers: '<p>Banks.</p>',
+        lookingAhead: '<p>Growing.</p>',
+      },
+      active(3),
+    );
+    const result = await service.publicIndex();
+    expect(result.data.map((row) => [row.path, row.hasOwnContent])).toEqual([
+      ['/subjects/computer-science/bachelors', false],
+    ]);
   });
 
   it('drops a page once its level is unticked and no course stands there', async () => {

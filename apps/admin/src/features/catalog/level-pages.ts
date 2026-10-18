@@ -205,7 +205,17 @@ export function liveLevelRows({
     .map(({ row }) => row);
 }
 
-export type LevelPageContent = { intro: string; admissionNote: string; careersNote: string };
+/** The written parts of a level page, each shown as its own section on the
+ * site and hidden while empty. Only the intro (with the FAQs) counts towards
+ * search; any of them is enough to publish. */
+export type LevelPageContent = {
+  intro: string;
+  admissionNote: string;
+  careersNote: string;
+  industries: string;
+  employers: string;
+  lookingAhead: string;
+};
 
 /** A new FAQ on a level page. Its display order starts blank, which means
  * "where it sits on screen", so an added FAQ stays at the bottom. */
@@ -263,11 +273,22 @@ export function levelPagePayload({
     intro: richTextOrEmpty(content.intro),
     admissionNote: richTextOrEmpty(content.admissionNote),
     careersNote: richTextOrEmpty(content.careersNote),
+    industries: richTextOrEmpty(content.industries),
+    employers: richTextOrEmpty(content.employers),
+    lookingAhead: richTextOrEmpty(content.lookingAhead),
     status,
     faqs: levelPageFaqs(faqs),
     seo: unifiedSeoWanted(seo) ? seoPayload(seo) : null,
     expectedUpdatedAt: page?.updatedAt ?? null,
   };
+}
+
+/** Whether a save has anything to show once published: any written part or
+ * an active FAQ. The API refuses to publish a page with none. */
+export function levelPageHasWords(payload: ReturnType<typeof levelPagePayload>) {
+  const { intro, admissionNote, careersNote, industries, employers, lookingAhead } = payload;
+  return [intro, admissionNote, careersNote, industries, employers, lookingAhead].some(Boolean)
+    || payload.faqs.some((row) => row.status === 'ACTIVE');
 }
 
 /** The size the proxy will measure, in bytes rather than characters. */

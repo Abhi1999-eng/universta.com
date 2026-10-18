@@ -40,7 +40,7 @@ vi.mock('next/link', () => ({
 }));
 
 type Page = NonNullable<LevelPageDetail['page']>;
-type Payload = { status: 'DRAFT' | 'PUBLISHED'; intro: string; admissionNote: string; careersNote: string; faqs: Array<{ question: string; answer: string; status: string; displayOrder: number }>; seo: Record<string, unknown> | null; expectedUpdatedAt: string | null };
+type Payload = { status: 'DRAFT' | 'PUBLISHED'; intro: string; admissionNote: string; careersNote: string; industries: string; employers: string; lookingAhead: string; faqs: Array<{ question: string; answer: string; status: string; displayOrder: number }>; seo: Record<string, unknown> | null; expectedUpdatedAt: string | null };
 
 const subject = { id: 'subject-1', name: 'Marine Sciences', slug: 'marine-sciences', status: 'PUBLISHED' };
 const ug = { id: 'lvl-ug', code: 'UG', name: "Bachelor's", slug: 'bachelors', description: 'Three or four years of first-degree study.', status: 'ACTIVE' };
@@ -49,7 +49,7 @@ function detail(page: Page | null, overrides: Partial<LevelPageDetail> = {}): Le
   return { subject, specialization: null, level: ug, offered: true, sources: ['TICKED'], path: '/subjects/marine-sciences/bachelors', page, ...overrides };
 }
 function stored(overrides: Partial<Page> = {}): Page {
-  return { id: 'page-1', status: 'DRAFT', intro: null, admissionNote: null, careersNote: null, faqs: [], seo: null, searchReady: false, createdAt: 'c', updatedAt: 'v1', ...overrides };
+  return { id: 'page-1', status: 'DRAFT', intro: null, admissionNote: null, careersNote: null, industries: null, employers: null, lookingAhead: null, faqs: [], seo: null, searchReady: false, createdAt: 'c', updatedAt: 'v1', ...overrides };
 }
 /* Stored ids are UUIDs; ones shaped like the FAQ card's "faq-<index>" key
    for a new row would clash with it once a row is added. */
@@ -71,6 +71,9 @@ function answerSaves() {
         intro: payload.intro || null,
         admissionNote: payload.admissionNote || null,
         careersNote: payload.careersNote || null,
+        industries: payload.industries || null,
+        employers: payload.employers || null,
+        lookingAhead: payload.lookingAhead || null,
         faqs: payload.faqs.map((row, index) => ({ id: `saved-${version}-${index}`, ...row, updatedAt: 'f' })),
         seo: payload.seo ? { ...seoRecord, ...payload.seo } : null,
         updatedAt: `v${version}`,
@@ -111,9 +114,26 @@ describe('opening a page', () => {
     expect(await screen.findByRole('textbox', { name: 'Intro' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Admission note' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Careers note' })).toBeInTheDocument();
+    for (const name of ['Industries', 'Employers', 'Looking ahead']) expect(screen.getByRole('textbox', { name })).toBeInTheDocument();
+    /* Each hint names the section the words show as on the site. */
+    expect(screen.getByText(/Shows as “Getting into Bachelor's in Marine Sciences”/)).toBeInTheDocument();
+    expect(screen.getByText(/Shows as “Career pathways”/)).toBeInTheDocument();
+    expect(screen.getByText(/Named for illustration only; not a ranking, endorsement or partnership\./)).toBeInTheDocument();
+    expect(screen.getByText(/Shows as “Looking ahead”/)).toBeInTheDocument();
     for (const name of ['Page content', 'FAQs', 'SEO']) expect(screen.getByRole('heading', { name })).toBeInTheDocument();
     expect(screen.getByText('Leave blank to use the Study level pages template under SEO management > Bulk SEO.')).toBeInTheDocument();
     expect(screen.getByText(/it still needs an intro and 3 more FAQs/)).toBeInTheDocument();
+  });
+
+  it('opens a stored page with its new sections filled in', async () => {
+    mocks.getLevelPage.mockResolvedValue({
+      data: detail(stored({ industries: '<p>Shipping.</p>', employers: '<p>Maersk.</p>', lookingAhead: '<p>Growing.</p>' })),
+      meta: null,
+    });
+    render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
+    expect(await screen.findByRole('textbox', { name: 'Industries' })).toHaveTextContent('Shipping.');
+    expect(screen.getByRole('textbox', { name: 'Employers' })).toHaveTextContent('Maersk.');
+    expect(screen.getByRole('textbox', { name: 'Looking ahead' })).toHaveTextContent('Growing.');
   });
 
   it('opens a specialization’s page from the specialization', async () => {
@@ -164,6 +184,9 @@ describe('saving', () => {
       intro: '<p>Oceans, coasts and the life in them.</p>',
       admissionNote: '',
       careersNote: '',
+      industries: '',
+      employers: '',
+      lookingAhead: '',
       status: 'DRAFT',
       faqs: [],
       seo: null,
@@ -196,6 +219,26 @@ describe('saving', () => {
     await user.click(screen.getByRole('button', { name: 'Publish' }));
     expect(await screen.findByText('Write an intro, a note or an FAQ before publishing this level page.')).toBeInTheDocument();
     expect(mocks.saveLevelPage).not.toHaveBeenCalled();
+  });
+
+  it('publishes a page whose only words are its employers', async () => {
+    const user = userEvent.setup();
+    render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
+    await write('Employers', '<p>Maersk and the Met Office.</p>');
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(mocks.saveLevelPage).toHaveBeenCalledTimes(1));
+    expect(sentPayload()).toMatchObject({ status: 'PUBLISHED', intro: '', employers: '<p>Maersk and the Met Office.</p>' });
+    expect(screen.queryByText('Write an intro, a note or an FAQ before publishing this level page.')).toBeNull();
+  });
+
+  /* Only the intro and the FAQs count towards search; the new sections let a
+     page be published, not indexed ahead of its programmes. */
+  it('still says an intro is needed for search when only the new sections are written', async () => {
+    render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
+    await write('Industries', '<p>Shipping and energy.</p>');
+    await write('Looking ahead', '<p>Offshore wind keeps growing.</p>');
+    expect(screen.getByText(/it still needs an intro and 3 more FAQs/)).toBeInTheDocument();
   });
 
   it('sends the kept FAQs whole, without ids, against the stored version', async () => {

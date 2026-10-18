@@ -47,6 +47,21 @@ export function levelPageIndexable({
   return ownContent || (programmes ?? 0) >= LEVEL_PAGE_MIN_PROGRAMMES;
 }
 
+/** "a Master's", "an MBA", "a PhD", "an Honours degree": the level's name
+ *  with the article it is read with. An initialism is read letter by letter
+ *  (MBA -> "em", HND -> "aitch"), a word by its sound. */
+export function withArticle(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+  const word = trimmed.split(/\s+/)[0];
+  let article: 'a' | 'an';
+  if (/^[A-Z](?:[a-z]?[A-Z])/.test(word)) article = 'AEFHILMNORSX'.includes(word[0]) ? 'an' : 'a';
+  else if (/^(uni|use|usu|eu|one|once)/i.test(word)) article = 'a';
+  else if (/^(hour|honou?r|heir)/i.test(word)) article = 'an';
+  else article = /^[aeiou]/i.test(word) ? 'an' : 'a';
+  return `${article} ${trimmed}`;
+}
+
 /** "9 programmes", "1 university": the count, then the word it takes. */
 function counted(value: number, one: string, many: string) {
   return `${value.toLocaleString('en-GB')} ${value === 1 ? one : many}`;

@@ -83,6 +83,16 @@ describe('the specializations taught here', () => {
   it('is not drawn where none is taught', () => {
     expect(renderToStaticMarkup(<SpecializationChips chips={[]} />)).toBe('');
   });
+
+  it('names itself by default, and not under a heading that already does', () => {
+    const chips = [{ id: 'se', name: 'Software Engineering', href: '/subjects/computing/software-engineering/bachelors' }];
+    expect(renderToStaticMarkup(<SpecializationChips chips={chips} />)).toContain(
+      '<span class="label">Specializations taught here</span>',
+    );
+    const bare = renderToStaticMarkup(<SpecializationChips chips={chips} label={null} />);
+    expect(bare).not.toContain('class="label"');
+    expect(bare).toContain('href="/subjects/computing/software-engineering/bachelors"');
+  });
 });
 
 describe('nothing listed in a destination', () => {

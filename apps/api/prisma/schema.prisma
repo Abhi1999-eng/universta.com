@@ -1638,6 +1638,11 @@ model SubjectLevelPage {
   intro         String?  @db.LongText
   admissionNote String?  @map("admission_note") @db.LongText
   careersNote   String?  @map("careers_note") @db.LongText
+  /// The industries and employers its graduates go to, and a look ahead:
+  /// rich text like the notes. They do not count towards indexing.
+  industries    String?  @db.LongText
+  employers     String?  @db.LongText
+  lookingAhead  String?  @map("looking_ahead") @db.LongText
   /// DRAFT or PUBLISHED. A draft page is kept for its editor and never shown.
   status        String   @default("DRAFT") @db.VarChar(30)
   createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)

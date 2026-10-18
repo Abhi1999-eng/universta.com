@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import type { SubjectLevelPageContent } from '@/lib/catalog';
+import { withArticle } from '@/lib/level-page';
 import { SectionHead } from './SectionHead';
 import { FaqList } from './SpecializationContent';
 
@@ -12,7 +14,7 @@ import { FaqList } from './SpecializationContent';
 
 /** Whether rich text has anything a reader would see: an empty paragraph
  *  is not an intro. */
-function said(value: string | null | undefined): value is string {
+export function said(value: string | null | undefined): value is string {
   return Boolean(value && (richTextToPlainText(value) || /<img\b/i.test(value)));
 }
 
@@ -22,76 +24,79 @@ export function levelFaqs(content: SubjectLevelPageContent | null | undefined) {
   return (content?.faqs ?? []).filter((faq) => faq.question.trim() && said(faq.answer));
 }
 
+/** One band of a level page: its anchor, the section head's eyebrow and
+ *  heading, and what follows them. */
+export type LevelBand = { id: string; eyebrow: string; title: string; body: ReactNode };
+
+type WrittenBand = 'overview' | 'careers' | 'industries' | 'employers' | 'admission' | 'lookingAhead' | 'faqs';
+
+/** Said under every list of employers: the page names them, it does not
+ *  vouch for them. */
+export const EMPLOYERS_NOTE = 'Named for illustration only; not a ranking, endorsement or partnership.';
+
+const prose = (value: string) => (
+  <div className="prose">
+    <RichText value={value} />
+  </div>
+);
+
 /**
- * The page's own opening, straight under the hero and above the list: what
- * this level of this field is, in the editor's words. The hero keeps its
- * subline (the level as Admin, Course levels describes it).
+ * The page's written bands by id, each null when nothing is written. The
+ * page decides where each one goes: a subject's level page and a
+ * specialization's run them in different orders.
  */
-export function LevelIntro({
-  intro,
-  heading,
-}: {
-  intro: string | null | undefined;
-  /** For a screen reader, which reads the intro as a section of its own. */
-  heading: string;
-}) {
-  if (!said(intro)) return null;
-  return (
-    <section className="sec sec--white sec--tight levelintro" id="overview">
-      <div className="wrap">
-        <h2 className="sr-only">{heading}</h2>
-        <div className="prose">
-          <RichText value={intro} />
-        </div>
-      </div>
-    </section>
-  );
+export function writtenLevelBands(
+  content: SubjectLevelPageContent | null,
+  { levelName, fieldName }: { levelName: string; fieldName: string },
+): Record<WrittenBand, LevelBand | null> {
+  const here = `${levelName} in ${fieldName}`;
+  const faqs = levelFaqs(content);
+  const written = (value: string | null | undefined, band: Omit<LevelBand, 'body'>, body = prose): LevelBand | null =>
+    said(value) ? { ...band, body: body(value) } : null;
+  return {
+    overview: written(content?.intro, { id: 'overview', eyebrow: 'Overview', title: `Why study ${withArticle(levelName)} in ${fieldName}?` }),
+    careers: written(content?.careersNote, { id: 'careers', eyebrow: 'Careers', title: 'Career pathways' }),
+    industries: written(content?.industries, { id: 'industries', eyebrow: 'Sectors', title: 'Industries' }),
+    employers: written(content?.employers, { id: 'employers', eyebrow: 'Who hires', title: 'Employers' }, (value) => (
+      <>
+        {prose(value)}
+        <p className="trust__note">{EMPLOYERS_NOTE}</p>
+      </>
+    )),
+    admission: written(content?.admissionNote, { id: 'admission', eyebrow: 'Admission', title: `Getting into ${here}` }),
+    lookingAhead: written(content?.lookingAhead, { id: 'looking-ahead', eyebrow: 'Outlook', title: 'Looking ahead' }),
+    faqs: faqs.length
+      ? { id: 'faqs', eyebrow: 'Questions', title: `Questions about ${here}`, body: <FaqList faqs={faqs} /> }
+      : null,
+  };
 }
 
 /**
- * The written bands after the list: getting in, where it leads, and the
- * questions. Paper and white alternate by position, as on a
- * specialization's page, so a band that stands down never leaves two of
- * the same shade touching; the list above them is white, so they open on
- * paper.
+ * Paper and white alternate so no two bands of one shade touch. The
+ * programme list keeps its white; the bands next to it, above and below,
+ * are paper, and the shades alternate outwards from there. A band that
+ * stands down is not in `ids`, so it never leaves two of a shade touching.
  */
-export function LevelWrittenSections({
-  content,
-  levelName,
-  fieldName,
-}: {
-  content: SubjectLevelPageContent | null;
-  levelName: string;
-  fieldName: string;
-}) {
-  if (!content) return null;
-  const here = `${levelName} in ${fieldName}`;
-  const faqs = levelFaqs(content);
-  const bands = [
-    said(content.admissionNote)
-      ? { id: 'admission', eyebrow: 'Admission', title: `Getting into ${here}`, body: <div className="prose"><RichText value={content.admissionNote} /></div> }
-      : null,
-    said(content.careersNote)
-      ? { id: 'careers', eyebrow: 'Careers', title: `Where ${here} can lead`, body: <div className="prose"><RichText value={content.careersNote} /></div> }
-      : null,
-    faqs.length
-      ? { id: 'faqs', eyebrow: 'Questions', title: `Questions about ${here}`, body: <FaqList faqs={faqs} /> }
-      : null,
-  ].filter((band) => band !== null);
+export function bandTones(ids: readonly string[], fixed = 'discovery'): Record<string, 'paper' | 'white'> {
+  const at = ids.indexOf(fixed);
+  const tones: Record<string, 'paper' | 'white'> = {};
+  const tone = (distance: number) => (distance % 2 === 1 ? 'paper' : 'white');
+  if (at < 0) {
+    ids.forEach((id, index) => { tones[id] = tone(index + 1); });
+    return tones;
+  }
+  ids.forEach((id, index) => { tones[id] = tone(Math.abs(index - at)); });
+  return tones;
+}
+
+/** One band, drawn the way the guides draw a section. */
+export function LevelBandSection({ band, tone }: { band: LevelBand; tone: 'paper' | 'white' }) {
   return (
-    <>
-      {bands.map((band, index) => (
-        <section
-          className={index % 2 === 0 ? 'sec sec--paper' : 'sec sec--white'}
-          id={band.id}
-          key={band.id}
-        >
-          <div className="wrap">
-            <SectionHead eyebrow={band.eyebrow} title={band.title} />
-            {band.body}
-          </div>
-        </section>
-      ))}
-    </>
+    <section className={`sec sec--${tone}`} id={band.id}>
+      <div className="wrap">
+        <SectionHead eyebrow={band.eyebrow} title={band.title} />
+        {band.body}
+      </div>
+    </section>
   );
 }

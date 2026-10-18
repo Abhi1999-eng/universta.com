@@ -4,6 +4,7 @@ import {
   levelPageDescription,
   levelPageIndexable,
   specializationsAtLevel,
+  withArticle,
 } from './level-page';
 
 const indexable = (over: Partial<Parameters<typeof levelPageIndexable>[0]> = {}) =>
@@ -137,5 +138,33 @@ describe('the specializations at one level', () => {
   it('has none for no branches', () => {
     expect(specializationsAtLevel(null, 'UG')).toEqual([]);
     expect(specializationsAtLevel(undefined, 'UG')).toEqual([]);
+  });
+});
+
+/* "Why study an MBA in Finance?": the article the level's name is read
+   with, said aloud -- an initialism letter by letter, a word by its sound. */
+describe('a level’s name with its article', () => {
+  it.each([
+    ['MBA', 'an MBA'],
+    ["Master's", "a Master's"],
+    ['PhD', 'a PhD'],
+    ["Bachelor's", "a Bachelor's"],
+    ['Diploma', 'a Diploma'],
+    ['Foundation', 'a Foundation'],
+    ['Pathway', 'a Pathway'],
+    ['MSc', 'an MSc'],
+    ['HND', 'an HND'],
+    ['LLM', 'an LLM'],
+    ['Undergraduate Certificate', 'an Undergraduate Certificate'],
+    ['University Diploma', 'a University Diploma'],
+    ['Honours degree', 'an Honours degree'],
+    ['Associate degree', 'an Associate degree'],
+  ])('reads %s as “%s”', (name, read) => {
+    expect(withArticle(name)).toBe(read);
+  });
+
+  it('trims the name, and has nothing for no name', () => {
+    expect(withArticle('  MBA ')).toBe('an MBA');
+    expect(withArticle('  ')).toBe('');
   });
 });

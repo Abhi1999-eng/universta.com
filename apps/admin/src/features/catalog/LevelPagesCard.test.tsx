@@ -47,7 +47,7 @@ const master = (level: LevelRef, displayOrder: number): MasterRecord => ({ ...le
 const levels = [master(ug, 0), master(pg, 1), master(phd, 2)];
 type Page = NonNullable<LevelPageRow['page']>;
 const page = (overrides: Partial<Page> = {}): Page => ({
-  id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false,
+  id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false, hasIndustries: false, hasEmployers: false, hasLookingAhead: false,
   faqCount: 1, hasSeo: false, searchReady: false, updatedAt: 'v1', ...overrides,
 });
 const row = (overrides: Partial<LevelPageRow> = {}): LevelPageRow => ({

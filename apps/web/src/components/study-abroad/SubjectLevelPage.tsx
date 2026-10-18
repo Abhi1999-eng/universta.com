@@ -3,26 +3,28 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getCourseFilterOptions, getCourseLevels, getCourses, getSpecialization, getSubject, getSubjectLevelPage } from '@/lib/catalog';
-import { hasLevelPage, levelsOnBar, specializationLevelPages, subjectLevelPages } from '@/lib/course-levels';
+import { climbingOrder, hasLevelPage, levelAnchor, levelsOnBar, specializationLevelPages, subjectLevelPages, subjectOfferedLevels } from '@/lib/course-levels';
 import { checkGuideFilters, guideApiParams, guideListSearch, guidesAsProgrammes, isNarrowedCourses, PROGRAMME_MAX_PAGES, readGuideFilters, requestedView, withoutIgnored } from '@/lib/courses-params';
 import { countryFaqJsonLd } from '@/lib/country-faq';
 import { durationFigure, figuresHere, intakeFigure, listedIntakes, programmeCountsHere } from '@/lib/country-subject';
 import { formatNumber } from '@/lib/format';
 import { jsonLdString } from '@/lib/json-ld';
-import { levelPageDescription, levelPageIndexable, specializationsAtLevel } from '@/lib/level-page';
+import { levelPageDescription, levelPageIndexable, specializationsAtLevel, withArticle } from '@/lib/level-page';
 import { phaseProgrammes } from '@/lib/phase1';
 import { programmeList } from '@/lib/programme-sample';
 import { resolvedMetadata, titleWithSuffix, writtenSeo } from '@/lib/seo-management';
-import { findSubjectLevel, subjectLevelHref, subjectLevelSlug } from '@/lib/subject-levels';
+import { findSubjectLevel, levelPageLinks, subjectLevelHref, subjectLevelSlug } from '@/lib/subject-levels';
 import { courseApiParams, courseListSearch, readCourseFilters, toProgrammeList, withoutScope, type CourseScope } from '@/lib/university-courses';
 import { breadcrumbJsonLd } from '@/lib/university-json-ld';
 import { CourseGuidesResults } from '@/components/reference/CourseGuidesResults';
 import { CompareTray } from './CourseCompare';
 import { FiguresStrip, SpecializationChips } from './CountryFieldHero';
 import { Crumbs } from './Crumbs';
-import { LevelIntro, LevelWrittenSections, levelFaqs } from './LevelPageSections';
+import { LevelLinks } from './LevelLinks';
+import { bandTones, LevelBandSection, levelFaqs, writtenLevelBands, type LevelBand } from './LevelPageSections';
 import { PlanBand } from './PlanBand';
 import { ProgrammeResults } from './ProgrammeResults';
+import { countLabel, RowCard } from './RowCard';
 
 export type SubjectLevelParams = { slug: string; specializationSlug?: string; levelSlug: string };
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -254,6 +256,124 @@ export async function SubjectLevelPage({ params, searchParams }: {
   ].map((link) => <p key={link.href}><Link className="linkcta" href={link.href}>{link.label}{' '}<span className="linkcta__arrow" aria-hidden="true">&rarr;</span></Link></p>);
   const content = levelPage?.content ?? null;
   const faqData = countryFaqJsonLd(levelFaqs(content));
+  /* What an editor wrote, a band a part; each null where nothing is. */
+  const written = writtenLevelBands(content, { levelName: level.name, fieldName: field.name });
+  /* The specializations at this level, under a heading of their own:
+     straight after the overview on a subject, and after the written bands
+     on a specialization, where they are its siblings. They sat in the
+     hero, ahead of everything the page says about the level. */
+  const specializations: LevelBand | null = atLevel.length ? {
+    id: 'specializations',
+    eyebrow: 'Specializations',
+    title: specialization ? `Other ${subject.name} specializations at ${level.name}` : `Specializations at ${level.name}`,
+    body: <SpecializationChips
+      label={null}
+      chips={atLevel.map((row) => ({
+        id: row.id, name: row.name, count: row.count,
+        href: subjectLevelHref({ subject: subject.slug, specialization: row.slug, level: level.code }),
+      }))}
+    />,
+  } : null;
+  /* Where to study it: the destinations with a live programme at this
+     level in this field, most first, each opening on the field in that
+     destination at this level's panel (its level toggle opens on the
+     anchor), so the count on the card is the one the reader lands on. From the programme read's country options -- counted over
+     the path, not the reader's filters, and only over published
+     programmes in published destinations, so every one of those pages
+     answers -- and never from the field's destination ticks, which say
+     where it is taught, not what is listed. None when the read failed. */
+  const destinations = (list?.facets.country ?? [])
+    .filter((option) => option.count > 0)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  const whereToStudy: LevelBand | null = destinations.length ? {
+    id: 'where-to-study',
+    eyebrow: 'Destinations',
+    title: `Where to study ${withArticle(level.name)} in ${field.name}`,
+    body: <div className="h-grid">
+      {destinations.map((option) => <RowCard
+        key={option.value}
+        href={`/study-abroad/${encodeURIComponent(option.value)}/${encodeURIComponent(subject.slug)}${specialization ? `/${encodeURIComponent(specialization.slug)}` : ''}#${levelAnchor(level.code)}`}
+        title={option.label}
+        meta={countLabel(option.count, 'programme')}
+      />)}
+    </div>,
+  } : null;
+  /* A specialization's subject at the same level, as a card: where the
+     subject claims that level, so the card never opens an unclaimed page
+     of the six it shows when it is offered at nothing. */
+  const parent: LevelBand | null = upHref && subjectPages.claimed ? {
+    id: 'parent-subject',
+    eyebrow: 'Subject',
+    title: `${subject.name} at ${level.name}`,
+    body: <div className="h-grid">
+      <RowCard href={upHref} title={`${level.name} in ${subject.name}`} meta={`All ${subject.name} specializations at ${level.name}`} />
+    </div>,
+  } : null;
+  /* The field's other level pages, by their plain addresses (never the
+     noindex ?view=guides copy) and only the levels it claims -- the links
+     its own page draws -- then the field itself. A field offered at
+     nothing gets the field alone. */
+  const otherLevels = levelPageLinks(
+    specialization
+      ? [...(specialization.levels ?? []), ...(specialization.offeredLevels ?? [])]
+      : subjectOfferedLevels(subject),
+    { subject: subject.slug, ...(specialization ? { specialization: specialization.slug } : {}) },
+    climbingOrder(levels),
+  ).filter((link) => link.code !== level.code.toUpperCase());
+  const more: LevelBand = {
+    id: 'more',
+    eyebrow: 'Keep exploring',
+    title: `More on ${field.name}`,
+    body: <>
+      <LevelLinks variant="chips" field={field.name} label="Other study levels" links={otherLevels} />
+      <p className="levelmore__about"><Link className="linkcta" href={fieldHref}>About {field.name}{' '}<span className="linkcta__arrow" aria-hidden="true">&rarr;</span></Link></p>
+    </>,
+  };
+  /* The page's run, after the hero. A subject's says what the level is
+     and what it leads to before it lists; a specialization's is narrower,
+     so it lists straight after the overview, then says the rest. The
+     programme list keeps its place in the run as `discovery`, its anchor
+     unchanged, so the hero's and the switcher's links still land on it. */
+  const order = specialization
+    ? [written.overview, whereToStudy, 'discovery' as const, written.admission, written.careers, written.industries, written.employers, written.lookingAhead, specializations, parent, written.faqs, more]
+    : [written.overview, specializations, written.careers, written.industries, written.employers, written.admission, written.lookingAhead, whereToStudy, 'discovery' as const, written.faqs, more];
+  const bands = order.filter((band): band is LevelBand | 'discovery' => band !== null);
+  const tones = bandTones(bands.map((band) => (band === 'discovery' ? band : band.id)));
+  /* The programme list, one band of the run (see `order`). */
+  const discovery = <section className="sec sec--white sec--tight coursefinder" id="discovery" key="discovery">
+    <div className="wrap">
+      <h2 className="sr-only">{view === 'guides' ? 'Course guides' : 'Published programmes'} for {field.name} at {level.name}</h2>
+      <nav className="switcher switcher--few cf-switch" aria-label="What to list">
+        <Link className="switcher__item" href={switchProgramme} aria-current={view === 'programmes' ? 'page' : undefined} data-testid="switch-programmes">
+          <span className="cf-switch__name">Programmes</span>{list ? <em className="cf-switch__n">({formatNumber(list.summary.programmes)})</em> : null}
+        </Link>
+        <Link className="switcher__item" href={switchGuides} aria-current={view === 'guides' ? 'page' : undefined} data-testid="switch-guides">
+          <span className="cf-switch__name">Course guides</span>{guideCatalogue ? <em className="cf-switch__n">({formatNumber(guideCatalogue.meta.total)})</em> : null}
+        </Link>
+      </nav>
+      <div id="courses" className="cf-results">
+        {view === 'programmes' ? list ? <ProgrammeResults
+          base={base} scope={scope} filters={programmeFilters} facets={list.facets} cards={list.cards} meta={list.meta}
+          catalogueTotal={list.summary.programmes} suggestions={`/api/courses/suggestions?${suggestions}`}
+          where={`for ${field.name} at ${level.name}`} idPrefix="subject-level"
+          /* Said only when the whole level is empty, not when the
+             reader's filters emptied it: that is about the catalogue. */
+          empty={<>
+            {list.summary.programmes === 0 ? <p>Not in our catalogue yet: that reflects what Universta lists, not what universities teach.</p> : null}
+            {waysOn(guideCatalogue?.meta.total ? [{ href: switchGuides, label: `Course guides for ${level.name} in ${field.name}` }] : [])}
+          </>}
+        /> : <p role="status">Programmes are temporarily unavailable. <Link href={base}>Try again</Link>.</p>
+        : guideResults?.[0] && guideResults?.[1] ? <CourseGuidesResults
+          base={base} scope={guideScope} courses={guideResults[0].data} meta={guideResults[0].meta}
+          filterOptions={guideResults[1]} filters={guideFilters} unknown={checked?.unknown ?? {}}
+          paged={Boolean(raw.page || raw.pg || raw.pageSize)} viewParam programmes={Boolean(list?.summary.programmes)} taught={taught}
+          where={`for ${field.name} at ${level.name}`}
+          empty={<>{waysOn(list?.summary.programmes ? [{ href: switchProgramme, label: `Programmes for ${level.name} in ${field.name}` }] : [])}</>}
+        /> : <p role="status">Course guides are temporarily unavailable. <Link href={switchGuides}>Try again</Link>.</p>}
+      </div>
+      <p className="trust__note">Programmes show each university’s published offering. Course guides describe the course across universities.</p>
+    </div>
+  </section>;
   return <>
     {/* The crumbs the hero draws, as structured data: the same trail, with
         absolute addresses, and the page itself named by its canonical path
@@ -277,52 +397,10 @@ export async function SubjectLevelPage({ params, searchParams }: {
             aria-current={row.code === level.code ? 'page' : undefined}
           >{row.name}</Link>)}
         </nav>
-        <SpecializationChips
-          label={specialization ? `Other ${subject.name} specializations at ${level.name}` : `Specializations at ${level.name}`}
-          chips={atLevel.map((row) => ({
-            id: row.id, name: row.name, count: row.count,
-            href: subjectLevelHref({ subject: subject.slug, specialization: row.slug, level: level.code }),
-          }))}
-        />
         {upHref ? <p className="levelup"><Link className="linkcta" href={upHref}>{level.name} in {subject.name}{' '}<span className="linkcta__arrow" aria-hidden="true">&rarr;</span></Link></p> : null}
       </div>
     </section>
-    <LevelIntro intro={content?.intro} heading={`About ${level.name} in ${field.name}`} />
-    <section className="sec sec--white sec--tight coursefinder" id="discovery">
-      <div className="wrap">
-        <h2 className="sr-only">{view === 'guides' ? 'Course guides' : 'Published programmes'} for {field.name} at {level.name}</h2>
-        <nav className="switcher switcher--few cf-switch" aria-label="What to list">
-          <Link className="switcher__item" href={switchProgramme} aria-current={view === 'programmes' ? 'page' : undefined} data-testid="switch-programmes">
-            <span className="cf-switch__name">Programmes</span>{list ? <em className="cf-switch__n">({formatNumber(list.summary.programmes)})</em> : null}
-          </Link>
-          <Link className="switcher__item" href={switchGuides} aria-current={view === 'guides' ? 'page' : undefined} data-testid="switch-guides">
-            <span className="cf-switch__name">Course guides</span>{guideCatalogue ? <em className="cf-switch__n">({formatNumber(guideCatalogue.meta.total)})</em> : null}
-          </Link>
-        </nav>
-        <div id="courses" className="cf-results">
-          {view === 'programmes' ? list ? <ProgrammeResults
-            base={base} scope={scope} filters={programmeFilters} facets={list.facets} cards={list.cards} meta={list.meta}
-            catalogueTotal={list.summary.programmes} suggestions={`/api/courses/suggestions?${suggestions}`}
-            where={`for ${field.name} at ${level.name}`} idPrefix="subject-level"
-            /* Said only when the whole level is empty, not when the
-               reader's filters emptied it: that is about the catalogue. */
-            empty={<>
-              {list.summary.programmes === 0 ? <p>Not in our catalogue yet: that reflects what Universta lists, not what universities teach.</p> : null}
-              {waysOn(guideCatalogue?.meta.total ? [{ href: switchGuides, label: `Course guides for ${level.name} in ${field.name}` }] : [])}
-            </>}
-          /> : <p role="status">Programmes are temporarily unavailable. <Link href={base}>Try again</Link>.</p>
-          : guideResults?.[0] && guideResults?.[1] ? <CourseGuidesResults
-            base={base} scope={guideScope} courses={guideResults[0].data} meta={guideResults[0].meta}
-            filterOptions={guideResults[1]} filters={guideFilters} unknown={checked?.unknown ?? {}}
-            paged={Boolean(raw.page || raw.pg || raw.pageSize)} viewParam programmes={Boolean(list?.summary.programmes)} taught={taught}
-            where={`for ${field.name} at ${level.name}`}
-            empty={<>{waysOn(list?.summary.programmes ? [{ href: switchProgramme, label: `Programmes for ${level.name} in ${field.name}` }] : [])}</>}
-          /> : <p role="status">Course guides are temporarily unavailable. <Link href={switchGuides}>Try again</Link>.</p>}
-        </div>
-        <p className="trust__note">Programmes show each university’s published offering. Course guides describe the course across universities.</p>
-      </div>
-    </section>
-    <LevelWrittenSections content={content} levelName={level.name} fieldName={field.name} />
+    {bands.map((band) => band === 'discovery' ? discovery : <LevelBandSection key={band.id} band={band} tone={tones[band.id]} />)}
     <CompareTray />
     {/* The nearest parent first: a specialization's level page offers its
         specialization, then its subject. */}
