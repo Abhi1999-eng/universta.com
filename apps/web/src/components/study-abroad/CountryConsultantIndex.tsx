@@ -36,6 +36,7 @@ export function ConsultantCard({
   consultant,
   countrySlug,
   guides = [],
+  guidance,
 }: {
   consultant: CountryConsultantRow;
   /** The destination the page is about, named first among the badges. */
@@ -43,6 +44,10 @@ export function ConsultantCard({
   /** The destinations with a published guide, whose consultants pages
    *  exist: a badge for any other is a name, not a link to a missing page. */
   guides?: readonly string[];
+  /** Where "Get guidance" leads, for a page about no destination (a
+   *  subject's level page); otherwise the destination's counselling, asked
+   *  from its consultants page. */
+  guidance?: string;
 }) {
   const href = `/study-abroad-consultants/${consultant.slug}`;
   const destinations = [
@@ -152,7 +157,7 @@ export function ConsultantCard({
         </Link>
         <Link
           className="btn btn--sm"
-          href={counsellingHref({
+          href={guidance ?? counsellingHref({
             source: 'country',
             country: countrySlug,
             from: countryConsultantsHref(countrySlug),

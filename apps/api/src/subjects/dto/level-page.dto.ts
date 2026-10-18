@@ -57,7 +57,7 @@ export class LevelPageSeoDto extends OmitType(SeoMetadataDto, [
  * whole when sent; `seo: null` removes the page's own SEO.
  */
 export class UpsertLevelPageDto {
-  /* The six texts are sanitised rich text; the limit is a subject
+  /* The seven texts are sanitised rich text; the limit is a subject
      overview's. An empty one, or one with nothing visible, is stored as
      nothing. */
   @ApiPropertyOptional({ nullable: true })
@@ -66,6 +66,12 @@ export class UpsertLevelPageDto {
   @IsString()
   @MaxLength(20000)
   intro?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(trim)
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  studyTopics?: string | null;
   @ApiPropertyOptional({ nullable: true })
   @Transform(trim)
   @IsOptional()

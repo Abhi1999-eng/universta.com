@@ -40,7 +40,7 @@ vi.mock('next/link', () => ({
 }));
 
 type Page = NonNullable<LevelPageDetail['page']>;
-type Payload = { status: 'DRAFT' | 'PUBLISHED'; intro: string; admissionNote: string; careersNote: string; industries: string; employers: string; lookingAhead: string; faqs: Array<{ question: string; answer: string; status: string; displayOrder: number }>; seo: Record<string, unknown> | null; expectedUpdatedAt: string | null };
+type Payload = { status: 'DRAFT' | 'PUBLISHED'; intro: string; studyTopics: string; admissionNote: string; careersNote: string; industries: string; employers: string; lookingAhead: string; faqs: Array<{ question: string; answer: string; status: string; displayOrder: number }>; seo: Record<string, unknown> | null; expectedUpdatedAt: string | null };
 
 const subject = { id: 'subject-1', name: 'Marine Sciences', slug: 'marine-sciences', status: 'PUBLISHED' };
 const ug = { id: 'lvl-ug', code: 'UG', name: "Bachelor's", slug: 'bachelors', description: 'Three or four years of first-degree study.', status: 'ACTIVE' };
@@ -49,7 +49,7 @@ function detail(page: Page | null, overrides: Partial<LevelPageDetail> = {}): Le
   return { subject, specialization: null, level: ug, offered: true, sources: ['TICKED'], path: '/subjects/marine-sciences/bachelors', page, ...overrides };
 }
 function stored(overrides: Partial<Page> = {}): Page {
-  return { id: 'page-1', status: 'DRAFT', intro: null, admissionNote: null, careersNote: null, industries: null, employers: null, lookingAhead: null, faqs: [], seo: null, searchReady: false, createdAt: 'c', updatedAt: 'v1', ...overrides };
+  return { id: 'page-1', status: 'DRAFT', intro: null, studyTopics: null, admissionNote: null, careersNote: null, industries: null, employers: null, lookingAhead: null, faqs: [], seo: null, searchReady: false, createdAt: 'c', updatedAt: 'v1', ...overrides };
 }
 /* Stored ids are UUIDs; ones shaped like the FAQ card's "faq-<index>" key
    for a new row would clash with it once a row is added. */
@@ -69,6 +69,7 @@ function answerSaves() {
       data: detail(stored({
         status: payload.status,
         intro: payload.intro || null,
+        studyTopics: payload.studyTopics || null,
         admissionNote: payload.admissionNote || null,
         careersNote: payload.careersNote || null,
         industries: payload.industries || null,
@@ -112,10 +113,12 @@ describe('opening a page', () => {
     expect(screen.queryByRole('heading', { name: 'FAQ 2' })).toBeNull();
     expect(screen.getByText(/Three or four years of first-degree study\./)).toBeInTheDocument();
     expect(await screen.findByRole('textbox', { name: 'Intro' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'What you may study' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Admission note' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Careers note' })).toBeInTheDocument();
     for (const name of ['Industries', 'Employers', 'Looking ahead']) expect(screen.getByRole('textbox', { name })).toBeInTheDocument();
     /* Each hint names the section the words show as on the site. */
+    expect(screen.getByText('Topics a programme at this level usually covers. Shows as “What you may study”.')).toBeInTheDocument();
     expect(screen.getByText(/Shows as “Getting into Bachelor's in Marine Sciences”/)).toBeInTheDocument();
     expect(screen.getByText(/Shows as “Career pathways”/)).toBeInTheDocument();
     expect(screen.getByText(/Named for illustration only; not a ranking, endorsement or partnership\./)).toBeInTheDocument();
@@ -134,6 +137,16 @@ describe('opening a page', () => {
     expect(await screen.findByRole('textbox', { name: 'Industries' })).toHaveTextContent('Shipping.');
     expect(screen.getByRole('textbox', { name: 'Employers' })).toHaveTextContent('Maersk.');
     expect(screen.getByRole('textbox', { name: 'Looking ahead' })).toHaveTextContent('Growing.');
+  });
+
+  it('opens a stored page with what you may study filled in, right after the intro', async () => {
+    mocks.getLevelPage.mockResolvedValue({ data: detail(stored({ intro: '<p>Oceans.</p>', studyTopics: '<p>Ocean currents and coral reefs.</p>' })), meta: null });
+    render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
+    expect(await screen.findByRole('textbox', { name: 'What you may study' })).toHaveTextContent('Ocean currents and coral reefs.');
+    /* It shows right after "Why study" on the site, so it is written there too. */
+    const [intro, topics, admission] = ['Intro', 'What you may study', 'Admission note'].map((name) => screen.getByRole('textbox', { name }));
+    expect(intro.compareDocumentPosition(topics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(topics.compareDocumentPosition(admission) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('opens a specialization’s page from the specialization', async () => {
@@ -182,6 +195,7 @@ describe('saving', () => {
     expect(mocks.saveLevelPage.mock.calls[0].slice(0, 3)).toEqual(['subject', 'subject-1', 'lvl-ug']);
     expect(sentPayload()).toEqual({
       intro: '<p>Oceans, coasts and the life in them.</p>',
+      studyTopics: '',
       admissionNote: '',
       careersNote: '',
       industries: '',
@@ -230,6 +244,23 @@ describe('saving', () => {
     await waitFor(() => expect(mocks.saveLevelPage).toHaveBeenCalledTimes(1));
     expect(sentPayload()).toMatchObject({ status: 'PUBLISHED', intro: '', employers: '<p>Maersk and the Met Office.</p>' });
     expect(screen.queryByText('Write an intro, a note or an FAQ before publishing this level page.')).toBeNull();
+  });
+
+  it('saves what you may study, and publishes a page whose only words are those', async () => {
+    const user = userEvent.setup();
+    render(<LevelPageForm owner="subject" ownerId="subject-1" levelId="lvl-ug" />);
+    await write('What you may study', '<p>Oceanography, marine ecology and fieldwork at sea.</p>');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(mocks.saveLevelPage).toHaveBeenCalledTimes(1));
+    expect(sentPayload()).toMatchObject({ status: 'DRAFT', intro: '', studyTopics: '<p>Oceanography, marine ecology and fieldwork at sea.</p>' });
+    expect(await screen.findByRole('textbox', { name: 'What you may study' })).toHaveTextContent('Oceanography, marine ecology and fieldwork at sea.');
+
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    await waitFor(() => expect(mocks.saveLevelPage).toHaveBeenCalledTimes(2));
+    expect(sentPayload(1)).toMatchObject({ status: 'PUBLISHED', intro: '', studyTopics: '<p>Oceanography, marine ecology and fieldwork at sea.</p>', expectedUpdatedAt: 'v2' });
+    expect(screen.queryByText('Write an intro, a note or an FAQ before publishing this level page.')).toBeNull();
+    /* It lets a page be published, not indexed ahead of its programmes. */
+    expect(screen.getByText(/it still needs an intro and 3 more FAQs/)).toBeInTheDocument();
   });
 
   /* Only the intro and the FAQs count towards search; the new sections let a

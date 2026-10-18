@@ -3156,6 +3156,11 @@
 .sa .levelup { margin-top: 14px; }
 /* "More on …": the field's other level pages, then the field itself. */
 .sa .levelmore__about { margin: 22px 0 0; }
+/* A subject's level page shows three consultants: one row of three on a
+   wide screen, rather than two and one left over. */
+@media (min-width: 1024px) {
+.sa .levelconsult { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 /* "Why study…" and "Studying…": the paragraph read straight away, with the
    rest under the design's read-more. */
 .sa .fieldwhy__lead { max-width: 74ch; }

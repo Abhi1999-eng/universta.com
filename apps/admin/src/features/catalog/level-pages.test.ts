@@ -21,7 +21,7 @@ import { blankUnifiedSeo } from '@/features/shared/UnifiedSeoFields';
 
 const subject = { id: 'subject-1', name: 'Marine Sciences', slug: 'marine-sciences', status: 'PUBLISHED' };
 const level = { id: 'lvl-ug', code: 'UG', name: "Bachelor's", slug: 'bachelors', description: null, status: 'ACTIVE' };
-const blank = { intro: '', admissionNote: '', careersNote: '', industries: '', employers: '', lookingAhead: '' };
+const blank = { intro: '', studyTopics: '', admissionNote: '', careersNote: '', industries: '', employers: '', lookingAhead: '' };
 
 describe('where level pages live', () => {
   it('addresses both owners and their card', () => {
@@ -105,6 +105,7 @@ describe('levelPagePayload', () => {
     const payload = levelPagePayload({
       content: {
         intro: '<p><br></p>',
+        studyTopics: ' <p>Algorithms.</p> ',
         admissionNote: ' <p>Grades.</p> ',
         careersNote: '<p>&nbsp;</p>',
         industries: '<p> </p>',
@@ -118,6 +119,7 @@ describe('levelPagePayload', () => {
     });
     expect(payload).toEqual({
       intro: '',
+      studyTopics: '<p>Algorithms.</p>',
       admissionNote: '<p>Grades.</p>',
       careersNote: '',
       industries: '',
@@ -184,7 +186,7 @@ describe('levelPagePayload', () => {
      the network tab follows the editor top to bottom. */
   it('sends every written part, in the editor’s order', () => {
     expect(Object.keys(levelPagePayload({ content: blank, faqs: [], seo: blankUnifiedSeo, intent: 'draft', page: null }))).toEqual([
-      'intro', 'admissionNote', 'careersNote', 'industries', 'employers', 'lookingAhead', 'status', 'faqs', 'seo', 'expectedUpdatedAt',
+      'intro', 'studyTopics', 'admissionNote', 'careersNote', 'industries', 'employers', 'lookingAhead', 'status', 'faqs', 'seo', 'expectedUpdatedAt',
     ]);
   });
 
@@ -201,12 +203,13 @@ describe('levelPageHasWords', () => {
 
   it('has none on a blank page, or one with only an inactive FAQ or empty markup', () => {
     expect(levelPageHasWords(payload({}))).toBe(false);
-    expect(levelPageHasWords(payload({ industries: '<p> </p>', employers: '<p><br></p>' }))).toBe(false);
+    expect(levelPageHasWords(payload({ studyTopics: '<p> </p>', industries: '<p> </p>', employers: '<p><br></p>' }))).toBe(false);
     expect(levelPageHasWords(payload({}, [{ ...row('Q?', '0'), status: 'INACTIVE' }]))).toBe(false);
   });
 
   it('has words with any one written part, the new sections included, or an active FAQ', () => {
     for (const key of Object.keys(blank) as Array<keyof typeof blank>) expect(levelPageHasWords(payload({ [key]: '<p>Words.</p>' }))).toBe(true);
+    expect(levelPageHasWords(payload({ studyTopics: '<p>Algorithms and data structures.</p>' }))).toBe(true);
     expect(levelPageHasWords(payload({}, [row('Q?', '0')]))).toBe(true);
   });
 });

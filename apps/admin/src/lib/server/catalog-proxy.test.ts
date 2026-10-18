@@ -125,18 +125,20 @@ describe('same-origin catalog BFF', () => {
       const { body } = await sent('subjects:level-pages:put:s1:lvl1', {
         method: 'PUT',
         headers: auth,
-        body: JSON.stringify({ intro: '<p>Hi</p>', admissionNote: '', careersNote: '', industries: '<p>Banks</p>', employers: '', lookingAhead: '<p>Up</p>', status: 'PUBLISHED', faqs, seo, expectedUpdatedAt: null, subjectId: 'other', createdByUserId: 'secret' }),
+        body: JSON.stringify({ intro: '<p>Hi</p>', studyTopics: '<p>Algorithms</p>', admissionNote: '', careersNote: '', industries: '<p>Banks</p>', employers: '', lookingAhead: '<p>Up</p>', status: 'PUBLISHED', faqs, seo, expectedUpdatedAt: null, subjectId: 'other', createdByUserId: 'secret' }),
       });
-      expect(body).toEqual({ intro: '<p>Hi</p>', admissionNote: '', careersNote: '', industries: '<p>Banks</p>', employers: '', lookingAhead: '<p>Up</p>', status: 'PUBLISHED', faqs, seo, expectedUpdatedAt: null });
+      expect(body).toEqual({ intro: '<p>Hi</p>', studyTopics: '<p>Algorithms</p>', admissionNote: '', careersNote: '', industries: '<p>Banks</p>', employers: '', lookingAhead: '<p>Up</p>', status: 'PUBLISHED', faqs, seo, expectedUpdatedAt: null });
     });
 
     /* A key left off the list is dropped without a word, and the API then
        keeps what the page had: the save would look fine and change nothing. */
-    it('forwards the industries, employers and looking-ahead sections for both owners', async () => {
-      const sections = { industries: '<p>Shipping</p>', employers: '<p>Maersk</p>', lookingAhead: '<p>Growing</p>' };
+    it('forwards the what-you-may-study, industries, employers and looking-ahead sections for both owners', async () => {
+      const sections = { studyTopics: '<p>Ocean currents</p>', industries: '<p>Shipping</p>', employers: '<p>Maersk</p>', lookingAhead: '<p>Growing</p>' };
       for (const operation of ['subjects:level-pages:put:s1:lvl1', 'specializations:level-pages:put:sp1:lvl1'] as const) {
         const { body } = await sent(operation, { method: 'PUT', headers: auth, body: JSON.stringify(sections) });
         expect(body).toEqual(sections);
+        const stripped = await sent(operation, { method: 'PUT', headers: auth, body: JSON.stringify({ studyTopics: '', subjectId: 'other' }) });
+        expect(stripped.body).toEqual({ studyTopics: '' });
       }
     });
 

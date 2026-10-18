@@ -68,6 +68,7 @@ type Offered = {
    question, is enough to publish; only the intro counts for search. */
 const TEXT_FIELDS = [
   'intro',
+  'studyTopics',
   'admissionNote',
   'careersNote',
   'industries',
@@ -89,9 +90,10 @@ const FAQ_ORDER = [
 /**
  * A study level's own page within a subject or a specialization --
  * /subjects/computing/masters, /subjects/computing/ai/masters -- and what an
- * editor writes for it: an intro, an admission note, a careers note, the
- * industries and employers its graduates go to, a look ahead, its questions
- * and its SEO, saved together under one version.
+ * editor writes for it: an intro, the topics it usually covers, an
+ * admission note, a careers note, the industries and employers its graduates
+ * go to, a look ahead, its questions and its SEO, saved together under one
+ * version.
  *
  * Which levels a field has a page at is worked out here, the same way the
  * website works it out (apps/web course-levels.ts): a subject is offered at
@@ -159,6 +161,7 @@ export class SubjectLevelPagesService {
                 id: page.id,
                 status: page.status,
                 hasIntro: page.intro !== null,
+                hasStudyTopics: page.studyTopics !== null,
                 hasAdmissionNote: page.admissionNote !== null,
                 hasCareersNote: page.careersNote !== null,
                 hasIndustries: page.industries !== null,
@@ -275,7 +278,7 @@ export class SubjectLevelPagesService {
             {
               field: 'intro',
               message:
-                'Write an intro, a note (admission, careers, industries, employers or looking ahead) or a question first',
+                'Write an intro, a note (what you may study, admission, careers, industries, employers or looking ahead) or a question first',
             },
           ],
         );
@@ -523,6 +526,7 @@ export class SubjectLevelPagesService {
         ? {
             id: page.id,
             intro: page.intro,
+            studyTopics: page.studyTopics,
             admissionNote: page.admissionNote,
             careersNote: page.careersNote,
             industries: page.industries,
@@ -822,6 +826,7 @@ export class SubjectLevelPagesService {
             id: page.id,
             status: page.status,
             intro: page.intro,
+            studyTopics: page.studyTopics,
             admissionNote: page.admissionNote,
             careersNote: page.careersNote,
             industries: page.industries,
@@ -903,6 +908,7 @@ export class SubjectLevelPagesService {
     page: {
       status: string;
       intro: string | null;
+      studyTopics: string | null;
       admissionNote: string | null;
       careersNote: string | null;
       industries: string | null;
@@ -917,6 +923,7 @@ export class SubjectLevelPagesService {
       courseLevelCode: level.code,
       status: page.status,
       introLength: page.intro?.length ?? 0,
+      studyTopicsLength: page.studyTopics?.length ?? 0,
       admissionNoteLength: page.admissionNote?.length ?? 0,
       careersNoteLength: page.careersNote?.length ?? 0,
       industriesLength: page.industries?.length ?? 0,

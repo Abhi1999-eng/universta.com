@@ -210,6 +210,7 @@ export function liveLevelRows({
  * search; any of them is enough to publish. */
 export type LevelPageContent = {
   intro: string;
+  studyTopics: string;
   admissionNote: string;
   careersNote: string;
   industries: string;
@@ -271,6 +272,7 @@ export function levelPagePayload({
   const status: LevelPageStatus = intent === 'publish' ? 'PUBLISHED' : 'DRAFT';
   return {
     intro: richTextOrEmpty(content.intro),
+    studyTopics: richTextOrEmpty(content.studyTopics),
     admissionNote: richTextOrEmpty(content.admissionNote),
     careersNote: richTextOrEmpty(content.careersNote),
     industries: richTextOrEmpty(content.industries),
@@ -286,8 +288,8 @@ export function levelPagePayload({
 /** Whether a save has anything to show once published: any written part or
  * an active FAQ. The API refuses to publish a page with none. */
 export function levelPageHasWords(payload: ReturnType<typeof levelPagePayload>) {
-  const { intro, admissionNote, careersNote, industries, employers, lookingAhead } = payload;
-  return [intro, admissionNote, careersNote, industries, employers, lookingAhead].some(Boolean)
+  const { intro, studyTopics, admissionNote, careersNote, industries, employers, lookingAhead } = payload;
+  return [intro, studyTopics, admissionNote, careersNote, industries, employers, lookingAhead].some(Boolean)
     || payload.faqs.some((row) => row.status === 'ACTIVE');
 }
 

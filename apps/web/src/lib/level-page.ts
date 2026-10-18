@@ -1,10 +1,14 @@
+import { counsellingHref } from './counselling-link';
+import { scholarshipListHref } from './country-scholarship-list';
 import { rankSpecializations, type CountsHere } from './country-subject';
+import { levelPageLinks } from './subject-levels';
 import type { ProgrammeSummary } from './university-courses';
 
 /**
  * What a field's page at one study level says about itself to a search
- * engine, and which of the field's specializations it hands a reader on
- * to. Decided once here so the metadata, the page and the sitemap cannot
+ * engine, and which of the field's specializations, the site's other
+ * pages and the other subjects at the level it hands a reader on to.
+ * Decided once here so the metadata, the page and the sitemap cannot
  * disagree.
  */
 
@@ -126,4 +130,70 @@ export function specializationsAtLevel<
     ...row,
     count: counts?.get(row.slug) || undefined,
   }));
+}
+
+/** One of the "Plan your Master's" links: a page elsewhere on the site. */
+export type LevelPlanLink = { key: 'programmes' | 'scholarships' | 'universities' | 'destinations' | 'counselling'; label: string; href: string };
+
+/**
+ * "Plan your Master's": the site's own pages that help at this level, in
+ * the order a reader plans one. Only routes that answer, narrowed to the
+ * level where the page reads a level: the course finder takes the level's
+ * code as `level`, the scholarship finder as `degreeLevel` (where no award
+ * is tied to the level it drops the filter and lists them all; it never
+ * 404s). The universities list has no level filter, so it is linked plain.
+ * There is no intakes, cost or visa page of its own -- each destination
+ * guide carries those parts -- so the destinations are linked instead.
+ * Counselling knows the field and the page it was asked from.
+ */
+export function levelPlanLinks({
+  level,
+  subject,
+  specialization,
+  from,
+}: {
+  level: { code: string; name: string };
+  subject: string;
+  specialization?: string;
+  /** The level page's own path, for counselling's way back. */
+  from: string;
+}): LevelPlanLink[] {
+  const code = level.code.toUpperCase();
+  return [
+    { key: 'programmes', label: `Find ${level.name} programmes`, href: `/courses?level=${encodeURIComponent(code)}` },
+    /* Asks the finder for the level without promising it: the finder drops a
+       level no award is tied to yet and lists every award instead. */
+    { key: 'scholarships', label: 'Find scholarships', href: `${scholarshipListHref('/scholarships', { levels: [code] })}#scholarships` },
+    { key: 'universities', label: 'Browse universities', href: '/universities' },
+    { key: 'destinations', label: 'Compare study destinations', href: '/study-abroad' },
+    {
+      key: 'counselling',
+      label: 'Free counselling',
+      href: counsellingHref({ source: specialization ? 'specialization' : 'subject', subject, specialization, from }),
+    },
+  ];
+}
+
+/**
+ * The other subjects with a page at this level, each linked to it: "More
+ * subjects at Master's".
+ *
+ * The subject list's own rule, as the /subjects cards link their levels
+ * (`levelPageLinks`): a subject offered at the level among the catalogue's
+ * active levels, and claiming it -- one offered at nothing shows six levels
+ * it claims none of, so it is left out. Always the plain address, never the
+ * noindex `?view=guides` copy. The subject being read is left out; the rest
+ * keep the list's order, up to `max`.
+ */
+export function subjectsAtLevel(
+  rows: ReadonlyArray<{ id: string; name: string; slug: string; levels?: ReadonlyArray<{ code: string | null; name: string }> | null }> | null | undefined,
+  code: string,
+  { except, catalogue, max = 12 }: { except?: string; catalogue?: ReadonlyArray<{ code: string }> | null; max?: number } = {},
+): Array<{ id: string; name: string; href: string }> {
+  const wanted = code.toUpperCase();
+  return (rows ?? []).flatMap((row) => {
+    if (row.slug === except) return [];
+    const link = levelPageLinks(row.levels, { subject: row.slug }, catalogue).find((entry) => entry.code === wanted);
+    return link ? [{ id: row.id, name: row.name, href: link.href }] : [];
+  }).slice(0, max);
 }

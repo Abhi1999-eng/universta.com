@@ -109,7 +109,7 @@ const pageRow = (level: typeof bachelors, slug: string, patch: Record<string, un
   page: null,
   ...patch,
 });
-const keptPage = { id: 'page-1', status: 'DRAFT', hasIntro: true, hasAdmissionNote: false, hasCareersNote: false, hasIndustries: false, hasEmployers: false, hasLookingAhead: false, faqCount: 0, hasSeo: false, searchReady: false, updatedAt: 'page-v1' };
+const keptPage = { id: 'page-1', status: 'DRAFT', hasIntro: true, hasStudyTopics: false, hasAdmissionNote: false, hasCareersNote: false, hasIndustries: false, hasEmployers: false, hasLookingAhead: false, faqCount: 0, hasSeo: false, searchReady: false, updatedAt: 'page-v1' };
 const notSavedHint = /Rows marked “Not saved yet” follow your study level ticks\./;
 /* One level's row on the card; the ticks above carry the same names. */
 const cardRow = (name: string) => document.querySelector<HTMLElement>(`[data-level-row="${name}"]`);
