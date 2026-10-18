@@ -30,6 +30,7 @@ import { FieldLabel } from '@/features/shared/FieldLabel';
 import { commonFieldHelp } from '@/lib/field-help/common';
 import { UnifiedEditorActions } from '@/features/shared/UnifiedEditorActions';
 import { EnterSubmitGuard } from '@/features/shared/EnterSubmitGuard';
+import { EditorFields } from '@/features/shared/EditorFields';
 import { nextAutoSlug } from '@/lib/slug';
 import { blankUnifiedSeo, seoPayload, UnifiedSeoFields, unifiedSeoWanted, type UnifiedSeoDraft } from '@/features/shared/UnifiedSeoFields';
 import { showCreatedAddress } from '@/features/shared/created-address';
@@ -46,7 +47,7 @@ const seoFromRecord = (record: EditorialSeo | null): UnifiedSeoDraft => record ?
 } : blankUnifiedSeo;
 export function SubjectForm({ id }: { id?: string }) {
   const router = useRouter();
-  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
+  const [fieldsEl, setFieldsEl] = useState<HTMLFieldSetElement | null>(null);
   const [record, setRecord] = useState<SubjectRecord | null>(null);
   const [existingSeo, setExistingSeo] = useState<EditorialSeo | null>(null);
   const [media, setMedia] = useState<EditorialMedia[]>([]);
@@ -160,6 +161,8 @@ export function SubjectForm({ id }: { id?: string }) {
     setSaving(true); setSavingIntent(intent); setError('');
     /* The subject this save has written, once it has. */
     let writtenId: string | null = null;
+    /* Whether this save ends by leaving for another page; see the finally. */
+    let leaving = false;
     try {
       const payload = {
         name: form.name.trim(), slug: form.slug.trim() || undefined, shortDescription: form.shortDescription.trim(), overview: form.overview.trim() || undefined,
@@ -212,10 +215,13 @@ export function SubjectForm({ id }: { id?: string }) {
         /* A subject made in this session holds this history entry under the
            Create route (showCreatedAddress); pushing would leave it behind,
            and Back would show a blank Create form at the subject's address. */
+        leaving = true;
         if (id) router.push('/subjects'); else router.replace('/subjects');
         return;
       }
-      if (!id) router.replace(`/subjects/${settled.id}`);
+      /* The subject's own editor takes over from this one, which belongs to
+         the Create route; it reads the subject back. */
+      if (!id) { leaving = true; router.replace(`/subjects/${settled.id}`); }
       router.refresh();
     } catch (cause: unknown) {
       setError(catalogErrorText(cause, 'Unable to save subject'));
@@ -232,7 +238,11 @@ export function SubjectForm({ id }: { id?: string }) {
           /* The original error is the one worth showing. */
         }
       }
-    } finally { setSaving(false); setSavingIntent(null); }
+    } finally {
+      /* Leaving, the fields stay locked until the next page replaces this
+         one: a change made here in between would go with it. */
+      if (!leaving) { setSaving(false); setSavingIntent(null); }
+    }
   }
 
   if (loading) return <section className="mx-auto w-full max-w-[980px] rounded-2xl border border-[#E8ECF3] bg-white p-8"><p className="p-sub">Loading subject editor…</p></section>;
@@ -247,74 +257,76 @@ export function SubjectForm({ id }: { id?: string }) {
       {error ? <p role="alert" className="p-alert p-alert--error">{error}</p> : null}
       {issues.length ? <div role="alert" className="p-alert p-alert--error"><p className="font-semibold">Fix these fields before saving:</p><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
 
-      <EditorSectionNav root={formEl} />
-      <form ref={setFormEl} onSubmit={submit} className="mt-8 space-y-6">
+      <EditorSectionNav root={fieldsEl} />
+      <form onSubmit={submit} className="mt-8">
         <EnterSubmitGuard />
-        <fieldset className="p-panel">
-          <legend className="sr-only">Subject information</legend>
-          <h3 className="text-xl font-semibold">Subject information</h3>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor="subject-name" required help={commonFieldHelp.name} /><input id="subject-name" className={inputClass} value={form.name} onChange={(e) => set('name', e.target.value)} /></div>
-            <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor="subject-slug" help={commonFieldHelp.slug} /><input id="subject-slug" className={inputClass} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder="Generated from name" /></div>
-            <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Short description" htmlFor="subject-short" required help={commonFieldHelp.shortDescription} /><textarea id="subject-short" rows={3} className={inputClass} value={form.shortDescription} onChange={(e) => set('shortDescription', e.target.value)} /></div>
-            <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Overview" htmlFor="subject-overview" help={commonFieldHelp.overview} /><textarea id="subject-overview" rows={6} className={inputClass} value={form.overview} onChange={(e) => set('overview', e.target.value)} /></div>
-            <MediaPickerDialog label="Icon media" value={form.iconMediaId} media={media} onChange={(value) => set('iconMediaId', value)} />
-            <MediaPickerDialog label="Listing media" value={form.listingMediaId} media={media} onChange={(value) => set('listingMediaId', value)} />
-            <MediaPickerDialog label="Hero media" value={form.heroMediaId} media={media} onChange={(value) => set('heroMediaId', value)} />
-            <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor="subject-order" help={commonFieldHelp.displayOrder} /><input id="subject-order" type="number" min="0" max="999999" className={inputClass} value={form.displayOrder} onChange={(e) => set('displayOrder', e.target.value)} /></div>
-          </div>
-        </fieldset>
+        <EditorFields locked={saving} ref={setFieldsEl}>
+          <fieldset className="p-panel">
+            <legend className="sr-only">Subject information</legend>
+            <h3 className="text-xl font-semibold">Subject information</h3>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              <div className="text-sm font-semibold"><FieldLabel label="Name" htmlFor="subject-name" required help={commonFieldHelp.name} /><input id="subject-name" className={inputClass} value={form.name} onChange={(e) => set('name', e.target.value)} /></div>
+              <div className="text-sm font-semibold"><FieldLabel label="Slug" htmlFor="subject-slug" help={commonFieldHelp.slug} /><input id="subject-slug" className={inputClass} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder="Generated from name" /></div>
+              <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Short description" htmlFor="subject-short" required help={commonFieldHelp.shortDescription} /><textarea id="subject-short" rows={3} className={inputClass} value={form.shortDescription} onChange={(e) => set('shortDescription', e.target.value)} /></div>
+              <div className="text-sm font-semibold sm:col-span-2"><FieldLabel label="Overview" htmlFor="subject-overview" help={commonFieldHelp.overview} /><textarea id="subject-overview" rows={6} className={inputClass} value={form.overview} onChange={(e) => set('overview', e.target.value)} /></div>
+              <MediaPickerDialog label="Icon media" value={form.iconMediaId} media={media} onChange={(value) => set('iconMediaId', value)} />
+              <MediaPickerDialog label="Listing media" value={form.listingMediaId} media={media} onChange={(value) => set('listingMediaId', value)} />
+              <MediaPickerDialog label="Hero media" value={form.heroMediaId} media={media} onChange={(value) => set('heroMediaId', value)} />
+              <div className="text-sm font-semibold"><FieldLabel label="Display order" htmlFor="subject-order" help={commonFieldHelp.displayOrder} /><input id="subject-order" type="number" min="0" max="999999" className={inputClass} value={form.displayOrder} onChange={(e) => set('displayOrder', e.target.value)} /></div>
+            </div>
+          </fieldset>
 
-        <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} hint="The levels ticked on its specializations show on the subject's pages on their own. Tick here any level the subject is offered at beyond them, or every level while it has no specializations. Levels with a published course show either way." onChange={(next) => { setLevelIds(next); setDirty(true); }} />
+          <StudyLevelTicks idPrefix="subject" levels={levels} value={levelIds} hint="The levels ticked on its specializations show on the subject's pages on their own. Tick here any level the subject is offered at beyond them, or every level while it has no specializations. Levels with a published course show either way." onChange={(next) => { setLevelIds(next); setDirty(true); }} />
 
-        <LevelPagesCard owner="subject" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED'} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
+          <LevelPagesCard owner="subject" ownerId={record?.id} ownerName={record?.name ?? ''} ownerPublished={record?.status === 'PUBLISHED'} refreshKey={levelPagesKey} ticksChanged={Boolean(record) && !sameIds(levelIds, savedLevelIds)} parentDirty={dirty} />
 
-        <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
+          <DestinationTicks idPrefix="subject" countries={countries} value={countryIds} derived={derivedCountryIds} onChange={(next) => { setCountryIds(next); setDirty(true); }} hint={record ? undefined : 'Every destination starts ticked for a new subject. Untick the countries it is not offered in; a country with a published course in it stays ticked on its own.'} />
 
-        <fieldset id="editor-specializations" className="p-panel">
-          <legend className="sr-only">Specializations</legend>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="p-eyebrow">Children</p>
-              <h3 className="mt-2 text-xl font-semibold">Specializations</h3>
-              <p className="p-sub">
-                {record
-                  ? 'Each specialization has an editor of its own, with its content and SEO, and is published from there: publishing this subject leaves its drafts as drafts. While the subject is a draft, none of them is on the site.'
-                  : 'Save the subject first; its specializations are then added from here, each with an editor of its own.'}
-              </p>
+          <fieldset id="editor-specializations" className="p-panel">
+            <legend className="sr-only">Specializations</legend>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="p-eyebrow">Children</p>
+                <h3 className="mt-2 text-xl font-semibold">Specializations</h3>
+                <p className="p-sub">
+                  {record
+                    ? 'Each specialization has an editor of its own, with its content and SEO, and is published from there: publishing this subject leaves its drafts as drafts. While the subject is a draft, none of them is on the site.'
+                    : 'Save the subject first; its specializations are then added from here, each with an editor of its own.'}
+                </p>
+              </div>
+              {record ? (
+                <Link href={`/specializations/new?subject=${record.id}`} className="p-btn p-btn--outline p-btn--sm">+ Add specialization</Link>
+              ) : null}
             </div>
             {record ? (
-              <Link href={`/specializations/new?subject=${record.id}`} className="p-btn p-btn--outline p-btn--sm">+ Add specialization</Link>
+              <div className="mt-6">
+                {specializations.length === 0 ? (
+                  <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div>
+                ) : (
+                  <ul className="divide-y divide-[#E8ECF3] rounded-xl border border-[#E8ECF3]">
+                    {specializations.map((row) => (
+                      <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                        <div>
+                          <span className="font-semibold">{row.name}</span>
+                          <span className="p-hint ml-2">/{row.slug}</span>
+                          {row.shortDescription?.trim() ? null : (
+                            <span className="p-chip ml-2 align-middle text-xs font-normal" title="Publishes without one; its page stays out of search engines until it has some content.">No short description</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`} title={row.status === 'PUBLISHED' ? undefined : 'Not on the site until it is published from its own editor.'}>{row.status}</span>
+                          <Link href={`/specializations/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">Edit</Link>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             ) : null}
-          </div>
-          {record ? (
-            <div className="mt-6">
-              {specializations.length === 0 ? (
-                <div className="p-card p-sub">No specializations yet. Add one if this Subject needs a sub-field.</div>
-              ) : (
-                <ul className="divide-y divide-[#E8ECF3] rounded-xl border border-[#E8ECF3]">
-                  {specializations.map((row) => (
-                    <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                      <div>
-                        <span className="font-semibold">{row.name}</span>
-                        <span className="p-hint ml-2">/{row.slug}</span>
-                        {row.shortDescription?.trim() ? null : (
-                          <span className="p-chip ml-2 align-middle text-xs font-normal" title="Publishes without one; its page stays out of search engines until it has some content.">No short description</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`p-badge ${row.status === 'PUBLISHED' ? 'p-badge--ok' : 'p-badge--visa'}`} title={row.status === 'PUBLISHED' ? undefined : 'Not on the site until it is published from its own editor.'}>{row.status}</span>
-                        <Link href={`/specializations/${row.id}`} className="p-btn p-btn--ghost p-btn--sm">Edit</Link>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : null}
-        </fieldset>
+          </fieldset>
 
-        <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="subject" />
+          <UnifiedSeoFields value={seo} onChange={(next) => { setSeo(next); setDirty(true); }} media={media} noun="subject" />
+        </EditorFields>
         <UnifiedEditorActions cancelHref="/subjects" busy={saving} savingIntent={savingIntent} published={record?.status === 'PUBLISHED'} />
       </form>
     </section>

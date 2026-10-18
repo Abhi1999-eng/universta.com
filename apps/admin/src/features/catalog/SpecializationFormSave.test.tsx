@@ -142,6 +142,8 @@ describe('specialization editor save flow', () => {
     expect(addressBar).toHaveBeenCalledWith(null, '', '/specializations/spec-new');
     expect(replace).not.toHaveBeenCalled();
     expect(mocks.getSpecialization).toHaveBeenCalledWith('spec-new');
+    /* Nothing left the page, so the fields are free for the retry. */
+    expect(screen.getByRole('textbox', { name: /^Name/ })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Publish' }));
     /* Still made in this session: the list replaces the adopted entry. */
@@ -184,6 +186,29 @@ describe('specialization editor save flow', () => {
     expect(mocks.createSubSubject.mock.calls[0][1]).toMatchObject({ courseLevelIds: ['lvl-phd'] });
     await waitFor(() => expect(mocks.listLevelPages).toHaveBeenCalledWith('specialization', 'spec-new'));
     expect(screen.queryByText('Study level changes show here after you save.')).toBeNull();
+  });
+
+  /* /specializations/new and /specializations/[id] are separate routes, so
+     its own editor is a fresh one that reads it back. "Edit specialization"
+     showed before it arrived, and an untick made in between was undone. */
+  it('stays locked from a new specialization\'s save until its own editor takes over', async () => {
+    const phd = { id: 'lvl-phd', code: 'PHD', name: 'PhD', description: null, educationOrder: 6, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' };
+    mocks.listCourseLevels.mockResolvedValue({ data: [phd], meta: null });
+    mocks.createSubSubject.mockResolvedValue({ data: specialization({ id: 'spec-new', updatedAt: 'new-v1', courseLevels: [{ id: 'lvl-phd', name: 'PhD', code: 'PHD' }] }) });
+    const user = userEvent.setup();
+    await startNew(user);
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/specializations/spec-new'));
+    expect(screen.getByRole('heading', { name: 'Edit specialization' })).toBeInTheDocument();
+    const box = screen.getByRole('checkbox', { name: 'PhD' });
+    expect(box).toBeDisabled();
+    await user.click(box);
+    expect(box).toBeChecked();
+    expect(screen.getByRole('textbox', { name: /^Name/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    expect(mocks.updateSubSubject).not.toHaveBeenCalled();
   });
 
   /* The FAQs are written one by one. When the second is refused, the first

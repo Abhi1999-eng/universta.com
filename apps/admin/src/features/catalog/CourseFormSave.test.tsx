@@ -168,9 +168,15 @@ describe('course editor save flow', () => {
     expect(await screen.findByText('Published courses need at least one active study mode')).toBeInTheDocument();
     expect(addressBar).toHaveBeenCalledWith(null, '', '/courses/course-new');
     expect(replace).not.toHaveBeenCalled();
+    /* Nothing left the page, so the fields are free for the retry. */
+    expect(screen.getByRole('textbox', { name: /^Course name/ })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/courses/course-new'));
+    /* Its own editor reads it back and takes over; until it has, a change
+       made here would be dropped with this one. */
+    expect(screen.getByRole('textbox', { name: /^Course name/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     expect(mocks.createCourse).toHaveBeenCalledTimes(1);
     expect(mocks.updateCourse.mock.calls[0][0]).toBe('course-new');
     expect(mocks.updateCourse.mock.calls[0][1]).toMatchObject({ expectedUpdatedAt: 'new-v2' });

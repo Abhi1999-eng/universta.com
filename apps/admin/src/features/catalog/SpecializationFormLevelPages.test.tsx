@@ -97,8 +97,9 @@ describe('specialization editor and its level pages', () => {
     expect(link).toHaveAttribute('href', '/specializations/spec-1/level-pages/lvl-phd');
     expect(mocks.listLevelPages).toHaveBeenCalledWith('specialization', 'spec-1');
 
-    /* Directly after the ticks, before the destinations. */
-    const order = [...container.querySelectorAll('form > fieldset[id]')].map((element) => element.id);
+    /* Directly after the ticks, before the destinations; the sections sit
+       in the editor's one block of fields (EditorFields). */
+    const order = [...container.querySelectorAll('form > fieldset > fieldset[id]')].map((element) => element.id);
     expect(order.slice(order.indexOf('specialization-levels'), order.indexOf('specialization-levels') + 3)).toEqual([
       'specialization-levels',
       'specialization-level-pages',

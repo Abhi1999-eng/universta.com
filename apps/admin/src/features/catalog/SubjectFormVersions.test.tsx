@@ -277,6 +277,8 @@ describe('subject form and its specializations', () => {
     expect(addressBar).toHaveBeenCalledWith(null, '', '/subjects/subject-new');
     expect(replace).not.toHaveBeenCalled();
     expect(mocks.getSubject).toHaveBeenCalledWith('subject-new');
+    /* Nothing left the page, so the fields are free for the retry. */
+    expect(container.querySelector('#subject-name')).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Publish' }));
     /* Still made in this session: the list replaces the adopted entry. */
@@ -314,6 +316,61 @@ describe('subject form and its specializations', () => {
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/subjects/subject-new'));
     expect(mocks.getSubject).not.toHaveBeenCalled();
+  });
+
+  /* /subjects/new and /subjects/[id] are separate routes, so the subject's
+     own editor is a fresh one that reads it back. "Edit subject" showed
+     before it arrived, and an untick made in between was silently undone. */
+  it('stays locked from a new subject\'s save until its own editor takes over', async () => {
+    const level = (levelId: string, name: string) => ({ id: levelId, code: levelId, name, description: null, educationOrder: 3, displayOrder: 0, status: 'ACTIVE', createdAt: 'c', updatedAt: 'u' });
+    mocks.listCourseLevels.mockResolvedValue({ data: [level('lvl-ug', "Bachelor's"), level('lvl-phd', 'PhD')], meta: null });
+    mocks.createSubject.mockResolvedValue({
+      data: { ...subject, id: 'subject-new', updatedAt: 'new-v1', courseLevels: [level('lvl-ug', "Bachelor's"), level('lvl-phd', 'PhD')] },
+    });
+    const user = userEvent.setup();
+    const { container } = render(<SubjectForm />);
+    await screen.findByRole('button', { name: 'Save draft' });
+    await user.type(container.querySelector<HTMLInputElement>('#subject-name')!, 'Marine Sciences');
+    await user.type(container.querySelector<HTMLTextAreaElement>('#subject-short')!, 'Oceans.');
+    await user.click(await screen.findByRole('checkbox', { name: "Bachelor's" }));
+    await user.click(screen.getByRole('checkbox', { name: 'PhD' }));
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/subjects/subject-new'));
+    expect(screen.getByRole('heading', { name: 'Edit subject' })).toBeInTheDocument();
+    const phd = screen.getByRole('checkbox', { name: 'PhD' });
+    expect(phd).toBeDisabled();
+    await user.click(phd);
+    expect(phd).toBeChecked();
+    expect(container.querySelector('#subject-name')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    expect(mocks.updateSubject).not.toHaveBeenCalled();
+  });
+
+  it('locks the fields while a save runs, and frees them once it is through', async () => {
+    let finish: (value: { data: typeof subject }) => void = () => undefined;
+    mocks.updateSubject.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const user = userEvent.setup();
+    const { container } = render(<SubjectForm id="subject-1" />);
+    await user.click(await screen.findByRole('button', { name: 'Save draft' }));
+
+    expect(container.querySelector('#subject-name')).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Focus keyword' })).toBeDisabled();
+    finish({ data: { ...subject, updatedAt: 'subject-v2' } });
+    await waitFor(() => expect(container.querySelector('#subject-name')).toBeEnabled());
+    expect(screen.getByRole('textbox', { name: 'Focus keyword' })).toBeEnabled();
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('stays locked once published, until the list replaces the editor', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<SubjectForm id="subject-1" />);
+    await user.click(await screen.findByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/subjects'));
+    expect(container.querySelector('#subject-name')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publishing…' })).toBeDisabled();
   });
 
   /* Unticking "Robots index" on its own keeps the subject out of search

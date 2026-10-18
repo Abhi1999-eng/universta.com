@@ -234,9 +234,15 @@ describe('first save child persistence', () => {
     await waitFor(() => expect(mocks.putCountryProfile).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(addressBar).toHaveBeenCalledWith(null, '', '/countries/country-new'));
     expect(replace).not.toHaveBeenCalled();
+    /* Nothing left the page, so the fields are free for the retry. */
+    await waitFor(() => expect(screen.getByLabelText(/^Country name/)).toBeEnabled());
 
     await userEvent.click(screen.getByRole('button', { name: /save draft/i }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/countries/country-new'));
+    /* Its own editor reads it back and takes over; until it has, a change
+       made here would be dropped with this one. */
+    expect(screen.getByLabelText(/^Country name/)).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     expect(mocks.createCountry).toHaveBeenCalledTimes(1);
     expect(mocks.updateCountry).toHaveBeenCalledTimes(1);
     expect(mocks.updateCountry.mock.calls[0][0]).toBe('country-new');
