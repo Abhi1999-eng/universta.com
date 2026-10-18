@@ -259,6 +259,7 @@ function fakeDb(seed: Partial<Record<string, Row[]>> = {}) {
         const row = {
           id: `page-${++ids}`,
           intro: null,
+          studyTopics: null,
           admissionNote: null,
           careersNote: null,
           industries: null,
@@ -454,6 +455,7 @@ describe('the levels a field has a page at', () => {
       scopeKey: '',
       courseLevelId: 'mba',
       intro: '<p>Old.</p>',
+      studyTopics: null,
       admissionNote: null,
       careersNote: null,
       industries: null,
@@ -472,6 +474,7 @@ describe('the levels a field has a page at', () => {
         id: 'old',
         status: 'PUBLISHED',
         hasIntro: true,
+        hasStudyTopics: false,
         hasIndustries: false,
         hasEmployers: false,
         hasLookingAhead: false,
@@ -552,6 +555,35 @@ describe('the levels a field has a page at', () => {
       searchReady: false,
     });
   });
+
+  it('does not call a page search-ready on what it may study alone', async () => {
+    const { service } = fakeDb();
+    const detail = await service.upsert(
+      SUBJECT,
+      'ug',
+      {
+        studyTopics: '<p>Algorithms and databases.</p>',
+        faqs: [faq(1), faq(2), faq(3)],
+        status: 'PUBLISHED',
+      },
+      request,
+    );
+    expect(detail.page).toMatchObject({
+      status: 'PUBLISHED',
+      intro: null,
+      studyTopics: '<p>Algorithms and databases.</p>',
+      searchReady: false,
+    });
+    expect(
+      (await service.list(SUBJECT)).find((row) => row.level.code === 'UG')
+        ?.page,
+    ).toMatchObject({
+      hasIntro: false,
+      hasStudyTopics: true,
+      faqCount: 3,
+      searchReady: false,
+    });
+  });
 });
 
 describe('writing a level page for the first time', () => {
@@ -615,6 +647,24 @@ describe('writing a level page for the first time', () => {
         { question: 'Is it hard?', answer: '<p>Yes</p>', status: 'ACTIVE' },
       ],
     });
+  });
+
+  it('sanitises what it may study and stores it as nothing when nothing shows', async () => {
+    const { service } = fakeDb();
+    const detail = await service.upsert(
+      SUBJECT,
+      'ug',
+      { studyTopics: '<p onclick="x()">Algorithms<script>1</script></p>' },
+      request,
+    );
+    expect(detail.page).toMatchObject({ studyTopics: '<p>Algorithms</p>' });
+    const blank = await service.upsert(
+      SUBJECT,
+      'ug',
+      { studyTopics: '<p> </p>' },
+      request,
+    );
+    expect(blank.page).toMatchObject({ studyTopics: null });
   });
 
   it('orders the questions as sent, 0 to n-1, unless an order is given', async () => {
@@ -684,6 +734,7 @@ describe('saving part of a level page', () => {
       'ug',
       {
         intro: '<p>Intro.</p>',
+        studyTopics: '<p>Topics.</p>',
         admissionNote: '<p>Admission.</p>',
         industries: '<p>Banks.</p>',
         employers: '<p>Barclays.</p>',
@@ -705,11 +756,33 @@ describe('saving part of a level page', () => {
     );
     expect(detail.page).toMatchObject({
       intro: '<p>Intro.</p>',
+      studyTopics: '<p>Topics.</p>',
       admissionNote: null,
       industries: '<p>Banks.</p>',
       employers: null,
     });
     expect(detail.page?.faqs).toHaveLength(2);
+  });
+
+  it('keeps what it may study when left out and clears it when sent empty', async () => {
+    const { service } = await written();
+    const kept = await service.upsert(
+      SUBJECT,
+      'ug',
+      { intro: '<p>New.</p>' },
+      request,
+    );
+    expect(kept.page).toMatchObject({ studyTopics: '<p>Topics.</p>' });
+    const cleared = await service.upsert(
+      SUBJECT,
+      'ug',
+      { studyTopics: '' },
+      request,
+    );
+    expect(cleared.page).toMatchObject({
+      intro: '<p>New.</p>',
+      studyTopics: null,
+    });
   });
 
   it('clears the questions when an empty list is sent', async () => {
@@ -809,8 +882,10 @@ describe('saving part of a level page', () => {
   it('audits an update with what the page was and is', async () => {
     const { service, db } = await written();
     await service.upsert(SUBJECT, 'ug', { status: 'PUBLISHED' }, request);
-    /* Sizes, not the words: '<p>Banks.</p>' and '<p>Barclays.</p>'. */
+    /* Sizes, not the words: '<p>Topics.</p>', '<p>Banks.</p>' and
+       '<p>Barclays.</p>'. */
     const sizes = {
+      studyTopicsLength: 14,
       industriesLength: 13,
       employersLength: 16,
       lookingAheadLength: 0,
@@ -1082,6 +1157,41 @@ describe('what a level page save refuses', () => {
     ).rejects.toMatchObject({ response: { code: 'LEVEL_PAGE_NOT_READY' } });
   });
 
+  it('nothing when a page is published with what it may study as its only words, but does once it is cleared', async () => {
+    const { service } = fakeDb();
+    await expect(
+      service.upsert(
+        SUBJECT,
+        'ug',
+        { status: 'PUBLISHED', studyTopics: '<p>Algorithms.</p>' },
+        request,
+      ),
+    ).resolves.toMatchObject({
+      page: { status: 'PUBLISHED', studyTopics: '<p>Algorithms.</p>' },
+    });
+    await service.upsert(SUBJECT, 'ug', { status: 'DRAFT' }, request);
+    await expect(
+      service.upsert(
+        SUBJECT,
+        'ug',
+        { status: 'PUBLISHED', studyTopics: '' },
+        request,
+      ),
+    ).rejects.toMatchObject({
+      status: 422,
+      response: {
+        code: 'LEVEL_PAGE_NOT_READY',
+        details: [
+          expect.objectContaining({
+            field: 'intro',
+            message:
+              'Write an intro, a note (what you may study, admission, careers, industries, employers or looking ahead) or a question first',
+          }),
+        ],
+      },
+    });
+  });
+
   it('a script canonical, and accepts a path on this site', async () => {
     const { service } = fakeDb();
     await expect(
@@ -1252,6 +1362,15 @@ describe('the body a level page save accepts', () => {
       'lookingAhead',
     ]);
     expect(await errors({ industries: 42 })).toEqual(['industries']);
+  });
+
+  it('takes what it may study as text or null and refuses one over 20000 characters', async () => {
+    for (const studyTopics of [null, '<p>x</p>', ''])
+      expect(await errors({ studyTopics })).toEqual([]);
+    expect(await errors({ studyTopics: 'x'.repeat(20001) })).toEqual([
+      'studyTopics',
+    ]);
+    expect(await errors({ studyTopics: 42 })).toEqual(['studyTopics']);
   });
 
   it('refuses a status other than draft or published, and null questions', async () => {

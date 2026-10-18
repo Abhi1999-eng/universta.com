@@ -44,7 +44,7 @@ import { ViewOnSite } from '@/features/shared/records-ui';
 
 type Intent = 'draft' | 'publish';
 
-const blankContent: LevelPageContent = { intro: '', admissionNote: '', careersNote: '', industries: '', employers: '', lookingAhead: '' };
+const blankContent: LevelPageContent = { intro: '', studyTopics: '', admissionNote: '', careersNote: '', industries: '', employers: '', lookingAhead: '' };
 
 /** The editor's state for a page as the API returned it. A page not written
  * yet opens with one blank FAQ, as every FAQ card does. */
@@ -54,6 +54,7 @@ function draftFrom(detail: LevelPageDetail) {
   return {
     content: {
       intro: page?.intro ?? '',
+      studyTopics: page?.studyTopics ?? '',
       admissionNote: page?.admissionNote ?? '',
       careersNote: page?.careersNote ?? '',
       industries: page?.industries ?? '',
@@ -75,11 +76,11 @@ const shownFaq = (row: FaqDraft) => faqUsed(row) && row.status === 'ACTIVE' && B
  *
  * The page lists its programmes, specializations and facts from the catalogue
  * whether or not anything is written here. What is written adds an overview,
- * an admission note, a careers note, the industries and employers it leads
- * to, a look ahead, FAQs and SEO of its own, and all of it is saved in one
- * request under one version: the FAQ list is replaced whole, and blank SEO
- * removes a stored record. Only the intro and the FAQs count towards search;
- * any written part is enough to publish.
+ * the topics it usually covers, an admission note, a careers note, the
+ * industries and employers it leads to, a look ahead, FAQs and SEO of its
+ * own, and all of it is saved in one request under one version: the FAQ list
+ * is replaced whole, and blank SEO removes a stored record. Only the intro
+ * and the FAQs count towards search; any written part is enough to publish.
  *
  * A page kept for a level that is no longer offered here is shown read-only:
  * it is off the site, and the card it came from can delete it.
@@ -234,7 +235,7 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
         <div>
           <h2 id="level-page-form-heading" className="p-h1">{levelPageTitle(detail)}</h2>
           <p className="p-sub">
-            This page lists its programmes, specializations, destinations and facts from the catalogue on its own. What you write here adds an overview, admission, careers, industries, employers and looking-ahead sections, FAQs and SEO of its own. Everything on this page saves together.
+            This page lists its programmes, specializations, destinations and facts from the catalogue on its own. What you write here adds an overview, what-you-may-study, admission, careers, industries, employers and looking-ahead sections, FAQs and SEO of its own. Everything on this page saves together.
             {ownerLive && detail.offered ? <> <ViewOnSite path={detail.path} /></> : null}
           </p>
           <p className="p-hint mt-2">{readiness}</p>
@@ -268,6 +269,10 @@ export function LevelPageForm({ owner, ownerId, levelId }: { owner: LevelPageOwn
                 <p className="p-hint mt-1">
                   The page&apos;s opening section, “Why study …?”, right under its heading and the level&apos;s standard line{description ? <>: “{description}” (from Admin &gt; Study levels)</> : null}.
                 </p>
+              </div>
+              <div>
+                <RichTextEditor label="What you may study" value={content.studyTopics} onChange={edit('studyTopics')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />
+                <p className="p-hint mt-1">Topics a programme at this level usually covers. Shows as “What you may study”.</p>
               </div>
               <div>
                 <RichTextEditor label="Admission note" value={content.admissionNote} onChange={edit('admissionNote')} enableImages={false} readOnly={readOnly} minHeight="min-h-28" />

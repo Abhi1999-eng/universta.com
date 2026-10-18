@@ -414,6 +414,7 @@ export interface LevelPageRow {
     id: string;
     status: LevelPageStatus;
     hasIntro: boolean;
+    hasStudyTopics: boolean;
     hasAdmissionNote: boolean;
     hasCareersNote: boolean;
     hasIndustries: boolean;
@@ -439,6 +440,7 @@ export interface LevelPageDetail {
     id: string;
     status: LevelPageStatus;
     intro: string | null;
+    studyTopics: string | null;
     admissionNote: string | null;
     careersNote: string | null;
     industries: string | null;

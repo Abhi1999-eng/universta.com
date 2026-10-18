@@ -3,7 +3,9 @@ import {
   LEVEL_PAGE_MIN_PROGRAMMES,
   levelPageDescription,
   levelPageIndexable,
+  levelPlanLinks,
   specializationsAtLevel,
+  subjectsAtLevel,
   withArticle,
 } from './level-page';
 
@@ -166,5 +168,72 @@ describe('a level’s name with its article', () => {
   it('trims the name, and has nothing for no name', () => {
     expect(withArticle('  MBA ')).toBe('an MBA');
     expect(withArticle('  ')).toBe('');
+  });
+});
+
+describe('the links to plan a level', () => {
+  it('names the site’s pages for the level in the order a reader plans one', () => {
+    expect(levelPlanLinks({ level: { code: 'PG', name: "Master's" }, subject: 'law', from: '/subjects/law/masters' })).toEqual([
+      { key: 'programmes', label: "Find Master's programmes", href: '/courses?level=PG' },
+      { key: 'scholarships', label: 'Find scholarships', href: '/scholarships?degreeLevel=PG#scholarships' },
+      { key: 'universities', label: 'Browse universities', href: '/universities' },
+      { key: 'destinations', label: 'Compare study destinations', href: '/study-abroad' },
+      { key: 'counselling', label: 'Free counselling', href: '/counselling?source=subject&subject=law&from=%2Fsubjects%2Flaw%2Fmasters' },
+    ]);
+  });
+
+  it('asks counselling about the specialization where there is one, and takes the level by its code', () => {
+    const links = levelPlanLinks({ level: { code: 'mba', name: 'MBA' }, subject: 'business', specialization: 'finance', from: '/subjects/business/finance/mba' });
+    expect(links.map((link) => link.href)).toEqual([
+      '/courses?level=MBA',
+      '/scholarships?degreeLevel=MBA#scholarships',
+      '/universities',
+      '/study-abroad',
+      '/counselling?source=specialization&subject=business&specialization=finance&from=%2Fsubjects%2Fbusiness%2Ffinance%2Fmba',
+    ]);
+  });
+});
+
+describe('the other subjects at one level', () => {
+  const UG = { code: 'UG', name: "Bachelor's" };
+  const PG = { code: 'PG', name: "Master's" };
+  const catalogue = ['FOUNDATION', 'UG', 'PG', 'MBA'].map((code) => ({ code }));
+  const rows = [
+    { id: 'computing', slug: 'computing', name: 'Computing', levels: [UG, PG] },
+    { id: 'law', slug: 'law', name: 'Law', levels: [PG, UG] },
+    /* Offered at nothing: shown at six levels, claiming none. */
+    { id: 'art', slug: 'art', name: 'Art', levels: [] },
+    { id: 'none', slug: 'none', name: 'None', levels: null },
+    { id: 'music', slug: 'music', name: 'Music', levels: [{ code: 'ug', name: "Bachelor's" }] },
+    /* At a level switched off in Admin alone: offered at nothing. */
+    { id: 'old', slug: 'old', name: 'Old', levels: [{ code: 'DIPLOMA', name: 'Diploma' }] },
+    { id: 'history', slug: 'history', name: 'History', levels: [PG] },
+  ];
+
+  it('keeps the subjects offered at the level and claiming it, in the list’s order, by the plain address', () => {
+    expect(subjectsAtLevel(rows, 'ug', { except: 'computing', catalogue })).toEqual([
+      { id: 'law', name: 'Law', href: '/subjects/law/bachelors' },
+      { id: 'music', name: 'Music', href: '/subjects/music/bachelors' },
+    ]);
+    expect(subjectsAtLevel(rows, 'PG', { except: 'law', catalogue }).map((row) => row.href)).toEqual([
+      '/subjects/computing/masters',
+      '/subjects/history/masters',
+    ]);
+  });
+
+  it('leaves out a level the catalogue no longer lists', () => {
+    expect(subjectsAtLevel(rows, 'DIPLOMA', { catalogue })).toEqual([]);
+    expect(subjectsAtLevel(rows, 'FOUNDATION', { catalogue })).toEqual([]);
+  });
+
+  it('stops at twelve, or the number asked for', () => {
+    const many = Array.from({ length: 20 }, (_, index) => ({ id: `s${index}`, slug: `s-${index}`, name: `S${index}`, levels: [UG] }));
+    expect(subjectsAtLevel(many, 'UG', { catalogue })).toHaveLength(12);
+    expect(subjectsAtLevel(many, 'UG', { catalogue, max: 3 }).map((row) => row.id)).toEqual(['s0', 's1', 's2']);
+  });
+
+  it('has none for no list', () => {
+    expect(subjectsAtLevel(null, 'UG')).toEqual([]);
+    expect(subjectsAtLevel(undefined, 'UG')).toEqual([]);
   });
 });

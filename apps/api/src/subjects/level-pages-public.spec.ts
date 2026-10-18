@@ -252,6 +252,7 @@ function writePage(
     subSubjectId: null,
     scopeKey: '',
     intro: '<p>Why study it.</p>',
+    studyTopics: null,
     admissionNote: null,
     careersNote: null,
     industries: null,
@@ -496,6 +497,65 @@ describe("a level page's public record", () => {
       (await service.publicPage('computer-science', 'masters')).hasOwnContent,
     ).toBe(false);
   });
+
+  const studyTopics = '<p>Algorithms, databases and networks.</p>';
+
+  it('sends what a published page may study, on a subject and a specialization', async () => {
+    const { service, db } = fakeDb();
+    writePage(db, { id: 'p1', courseLevelId: 'pg', studyTopics });
+    writePage(db, {
+      id: 'ai-page',
+      courseLevelId: 'phd',
+      subSubjectId: 'ai',
+      scopeKey: 'ai',
+      studyTopics: '<p>Machine learning.</p>',
+    });
+    expect(
+      (await service.publicPage('computer-science', 'masters')).content,
+    ).toMatchObject({ id: 'p1', studyTopics });
+    expect(
+      (
+        await service.publicPage(
+          'computer-science',
+          'phd',
+          'artificial-intelligence',
+        )
+      ).content,
+    ).toMatchObject({ id: 'ai-page', studyTopics: '<p>Machine learning.</p>' });
+  });
+
+  it('sends what a page may study as null when nothing is written', async () => {
+    const { service, db } = fakeDb();
+    writePage(db, { id: 'p1', courseLevelId: 'pg' });
+    expect(
+      (await service.publicPage('computer-science', 'masters')).content,
+    ).toMatchObject({ studyTopics: null });
+  });
+
+  it('shows nothing of what a draft may study', async () => {
+    const { service, db } = fakeDb();
+    writePage(db, {
+      id: 'p1',
+      courseLevelId: 'pg',
+      status: 'DRAFT',
+      studyTopics,
+    });
+    expect(
+      (await service.publicPage('computer-science', 'masters')).content,
+    ).toBeNull();
+  });
+
+  it('has no own content on what it may study and three questions without an intro', async () => {
+    const { service, db } = fakeDb();
+    writePage(
+      db,
+      { id: 'p1', courseLevelId: 'pg', intro: null, studyTopics },
+      active(3),
+    );
+    expect(
+      await service.publicPage('computer-science', 'masters'),
+    ).toMatchObject({ content: { studyTopics }, hasOwnContent: false });
+  });
 });
 
 describe('the level pages the sitemap may list', () => {
@@ -544,6 +604,7 @@ describe('the level pages the sitemap may list', () => {
         id: 'ug',
         courseLevelId: 'ug',
         intro: null,
+        studyTopics: '<p>Algorithms.</p>',
         industries: '<p>Software.</p>',
         employers: '<p>Banks.</p>',
         lookingAhead: '<p>Growing.</p>',

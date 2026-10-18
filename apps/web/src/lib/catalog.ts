@@ -101,6 +101,8 @@ export function getCourseSuggestions(q: string) { return request<Array<Pick<Cour
  */
 export interface SubjectLevelPageContent {
   id: string; intro: string | null; admissionNote: string | null; careersNote: string | null;
+  /** The topics a programme at this level usually covers. Optional: an older API sends none. */
+  studyTopics?: string | null;
   /** Where its graduates work, who hires them and where the field is going.
    *  Optional: an API from before these sections sends none. */
   industries?: string | null; employers?: string | null; lookingAhead?: string | null;

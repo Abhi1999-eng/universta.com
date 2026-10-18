@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import type { SubjectLevelPageContent } from '@/lib/catalog';
@@ -25,10 +26,10 @@ export function levelFaqs(content: SubjectLevelPageContent | null | undefined) {
 }
 
 /** One band of a level page: its anchor, the section head's eyebrow and
- *  heading, and what follows them. */
-export type LevelBand = { id: string; eyebrow: string; title: string; body: ReactNode };
+ *  heading, an optional lead beside them, and what follows them. */
+export type LevelBand = { id: string; eyebrow: string; title: string; lead?: ReactNode; body: ReactNode };
 
-type WrittenBand = 'overview' | 'careers' | 'industries' | 'employers' | 'admission' | 'lookingAhead' | 'faqs';
+type WrittenBand = 'overview' | 'studyTopics' | 'careers' | 'industries' | 'employers' | 'admission' | 'lookingAhead' | 'faqs';
 
 /** Said under every list of employers: the page names them, it does not
  *  vouch for them. */
@@ -55,6 +56,7 @@ export function writtenLevelBands(
     said(value) ? { ...band, body: body(value) } : null;
   return {
     overview: written(content?.intro, { id: 'overview', eyebrow: 'Overview', title: `Why study ${withArticle(levelName)} in ${fieldName}?` }),
+    studyTopics: written(content?.studyTopics, { id: 'study-topics', eyebrow: 'Curriculum', title: 'What you may study' }),
     careers: written(content?.careersNote, { id: 'careers', eyebrow: 'Careers', title: 'Career pathways' }),
     industries: written(content?.industries, { id: 'industries', eyebrow: 'Sectors', title: 'Industries' }),
     employers: written(content?.employers, { id: 'employers', eyebrow: 'Who hires', title: 'Employers' }, (value) => (
@@ -94,9 +96,39 @@ export function LevelBandSection({ band, tone }: { band: LevelBand; tone: 'paper
   return (
     <section className={`sec sec--${tone}`} id={band.id}>
       <div className="wrap">
-        <SectionHead eyebrow={band.eyebrow} title={band.title} />
+        <SectionHead eyebrow={band.eyebrow} title={band.title} lead={band.lead} />
         {band.body}
       </div>
     </section>
+  );
+}
+
+/**
+ * A row of links under a band's heading, drawn as the field's other level
+ * pages are (`LevelLinks`' chips): pages elsewhere on the site, each one a
+ * route that answers. Draws nothing when there are no links.
+ */
+export function LinkChips({ label, links }: { label: string; links: ReadonlyArray<{ href: string; label: string }> }) {
+  if (!links.length) return null;
+  return (
+    <nav className="specchips levelchips" aria-label={label}>
+      <ul className="specchips__row" role="list">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link className="specchip" href={link.href}>{link.label}</Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** The one link that closes a band, "About Computing →": the whole of
+ *  what the band lists. */
+export function MoreLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <p className="levelmore__about">
+      <Link className="linkcta" href={href}>{children}{' '}<span className="linkcta__arrow" aria-hidden="true">&rarr;</span></Link>
+    </p>
   );
 }

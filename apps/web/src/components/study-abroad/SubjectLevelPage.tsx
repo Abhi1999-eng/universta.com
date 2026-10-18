@@ -2,15 +2,17 @@ import { cache } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { getCourseFilterOptions, getCourseLevels, getCourses, getSpecialization, getSubject, getSubjectLevelPage } from '@/lib/catalog';
+import { getCourseFilterOptions, getCourseLevels, getCourses, getSpecialization, getSubject, getSubjectLevelPage, getSubjects } from '@/lib/catalog';
 import { climbingOrder, hasLevelPage, levelAnchor, levelsOnBar, specializationLevelPages, subjectLevelPages, subjectOfferedLevels } from '@/lib/course-levels';
 import { checkGuideFilters, guideApiParams, guideListSearch, guidesAsProgrammes, isNarrowedCourses, PROGRAMME_MAX_PAGES, readGuideFilters, requestedView, withoutIgnored } from '@/lib/courses-params';
+import { counsellingHref } from '@/lib/counselling-link';
+import { toConsultantRows } from '@/lib/country-consultant-list';
 import { countryFaqJsonLd } from '@/lib/country-faq';
 import { durationFigure, figuresHere, intakeFigure, listedIntakes, programmeCountsHere } from '@/lib/country-subject';
 import { formatNumber } from '@/lib/format';
 import { jsonLdString } from '@/lib/json-ld';
-import { levelPageDescription, levelPageIndexable, specializationsAtLevel, withArticle } from '@/lib/level-page';
-import { phaseProgrammes } from '@/lib/phase1';
+import { levelPageDescription, levelPageIndexable, levelPlanLinks, specializationsAtLevel, subjectsAtLevel, withArticle } from '@/lib/level-page';
+import { phaseList, phaseProgrammes } from '@/lib/phase1';
 import { programmeList } from '@/lib/programme-sample';
 import { resolvedMetadata, titleWithSuffix, writtenSeo } from '@/lib/seo-management';
 import { findSubjectLevel, levelPageLinks, subjectLevelHref, subjectLevelSlug } from '@/lib/subject-levels';
@@ -18,10 +20,11 @@ import { courseApiParams, courseListSearch, readCourseFilters, toProgrammeList, 
 import { breadcrumbJsonLd } from '@/lib/university-json-ld';
 import { CourseGuidesResults } from '@/components/reference/CourseGuidesResults';
 import { CompareTray } from './CourseCompare';
+import { ConsultantCard } from './CountryConsultantIndex';
 import { FiguresStrip, SpecializationChips } from './CountryFieldHero';
 import { Crumbs } from './Crumbs';
 import { LevelLinks } from './LevelLinks';
-import { bandTones, LevelBandSection, levelFaqs, writtenLevelBands, type LevelBand } from './LevelPageSections';
+import { bandTones, LevelBandSection, levelFaqs, LinkChips, MoreLink, writtenLevelBands, type LevelBand } from './LevelPageSections';
 import { PlanBand } from './PlanBand';
 import { ProgrammeResults } from './ProgrammeResults';
 import { countLabel, RowCard } from './RowCard';
@@ -149,6 +152,19 @@ export async function subjectLevelMetadata(params: Promise<SubjectLevelParams>, 
 
 const EMPTY_GUIDES = { data: [], meta: { page: 1, limit: 12, total: 0, totalPages: 0 } };
 
+/** How many consultants a subject's level page shows before "View all". */
+const CONSULTANTS_SHOWN = 3;
+
+/** A read the page can do without: none, rather than a failed page, when
+ *  it fails -- even when it fails before it is asked. */
+async function orNone<T>(read: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return await read();
+  } catch {
+    return [];
+  }
+}
+
 export async function SubjectLevelPage({ params, searchParams }: {
   params: Promise<SubjectLevelParams>;
   searchParams: Promise<SearchParams>;
@@ -173,10 +189,18 @@ export async function SubjectLevelPage({ params, searchParams }: {
     ...(specialization ? { subSubject: specialization.slug } : {}),
     level: level.code,
   };
-  const [list, catalogueOptions, guideCatalogue] = await Promise.all([
+  const [list, catalogueOptions, guideCatalogue, consultantRows, otherSubjects] = await Promise.all([
     programmesAt(slug, specializationSlug, levelSlug, queryString(raw)),
     getCourseFilterOptions().catch(() => null),
     getCourses({ ...fixedGuideParams, pageSize: '1' }).catch(() => null),
+    /* A subject's page only: the consultants directory's first few
+       (published ones, as /study-abroad-consultants reads them), and the
+       subjects list /subjects reads, for the other subjects at this
+       level. A specialization's page makes neither read. */
+    specialization ? [] : orNone(async () =>
+      toConsultantRows((await phaseList<unknown>('consultants', { limit: String(CONSULTANTS_SHOWN) })).data).slice(0, CONSULTANTS_SHOWN)),
+    specialization ? [] : orNone(async () =>
+      subjectsAtLevel((await getSubjects({ limit: '100' })).data, level.code, { except: subject.slug, catalogue: levels })),
   ]);
   const programmeFilters = list ? withoutIgnored(asked, list.ignored) : asked;
   const checked = catalogueOptions ? checkGuideFilters(readGuideFilters(raw), catalogueOptions) : null;
@@ -262,17 +286,39 @@ export async function SubjectLevelPage({ params, searchParams }: {
      straight after the overview on a subject, and after the written bands
      on a specialization, where they are its siblings. They sat in the
      hero, ahead of everything the page says about the level. */
+  const relatedAnyLevel = specialization && !atLevel.length
+    ? (subject.subSubjects ?? []).filter((row) => row.slug !== specialization.slug)
+    : [];
   const specializations: LevelBand | null = atLevel.length ? {
     id: 'specializations',
     eyebrow: 'Specializations',
     title: specialization ? `Other ${subject.name} specializations at ${level.name}` : `Specializations at ${level.name}`,
-    body: <SpecializationChips
-      label={null}
-      chips={atLevel.map((row) => ({
-        id: row.id, name: row.name, count: row.count,
-        href: subjectLevelHref({ subject: subject.slug, specialization: row.slug, level: level.code }),
-      }))}
-    />,
+    body: <>
+      <SpecializationChips
+        label={null}
+        chips={atLevel.map((row) => ({
+          id: row.id, name: row.name, count: row.count,
+          href: subjectLevelHref({ subject: subject.slug, specialization: row.slug, level: level.code }),
+        }))}
+      />
+      {/* From a specialization, all of its subject's, whatever their
+          levels: the subject's own specializations page. */}
+      {specialization ? <MoreLink href={`/subjects/${subject.slug}/specializations`}>View all {subject.name} specializations</MoreLink> : null}
+    </>,
+  } : relatedAnyLevel.length ? {
+    /* A specialization with no sibling at this level still has related
+       ones, as the reference's specialization page always shows: its
+       subject's other specializations, each on its own page. */
+    id: 'specializations',
+    eyebrow: 'Specializations',
+    title: `Other ${subject.name} specializations`,
+    body: <>
+      <SpecializationChips
+        label={null}
+        chips={relatedAnyLevel.map((row) => ({ id: row.id, name: row.name, href: `/subjects/${subject.slug}/${row.slug}` }))}
+      />
+      <MoreLink href={`/subjects/${subject.slug}/specializations`}>View all {subject.name} specializations</MoreLink>
+    </>,
   } : null;
   /* Where to study it: the destinations with a live programme at this
      level in this field, most first, each opening on the field in that
@@ -326,17 +372,64 @@ export async function SubjectLevelPage({ params, searchParams }: {
     title: `More on ${field.name}`,
     body: <>
       <LevelLinks variant="chips" field={field.name} label="Other study levels" links={otherLevels} />
-      <p className="levelmore__about"><Link className="linkcta" href={fieldHref}>About {field.name}{' '}<span className="linkcta__arrow" aria-hidden="true">&rarr;</span></Link></p>
+      <MoreLink href={fieldHref}>About {field.name}</MoreLink>
     </>,
   };
-  /* The page's run, after the hero. A subject's says what the level is
-     and what it leads to before it lists; a specialization's is narrower,
-     so it lists straight after the overview, then says the rest. The
-     programme list keeps its place in the run as `discovery`, its anchor
-     unchanged, so the hero's and the switcher's links still land on it. */
+  /* The consultants directory's first few, on a subject's page. A
+     consultant's record names no subject, so the band does not say they
+     cover this one: it offers a talk about the level in it. The cards are
+     the directory's own, as the worldwide directory draws them -- no
+     destination is the page's, so each is a plain name -- and "Get
+     guidance" asks from this page, about this subject. None listed, or a
+     failed read, and the band stands down. */
+  const consultants: LevelBand | null = consultantRows.length ? {
+    id: 'consultants',
+    eyebrow: 'Consultants',
+    title: 'Study abroad consultants',
+    lead: `Talk to a consultant about ${withArticle(level.name)} in ${subject.name}.`,
+    body: <>
+      <div className="consultgrid levelconsult">
+        {consultantRows.map((row) => <ConsultantCard
+          key={row.id} consultant={row} countrySlug=""
+          guidance={counsellingHref({ source: 'subject', subject: subject.slug, from: base })}
+        />)}
+      </div>
+      <MoreLink href="/study-abroad-consultants">View all consultants</MoreLink>
+    </>,
+  } : null;
+  /* "Plan your Master's": the site's pages that help at this level, each
+     a route that answers, narrowed to the level where it reads one (see
+     `levelPlanLinks`). On both pages. */
+  const plan = levelPlanLinks({ level, subject: subject.slug, specialization: specialization?.slug, from: base });
+  const planLinks: LevelBand | null = plan.length ? {
+    id: 'plan-your-level',
+    eyebrow: 'Plan',
+    title: `Plan your ${level.name}`,
+    body: <LinkChips label={`Plan your ${level.name}`} links={plan} />,
+  } : null;
+  /* The other subjects with a page at this level, by the plain addresses
+     the /subjects cards link their levels by; then the subjects list. A
+     subject's page only. */
+  const moreSubjects: LevelBand | null = otherSubjects.length ? {
+    id: 'more-subjects',
+    eyebrow: 'Subjects',
+    title: `More subjects at ${level.name}`,
+    body: <>
+      <LinkChips label={`More subjects at ${level.name}`} links={otherSubjects.map((row) => ({ href: row.href, label: row.name }))} />
+      <MoreLink href="/subjects">All subjects</MoreLink>
+    </>,
+  } : null;
+  /* The page's run, after the hero. A subject's says what the level is,
+     what it covers and what it leads to before it lists, then offers a
+     consultant, answers its questions and hands the reader on: planning
+     the level, the other subjects at it, the field's other levels. A
+     specialization's is narrower, so it lists straight after the overview
+     and what it covers, then says the rest. The programme list keeps its
+     place in the run as `discovery`, its anchor unchanged, so the hero's
+     and the switcher's links still land on it. */
   const order = specialization
-    ? [written.overview, whereToStudy, 'discovery' as const, written.admission, written.careers, written.industries, written.employers, written.lookingAhead, specializations, parent, written.faqs, more]
-    : [written.overview, specializations, written.careers, written.industries, written.employers, written.admission, written.lookingAhead, whereToStudy, 'discovery' as const, written.faqs, more];
+    ? [written.overview, written.studyTopics, whereToStudy, 'discovery' as const, written.admission, written.careers, written.industries, written.employers, written.lookingAhead, specializations, parent, written.faqs, planLinks, more]
+    : [written.overview, written.studyTopics, specializations, written.careers, written.industries, written.employers, written.admission, written.lookingAhead, whereToStudy, 'discovery' as const, consultants, written.faqs, planLinks, moreSubjects, more];
   const bands = order.filter((band): band is LevelBand | 'discovery' => band !== null);
   const tones = bandTones(bands.map((band) => (band === 'discovery' ? band : band.id)));
   /* The programme list, one band of the run (see `order`). */

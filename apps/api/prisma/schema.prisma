@@ -1636,6 +1636,9 @@ model SubjectLevelPage {
   courseLevelId String   @map("course_level_id") @db.Char(36)
   /// Sanitised WYSIWYG HTML (common/rich-text.ts); null when nothing is written.
   intro         String?  @db.LongText
+  /// The topics a programme at this level usually covers ("What you may
+  /// study"): rich text like the notes. It does not count towards indexing.
+  studyTopics   String?  @map("study_topics") @db.LongText
   admissionNote String?  @map("admission_note") @db.LongText
   careersNote   String?  @map("careers_note") @db.LongText
   /// The industries and employers its graduates go to, and a look ahead:
