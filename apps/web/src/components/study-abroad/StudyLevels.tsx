@@ -13,7 +13,13 @@ import { LevelSwitch } from './LevelSwitch';
  *
  * A level with nothing listed here still opens: it names the
  * specializations taught at it and says, once, that nothing is listed here
- * yet, with the way to the level everywhere else.
+ * yet.
+ *
+ * Every level ends with the way to the field at that level everywhere --
+ * its level page, "Master's in Computer Science, every destination" --
+ * whether or not anything is listed here. It used to show only under an
+ * empty level, so a destination with courses at a level never linked the
+ * level page at all.
  */
 export function StudyLevels({
   panels,
@@ -32,9 +38,8 @@ export function StudyLevels({
   courseHref: (course: Course) => string;
   /** A specialization of the field, in this destination. */
   specializationHref?: (slug: string) => string;
-  /** The level in every destination, for a level with nothing here. A
-   *  null href means the field has no page at that level, and no link is
-   *  drawn. */
+  /** The level in every destination: the field's level page. A null href
+   *  means the field has no page at that level, and no link is drawn. */
   elsewhere?: { href: (levelCode: string) => string | null; label: (levelName: string) => string };
   /** Whether a course row names its specialization. */
   branch?: boolean;
@@ -54,7 +59,7 @@ export function StudyLevels({
       panels={panels.map(({ group, specializations }) => {
         const anchor = levelAnchor(group.level.code);
         const noun = group.count === 1 ? 'course' : 'courses';
-        const elsewhereHref = !group.count && elsewhere ? elsewhere.href(group.level.code) : null;
+        const elsewhereHref = elsewhere ? elsewhere.href(group.level.code) : null;
         return (
           <section
             className={`coursegroup studylevel scrollstop${group.count ? '' : ' coursegroup--empty'}`}
