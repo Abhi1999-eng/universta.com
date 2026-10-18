@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCourseLevels, getSpecializations, getSubjects } from '@/lib/catalog';
+import { LevelLinks } from '@/components/study-abroad/LevelLinks';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
 import { formatNumber } from '@/lib/format';
+import { levelPageLinks } from '@/lib/subject-levels';
 import { SpecializationFilters } from './SpecializationFilters';
 
 export const dynamic = 'force-dynamic';
@@ -201,27 +203,49 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
             </p>
           )}
           <div className="h-grid">
-            {rows.map((row) => (
-              <Link
-                className="h-card"
-                key={row.id}
-                href={`/subjects/${row.subject.slug}/${row.slug}`}
-              >
-                <strong className="h-card__t">{row.name}</strong>
-                <span className="h-card__d">{row.subject.name}</span>
-                {/* The reference states a branch's weight on the card: how
-                    many programmes, and the levels that teach them. */}
-                {row.publishedCourseCount || row.levels?.length ? (
-                  <span className="h-card__m">
-                    {row.publishedCourseCount
-                      ? `${formatNumber(row.publishedCourseCount)} ${row.publishedCourseCount === 1 ? 'course' : 'courses'}`
-                      : ''}
-                    {row.publishedCourseCount && row.levels?.length ? ' · ' : ''}
-                    {(row.levels ?? []).map((item) => item.name).join(', ')}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
+            {rows.map((row) => {
+              const href = `/subjects/${row.subject.slug}/${row.slug}`;
+              const courses = row.publishedCourseCount
+                ? `${formatNumber(row.publishedCourseCount)} ${row.publishedCourseCount === 1 ? 'course' : 'courses'}`
+                : '';
+              /* Each level it is offered at opens its page at that level. A
+                 link can not sit inside the card's own, so a card with
+                 levels to link stretches its name's link over the card. */
+              const links = levelPageLinks(
+                row.levels,
+                { subject: row.subject.slug, specialization: row.slug },
+                levels,
+              );
+              if (links.length) {
+                return (
+                  <article className="h-card card-stretch" key={row.id}>
+                    <Link className="h-card__t card-stretch__link" href={href}>
+                      {row.name}
+                    </Link>
+                    <span className="h-card__d">{row.subject.name}</span>
+                    <span className="h-card__m">
+                      {courses ? `${courses} · ` : ''}
+                      <LevelLinks links={links} field={row.name} />
+                    </span>
+                  </article>
+                );
+              }
+              return (
+                <Link className="h-card" key={row.id} href={href}>
+                  <strong className="h-card__t">{row.name}</strong>
+                  <span className="h-card__d">{row.subject.name}</span>
+                  {/* The reference states a branch's weight on the card: how
+                      many programmes, and the levels that teach them. */}
+                  {row.publishedCourseCount || row.levels?.length ? (
+                    <span className="h-card__m">
+                      {courses}
+                      {row.publishedCourseCount && row.levels?.length ? ' · ' : ''}
+                      {(row.levels ?? []).map((item) => item.name).join(', ')}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
           </div>
 
           {pages > 1 ? (

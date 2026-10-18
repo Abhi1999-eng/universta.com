@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { CourseLevelGroup, SpecializationDetail } from '@/lib/catalog';
 import { counsellingHref } from '@/lib/counselling-link';
-import { levelPageHref } from '@/lib/subject-levels';
+import { levelPageHref, levelPageLinks } from '@/lib/subject-levels';
 import { inCountry } from '@/lib/country-article';
 import {
   levelCoursesHref,
@@ -19,6 +19,7 @@ import { ConsultantsCta } from './ConsultantsCta';
 import { CourseCards } from './CourseCards';
 import { CourseLevels } from './CourseLevels';
 import { Crumbs } from './Crumbs';
+import { LevelLinks } from './LevelLinks';
 import { DestinationSwitcher } from './DestinationSwitcher';
 import {
   destinationsLead,
@@ -153,6 +154,18 @@ export function SpecializationGuide({
   const filed = levelTotal(groups);
   /* The levels it has pages for: its own ticks with its courses' levels. */
   const pages = specializationLevelPages(specialization, catalogue);
+  /* Its page at each of those levels, linked from under its heading by the
+     plain address: the level block links the course-guide view of each,
+     which is noindex, so these pages had no link from the specialization. */
+  const levelLinks = levelPageLinks(
+    /* The set its pages come from (`specializationOfferedLevels`: its ticks
+       with its courses' levels), but its `levels` first -- the API's union,
+       already in the order a student climbs them -- so the order holds
+       where the catalogue could not be read. Each level is linked once. */
+    [...(specialization.levels ?? []), ...(specialization.offeredLevels ?? [])],
+    { subject: subject.slug, specialization: specialization.slug },
+    catalogue,
+  );
   /* Its own content, as a course has: each section is a band of its own,
      named by its key, after the overview; the FAQs come before the funding
      hand-off. */
@@ -234,6 +247,12 @@ export function SpecializationGuide({
                 All {subject.name}
               </Link>
             </div>
+            <LevelLinks
+              variant="chips"
+              label="Choose a level"
+              links={levelLinks}
+              field={specialization.name}
+            />
             </div>
           </div>
         </div>
@@ -456,33 +475,65 @@ export function SpecializationGuide({
               {siblings.map((sibling) => {
                 const levelNames = (sibling.levels ?? []).map((row) => row.name).join(', ');
                 const count = sibling.publishedCourseCount ?? 0;
-                return (
-                  <article className="speccard" key={sibling.id}>
-                    <Link
-                      className="speccard__btn"
-                      href={`${subjectPath}/${sibling.slug}`}
-                    >
-                      <span className="speccard__top">
-                        <span className="label">Specialization</span>
-                      </span>
+                const href = `${subjectPath}/${sibling.slug}`;
+                /* Its levels, each linked to its page at that level, as the
+                   subject's cards link theirs. A link can not sit inside
+                   the card's own, so a card with levels to link stretches
+                   its name's link over the card instead. */
+                const links = levelPageLinks(
+                  sibling.levels,
+                  { subject: subject.slug, specialization: sibling.slug },
+                  catalogue,
+                );
+                const stretch = links.length > 0;
+                const body = (
+                  <>
+                    <span className="speccard__top">
+                      <span className="label">Specialization</span>
+                    </span>
+                    {stretch ? (
+                      <Link className="speccard__name card-stretch__link" href={href}>
+                        {sibling.name}
+                      </Link>
+                    ) : (
                       <span className="speccard__name">{sibling.name}</span>
-                      {sibling.shortDescription ? (
-                        <span className="speccard__desc">{sibling.shortDescription}</span>
-                      ) : null}
-                      {levelNames || count ? (
-                        <span className="speccard__foot">
-                          <span className="speccard__levels">{levelNames}</span>
-                          {count ? (
-                            <span className="speccard__count datum">
-                              {counted(count)}
-                            </span>
-                          ) : null}
+                    )}
+                    {sibling.shortDescription ? (
+                      <span className="speccard__desc">{sibling.shortDescription}</span>
+                    ) : null}
+                    {levelNames || count ? (
+                      <span className="speccard__foot">
+                        <span className="speccard__levels">
+                          {stretch ? (
+                            <LevelLinks links={links} field={sibling.name} />
+                          ) : (
+                            levelNames
+                          )}
                         </span>
-                      ) : null}
-                      <span className="speccard__cta">
-                        Explore specialization <span aria-hidden="true">→</span>
+                        {count ? (
+                          <span className="speccard__count datum">
+                            {counted(count)}
+                          </span>
+                        ) : null}
                       </span>
-                    </Link>
+                    ) : null}
+                    <span className="speccard__cta">
+                      Explore specialization <span aria-hidden="true">→</span>
+                    </span>
+                  </>
+                );
+                return (
+                  <article
+                    className={stretch ? 'speccard card-stretch' : 'speccard'}
+                    key={sibling.id}
+                  >
+                    {stretch ? (
+                      <div className="speccard__btn">{body}</div>
+                    ) : (
+                      <Link className="speccard__btn" href={href}>
+                        {body}
+                      </Link>
+                    )}
                   </article>
                 );
               })}

@@ -5,7 +5,9 @@ import { useMemo, useState } from 'react';
 import type { SubjectBranch } from '@/lib/catalog';
 import { formatNumber } from '@/lib/format';
 import { mergeLevels, sortByLevelOrder } from '@/lib/level-order';
+import { levelPageLinks } from '@/lib/subject-levels';
 import { CardMedia, PopularBadge } from './CardMedia';
+import { LevelLinks } from './LevelLinks';
 
 /**
  * A subject's specializations, filtered by the level they are taught at.
@@ -28,6 +30,7 @@ export function SubjectSpecializations({
   hrefBase,
   limit,
   levelLabel = 'Study level',
+  levelLinks,
 }: {
   subjectName: string;
   subjectSlug: string;
@@ -46,6 +49,16 @@ export function SubjectSpecializations({
    *  hidden, so every specialization is still linked. */
   limit?: number;
   levelLabel?: string;
+  /** Link each card's levels to the specialization's page at that level,
+   *  given the catalogue's active level codes in climbing order (empty when
+   *  that read failed). Off by default: a subject in one destination draws
+   *  these cards too, and its cards open that destination's pages. */
+  levelLinks?: {
+    catalogue: string[];
+    /** The order the links follow where the catalogue could not be read:
+     *  `levelOrder` names only the levels with courses filed at them. */
+    order?: string[];
+  };
 }) {
   const levels = useMemo(
     () =>
@@ -92,13 +105,21 @@ export function SubjectSpecializations({
       ) : null}
 
       <div className="specgrid">
-        {shown.map((row, index) => (
-          <article
-            className="speccard"
-            key={row.id}
-            hidden={limit !== undefined && !all && index >= limit}
-          >
-            <Link className="speccard__btn" href={`${base}/${row.slug}`}>
+        {shown.map((row, index) => {
+          const href = `${base}/${row.slug}`;
+          /* Its levels, each linked to its page at that level. A link can
+             not sit inside the card's own link, so a card with levels to
+             link stretches its name's link over the whole card instead. */
+          const links = levelLinks
+            ? levelPageLinks(
+                sortByLevelOrder(row.levels ?? [], levelLinks.order ?? levelOrder),
+                { subject: subjectSlug, specialization: row.slug },
+                levelLinks.catalogue.map((code) => ({ code })),
+              )
+            : [];
+          const stretch = links.length > 0;
+          const body = (
+            <>
               {/* Its listing image and its "Popular" mark, where an editor
                   set them, as the design marks a featured branch. */}
               <CardMedia media={row.listingMedia} className="speccard__media" />
@@ -106,7 +127,13 @@ export function SubjectSpecializations({
                 <span className="label">Specialization</span>
                 <PopularBadge featured={row.featured} />
               </span>
-              <span className="speccard__name">{row.name}</span>
+              {stretch ? (
+                <Link className="speccard__name card-stretch__link" href={href}>
+                  {row.name}
+                </Link>
+              ) : (
+                <span className="speccard__name">{row.name}</span>
+              )}
               {row.shortDescription ? (
                 <span className="speccard__desc">{row.shortDescription}</span>
               ) : null}
@@ -115,9 +142,13 @@ export function SubjectSpecializations({
               {row.levels?.length || row.publishedCourseCount ? (
                 <span className="speccard__foot">
                   <span className="speccard__levels">
-                    {sortByLevelOrder(row.levels ?? [], levelOrder)
-                      .map((item) => item.name)
-                      .join(', ')}
+                    {stretch ? (
+                      <LevelLinks links={links} field={row.name} />
+                    ) : (
+                      sortByLevelOrder(row.levels ?? [], levelOrder)
+                        .map((item) => item.name)
+                        .join(', ')
+                    )}
                   </span>
                   {row.publishedCourseCount ? (
                     <span className="speccard__count datum">
@@ -130,9 +161,24 @@ export function SubjectSpecializations({
               <span className="speccard__cta">
                 Explore specialization <span aria-hidden="true">→</span>
               </span>
-            </Link>
-          </article>
-        ))}
+            </>
+          );
+          return (
+            <article
+              className={stretch ? 'speccard card-stretch' : 'speccard'}
+              key={row.id}
+              hidden={limit !== undefined && !all && index >= limit}
+            >
+              {stretch ? (
+                <div className="speccard__btn">{body}</div>
+              ) : (
+                <Link className="speccard__btn" href={href}>
+                  {body}
+                </Link>
+              )}
+            </article>
+          );
+        })}
       </div>
 
       {limit !== undefined && shown.length > limit ? (
