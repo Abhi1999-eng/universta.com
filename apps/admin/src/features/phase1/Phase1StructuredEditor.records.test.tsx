@@ -270,3 +270,43 @@ describe('a role', () => {
   });
 });
 
+describe('a consultant', () => {
+  /* CON-C3, CON-C13, CON-C1, CON-C4. */
+  it('shows its state and offices’ addresses, and sends the addresses back', async () => {
+    record = {
+      id: 'c-1',
+      name: 'Northbridge Advisors',
+      slug: 'northbridge-advisors',
+      status: 'PUBLISHED',
+      verificationStatus: 'PENDING',
+      websiteUrl: 'www.northbridge.test',
+      locations: [{ locationId: 'loc-1', address: '137 Whitmore Road', location: { id: 'loc-1' } }],
+      services: [{ name: 'Visa guidance' }],
+      languages: [{ name: 'English' }],
+    };
+    open('consultants', 'c-1');
+    const scope = await form();
+    expect(input(scope, 'Verification state').value).toBe('PENDING');
+    expect(within(scope).getByRole('option', { name: 'Pending check' })).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'Not verified' })).toBeTruthy();
+    expect(input(scope, 'Office address in Rajouri Garden · Delhi (optional)').value).toBe('137 Whitmore Road');
+    expect(input(scope, 'Verified on (optional)').type).toBe('date');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toMatchObject({
+      locationIds: ['loc-1'],
+      locationAddresses: { 'loc-1': '137 Whitmore Road' },
+      verificationStatus: 'PENDING',
+      websiteUrl: 'www.northbridge.test',
+    });
+  });
+
+  it('refuses a source that is not a web address', async () => {
+    record = { id: 'c-2', name: 'Demo', slug: 'demo', status: 'DRAFT', sourceReference: 'Checked by phone' };
+    open('consultants', 'c-2');
+    const scope = await form();
+    await save(scope);
+    expect(await within(scope).findByText('Use the full address of the page you checked, starting with https://.')).toBeTruthy();
+    expect(sent).toHaveLength(0);
+  });
+});

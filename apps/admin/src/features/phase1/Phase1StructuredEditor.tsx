@@ -149,6 +149,11 @@ const SEO_TEXT_KEYS = ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyw
 
 /** A plain https address, as a visitor's browser must be sent to. */
 const HTTPS_URL = /^https:\/\/\S+$/;
+/** Any absolute web address, http or https. */
+const ABSOLUTE_HTTP_URL = /^https?:\/\/[^\s/?#]+\.\S*$/i;
+/** example.com or www.example.co.uk/path: a website typed without https://,
+ * which the API completes. */
+const BARE_DOMAIN = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:[/?#]\S*)?$/i;
 const SIMPLE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isStructuredPhase1Resource(resource: string) {
@@ -220,6 +225,13 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     }
     setInitialDates(dates);
     setStoredTimezone(typeof record.timezone === 'string' ? record.timezone : null);
+    /* Each office's address, keyed by its location. */
+    if (Array.isArray(record.locations))
+      for (const item of record.locations) {
+        const office = item as Row;
+        const locationId = string(office.locationId);
+        if (locationId) next[`address-${locationId}`] = string(office.address);
+      }
     if (Array.isArray(record.intakes))
       for (const item of record.intakes) {
         const intake = item as Row;
@@ -350,6 +362,12 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       if (values.applicationUrl?.trim() && !HTTPS_URL.test(values.applicationUrl.trim())) next.applicationUrl = 'Use the full address, starting with https://.';
       if (values.applicationEmail?.trim() && !SIMPLE_EMAIL.test(values.applicationEmail.trim())) next.applicationEmail = 'Use an email address like jobs@example.com.';
     }
+    if (resource === 'consultants') {
+      const website = values.websiteUrl?.trim();
+      if (website && !ABSOLUTE_HTTP_URL.test(website) && !BARE_DOMAIN.test(website)) next.websiteUrl = 'Use the website’s address, for example https://www.example.com.';
+      if (values.sourceReference?.trim() && !ABSOLUTE_HTTP_URL.test(values.sourceReference.trim())) next.sourceReference = 'Use the full address of the page you checked, starting with https://.';
+      if (values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
+    }
     if (resource === 'events' && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt)) next.endsAt = 'End date and time must be after the start.';
     }
@@ -400,6 +418,8 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       ...(resource === 'consultants'
         ? {
             locationIds: selected.locationIds ?? [],
+            /* The address of each ticked office, as shown on the profile. */
+            locationAddresses: Object.fromEntries((selected.locationIds ?? []).map((locationId) => [locationId, values[`address-${locationId}`] ?? ''])),
             countryIds: selected.countryIds ?? [],
             services: tags.services,
             languages: tags.languages,
@@ -935,6 +955,11 @@ const EVENT_TYPES: Option[] = [
   { id: 'ONLINE', name: 'Online' },
   { id: 'HYBRID', name: 'Hybrid' },
 ];
+const VERIFICATION_STATES: Option[] = [
+  { id: 'UNVERIFIED', name: 'Not verified' },
+  { id: 'PENDING', name: 'Pending check' },
+  { id: 'VERIFIED', name: 'Verified' },
+];
 /** Every IANA zone, plus a stored value that is not one, marked as older. */
 function timeZoneOptions(value: string): Option[] {
   const zones = timeZoneNames();
@@ -1032,15 +1057,10 @@ function ConsultantFields(p: any) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Email" value={p.values.email ?? ''} onChange={(value) => p.set('email', value)} helpKey="consultants.email" />
         <Field label="Phone" value={p.values.phone ?? ''} onChange={(value) => p.set('phone', value)} helpKey="consultants.phone" />
-        <Field label="Website URL" value={p.values.websiteUrl ?? ''} onChange={(value) => p.set('websiteUrl', value)} helpKey="consultants.websiteUrl" />
-        <div className="text-sm font-semibold">
-          <FieldLabel label="Verification state" htmlFor="consultant-verification-status" helpKey="consultants.verificationStatus" />
-          <select id="consultant-verification-status" value={p.values.verificationStatus ?? 'UNVERIFIED'} onChange={(event) => p.set('verificationStatus', event.target.value)} className={inputClass}>
-            <option>UNVERIFIED</option>
-            <option>VERIFIED</option>
-          </select>
-        </div>
-        <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} helpKey="consultants.sourceReference" />
+        <Field label="Website URL" value={p.values.websiteUrl ?? ''} onChange={(value) => p.set('websiteUrl', value)} error={p.errors.websiteUrl} helpKey="consultants.websiteUrl" />
+        <Select label="Verification state" value={p.values.verificationStatus || 'UNVERIFIED'} onChange={(value) => p.set('verificationStatus', value)} options={withLegacy(VERIFICATION_STATES, p.values.verificationStatus ?? '')} error={p.errors.verificationStatus} helpKey="consultants.verificationStatus" blank={null} />
+        <Field label="Verified on (optional)" type="date" value={p.values.verifiedAt ?? ''} onChange={(value) => p.set('verifiedAt', value)} error={p.errors.verifiedAt} helpKey="consultants.verifiedAt" />
+        <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} error={p.errors.sourceReference} helpKey="consultants.sourceReference" />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="consultants.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="consultant" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="consultants.description" />
@@ -1058,6 +1078,14 @@ function ConsultantFields(p: any) {
           frontendEffect: 'Shown as the consultant’s offices and used for location-based filtering.',
         }}
       />
+      {(p.selected.locationIds ?? []).length ? (
+        <div className="grid gap-4 sm:grid-cols-2" data-testid="consultant-office-addresses">
+          {(p.selected.locationIds ?? []).map((locationId: string) => {
+            const location = p.locations.find((item: Option) => item.id === locationId);
+            return <Field key={locationId} label={`Office address in ${location ? labelOf(location) : 'this location'} (optional)`} value={p.values[`address-${locationId}`] ?? ''} onChange={(value) => p.set(`address-${locationId}`, value)} helpKey="consultants.officeAddress" />;
+          })}
+        </div>
+      ) : null}
       <Multi
         legend="Destination countries"
         options={p.countries}
