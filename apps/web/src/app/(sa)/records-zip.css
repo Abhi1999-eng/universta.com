@@ -10,3 +10,21 @@
 /* The university under a student's name links to its page. */
 .sa .quote__r a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 .sa .quote__r a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+
+/* --- Success stories ----------------------------------------------- */
+/* The student's byline sits at the foot of a story card, above its link. */
+.sa .storycard .quote__by { margin-top: auto; padding-top: 14px; }
+.sa .storycard .h-card__d { margin-bottom: 10px; }
+
+/* The zip's hub article (hub.css): the story in a reading column with a
+   300px card beside it, held in view from 980px; stacked on a phone. */
+.sa .h-article { display: grid; gap: 30px; }
+.sa .h-article__main { min-width: 0; }
+.sa .h-article .h-head { max-width: none; }
+.sa .h-aside .h-card { gap: 10px; padding: 20px; }
+.sa .h-aside .quote__by { padding-top: 0; padding-bottom: 14px; border-top: 0; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px; }
+.sa .h-aside .btn { margin-top: 6px; }
+@media (min-width: 980px) {
+  .sa .h-article { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+  .sa .h-aside { position: sticky; top: calc(var(--nav-h) + 20px); }
+}

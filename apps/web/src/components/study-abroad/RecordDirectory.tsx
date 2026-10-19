@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { richTextToPlainText } from '@/components/phase1/RichText';
 import { Crumbs } from './Crumbs';
 import { PlanBand } from './PlanBand';
-import { QuoteCard, type QuoteImage } from './QuoteCard';
+import { QuoteByline, QuoteCard, type QuoteImage } from './QuoteCard';
+import { plainExcerpt, plainText } from '@/lib/record-text';
 import { universityHref } from '@/lib/university-links';
 
 /**
@@ -38,18 +39,36 @@ type Props = {
   wide?: boolean;
   /** The grid's own class, where the cards need another layout ("quotes"). */
   grid?: string;
+  /** The directory's own body in place of the plain grid -- a search box
+   *  over the cards, or bands of them -- when there is anything to show. */
+  body?: ReactNode;
+  /** The right half of the hero, where the page has something to put there. */
+  aside?: ReactNode;
 };
 
-export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows, card, empty, wide, grid }: Props) {
+export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows, card, empty, wide, grid, body, aside }: Props) {
   const count = `${total} ${total === 1 ? noun[0] : noun[1]}`;
   return (
     <>
       <section className="hero hero--compact">
         <div className="wrap">
           <Crumbs trail={[{ label: 'Home', href: '/' }, { label: trail }]} />
-          <p className="hero__eyebrow">{eyebrow}</p>
-          <h1 className="hero__h1">{title}</h1>
-          <p className="hero__sub">{lede}</p>
+          {aside ? (
+            <div className="coursehero__grid recordhero">
+              <div>
+                <p className="hero__eyebrow">{eyebrow}</p>
+                <h1 className="hero__h1">{title}</h1>
+                <p className="hero__sub">{lede}</p>
+              </div>
+              {aside}
+            </div>
+          ) : (
+            <>
+              <p className="hero__eyebrow">{eyebrow}</p>
+              <h1 className="hero__h1">{title}</h1>
+              <p className="hero__sub">{lede}</p>
+            </>
+          )}
         </div>
       </section>
 
@@ -59,7 +78,9 @@ export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows
             <p className="eyebrow eyebrow--plain">Published</p>
             <h2 className="sec-title">{count}</h2>
           </div>
-          {rows.length ? (
+          {rows.length && body ? (
+            body
+          ) : rows.length ? (
             <div className={grid ?? (wide ? 'h-grid h-grid--wide' : 'h-grid')}>{rows.map((row) => card(row))}</div>
           ) : (
             <div className="h-empty h-empty--box">
@@ -160,22 +181,34 @@ export function EventCard({ row }: { row: DirectoryRow }) {
   );
 }
 
+/** A story's journey as its card shows it: variables filled in, as on the
+ *  story's own page, then plain text cut to a short excerpt. */
+export const storyExcerpt = (row: DirectoryRow, length = 180) => plainExcerpt(row.journey, length, 'successStory', row);
+
 export function StoryCard({ row }: { row: DirectoryRow }) {
   const href = `/success-stories/${encodeURIComponent(String(row.slug ?? row.id))}`;
+  const excerpt = storyExcerpt(row);
+  const attribution = text(row.attribution);
   return (
-    <Link className="h-card" href={href} key={row.id}>
+    <Link className="h-card storycard" href={href} key={row.id}>
       <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
         {facts(name(row.country), name(row.university))}
       </span>
       <strong className="h-card__t">{text(row.title)}</strong>
-      {plain(row.journey) ? <span className="h-card__d">{plain(row.journey)}</span> : null}
-      {text(row.attribution) ? <span className="h-card__m">{text(row.attribution)}</span> : null}
+      {excerpt ? <span className="h-card__d">{excerpt}</span> : null}
+      {attribution ? <QuoteByline as="div" name={attribution} note={text(row.attributionNote)} /> : null}
       <span className="linkcta">
         Read the story <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
       </span>
     </Link>
   );
 }
+
+/** What the story search matches: title, student and the journey's words. */
+export const storySearchText = (row: DirectoryRow) =>
+  [text(row.title), text(row.attribution), text(row.attributionNote), name(row.country), name(row.university), plainText(row.journey, 'successStory', row)]
+    .filter(Boolean)
+    .join(' ');
 
 type Place = { name?: unknown; slug?: unknown } | null | undefined;
 
