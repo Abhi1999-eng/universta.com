@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { ConsultantChoose } from '@/components/study-abroad/ConsultantChoose';
+import { ConsultantTrust } from '@/components/study-abroad/ConsultantTrust';
 import { CountryConsultantIndex } from '@/components/study-abroad/CountryConsultantIndex';
 import { CountryListSearch } from '@/components/study-abroad/CountryListSearch';
 import { Crumbs } from '@/components/study-abroad/Crumbs';
@@ -20,6 +22,7 @@ import { getListingPageContent } from '@/lib/listing-page-content';
 import { phaseListAll } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 import { getDestinations } from '@/lib/study-abroad';
+import '../consultants-zip.css';
 
 /**
  * The worldwide consultants directory, as the client's zip draws it: a
@@ -66,16 +69,6 @@ const NEED_NO = [
   'You are comfortable reading official visa guidance and preparing documents yourself',
   'Your university offers its own admissions advice for international applicants',
 ];
-const CHOOSE = [
-  ['Check destination expertise', 'Ask how many students they have supported for this destination recently and at which level.'],
-  ['Check university relationships', 'Ask which universities they represent or work with, and ask for evidence. A recommendation is not a partnership.'],
-  ['Understand service fees', 'Ask for all fees in writing, including whether any university pays them a commission.'],
-  ['Ask what is included', 'Confirm exactly which services are covered, from shortlisting to visa documents.'],
-  ['Check credentials where they apply', 'Immigration advice is regulated in many countries. Check any claimed authorization on the official register.'],
-  ['Avoid guarantees', 'No consultant can guarantee admission, a visa, a scholarship, a job or permanent residence. Treat guarantees as a warning sign.'],
-  ['Review written agreements', 'Read the agreement before paying, including refund terms and what happens if an application is unsuccessful.'],
-  ['Verify through official sources', 'Confirm requirements, deadlines and fees with the university and the official government website.'],
-] as const;
 const FAQS = [
   ['Does Universta charge consultants for placement here?', 'No. The directory lists published consultant records in the catalogue order; there is no paid placement and no ranking.'],
   ['What does the “verified” badge mean?', 'It means an administrator has verified the record against a source and dated that check. An unverified profile is still published, just not yet checked.'],
@@ -262,15 +255,8 @@ export default async function ConsultantsPage() {
             title="How to choose a consultant"
             lead="Official guidance in several destinations warns students about unreliable agents and guarantees. These checks apply wherever you plan to study."
           />
-          <ol className="choosegrid">
-            {CHOOSE.map(([title, body], index) => (
-              <li className="choosegrid__item" key={title}>
-                <span className="choosegrid__n">{String(index + 1).padStart(2, '0')}</span>
-                <h3 className="choosegrid__t">{title}</h3>
-                <p className="choosegrid__d">{body}</p>
-              </li>
-            ))}
-          </ol>
+          <ConsultantChoose />
+          <ConsultantTrust className="trustbox--below" />
         </div>
       </section>
 

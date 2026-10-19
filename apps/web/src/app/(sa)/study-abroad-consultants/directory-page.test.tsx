@@ -44,7 +44,22 @@ beforeEach(() => {
   api.comingSoon = [];
 });
 
+/** One section of the page, from its id to the next section. */
+const section = (html: string, id: string) => {
+  const from = html.indexOf(`id="${id}"`);
+  return from < 0 ? '' : html.slice(from, html.indexOf('</section>', from));
+};
+
 describe('the consultants directory', () => {
+  it('closes "How to choose" with the trust box, and keeps the FAQ', async () => {
+    const html = await render();
+    const choose = section(html, 'choose');
+    expect(choose).toContain('Check destination expertise');
+    expect(choose).toContain('How Universta works with consultants');
+    expect(choose.indexOf('choosegrid')).toBeLessThan(choose.indexOf('trustbox'));
+    expect(section(html, 'faq')).toContain('Frequently asked questions');
+  });
+
   it('sends "Talk to a consultant" to counselling that records the directory', async () => {
     expect(await render()).toContain(
       'href="/counselling?source=general&amp;from=%2Fstudy-abroad-consultants"',

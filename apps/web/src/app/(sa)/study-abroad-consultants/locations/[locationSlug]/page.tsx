@@ -12,6 +12,7 @@ import { formatNumber } from '@/lib/format';
 import { phaseLocation } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
+import '../../../consultants-zip.css';
 
 /**
  * The consultants with an office in one place, in the approved design: the

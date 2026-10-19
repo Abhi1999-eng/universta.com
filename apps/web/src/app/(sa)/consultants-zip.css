@@ -1,0 +1,10 @@
+/* =====================================================================
+   Consultant pages: the parts of the client's build (assets/css/
+   consultants.css and the shared exams.css it leans on) that the study
+   abroad stylesheet does not already carry. Scoped to `.sa` like the rest,
+   and imported by the consultant pages only: the directory, a profile, a
+   city's page, a destination's consultants and the comparison.
+   ===================================================================== */
+
+/* The trust box under a grid or a form, rather than flush against it. */
+.sa .trustbox--below { margin-top: 26px; }

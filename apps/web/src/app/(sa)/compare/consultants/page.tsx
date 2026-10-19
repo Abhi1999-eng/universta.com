@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/format';
 import { phaseCompare, phaseComparisonOptions } from '@/lib/phase1';
 import { COMPARE_LIMIT, readCompareSlugs } from '@/lib/record-compare';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import '../../consultants-zip.css';
 
 /**
  * Consultants side by side, in the approved design: the destinations,

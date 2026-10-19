@@ -5,6 +5,7 @@ import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
 import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
+import { ConsultantTrust } from './ConsultantTrust';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Crumbs } from './Crumbs';
 import { SectionHead } from './SectionHead';
@@ -328,14 +329,7 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
               </b>
             </div>
           </div>
-          <aside className="trustbox" aria-label="How Universta works with consultants" style={{ marginTop: 24 }}>
-            <p className="path__h">How Universta works with consultants</p>
-            <ul className="ticklist ticklist--sm">
-              <li>Universta is a discovery and guidance platform. Consultant services are provided by independent third-party consultants.</li>
-              <li>Consultant information is verified where possible, and each listing shows what has and has not been checked.</li>
-              <li>No consultant can guarantee admission, a visa, a scholarship or a job. Treat any guarantee as a warning sign.</li>
-            </ul>
-          </aside>
+          <ConsultantTrust className="trustbox--below" />
         </div>
       </section>
 

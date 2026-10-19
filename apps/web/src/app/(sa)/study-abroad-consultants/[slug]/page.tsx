@@ -8,6 +8,7 @@ import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
 import { resolveContentVariables } from '../../../../../../../packages/content-variables';
+import '../../consultants-zip.css';
 
 export const dynamic = 'force-dynamic';
 

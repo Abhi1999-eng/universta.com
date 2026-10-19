@@ -22,6 +22,7 @@ import { formatNumber } from '@/lib/format';
 import { phaseListAll } from '@/lib/phase1';
 import { getDestinations, getStudyAbroadCountry } from '@/lib/study-abroad';
 import { countryUniversitiesHref } from '@/lib/university-links';
+import '../../../consultants-zip.css';
 
 /**
  * The consultants who list one destination, under the destination.
