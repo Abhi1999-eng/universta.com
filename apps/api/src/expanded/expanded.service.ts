@@ -23,6 +23,14 @@ import {
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
 import { htmlToPlainText } from '../seo-management/plain-text';
 import {
+  consultantLanguageWrites,
+  consultantLocationWrites,
+  consultantServiceWrites,
+  type ExistingLanguage,
+  type ExistingOffice,
+  type ExistingService,
+} from './consultant-relations';
+import {
   courseDeadlines,
   courseFacets,
   effectiveLevel,
@@ -2912,13 +2920,17 @@ export class ExpandedService {
     const delegate = this.prisma[
       resourceModel[resource] as keyof PrismaService
     ] as any;
-    const current = await this.adminDetail(resource, id);
+    const current = (await this.adminDetail(resource, id)) as Record<
+      string,
+      unknown
+    >;
     try {
+      const data = this.writeData(resource, body, true);
       const updated = await delegate.update({
         where: { id },
         data: {
-          ...this.writeData(resource, body, true),
-          ...this.relationWrites(resource, body, true),
+          ...data,
+          ...this.relationWrites(resource, body, true, current),
         },
       });
       await this.saveSeo(resource, id, body.seo);
@@ -3539,6 +3551,7 @@ export class ExpandedService {
     resource: Exclude<Resource, 'contact-inquiries'>,
     body: Data,
     replace: boolean,
+    current?: Record<string, unknown>,
   ): Data {
     const strings = (value: unknown) =>
       Array.isArray(value)
@@ -3677,18 +3690,20 @@ export class ExpandedService {
       };
     }
     if (resource === 'consultants') {
-      const locationIds = strings(body.locationIds);
       const countryIds = strings(body.countryIds);
-      const services = strings(body.services);
-      const languages = strings(body.languages);
+      /* A list that did not change writes nothing at all. */
+      const only = (key: string, write: Data) =>
+        Object.keys(write).length ? { [key]: write } : {};
       return {
         ...(Array.isArray(body.locationIds)
-          ? {
-              locations: {
-                ...reset,
-                create: locationIds.map((locationId) => ({ locationId })),
-              },
-            }
+          ? only(
+              'locations',
+              consultantLocationWrites(
+                strings(body.locationIds),
+                body.locationAddresses,
+                replace ? (current?.locations as ExistingOffice[]) : undefined,
+              ),
+            )
           : {}),
         ...(Array.isArray(body.countryIds)
           ? {
@@ -3699,27 +3714,24 @@ export class ExpandedService {
             }
           : {}),
         ...(Array.isArray(body.services)
-          ? {
-              services: {
-                ...reset,
-                create: services.map((name, index) => ({
-                  name,
-                  slug: `${name
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-|-$/g, '')}-${index + 1}`,
-                  displayOrder: index + 1,
-                })),
-              },
-            }
+          ? only(
+              'services',
+              consultantServiceWrites(
+                strings(body.services),
+                replace ? (current?.services as ExistingService[]) : undefined,
+              ),
+            )
           : {}),
         ...(Array.isArray(body.languages)
-          ? {
-              languages: {
-                ...reset,
-                create: languages.map((name) => ({ name })),
-              },
-            }
+          ? only(
+              'languages',
+              consultantLanguageWrites(
+                strings(body.languages),
+                replace
+                  ? (current?.languages as ExistingLanguage[])
+                  : undefined,
+              ),
+            )
           : {}),
       };
     }
@@ -3867,6 +3879,7 @@ export class ExpandedService {
       'services',
       'languages',
       'speakers',
+      'locationAddresses',
       'providerName',
       // Never written straight from the body: an override is validated from
       // the structured `chrome` key below so a malformed or hand-crafted
