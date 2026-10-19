@@ -66,3 +66,10 @@ describe('the consultants directory', () => {
     );
   });
 });
+
+describe('the directory\'s "near you" heading', () => {
+  it('is the design\'s smaller title under a ruled eyebrow', async () => {
+    const cities = section(await render(), 'cities');
+    expect(cities).toContain('<p class="eyebrow">By city</p><h2 class="sec-title sec-title--sm">Study abroad consultants near you</h2>');
+  });
+});

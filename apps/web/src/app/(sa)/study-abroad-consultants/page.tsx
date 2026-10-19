@@ -228,9 +228,11 @@ export default async function ConsultantsPage() {
       {options.cities.length ? (
         <section className="sec sec--white sec--tight" id="cities">
           <div className="wrap">
+            {/* The design's smaller head, its eyebrow ruled: at full size
+                the line wrapped into a tall block over half the page. */}
             <div className="h-head">
-              <p className="eyebrow eyebrow--plain">By city</p>
-              <h2 className="sec-title">Study abroad consultants near you</h2>
+              <p className="eyebrow">By city</p>
+              <h2 className="sec-title sec-title--sm">Study abroad consultants near you</h2>
             </div>
             <div className="citychips">
               {options.cities.map((city) => (
