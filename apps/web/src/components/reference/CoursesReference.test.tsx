@@ -24,6 +24,7 @@ import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
 import { checkGuideFilters, readGuideFilters } from '@/lib/courses-params';
 import { readCourseFilters, toProgrammeList } from '@/lib/university-courses';
 import { COMPARE_LIMIT } from '@/components/study-abroad/CourseCompare';
+import { toStripEvent } from '@/lib/course-events';
 import { CoursesReference, type CoursesReferenceProps } from './CoursesReference';
 
 /**
@@ -668,3 +669,69 @@ describe('/courses?view=guides, the course guides', () => {
     ).toBe('university-of-warwick');
   });
 });
+
+/**
+ * The "Upcoming events" strip, as the zip's scholarship card: format badge,
+ * Date, Time with its zone, Format, Where, and "View event", each date in
+ * the event's own zone rather than UTC. The card is an <article> whose
+ * title link covers it; Register is a link of its own beside it.
+ */
+describe('the upcoming events strip', () => {
+  const event = toStripEvent(
+    {
+      title: 'Study in Japan evening',
+      slug: 'study-in-japan-evening',
+      eventType: 'WEBINAR',
+      /* 16:00 UTC on the 25th is 01:00 on the 26th in Tokyo. */
+      startsAt: '2026-10-25T16:00:00.000Z',
+      endsAt: '2026-10-25T18:00:00.000Z',
+      timezone: 'Asia/Tokyo',
+      venue: 'Shibuya Hall',
+      city: { name: 'Tokyo' },
+      country: { name: 'Japan', slug: 'japan', iso2Code: 'jp' },
+      registrationUrl: 'https://example.invalid/register',
+    },
+    Date.parse('2026-10-01T00:00:00Z'),
+  );
+  const strip = (html: string) =>
+    html.slice(html.indexOf('id="events"'), html.indexOf('id="how-to-choose"'));
+
+  it('dates each event in its own zone, with the time and the zone’s name', () => {
+    const html = strip(render(props({ events: [event] })));
+    expect(html).toContain('26 Oct 2026');
+    expect(html).not.toContain('25 Oct 2026');
+    expect(html).toContain('<dt>Time</dt><dd>1:00 am JST</dd>');
+  });
+
+  it('draws the zip’s card: badge, facts and the ways in, with no link inside a link', () => {
+    const html = strip(render(props({ events: [event] })));
+    expect(html).toContain('<article class="schcard cg-eventcard">');
+    expect(html).toContain('<span class="fundbadge">Webinar</span>');
+    for (const label of ['Date', 'Time', 'Format', 'Where']) expect(html).toContain(`<dt>${label}</dt>`);
+    expect(html).toContain('Shibuya Hall, Tokyo');
+    expect(html).toContain('<span class="flagchip__code">JP</span>Japan');
+    expect(html).toContain('href="/events/study-in-japan-evening"');
+    expect(html).toContain('View event');
+    expect(html).toContain('href="https://example.invalid/register"');
+    const doc = parse(html);
+    expect(doc.querySelectorAll('a a')).toHaveLength(0);
+  });
+
+  it('offers Register only until the event has ended', () => {
+    const over = toStripEvent(
+      {
+        title: 'Past evening',
+        slug: 'past',
+        startsAt: '2026-01-01T10:00:00Z',
+        registrationUrl: 'https://example.invalid/register',
+      },
+      Date.parse('2026-10-01T00:00:00Z'),
+    );
+    expect(strip(render(props({ events: [over] })))).not.toContain('Register');
+  });
+
+  it('still prints a date for an event passed in the old shape', () => {
+    expect(strip(render(props()))).toContain('1 Nov 2026');
+  });
+});
+

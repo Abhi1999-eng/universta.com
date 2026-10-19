@@ -133,3 +133,17 @@
 .sa .cg-band .sec-head--split .prose + .modnote,
 .sa .cg-band .sec-head--split .cg-checklist + .modnote,
 .sa .cg-band .sec-head--split .cg-media + .modnote { margin-top: 20px; }
+
+/* --- /courses: the upcoming events strip --------------------------------- */
+
+/* Each event as the zip's scholarship card. The title's link covers the
+   card; Register sits above that link, so it is a link of its own. */
+.sa .cg-eventcard { position: relative; }
+.sa .cg-eventcard__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.sa .cg-eventcard__link:focus-visible { outline: 0; }
+.sa .cg-eventcard:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7, 20, 38, 0.1); }
+.sa .cg-eventcard a:not(.cg-eventcard__link) { position: relative; z-index: 1; }
+.sa .cg-eventcard:hover .schcard__name a { color: var(--accent); }
+.sa .cg-eventcard .schcard__facts dd { flex-wrap: wrap; }
+.sa .cg-eventcard .schcard__foot { flex-wrap: wrap; justify-content: flex-start; }
+.sa .cg-eventcard .schcard__name { font-size: 18px; }

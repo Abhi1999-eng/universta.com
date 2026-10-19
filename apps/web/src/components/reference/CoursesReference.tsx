@@ -12,6 +12,7 @@ import {
   type GuideFilters,
   type GuideUnknown,
 } from '@/lib/courses-params';
+import type { StripEvent } from '@/lib/course-events';
 import { formatNumber } from '@/lib/format';
 import { intakeRange } from '@/lib/intake-range';
 import {
@@ -81,12 +82,9 @@ export type CoursesReferenceProps = {
   /** Real link clusters; each is empty when the catalogue has no records. */
   universities: Array<{ name: string; slug: string }>;
   consultants: Array<{ name: string; slug: string }>;
-  events: Array<{
-    name: string;
-    slug: string;
-    mode: string | null;
-    startAt: string | null;
-  }>;
+  /** The upcoming events strip, each formatted in the event's own zone
+   *  (see course-events). */
+  events: StripEvent[];
   heading: string;
   lede: string;
   ctaHeading: string;
@@ -800,21 +798,92 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </Link>
               </p>
             </SectionHead>
-            <div className="h-grid h-grid--4">
-              {props.events.map((event) => (
-                <Link key={event.slug} href={`/events/${event.slug}`} className="h-card">
-                  {event.mode ? <span className="badge">{event.mode}</span> : null}
-                  <span className="h-card__t">{event.name}</span>
-                  {event.startAt ? (
-                    <span className="h-card__m">
-                      {new Intl.DateTimeFormat('en-GB', {
-                        dateStyle: 'medium',
-                        timeZone: 'UTC',
-                      }).format(new Date(event.startAt))}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
+            {/* The zip's scholarship card, for an event: its format at the
+                top, the title (whose link covers the card), when it is in
+                its own zone, its format and place, and the ways in.
+                Register is a link of its own above the card's, never a
+                link inside a link. */}
+            <div className="h-grid h-grid--4 cg-events">
+              {props.events.map((event) => {
+                const date =
+                  event.date ??
+                  (event.startAt
+                    ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' }).format(
+                        new Date(event.startAt),
+                      )
+                    : null);
+                const format = event.format ?? event.mode;
+                return (
+                  <article key={event.slug} className="schcard cg-eventcard">
+                    <div className="schcard__top">
+                      {event.mode ? <span className="fundbadge">{event.mode}</span> : <span />}
+                    </div>
+                    <h3 className="schcard__name">
+                      <Link className="cg-eventcard__link" href={`/events/${event.slug}`}>
+                        {event.name}
+                      </Link>
+                    </h3>
+                    <dl className="schcard__facts">
+                      {date ? (
+                        <div>
+                          <dt>Date</dt>
+                          <dd>{date}</dd>
+                        </div>
+                      ) : null}
+                      {event.time ? (
+                        <div>
+                          <dt>Time</dt>
+                          <dd>{event.time}</dd>
+                        </div>
+                      ) : null}
+                      {format ? (
+                        <div>
+                          <dt>Format</dt>
+                          <dd>{format}</dd>
+                        </div>
+                      ) : null}
+                      {event.where || event.country ? (
+                        <div>
+                          <dt>Where</dt>
+                          <dd>
+                            {event.where ? <span>{event.where}</span> : null}
+                            {event.country ? (
+                              <span className="flagchip">
+                                {event.country.iso2 ? (
+                                  <span className="flagchip__code">{event.country.iso2}</span>
+                                ) : null}
+                                {event.country.name}
+                              </span>
+                            ) : null}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    <div className="schcard__foot">
+                      {/* How the card's own link looks, not a second link. */}
+                      <span className="btn btn--sm" aria-hidden="true">
+                        View event{' '}
+                        <span className="btn__arrow" aria-hidden="true">
+                          &rarr;
+                        </span>
+                      </span>
+                      {event.registerUrl ? (
+                        <a
+                          className="btn btn--sm btn--ghost cg-eventcard__register"
+                          href={event.registerUrl}
+                          rel="nofollow noopener"
+                          target="_blank"
+                        >
+                          Register{' '}
+                          <span className="btn__arrow" aria-hidden="true">
+                            &#8599;
+                          </span>
+                        </a>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
