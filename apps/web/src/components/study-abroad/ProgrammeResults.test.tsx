@@ -127,10 +127,11 @@ describe('the programme results block', () => {
     expect(html).not.toContain('placeholder="Find a degree level"');
   });
 
-  it('offers the fee range and “Lowest tuition” only inside one country', () => {
+  it('offers the fee range and the fee orders only in one currency', () => {
     const across = render();
     expect(across).not.toContain('Annual tuition');
     expect(across).not.toContain('>Lowest tuition</option>');
+    expect(across).not.toContain('>Highest tuition</option>');
     expect(across).toContain('>Recently added</option>');
 
     const inside = render({
@@ -140,10 +141,41 @@ describe('the programme results block', () => {
     expect(inside).toContain('Annual tuition');
     expect(inside).toContain('Amounts in GBP');
     expect(inside).toContain('>Lowest tuition</option>');
+    /* The design's "Highest tuition", next to "Lowest tuition". */
+    expect(inside).toMatch(/>Lowest tuition<\/option><option value="fee-high">Highest tuition<\/option>/);
 
     /* A list that sits inside one country -- a university's own -- offers
        the order whatever is chosen. */
     expect(render({ oneCurrency: true })).toContain('>Lowest tuition</option>');
+    expect(render({ oneCurrency: true })).toContain('>Highest tuition</option>');
+  });
+
+  /* A Japan-only catalogue: /courses offered no fee order and no range
+     until a country was chosen, and the Country group that would choose
+     one is hidden because Japan covers every programme. */
+  it('offers them on a catalogue in one country, or wherever the API offers a range', () => {
+    const japan = toCourseFacets({
+      countries: [{ value: 'japan', label: 'Japan', count: 4 }],
+      levels: [
+        { value: 'PG', label: "Master's", count: 3 },
+        { value: 'PHD', label: 'PhD', count: 1 },
+      ],
+      tuition: { currencyCode: 'JPY', count: 3 },
+    });
+    const html = render({ facets: japan, catalogueTotal: 4, meta: { page: 1, limit: 18, total: 4, totalPages: 1 } });
+    expect(html).not.toContain('name="country"');
+    expect(html).toContain('Annual tuition');
+    expect(html).toContain('Amounts in JPY');
+    expect(html).toContain('>Lowest tuition</option>');
+    expect(html).toContain('>Highest tuition</option>');
+
+    /* Two countries whose fees share a currency: the API's range says so. */
+    const euros = render({ facets: { ...facets, tuition: { currencyCode: 'EUR', count: 9 } } });
+    expect(euros).toContain('>Highest tuition</option>');
+
+    /* One country named, but no range from an older API: still offered,
+       as the one-country rule always did. */
+    expect(render({ facets: { ...japan, tuition: null } })).toContain('>Lowest tuition</option>');
   });
 
   it('offers a score for the tests programmes list, and the extras with counts', () => {

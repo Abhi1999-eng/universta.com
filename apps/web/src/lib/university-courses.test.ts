@@ -84,6 +84,13 @@ describe('the list’s address', () => {
     expect(filters.sort).toBe('fee');
   });
 
+  it('reads "Highest tuition" under its own name and the design’s', () => {
+    expect(readCourseFilters({ sort: 'fee-high' }).sort).toBe('fee-high');
+    expect(readCourseFilters({ sort: 'cost-high' }).sort).toBe('fee-high');
+    expect(readCourseFilters({ sort: 'cost-low' }).sort).toBe('fee');
+    expect(courseListSearch(readCourseFilters({ sort: 'cost-high' }))).toBe('?sort=fee-high');
+  });
+
   it('ignores a sort it does not offer and a page that is not one', () => {
     const filters = readCourseFilters(
       new URLSearchParams('sort=cheapest&page=-2'),

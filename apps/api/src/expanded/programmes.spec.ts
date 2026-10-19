@@ -9,6 +9,7 @@ import {
   programmeFacets,
   programmeScope,
   programmeSummary,
+  settleProgrammeFees,
   unnamedChoices,
   type ProgrammeRow,
 } from './programmes';
@@ -177,6 +178,10 @@ describe('reading the reference’s addresses and the site’s old ones', () => 
     expect(parse({ sort: 'tuition-low', country: 'united-kingdom' }).sort).toBe(
       'fee',
     );
+    /* The design's own names for its two fee orders. */
+    expect(parse({ sort: 'cost-low' }).sort).toBe('fee');
+    expect(parse({ sort: 'cost-high' }).sort).toBe('fee-high');
+    expect(parse({ sort: 'fee-high' }).sort).toBe('fee-high');
     expect(parse({ sort: 'newest' }).sort).toBe('newest');
   });
 
@@ -428,17 +433,124 @@ describe('fees, inside one country only', () => {
   });
 
   /* Pounds and yen do not compare, and nothing here converts them. */
-  it('ignores them, and says so, across several countries or none', () => {
+  const yen = programme({
+    name: 'MEng Civil',
+    university: tokyo,
+    tuitionMin: '535800',
+    currencyCode: 'JPY',
+    tuitionPeriod: 'PER_YEAR',
+  });
+  const mixed = [...catalogue, yen];
+
+  it('ignores them, and says so, across currencies', () => {
     const none = parse({ tuitionMin: '1000', sort: 'fee' });
-    expect(none.tuitionMin).toBeNull();
-    expect(none.sort).toBe('relevance');
-    expect(none.ignored).toEqual(['sort=fee', 'tuitionMin=1000']);
-    const two = parse({
-      country: 'united-kingdom,japan',
-      sort: 'tuition-low',
+    /* Read, and settled once the rows are known. */
+    expect(none.feeRequests).toEqual(['sort=fee', 'tuitionMin=1000']);
+    expect(none.ignored).toEqual([]);
+    const offered = programmeFacets(mixed, none, today).tuition;
+    expect(offered).toBeNull();
+    const settled = settleProgrammeFees(none, offered, mixed, today);
+    expect(settled.tuition).toBeNull();
+    expect(settled.query.tuitionMin).toBeNull();
+    expect(settled.query.sort).toBe('relevance');
+    expect(settled.query.ignored).toEqual(['sort=fee', 'tuitionMin=1000']);
+    /* Nothing measured, so nothing set aside. */
+    expect(settled.rows).toBe(mixed);
+
+    const two = parse({ country: 'united-kingdom,japan', sort: 'tuition-low' });
+    const both = settleProgrammeFees(
+      two,
+      programmeFacets(mixed, two, today).tuition,
+      mixed,
+      today,
+    );
+    expect(both.query.sort).toBe('relevance');
+    expect(both.query.ignored).toEqual(['sort=tuition-low']);
+  });
+
+  it('still leaves out a bound that is no amount at all, at once', () => {
+    expect(parse({ tuitionMin: '-5', country: 'japan' }).ignored).toEqual([
+      'tuitionMin=-5',
+    ]);
+  });
+});
+
+/* A Japan-only catalogue had no "Lowest tuition" and no fee range on
+   /courses until a country was chosen, and the Country filter that would
+   choose one was hidden because Japan covered everything. */
+describe('fees, wherever the rows share one currency', () => {
+  const tokyoFee = (name: string, fee: string, currencyCode = 'JPY') =>
+    programme({
+      name,
+      university: tokyo,
+      tuitionMin: fee,
+      currencyCode,
+      tuitionPeriod: 'PER_YEAR',
     });
-    expect(two.sort).toBe('relevance');
-    expect(two.ignored).toEqual(['sort=tuition-low']);
+  const japanOnly = [
+    tokyoFee('MIST', '535800'),
+    tokyoFee('MEng Civil', '520800'),
+    programme({ name: 'PhD IST', university: tokyo }),
+  ];
+
+  it('offers the range over a catalogue in one country, with no country chosen', () => {
+    const query = parse({ sort: 'fee', tuitionMax: '530000' });
+    const facets = programmeFacets(japanOnly, query, today);
+    expect(facets.countries).toHaveLength(1);
+    expect(facets.tuition).toEqual({ currencyCode: 'JPY', count: 2 });
+    const settled = settleProgrammeFees(query, facets.tuition, japanOnly, today);
+    expect(settled.query.sort).toBe('fee');
+    expect(settled.query.tuitionMax).toBe(530000);
+    expect(settled.query.ignored).toEqual([]);
+    expect(
+      sortOfferings(
+        settled.rows.filter((row) => matchesProgramme(row, settled.query, today)),
+        settled.query.sort,
+      ).map((row) => row.name),
+    ).toEqual(['MEng Civil', 'PhD IST']);
+  });
+
+  it('offers it across countries whose fees are all in one currency', () => {
+    const paris = university('Sorbonne', { ...uk, name: 'France', slug: 'france', iso2Code: 'FR' }, 'Paris');
+    const berlin = university('TU Berlin', { ...uk, name: 'Germany', slug: 'germany', iso2Code: 'DE' }, 'Berlin');
+    const euros = [
+      programme({ name: 'MSc A', university: paris, tuitionMin: '3770', currencyCode: 'EUR', tuitionPeriod: 'PER_YEAR' }),
+      programme({ name: 'MSc B', university: berlin, tuitionMin: '1500', currencyCode: 'EUR', tuitionPeriod: 'PER_YEAR' }),
+    ];
+    expect(programmeFacets(euros, parse({}), today).tuition).toEqual({
+      currencyCode: 'EUR',
+      count: 2,
+    });
+  });
+
+  it('takes the range from the matched rows when the catalogue mixes currencies', () => {
+    const robotics = parse({ course: 'meng-civil', sort: 'fee-high' });
+    const rows = [
+      ...catalogue,
+      programme({
+        name: 'MEng Civil',
+        university: tokyo,
+        tuitionMin: '520800',
+        currencyCode: 'JPY',
+        tuitionPeriod: 'PER_YEAR',
+        genericCourse: { slug: 'meng-civil', name: 'MEng Civil', subject: computing, courseLevel: PG },
+      }),
+    ];
+    /* Counted over the whole catalogue, pounds and yen: no range there. */
+    const offered = programmeFacets(rows, programmeScope(robotics), today).tuition;
+    expect(offered).toBeNull();
+    const settled = settleProgrammeFees(robotics, offered, rows, today);
+    expect(settled.tuition).toEqual({ currencyCode: 'JPY', count: 1 });
+    expect(settled.query.sort).toBe('fee-high');
+    expect(settled.query.ignored).toEqual([]);
+  });
+
+  it('keeps the multi-currency guard for a list whose fee lacks a currency', () => {
+    const unknown = [
+      tokyoFee('MIST', '535800'),
+      programme({ name: 'X', university: warwick, tuitionMin: '9000', tuitionPeriod: 'PER_YEAR' }),
+    ];
+    expect(programmeFacets(unknown, parse({}), today).tuition).toBeNull();
   });
 });
 
@@ -500,7 +612,10 @@ describe('counting the choices', () => {
         count: 1,
       },
     ]);
-    expect(facets.tuition).toBeNull();
+    /* Two countries, but every fee recorded is in pounds: the range is
+       offered in them, and Tokyo's programme without a fee is not
+       measured. */
+    expect(facets.tuition).toEqual({ currencyCode: 'GBP', count: 2 });
   });
 
   /* A destination, subject or course nothing is listed under has no count

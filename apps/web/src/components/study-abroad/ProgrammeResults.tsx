@@ -18,6 +18,7 @@ import {
   courseApiParams,
   courseListSearch,
   ENGLISH_SCORES,
+  FEE_SORTS,
   NO_FILTERS,
   PROGRAMME_COURSE_GROUPS,
   PROGRAMME_SORTS,
@@ -350,12 +351,16 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
     }
   }
 
-  /* Fees compare only inside one country: the list's own, or the one
-     chosen. Across several, the range and "Lowest tuition" are not
-     offered, as the API would not apply them. */
+  /* Fees compare only in one currency: inside the list's own country, the
+     one chosen, a catalogue that is all in one country, or wherever the
+     API offers a fee range -- which it does only where the fees share a
+     currency. Elsewhere the range and the fee orders are not offered, as
+     the API would not apply them. */
   const oneCountry =
     props.oneCurrency ||
-    new Set([...(scope.country ?? []), ...filters.country]).size === 1;
+    new Set([...(scope.country ?? []), ...filters.country]).size === 1 ||
+    facets.country.length === 1 ||
+    Boolean(facets.tuition);
 
   const active = activeFilterCount(filters);
   const chips = activeChips(filters, facets);
@@ -390,7 +395,7 @@ export function ProgrammeResults(props: ProgrammeResultsProps) {
   });
   const hasPanel = visible.length > 0;
   const sortOptions = sorts.filter(
-    (option) => option.value !== 'fee' || oneCountry,
+    (option) => !FEE_SORTS.includes(option.value) || oneCountry,
   );
   const sortShown = sortOptions.some((option) => option.value === shown.sort)
     ? shown.sort

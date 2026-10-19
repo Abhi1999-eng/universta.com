@@ -253,6 +253,25 @@ describe('ordering the list', () => {
     expect(names('duration')[0]).toBe('MSc Computer Science');
   });
 
+  /* The design's "Highest tuition", beside "Lowest tuition": the most a
+     course may cost first, and a missing fee still last, not first. */
+  it('puts the highest fee first for "fee-high", and a missing one last', () => {
+    expect(names('fee-high')).toEqual([
+      'MSc Computer Science',
+      'BSc Computer Science',
+      'BA Business',
+      'PhD Computing',
+    ]);
+    const ranged = [
+      { ...catalogue[0]!, name: 'Range', tuitionMin: '10000', tuitionMax: '40000' },
+      { ...catalogue[1]!, name: 'Flat', tuitionMin: '35000', tuitionMax: null },
+    ];
+    expect(sortOfferings(ranged, 'fee-high').map((row) => row.name)).toEqual([
+      'Range',
+      'Flat',
+    ]);
+  });
+
   it('puts the most recently published first for "newest"', () => {
     const dated = catalogue.map((row, index) => ({
       ...row,

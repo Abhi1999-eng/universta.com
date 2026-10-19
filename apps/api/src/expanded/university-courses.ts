@@ -112,17 +112,28 @@ export type OfferingLike = {
 export type Query = Record<string, string | string[] | undefined>;
 
 export type CourseSort =
-  'relevance' | 'name' | 'fee' | 'deadline' | 'duration' | 'newest';
+  | 'relevance'
+  | 'name'
+  | 'fee'
+  | 'fee-high'
+  | 'deadline'
+  | 'duration'
+  | 'newest';
 /* "Newest" is the course list's "Recently added", kept because the course
-   finder offered it before it listed programmes. */
+   finder offered it before it listed programmes. "fee-high" is the
+   design's "Highest tuition", beside "Lowest tuition". */
 export const COURSE_SORTS: readonly CourseSort[] = [
   'relevance',
   'name',
   'fee',
+  'fee-high',
   'deadline',
   'duration',
   'newest',
 ];
+
+/** The orders that compare fees, which only one currency can answer. */
+export const FEE_SORTS: readonly CourseSort[] = ['fee', 'fee-high'];
 
 /**
  * The reference's three duration choices, by the values its URLs carry:
@@ -406,6 +417,13 @@ function nullsLast(a: number | null, b: number | null) {
   return a - b;
 }
 
+/** Highest first, and unmeasured still last: a missing fee is not a high
+ * one either. */
+function highestFirst(a: number | null, b: number | null) {
+  if (a === null || b === null) return nullsLast(a, b);
+  return b - a;
+}
+
 function addedAt(row: OfferingLike): number | null {
   const value = row.publishedAt ?? row.createdAt;
   if (!value) return null;
@@ -437,6 +455,15 @@ export function sortOfferings<T extends OfferingLike>(
           nullsLast(
             number(a.tuitionMin) ?? number(a.tuitionMax),
             number(b.tuitionMin) ?? number(b.tuitionMax),
+          ) || byName(a, b),
+      );
+    /* By the top of each range: the most a course may cost. */
+    case 'fee-high':
+      return sorted.sort(
+        (a, b) =>
+          highestFirst(
+            number(a.tuitionMax) ?? number(a.tuitionMin),
+            number(b.tuitionMax) ?? number(b.tuitionMin),
           ) || byName(a, b),
       );
     case 'deadline':

@@ -22,6 +22,7 @@ export const COURSE_SORTS = [
   { value: 'relevance', label: 'Most relevant' },
   { value: 'name', label: 'Name A-Z' },
   { value: 'fee', label: 'Lowest tuition' },
+  { value: 'fee-high', label: 'Highest tuition' },
   { value: 'deadline', label: 'Next deadline' },
   { value: 'duration', label: 'Shortest first' },
 ] as const;
@@ -37,8 +38,14 @@ export const PROGRAMME_SORTS = [
 const SORT_ALIASES: Record<string, string> = {
   title: 'name',
   'tuition-low': 'fee',
+  'cost-low': 'fee',
+  'tuition-high': 'fee-high',
+  'cost-high': 'fee-high',
   featured: 'relevance',
 };
+
+/** The orders that compare fees, which only one currency can answer. */
+export const FEE_SORTS: readonly string[] = ['fee', 'fee-high'];
 
 /* The reference's study-level words as our level codes. "Postgraduate" and
    "short course" name no one level of ours, so they are left as written and
