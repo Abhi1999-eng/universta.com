@@ -15,8 +15,12 @@ import { useEffect, useRef, useState } from 'react';
  */
 export function UniversityTabs({
   tabs,
+  label = 'University sections',
 }: {
   tabs: Array<{ id: string; label: string }>;
+  /** What the strip is called to a screen reader, for a page that is not
+   *  a university's. */
+  label?: string;
 }) {
   const [current, setCurrent] = useState<string | null>(null);
   const strip = useRef<HTMLDivElement>(null);
@@ -73,7 +77,7 @@ export function UniversityTabs({
 
   if (tabs.length < 2) return null;
   return (
-    <nav className="unitabs unitabs--sections" aria-label="University sections">
+    <nav className="unitabs unitabs--sections" aria-label={label}>
       <div className="wrap unitabs__inner" ref={strip}>
         {tabs.map((tab) => (
           <a
