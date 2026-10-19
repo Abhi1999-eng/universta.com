@@ -147,7 +147,7 @@ export const facts = (...parts: Array<string | null | undefined>) => parts.filte
  * with its variables filled in), where it is, when it closes and when it
  * was posted, and "Closing soon" beside the date in its last 21 days.
  */
-export function JobCard({ row, now = Date.now() }: { row: DirectoryRow; now?: number }) {
+export function JobCard({ row, now = new Date().getTime() }: { row: DirectoryRow; now?: number }) {
   const href = `/careers/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const where = text(row.location) ?? name(row.city) ?? name(row.country);
   const closes = jobDay(row.expiryDate);

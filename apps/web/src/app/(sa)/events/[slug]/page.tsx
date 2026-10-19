@@ -51,7 +51,7 @@ export default async function EventPage({ params }: Props) {
   }
   const record = row as unknown as DirectoryRow;
   const guides = new Set((directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])));
-  const now = Date.now();
+  const now = new Date().getTime();
   return (
     <>
       <EventGuide row={record} more={moreEvents(record, all, now, 4)} guides={guides} now={now} />

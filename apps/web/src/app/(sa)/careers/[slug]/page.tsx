@@ -43,7 +43,7 @@ export default async function JobPage({ params }: Props) {
     notFound();
   }
   const record = row as unknown as DirectoryRow;
-  const now = Date.now();
+  const now = new Date().getTime();
   return (
     <>
       <JobGuide row={record} now={now} />

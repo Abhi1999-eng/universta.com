@@ -35,7 +35,7 @@ export default async function EventsPage() {
     total = rows.length;
   }
   const guides = new Set((directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])));
-  const now = Date.now();
+  const now = new Date().getTime();
   /* Upcoming first, soonest first, then the ones already held, newest
      first -- decided here, from each event's end, so a running event is
      still upcoming whatever order the API sends. */

@@ -27,7 +27,7 @@ export default async function CareersPage() {
     rows = (await phaseListAll<DirectoryRow>('jobs')).data;
     total = rows.length;
   } catch {}
-  const now = Date.now();
+  const now = new Date().getTime();
   return (
     <RecordDirectory
       trail="Careers"

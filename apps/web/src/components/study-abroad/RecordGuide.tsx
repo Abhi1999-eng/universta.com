@@ -188,7 +188,7 @@ function JobDeadline({ row, now, apply }: { row: DirectoryRow; now: number; appl
   );
 }
 
-export function JobGuide({ row, now = Date.now() }: { row: DirectoryRow; now?: number }) {
+export function JobGuide({ row, now = new Date().getTime() }: { row: DirectoryRow; now?: number }) {
   const self = `/careers/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const title = text(row.title) ?? 'Role';
   const trail: Crumb[] = [{ label: 'Home', href: '/' }, { label: 'Careers', href: '/careers' }, { label: title }];
@@ -331,7 +331,7 @@ export function EventGuide({
   row,
   more = [],
   guides,
-  now = Date.now(),
+  now = new Date().getTime(),
 }: {
   row: DirectoryRow;
   /** Upcoming events to show after this one (moreEvents). */
