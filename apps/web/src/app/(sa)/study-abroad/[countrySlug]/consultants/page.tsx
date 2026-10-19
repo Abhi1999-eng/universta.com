@@ -244,6 +244,7 @@ export default async function Page({ params }: Props) {
           countrySlug={country.slug}
           where={where}
           guides={guides}
+          compare
         />
       )}
 

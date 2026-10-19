@@ -5,6 +5,7 @@ import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
 import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
+import { ConsultantCompareButton, ConsultantCompareTray } from './ConsultantCompare';
 import { ConsultantTrust } from './ConsultantTrust';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Crumbs } from './Crumbs';
@@ -145,6 +146,7 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                 >
                   Book free counselling
                 </Link>
+                <ConsultantCompareButton item={{ slug: consultant.slug, name: consultant.name }} />
               </div>
             </div>
 
@@ -358,6 +360,8 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
           { href: '/scholarships', label: 'Find scholarships', ghost: true },
         ]}
       />
+
+      <ConsultantCompareTray />
     </>
   );
 }

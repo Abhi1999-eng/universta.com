@@ -42,6 +42,23 @@ const rows = toConsultantRows([
 
 const hrefs = (html: string) => [...html.matchAll(/href="([^"]*counselling[^"]*)"/g)].map((match) => match[1]!.replace(/&amp;/g, '&'));
 
+describe('the "Compare" tick on a consultant card', () => {
+  it('is on every card of a consultants list that asks for it', () => {
+    const html = renderToStaticMarkup(
+      <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" byDestination compare />,
+    );
+    expect(html.match(/class="tinycheck"/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="Compare Lindenhall Global Admissions"');
+  });
+
+  it('is left off where it is not asked for, as on a subject\'s level page', () => {
+    expect(renderToStaticMarkup(<ConsultantCard consultant={rows[0]!} countrySlug="" />)).not.toContain('tinycheck');
+    expect(
+      renderToStaticMarkup(<CountryConsultantIndex rows={rows} countrySlug="" where="any destination" />),
+    ).not.toContain('tinycheck');
+  });
+});
+
 describe('"Get guidance" on a consultant card', () => {
   it('records the directory as the page the request came from', () => {
     const html = renderToStaticMarkup(

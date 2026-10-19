@@ -145,7 +145,7 @@ export default async function ConsultantsPage() {
           </div>
         </section>
       ) : (
-        <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" guides={guides} byDestination />
+        <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" guides={guides} byDestination compare />
       )}
 
       <section className="sec sec--paper" id="need">

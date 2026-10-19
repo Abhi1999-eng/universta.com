@@ -20,6 +20,7 @@ import {
   type ConsultantSort,
   type CountryConsultantRow,
 } from '@/lib/country-consultant-list';
+import { ConsultantCompareCheck, ConsultantCompareTray } from './ConsultantCompare';
 
 /** How many services a card names before "+N more". */
 const SERVICES_SHOWN = 4;
@@ -38,6 +39,7 @@ export function ConsultantCard({
   countrySlug,
   guides = [],
   guidance,
+  compare = false,
 }: {
   consultant: CountryConsultantRow;
   /** The destination the page is about, named first among the badges. */
@@ -49,6 +51,9 @@ export function ConsultantCard({
    *  subject's level page); otherwise the destination's counselling, asked
    *  from its consultants page. */
   guidance?: string;
+  /** The design's "Compare" tick, feeding the comparison tray. The
+   *  consultants pages ask for it; a subject's level page does not. */
+  compare?: boolean;
 }) {
   const href = `/study-abroad-consultants/${consultant.slug}`;
   const destinations = [
@@ -65,6 +70,9 @@ export function ConsultantCard({
             {consultant.verified ? '✓ Verified' : 'Not yet verified'}
           </span>
         </div>
+        {compare ? (
+          <ConsultantCompareCheck item={{ slug: consultant.slug, name: consultant.name }} />
+        ) : null}
       </div>
 
       <h3 className="consultcard__name">
@@ -191,6 +199,7 @@ export function CountryConsultantIndex({
   where,
   guides = [],
   byDestination = false,
+  compare = false,
 }: {
   rows: CountryConsultantRow[];
   /** The destination the page is about, or '' on the worldwide directory. */
@@ -202,6 +211,8 @@ export function CountryConsultantIndex({
   /** The worldwide directory narrows by destination too; a destination's
    *  own page does not, since every consultant on it lists that one. */
   byDestination?: boolean;
+  /** Each card's "Compare" tick and the comparison tray. */
+  compare?: boolean;
 }) {
   const path = usePathname();
   const params = useSearchParams();
@@ -429,6 +440,7 @@ export function CountryConsultantIndex({
                     countrySlug={countrySlug}
                     guides={guides}
                     guidance={guidance}
+                    compare={compare}
                   />
                 ))}
               </div>
@@ -487,6 +499,7 @@ export function CountryConsultantIndex({
           </div>
         </div>
       </div>
+      {compare ? <ConsultantCompareTray /> : null}
     </section>
   );
 }
