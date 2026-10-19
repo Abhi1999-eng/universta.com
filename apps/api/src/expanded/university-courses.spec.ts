@@ -5,9 +5,11 @@ import {
   durationBands,
   matchesCourseQuery,
   nextDeadline,
+  offeringMediaIds,
   parseCourseQuery,
   relatedOfferings,
   sortOfferings,
+  withOfferingMedia,
   type OfferingLike,
 } from './university-courses';
 
@@ -379,5 +381,40 @@ describe('what a course page offers next', () => {
     expect(
       relatedOfferings(catalogue[1], { here: catalogue, elsewhere: [] }, [], 1),
     ).toHaveLength(1);
+  });
+});
+
+describe('a course’s picture', () => {
+  const asset = {
+    id: 'm1',
+    publicUrl: '/media/lab.jpg',
+    altText: 'A lab',
+    title: null,
+  };
+
+  it('asks for each picture once, and for none where nothing is set', () => {
+    expect(
+      offeringMediaIds([
+        { featuredMediaId: 'm1' },
+        { featuredMediaId: 'm1' },
+        { featuredMediaId: null },
+        { featuredMediaId: '' },
+        {},
+      ]),
+    ).toEqual(['m1']);
+  });
+
+  it('puts the picture on its row, and null where it is unset or gone', () => {
+    const rows = withOfferingMedia(
+      [
+        { slug: 'a', featuredMediaId: 'm1' },
+        { slug: 'b', featuredMediaId: 'm-gone' },
+        { slug: 'c', featuredMediaId: null },
+      ],
+      new Map([['m1', asset]]),
+    );
+    expect(rows.map((row) => row.featuredMedia)).toEqual([asset, null, null]);
+    /* The row is otherwise as it was. */
+    expect(rows[0]).toMatchObject({ slug: 'a', featuredMediaId: 'm1' });
   });
 });

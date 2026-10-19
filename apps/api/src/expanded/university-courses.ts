@@ -703,3 +703,46 @@ export function relatedOfferings<T extends OfferingLike>(
   }
   return out;
 }
+
+/**
+ * The public shape of a picture: what the success stories already return,
+ * and what the contract calls M. Active, undeleted assets only.
+ */
+export type PublicMedia = {
+  id: string;
+  publicUrl: string;
+  altText: string | null;
+  title: string | null;
+};
+
+/**
+ * The picture an editor chose for each course, by its `featuredMediaId`.
+ *
+ * The offering keeps the id and has no relation to the asset, so its
+ * pages were sent the bare id and drew nothing. The assets are read once
+ * for a whole page of rows; a row whose asset is missing, archived or
+ * deleted gets `featuredMedia: null`, as one without a picture does.
+ */
+export function offeringMediaIds(
+  rows: ReadonlyArray<{ featuredMediaId?: string | null }>,
+): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row.featuredMediaId)
+        .filter((id): id is string => typeof id === 'string' && id !== ''),
+    ),
+  ];
+}
+
+export function withOfferingMedia<T extends { featuredMediaId?: string | null }>(
+  rows: T[],
+  assets: ReadonlyMap<string, PublicMedia>,
+): Array<T & { featuredMedia: PublicMedia | null }> {
+  return rows.map((row) => ({
+    ...row,
+    featuredMedia: row.featuredMediaId
+      ? (assets.get(row.featuredMediaId) ?? null)
+      : null,
+  }));
+}

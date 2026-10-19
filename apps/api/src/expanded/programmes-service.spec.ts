@@ -84,6 +84,22 @@ function build(rows: Array<Record<string, unknown>>) {
     country: lookup('country'),
     subject: lookup('subject'),
     course: lookup('course'),
+    /* The pictures behind the cards' featuredMediaId: one active, one
+       archived. */
+    mediaAsset: {
+      findMany: async (args: Args) =>
+        [
+          { id: 'm-live', publicUrl: '/media/warwick.jpg', altText: 'Campus', title: null, status: 'ACTIVE', deletedAt: null },
+          { id: 'm-old', publicUrl: '/media/old.jpg', altText: null, title: null, status: 'ARCHIVED', deletedAt: null },
+        ]
+          .filter(
+            (asset) =>
+              (args.where.id.in as string[]).includes(asset.id) &&
+              asset.status === args.where.status &&
+              asset.deletedAt === null,
+          )
+          .map(({ id, publicUrl, altText, title }) => ({ id, publicUrl, altText, title })),
+    },
     universityCourseOffering: {
       findMany: async (args: Args) => {
         findMany.push(args);
@@ -381,6 +397,28 @@ describe('the programme finder’s reads', () => {
  * the whole live catalogue again; only the counts were kept. The read is
  * kept for a minute now, per part of the catalogue, within bounds.
  */
+describe('the pictures on the finder’s cards', () => {
+  it('sends each card the picture an editor chose, and null for one archived or unset', async () => {
+    const { service } = build([
+      scanned({ id: 'a', slug: 'a', featuredMediaId: 'm-live' }),
+      scanned({ id: 'b', slug: 'b', featuredMediaId: 'm-old' }),
+      scanned({ id: 'c', slug: 'c', featuredMediaId: null }),
+    ]);
+    const result = await service.programmes({ sort: 'name' });
+    const byId = new Map(
+      result.data.map((row: Record<string, unknown>) => [row.id, row.featuredMedia]),
+    );
+    expect(byId.get('a')).toEqual({
+      id: 'm-live',
+      publicUrl: '/media/warwick.jpg',
+      altText: 'Campus',
+      title: null,
+    });
+    expect(byId.get('b')).toBeNull();
+    expect(byId.get('c')).toBeNull();
+  });
+});
+
 describe('the programme finder’s kept reads', () => {
   afterEach(() => jest.useRealTimers());
 

@@ -27,11 +27,14 @@ import {
   effectiveLevel,
   matchesCourseQuery,
   NEIGHBOUR_TAKE,
+  offeringMediaIds,
   parseCourseQuery,
   relatedOfferings,
   sortOfferings,
   UNIVERSITY_CATALOGUE_CAP,
+  withOfferingMedia,
   type OfferingLike,
+  type PublicMedia,
 } from './university-courses';
 import {
   matchesProgramme,
@@ -1550,7 +1553,25 @@ export class ExpandedService {
         this.withSeo('offerings', row),
         this.offeringNeighbours(row, university.id, now),
       ]);
-      return { ...withSeo, ...around };
+      /* The pictures of the course and of every card the page draws, in
+         one read. */
+      const assets = await this.offeringMedia([
+        row,
+        ...around.related,
+        ...around.elsewhere,
+        ...around.moreAtUniversity.rows,
+      ]);
+      return {
+        ...withSeo,
+        featuredMedia: withOfferingMedia([row], assets)[0]!.featuredMedia,
+        ...around,
+        related: withOfferingMedia(around.related, assets),
+        elsewhere: withOfferingMedia(around.elsewhere, assets),
+        moreAtUniversity: {
+          ...around.moreAtUniversity,
+          rows: withOfferingMedia(around.moreAtUniversity.rows, assets),
+        },
+      };
     }
     /* The list keeps how far "Load more" has gone in its address, and a
        reload renders that whole run in one answer, so a page here may be
@@ -1585,7 +1606,8 @@ export class ExpandedService {
       parsed.sort,
       now,
     );
-    const data = matching.slice(skip, skip + limit);
+    const rows = matching.slice(skip, skip + limit);
+    const data = withOfferingMedia(rows, await this.offeringMedia(rows));
     return {
       university,
       data,
@@ -2018,7 +2040,22 @@ export class ExpandedService {
       include: offeringCardInclude(now),
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
-    return ids.flatMap((id) => byId.get(id) ?? []);
+    const cards = ids.flatMap((id) => byId.get(id) ?? []);
+    return withOfferingMedia(cards, await this.offeringMedia(cards));
+  }
+
+  /** The active pictures behind a set of courses' `featuredMediaId`, by id:
+   * one read for a whole page. */
+  private async offeringMedia(
+    rows: ReadonlyArray<{ featuredMediaId?: string | null }>,
+  ): Promise<Map<string, PublicMedia>> {
+    const ids = offeringMediaIds(rows);
+    if (!ids.length) return new Map();
+    const assets = await this.prisma.mediaAsset.findMany({
+      where: { id: { in: ids }, status: 'ACTIVE', deletedAt: null },
+      select: { id: true, publicUrl: true, altText: true, title: true },
+    });
+    return new Map(assets.map((asset) => [asset.id, asset]));
   }
 
   /** The level and study-mode codes the catalogue knows, which those
