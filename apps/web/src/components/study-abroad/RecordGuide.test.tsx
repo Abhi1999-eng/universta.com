@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { StoryCard } from './RecordDirectory';
-import { StoryGuide } from './RecordGuide';
+import { EventGuide, StoryGuide } from './RecordGuide';
 
 const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');
 
@@ -88,5 +88,87 @@ describe('StoryGuide', () => {
     expect(band?.querySelectorAll('a.h-card')).toHaveLength(2);
     expect(band?.querySelector('.h-more a')?.getAttribute('href')).toBe('/success-stories');
     expect(parse(renderToStaticMarkup(<StoryGuide row={story()} />)).querySelector('#more-stories')).toBeNull();
+  });
+});
+
+const now = Date.parse('2026-10-19T12:00:00Z');
+const guides = new Set(['japan']);
+
+const event = (extra: Record<string, unknown> = {}) => ({
+  id: 'e1',
+  slug: 'tokyo-open-evening',
+  title: 'Tokyo open evening',
+  summary: 'Meet the admissions team.',
+  description: '<p>Join us for {eventTitle} on {eventDate} at {eventVenue}.</p>',
+  startsAt: '2026-11-20T09:00:00.000Z',
+  endsAt: '2026-11-20T10:30:00.000Z',
+  timezone: 'Asia/Tokyo',
+  eventType: 'OFFLINE',
+  venue: 'Shibuya Hall',
+  city: { name: 'Tokyo', slug: 'tokyo' },
+  country: { name: 'Japan', slug: 'japan', iso2Code: 'JP' },
+  registrationUrl: 'https://register.example.test/tokyo',
+  ...extra,
+});
+
+describe('EventGuide', () => {
+  const page = (extra: Record<string, unknown> = {}, at = now, more: Record<string, unknown>[] = []) =>
+    parse(renderToStaticMarkup(<EventGuide row={event(extra)} guides={guides} now={at} more={more.map((row) => event(row))} />));
+
+  it('draws an event whose zone was mistyped, in the site zone (EV-C3)', () => {
+    const doc = page({ timezone: 'Tokyo' });
+    expect(doc.querySelector('.deadlinecard .deadlinecard__row span:last-child')?.textContent).toBe('2:30 pm – 4:00 pm IST');
+  });
+
+  it('fills in the description variables (EV-M1)', () => {
+    const prose = page().querySelector('#overview .h-prose')?.textContent;
+    expect(prose).toMatch(/^Join us for Tokyo open evening on .+ at Shibuya Hall\.$/);
+  });
+
+  it('sets the description beside its heading, in the split head (EV-U5, JOB-G2)', () => {
+    const doc = page();
+    expect(doc.querySelector('#overview.recordband .sec-head--split > div:last-child .h-prose')).not.toBeNull();
+  });
+
+  it("puts the dark When card in the hero's right half, with the status and Register (EV-U4, EV-U1)", () => {
+    const card = page().querySelector('.coursehero__grid .recordhero__aside aside.deadlinecard');
+    expect(card?.querySelector('.deadlinecard__date')?.textContent).toBe('20 Nov 2026');
+    const rows = Object.fromEntries([...(card?.querySelectorAll('.deadlinecard__row') ?? [])].map((row) => [row.querySelector('.label')?.textContent, row]));
+    expect(rows.Time?.textContent).toBe('Time6:00 pm – 7:30 pm JST');
+    expect(rows.Status?.querySelector('.badge')?.textContent).toBe('Upcoming');
+    expect(card?.querySelector('a.btn')?.getAttribute('href')).toBe('https://register.example.test/tokyo');
+  });
+
+  it('keeps the note and says Ended once the event is over, with no Register anywhere (EV-U1, EV-U6)', () => {
+    const doc = page({}, Date.parse('2026-12-01T00:00:00Z'));
+    expect(doc.querySelector('.examtests__note')?.textContent).toBe('This event has already taken place.');
+    expect(doc.querySelector('.deadlinecard .badge')?.textContent).toBe('Ended');
+    expect(doc.querySelector('a[href="https://register.example.test/tokyo"]')).toBeNull();
+  });
+
+  it('names the venue, city and country in the place cell (EV-C8-web)', () => {
+    const cells = Object.fromEntries([...page().querySelectorAll('.unisnap__cell')].map((cell) => [cell.querySelector('.label')?.textContent, cell]));
+    expect(cells.Venue?.querySelector('b')?.textContent).toBe('Shibuya Hall, TokyoJPJapan');
+    expect(cells.Venue?.querySelector('a.flagchip')?.getAttribute('href')).toBe('/study-abroad/japan');
+  });
+
+  it('lists the speakers as name cards, and leaves the band out without any (EV-C4)', () => {
+    const doc = page({ speakersJson: ['Aiko Tanaka', 'Ravi Menon'] });
+    expect([...doc.querySelectorAll('#speakers .speakers__card strong')].map((name) => name.textContent)).toEqual(['Aiko Tanaka', 'Ravi Menon']);
+    expect(doc.querySelector('#speakers')?.textContent).not.toMatch(/official event listing/);
+    expect(page({ speakersJson: [] }).querySelector('#speakers')).toBeNull();
+    expect(page({ speakersJson: null }).querySelector('#speakers')).toBeNull();
+  });
+
+  it('draws the event picture in the hero (EV-C5-web)', () => {
+    const img = page({ featuredMedia: { id: 'm', publicUrl: '/media/hall.jpg', altText: null, title: null } }).querySelector('.recordhero__media img');
+    expect(img?.getAttribute('alt')).toBe('Tokyo open evening');
+  });
+
+  it('closes with more upcoming events, linked to the list (EV-U6)', () => {
+    const doc = page({}, now, [{ id: 'a', slug: 'a', title: 'Osaka fair' }]);
+    expect(doc.querySelector('#more-events h2')?.textContent).toBe('More upcoming events');
+    expect(doc.querySelector('#more-events article .eventcard__link')?.getAttribute('href')).toBe('/events/a');
+    expect(page().querySelector('#more-events')).toBeNull();
   });
 });

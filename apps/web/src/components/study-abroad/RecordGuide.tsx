@@ -6,8 +6,12 @@ import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
 import { Crumbs } from './Crumbs';
 import { ConnectBand } from './DiscoveryBands';
 import { day, facts, humanise, name, plain, StoryCard, text, type DirectoryRow } from './RecordDirectory';
-import { QuoteByline } from './QuoteCard';
+import { EventCard, EventPlace, eventImage, eventPlace, type Guides } from './EventCards';
+import { EventStatusBadge, LocalTime } from './EventClock';
+import { initials, QuoteByline } from './QuoteCard';
 import { SectionHead } from './SectionHead';
+import { eventFormat } from '@/lib/event-filters';
+import { eventClock, eventClockRange, eventDateTime, eventDay, eventEnded, eventZone } from '@/lib/record-dates';
 import { plainText } from '@/lib/record-text';
 import { programmePath } from '@/lib/success-story';
 import { resolveContentVariables } from '../../../../../packages/content-variables';
@@ -40,13 +44,19 @@ function Snapshot({ cells }: { cells: Array<Cell | null> }) {
   );
 }
 
+/**
+ * A band of the record's own prose, in the zip's split head: the eyebrow
+ * and title on the left, held while the band scrolls, and the prose in the
+ * column beside them, as the level pages' bands do. On a phone they stack.
+ */
 function Prose({ eyebrow, title, value, lead }: { eyebrow: string; title: string; value: string | null; lead?: string }) {
   if (!value) return null;
   return (
-    <section className="sec sec--white" id={eyebrow.toLowerCase().replace(/\W+/g, '-')}>
+    <section className="sec sec--white recordband" id={eyebrow.toLowerCase().replace(/\W+/g, '-')}>
       <div className="wrap">
-        <SectionHead eyebrow={eyebrow} title={title} lead={lead} />
-        <RichText value={value} className="h-prose" />
+        <SectionHead eyebrow={eyebrow} title={title} lead={lead}>
+          <RichText value={value} className="h-prose" />
+        </SectionHead>
       </div>
     </section>
   );
@@ -61,6 +71,8 @@ function Hero({
   note,
   actions,
   cells,
+  aside,
+  media,
 }: {
   trail: Crumb[];
   self: string;
@@ -70,22 +82,37 @@ function Hero({
   note?: string | null;
   actions: ReactNode;
   cells: Array<Cell | null>;
+  /** The right half of the hero: a role's closing date, an event's time. */
+  aside?: ReactNode;
+  /** The record's own picture, under the title and its buttons. */
+  media?: ReactNode;
 }) {
+  const lead = (
+    <>
+      {eyebrow ? <p className="hero__eyebrow">{eyebrow}</p> : null}
+      <h1 className="hero__h1">{title}</h1>
+      {sub ? <p className="hero__sub">{sub}</p> : null}
+      {note ? <p className="examtests__note">{note}</p> : null}
+      <div className="btn-row" style={{ marginTop: 22 }}>
+        {actions}
+      </div>
+      {media ? <figure className="recordhero__media">{media}</figure> : null}
+    </>
+  );
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd(trail, self)) }} />
       <section className="hero hero--compact">
         <div className="wrap">
           <Crumbs trail={trail} />
-          <div className="hero__lead">
-            {eyebrow ? <p className="hero__eyebrow">{eyebrow}</p> : null}
-            <h1 className="hero__h1">{title}</h1>
-            {sub ? <p className="hero__sub">{sub}</p> : null}
-            {note ? <p className="examtests__note">{note}</p> : null}
-            <div className="btn-row" style={{ marginTop: 22 }}>
-              {actions}
+          {aside ? (
+            <div className="coursehero__grid recordhero">
+              <div>{lead}</div>
+              <div className="recordhero__aside">{aside}</div>
             </div>
-          </div>
+          ) : (
+            <div className="hero__lead">{lead}</div>
+          )}
           <Snapshot cells={cells} />
         </div>
       </section>
@@ -93,13 +120,8 @@ function Hero({
   );
 }
 
-const when = (value: unknown, timeZone?: string | null) => {
-  const raw = text(value);
-  if (!raw) return null;
-  const at = new Date(raw);
-  if (Number.isNaN(at.getTime())) return null;
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', ...(timeZone ? { timeZone } : {}) }).format(at);
-};
+/** "20 Nov 2026, 6:00 pm" in the event's zone; the site's when that zone is mistyped. */
+const when = (value: unknown, timeZone?: string | null) => eventDateTime(value, timeZone);
 
 const counselling = (self: string) => `/counselling?source=general&from=${encodeURIComponent(self)}`;
 
@@ -169,20 +191,94 @@ export function JobGuide({ row }: { row: DirectoryRow }) {
   );
 }
 
-export function EventGuide({ row }: { row: DirectoryRow }) {
+/** A speaker as the editor typed them: a name, or a record carrying one. */
+function speakerNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const name = text(entry) ?? (entry && typeof entry === 'object' ? text((entry as { name?: unknown }).name) : null);
+    return name ? [name] : [];
+  });
+}
+
+/**
+ * The hero's right half on an event page, in the zip's dark deadline card:
+ * the date large, the time in the event's own zone and, added in the
+ * reader's browser, in theirs; whether it is upcoming, running or over; and
+ * Register while it is still to come.
+ */
+function EventWhen({ row, ended, now }: { row: DirectoryRow; ended: boolean; now: number }) {
+  const zone = eventZone(row.timezone);
+  const date = eventDay(row.startsAt, zone);
+  const sameDay = !text(row.endsAt) || eventDay(row.endsAt, zone) === date;
+  const time = eventClockRange(row.startsAt, row.endsAt, zone);
+  const registration = text(row.registrationUrl);
+  return (
+    <aside className="deadlinecard eventwhen" aria-label="When">
+      <span className="label">When</span>
+      {date ? <b className="deadlinecard__date datum">{date}</b> : <b className="deadlinecard__varies">Date to be announced</b>}
+      {time ? (
+        <div className="deadlinecard__row">
+          <span className="label">{sameDay ? 'Time' : 'Starts'}</span>
+          <span>{sameDay ? time : eventClock(row.startsAt, zone)}</span>
+        </div>
+      ) : null}
+      {!sameDay ? (
+        <div className="deadlinecard__row">
+          <span className="label">Ends</span>
+          <span>{facts(eventDay(row.endsAt, zone), eventClock(row.endsAt, zone))}</span>
+        </div>
+      ) : null}
+      {date ? <LocalTime startsAt={row.startsAt} zone={zone} /> : null}
+      {date ? (
+        <div className="deadlinecard__row">
+          <span className="label">Status</span>
+          <EventStatusBadge event={row} serverNow={now} />
+        </div>
+      ) : null}
+      {registration && !ended ? (
+        <a className="btn btn--block" href={registration} rel="nofollow noopener" target="_blank">
+          Register{' '}
+          <span className="btn__arrow" aria-hidden="true">
+            &#8599;
+          </span>
+        </a>
+      ) : null}
+    </aside>
+  );
+}
+
+export function EventGuide({
+  row,
+  more = [],
+  guides,
+  now = Date.now(),
+}: {
+  row: DirectoryRow;
+  /** Upcoming events to show after this one (moreEvents). */
+  more?: DirectoryRow[];
+  /** Country slugs with a published guide, for the place's flag chip. */
+  guides?: Guides;
+  /** The moment the page is drawn for: a test pins it. */
+  now?: number;
+}) {
   const self = `/events/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const title = text(row.title) ?? 'Event';
   const trail: Crumb[] = [{ label: 'Home', href: '/' }, { label: 'Events', href: '/events' }, { label: title }];
   const zone = text(row.timezone);
   const registration = text(row.registrationUrl);
   const online = text(row.onlineUrl);
-  const format = humanise(row.eventType);
-  const venue = text(row.venue) ?? name(row.city);
-  const description = text(row.description);
+  const format = eventFormat(row.eventType, row.onlineUrl)?.label ?? null;
+  const place = eventPlace(row);
+  /* The editor's {eventTitle}, {eventDate} and {eventVenue}, filled in as a
+     role's and a story's are; an emptied editor is no description. */
+  const resolved = text(row.description) ? resolveContentVariables('event', String(row.description), row) : null;
+  const description = resolved && plainText(resolved) ? resolved : null;
   const starts = when(row.startsAt, zone);
-  /* Whether it has already happened, judged once here on the server. */
-  const now = new Date();
-  const past = text(row.endsAt ?? row.startsAt) ? new Date(String(row.endsAt ?? row.startsAt)).getTime() < now.getTime() : false;
+  const speakers = speakerNames(row.speakersJson);
+  const image = eventImage(row);
+  /* Whether it has already happened, by its end (its start when it has none),
+     the rule the /events bands and the badge follow. */
+  const past = eventEnded(row, now);
   return (
     <>
       <Hero
@@ -192,6 +288,8 @@ export function EventGuide({ row }: { row: DirectoryRow }) {
         title={title}
         sub={plain(row.summary, 400)}
         note={past ? 'This event has already taken place.' : null}
+        aside={<EventWhen row={row} ended={past} now={now} />}
+        media={image ? <img src={image.src} alt={image.alt} /> : null}
         actions={
           <>
             {registration && !past ? (
@@ -222,15 +320,50 @@ export function EventGuide({ row }: { row: DirectoryRow }) {
           starts ? { label: 'Starts', value: starts } : null,
           when(row.endsAt, zone) ? { label: 'Ends', value: when(row.endsAt, zone) } : null,
           zone ? { label: 'Time zone', value: zone.replace(/_/g, ' ') } : null,
-          format ? { label: 'Format', value: format } : online ? { label: 'Format', value: 'Online' } : null,
-          venue ? { label: 'Venue', value: venue } : null,
+          format ? { label: 'Format', value: format } : null,
+          place.place || place.country
+            ? { label: text(row.venue) ? 'Venue' : 'Location', value: <EventPlace row={row} guides={guides} physical /> }
+            : null,
         ]}
       />
       <Prose eyebrow="Overview" title="About this event" value={description} />
-      {row.speakersJson ? (
-        <section className="sec sec--paper" id="speakers">
+      {speakers.length ? (
+        <section className="sec sec--paper sec--tight h-sec" id="speakers">
           <div className="wrap">
-            <SectionHead eyebrow="Event information" title="Speakers" lead="Speaker details are provided in the official event listing." />
+            <div className="h-head">
+              <p className="eyebrow">Event information</p>
+              <h2 className="sec-title">Speakers</h2>
+            </div>
+            <ul className="speakers">
+              {speakers.map((speaker, index) => (
+                <li className="speakers__card" key={`${speaker}-${index}`}>
+                  <span className="quote__init" aria-hidden="true">
+                    {initials(speaker)}
+                  </span>
+                  <strong>{speaker}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+      {more.length ? (
+        <section className="sec sec--white sec--tight h-sec" id="more-events">
+          <div className="wrap">
+            <div className="h-head">
+              <p className="eyebrow eyebrow--plain">What is on next</p>
+              <h2 className="sec-title">More upcoming events</h2>
+            </div>
+            <div className={more.length === 3 ? 'schgrid schgrid--3' : 'schgrid'}>
+              {more.map((event) => (
+                <EventCard row={event} guides={guides} now={now} key={event.id} />
+              ))}
+            </div>
+            <p className="h-more">
+              <Link className="linkcta" href="/events">
+                All events <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
+              </Link>
+            </p>
           </div>
         </section>
       ) : null}

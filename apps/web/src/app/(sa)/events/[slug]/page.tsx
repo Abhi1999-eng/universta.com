@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { moreEvents } from '@/components/study-abroad/EventCards';
+import type { DirectoryRow } from '@/components/study-abroad/RecordDirectory';
 import { EventGuide } from '@/components/study-abroad/RecordGuide';
 import { jsonLdString } from '@/lib/json-ld';
-import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
+import { phaseDetail, phaseListAll, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
+import { getDestinations } from '@/lib/study-abroad';
+import '../../records-zip.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,15 +57,27 @@ function eventJsonLd(row: AnyRecord) {
 
 export default async function EventPage({ params }: Props) {
   const { slug } = await params;
-  const row = await event(slug);
+  /* The event, every published one for "More upcoming events", and the
+     country guides its place may link to; a failure of either extra only
+     leaves its part out. */
+  const [row, all, directory] = await Promise.all([
+    event(slug),
+    phaseListAll<DirectoryRow>('events')
+      .then((page) => page.data)
+      .catch(() => [] as DirectoryRow[]),
+    getDestinations().catch(() => null),
+  ]);
   if (!row) {
     const redirect = await phaseResolveRedirect(`/events/${slug}`);
     if (redirect) permanentRedirect(redirect.targetPath);
     notFound();
   }
+  const record = row as unknown as DirectoryRow;
+  const guides = new Set((directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])));
+  const now = Date.now();
   return (
     <>
-      <EventGuide row={row as unknown as Record<string, unknown> & { id: string }} />
+      <EventGuide row={record} more={moreEvents(record, all, now, 4)} guides={guides} now={now} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(eventJsonLd(row)) }} />
     </>
   );
