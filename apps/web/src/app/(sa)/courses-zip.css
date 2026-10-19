@@ -147,3 +147,22 @@
 .sa .cg-eventcard .schcard__facts dd { flex-wrap: wrap; }
 .sa .cg-eventcard .schcard__foot { flex-wrap: wrap; justify-content: flex-start; }
 .sa .cg-eventcard .schcard__name { font-size: 18px; }
+
+/* --- /compare/courses: My saved courses ---------------------------------- */
+
+.sa .savedcourses {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 0 28px;
+  border-top: 1px solid var(--line);
+}
+@media (min-width: 820px) { .sa .savedcourses { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sa .savedcourses__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--line-soft);
+}
+.sa .savedcourses__name { display: grid; gap: 2px; min-width: 0; }
+.sa .savedcourses__name b { font-family: var(--font-display); font-size: 16.5px; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.sa .savedcourses__name em { font-style: normal; font-size: 13.5px; color: var(--muted); }
+.sa .savedcourses__row .btn,
+.sa .savedcourses__row .badge { flex: none; }
+.sa .savedcourses__note { flex: none; max-width: 22ch; font-size: 13px; color: var(--muted); text-align: right; }
+.sa .savedcourses__signin { color: var(--text); font-weight: 600; white-space: nowrap; }
