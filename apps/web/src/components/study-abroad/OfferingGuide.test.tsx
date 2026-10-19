@@ -122,6 +122,16 @@ describe('the course page', () => {
     expect(html).toContain('href="/study-abroad/united-kingdom/computer-science"');
   });
 
+  it('says the short type over the title rather than repeating it, keeping the qualification in the panel', () => {
+    const short = render(detail({ genericCourse: { ...generic, shortName: 'MSc CS' } }));
+    const eyebrow = short.match(/<p class="hero__eyebrow">(.*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, '');
+    expect(eyebrow).toBe("Master&#x27;s·MSc CS·Full time");
+    expect(short).toContain('<span class="snap__n">Master of Science</span>');
+    /* No short name: the qualification, as before. */
+    const plain = render().match(/<p class="hero__eyebrow">(.*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, '');
+    expect(plain).toBe("Master&#x27;s·Master of Science·Full time");
+  });
+
   it('lists every row of the panel, “Not listed” where the record is silent', () => {
     const html = render();
     const rows = html.match(/class="snap__k">([^<]+)</g) ?? [];

@@ -10,7 +10,7 @@ import {
   type OfferingDetail,
 } from '@/lib/offering-detail';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
-import { dateLabel, humanise, place } from '@/lib/university-courses';
+import { dateLabel, humanise, place, programmeType } from '@/lib/university-courses';
 import { breadcrumbJsonLd, faqJsonLd, type Crumb } from '@/lib/university-json-ld';
 import {
   countryUniversitiesHref,
@@ -284,8 +284,11 @@ export function OfferingGuide({
 
           <div className="coursehero__grid">
             <div className="coursehero__main">
+              {/* The design's short type -- "Master's · MIST · Full time" --
+                  rather than the full qualification over an H1 that says
+                  the same; the qualification stays in "At a glance". */}
               <p className="hero__eyebrow">
-                {[card.level?.name ?? 'Programme', card.qualification, card.studyMode]
+                {[programmeType(card).level, programmeType(card).kind, card.studyMode]
                   .filter(Boolean)
                   .map((part, index) => (
                     <span key={part}>
