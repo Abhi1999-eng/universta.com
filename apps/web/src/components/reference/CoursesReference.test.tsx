@@ -735,3 +735,12 @@ describe('the upcoming events strip', () => {
   });
 });
 
+/** "How to choose" sets its prose beside its heading, not under it. */
+describe('how to choose a course', () => {
+  it('puts the prose and its Read more in the right-hand column of the split head', () => {
+    const html = render(props());
+    const band = html.slice(html.indexOf('id="how-to-choose"'), html.indexOf('id="faq"'));
+    expect(band).toMatch(/sec-head--split[\s\S]*sec-head__aside[\s\S]*<\/div><div><div class="prose">/);
+    expect(band).toContain('Read more about course selection');
+  });
+});

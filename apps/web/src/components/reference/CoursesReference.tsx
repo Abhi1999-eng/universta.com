@@ -889,47 +889,50 @@ export function CoursesReference(props: CoursesReferenceProps) {
         </section>
       ) : null}
 
-      {/* HOW TO CHOOSE */}
-      <section className="sec sec--white" id="how-to-choose">
+      {/* HOW TO CHOOSE: the prose and its "Read more" in the right-hand
+          column beside the heading, as the design's About band sits, so
+          the band does not leave the right half of the page empty. */}
+      <section className="sec sec--white cg-band" id="how-to-choose">
         <div className="wrap">
-          <SectionHead eyebrow="Guidance" title="How to choose the right study abroad course" />
-          <div className="prose">
-            <p>
-              The best programme balances academic fit, affordability, admission chances and career
-              outcomes. Start by filtering on your target degree level and destination, then narrow by
-              study mode and scholarship availability. Shortlist up to {UP_TO} courses and use the compare
-              tray to weigh tuition, duration and intakes against each other.
-            </p>
-            <details className="readmore cf-readmore">
-              <summary>Read more about course selection</summary>
-              <div>
-                <h3>Popular course and destination combinations</h3>
-                <p>
-                  {topSubjects.slice(0, 4).map((subject, index) => (
-                    <span key={subject.id}>
-                      {index > 0 ? ', ' : ''}
-                      <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
-                    </span>
-                  ))}
-                  {topSubjects.length && topCountries.length ? ' and destinations such as ' : null}
-                  {topCountries.slice(0, 4).map((country, index) => (
-                    <span key={country.key}>
-                      {index > 0 ? ', ' : ''}
-                      <Link href={`/study-abroad/${country.key}`}>{country.title}</Link>
-                    </span>
-                  ))}
-                  {topSubjects.length || topCountries.length
-                    ? ' each open their own filterable listing.'
-                    : 'Browse the filters above to open a filterable listing.'}
-                </p>
-                <h3>English language requirements</h3>
-                <p>
-                  Requirements are recorded per programme. Filter by the test you have taken to see
-                  only the courses that publish an accepted score for it.
-                </p>
-              </div>
-            </details>
-          </div>
+          <SectionHead eyebrow="Guidance" title="How to choose the right study abroad course">
+            <div className="prose">
+              <p>
+                The best programme balances academic fit, affordability, admission chances and career
+                outcomes. Start by filtering on your target degree level and destination, then narrow by
+                study mode and scholarship availability. Shortlist up to {UP_TO} courses and use the compare
+                tray to weigh tuition, duration and intakes against each other.
+              </p>
+              <details className="readmore cf-readmore">
+                <summary>Read more about course selection</summary>
+                <div>
+                  <h3>Popular course and destination combinations</h3>
+                  <p>
+                    {topSubjects.slice(0, 4).map((subject, index) => (
+                      <span key={subject.id}>
+                        {index > 0 ? ', ' : ''}
+                        <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
+                      </span>
+                    ))}
+                    {topSubjects.length && topCountries.length ? ' and destinations such as ' : null}
+                    {topCountries.slice(0, 4).map((country, index) => (
+                      <span key={country.key}>
+                        {index > 0 ? ', ' : ''}
+                        <Link href={`/study-abroad/${country.key}`}>{country.title}</Link>
+                      </span>
+                    ))}
+                    {topSubjects.length || topCountries.length
+                      ? ' each open their own filterable listing.'
+                      : 'Browse the filters above to open a filterable listing.'}
+                  </p>
+                  <h3>English language requirements</h3>
+                  <p>
+                    Requirements are recorded per programme. Filter by the test you have taken to see
+                    only the courses that publish an accepted score for it.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </SectionHead>
         </div>
       </section>
 
