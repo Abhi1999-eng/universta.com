@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const story = await successStory(slug);
   if (!story) return { title: { absolute: 'Success story not found | Universta' }, robots: { index: false } };
-  const metadata = phaseOneMetadata(story, `/success-stories/${story.slug ?? slug}`, 'Success story');
+  const metadata = phaseOneMetadata(story, `/success-stories/${story.slug ?? slug}`, 'Success story', 'successStory');
   /* The helper writes the site's suffix; the route family's template would add it again. */
   return { ...metadata, title: { absolute: String(metadata.title) } };
 }

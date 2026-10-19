@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const row = await event(slug);
   if (!row) return { title: { absolute: 'Event not found | Universta' }, robots: { index: false } };
-  const metadata = phaseOneMetadata(row, `/events/${row.slug ?? slug}`, 'Event');
+  const metadata = phaseOneMetadata(row, `/events/${row.slug ?? slug}`, 'Event', 'event');
   /* The helper writes the site's suffix; the route family's template would add it again. */
   return { ...metadata, title: { absolute: String(metadata.title) } };
 }
