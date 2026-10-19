@@ -146,7 +146,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
 
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
-    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'totalStudents', 'internationalStudentsPercent', 'studentFacultyRatio', 'establishedYear', 'campusSetting', 'admissionsEmail', 'statsSourceName', 'statsSourceUrl', 'statsYear', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
+    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'totalStudents', 'internationalStudentsPercent', 'studentFacultyRatio', 'establishedYear', 'campusSetting', 'admissionsEmail', 'statsSourceName', 'statsSourceUrl', 'statsYear', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'courseCode', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
     if (record.seo && typeof record.seo === 'object') {
       const seo = record.seo as Row;
       for (const key of ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId']) next[key] = string(seo[key]);
@@ -289,6 +289,8 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       if (values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
     }
     if (resource === 'offerings' && !values.courseLevelId) next.courseLevelId = 'Select a course level.';
+    if (resource === 'offerings' && values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
+    if (resource === 'offerings' && (values.courseCode ?? '').trim().length > 100) next.courseCode = 'Course code must be 100 characters or fewer.';
     if (resource === 'events' && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt)) next.endsAt = 'End date and time must be after the start.';
     }
@@ -853,6 +855,37 @@ function OfferingFields(p: any) {
         <Select label="Tuition period" value={p.values.tuitionPeriod ?? ''} onChange={(value) => p.set('tuitionPeriod', value)} options={withCurrent(TUITION_PERIODS, p.values.tuitionPeriod ?? '')} />
         <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} helpKey="offerings.applicationUrl" />
         <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} helpKey="offerings.sourceReference" />
+        <Field
+          label="Course code"
+          value={p.values.courseCode ?? ''}
+          onChange={(value) => p.set('courseCode', value)}
+          error={p.errors.courseCode}
+          help={{
+            purpose: 'The code the university gives this programme, shown in its Key facts.',
+            input: 'Type the code exactly as the university lists it, or leave blank when it has none.',
+            dataType: 'Text, up to 100 characters',
+            required: 'Optional',
+            example: 'G5PD',
+            dependency: 'None.',
+            frontendEffect: 'Shown as "Course code" in the programme page’s Key facts and as a tag on its card; "Not listed" when blank.',
+          }}
+        />
+        <Field
+          label="Verified date"
+          type="date"
+          value={p.values.verifiedAt ?? ''}
+          onChange={(value) => p.set('verifiedAt', value)}
+          error={p.errors.verifiedAt}
+          help={{
+            purpose: 'Records when this programme’s fees, intakes and requirements were last checked against the university’s own page.',
+            input: 'Choose the date the source was verified. It cannot be in the future.',
+            dataType: 'Date',
+            required: 'Optional, but recommended whenever a Source URL is recorded.',
+            example: '2026-10-06',
+            dependency: 'Use together with Source URL for auditable programme facts.',
+            frontendEffect: 'Turns the programme page’s "Needs verification" badge into "Verified" and dates its source line.',
+          }}
+        />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="offerings.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="offering" value={p.values.overview ?? ''} onChange={(value) => p.set('overview', value)} helpKey="offerings.overview" />
