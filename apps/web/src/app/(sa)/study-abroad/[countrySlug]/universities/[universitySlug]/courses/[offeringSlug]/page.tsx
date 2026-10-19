@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { cache } from 'react';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { OfferingGuide } from '@/components/study-abroad/OfferingGuide';
 import { getCourse } from '@/lib/catalog';
 import { jsonLdString } from '@/lib/json-ld';
 import { offeringJsonLd, toOfferingDetail } from '@/lib/offering-detail';
-import { phaseList, phaseResolveRedirect } from '@/lib/phase1';
+import { findOffering, programmeSlugs } from '@/lib/offering-lookup';
+import { phaseList, phaseProgrammes, phaseResolveRedirect } from '@/lib/phase1';
 import { toScholarshipCards } from '@/lib/scholarship-card';
 import { siteOrigin } from '@/lib/site-origin';
 import { getStudyAbroadCountry } from '@/lib/study-abroad';
@@ -21,9 +23,11 @@ import { offeringTitle, universityPageMetadata } from '@/lib/university-seo';
  *
  * The behaviour reference addresses a course by its short name --
  * .../courses/msc-computer-science -- where this catalogue's slugs carry the
- * university as well. The short form is tried as "<university>-<course>"
- * and redirected to the full one, so both reach the same page; so is a
- * wrong country. Each redirect keeps the query the link arrived with.
+ * university as well. The short form is tried as "<university>-<course>",
+ * as "<course>-at-the-<university>" and as the university's one programme
+ * of that course (see offering-lookup), and redirected to the full one, so
+ * each reaches the same page; so is a wrong country. Each redirect keeps
+ * the query the link arrived with.
  */
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +40,20 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-async function find(universitySlug: string, offeringSlug: string) {
-  const exact = await loadOffering(universitySlug, offeringSlug);
-  if (exact) return exact;
-  if (offeringSlug.startsWith(`${universitySlug}-`)) return null;
-  return loadOffering(universitySlug, `${universitySlug}-${offeringSlug}`);
+/* The university's live programmes of one course, by the course's slug:
+   two at most, which is enough to tell one from several. Shared by the
+   metadata and the page of one request. */
+const programmesOfCourse = cache((universitySlug: string, courseSlug: string) =>
+  phaseProgrammes<unknown>({ university: universitySlug, course: courseSlug, limit: '2' }).then(
+    programmeSlugs,
+  ),
+);
+
+function find(universitySlug: string, offeringSlug: string) {
+  return findOffering(universitySlug, offeringSlug, {
+    load: loadOffering,
+    ofCourse: programmesOfCourse,
+  });
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
