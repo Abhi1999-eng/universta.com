@@ -742,9 +742,12 @@ export class CoursesService {
             },
           },
         },
+        /* With its picture: an editor picks one per section, and without
+           this read every section went out with `media: null`. */
         contentSections: {
           where: { status: 'ACTIVE', deletedAt: null },
           orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+          include: { media: { select: MEDIA_SELECT } },
         },
         faqs: {
           where: { status: 'ACTIVE', deletedAt: null },
@@ -776,6 +779,9 @@ export class CoursesService {
     );
     return {
       ...payload,
+      /* The code an editor gave the course, which its guide prints. Only
+         on the detail: the lists have never carried it. */
+      courseCode: course.courseCode ?? null,
       overview: course.overview,
       careerSummary: course.careerSummary,
       availability: course.countryCourses.map((mapping: any) =>
