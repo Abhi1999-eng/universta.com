@@ -412,6 +412,9 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
         robotsFollow: values.robotsFollow !== 'false',
       },
     };
+    /* A testimonial has no page, so no SEO of its own: nothing is sent, and
+       any row an older editor saved is left as it is. */
+    if (resource === 'testimonials') delete payload.seo;
     /* Dates and times go as instants, worked out in their zone, so the API no
        longer reads them in its own server's zone. One left untouched goes
        back exactly as it came. */
@@ -497,8 +500,18 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
             {resource === 'jobs' ? <JobFields values={values} set={set} errors={errors} cities={options.cities} states={options.states} countries={options.countries} /> : null}
             {resource === 'events' ? <EventFields values={values} set={set} errors={errors} tags={tags} media={options.media} cities={options.cities} states={options.states} countries={options.countries} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
             {resource === 'success-stories' ? <StoryFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-            {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-            <SeoFields values={values} set={set} placeholders={seoPlaceholders} />
+            {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
+            {resource === 'testimonials' ? (
+              <p className="p-card p-hint" data-testid="testimonial-seo-note">
+                A testimonial has no page of its own: it appears on /testimonials and on the guide of the country it is filed under. The search title and description for the listing are set in{' '}
+                <a className="p-link" href="/seo?key=testimonials-listing">
+                  Website Builder › Testimonials
+                </a>
+                .
+              </p>
+            ) : (
+              <SeoFields values={values} set={set} placeholders={seoPlaceholders} />
+            )}
             <div data-testid="structured-editor-save-row" className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-6">
               <label className="text-sm font-semibold">
                 Publish state
@@ -1180,6 +1193,8 @@ function TestimonialFields(p: any) {
       <Field label="Quote" textarea value={p.values.quote ?? ''} onChange={(value) => p.set('quote', value)} error={p.errors.quote} helpKey="testimonials.quote" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Display attribution" value={p.values.attribution ?? ''} onChange={(value) => p.set('attribution', value)} helpKey="testimonials.attribution" />
+        <Field label="Role or sub-line (optional)" value={p.values.attributionNote ?? ''} onChange={(value) => p.set('attributionNote', value)} helpKey="testimonials.attributionNote" />
+        <Select label="Country (optional)" value={p.values.countryId ?? ''} onChange={(value) => p.set('countryId', value)} options={p.countries} helpKey="testimonials.countryId" />
         <Select label="University (optional)" value={p.values.universityId ?? ''} onChange={(value) => p.set('universityId', value)} options={p.universities} helpKey="testimonials.universityId" />
         <Select label="University course offering (optional)" value={p.values.offeringId ?? ''} onChange={(value) => p.set('offeringId', value)} options={p.offerings} help={commonFieldHelp.course} />
         <MediaPickerDialog label="Media (optional)" value={p.values.imageMediaId ?? ''} onChange={(value) => p.set('imageMediaId', value)} helpKey="testimonials.imageMediaId" />

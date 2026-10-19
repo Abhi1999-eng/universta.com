@@ -831,6 +831,14 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
     frontendEffect: 'Shown alongside the attribution.',
   },
   'testimonials.imageMediaId': commonFieldHelp.media,
+  'testimonials.countryId': {
+    purpose: 'The study destination this testimonial speaks for.',
+    input: 'Select the country the student studied in, or leave it empty.',
+    dataType: 'Relationship',
+    required: 'Optional.',
+    frontendEffect: 'The quote then appears in that country guide’s Student voices section, as well as on /testimonials.',
+    caution: 'Choosing only a university does not put the quote on the country guide: the guide shows quotes filed under the country itself.',
+  },
   'testimonials.universityId': commonFieldHelp.university,
 
   // ---- Settings: General ----

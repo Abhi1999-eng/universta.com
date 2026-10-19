@@ -232,3 +232,21 @@ describe('a success story', () => {
   });
 });
 
+describe('a testimonial', () => {
+  /* T-C1, T-C2, T-C7. */
+  it('is filed under a country, has a sub-line, and has no SEO of its own', async () => {
+    record = { id: 't-1', quote: 'They answered every question.', attribution: 'Asha', status: 'DRAFT' };
+    open('testimonials', 't-1');
+    const scope = await form();
+    expect(within(scope).queryByLabelText('SEO title')).toBeNull();
+    const note = within(scope).getByTestId('testimonial-seo-note');
+    expect(within(note).getByRole('link', { name: 'Website Builder › Testimonials' })).toHaveAttribute('href', '/seo?key=testimonials-listing');
+    await userEvent.selectOptions(input(scope, 'Country (optional)'), 'country-1');
+    await userEvent.type(input(scope, 'Role or sub-line (optional)'), 'MEng, University of Tokyo');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toMatchObject({ countryId: 'country-1', attributionNote: 'MEng, University of Tokyo' });
+    expect('seo' in sent[0].body).toBe(false);
+  });
+});
+
