@@ -1,11 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
+import { ConsultantCompareSync } from '@/components/study-abroad/ConsultantCompare';
 import { RecordCompare, type CompareRow } from '@/components/study-abroad/RecordCompare';
+import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
+import { counsellingHref } from '@/lib/counselling-link';
+import { liveLocationLinks } from '@/lib/country-consultant-list';
 import { formatDate } from '@/lib/format';
 import { phaseCompare, phaseComparisonOptions } from '@/lib/phase1';
 import { COMPARE_LIMIT, readCompareSlugs } from '@/lib/record-compare';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import '../../consultants-zip.css';
 
 /**
  * Consultants side by side, in the approved design: the destinations,
@@ -64,7 +69,7 @@ export default async function CompareConsultants({
     {
       label: 'Offices',
       cells: cell((row) => {
-        const offices = (Array.isArray(row.locations) ? (row.locations as Dict[]) : [])
+        const offices = liveLocationLinks(row.locations)
           .map((entry) => {
             const location = (entry.location ?? {}) as Dict;
             const name = text(location.name);
@@ -92,52 +97,80 @@ export default async function CompareConsultants({
     },
     {
       label: 'Website',
-      cells: cell((row) =>
-        text(row.websiteUrl) ? (
-          <a href={String(row.websiteUrl)} rel="nofollow noopener" target="_blank">
-            {String(row.websiteUrl).replace(/^https?:\/\//, '')}
+      /* Linked only when it is an absolute web address; a bare "www.…"
+         would be a link to a page of our own that does not exist. */
+      cells: cell((row) => {
+        const raw = text(row.websiteUrl);
+        const website = externalHttpUrl(raw);
+        return website ? (
+          <a href={website} rel="nofollow noopener" target="_blank">
+            {displayUrl(website)}
           </a>
-        ) : null,
-      ),
+        ) : raw ? (
+          displayUrl(raw)
+        ) : null;
+      }),
     },
     { label: 'In a sentence', cells: cell((row) => text(row.shortDescription)) },
     {
       label: 'Profile',
       cells: cell((row) => <Link href={`/study-abroad-consultants/${row.slug}`}>Open the profile</Link>),
     },
+    {
+      /* The design's last row: guidance about each consultant, asked from
+         its own profile, so the request says which one the reader meant. */
+      label: 'Next step',
+      cells: cell((row) => (
+        <Link
+          className="btn btn--sm"
+          href={counsellingHref({ source: 'general', from: `/study-abroad-consultants/${String(row.slug)}` })}
+        >
+          Get guidance{' '}
+          <span className="btn__arrow" aria-hidden="true">
+            &rarr;
+          </span>
+        </Link>
+      )),
+    },
   ];
 
   return (
-    <RecordCompare
-      kind="consultants"
-      max={COMPARE_LIMIT}
-      crumbs={[
-        { label: 'Home', href: '/' },
-        { label: 'Consultants', href: '/study-abroad-consultants' },
-        { label: 'Compare' },
-      ]}
-      eyebrow="Compare consultants"
-      title="Compare study abroad consultants"
-      lead="Put consultants side by side on destinations, services, languages, offices and verification. Paid placement plays no part, and nothing here is a rating."
-      noun={['consultant', 'consultants']}
-      columns={items.map((row) => ({
-        slug: String(row.slug),
-        name: String(row.name),
-        meta: list(names(row.countries, 'country').slice(0, 3)),
-        href: `/study-abroad-consultants/${row.slug}`,
-      }))}
-      rows={rows}
-      options={options}
-      selected={requested}
-      invalid={invalid}
-      unavailable={result === null}
-      browse={{ href: '/study-abroad-consultants', label: 'Browse consultants' }}
-      note="Consultants are independent providers. Universta lists what each publishes on its own record and endorses none of them."
-      counselling={{
-        heading: 'Want a second opinion first?',
-        body: 'A free Universta counselling session can sanity-check your shortlist before you engage a consultant.',
-        href: '/counselling?source=general&from=%2Fcompare%2Fconsultants',
-      }}
-    />
+    <>
+      {/* The tray on the consultants pages shows what was just compared. */}
+      <ConsultantCompareSync
+        items={items.map((row) => ({ slug: String(row.slug), name: String(row.name) }))}
+      />
+      <RecordCompare
+        kind="consultants"
+        max={COMPARE_LIMIT}
+        crumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Consultants', href: '/study-abroad-consultants' },
+          { label: 'Compare' },
+        ]}
+        eyebrow="Compare consultants"
+        title="Compare study abroad consultants"
+        lead="Put consultants side by side on destinations, services, languages, offices and verification. Paid placement plays no part, and nothing here is a rating."
+        noun={['consultant', 'consultants']}
+        columns={items.map((row) => ({
+          slug: String(row.slug),
+          name: String(row.name),
+          meta: list(names(row.countries, 'country').slice(0, 3)),
+          href: `/study-abroad-consultants/${row.slug}`,
+        }))}
+        rows={rows}
+        options={options}
+        selected={requested}
+        invalid={invalid}
+        unavailable={result === null}
+        browse={{ href: '/study-abroad-consultants', label: 'Browse consultants' }}
+        note="Consultants are independent providers. Universta lists what each publishes on its own record and endorses none of them."
+        counselling={{
+          heading: 'Want a second opinion first?',
+          body: 'A free Universta counselling session can sanity-check your shortlist before you engage a consultant.',
+          href: '/counselling?source=general&from=%2Fcompare%2Fconsultants',
+        }}
+      />
+    </>
   );
 }

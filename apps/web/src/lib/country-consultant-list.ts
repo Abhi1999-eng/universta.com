@@ -39,6 +39,9 @@ export type CountryConsultantRow = {
   languages: Array<{ code: string; name: string }>;
   /** Every destination the consultant lists. */
   destinations: Array<{ slug: string; name: string }>;
+  /** The consultant's own image, drawn as a round logo where a page asks
+   *  for it. Absent from an API that does not send it. */
+  logo?: string | null;
 };
 
 const text = (value: unknown): string | null =>
@@ -51,6 +54,57 @@ const unique = <T,>(items: T[], key: (item: T) => string) =>
   items.filter(
     (item, index) => items.findIndex((other) => key(other) === key(item)) === index,
   );
+
+/**
+ * What a service or a language is grouped by: its name, trimmed and in
+ * lower case. The admin writes a service's slug and a language's code for
+ * itself -- "visa-documentation-1" beside the seeded "visa-documentation",
+ * an empty code beside "en" -- so neither can be trusted to say that two
+ * consultants offer the same thing. The name the reader sees can.
+ */
+export function nameKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Whether an office's location is still live. The API is to send only
+ * active ones, but an older one sent every link, so a location an admin
+ * switched off kept its city in the filters and its office on the profile,
+ * linking to a page that answers 404. A row that does not say its status
+ * is taken as live.
+ */
+export function isLiveLocation(location: unknown): boolean {
+  if (!location || typeof location !== 'object') return false;
+  const row = location as Record<string, unknown>;
+  if (row.status != null && row.status !== 'ACTIVE') return false;
+  return !row.deletedAt;
+}
+
+/** A consultant record's office links whose location is live. */
+export function liveLocationLinks(value: unknown): Array<Record<string, unknown>> {
+  return records(value).filter((link) => isLiveLocation(link.location));
+}
+
+/** A service's address in a link, from its name alone, as the catalogue
+ *  writes it: "Visa documentation" is `visa-documentation`. */
+export function serviceSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
+ * The address of a record's featured image, when it has one an <img> may
+ * load: the API's `/media/...` path, which this site serves, or an
+ * absolute web address. Anything else is no image.
+ */
+export function consultantLogo(record: unknown): string | null {
+  const media = (record as { featuredMedia?: unknown } | null)?.featuredMedia;
+  const url = text((media as { publicUrl?: unknown } | null | undefined)?.publicUrl);
+  if (!url) return null;
+  return /^\/(?!\/)/.test(url) || /^https?:\/\/[^/]/i.test(url) ? url : null;
+}
 
 /** One list-endpoint row, or null when it has no page to link to. */
 export function toConsultantRow(record: unknown): CountryConsultantRow | null {
@@ -71,7 +125,7 @@ export function toConsultantRow(record: unknown): CountryConsultantRow | null {
         ? new Date(verifiedAt).getTime() || null
         : null,
     cities: unique(
-      records(row.locations).flatMap((link) => {
+      liveLocationLinks(row.locations).flatMap((link) => {
         const location = link.location as Record<string, unknown> | undefined;
         const city = text(location?.city);
         return city ? [city] : [];
@@ -81,10 +135,10 @@ export function toConsultantRow(record: unknown): CountryConsultantRow | null {
     services: unique(
       records(row.services).flatMap((service) => {
         const serviceName = text(service.name);
-        const serviceSlug = text(service.slug);
-        return serviceName && serviceSlug ? [{ slug: serviceSlug, name: serviceName }] : [];
+        const slug = text(service.slug) ?? (serviceName ? serviceSlug(serviceName) : null);
+        return serviceName && slug ? [{ slug, name: serviceName }] : [];
       }),
-      (service) => service.slug,
+      (service) => nameKey(service.name),
     ),
     languages: unique(
       records(row.languages).flatMap((language) => {
@@ -92,7 +146,7 @@ export function toConsultantRow(record: unknown): CountryConsultantRow | null {
         const code = text(language.code) ?? languageName;
         return languageName && code ? [{ code, name: languageName }] : [];
       }),
-      (language) => language.code.toLowerCase(),
+      (language) => nameKey(language.name),
     ),
     destinations: unique(
       records(row.countries).flatMap((link) => {
@@ -103,6 +157,7 @@ export function toConsultantRow(record: unknown): CountryConsultantRow | null {
       }),
       (country) => country.slug,
     ),
+    logo: consultantLogo(row),
   };
 }
 
@@ -201,24 +256,71 @@ export type ConsultantFilterOption = { value: string; label: string; count: numb
 const byCount = (a: ConsultantFilterOption, b: ConsultantFilterOption) =>
   b.count - a.count || a.label.localeCompare(b.label);
 
+/** Counts each value once per consultant, grouped by `key` -- the value
+ *  itself unless a pick says otherwise. The first label and value seen for
+ *  a key stand for it. */
 function tally(
   rows: readonly CountryConsultantRow[],
-  pick: (row: CountryConsultantRow) => Array<{ value: string; label: string }>,
+  pick: (row: CountryConsultantRow) => Array<{ value: string; label: string; key?: string }>,
 ) {
   const counts = new Map<string, ConsultantFilterOption>();
   for (const row of rows) {
-    for (const { value, label } of pick(row)) {
-      const entry = counts.get(value);
+    const seen = new Set<string>();
+    for (const { value, label, key = value } of pick(row)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const entry = counts.get(key);
       if (entry) entry.count += 1;
-      else counts.set(value, { value, label, count: 1 });
+      else counts.set(key, { value, label, count: 1 });
     }
   }
   return [...counts.values()].sort(byCount);
 }
 
+/** A language's value in a link: its code where any consultant recorded
+ *  one, otherwise its name. Read over every row, so a code one record left
+ *  empty is taken from another that has it. */
+function languageValues(rows: readonly CountryConsultantRow[]) {
+  const values = new Map<string, string>();
+  for (const row of rows)
+    for (const language of row.languages) {
+      const key = nameKey(language.name);
+      const code = language.code.toLowerCase();
+      if (code !== key && !values.has(key)) values.set(key, code);
+    }
+  return (name: string) => values.get(nameKey(name)) ?? nameKey(name);
+}
+
+/** The service names a `?service=` list asks for. A value is the slug of a
+ *  service's name or the slug a record holds -- an old link to
+ *  `visa-documentation-1` still finds "Visa documentation" -- and either
+ *  way every consultant offering a service of that name is included. */
+function wantedServices(rows: readonly CountryConsultantRow[], values: readonly string[]) {
+  const wanted = new Set<string>();
+  if (!values.length) return wanted;
+  for (const row of rows)
+    for (const service of row.services)
+      if (values.includes(service.slug) || values.includes(serviceSlug(service.name)))
+        wanted.add(nameKey(service.name));
+  return wanted;
+}
+
+/** The language names a `?language=` list asks for, by code or by name. */
+function wantedLanguages(rows: readonly CountryConsultantRow[], values: readonly string[]) {
+  const wanted = new Set<string>();
+  if (!values.length) return wanted;
+  const asked = values.map((value) => value.toLowerCase());
+  for (const row of rows)
+    for (const language of row.languages)
+      if (asked.includes(language.code.toLowerCase()) || asked.includes(nameKey(language.name)))
+        wanted.add(nameKey(language.name));
+  return wanted;
+}
+
 /** What the list can be narrowed by, counted over the destination's
  * consultants, so no option is offered that would empty the list. */
 export function consultantOptions(rows: readonly CountryConsultantRow[]) {
+  const languageValue = languageValues(rows);
   return {
     destinations: tally(rows, (row) =>
       row.destinations.map((destination) => ({ value: destination.slug, label: destination.name })),
@@ -226,16 +328,46 @@ export function consultantOptions(rows: readonly CountryConsultantRow[]) {
     cities: tally(rows, (row) =>
       row.cities.map((city) => ({ value: cityKey(city), label: city })),
     ),
+    /* One option per name, however many slugs the records spread it
+       over: "Visa documentation" once, listed by every consultant who
+       offers it. */
     services: tally(rows, (row) =>
-      row.services.map((service) => ({ value: service.slug, label: service.name })),
+      row.services.map((service) => ({
+        key: nameKey(service.name),
+        value: serviceSlug(service.name) || service.slug,
+        label: service.name,
+      })),
     ),
     languages: tally(rows, (row) =>
       row.languages.map((language) => ({
-        value: language.code.toLowerCase(),
+        key: nameKey(language.name),
+        value: languageValue(language.name),
         label: language.name,
       })),
     ),
     verified: rows.filter((row) => row.verified).length,
+  };
+}
+
+/**
+ * The address's services and languages as the filters' own values, so an
+ * old link -- a slug the admin suffixed, a language by name where the list
+ * uses its code -- ticks the box it means. A value no consultant here
+ * carries is dropped rather than allowed to empty the list.
+ */
+export function canonicalConsultantFilters(
+  rows: readonly CountryConsultantRow[],
+  state: Pick<ConsultantListState, 'services' | 'languages'>,
+) {
+  const options = consultantOptions(rows);
+  const pick = (list: ConsultantFilterOption[], wanted: Set<string>) => [
+    ...new Set(
+      list.filter((option) => wanted.has(nameKey(option.label))).map((option) => option.value),
+    ),
+  ];
+  return {
+    services: pick(options.services, wantedServices(rows, state.services)),
+    languages: pick(options.languages, wantedLanguages(rows, state.languages)),
   };
 }
 
@@ -246,9 +378,16 @@ export function narrowsConsultants(
   return options.length > 1 || (options.length === 1 && options[0]!.count < total);
 }
 
-/** The words a consultant is found by: the name, the cities and the services. */
+/** The words a consultant is found by: the name, the cities, the services
+ *  and the destinations it lists -- "Japan" finds every consultant the
+ *  Destination filter counts under Japan. */
 function searchText(row: CountryConsultantRow) {
-  return [row.name, ...row.cities, ...row.services.map((service) => service.name)].join(' ');
+  return [
+    row.name,
+    ...row.cities,
+    ...row.services.map((service) => service.name),
+    ...row.destinations.map((destination) => destination.name),
+  ].join(' ');
 }
 
 /**
@@ -259,6 +398,8 @@ export function filterConsultants(
   rows: readonly CountryConsultantRow[],
   state: ConsultantListState,
 ): CountryConsultantRow[] {
+  const services = wantedServices(rows, state.services);
+  const languages = wantedLanguages(rows, state.languages);
   const shown = rows.filter((row) => {
     if (!matchesSubject(searchText(row), state.q)) return false;
     if (
@@ -273,16 +414,12 @@ export function filterConsultants(
       return false;
     if (
       state.services.length &&
-      !row.services.some((service) => state.services.includes(service.slug))
+      !row.services.some((service) => services.has(nameKey(service.name)))
     )
       return false;
     if (
       state.languages.length &&
-      !row.languages.some(
-        (language) =>
-          state.languages.includes(language.code.toLowerCase()) ||
-          state.languages.includes(language.name.toLowerCase()),
-      )
+      !row.languages.some((language) => languages.has(nameKey(language.name)))
     )
       return false;
     if (state.verified && !row.verified) return false;
@@ -306,4 +443,41 @@ export function activeConsultantFilters(state: ConsultantListState) {
     state.languages.length +
     (state.verified ? 1 : 0)
   );
+}
+
+export type ConsultantChip = {
+  key: string;
+  label: string;
+  /** The list's state with this one choice undone. */
+  next: ConsultantListState;
+};
+
+/**
+ * The choices in force, one chip each, above the results: the search, then
+ * each destination, city, service and language, then "Verified". Each
+ * names what it removes by the label its filter shows.
+ */
+export function consultantChips(
+  state: ConsultantListState,
+  options: Pick<ReturnType<typeof consultantOptions>, 'destinations' | 'cities' | 'services' | 'languages'>,
+  names: { destinations?: ReadonlyMap<string, string> } = {},
+): ConsultantChip[] {
+  const chips: ConsultantChip[] = [];
+  const reset = { page: 1 };
+  if (state.q) chips.push({ key: 'q', label: `\u201c${state.q}\u201d`, next: { ...state, ...reset, q: '' } });
+  const label = (list: ConsultantFilterOption[], value: string) =>
+    list.find((option) => option.value === value)?.label ?? value.replace(/-/g, ' ');
+  for (const key of ['destinations', 'cities', 'services', 'languages'] as const)
+    for (const value of state[key])
+      chips.push({
+        key: `${key}:${value}`,
+        label:
+          key === 'destinations' && names.destinations?.has(value)
+            ? names.destinations.get(value)!
+            : label(options[key], value),
+        next: { ...state, ...reset, [key]: state[key].filter((entry) => entry !== value) },
+      });
+  if (state.verified)
+    chips.push({ key: 'verified', label: 'Verified by Universta', next: { ...state, ...reset, verified: false } });
+  return chips;
 }

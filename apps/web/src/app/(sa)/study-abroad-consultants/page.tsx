@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { ConsultantChoose } from '@/components/study-abroad/ConsultantChoose';
+import { ConsultantTrust } from '@/components/study-abroad/ConsultantTrust';
 import { CountryConsultantIndex } from '@/components/study-abroad/CountryConsultantIndex';
-import { CountryListSearch } from '@/components/study-abroad/CountryListSearch';
+import { ConsultantSearch } from '@/components/study-abroad/ConsultantSearch';
 import { Crumbs } from '@/components/study-abroad/Crumbs';
 import { ConnectBand, MatchBand } from '@/components/study-abroad/DiscoveryBands';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
@@ -14,11 +16,13 @@ import {
   isNarrowedConsultantList,
   toConsultantRows,
 } from '@/lib/country-consultant-list';
+import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
 import { getListingPageContent } from '@/lib/listing-page-content';
 import { phaseListAll } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 import { getDestinations } from '@/lib/study-abroad';
+import '../consultants-zip.css';
 
 /**
  * The worldwide consultants directory, as the client's zip draws it: a
@@ -65,16 +69,6 @@ const NEED_NO = [
   'You are comfortable reading official visa guidance and preparing documents yourself',
   'Your university offers its own admissions advice for international applicants',
 ];
-const CHOOSE = [
-  ['Check destination expertise', 'Ask how many students they have supported for this destination recently and at which level.'],
-  ['Check university relationships', 'Ask which universities they represent or work with, and ask for evidence. A recommendation is not a partnership.'],
-  ['Understand service fees', 'Ask for all fees in writing, including whether any university pays them a commission.'],
-  ['Ask what is included', 'Confirm exactly which services are covered, from shortlisting to visa documents.'],
-  ['Check credentials where they apply', 'Immigration advice is regulated in many countries. Check any claimed authorization on the official register.'],
-  ['Avoid guarantees', 'No consultant can guarantee admission, a visa, a scholarship, a job or permanent residence. Treat guarantees as a warning sign.'],
-  ['Review written agreements', 'Read the agreement before paying, including refund terms and what happens if an application is unsuccessful.'],
-  ['Verify through official sources', 'Confirm requirements, deadlines and fees with the university and the official government website.'],
-] as const;
 const FAQS = [
   ['Does Universta charge consultants for placement here?', 'No. The directory lists published consultant records in the catalogue order; there is no paid placement and no ranking.'],
   ['What does the “verified” badge mean?', 'It means an administrator has verified the record against a source and dated that check. An unverified profile is still published, just not yet checked.'],
@@ -93,7 +87,24 @@ export default async function ConsultantsPage() {
   const destinations = [...(directory?.available ?? []), ...(directory?.comingSoon ?? [])];
   const guideOf = new Map(destinations.flatMap((entry) => (entry.slug ? [[entry.slug, entry] as const] : [])));
   const guides = (directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : []));
+  /* The destinations the hero's select offers, A to Z. */
+  const published = (directory?.available ?? [])
+    .flatMap((entry) => (entry.slug ? [{ slug: entry.slug, name: entry.name }] : []))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const n = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
+  /* "Consultants by study destination": every destination with a guide,
+     and any other a consultant lists. One with consultants opens them;
+     one with none yet opens its guide, marked "Guide", rather than an
+     empty list. */
+  const listed = new Map(options.destinations.map((entry) => [entry.value, entry] as const));
+  const tiles = [
+    ...(directory?.available ?? []).flatMap((entry) =>
+      entry.slug ? [{ slug: entry.slug, name: entry.name, count: listed.get(entry.slug)?.count ?? 0 }] : [],
+    ),
+    ...options.destinations
+      .filter((entry) => !guides.includes(entry.value))
+      .map((entry) => ({ slug: entry.value, name: entry.label, count: entry.count })),
+  ].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return (
     <>
@@ -121,9 +132,7 @@ export default async function ConsultantsPage() {
           <p className="hero__sub">
             {managed.lede ?? 'Explore consultants by destination, city and services — then connect through Universta.'}
           </p>
-          <div className="bigsearch__wrap" style={{ marginTop: 22 }}>
-            <CountryListSearch placeholder="Consultant, city or service" label="Search consultants" />
-          </div>
+          <ConsultantSearch destinations={published} placeholder="Consultant, country, city or service" />
           <div className="btn-row" style={{ marginTop: 18 }}>
             <button className="btn btn--accent" type="button" data-open-assessment data-intent="consultants-index">
               Help Me Find the Right Consultant{' '}
@@ -151,7 +160,16 @@ export default async function ConsultantsPage() {
           </div>
         </section>
       ) : (
-        <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" guides={guides} byDestination />
+        <CountryConsultantIndex
+          rows={rows}
+          countrySlug=""
+          where="any destination"
+          guides={guides}
+          byDestination
+          compare
+          logos
+          destinationNames={published}
+        />
       )}
 
       <section className="sec sec--paper" id="need">
@@ -204,25 +222,27 @@ export default async function ConsultantsPage() {
         </section>
       ) : null}
 
-      {options.destinations.length ? (
+      {tiles.length ? (
         <section className="sec sec--paper" id="destinations">
           <div className="wrap">
             <SectionHead
               eyebrow="By destination"
               title="Consultants by study destination"
-              lead="Each destination page lists the consultants who support it, where they are and what they help with."
+              lead="Each destination page lists the consultants who support it, where they are and what they help with. Where none is listed yet, the destination's guide is the place to start."
             />
             <div className="destgrid">
-              {options.destinations.map((entry) => {
-                const guide = guideOf.get(entry.value);
-                const href = guide?.isAvailable
-                  ? countryConsultantsHref(entry.value)
-                  : `${consultantListHref(PATH, { destinations: [entry.value] })}#consultants`;
+              {tiles.map((entry) => {
+                const guide = guideOf.get(entry.slug);
+                const href = entry.count
+                  ? guide?.isAvailable
+                    ? countryConsultantsHref(entry.slug)
+                    : `${consultantListHref(PATH, { destinations: [entry.slug] })}#consultants`
+                  : `/study-abroad/${entry.slug}`;
                 return (
-                  <Link className="destgrid__item" href={href} key={entry.value}>
+                  <Link className="destgrid__item" href={href} key={entry.slug}>
                     <FlagMark iso2Code={guide?.iso2Code ?? null} bands={guide?.bands ?? null} />
-                    <span className="destgrid__name">Study in {entry.label}</span>
-                    <span className="destgrid__n">{formatNumber(entry.count)} listed</span>
+                    <span className="destgrid__name">Study in {entry.name}</span>
+                    <span className="destgrid__n">{entry.count ? `${formatNumber(entry.count)} listed` : 'Guide'}</span>
                   </Link>
                 );
               })}
@@ -234,9 +254,11 @@ export default async function ConsultantsPage() {
       {options.cities.length ? (
         <section className="sec sec--white sec--tight" id="cities">
           <div className="wrap">
+            {/* The design's smaller head, its eyebrow ruled: at full size
+                the line wrapped into a tall block over half the page. */}
             <div className="h-head">
-              <p className="eyebrow eyebrow--plain">By city</p>
-              <h2 className="sec-title">Study abroad consultants near you</h2>
+              <p className="eyebrow">By city</p>
+              <h2 className="sec-title sec-title--sm">Study abroad consultants near you</h2>
             </div>
             <div className="citychips">
               {options.cities.map((city) => (
@@ -261,15 +283,8 @@ export default async function ConsultantsPage() {
             title="How to choose a consultant"
             lead="Official guidance in several destinations warns students about unreliable agents and guarantees. These checks apply wherever you plan to study."
           />
-          <ol className="choosegrid">
-            {CHOOSE.map(([title, body], index) => (
-              <li className="choosegrid__item" key={title}>
-                <span className="choosegrid__n">{String(index + 1).padStart(2, '0')}</span>
-                <h3 className="choosegrid__t">{title}</h3>
-                <p className="choosegrid__d">{body}</p>
-              </li>
-            ))}
-          </ol>
+          <ConsultantChoose />
+          <ConsultantTrust className="trustbox--below" />
         </div>
       </section>
 
@@ -302,7 +317,7 @@ export default async function ConsultantsPage() {
         heading="Not sure which consultant is right for you?"
         lead="Tell Universta what you're planning to study and we'll help you explore relevant options."
         href="/counselling"
-        talkHref="/counselling"
+        talkHref={counsellingHref({ source: 'general', from: PATH })}
         assessment={{
           label: 'Find My Consultant Options',
           intent: 'consultants-index',

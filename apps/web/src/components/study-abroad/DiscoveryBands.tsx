@@ -95,6 +95,8 @@ export type RelatedGroup = {
   /** How many there are in all, when the group shows only some of them.
    *  Counted from the items, a group of nine courses cut to six said 6. */
   total?: number;
+  /** A quiet line under the list, saying how it was chosen. */
+  note?: string | null;
 };
 
 /** "Explore next" — the closing band of cross-links. */
@@ -143,6 +145,7 @@ export function ConnectBand({
                       </li>
                     ))}
                   </ul>
+                  {group.note ? <p className="h-relgroup__note">{group.note}</p> : null}
                 </div>
               ))}
             </div>
