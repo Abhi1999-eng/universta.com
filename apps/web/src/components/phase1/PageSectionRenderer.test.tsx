@@ -52,6 +52,8 @@ describe('a Website Builder Testimonials section (T-M2-web)', () => {
   it('draws the same card in the older renderer, with no empty <cite>', async () => {
     const doc = parse(renderToStaticMarkup(await PageSectionRenderer({ section: section('TESTIMONIALS') })));
     expect(doc.querySelectorAll('figure.quote')).toHaveLength(2);
+    /* The preview has no study-abroad styles: the cards keep the directory grid. */
+    expect(doc.querySelectorAll('.catalog-card-grid > figure.quote')).toHaveLength(2);
     expect(doc.querySelectorAll('cite')).toHaveLength(0);
     expect(doc.querySelector('.quote__n')?.textContent).toBe('Aarti Nair');
   });

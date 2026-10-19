@@ -177,10 +177,12 @@ async function RelatedLinks({ items }: { items: SectionRow[] }) {
 function Directory({ items }: { items: DirectoryItem[] }) {
   if (!items.length) return null;
   /* Testimonials are the zip's quote cards, with the student's name and
-     role line, never an empty <cite>. */
+     role line, never an empty <cite>. The preview this renders in has no
+     study-abroad styles, so the cards keep the grid the other directory
+     cards sit in there. */
   if (items.every((item) => item.quote)) {
     return (
-      <div className="quotes">
+      <div className="catalog-card-grid quotes">
         {items.map((item, index) => (
           <QuoteCard
             className="catalog-card"
