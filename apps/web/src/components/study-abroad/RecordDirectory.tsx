@@ -4,6 +4,7 @@ import { richTextToPlainText } from '@/components/phase1/RichText';
 import { Crumbs } from './Crumbs';
 import { PlanBand } from './PlanBand';
 import { QuoteByline, QuoteCard, type QuoteImage } from './QuoteCard';
+import { formatIn } from '@/lib/record-dates';
 import { plainExcerpt, plainText } from '@/lib/record-text';
 import { universityHref } from '@/lib/university-links';
 
@@ -129,12 +130,10 @@ export function humanise(value: unknown) {
   return raw ? raw.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : null;
 }
 
+/** "20 Nov 2026"; in a record's own zone when given, and never a crash on a
+ *  zone an editor mistyped -- the site's zone answers instead. */
 export function day(value: unknown, timeZone?: string | null) {
-  const raw = text(value);
-  if (!raw) return null;
-  const at = new Date(raw);
-  if (Number.isNaN(at.getTime())) return null;
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', ...(timeZone ? { timeZone } : {}) }).format(at);
+  return formatIn(value, { dateStyle: 'medium' }, timeZone);
 }
 
 export const name = (value: unknown) =>
@@ -156,26 +155,6 @@ export function JobCard({ row }: { row: DirectoryRow }) {
       <span className="h-card__m">{facts(where, closes ? `Closes ${closes}` : null)}</span>
       <span className="linkcta">
         View role <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
-      </span>
-    </Link>
-  );
-}
-
-export function EventCard({ row }: { row: DirectoryRow }) {
-  const href = `/events/${encodeURIComponent(String(row.slug ?? row.id))}`;
-  const zone = text(row.timezone);
-  const when = day(row.startsAt, zone);
-  const where = text(row.venue) ?? name(row.city) ?? (text(row.onlineUrl) ? 'Online' : null);
-  return (
-    <Link className="h-card" href={href} key={row.id}>
-      <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
-        {facts(when, humanise(row.eventType))}
-      </span>
-      <strong className="h-card__t">{text(row.title)}</strong>
-      {plain(row.summary ?? row.description) ? <span className="h-card__d">{plain(row.summary ?? row.description)}</span> : null}
-      {where ? <span className="h-card__m">{where}</span> : null}
-      <span className="linkcta">
-        View event <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
       </span>
     </Link>
   );
