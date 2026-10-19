@@ -84,7 +84,7 @@ const ENTRIES: SeoEntry[] = [
   {
     label: "Testimonials",
     href: "/phase1/testimonials",
-    note: "Edit a testimonial, use the SEO section of the structured editor.",
+    note: "A testimonial has no page of its own, so no SEO of its own. The /testimonials listing’s title and description are under Static / listing pages below.",
   },
   {
     label: "Editorial pages",

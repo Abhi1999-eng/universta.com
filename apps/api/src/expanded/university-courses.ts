@@ -107,22 +107,37 @@ export type OfferingLike = {
     intake?: IntakeLike | null;
   }>;
   _count?: { scholarships?: number };
+  /** Whether the course is ticked "Scholarship available" for the country
+   * this programme is taught in -- the tick a course guide's "Scholarships"
+   * tag reads. Only the programme finder reads it. */
+  scholarshipAvailable?: boolean | null;
 };
 
 export type Query = Record<string, string | string[] | undefined>;
 
 export type CourseSort =
-  'relevance' | 'name' | 'fee' | 'deadline' | 'duration' | 'newest';
+  | 'relevance'
+  | 'name'
+  | 'fee'
+  | 'fee-high'
+  | 'deadline'
+  | 'duration'
+  | 'newest';
 /* "Newest" is the course list's "Recently added", kept because the course
-   finder offered it before it listed programmes. */
+   finder offered it before it listed programmes. "fee-high" is the
+   design's "Highest tuition", beside "Lowest tuition". */
 export const COURSE_SORTS: readonly CourseSort[] = [
   'relevance',
   'name',
   'fee',
+  'fee-high',
   'deadline',
   'duration',
   'newest',
 ];
+
+/** The orders that compare fees, which only one currency can answer. */
+export const FEE_SORTS: readonly CourseSort[] = ['fee', 'fee-high'];
 
 /**
  * The reference's three duration choices, by the values its URLs carry:
@@ -381,7 +396,7 @@ export function matchesCourseQuery(row: OfferingLike, query: CourseQuery) {
     return false;
   if (query.campuses.length && !query.campuses.includes(row.campus?.slug ?? ''))
     return false;
-  if (query.scholarship && !(row._count?.scholarships ?? 0)) return false;
+  if (query.scholarship && !hasScholarship(row)) return false;
   /* The tuition bounds read as they always have: a course with no stated
      fee is not excluded by a bound it cannot be measured against. */
   if (query.tuitionMin !== null) {
@@ -395,6 +410,20 @@ export function matchesCourseQuery(row: OfferingLike, query: CourseQuery) {
   return true;
 }
 
+/**
+ * Whether a programme has funding to show: a live award recorded against
+ * it, or the "Scholarship available" tick on its course for the country it
+ * is taught in. The second is what a course guide's "Scholarships" tag
+ * reads, so the guides and the programmes no longer disagree about the
+ * same course -- every guide tagged while the programmes' filter opened an
+ * empty list.
+ */
+export function hasScholarship(row: OfferingLike) {
+  return (
+    (row._count?.scholarships ?? 0) > 0 || row.scholarshipAvailable === true
+  );
+}
+
 const byName = (a: OfferingLike, b: OfferingLike) =>
   a.name.localeCompare(b.name);
 
@@ -404,6 +433,13 @@ function nullsLast(a: number | null, b: number | null) {
   if (a === null) return 1;
   if (b === null) return -1;
   return a - b;
+}
+
+/** Highest first, and unmeasured still last: a missing fee is not a high
+ * one either. */
+function highestFirst(a: number | null, b: number | null) {
+  if (a === null || b === null) return nullsLast(a, b);
+  return b - a;
 }
 
 function addedAt(row: OfferingLike): number | null {
@@ -437,6 +473,15 @@ export function sortOfferings<T extends OfferingLike>(
           nullsLast(
             number(a.tuitionMin) ?? number(a.tuitionMax),
             number(b.tuitionMin) ?? number(b.tuitionMax),
+          ) || byName(a, b),
+      );
+    /* By the top of each range: the most a course may cost. */
+    case 'fee-high':
+      return sorted.sort(
+        (a, b) =>
+          highestFirst(
+            number(a.tuitionMax) ?? number(a.tuitionMin),
+            number(b.tuitionMax) ?? number(b.tuitionMin),
           ) || byName(a, b),
       );
     case 'deadline':
@@ -659,4 +704,49 @@ export function relatedOfferings<T extends OfferingLike>(
     out.push(row);
   }
   return out;
+}
+
+/**
+ * The public shape of a picture: what the success stories already return,
+ * and what the contract calls M. Active, undeleted assets only.
+ */
+export type PublicMedia = {
+  id: string;
+  publicUrl: string;
+  altText: string | null;
+  title: string | null;
+};
+
+/**
+ * The picture an editor chose for each course, by its `featuredMediaId`.
+ *
+ * The offering keeps the id and has no relation to the asset, so its
+ * pages were sent the bare id and drew nothing. The assets are read once
+ * for a whole page of rows; a row whose asset is missing, archived or
+ * deleted gets `featuredMedia: null`, as one without a picture does.
+ */
+export function offeringMediaIds(
+  rows: ReadonlyArray<{ featuredMediaId?: string | null }>,
+): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row.featuredMediaId)
+        .filter((id): id is string => typeof id === 'string' && id !== ''),
+    ),
+  ];
+}
+
+export function withOfferingMedia<
+  T extends { featuredMediaId?: string | null },
+>(
+  rows: T[],
+  assets: ReadonlyMap<string, PublicMedia>,
+): Array<T & { featuredMedia: PublicMedia | null }> {
+  return rows.map((row) => ({
+    ...row,
+    featuredMedia: row.featuredMediaId
+      ? (assets.get(row.featuredMediaId) ?? null)
+      : null,
+  }));
 }

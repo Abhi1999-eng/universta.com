@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeConsultantFilters,
+  canonicalConsultantFilters,
+  consultantChips,
   consultantListHref,
+  consultantLogo,
   consultantOptions,
   countryConsultantsHref,
   filterConsultants,
+  isLiveLocation,
   isNarrowedConsultantList,
   narrowsConsultants,
   readConsultantState,
@@ -111,6 +115,22 @@ describe('a destination\'s consultants page', () => {
     expect(toConsultantRow(null)).toBeNull();
   });
 
+  it('leaves out an office whose location is switched off or archived', () => {
+    const row = toConsultantRow(
+      record({
+        locations: [
+          { location: { city: 'Pune', status: 'ACTIVE', deletedAt: null } },
+          { location: { city: 'Leeds', status: 'INACTIVE', deletedAt: null } },
+          { location: { city: 'Delft', status: 'ACTIVE', deletedAt: '2026-10-01T00:00:00Z' } },
+          /* An API that does not say is taken at its word. */
+          { location: { city: 'Adelaide' } },
+        ],
+      }),
+    );
+    expect(row?.cities).toEqual(['Pune', 'Adelaide']);
+    expect(isLiveLocation(null)).toBe(false);
+  });
+
   it('dates a verification only when the record is verified', () => {
     expect(rows[2]?.verified).toBe(false);
     expect(rows[2]?.verifiedAt).toBeNull();
@@ -193,6 +213,68 @@ describe('what the consultants list can be narrowed by', () => {
   });
 });
 
+describe('one service or language, whatever slug or code a record gave it', () => {
+  /* The admin used to save "Visa documentation" as `visa-documentation-1`
+     and "English" with no code; the seeds wrote `visa-documentation` and
+     `en`. Both are the same thing to a reader. */
+  const mixed = toConsultantRows([
+    record({
+      id: 'm1',
+      name: 'Seeded Partners',
+      slug: 'seeded',
+      services: [{ name: 'Visa documentation', slug: 'visa-documentation' }],
+      languages: [{ name: 'English', code: 'en' }],
+    }),
+    record({
+      id: 'm2',
+      name: 'Admin Entered Advisers',
+      slug: 'admin-entered',
+      services: [
+        { name: 'Visa documentation', slug: 'visa-documentation-1' },
+        { name: ' visa  Documentation ', slug: 'visa-documentation-2' },
+      ],
+      languages: [
+        { name: 'English', code: null },
+        { name: 'english', code: null },
+      ],
+    }),
+  ]);
+
+  it('keeps one entry per name on a card', () => {
+    expect(mixed[1]!.services).toEqual([{ slug: 'visa-documentation-1', name: 'Visa documentation' }]);
+    expect(mixed[1]!.languages).toEqual([{ code: 'English', name: 'English' }]);
+  });
+
+  it('offers one option per name, counting every consultant who lists it', () => {
+    const options = consultantOptions(mixed);
+    expect(options.services).toEqual([
+      { value: 'visa-documentation', label: 'Visa documentation', count: 2 },
+    ]);
+    /* The code one record holds stands for the name everywhere. */
+    expect(options.languages).toEqual([{ value: 'en', label: 'English', count: 2 }]);
+  });
+
+  it('finds every consultant from the name\'s slug, the old suffixed one, or a language by name', () => {
+    expect(names(filterConsultants(mixed, state({ services: ['visa-documentation'] })))).toEqual([
+      'Seeded Partners',
+      'Admin Entered Advisers',
+    ]);
+    expect(filterConsultants(mixed, state({ services: ['visa-documentation-1'] }))).toHaveLength(2);
+    expect(filterConsultants(mixed, state({ languages: ['en'] }))).toHaveLength(2);
+    expect(filterConsultants(mixed, state({ languages: ['english'] }))).toHaveLength(2);
+    expect(filterConsultants(mixed, state({ services: ['nothing-like-it'] }))).toHaveLength(0);
+  });
+
+  it('reads an old link as the box it means, and drops what nobody lists', () => {
+    expect(
+      canonicalConsultantFilters(mixed, {
+        services: ['visa-documentation-1', 'atlantis'],
+        languages: ['english'],
+      }),
+    ).toEqual({ services: ['visa-documentation'], languages: ['en'] });
+  });
+});
+
 describe('filterConsultants', () => {
   it('searches the name, the cities and the services', () => {
     expect(names(filterConsultants(rows, state({ q: 'adelaide' })))).toEqual([
@@ -222,5 +304,84 @@ describe('filterConsultants', () => {
       'Lindenhall Global Admissions',
       'Ashgrove Advisers',
     ]);
+  });
+});
+
+describe('a consultant\'s logo', () => {
+  it('is the featured image\'s own path or an absolute web address', () => {
+    expect(consultantLogo({ featuredMedia: { id: 'm1', publicUrl: '/media/lindenhall.png', altText: null, title: null } })).toBe(
+      '/media/lindenhall.png',
+    );
+    expect(consultantLogo({ featuredMedia: { publicUrl: 'https://cdn.example.test/logo.png' } })).toBe(
+      'https://cdn.example.test/logo.png',
+    );
+  });
+
+  it('is nothing when the record has no image, an API leaves it out, or the address is not one an image may load', () => {
+    expect(consultantLogo({ featuredMedia: null })).toBeNull();
+    expect(consultantLogo({})).toBeNull();
+    expect(consultantLogo(null)).toBeNull();
+    expect(consultantLogo({ featuredMedia: { publicUrl: '' } })).toBeNull();
+    expect(consultantLogo({ featuredMedia: { publicUrl: '//elsewhere.example/logo.png' } })).toBeNull();
+    expect(consultantLogo({ featuredMedia: { publicUrl: 'javascript:alert(1)' } })).toBeNull();
+  });
+
+  it('rides on the card row, and is null for a record without one', () => {
+    expect(toConsultantRow(record({ featuredMedia: { publicUrl: '/media/l.png' } }))?.logo).toBe('/media/l.png');
+    expect(toConsultantRow(record())?.logo).toBeNull();
+  });
+});
+
+describe('the search finds a consultant by the destinations it lists', () => {
+  it('matches "Japan" to every consultant the Destination filter counts under Japan', () => {
+    const listed = toConsultantRows([
+      record({ id: 'j', slug: 'j', name: 'Kestrel Admissions', countries: [{ country: { name: 'Japan', slug: 'japan' } }] }),
+      record({ id: 'n', slug: 'n', name: 'Nobody Advisers', countries: [] }),
+    ]);
+    expect(names(filterConsultants(listed, state({ q: 'japan' })))).toEqual(['Kestrel Admissions']);
+    expect(consultantOptions(listed).destinations).toEqual([{ value: 'japan', label: 'Japan', count: 1 }]);
+  });
+});
+
+describe('the chips for what is in force', () => {
+  const options = consultantOptions(rows);
+
+  it('names the search and each choice by its filter\'s label, in order, each undoing only itself', () => {
+    const now = state({
+      q: 'visa',
+      destinations: ['belize'],
+      cities: ['pune'],
+      services: ['course-selection'],
+      languages: ['hi'],
+      verified: true,
+      page: 3,
+    });
+    const chips = consultantChips(now, options);
+    expect(chips.map((chip) => chip.label)).toEqual([
+      '\u201cvisa\u201d',
+      'Belize',
+      'Pune',
+      'Course selection',
+      'Hindi',
+      'Verified by Universta',
+    ]);
+    expect(chips[0]!.next).toEqual({ ...now, q: '', page: 1 });
+    expect(chips[2]!.next.cities).toEqual([]);
+    expect(chips[2]!.next.services).toEqual(['course-selection']);
+    expect(chips[5]!.next.verified).toBe(false);
+    expect(consultantListHref('/study-abroad-consultants', chips[1]!.next)).toBe(
+      '/study-abroad-consultants?q=visa&city=pune&service=course-selection&language=hi&verified=true',
+    );
+  });
+
+  it('takes a destination\'s name from the published list when no consultant here lists it', () => {
+    const chips = consultantChips(state({ destinations: ['japan'] }), options, {
+      destinations: new Map([['japan', 'Japan']]),
+    });
+    expect(chips.map((chip) => chip.label)).toEqual(['Japan']);
+  });
+
+  it('is empty when nothing is in force', () => {
+    expect(consultantChips(state({ sort: 'name-asc' }), options)).toEqual([]);
   });
 });

@@ -18,7 +18,10 @@ import { nextAutoSlug } from '@/lib/slug';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 import { isFutureCalendarDate } from '@/lib/calendar-date';
+import { richTextOrEmpty } from '@/features/shared/rich-text-value';
+import { DEFAULT_TIME_ZONE, isTimeZone, timeZoneNames, utcIsoToWallTime, wallTimeToUtcIso, zoneOrDefault } from '@/lib/zoned-time';
 import { offeringDurationUnit, rowFieldLabel, singularTitle } from './structured-editor-labels';
+import { writtenSeoValues } from './seo-echoes';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 
 type Option = {
@@ -32,6 +35,9 @@ type Option = {
   countryId?: string;
   altText?: string;
   originalFileName?: string;
+  /** A country, university or offering's publishing state, so a pick list
+   * can say which ones are still drafts. */
+  status?: string;
 };
 type Options = {
   countries: Option[];
@@ -98,6 +104,28 @@ function ids(value: unknown, key: string) {
   return Array.isArray(value) ? value.map((item) => (item && typeof item === 'object' ? string((item as Record<string, unknown>)[key]) : '')).filter(Boolean) : [];
 }
 
+/** A refusal from the API, with the code that says which field it is about. */
+class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
+/* The API's named refusals and the field each is about, so the message also
+   shows under that field rather than only in the banner at the top. */
+const FIELD_BY_ERROR_CODE: Record<string, string> = {
+  JOURNEY_REQUIRED: 'journey',
+  INVALID_TIMEZONE: 'timezone',
+  APPLICATION_URL_INVALID: 'applicationUrl',
+  APPLICATION_EMAIL_INVALID: 'applicationEmail',
+  WEBSITE_URL_INVALID: 'websiteUrl',
+  SOURCE_URL_INVALID: 'sourceReference',
+  VERIFICATION_STATUS_INVALID: 'verificationStatus',
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authFetch(`/api/v1/admin/phase1/${path}`, {
     ...init,
@@ -105,11 +133,29 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = (await response.json()) as {
     data: T | null;
-    error: { message?: string } | null;
+    error: { message?: string; code?: string } | null;
   };
-  if (!response.ok || body.error || body.data === null) throw new Error(body.error?.message ?? 'Unable to save record');
+  if (!response.ok || body.error || body.data === null) throw new ApiError(body.error?.message ?? 'Unable to save record', body.error?.code);
   return body.data;
 }
+
+/* Which zone each date-and-time field is typed in. An event's own times are
+   in the event's time zone; a publishing window is in India's, where the
+   editors work. */
+const ZONED_FIELDS = ['startsAt', 'endsAt', 'publishStartsAt', 'publishEndsAt'] as const;
+function zoneFor(field: (typeof ZONED_FIELDS)[number], values: Record<string, string>) {
+  return field === 'startsAt' || field === 'endsAt' ? zoneOrDefault(values.timezone) : DEFAULT_TIME_ZONE;
+}
+const SEO_TEXT_KEYS = ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'twitterTitle', 'twitterDescription'] as const;
+
+/** A plain https address, as a visitor's browser must be sent to. */
+const HTTPS_URL = /^https:\/\/\S+$/;
+/** Any absolute web address, http or https. */
+const ABSOLUTE_HTTP_URL = /^https?:\/\/[^\s/?#]+\.\S*$/i;
+/** example.com or www.example.co.uk/path: a website typed without https://,
+ * which the API completes. */
+const BARE_DOMAIN = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:[/?#]\S*)?$/i;
+const SIMPLE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isStructuredPhase1Resource(resource: string) {
   return structured.has(resource);
@@ -143,27 +189,54 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [slugManuallyOverridden, setSlugManuallyOverridden] = useState(Boolean(recordId));
+  /* What the SEO fields fall back to when left empty -- the record's own
+     title, the site's default description, its own address -- shown as
+     placeholders. Filled in as values, an untouched form saved them back as
+     hand-written and they stopped following the record. */
+  const [seoPlaceholders, setSeoPlaceholders] = useState<Record<string, string>>({});
+  /* Each stored date as it was opened: an untouched field sends this instant
+     back exactly, seconds and all. */
+  const [initialDates, setInitialDates] = useState<Record<string, { wall: string; zone: string; iso: string }>>({});
+  const [storedTimezone, setStoredTimezone] = useState<string | null>(null);
 
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
-    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'totalStudents', 'internationalStudentsPercent', 'studentFacultyRatio', 'establishedYear', 'campusSetting', 'admissionsEmail', 'statsSourceName', 'statsSourceUrl', 'statsYear', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
-    if (record.seo && typeof record.seo === 'object') {
-      const seo = record.seo as Row;
-      for (const key of ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId']) next[key] = string(seo[key]);
-      next.robotsIndex = seo.robotsIndex === false ? 'false' : 'true';
-      next.robotsFollow = seo.robotsFollow === false ? 'false' : 'true';
-    } else {
-      next.robotsIndex = 'true';
-      next.robotsFollow = 'true';
-    }
+    for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'totalStudents', 'internationalStudentsPercent', 'studentFacultyRatio', 'establishedYear', 'campusSetting', 'admissionsEmail', 'statsSourceName', 'statsSourceUrl', 'statsYear', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'courseCode', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
+    /* The SEO inputs hold only what an editor wrote (`seoStored`); what the
+       page would use without them (`seo`) becomes their placeholders. An API
+       that predates `seoStored` still fills them from `seo`. */
+    const storedSeo = 'seoStored' in record ? record.seoStored : record.seo;
+    const writtenSeo = storedSeo && typeof storedSeo === 'object' ? (storedSeo as Row) : null;
+    const resolvedSeo = 'seoStored' in record && record.seo && typeof record.seo === 'object' ? (record.seo as Row) : null;
+    /* A stored title or description the page ignores -- the old editor's
+       copy of the record's own name or the site default -- starts empty, so
+       the next save clears it and a rename is followed again. */
+    Object.assign(next, writtenSeoValues(writtenSeo, resolvedSeo, SEO_TEXT_KEYS));
+    for (const key of ['ogMediaId', 'twitterMediaId']) next[key] = writtenSeo ? string(writtenSeo[key]) : '';
+    next.robotsIndex = writtenSeo?.robotsIndex === false ? 'false' : 'true';
+    next.robotsFollow = writtenSeo?.robotsFollow === false ? 'false' : 'true';
+    setSeoPlaceholders(resolvedSeo ? Object.fromEntries(SEO_TEXT_KEYS.map((key) => [key, string(resolvedSeo[key])])) : {});
     next.deadline = next.deadline ? next.deadline.slice(0, 10) : '';
     next.verifiedAt = next.verifiedAt ? next.verifiedAt.slice(0, 10) : '';
     next.publishedDate = next.publishedDate ? next.publishedDate.slice(0, 10) : '';
     next.expiryDate = next.expiryDate ? next.expiryDate.slice(0, 10) : '';
-    next.startsAt = next.startsAt ? next.startsAt.slice(0, 16) : '';
-    next.endsAt = next.endsAt ? next.endsAt.slice(0, 16) : '';
-    next.publishStartsAt = next.publishStartsAt ? next.publishStartsAt.slice(0, 16) : '';
-    next.publishEndsAt = next.publishEndsAt ? next.publishEndsAt.slice(0, 16) : '';
+    /* Stored instants shown as the wall time in their zone. */
+    const dates: Record<string, { wall: string; zone: string; iso: string }> = {};
+    for (const field of ZONED_FIELDS) {
+      const iso = string(record[field]);
+      const zone = zoneFor(field, next);
+      next[field] = utcIsoToWallTime(iso, zone);
+      if (iso && next[field]) dates[field] = { wall: next[field], zone, iso };
+    }
+    setInitialDates(dates);
+    setStoredTimezone(typeof record.timezone === 'string' ? record.timezone : null);
+    /* Each office's address, keyed by its location. */
+    if (Array.isArray(record.locations))
+      for (const item of record.locations) {
+        const office = item as Row;
+        const locationId = string(office.locationId);
+        if (locationId) next[`address-${locationId}`] = string(office.address);
+      }
     if (Array.isArray(record.intakes))
       for (const item of record.intakes) {
         const intake = item as Row;
@@ -289,6 +362,19 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       if (values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
     }
     if (resource === 'offerings' && !values.courseLevelId) next.courseLevelId = 'Select a course level.';
+    if (resource === 'success-stories' && !richTextOrEmpty(values.journey ?? '')) next.journey = 'Write the journey: a story cannot be saved without it.';
+    if (resource === 'jobs') {
+      if (values.applicationUrl?.trim() && !HTTPS_URL.test(values.applicationUrl.trim())) next.applicationUrl = 'Use the full address, starting with https://.';
+      if (values.applicationEmail?.trim() && !SIMPLE_EMAIL.test(values.applicationEmail.trim())) next.applicationEmail = 'Use an email address like jobs@example.com.';
+    }
+    if (resource === 'consultants') {
+      const website = values.websiteUrl?.trim();
+      if (website && !ABSOLUTE_HTTP_URL.test(website) && !BARE_DOMAIN.test(website)) next.websiteUrl = 'Use the website’s address, for example https://www.example.com.';
+      if (values.sourceReference?.trim() && !ABSOLUTE_HTTP_URL.test(values.sourceReference.trim())) next.sourceReference = 'Use the full address of the page you checked, starting with https://.';
+      if (values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
+    }
+    if (resource === 'offerings' && values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
+    if (resource === 'offerings' && (values.courseCode ?? '').trim().length > 100) next.courseCode = 'Course code must be 100 characters or fewer.';
     if (resource === 'events' && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt)) next.endsAt = 'End date and time must be after the start.';
     }
@@ -339,6 +425,8 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       ...(resource === 'consultants'
         ? {
             locationIds: selected.locationIds ?? [],
+            /* The address of each ticked office, as shown on the profile. */
+            locationAddresses: Object.fromEntries((selected.locationIds ?? []).map((locationId) => [locationId, values[`address-${locationId}`] ?? ''])),
             countryIds: selected.countryIds ?? [],
             services: tags.services,
             languages: tags.languages,
@@ -359,6 +447,22 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
         robotsFollow: values.robotsFollow !== 'false',
       },
     };
+    /* A testimonial has no page, so no SEO of its own: nothing is sent, and
+       any row an older editor saved is left as it is. */
+    if (resource === 'testimonials') delete payload.seo;
+    /* Dates and times go as instants, worked out in their zone, so the API no
+       longer reads them in its own server's zone. One left untouched goes
+       back exactly as it came. */
+    for (const field of ZONED_FIELDS) {
+      if (!(field in payload)) continue;
+      const wall = values[field] ?? '';
+      const zone = zoneFor(field, values);
+      const initial = initialDates[field];
+      payload[field] = initial && initial.wall === wall && initial.zone === zone ? initial.iso : wallTimeToUtcIso(wall, zone);
+    }
+    /* An older event may hold a zone that is not on the list. Left as it
+       was, it is not sent, so saving something else does not fail on it. */
+    if (resource === 'events' && storedTimezone !== null && values.timezone === storedTimezone && !isTimeZone(storedTimezone)) delete payload.timezone;
     for (const [key, value] of Object.entries(payload)) {
       if (value !== '') continue;
       // Empty optional controls clear persisted nullable values on edit.
@@ -377,6 +481,8 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     } catch (error: unknown) {
       setMessageTone('error');
       setMessage(error instanceof Error ? error.message : 'Unable to save record');
+      const field = error instanceof ApiError && error.code ? FIELD_BY_ERROR_CODE[error.code] : undefined;
+      if (field) setErrors((current) => ({ ...current, [field]: (error as Error).message }));
     } finally {
       setBusy(false);
     }
@@ -429,8 +535,18 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
             {resource === 'jobs' ? <JobFields values={values} set={set} errors={errors} cities={options.cities} states={options.states} countries={options.countries} /> : null}
             {resource === 'events' ? <EventFields values={values} set={set} errors={errors} tags={tags} media={options.media} cities={options.cities} states={options.states} countries={options.countries} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
             {resource === 'success-stories' ? <StoryFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-            {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-            <SeoFields values={values} set={set} />
+            {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
+            {resource === 'testimonials' ? (
+              <p className="p-card p-hint" data-testid="testimonial-seo-note">
+                A testimonial has no page of its own: it appears on /testimonials and on the guide of the country it is filed under. The search title and description for the listing are set in{' '}
+                <a className="p-link" href="/seo?key=testimonials-listing">
+                  Website Builder › Testimonials
+                </a>
+                .
+              </p>
+            ) : (
+              <SeoFields values={values} set={set} placeholders={seoPlaceholders} />
+            )}
             <div data-testid="structured-editor-save-row" className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-6">
               <label className="text-sm font-semibold">
                 Publish state
@@ -450,14 +566,14 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
   );
 }
 
-function Field({ label, value, onChange, error, textarea = false, richText = false, variableContext, type = 'text', helpKey, help, required = false }: { label: string; value: string; onChange: (value: string) => void; error?: string; textarea?: boolean; richText?: boolean; variableContext?: EditorVariableContext; type?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean }) {
+function Field({ label, value, onChange, error, textarea = false, richText = false, variableContext, type = 'text', helpKey, help, required = false, placeholder }: { label: string; value: string; onChange: (value: string) => void; error?: string; textarea?: boolean; richText?: boolean; variableContext?: EditorVariableContext; type?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean; placeholder?: string }) {
   const fieldId = useId();
   const errorId = useId();
   const disabled = useContext(StructuredEditorDisabledContext);
   return (
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
-      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} hideLabel allowedVariables={variablesForContext(variableContext)} entityContext={{ variableContext }} /> : textarea ? <textarea id={fieldId} value={value} onChange={(event) => onChange(event.target.value)} className={`${error ? invalidInputClass : inputClass} min-h-28`} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} /> : <input id={fieldId} type={type} value={value} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} />}
+      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} hideLabel allowedVariables={variablesForContext(variableContext)} entityContext={{ variableContext }} /> : textarea ? <textarea id={fieldId} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={`${error ? invalidInputClass : inputClass} min-h-28`} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} /> : <input id={fieldId} type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} />}
       {error ? (
         <span id={errorId} className="mt-1 block p-danger">
           {error}
@@ -466,14 +582,14 @@ function Field({ label, value, onChange, error, textarea = false, richText = fal
     </div>
   );
 }
-function Select({ label, value, onChange, options, error, helpKey, help, required = false }: { label: string; value: string; onChange: (value: string) => void; options: Option[]; error?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean }) {
+function Select({ label, value, onChange, options, error, helpKey, help, required = false, blank }: { label: string; value: string; onChange: (value: string) => void; options: Option[]; error?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean; /** The empty choice's wording, or null for a list that always has a value. */ blank?: string | null }) {
   const fieldId = useId();
   const errorId = useId();
   return (
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
       <select id={fieldId} value={value} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined}>
-        <option value="">Select {label.toLowerCase()}</option>
+        {blank === null ? null : <option value="">{blank ?? `Select ${label.toLowerCase()}`}</option>}
         {(options ?? []).map((option) => (
           <option key={option.id} value={option.id}>
             {labelOf(option)}
@@ -489,7 +605,9 @@ function Select({ label, value, onChange, options, error, helpKey, help, require
   );
 }
 function labelOf(option: Option) {
-  return `${label(option)}${option.city ? ` · ${option.city}` : ''}`;
+  /* A draft can be picked, but the site will not show or link it until it is
+     published, so the list says so. */
+  return `${label(option)}${option.city ? ` · ${option.city}` : ''}${option.status === 'DRAFT' ? ' (draft)' : ''}`;
 }
 function Multi({ legend, options, selected, toggle, help, helpKey }: { legend: string; options: Option[]; selected: string[]; toggle: (id: string) => void; help?: FieldHelpContent; helpKey?: string }) {
   // The fieldset's own accessible name (what `getByRole('group', { name })`
@@ -566,7 +684,7 @@ function ScheduledPublishingFields(p: any) {
         <Field label="Publish from (optional)" type="datetime-local" value={p.values.publishStartsAt ?? ''} onChange={(value) => p.set('publishStartsAt', value)} help={commonFieldHelp.publishStartsAt} />
         <Field label="Publish until (optional)" type="datetime-local" value={p.values.publishEndsAt ?? ''} onChange={(value) => p.set('publishEndsAt', value)} error={p.errors.publishEndsAt} help={commonFieldHelp.publishEndsAt} />
       </div>
-      <p className="p-hint">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit.</p>
+      <p className="p-hint">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit. Times are India time (IST).</p>
     </details>
   );
 }
@@ -822,6 +940,41 @@ const REQUIREMENT_CATEGORIES: Option[] = [
 function withCurrent(options: Option[], value: string): Option[] {
   return value && !options.some((option) => option.id === value) ? [...options, { id: value, name: value }] : options;
 }
+/** "WORKSHOP" -> "Workshop", "Full-time" -> "Full-time". */
+function humanise(value: string) {
+  const spaced = value.replace(/_/g, ' ').trim();
+  return spaced === spaced.toUpperCase() ? spaced.charAt(0) + spaced.slice(1).toLowerCase() : spaced;
+}
+/** A fixed list, plus a value saved before the list existed, shown as it is
+ * and marked as older, so an unchanged save keeps it and an editor can see
+ * it is not one of the choices. */
+function withLegacy(options: Option[], value: string): Option[] {
+  return value && !options.some((option) => option.id === value) ? [...options, { id: value, name: `${humanise(value)} (older value)` }] : options;
+}
+/* The words a visitor reads, stored as written. The web page maps each to
+   its structured-data value. */
+const EMPLOYMENT_TYPES: Option[] = ['Full time', 'Part time', 'Contract', 'Internship', 'Temporary'].map((name) => ({ id: name, name }));
+const REMOTE_STATES: Option[] = ['On site', 'Hybrid', 'Remote'].map((name) => ({ id: name, name }));
+/* How a visitor attends. The stored codes are what the event page and its
+   structured data read. */
+const EVENT_TYPES: Option[] = [
+  { id: 'OFFLINE', name: 'In person' },
+  { id: 'ONLINE', name: 'Online' },
+  { id: 'HYBRID', name: 'Hybrid' },
+];
+const VERIFICATION_STATES: Option[] = [
+  { id: 'UNVERIFIED', name: 'Not verified' },
+  { id: 'PENDING', name: 'Pending check' },
+  { id: 'VERIFIED', name: 'Verified' },
+];
+/** Every IANA zone, plus a stored value that is not one, marked as older. */
+function timeZoneOptions(value: string): Option[] {
+  const zones = timeZoneNames();
+  const options: Option[] = zones.map((zone) => ({ id: zone, name: zone.replace(/_/g, ' ') }));
+  if (!value || zones.includes(value)) return options;
+  /* A real zone this browser lists under another name still reads plainly. */
+  return [...options, { id: value, name: isTimeZone(value) ? value.replace(/_/g, ' ') : `${value} (older value)` }];
+}
 function OfferingFields(p: any) {
   return (
     <>
@@ -853,6 +1006,37 @@ function OfferingFields(p: any) {
         <Select label="Tuition period" value={p.values.tuitionPeriod ?? ''} onChange={(value) => p.set('tuitionPeriod', value)} options={withCurrent(TUITION_PERIODS, p.values.tuitionPeriod ?? '')} />
         <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} helpKey="offerings.applicationUrl" />
         <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} helpKey="offerings.sourceReference" />
+        <Field
+          label="Course code"
+          value={p.values.courseCode ?? ''}
+          onChange={(value) => p.set('courseCode', value)}
+          error={p.errors.courseCode}
+          help={{
+            purpose: 'The code the university gives this programme, shown in its Key facts.',
+            input: 'Type the code exactly as the university lists it, or leave blank when it has none.',
+            dataType: 'Text, up to 100 characters',
+            required: 'Optional',
+            example: 'G5PD',
+            dependency: 'None.',
+            frontendEffect: 'Shown as "Course code" in the programme page’s Key facts and as a tag on its card; "Not listed" when blank.',
+          }}
+        />
+        <Field
+          label="Verified date"
+          type="date"
+          value={p.values.verifiedAt ?? ''}
+          onChange={(value) => p.set('verifiedAt', value)}
+          error={p.errors.verifiedAt}
+          help={{
+            purpose: 'Records when this programme’s fees, intakes and requirements were last checked against the university’s own page.',
+            input: 'Choose the date the source was verified. It cannot be in the future.',
+            dataType: 'Date',
+            required: 'Optional, but recommended whenever a Source URL is recorded.',
+            example: '2026-10-06',
+            dependency: 'Use together with Source URL for auditable programme facts.',
+            frontendEffect: 'Turns the programme page’s "Needs verification" badge into "Verified" and dates its source line.',
+          }}
+        />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="offerings.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="offering" value={p.values.overview ?? ''} onChange={(value) => p.set('overview', value)} helpKey="offerings.overview" />
@@ -911,15 +1095,10 @@ function ConsultantFields(p: any) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Email" value={p.values.email ?? ''} onChange={(value) => p.set('email', value)} helpKey="consultants.email" />
         <Field label="Phone" value={p.values.phone ?? ''} onChange={(value) => p.set('phone', value)} helpKey="consultants.phone" />
-        <Field label="Website URL" value={p.values.websiteUrl ?? ''} onChange={(value) => p.set('websiteUrl', value)} helpKey="consultants.websiteUrl" />
-        <div className="text-sm font-semibold">
-          <FieldLabel label="Verification state" htmlFor="consultant-verification-status" helpKey="consultants.verificationStatus" />
-          <select id="consultant-verification-status" value={p.values.verificationStatus ?? 'UNVERIFIED'} onChange={(event) => p.set('verificationStatus', event.target.value)} className={inputClass}>
-            <option>UNVERIFIED</option>
-            <option>VERIFIED</option>
-          </select>
-        </div>
-        <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} helpKey="consultants.sourceReference" />
+        <Field label="Website URL" value={p.values.websiteUrl ?? ''} onChange={(value) => p.set('websiteUrl', value)} error={p.errors.websiteUrl} helpKey="consultants.websiteUrl" />
+        <Select label="Verification state" value={p.values.verificationStatus || 'UNVERIFIED'} onChange={(value) => p.set('verificationStatus', value)} options={withLegacy(VERIFICATION_STATES, p.values.verificationStatus ?? '')} error={p.errors.verificationStatus} helpKey="consultants.verificationStatus" blank={null} />
+        <Field label="Verified on (optional)" type="date" value={p.values.verifiedAt ?? ''} onChange={(value) => p.set('verifiedAt', value)} error={p.errors.verifiedAt} helpKey="consultants.verifiedAt" />
+        <Field label="Source URL" value={p.values.sourceReference ?? ''} onChange={(value) => p.set('sourceReference', value)} error={p.errors.sourceReference} helpKey="consultants.sourceReference" />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="consultants.featuredMediaId" />
       </div>
       <Field label="Description" textarea richText variableContext="consultant" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="consultants.description" />
@@ -937,6 +1116,14 @@ function ConsultantFields(p: any) {
           frontendEffect: 'Shown as the consultant’s offices and used for location-based filtering.',
         }}
       />
+      {(p.selected.locationIds ?? []).length ? (
+        <div className="grid gap-4 sm:grid-cols-2" data-testid="consultant-office-addresses">
+          {(p.selected.locationIds ?? []).map((locationId: string) => {
+            const location = p.locations.find((item: Option) => item.id === locationId);
+            return <Field key={locationId} label={`Office address in ${location ? labelOf(location) : 'this location'} (optional)`} value={p.values[`address-${locationId}`] ?? ''} onChange={(value) => p.set(`address-${locationId}`, value)} helpKey="consultants.officeAddress" />;
+          })}
+        </div>
+      ) : null}
       <Multi
         legend="Destination countries"
         options={p.countries}
@@ -1001,17 +1188,22 @@ function JobFields(p: any) {
       <Core {...p} summaryKey="summary" resource="jobs" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Department" value={p.values.department ?? ''} onChange={(value) => p.set('department', value)} helpKey="jobs.department" />
-        <Field label="Employment type" value={p.values.employmentType ?? ''} onChange={(value) => p.set('employmentType', value)} helpKey="jobs.employmentType" />
+        <Select label="Employment type" value={p.values.employmentType ?? ''} onChange={(value) => p.set('employmentType', value)} options={withLegacy(EMPLOYMENT_TYPES, p.values.employmentType ?? '')} helpKey="jobs.employmentType" blank="Not stated" />
         <Field label="Location (free text)" value={p.values.location ?? ''} onChange={(value) => p.set('location', value)} helpKey="jobs.location" />
         <Select label="City (optional, structured)" value={p.values.cityId ?? ''} onChange={(value) => p.set('cityId', value)} options={p.cities} help={commonFieldHelp.city} />
         <Select label="State (optional, structured)" value={p.values.stateId ?? ''} onChange={(value) => p.set('stateId', value)} options={p.states} help={commonFieldHelp.state} />
         <Select label="Country (optional, structured)" value={p.values.countryId ?? ''} onChange={(value) => p.set('countryId', value)} options={p.countries} help={commonFieldHelp.country} />
-        <Field label="Remote state" value={p.values.remoteStatus ?? ''} onChange={(value) => p.set('remoteStatus', value)} helpKey="jobs.remoteStatus" />
+        <Select label="Remote state" value={p.values.remoteStatus ?? ''} onChange={(value) => p.set('remoteStatus', value)} options={withLegacy(REMOTE_STATES, p.values.remoteStatus ?? '')} helpKey="jobs.remoteStatus" blank="Not stated" />
         <Field label="Published date" type="date" value={p.values.publishedDate ?? ''} onChange={(value) => p.set('publishedDate', value)} />
         <Field label="Expiry" type="date" value={p.values.expiryDate ?? ''} onChange={(value) => p.set('expiryDate', value)} />
-        <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} helpKey="jobs.applicationUrl" />
-        <Field label="Application email" value={p.values.applicationEmail ?? ''} onChange={(value) => p.set('applicationEmail', value)} helpKey="jobs.applicationEmail" />
+        <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} error={p.errors.applicationUrl} helpKey="jobs.applicationUrl" />
+        <Field label="Application email" value={p.values.applicationEmail ?? ''} onChange={(value) => p.set('applicationEmail', value)} error={p.errors.applicationEmail} helpKey="jobs.applicationEmail" />
       </div>
+      {!p.values.applicationUrl?.trim() && !p.values.applicationEmail?.trim() ? (
+        <p role="note" className="rounded-xl border border-[#FEDF89] bg-[#FFFAEB] px-4 py-3 text-sm text-[#93370D]" data-testid="job-no-apply-warning">
+          No way to apply is set yet. You can still save and publish, but without an application URL or email the role’s page has no Apply button: it can only offer “Ask about this role”, which goes to the general contact form.
+        </p>
+      ) : null}
       <Field label="Description" textarea richText variableContext="job" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="jobs.description" />
       <Field label="Responsibilities" textarea richText variableContext="job" value={p.values.responsibilities ?? ''} onChange={(value) => p.set('responsibilities', value)} />
       <Field label="Qualifications" textarea richText variableContext="job" value={p.values.qualifications ?? ''} onChange={(value) => p.set('qualifications', value)} />
@@ -1026,15 +1218,8 @@ function EventFields(p: any) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Start date and time" type="datetime-local" value={p.values.startsAt ?? ''} onChange={(value) => p.set('startsAt', value)} error={p.errors.startsAt} helpKey="events.startsAt" />
         <Field label="End date and time" type="datetime-local" value={p.values.endsAt ?? ''} onChange={(value) => p.set('endsAt', value)} error={p.errors.endsAt} helpKey="events.endsAt" />
-        <Field label="Timezone" value={p.values.timezone ?? 'Asia/Kolkata'} onChange={(value) => p.set('timezone', value)} helpKey="events.timezone" />
-        <div className="text-sm font-semibold">
-          <FieldLabel label="Event type" htmlFor="event-type" helpKey="events.eventType" />
-          <select id="event-type" value={p.values.eventType ?? 'OFFLINE'} onChange={(event) => p.set('eventType', event.target.value)} className={inputClass}>
-            <option>OFFLINE</option>
-            <option>ONLINE</option>
-            <option>HYBRID</option>
-          </select>
-        </div>
+        <Select label="Timezone" value={p.values.timezone || DEFAULT_TIME_ZONE} onChange={(value) => p.set('timezone', value)} options={timeZoneOptions(p.values.timezone || DEFAULT_TIME_ZONE)} error={p.errors.timezone} helpKey="events.timezone" blank={null} />
+        <Select label="Event type" value={p.values.eventType || 'OFFLINE'} onChange={(value) => p.set('eventType', value)} options={withLegacy(EVENT_TYPES, p.values.eventType ?? '')} helpKey="events.eventType" blank={null} />
         <Field label="Venue (free text)" value={p.values.venue ?? ''} onChange={(value) => p.set('venue', value)} helpKey="events.venue" />
         <Select label="City (optional, structured)" value={p.values.cityId ?? ''} onChange={(value) => p.set('cityId', value)} options={p.cities} help={commonFieldHelp.city} />
         <Select label="State (optional, structured)" value={p.values.stateId ?? ''} onChange={(value) => p.set('stateId', value)} options={p.states} help={commonFieldHelp.state} />
@@ -1074,12 +1259,13 @@ function StoryFields(p: any) {
       <Core {...p} resource="success-stories" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Display attribution" value={p.values.attribution ?? ''} onChange={(value) => p.set('attribution', value)} helpKey="success-stories.attribution" />
+        <Field label="Attribution note (optional)" value={p.values.attributionNote ?? ''} onChange={(value) => p.set('attributionNote', value)} helpKey="success-stories.attributionNote" />
         <Select label="Country (optional)" value={p.values.countryId ?? ''} onChange={(value) => p.set('countryId', value)} options={p.countries} helpKey="success-stories.countryId" />
         <Select label="University (optional)" value={p.values.universityId ?? ''} onChange={(value) => p.set('universityId', value)} options={p.universities} helpKey="success-stories.universityId" />
         <Select label="University course offering (optional)" value={p.values.offeringId ?? ''} onChange={(value) => p.set('offeringId', value)} options={p.offerings} help={commonFieldHelp.course} />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="success-stories.featuredMediaId" />
       </div>
-      <Field label="Journey content" textarea richText variableContext="successStory" value={p.values.journey ?? ''} onChange={(value) => p.set('journey', value)} helpKey="success-stories.journey" />
+      <Field label="Journey content" textarea richText variableContext="successStory" value={p.values.journey ?? ''} onChange={(value) => p.set('journey', value)} error={p.errors.journey} helpKey="success-stories.journey" required />
       <ScheduledPublishingFields {...p} />
     </>
   );
@@ -1090,6 +1276,8 @@ function TestimonialFields(p: any) {
       <Field label="Quote" textarea value={p.values.quote ?? ''} onChange={(value) => p.set('quote', value)} error={p.errors.quote} helpKey="testimonials.quote" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Display attribution" value={p.values.attribution ?? ''} onChange={(value) => p.set('attribution', value)} helpKey="testimonials.attribution" />
+        <Field label="Role or sub-line (optional)" value={p.values.attributionNote ?? ''} onChange={(value) => p.set('attributionNote', value)} helpKey="testimonials.attributionNote" />
+        <Select label="Country (optional)" value={p.values.countryId ?? ''} onChange={(value) => p.set('countryId', value)} options={p.countries} helpKey="testimonials.countryId" />
         <Select label="University (optional)" value={p.values.universityId ?? ''} onChange={(value) => p.set('universityId', value)} options={p.universities} helpKey="testimonials.universityId" />
         <Select label="University course offering (optional)" value={p.values.offeringId ?? ''} onChange={(value) => p.set('offeringId', value)} options={p.offerings} help={commonFieldHelp.course} />
         <MediaPickerDialog label="Media (optional)" value={p.values.imageMediaId ?? ''} onChange={(value) => p.set('imageMediaId', value)} helpKey="testimonials.imageMediaId" />
@@ -1120,29 +1308,29 @@ function Repeater({ title, rows, fields, add, update, helpPrefix, choices }: { t
     </fieldset>
   );
 }
-function SeoFields({ values, set }: { values: Record<string, string>; set: (key: string, value: string) => void }) {
+function SeoFields({ values, set, placeholders = {} }: { values: Record<string, string>; set: (key: string, value: string) => void; placeholders?: Record<string, string> }) {
   const canonical = values.canonicalUrl ?? '';
   const canonicalUnsafe = canonical.trim() !== '' && !canonical.startsWith('/') && !/^https:\/\/[^/]*universta/i.test(canonical);
   return (
     <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">SEO</legend>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="SEO title" value={values.seoTitle ?? ''} onChange={(value) => set('seoTitle', value)} help={commonFieldHelp.seoTitle} />
-        <Field label="Meta description" value={values.metaDescription ?? ''} onChange={(value) => set('metaDescription', value)} help={commonFieldHelp.metaDescription} />
+        <Field label="SEO title" value={values.seoTitle ?? ''} onChange={(value) => set('seoTitle', value)} placeholder={placeholders.seoTitle} help={commonFieldHelp.seoTitle} />
+        <Field label="Meta description" value={values.metaDescription ?? ''} onChange={(value) => set('metaDescription', value)} placeholder={placeholders.metaDescription} help={commonFieldHelp.metaDescription} />
         <div>
-          <Field label="Canonical URL" value={canonical} onChange={(value) => set('canonicalUrl', value)} help={commonFieldHelp.canonicalUrl} />
+          <Field label="Canonical URL" value={canonical} onChange={(value) => set('canonicalUrl', value)} help={commonFieldHelp.canonicalUrl} placeholder={placeholders.canonicalUrl} />
           {canonicalUnsafe ? <p className="mt-1 p-danger">This points off-site. Use a site-relative path (starting with &quot;/&quot;) unless an external canonical is intentional.</p> : null}
         </div>
-        <Field label="Focus keyword" value={values.focusKeyword ?? ''} onChange={(value) => set('focusKeyword', value)} help={commonFieldHelp.focusKeyword} />
+        <Field label="Focus keyword" value={values.focusKeyword ?? ''} onChange={(value) => set('focusKeyword', value)} placeholder={placeholders.focusKeyword} help={commonFieldHelp.focusKeyword} />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Open Graph title" value={values.ogTitle ?? ''} onChange={(value) => set('ogTitle', value)} help={commonFieldHelp.ogTitle} />
-        <Field label="Open Graph description" value={values.ogDescription ?? ''} onChange={(value) => set('ogDescription', value)} help={commonFieldHelp.ogDescription} />
+        <Field label="Open Graph title" value={values.ogTitle ?? ''} onChange={(value) => set('ogTitle', value)} placeholder={placeholders.ogTitle} help={commonFieldHelp.ogTitle} />
+        <Field label="Open Graph description" value={values.ogDescription ?? ''} onChange={(value) => set('ogDescription', value)} placeholder={placeholders.ogDescription} help={commonFieldHelp.ogDescription} />
         <MediaPickerDialog label="Open Graph image (Media Library)" value={values.ogMediaId ?? ''} onChange={(value) => set('ogMediaId', value)} help={commonFieldHelp.ogMedia} />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Twitter title" value={values.twitterTitle ?? ''} onChange={(value) => set('twitterTitle', value)} help={commonFieldHelp.twitterTitle} />
-        <Field label="Twitter description" value={values.twitterDescription ?? ''} onChange={(value) => set('twitterDescription', value)} help={commonFieldHelp.twitterDescription} />
+        <Field label="Twitter title" value={values.twitterTitle ?? ''} onChange={(value) => set('twitterTitle', value)} placeholder={placeholders.twitterTitle} help={commonFieldHelp.twitterTitle} />
+        <Field label="Twitter description" value={values.twitterDescription ?? ''} onChange={(value) => set('twitterDescription', value)} placeholder={placeholders.twitterDescription} help={commonFieldHelp.twitterDescription} />
       </div>
       <div className="mt-4 flex flex-wrap gap-6">
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1154,6 +1342,7 @@ function SeoFields({ values, set }: { values: Record<string, string>; set: (key:
           <FieldLabel label="Allow search engines to follow its links" htmlFor="seo-robots-follow-phase1" help={commonFieldHelp.robotsFollow} />
         </div>
       </div>
+      <p className="p-hint">Leave a field empty to let it follow the record: the greyed text is what the page uses then, and it changes when the record is renamed or moved.</p>
       <p className="p-hint">Unpublished drafts are never indexable regardless of this setting — it only takes effect once the record is Published.</p>
     </fieldset>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { RecordDirectory, TestimonialCard, type DirectoryRow } from '@/components/study-abroad/RecordDirectory';
 import { phaseListAll } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import '../records-zip.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,8 @@ export default async function TestimonialsPage() {
       rows={rows}
       card={(row) => <TestimonialCard row={row} key={row.id} />}
       empty={{ heading: 'No testimonials yet', body: 'Student testimonials will appear here once they are published.' }}
-      wide
+      /* The zip's quote card, in the grid the country guide draws it in. */
+      grid="quotes"
     />
   );
 }

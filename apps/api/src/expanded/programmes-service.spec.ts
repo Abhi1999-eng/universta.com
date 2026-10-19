@@ -84,6 +84,41 @@ function build(rows: Array<Record<string, unknown>>) {
     country: lookup('country'),
     subject: lookup('subject'),
     course: lookup('course'),
+    /* The pictures behind the cards' featuredMediaId: one active, one
+       archived. */
+    mediaAsset: {
+      findMany: async (args: Args) =>
+        [
+          {
+            id: 'm-live',
+            publicUrl: '/media/warwick.jpg',
+            altText: 'Campus',
+            title: null,
+            status: 'ACTIVE',
+            deletedAt: null,
+          },
+          {
+            id: 'm-old',
+            publicUrl: '/media/old.jpg',
+            altText: null,
+            title: null,
+            status: 'ARCHIVED',
+            deletedAt: null,
+          },
+        ]
+          .filter(
+            (asset) =>
+              (args.where.id.in as string[]).includes(asset.id) &&
+              asset.status === args.where.status &&
+              asset.deletedAt === null,
+          )
+          .map(({ id, publicUrl, altText, title }) => ({
+            id,
+            publicUrl,
+            altText,
+            title,
+          })),
+    },
     universityCourseOffering: {
       findMany: async (args: Args) => {
         findMany.push(args);
@@ -151,6 +186,52 @@ describe('the programme finder’s reads', () => {
     });
   });
 
+  /* /courses' "Scholarships" chip opened an empty list while every course
+     guide was tagged "Scholarships" from the course's own tick. The tick
+     for the country the programme is taught in now counts too. */
+  it('counts the course’s "Scholarship available" tick for the programme’s own country', async () => {
+    const uk = { ...warwick, country: { ...warwick.country, id: 'gb' } };
+    const ticked = (countryId: string) => ({
+      slug: 'msc',
+      name: 'MSc',
+      subject: null,
+      subSubject: null,
+      courseLevel: null,
+      countryCourses: [{ countryId }],
+    });
+    const { service, findMany } = build([
+      scanned({
+        id: 'o-here',
+        slug: 'here',
+        university: uk,
+        genericCourse: ticked('gb'),
+      }),
+      scanned({
+        id: 'o-elsewhere',
+        slug: 'elsewhere',
+        university: uk,
+        genericCourse: ticked('jp'),
+      }),
+      scanned({ id: 'o-none', slug: 'none', university: uk }),
+    ]);
+    const result = await service.programmes({ scholarship: 'true' });
+    expect(result.data.map((row) => row.id)).toEqual(['o-here']);
+    expect(result.facets.extras).toContainEqual({
+      value: 'scholarship',
+      label: 'With scholarships',
+      count: 1,
+    });
+    /* Only a live, offered tick is read. */
+    expect(
+      findMany[0].select.genericCourse.select.countryCourses.where,
+    ).toEqual({
+      scholarshipAvailable: true,
+      status: 'ACTIVE',
+      deletedAt: null,
+      availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+    });
+  });
+
   it('reads the page’s rows in full, in the list’s order, and no more', async () => {
     const { service, findMany } = build([
       scanned({ id: 'o-b', slug: 'b', name: 'B' }),
@@ -186,10 +267,66 @@ describe('the programme finder’s reads', () => {
   });
 
   it('says what it left out and which order it applied', async () => {
-    const { service } = build([scanned({})]);
+    /* Pounds and yen: no fee order across them. */
+    const tokyo = {
+      ...warwick,
+      slug: 'university-of-tokyo',
+      country: {
+        ...warwick.country,
+        name: 'Japan',
+        slug: 'japan',
+        iso2Code: 'JP',
+      },
+    };
+    const { service } = build([
+      scanned({
+        tuitionMin: '30000',
+        currencyCode: 'GBP',
+        tuitionPeriod: 'PER_YEAR',
+      }),
+      scanned({
+        id: 'o-t',
+        slug: 'o-t',
+        university: tokyo,
+        tuitionMin: '535800',
+        currencyCode: 'JPY',
+        tuitionPeriod: 'PER_YEAR',
+      }),
+    ]);
     const result = await service.programmes({ sort: 'fee', level: 'nope' });
     expect(result.meta.sort).toBe('relevance');
     expect(result.meta.ignored).toEqual(['level=nope', 'sort=fee']);
+    expect(result.facets.tuition).toBeNull();
+  });
+
+  /* A catalogue all in one country sorts and filters by fee without a
+     country being chosen, as one in a chosen country always did. */
+  it('applies the fee order and range where every programme shares a currency', async () => {
+    const fee = (id: string, tuitionMin: string) =>
+      scanned({
+        id,
+        slug: id,
+        name: id,
+        tuitionMin,
+        currencyCode: 'GBP',
+        tuitionPeriod: 'PER_YEAR',
+      });
+    const { service } = build([
+      fee('b', '30000'),
+      fee('a', '22000'),
+      fee('c', '26000'),
+    ]);
+    const low = await service.programmes({ sort: 'fee' });
+    expect(low.meta.sort).toBe('fee');
+    expect(low.meta.ignored).toEqual([]);
+    expect(low.facets.tuition).toEqual({ currencyCode: 'GBP', count: 3 });
+    expect(low.data.map((row) => row.id)).toEqual(['a', 'c', 'b']);
+    const high = await service.programmes({
+      sort: 'fee-high',
+      tuitionMax: '28000',
+    });
+    expect(high.meta.sort).toBe('fee-high');
+    expect(high.data.map((row) => row.id)).toEqual(['c', 'a']);
   });
 
   /* "NOPE ×" over an empty list, before; now the catalogue's study-mode
@@ -314,6 +451,31 @@ describe('the programme finder’s reads', () => {
  * the whole live catalogue again; only the counts were kept. The read is
  * kept for a minute now, per part of the catalogue, within bounds.
  */
+describe('the pictures on the finder’s cards', () => {
+  it('sends each card the picture an editor chose, and null for one archived or unset', async () => {
+    const { service } = build([
+      scanned({ id: 'a', slug: 'a', featuredMediaId: 'm-live' }),
+      scanned({ id: 'b', slug: 'b', featuredMediaId: 'm-old' }),
+      scanned({ id: 'c', slug: 'c', featuredMediaId: null }),
+    ]);
+    const result = await service.programmes({ sort: 'name' });
+    const byId = new Map(
+      result.data.map((row: Record<string, unknown>) => [
+        row.id,
+        row.featuredMedia,
+      ]),
+    );
+    expect(byId.get('a')).toEqual({
+      id: 'm-live',
+      publicUrl: '/media/warwick.jpg',
+      altText: 'Campus',
+      title: null,
+    });
+    expect(byId.get('b')).toBeNull();
+    expect(byId.get('c')).toBeNull();
+  });
+});
+
 describe('the programme finder’s kept reads', () => {
   afterEach(() => jest.useRealTimers());
 

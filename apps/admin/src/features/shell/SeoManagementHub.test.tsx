@@ -171,3 +171,17 @@ describe("SeoManagementHub level pages entry", () => {
     await waitFor(() => expect(authFetch).toHaveBeenCalled());
   });
 });
+
+/** T-C7. The testimonial editor no longer has SEO fields -- a testimonial has
+ * no page -- so the hub stops sending editors there for them. */
+describe("SeoManagementHub testimonials entry", () => {
+  it("says a testimonial has no SEO of its own and where the listing's is", async () => {
+    authFetch.mockResolvedValueOnce(jsonResponse([]));
+    render(<SeoManagementHub />);
+    const entry = screen.getByRole("link", { name: /^Testimonials/ });
+    expect(entry).toHaveTextContent("no page of its own");
+    expect(entry).toHaveTextContent("Static / listing pages");
+    expect(entry).not.toHaveTextContent("SEO section of the structured editor");
+    await waitFor(() => expect(authFetch).toHaveBeenCalled());
+  });
+});

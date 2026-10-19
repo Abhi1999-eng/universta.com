@@ -22,6 +22,7 @@ export const COURSE_SORTS = [
   { value: 'relevance', label: 'Most relevant' },
   { value: 'name', label: 'Name A-Z' },
   { value: 'fee', label: 'Lowest tuition' },
+  { value: 'fee-high', label: 'Highest tuition' },
   { value: 'deadline', label: 'Next deadline' },
   { value: 'duration', label: 'Shortest first' },
 ] as const;
@@ -37,8 +38,14 @@ export const PROGRAMME_SORTS = [
 const SORT_ALIASES: Record<string, string> = {
   title: 'name',
   'tuition-low': 'fee',
+  'cost-low': 'fee',
+  'tuition-high': 'fee-high',
+  'cost-high': 'fee-high',
   featured: 'relevance',
 };
+
+/** The orders that compare fees, which only one currency can answer. */
+export const FEE_SORTS: readonly string[] = ['fee', 'fee-high'];
 
 /* The reference's study-level words as our level codes. "Postgraduate" and
    "short course" name no one level of ours, so they are left as written and
@@ -644,17 +651,18 @@ export type RequirementLike = {
  */
 export function teachingLanguage(
   requirements: RequirementLike[],
-): { value: string; note: string | null } | null {
+): { value: string; note: string | null; tests: string[] } | null {
   const tests = requirements.filter((requirement) =>
     /ENGLISH/.test(requirement.category.toUpperCase()),
   );
   if (!tests.length) return null;
-  const note = tests
-    .map((test) =>
-      test.minimumScore ? `${test.title} ${test.minimumScore} minimum` : test.title,
-    )
-    .join(' · ');
-  return { value: 'English', note: note || null };
+  /* Each test as the note names it, for a card that lists them one by one
+     rather than in one run. */
+  const named = tests.map((test) =>
+    test.minimumScore ? `${test.title} ${test.minimumScore} minimum` : test.title,
+  );
+  const note = named.join(' · ');
+  return { value: 'English', note: note || null, tests: named };
 }
 
 /**
@@ -729,6 +737,11 @@ export type OfferingCardData = {
   href: string;
   level: { code: string | null; name: string } | null;
   qualification: string | null;
+  /** The course's short name -- "MIST", "MEng Civil" -- which the card's
+   *  type line and the page's eyebrow carry in place of the full
+   *  qualification; null when the course has none. Optional: a row built
+   *  before it was read leaves it out. */
+  shortName?: string | null;
   studyMode: string | null;
   subject: { name: string; slug: string } | null;
   specialization: { name: string; slug: string } | null;
@@ -740,13 +753,18 @@ export type OfferingCardData = {
   courseCode: string | null;
   /** The language it is taught in, read the way its page reads it: from an
    *  English requirement it lists, with that evidence; null when it lists
-   *  none, which is "Not listed", never a guess. */
-  language: { value: string; note: string | null } | null;
+   *  none, which is "Not listed", never a guess. `tests` names each piece
+   *  of that evidence on its own. */
+  language: { value: string; note: string | null; tests?: string[] } | null;
   /** The English tests it lists, for the card's entry line. */
   englishTests: EnglishTestEntry[];
   /** The course guide it is an instance of, while that guide's page is
    *  public; null otherwise. */
   genericCourse: { name: string; slug: string } | null;
+  /** The picture an editor chose for the programme, where the API sends
+   *  one (`featuredMedia`); null otherwise. Optional: a card built before
+   *  it was read leaves it out. */
+  media?: { url: string; alt: string } | null;
   university: {
     name: string;
     slug: string;
@@ -898,6 +916,7 @@ export function toOfferingCard(
       ? { code: text(level?.code), name: text(level?.name)! }
       : null,
     qualification: text(generic.qualificationName) ?? text(generic.shortName),
+    shortName: text(generic.shortName),
     studyMode: text(row.studyMode) ? humanise(String(row.studyMode)) : null,
     subject: slugName(generic.subject),
     specialization: slugName(generic.subSubject),
@@ -928,6 +947,7 @@ export function toOfferingCard(
     language: teachingLanguage(requirements),
     englishTests: englishTestsOf(requirements),
     genericCourse: publicGuide(generic),
+    media: offeringMedia(row.featuredMedia),
     university: {
       name: uni.name,
       slug: uni.slug,
@@ -936,6 +956,43 @@ export function toOfferingCard(
       location: place(campusCity ?? uni.city, uni.country),
     },
   };
+}
+
+/** A programme's picture as the API sends it -- { id, publicUrl, altText,
+ *  title } -- as a page draws it, or null without a usable address. */
+export function offeringMedia(raw: unknown): { url: string; alt: string } | null {
+  const media = record(raw);
+  const url = text(media?.publicUrl) ?? text(media?.url);
+  return url ? { url, alt: text(media?.altText) ?? text(media?.alt) ?? '' } : null;
+}
+
+/**
+ * What kind of programme a card or a page's eyebrow says it is, as the
+ * design writes it: the level and the course's short name, "Master's ·
+ * MIST". Without a short name the full qualification stands in, which can
+ * be long -- a card clamps it to one line and carries it whole in its
+ * title.
+ */
+export function programmeType(
+  card: Pick<OfferingCardData, 'level' | 'qualification'> & { shortName?: string | null },
+): { level: string; kind: string | null; short: boolean } {
+  const short = card.shortName?.trim() || null;
+  return {
+    level: card.level?.name ?? 'Programme',
+    kind: short ?? card.qualification ?? null,
+    short: Boolean(short),
+  };
+}
+
+/**
+ * A fee as a card prints it, in two parts that break only between them:
+ * "JPY 535,800" held together, then "/yr". Nothing is dropped; a fee with
+ * no period is all amount.
+ */
+export function tuitionParts(tuition: string): { amount: string; period: string | null } {
+  const period = tuition.endsWith('/yr') ? '/yr' : null;
+  const amount = (period ? tuition.slice(0, -period.length) : tuition).replace(/ /g, '\u00a0');
+  return { amount, period };
 }
 
 export function toOfferingCards(

@@ -8,6 +8,8 @@ import {
   CONSULTANT_SORTS,
   CONSULTANT_STEP,
   activeConsultantFilters,
+  canonicalConsultantFilters,
+  consultantChips,
   consultantListHref,
   consultantOptions,
   countryConsultantsHref,
@@ -19,6 +21,7 @@ import {
   type ConsultantSort,
   type CountryConsultantRow,
 } from '@/lib/country-consultant-list';
+import { ConsultantCompareCheck, ConsultantCompareTray } from './ConsultantCompare';
 
 /** How many services a card names before "+N more". */
 const SERVICES_SHOWN = 4;
@@ -37,6 +40,8 @@ export function ConsultantCard({
   countrySlug,
   guides = [],
   guidance,
+  compare = false,
+  logo = false,
 }: {
   consultant: CountryConsultantRow;
   /** The destination the page is about, named first among the badges. */
@@ -48,6 +53,13 @@ export function ConsultantCard({
    *  subject's level page); otherwise the destination's counselling, asked
    *  from its consultants page. */
   guidance?: string;
+  /** The design's "Compare" tick, feeding the comparison tray. The
+   *  consultants pages ask for it; a subject's level page does not. */
+  compare?: boolean;
+  /** The consultant's own image as a round logo beside the name, when the
+   *  record has one. The consultants pages ask for it; a level page does
+   *  not. */
+  logo?: boolean;
 }) {
   const href = `/study-abroad-consultants/${consultant.slug}`;
   const destinations = [
@@ -64,11 +76,24 @@ export function ConsultantCard({
             {consultant.verified ? '✓ Verified' : 'Not yet verified'}
           </span>
         </div>
+        {compare ? (
+          <ConsultantCompareCheck item={{ slug: consultant.slug, name: consultant.name }} />
+        ) : null}
       </div>
 
-      <h3 className="consultcard__name">
-        <Link href={href}>{consultant.name}</Link>
-      </h3>
+      {logo && consultant.logo ? (
+        <div className="consultcard__id">
+          {/* eslint-disable-next-line @next/next/no-img-element -- the API's own media path, served as it is */}
+          <img className="conslogo" src={consultant.logo} alt="" width={44} height={44} loading="lazy" />
+          <h3 className="consultcard__name">
+            <Link href={href}>{consultant.name}</Link>
+          </h3>
+        </div>
+      ) : (
+        <h3 className="consultcard__name">
+          <Link href={href}>{consultant.name}</Link>
+        </h3>
+      )}
 
       {destinations.length ? (
         <div className="destbadges" aria-label="Destinations">
@@ -119,7 +144,7 @@ export function ConsultantCard({
           <span className="label">Services</span>
           <div className="tagrow">
             {consultant.services.slice(0, SERVICES_SHOWN).map((service) => (
-              <span className="tag" key={service.slug}>
+              <span className="tag" key={service.name}>
                 {service.name}
               </span>
             ))}
@@ -157,11 +182,16 @@ export function ConsultantCard({
         </Link>
         <Link
           className="btn btn--sm"
-          href={guidance ?? counsellingHref({
-            source: 'country',
-            country: countrySlug,
-            from: countryConsultantsHref(countrySlug),
-          })}
+          href={
+            guidance ??
+            (countrySlug
+              ? counsellingHref({
+                  source: 'country',
+                  country: countrySlug,
+                  from: countryConsultantsHref(countrySlug),
+                })
+              : counsellingHref({ source: 'general' }))
+          }
         >
           Get guidance{' '}
           <span className="btn__arrow" aria-hidden="true">
@@ -185,6 +215,9 @@ export function CountryConsultantIndex({
   where,
   guides = [],
   byDestination = false,
+  compare = false,
+  logos = false,
+  destinationNames = [],
 }: {
   rows: CountryConsultantRow[];
   /** The destination the page is about, or '' on the worldwide directory. */
@@ -196,6 +229,14 @@ export function CountryConsultantIndex({
   /** The worldwide directory narrows by destination too; a destination's
    *  own page does not, since every consultant on it lists that one. */
   byDestination?: boolean;
+  /** Each card's "Compare" tick and the comparison tray. */
+  compare?: boolean;
+  /** Each card's round logo, where the consultant has an image. */
+  logos?: boolean;
+  /** The published destinations, by name: a destination chosen in the
+   *  hero that no consultant lists yet is kept, and said so, rather than
+   *  quietly dropped to show everyone. */
+  destinationNames?: ReadonlyArray<{ slug: string; name: string }>;
 }) {
   const path = usePathname();
   const params = useSearchParams();
@@ -209,19 +250,26 @@ export function CountryConsultantIndex({
   /* Values no consultant here carries -- a city from another destination's
      link, a service typed by hand -- are set aside rather than allowed to
      empty the list. */
+  const published = new Map(destinationNames.map((entry) => [entry.slug, entry.name] as const));
   const filters: ConsultantListState = {
     ...state,
-    destinations: byDestination ? known(options.destinations, state.destinations) : [],
+    destinations: byDestination
+      ? state.destinations.filter(
+          (value) => published.has(value) || options.destinations.some((option) => option.value === value),
+        )
+      : [],
     cities: known(options.cities, state.cities),
-    services: known(options.services, state.services),
-    languages: state.languages.filter((value) =>
-      options.languages.some(
-        (option) => option.value === value || option.label.toLowerCase() === value,
-      ),
-    ),
+    /* A service or language by any name the address carries it under --
+       an old suffixed slug, a language by name -- as the box it ticks. */
+    ...canonicalConsultantFilters(rows, state),
   };
   const shown = filterConsultants(rows, filters);
   const active = activeConsultantFilters(filters);
+  const chips = consultantChips(filters, options, { destinations: published });
+  /* Destinations asked for that no consultant here lists yet. */
+  const unlisted = filters.destinations.filter(
+    (value) => !options.destinations.some((option) => option.value === value),
+  );
   const narrowed = active > 0 || filters.q !== '';
   const visible = Math.min(shown.length, filters.page * CONSULTANT_STEP);
   const total = rows.length;
@@ -266,6 +314,11 @@ export function CountryConsultantIndex({
   };
 
   const noun = (count: number) => (count === 1 ? 'consultant' : 'consultants');
+  /* On a page about no destination -- the worldwide directory, a city's
+     page -- a card's "Get guidance" says which page the request came
+     from, rather than a destination's consultants page that does not
+     exist ("/study-abroad//consultants"). */
+  const guidance = countrySlug ? undefined : counsellingHref({ source: 'general', from: path });
 
   const group = (
     title: string,
@@ -331,7 +384,14 @@ export function CountryConsultantIndex({
                 </button>
               </div>
               <div className="filters-panel__body">
-                {groups.destinations ? group('Destination', 'destinations', options.destinations) : null}
+                {groups.destinations
+                  ? group('Destination', 'destinations', [
+                      ...options.destinations,
+                      /* One chosen in the hero that nobody lists yet, ticked,
+                         so it can be unticked here too. */
+                      ...unlisted.map((value) => ({ value, label: published.get(value) ?? value, count: 0 })),
+                    ])
+                  : null}
                 {groups.cities ? group('Consultant location', 'cities', options.cities) : null}
                 {groups.services ? group('Service', 'services', options.services) : null}
                 {groups.languages ? group('Language', 'languages', options.languages) : null}
@@ -412,6 +472,29 @@ export function CountryConsultantIndex({
               </div>
             </div>
 
+            {/* What is in force, each with its own way to undo it. */}
+            {chips.length ? (
+              <div className="activechips" aria-label="Filters in force">
+                {chips.map((chip) => (
+                  <Link
+                    key={chip.key}
+                    className="activechip"
+                    href={consultantListHref(path, chip.next)}
+                    rel="nofollow"
+                    scroll={false}
+                    aria-label={`Remove ${chip.label}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      commit(chip.next);
+                    }}
+                  >
+                    {chip.label} <span aria-hidden="true">&times;</span>
+                  </Link>
+                ))}
+                {chips.length > 1 ? clearLink('Clear all', 'activechips__clear linkbtn') : null}
+              </div>
+            ) : null}
+
             {shown.length ? (
               <div className="consultgrid">
                 {shown.slice(0, visible).map((row) => (
@@ -420,8 +503,64 @@ export function CountryConsultantIndex({
                     consultant={row}
                     countrySlug={countrySlug}
                     guides={guides}
+                    guidance={guidance}
+                    compare={compare}
+                    logo={logos}
                   />
                 ))}
+              </div>
+            ) : unlisted.length && unlisted.length === filters.destinations.length ? (
+              /* Only destinations nobody lists yet: say so, and offer the
+                 counsellor, rather than "No consultant matches that". */
+              <div className="emptyband">
+                <p className="emptyband__t">
+                  No consultant on Universta lists {unlisted.map((value) => published.get(value) ?? value).join(' or ')}{' '}
+                  yet.
+                </p>
+                <p className="emptyband__d">
+                  Tell Universta what you are planning and a counsellor will help you find a way forward.
+                </p>
+                <div className="btn-row">
+                  <Link
+                    className="btn btn--sm"
+                    href={counsellingHref(
+                      unlisted.length === 1
+                        ? { source: 'country', country: unlisted[0], from: path }
+                        : { source: 'general', from: path },
+                    )}
+                  >
+                    Ask Universta{' '}
+                    <span className="btn__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </Link>
+                  {clearLink('Clear filters', 'btn btn--sm btn--ghost')}
+                </div>
+              </div>
+            ) : total === 0 && countrySlug ? (
+              /* A destination nobody lists yet: said plainly, with the
+                 counsellor for that destination, lighter than the plan band
+                 that follows. */
+              <div className="emptyband">
+                <p className="emptyband__t">No consultant on Universta lists {where} yet.</p>
+                <p className="emptyband__d">
+                  Tell Universta what you are planning and a counsellor will help you prepare for {where}.
+                </p>
+                <div className="btn-row">
+                  <Link
+                    className="btn btn--sm"
+                    href={counsellingHref({
+                      source: 'country',
+                      country: countrySlug,
+                      from: countryConsultantsHref(countrySlug),
+                    })}
+                  >
+                    Ask Universta about {where}{' '}
+                    <span className="btn__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="dir__none">
@@ -478,6 +617,7 @@ export function CountryConsultantIndex({
           </div>
         </div>
       </div>
+      {compare ? <ConsultantCompareTray /> : null}
     </section>
   );
 }

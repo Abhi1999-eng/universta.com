@@ -934,7 +934,9 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
                 type="button"
                 aria-label="Previous results page"
                 disabled={meta.page <= 1}
-                onClick={() => router.push(`${pageHref(meta.page - 1)}#discovery`)}
+                onClick={() =>
+                  router.push(`${pageHref(Math.min(meta.page - 1, meta.totalPages))}#discovery`)
+                }
               >
                 ‹
               </button>
@@ -956,9 +958,13 @@ export function CourseGuidesResults(props: CourseGuidesResultsProps) {
               >
                 ›
               </button>
-              <span className="pager-status" aria-current="page">
-                Page {meta.page} of {meta.totalPages}
-              </span>
+              {/* A page past the end has no place in the run: the list
+                  says it ends before it, and "Page 9 of 3" would not. */}
+              {meta.page <= meta.totalPages ? (
+                <span className="pager-status" aria-current="page">
+                  Page {meta.page} of {meta.totalPages}
+                </span>
+              ) : null}
             </nav>
           ) : null}
         </div>

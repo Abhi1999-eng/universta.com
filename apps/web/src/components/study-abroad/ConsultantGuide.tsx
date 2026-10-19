@@ -1,12 +1,21 @@
 import Link from 'next/link';
+import { CounsellingForm } from '@/components/counselling/CounsellingForm';
 import { RichText } from '@/components/phase1/RichText';
+import type { CounsellingOptions } from '@/lib/counselling';
+import { counsellingHref } from '@/lib/counselling-link';
+import type { CountryConsultantRow } from '@/lib/country-consultant-list';
 import { consultantContactActions } from '@/lib/consultant-contact';
+import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
 import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
+import { ConsultantCompareButton, ConsultantCompareTray } from './ConsultantCompare';
+import { ConsultantTrust } from './ConsultantTrust';
+import { ConsultantCard } from './CountryConsultantIndex';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Crumbs } from './Crumbs';
 import { SectionHead } from './SectionHead';
+import { UniversityTabs } from './UniversityTabs';
 
 /**
  * A consultant's profile, as the client's zip draws it: the compact hero
@@ -28,6 +37,8 @@ export type ConsultantGuideProps = {
     verified: boolean;
     verifiedAt: string | null;
     sourceReference: string | null;
+    /** The consultant's own image, drawn as a round logo in the hero. */
+    logo?: string | null;
   };
   countries: Array<{ name: string; slug: string }>;
   services: string[];
@@ -42,9 +53,27 @@ export type ConsultantGuideProps = {
   }>;
   /** The destinations with a guide of their own, by slug. */
   guides: ReadonlySet<string>;
+  /** The counselling form's countries, levels and intakes, read on the
+   *  server; without them the form loads its own. */
+  counselling?: CounsellingOptions | null;
+  /** "Consultants with a similar profile", chosen by consultantNeighbours. */
+  similar?: CountryConsultantRow[];
+  /** The other consultants for this one's destinations, A to Z, none of
+   *  them among `similar`. */
+  others?: CountryConsultantRow[];
 };
 
-export function ConsultantGuide({ consultant, countries, services, languages, locations, guides }: ConsultantGuideProps) {
+export function ConsultantGuide({
+  consultant,
+  countries,
+  services,
+  languages,
+  locations,
+  guides,
+  counselling = null,
+  similar = [],
+  others = [],
+}: ConsultantGuideProps) {
   const self = `/study-abroad-consultants/${consultant.slug}`;
   const trail: Crumb[] = [
     { label: 'Home', href: '/' },
@@ -58,6 +87,14 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
     (action, index, list) => list.findIndex((other) => other.href === action.href) === index,
   );
   const hasContact = Boolean(consultant.email || consultant.phone || consultant.websiteUrl);
+  /* Linked only when it is an absolute web address: a bare "www.…" typed
+     into the admin became a link to a page of our own that does not exist.
+     Anything else is shown as the text it is. */
+  const website = externalHttpUrl(consultant.websiteUrl);
+  const source = externalHttpUrl(consultant.sourceReference);
+  /* A date is printed only beside VERIFIED: a pending record can still
+     carry the date of a check that no longer stands. */
+  const verifiedOn = consultant.verified && consultant.verifiedAt ? formatDate(consultant.verifiedAt) || null : null;
   /* A location is often named for its city, so the city is said once. */
   const once = (parts: Array<string | null | undefined>) =>
     parts.filter((part, index, all): part is string => Boolean(part) && all.indexOf(part) === index);
@@ -65,6 +102,18 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
     once([location.city, location.state, location.country].filter((part) => part !== location.name)).join(', ');
   const destinationHref = (slug: string) =>
     guides.has(slug) ? `/study-abroad/${slug}/consultants` : `/study-abroad-consultants?country=${slug}#consultants`;
+  const similarNote = `Picked for the cities, destinations and services they share with ${consultant.name}. Paid placement plays no part.`;
+  const similarCards = similar.map((row) => (
+    <ConsultantCard
+      key={row.slug}
+      consultant={row}
+      countrySlug=""
+      guides={[...guides]}
+      guidance={counsellingHref({ source: 'general', from: self })}
+      compare
+      logo
+    />
+  ));
 
   return (
     <>
@@ -78,14 +127,22 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
               <div className="instcard__badges" style={{ marginBottom: 14 }}>
                 {consultant.verified ? (
                   <span className="badge badge--ok">
-                    Verified{consultant.verifiedAt ? ` ${formatDate(consultant.verifiedAt)}` : ''}
+                    Verified{verifiedOn ? ` ${verifiedOn}` : ''}
                   </span>
                 ) : (
                   <span className="badge badge--neutral">Not yet verified</span>
                 )}
                 <span className="badge badge--neutral">Independent consultant</span>
               </div>
-              <h1 className="hero__h1">{consultant.name}</h1>
+              {consultant.logo ? (
+                <div className="consulthero__id">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- the API's own media path, served as it is */}
+                  <img className="conslogo conslogo--lg" src={consultant.logo} alt="" width={72} height={72} />
+                  <h1 className="hero__h1">{consultant.name}</h1>
+                </div>
+              ) : (
+                <h1 className="hero__h1">{consultant.name}</h1>
+              )}
               {consultant.shortDescription ? <p className="hero__sub">{consultant.shortDescription}</p> : null}
               {countries.length ? (
                 <div className="consulthero__row">
@@ -121,8 +178,8 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                     ) : null}
                   </a>
                 ))}
-                {consultant.websiteUrl ? (
-                  <a className="btn btn--lg btn--ghost" href={consultant.websiteUrl} rel="nofollow noopener" target="_blank">
+                {website ? (
+                  <a className="btn btn--lg btn--ghost" href={website} rel="nofollow noopener" target="_blank">
                     Visit website{' '}
                     <span className="btn__arrow" aria-hidden="true">
                       &#8599;
@@ -135,6 +192,7 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                 >
                   Book free counselling
                 </Link>
+                <ConsultantCompareButton item={{ slug: consultant.slug, name: consultant.name }} />
               </div>
             </div>
 
@@ -164,9 +222,13 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                       <div className="contactcard__row">
                         <dt className="label">Website</dt>
                         <dd>
-                          <a href={consultant.websiteUrl} rel="nofollow noopener" target="_blank">
-                            {consultant.websiteUrl.replace(/^https?:\/\//, '')}
-                          </a>
+                          {website ? (
+                            <a href={website} rel="nofollow noopener" target="_blank">
+                              {displayUrl(website)}
+                            </a>
+                          ) : (
+                            displayUrl(consultant.websiteUrl)
+                          )}
                         </dd>
                       </div>
                     ) : null}
@@ -189,16 +251,38 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
         </div>
       </section>
 
+      {/* The design's strip of section links, sticking under the header.
+          Every section it names is always on the page. There is no
+          Universities tab: Universta records no university relationships
+          for a consultant. */}
+      <UniversityTabs
+        label="Consultant sections"
+        tabs={[
+          { id: 'about', label: 'About' },
+          { id: 'services', label: 'Services' },
+          { id: 'offices', label: 'Offices' },
+          { id: 'verification', label: 'Verification' },
+          { id: 'contact', label: 'Get guidance' },
+        ]}
+      />
+
       <section className="sec sec--white" id="about">
         <div className="wrap">
+          {/* The description beside the heading, as the design sets it,
+              rather than under it with the right half of the page empty.
+              It is rich text, so it goes in the head's own column, not in
+              the one-paragraph lead. */}
           <SectionHead
             eyebrow="About"
             title={`About ${consultant.name}`}
             lead={consultant.description ? null : (consultant.shortDescription ?? 'The consultant has published no description on this record.')}
-          />
-          {consultant.description ? <RichText value={consultant.description} className="h-prose" /> : null}
+          >
+            {consultant.description ? (
+              <RichText value={consultant.description} className="h-prose" />
+            ) : null}
+          </SectionHead>
           {countries.length || languages.length ? (
-            <div className="admgrid" style={{ marginTop: consultant.description ? 28 : 0 }}>
+            <div className="admgrid">
               {countries.length ? (
                 <div className="admgrid__col">
                   <p className="path__h">Destinations</p>
@@ -237,8 +321,12 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             title="Services this consultant lists"
             lead="Only the services on this consultant's own profile. A listed service describes what they offer, not an outcome."
           />
+          {/* Two columns, as the directory sets the same list: one column
+              across the whole page left each name a long way from the
+              rule under it. Services have no categories here, so there
+              are no group headings. */}
           {services.length ? (
-            <ul className="svclist">
+            <ul className="svclist svcgroups">
               {services.map((service) => (
                 <li className="svclist__item" key={service}>
                   <b>{service}</b>
@@ -285,7 +373,9 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             title="Verification"
             lead={
               consultant.verified
-                ? 'An administrator has checked this record against its source and dated the check.'
+                ? verifiedOn
+                  ? 'An administrator has checked this record against its source and dated the check.'
+                  : 'An administrator has checked this record against its source. The date of that check was not recorded.'
                 : 'Listed, but not yet checked by Universta. Treat the details as the consultant published them.'
             }
           />
@@ -296,31 +386,73 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             </div>
             <div className="unisnap__cell">
               <span className="label">Last verified</span>
-              <b>{consultant.verifiedAt ? formatDate(consultant.verifiedAt) : 'Not verified'}</b>
+              <b>{consultant.verified ? (verifiedOn ?? 'Verified (date not recorded)') : 'Not verified'}</b>
             </div>
             <div className="unisnap__cell">
               <span className="label">Source</span>
               <b>
-                {consultant.sourceReference ? (
-                  <a href={consultant.sourceReference} rel="nofollow noopener" target="_blank">
+                {source ? (
+                  <a href={source} rel="nofollow noopener" target="_blank">
                     The consultant&rsquo;s own listing &#8599;
                   </a>
+                ) : consultant.sourceReference?.trim() ? (
+                  consultant.sourceReference.trim()
                 ) : (
                   'Not recorded'
                 )}
               </b>
             </div>
           </div>
-          <aside className="trustbox" aria-label="How Universta works with consultants" style={{ marginTop: 24 }}>
-            <p className="path__h">How Universta works with consultants</p>
-            <ul className="ticklist ticklist--sm">
-              <li>Universta is a discovery and guidance platform. Consultant services are provided by independent third-party consultants.</li>
-              <li>Consultant information is verified where possible, and each listing shows what has and has not been checked.</li>
-              <li>No consultant can guarantee admission, a visa, a scholarship or a job. Treat any guarantee as a warning sign.</li>
-            </ul>
-          </aside>
         </div>
       </section>
+
+      {/* The design's "Get guidance": the request on the profile itself, so
+          a reader need not leave the consultant to ask about them. It goes
+          to Universta with this page as where it started; the contact card
+          above stays as it is, with nothing held back until it is sent. */}
+      <section className="sec sec--white" id="contact">
+        <div className="wrap">
+          <div className="leadinline">
+            <div className="leadinline__copy">
+              <p className="eyebrow">Get guidance</p>
+              <h2 className="sec-title">Want help deciding on a consultant?</h2>
+              <p className="sec-lead">
+                Tell Universta what you plan to study and a counsellor will help you weigh up {consultant.name}{' '}
+                alongside the other options open to you. Your request comes to the Universta team; it is not
+                passed on to the consultant.
+              </p>
+            </div>
+            <div className="leadinline__form">
+              <CounsellingForm initialOptions={counselling} context={{ sourceType: 'general', sourcePagePath: self }} />
+            </div>
+          </div>
+          <ConsultantTrust className="trustbox--below" />
+        </div>
+      </section>
+
+      {/* The design closes the profile with consultants like this one,
+          from the published list alone. A single one sits beside the
+          heading rather than alone in a row. */}
+      {similar.length ? (
+        <section className="sec sec--paper sec--tight" id="similar">
+          <div className="wrap">
+            {similar.length === 1 ? (
+              <SectionHead eyebrow="Similar consultants" title="A consultant with a similar profile" lead={similarNote}>
+                <div className="consultgrid consultgrid--one">{similarCards}</div>
+              </SectionHead>
+            ) : (
+              <>
+                <div className="h-head">
+                  <p className="eyebrow">Similar consultants</p>
+                  <h2 className="sec-title sec-title--sm">Consultants with a similar profile</h2>
+                  <p className="sec-lead">{similarNote}</p>
+                </div>
+                <div className={`consultgrid${similar.length >= 3 ? ' consultgrid--3' : ''}`}>{similarCards}</div>
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <MatchBand
         eyebrow={{ n: 'Next step', label: 'Guidance' }}
@@ -346,7 +478,36 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
           })),
           { href: '/scholarships', label: 'Find scholarships', ghost: true },
         ]}
+        /* "Related on Universta", as the design closes a profile: where the
+           consultant works, then who else works there. Subjects and levels
+           are left out -- Universta records neither for a consultant. */
+        groups={[
+          {
+            title: 'Destinations covered',
+            items: countries.map((country) => ({
+              id: country.slug,
+              name: `Study in ${country.name}`,
+              href: guides.has(country.slug) ? `/study-abroad/${country.slug}` : destinationHref(country.slug),
+            })),
+          },
+          {
+            title: 'Other consultants for these destinations',
+            total: others.length,
+            items: others.map((row) => ({
+              id: row.slug,
+              name: row.name,
+              href: `/study-abroad-consultants/${row.slug}`,
+              note: row.destinations
+                .filter((entry) => countries.some((country) => country.slug === entry.slug))
+                .map((entry) => entry.name)
+                .join(', '),
+            })),
+            note: 'In alphabetical order. This is not a ranking.',
+          },
+        ]}
       />
+
+      <ConsultantCompareTray />
     </>
   );
 }

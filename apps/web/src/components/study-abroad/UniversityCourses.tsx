@@ -106,13 +106,18 @@ export function UniversityCourses(props: UniversityCoursesProps) {
   const band = (id: string) =>
     `sec ${order.indexOf(id) % 2 === 0 ? 'sec--white' : 'sec--paper'}`;
 
+  /* Each label agrees with its figure: "1 Campus", "2 Campuses". */
+  const stat = (value: number, one: string, many: string) => ({
+    label: value === 1 ? one : many,
+    value,
+  });
   const stats = [
-    { label: total === 1 ? 'Course' : 'Courses', value: total },
-    { label: 'Degree levels', value: facets.level.length },
-    { label: 'Subjects', value: facets.subject.length },
-    { label: 'Study modes', value: facets.studyMode.length },
-    { label: 'Campuses', value: props.campuses },
-    { label: 'Intakes', value: facets.intake.length },
+    stat(total, 'Course', 'Courses'),
+    stat(facets.level.length, 'Degree level', 'Degree levels'),
+    stat(facets.subject.length, 'Subject', 'Subjects'),
+    stat(facets.studyMode.length, 'Study mode', 'Study modes'),
+    stat(props.campuses, 'Campus', 'Campuses'),
+    stat(facets.intake.length, 'Intake', 'Intakes'),
   ];
 
   /* The structured data reads the trail the page draws and the questions

@@ -121,7 +121,11 @@ const DEPARTMENTS = [
   'Marketing', 'Operations', 'Student Success',
 ];
 const EMPLOYMENT = ['Full time', 'Part time', 'Contract', 'Internship'];
-const EVENT_KINDS = ['WEBINAR', 'FAIR', 'WORKSHOP', 'INFO_SESSION'];
+/* The three formats the admin offers and the event page's structured data
+   reads. Webinar, fair and workshop are kinds of event, not ways of
+   attending one: seeded here, they showed in the admin as "Offline" and
+   every webinar was described to search engines as held in person. */
+const EVENT_KINDS = ['OFFLINE', 'ONLINE', 'HYBRID'];
 
 /** Specialization names that read as real fields of study but belong to no
  * particular institution, so nothing here asserts anything about one. */

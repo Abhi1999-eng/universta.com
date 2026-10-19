@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteCanonical } from "./seo-management";
 
 const baseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
@@ -88,9 +89,18 @@ export async function staticPageMetadata(
   ]);
   const title = seo?.seoTitle ?? fallbackTitle;
   const titleSuffix = defaults?.defaultTitleSuffix?.trim() || "| Universta";
+  /* What an editor wrote for this page first, then the page's own sentence,
+   * and the site-wide default only for a page that has none. The default
+   * used to come second, so every listing -- /events, /careers, /courses --
+   * carried the same generic description as each other. */
   const description =
-    seo?.metaDescription ?? defaults?.defaultDescription ?? fallbackDescription;
-  const canonical = seo?.canonicalUrl ?? canonicalPath;
+    seo?.metaDescription?.trim() ||
+    fallbackDescription.trim() ||
+    defaults?.defaultDescription?.trim() ||
+    fallbackDescription;
+  /* Absolute, as the record pages' canonicals already are: a crawler reads
+   * a relative canonical against whatever address it fetched. */
+  const canonical = absoluteCanonical(seo?.canonicalUrl ?? canonicalPath);
   return {
     title: `${title} ${titleSuffix}`,
     description,

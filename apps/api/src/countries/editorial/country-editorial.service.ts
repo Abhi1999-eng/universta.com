@@ -367,6 +367,7 @@ export class CountryEditorialService {
 
   async publicPage(slug: string) {
     const country = await this.countries.publicDetail(slug);
+    const now = new Date();
     const [record, editorial] = await Promise.all([
       this.prisma.country.findFirst({
         where: {
@@ -405,13 +406,31 @@ export class CountryEditorialService {
              than to one of its universities. A university's own testimonials
              belong on that university's page, not on the country guide. */
           testimonials: {
-            where: { deletedAt: null, status: 'PUBLISHED' },
+            /* Inside its publishing window too, the rule /testimonials
+               keeps: an expired quote stayed on the guide, and one dated to
+               go live next year appeared early. */
+            where: {
+              deletedAt: null,
+              status: 'PUBLISHED',
+              AND: [
+                {
+                  OR: [
+                    { publishStartsAt: null },
+                    { publishStartsAt: { lte: now } },
+                  ],
+                },
+                {
+                  OR: [{ publishEndsAt: null }, { publishEndsAt: { gt: now } }],
+                },
+              ],
+            },
             select: {
               id: true,
               quote: true,
               attribution: true,
               attributionNote: true,
               displayOrder: true,
+              imageMediaId: true,
             },
             orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
           },
@@ -447,13 +466,45 @@ export class CountryEditorialService {
       consultantCards: record.consultantCards.map((item) =>
         this.card(item, true),
       ),
-      testimonials: record.testimonials.map((item) => ({
-        id: item.id,
-        quote: item.quote,
-        attribution: item.attribution,
-        attributionNote: item.attributionNote,
-      })),
+      testimonials: await this.testimonialsWithImages(record.testimonials),
     };
+  }
+
+  /**
+   * A testimonial keeps only the id of the student's photo -- it has no
+   * relation to the media library -- so the photo is looked up here, active
+   * images only, and a missing one reads as no photo.
+   */
+  private async testimonialsWithImages(
+    rows: Array<{
+      id: string;
+      quote: string;
+      attribution: string | null;
+      attributionNote: string | null;
+      imageMediaId: string | null;
+    }>,
+  ) {
+    const ids = [
+      ...new Set(
+        rows.map((row) => row.imageMediaId).filter((id): id is string => !!id),
+      ),
+    ];
+    const images = ids.length
+      ? await this.prisma.mediaAsset.findMany({
+          where: { id: { in: ids }, status: 'ACTIVE', deletedAt: null },
+          select: mediaSelect,
+        })
+      : [];
+    const byId = new Map(images.map((image) => [image.id, image]));
+    return rows.map((item) => ({
+      id: item.id,
+      quote: item.quote,
+      attribution: item.attribution,
+      attributionNote: item.attributionNote,
+      imageMedia: item.imageMediaId
+        ? (byId.get(item.imageMediaId) ?? null)
+        : null,
+    }));
   }
 
   /**

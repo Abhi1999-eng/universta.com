@@ -98,7 +98,9 @@ describe('what each destination asks for', () => {
       }),
     ]);
     expect(markup).toContain('September');
-    expect(markup).toContain('2027-01-15');
+    /* As the programme page writes it, never the stored ISO date. */
+    expect(markup).toContain('15 January 2027');
+    expect(markup).not.toContain('2027-01-15');
   });
 
   it('says a deadline is unpublished rather than leaving the cell blank', () => {
@@ -130,7 +132,8 @@ describe('what each destination asks for', () => {
       }),
     ]);
     expect(markup).toContain('https://example.invalid/programme');
-    expect(markup).toContain('checked 2026-10-02');
+    expect(markup).toContain('checked 2 October 2026');
+    expect(markup).not.toContain('2026-10-02');
   });
 
   it('gives a destination a card only when it recorded something', () => {
@@ -395,5 +398,258 @@ describe('funding on a course', () => {
     expect(markup).toContain('02');
     expect(markup).toContain('03');
     expect(markup).not.toContain('04');
+  });
+});
+
+/**
+ * The admin offers eight kinds of content section, and the guide looked for
+ * three keys, two of which the admin cannot save: everything but the
+ * curriculum stayed off the site. Each now has a place, with its
+ * subheading as the band's lead and its picture under its text.
+ */
+describe('the content sections an editor writes', () => {
+  type Section = CourseDetail['contentSections'][number];
+  const section = (over: Partial<Section>): Section => ({
+    id: over.sectionKey ?? 'x',
+    sectionKey: 'curriculum',
+    sectionType: 'RICH_TEXT',
+    heading: null,
+    subheading: null,
+    bodyJson: null,
+    media: null,
+    displayOrder: 0,
+    ...over,
+  });
+  const guide = (sections: Section[], over: Partial<CourseDetail> = {}) =>
+    renderToStaticMarkup(
+      <CourseGuide
+        course={{ ...course([availability()]), contentSections: sections, ...over } as CourseDetail}
+      />,
+    );
+  const bandOf = (markup: string, id: string) => {
+    const start = markup.indexOf(`id="${id}"`);
+    return start < 0 ? '' : markup.slice(start, markup.indexOf('</section>', start));
+  };
+
+  it('draws the application process as the design’s numbered steps', () => {
+    const markup = guide([
+      section({
+        sectionKey: 'application-process',
+        sectionType: 'STEPS',
+        heading: 'How to apply',
+        subheading: 'Two fixed windows a year',
+        bodyJson: {
+          paragraphs: ['Pick a lab\nSit the exam'],
+          steps: [
+            { order: 2, text: 'Sit the exam' },
+            { order: 1, text: 'Pick a lab' },
+          ],
+        },
+      }),
+    ]);
+    const apply = bandOf(markup, 'apply');
+    expect(apply).toContain('class="applysteps');
+    expect(apply).toContain('Two fixed windows a year');
+    /* In the order the editor numbered them, each once. */
+    expect(apply.indexOf('Pick a lab')).toBeLessThan(apply.indexOf('Sit the exam'));
+    expect(apply.match(/Sit the exam/g)).toHaveLength(1);
+  });
+
+  it('draws the documents as pills and the career outcomes as numbered roles', () => {
+    const markup = guide([
+      section({
+        sectionKey: 'documents',
+        sectionType: 'CHECKLIST',
+        heading: 'Documents you will need',
+        bodyJson: { items: ['Transcripts', 'TOEFL score report'] },
+      }),
+      section({
+        sectionKey: 'career-outcomes',
+        sectionType: 'CHECKLIST',
+        heading: 'Where graduates work',
+        subheading: 'Research and industry',
+        bodyJson: { items: ['Machine learning engineer', 'Data scientist'] },
+      }),
+    ]);
+    const eligibility = bandOf(markup, 'eligibility');
+    expect(eligibility).toContain('Documents you will need');
+    expect(eligibility).toContain('<li class="pill pill--sm">Transcripts</li>');
+    const careers = bandOf(markup, 'careers');
+    expect(careers).toContain('Where graduates work');
+    expect(careers).toContain('Research and industry');
+    expect(careers).toContain('class="careerlist');
+    expect(careers).toMatch(/careerlist__n[^>]*>01<\/span>Machine learning engineer/);
+  });
+
+  it('keeps the careers prose and puts the roles under it', () => {
+    const markup = guide(
+      [
+        section({
+          sectionKey: 'career-outcomes',
+          bodyJson: { items: ['Software engineer'] },
+        }),
+      ],
+      { careerSummary: '<p>Graduates go into research.</p>' },
+    );
+    const careers = bandOf(markup, 'careers');
+    expect(careers.indexOf('Graduates go into research.')).toBeGreaterThan(-1);
+    expect(careers.indexOf('Graduates go into research.')).toBeLessThan(
+      careers.indexOf('Software engineer'),
+    );
+  });
+
+  it('never invents a role when the course lists none', () => {
+    const markup = guide([], { careerSummary: '<p>Graduates go into research.</p>' });
+    expect(bandOf(markup, 'careers')).not.toContain('careerlist');
+  });
+
+  it('draws the skills, and the admission requirements with the documents beside them', () => {
+    const markup = guide([
+      section({ sectionKey: 'skills', bodyJson: { items: ['Research programming'] } }),
+      section({
+        sectionKey: 'admission-requirements',
+        heading: 'Who can apply',
+        bodyJson: { paragraphs: ['<p>A bachelor’s degree.</p>'] },
+      }),
+      section({
+        sectionKey: 'documents',
+        heading: 'Documents required',
+        subheading: 'From the admission guide',
+        bodyJson: { items: ['Transcripts'] },
+      }),
+    ]);
+    expect(bandOf(markup, 'skills')).toContain('Research programming');
+    const eligibility = bandOf(markup, 'eligibility');
+    expect(eligibility).toContain('A bachelor’s degree.');
+    expect(eligibility).toContain('Documents required');
+    expect(eligibility).toContain('From the admission guide');
+  });
+
+  it('puts the sources under the facts and the counselling call in the closing band', () => {
+    const markup = guide([
+      section({
+        sectionKey: 'source-trust',
+        heading: 'Sources and how we checked',
+        subheading: 'Checked in October 2026',
+        bodyJson: { paragraphs: ['<p>Against the official admission guide.</p>'] },
+      }),
+      section({
+        sectionKey: 'counselling-cta',
+        heading: 'Planning to apply this year?',
+        bodyJson: { paragraphs: ['<p>A counsellor can check your profile.</p>'] },
+      }),
+    ]);
+    const facts = markup.slice(markup.indexOf('At a glance'), markup.indexOf('</aside>'));
+    expect(facts).toContain('Sources and how we checked');
+    expect(facts).toContain('Checked in October 2026');
+    expect(facts).toContain('Against the official admission guide.');
+    const plan = bandOf(markup, 'plan');
+    expect(plan).toContain('Planning to apply this year?');
+    expect(plan).toContain('A counsellor can check your profile.');
+  });
+
+  it('shows a section’s subheading as its lead and its picture under its text', () => {
+    const markup = guide([
+      section({
+        heading: 'What you will study',
+        subheading: 'Courses, then a thesis',
+        bodyJson: { paragraphs: ['<p>Core courses.</p>'] },
+        media: { id: 'm1', url: '/media/lab.jpg', alt: 'A lab', title: null, width: null, height: null },
+      }),
+    ]);
+    const curriculum = bandOf(markup, 'curriculum');
+    expect(curriculum).toContain('<p class="sec-lead">Courses, then a thesis</p>');
+    expect(curriculum).toContain('src="/media/lab.jpg"');
+    expect(curriculum).toContain('alt="A lab"');
+  });
+
+  it('puts a band’s prose in the right-hand column beside its heading', () => {
+    const markup = guide([
+      section({ bodyJson: { paragraphs: ['<p>Core courses.</p>'] } }),
+    ]);
+    const curriculum = bandOf(markup, 'curriculum');
+    /* Inside the split head, after its aside: not under the whole head. */
+    const head = curriculum.indexOf('sec-head--split');
+    const aside = curriculum.indexOf('sec-head__aside');
+    expect(head).toBeGreaterThan(-1);
+    expect(curriculum.indexOf('Core courses.')).toBeGreaterThan(aside);
+    expect(curriculum.slice(head)).toMatch(/sec-head__aside[\s\S]*<\/div><div>[\s\S]*Core courses\./);
+  });
+
+  it('leaves out a section that has a heading and nothing else', () => {
+    const markup = guide([section({ sectionKey: 'skills', heading: 'Skills you build' })]);
+    expect(markup).not.toContain('id="skills"');
+  });
+
+  it('still reads a curriculum saved before the sections had types', () => {
+    const markup = guide([section({ bodyJson: { paragraphs: ['<p>Modules.</p>'] } })]);
+    expect(bandOf(markup, 'curriculum')).toContain('Modules.');
+  });
+});
+
+/**
+ * The admin fields a course guide never printed: the course code, the
+ * credits, the picture, where a destination's graduates go and a
+ * destination marked "Limited".
+ */
+describe('the course fields that never reached the guide', () => {
+  const guide = (over: Partial<CourseDetail>, rows = [availability()]) =>
+    renderToStaticMarkup(<CourseGuide course={{ ...course(rows), ...over } as CourseDetail} />);
+  const facts = (markup: string) =>
+    markup.slice(markup.indexOf('At a glance'), markup.indexOf('</aside>'));
+
+  it('lists the course code and the credits at a glance', () => {
+    const markup = facts(guide({ courseCode: 'IST-M', credits: '30.00' }));
+    expect(markup).toContain('Course code');
+    expect(markup).toContain('IST-M');
+    expect(markup).toContain('Credits');
+    expect(markup).toMatch(/Credits<\/span><span class="snap__v">30</);
+  });
+
+  it('adds no empty rows for a course without them', () => {
+    const markup = facts(guide({}));
+    expect(markup).not.toContain('Course code');
+    expect(markup).not.toContain('Credits');
+  });
+
+  it('shows the course’s picture in its hero', () => {
+    const markup = guide({
+      featuredMedia: { id: 'm', url: '/media/mist.jpg', alt: 'Campus', title: null, width: null, height: null },
+    });
+    const hero = markup.slice(0, markup.indexOf('</section>'));
+    expect(hero).toContain('src="/media/mist.jpg"');
+  });
+
+  it('prints where a destination’s graduates go', () => {
+    const markup = guide({}, [
+      availability({ careerOpportunities: 'Engineering roles in Tokyo.' }),
+    ]);
+    expect(markup).toContain('What each destination asks for');
+    expect(markup).toContain('After graduating');
+    expect(markup).toContain('Engineering roles in Tokyo.');
+  });
+
+  it('marks a destination the editor set to Limited', () => {
+    const markup = guide({}, [availability({ availabilityStatus: 'LIMITED' })]);
+    expect(markup).toContain('Limited availability');
+    expect(guide({}, [availability({ availabilityStatus: 'AVAILABLE' })])).not.toContain(
+      'Limited',
+    );
+  });
+
+  it('lays a single destination’s card out in two columns across the width', () => {
+    const one = guide({}, [
+      availability({
+        tuition: { min: '535800', max: '535800', currencyCode: 'JPY', period: 'PER_YEAR' },
+        admissionRequirements: 'A bachelor’s degree.',
+      }),
+    ]);
+    expect(one).toContain('entrygrid entrygrid--one');
+    expect(one).toContain('entrycard entrycard--split');
+    const two = guide({}, [
+      availability({ admissionRequirements: 'A degree.', tuition: { min: '1', currencyCode: 'EUR' } }),
+      availability({ id: 'a2', country: { id: 'c2', name: 'Ireland', slug: 'ireland' }, applicationNotes: 'Rounds.' }),
+    ]);
+    expect(two).not.toContain('entrycard--split');
   });
 });

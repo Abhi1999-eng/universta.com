@@ -2,10 +2,20 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
-import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
+import { consultantNeighbours, consultantVerification } from '@/lib/consultant-profile';
+import { getCounsellingOptions } from '@/lib/counselling';
+import {
+  consultantLogo,
+  liveLocationLinks,
+  nameKey,
+  toConsultantRow,
+  toConsultantRows,
+} from '@/lib/country-consultant-list';
+import { phaseDetail, phaseListAll, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
 import { resolveContentVariables } from '../../../../../../../packages/content-variables';
+import '../../consultants-zip.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +46,19 @@ export default async function ConsultantPage({ params }: Props) {
     if (redirect) permanentRedirect(redirect.targetPath);
     notFound();
   }
-  const directory = await getDestinations().catch(() => null);
+  const [directory, counselling, published] = await Promise.all([
+    getDestinations().catch(() => null),
+    getCounsellingOptions(),
+    /* The other consultants, for those like this one. Without them the
+       profile simply suggests none. */
+    phaseListAll<AnyRecord>('consultants').catch(() => null),
+  ]);
   const guides = new Set((directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])));
   const record = row as unknown as Record<string, unknown>;
+  const self = toConsultantRow(record);
+  const neighbours = self
+    ? consultantNeighbours(self, toConsultantRows(published?.data ?? []))
+    : { similar: [], others: [] };
   const list = (value: unknown, key: 'country' | 'location' | null) =>
     Array.isArray(value)
       ? value.map((entry) => {
@@ -47,6 +67,12 @@ export default async function ConsultantPage({ params }: Props) {
           return { item, nested };
         })
       : [];
+  /* Each service or language once, by the name the reader sees: a record
+     the admin saved twice can hold "English" under two codes. */
+  const names = (value: unknown) =>
+    list(value, null)
+      .map(({ nested }) => (typeof nested?.name === 'string' ? nested.name.trim() : ''))
+      .filter((name, index, all) => name && all.findIndex((other) => nameKey(other) === nameKey(name)) === index);
 
   return (
     <ConsultantGuide
@@ -61,20 +87,16 @@ export default async function ConsultantPage({ params }: Props) {
         email: typeof record.email === 'string' ? record.email : null,
         phone: typeof record.phone === 'string' ? record.phone : null,
         websiteUrl: typeof record.websiteUrl === 'string' ? record.websiteUrl : null,
-        verified: record.verificationStatus === 'VERIFIED',
-        verifiedAt: typeof record.verifiedAt === 'string' ? record.verifiedAt : null,
+        ...consultantVerification(record.verificationStatus, record.verifiedAt),
         sourceReference: typeof record.sourceReference === 'string' ? record.sourceReference : null,
+        logo: consultantLogo(record),
       }}
       countries={list(record.countries, 'country')
         .filter(({ nested }) => nested?.slug)
         .map(({ nested }) => ({ name: String(nested!.name), slug: String(nested!.slug) }))}
-      services={list(record.services, null)
-        .map(({ nested }) => (nested?.name ? String(nested.name) : ''))
-        .filter(Boolean)}
-      languages={list(record.languages, null)
-        .map(({ nested }) => (nested?.name ? String(nested.name) : ''))
-        .filter(Boolean)}
-      locations={list(record.locations, 'location')
+      services={names(record.services)}
+      languages={names(record.languages)}
+      locations={list(liveLocationLinks(record.locations), 'location')
         .filter(({ nested }) => nested?.slug)
         .map(({ item, nested }) => {
           const country = nested!.country as Record<string, unknown> | undefined;
@@ -88,6 +110,9 @@ export default async function ConsultantPage({ params }: Props) {
           };
         })}
       guides={guides}
+      counselling={counselling}
+      similar={neighbours.similar}
+      others={neighbours.others}
     />
   );
 }

@@ -8,6 +8,7 @@ import {
 } from '@/lib/course-compare';
 import { phaseCompare, phaseComparisonOptions } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
+import '@/app/(sa)/courses-zip.css';
 
 /**
  * /compare/courses: up to four programmes side by side, in the design's

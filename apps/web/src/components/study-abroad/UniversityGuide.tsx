@@ -783,6 +783,7 @@ export function UniversityGuide({
           presence={consultants}
           alt={alt('consultants')}
           heading={`Need help applying to ${university.name}?`}
+          guidanceFrom={self}
         />
       ) : null}
 

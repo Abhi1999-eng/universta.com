@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ContactPage } from '@/components/study-abroad/ContactPage';
+import { prefilledSubject } from '@/lib/contact-payload';
 import { staticPageMetadata } from '@/lib/static-page-seo';
 
 export const dynamic = 'force-dynamic';
@@ -43,10 +44,12 @@ function present(value: string | undefined) {
   return trimmed ? trimmed : null;
 }
 
-export default async function Contact() {
-  const contact = await contactSettings();
+export default async function Contact({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [contact, params] = await Promise.all([contactSettings(), searchParams]);
   return (
     <ContactPage
+      /* "Ask about this role" names the role in the Subject. */
+      subject={prefilledSubject(params.subject)}
       email={present(contact?.email)}
       phone={present(contact?.counsellingPhone)}
       address={present(contact?.address)}

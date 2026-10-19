@@ -23,6 +23,8 @@ export type ContactDetails = {
   phone: string | null;
   address: string | null;
   whatsappLink: string | null;
+  /** The Subject a link asked for ("Role: <title>"), already made safe. */
+  subject?: string | null;
 };
 
 export function ContactPage(props: ContactDetails) {
@@ -167,7 +169,7 @@ export function ContactPage(props: ContactDetails) {
                   </div>
                   <div className="field">
                     <label htmlFor="subject">Subject (optional)</label>
-                    <input id="subject" name="subject" type="text" />
+                    <input id="subject" name="subject" type="text" defaultValue={props.subject ?? undefined} />
                   </div>
                   <div className="field leadform__full">
                     <label htmlFor="message">Message</label>

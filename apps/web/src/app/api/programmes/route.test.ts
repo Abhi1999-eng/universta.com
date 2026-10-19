@@ -62,7 +62,11 @@ describe('the next page of programmes', () => {
       '/study-abroad/united-kingdom/universities/university-of-warwick/courses/university-of-warwick-msc-computer-science',
     );
     expect(body.cards[0]!.university.name).toBe('University of Warwick');
-    expect(body.cards[0]!.language).toEqual({ value: 'English', note: 'IELTS 6.5 minimum' });
+    expect(body.cards[0]!.language).toEqual({
+      value: 'English',
+      note: 'IELTS 6.5 minimum',
+      tests: ['IELTS 6.5 minimum'],
+    });
     expect(body.meta.page).toBe(2);
     expect(asked[0]).toEqual({
       limit: '18',

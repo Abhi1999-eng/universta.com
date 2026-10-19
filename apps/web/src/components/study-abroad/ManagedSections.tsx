@@ -4,6 +4,7 @@ import { fetchDirectoryItems, visibilityClass } from '@/components/phase1/PageSe
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { formatNumber } from '@/lib/format';
 import { resolveHref } from '@/lib/internal-links';
+import { QuoteCard } from './QuoteCard';
 
 /**
  * A managed page's sections, drawn with the design's classes.
@@ -56,7 +57,7 @@ export function managedFaqItems(sections: readonly AnyRecord[]) {
     .filter((item): item is { label: string; value: string } => Boolean(item?.label && item?.value));
 }
 
-async function Section({ section, pageTitle }: { section: AnyRecord; pageTitle?: string }) {
+export async function Section({ section, pageTitle }: { section: AnyRecord; pageTitle?: string }) {
   const type = text(section.sectionType) || 'CUSTOM';
   const body = (section.bodyJson && typeof section.bodyJson === 'object' ? section.bodyJson : {}) as Body;
   /* An intro section often repeats the page's own title as its heading; the
@@ -166,11 +167,25 @@ async function Section({ section, pageTitle }: { section: AnyRecord; pageTitle?:
     );
   } else if (DIRECTORIES.has(type)) {
     const rows = await fetchDirectoryItems(type, body);
-    content = rows.length ? (
+    /* Testimonials are the zip's quote cards: the words, then the student
+       and their role line, never an empty name above the quote. */
+    content = rows.length && rows.every((row) => row.quote) ? (
+      <div className="quotes">
+        {rows.map((row, index) => (
+          <QuoteCard
+            key={`${row.id ?? row.title}-${index}`}
+            quote={row.quote!.text}
+            name={row.quote!.name}
+            note={row.quote!.role}
+            image={row.quote!.image}
+          />
+        ))}
+      </div>
+    ) : rows.length ? (
       <ul className="h-list">
         {rows.map((row, index) => (
           <li key={`${row.title}-${index}`}>
-            {row.href ? <Link href={row.href}>{row.title}</Link> : <strong>{row.title}</strong>}
+            {row.href ? <Link href={row.href}>{row.title}</Link> : row.title ? <strong>{row.title}</strong> : null}
             {row.description ? <span>{row.description}</span> : null}
           </li>
         ))}

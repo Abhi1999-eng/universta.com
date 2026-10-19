@@ -19,6 +19,7 @@ import {
 } from '@/lib/courses-params';
 import { CoursesReference } from '@/components/reference/CoursesReference';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { toStripEvent } from '@/lib/course-events';
 import { getListingPageContent } from '@/lib/listing-page-content';
 import { phaseList, phaseProgrammes } from '@/lib/phase1';
 import { staticPageMetadata } from '@/lib/static-page-seo';
@@ -28,18 +29,11 @@ import {
   readCourseFilters,
   toProgrammeList,
 } from '@/lib/university-courses';
+import '@/app/(sa)/courses-zip.css';
 
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-/** Stored enums such as IN_PERSON are internal; a reader sees "In person". */
-function humanise(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/^\w/, (c) => c.toUpperCase());
-}
 
 export async function generateMetadata({
   searchParams,
@@ -131,6 +125,8 @@ export default async function CoursesPage({
     ]);
 
   const list = programmeAnswer ? toProgrammeList(programmeAnswer, asked) : null;
+  /* Whether an event can still be registered for. */
+  const now = new Date().getTime();
   const view = chooseView(requested, list?.summary.programmes ?? 0);
   const programmes =
     list && list.summary.programmes > 0
@@ -254,12 +250,9 @@ export default async function CoursesPage({
         name: String(row.name),
         slug: String(row.slug),
       }))}
-      events={events.map((row) => ({
-        name: String(row.title ?? row.name),
-        slug: String(row.slug),
-        mode: typeof row.eventType === 'string' ? humanise(row.eventType) : null,
-        startAt: typeof row.startsAt === 'string' ? row.startsAt : null,
-      }))}
+      /* Each date and time in the event's own zone, worked out here so
+         the server and the browser print the same thing. */
+      events={events.map((row) => toStripEvent(row, now))}
       heading={managed.heading ?? 'Find your perfect course'}
       lede={
         managed.lede ??
