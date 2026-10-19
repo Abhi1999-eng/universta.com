@@ -76,9 +76,11 @@ export function UnifiedPhase1StructuredEditor(props: Props) {
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
+        {/* Named by its visible words. It was announced as "Save changes",
+            which it is not: on a published record it takes the record off
+            the site. */}
         <button
           type="button"
-          aria-label={props.recordId ? 'Save changes' : 'Create draft'}
           onClick={() => submit('draft')}
           className="rounded-xl border border-[#1657CF] bg-white px-5 py-3 text-sm font-semibold text-[#1657CF]"
         >

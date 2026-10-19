@@ -83,7 +83,7 @@ async function editable(form: Locator) {
 
 async function saveAndOpenEdit(page: Page, resource: string, rowText: string) {
   const form = page.getByRole('form', { name: `Create ${resource}` });
-  await form.getByRole('button', { name: 'Create draft' }).click();
+  await form.getByRole('button', { name: 'Save draft' }).click();
   const row = page.getByRole('row').filter({ hasText: rowText });
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: 'Edit' }).click();
@@ -100,7 +100,7 @@ async function saveEdit(page: Page, resource: string, rowText: string) {
       response.ok() &&
       response.url().includes(`/api/v1/admin/phase1/${resource}/`),
     ),
-    form.getByRole('button', { name: 'Save changes' }).click(),
+    form.getByRole('button', { name: 'Save draft' }).click(),
   ]);
   await expect(page.getByRole('row').filter({ hasText: rowText })).toBeVisible();
   await page.reload();
@@ -154,7 +154,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     const slugField = form.getByLabel('Slug', { exact: true });
     await expect(nameField).toHaveAttribute('required', '');
     await expect(slugField).toHaveAttribute('required', '');
-    await form.getByRole('button', { name: 'Create draft' }).click();
+    await form.getByRole('button', { name: 'Save draft' }).click();
     await expect(nameField).toBeFocused();
     await form.getByLabel('Name', { exact: true }).fill(universityName);
     await form.getByLabel('Slug', { exact: true }).fill(universitySlug);
@@ -293,7 +293,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel('Slug', { exact: true }).fill(eventSlug);
     await form.getByLabel('Start date and time', { exact: true }).fill('2030-09-02T12:00');
     await form.getByLabel('End date and time', { exact: true }).fill('2030-09-01T12:00');
-    await form.getByRole('button', { name: 'Create draft' }).click();
+    await form.getByRole('button', { name: 'Save draft' }).click();
     await expect(form.getByText('End date and time must be after the start.')).toBeVisible();
     await form.getByLabel('End date and time', { exact: true }).fill('2030-09-02T15:00');
     await form.getByLabel('Event type', { exact: true }).selectOption('HYBRID');
@@ -326,7 +326,7 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await publishAndVerify(page, 'success-stories', storyTitle, '/success-stories');
 
     const testimonial = await openCreate(page, 'testimonials');
-    await testimonial.getByRole('button', { name: 'Create draft' }).click();
+    await testimonial.getByRole('button', { name: 'Save draft' }).click();
     await expect(testimonial.getByLabel('Quote', { exact: true })).toHaveAttribute('aria-invalid', 'true');
     await testimonial.getByLabel('Quote', { exact: true }).fill(testimonialQuote);
     await testimonial.getByLabel('Display attribution', { exact: true }).fill('Fictional demo attribution');
