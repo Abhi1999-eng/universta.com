@@ -9,7 +9,7 @@ describe('a row’s lifecycle in the admin list', () => {
   /* SS-C8. "Published" with a View on site link that answered 404. */
   it('says a published record is scheduled, and that it is not live yet', () => {
     const result = lifecycle('success-stories', { status: 'PUBLISHED', publishStartsAt: '2026-12-01T04:30:00.000Z' }, NOW);
-    expect(result.notes).toEqual([{ label: 'Scheduled (goes live 1 Dec 2026, 10:00)', tone: 'scheduled' }]);
+    expect(result.notes).toEqual([{ label: 'Scheduled (goes live 1 Dec 2026, 10:00 IST)', tone: 'scheduled' }]);
     expect(result.live).toBe(false);
   });
 

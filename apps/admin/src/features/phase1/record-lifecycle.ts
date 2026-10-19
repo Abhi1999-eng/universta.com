@@ -69,7 +69,7 @@ export function lifecycle(
     if (starts !== null && starts > at) {
       /* Publishing windows are typed in India's time. */
       notes.push({
-        label: `Scheduled (goes live ${formatDateTime(row.publishStartsAt as string, DEFAULT_TIME_ZONE)})`,
+        label: `Scheduled (goes live ${formatDateTime(row.publishStartsAt as string, DEFAULT_TIME_ZONE)} IST)`,
         tone: 'scheduled',
       });
       live = false;
