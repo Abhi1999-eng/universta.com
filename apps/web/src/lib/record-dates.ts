@@ -112,6 +112,15 @@ export function eventClockRange(starts: unknown, ends: unknown, zone?: unknown):
 /* The index signature lets any record row stand in for its times. */
 export type EventTimes = { startsAt?: unknown; endsAt?: unknown; timezone?: unknown; [field: string]: unknown };
 
+/**
+ * Only the times, for the status badge the browser keeps current: handing
+ * it the whole record sent every event's description, SEO and relations to
+ * the browser a second time, once per card.
+ */
+export function eventTimes(row: EventTimes): EventTimes {
+  return { startsAt: row.startsAt, endsAt: row.endsAt, timezone: row.timezone };
+}
+
 /** When an event is over: its end, or its start when it has no end. */
 export function eventEnds(row: EventTimes): Date | null {
   return instant(row.endsAt) ?? instant(row.startsAt);

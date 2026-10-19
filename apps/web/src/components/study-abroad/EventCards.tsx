@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { EventStatusBadge } from './EventClock';
 import { eventFormat, type EventItem } from '@/lib/event-filters';
 import { plainExcerpt, plainText } from '@/lib/record-text';
-import { eventClock, eventDay, eventEnded, eventZone, formatIn, toInstant } from '@/lib/record-dates';
+import { eventClock, eventDay, eventEnded, eventTimes, eventZone, formatIn, toInstant } from '@/lib/record-dates';
 
 /**
  * An event as a card, in the zip's scholarship-card shape: the format badge
@@ -114,7 +114,7 @@ export function EventCard({ row, guides, now }: { row: Row; guides?: Guides; now
       ) : null}
       <div className="schcard__top">
         {format ? <span className="fundbadge">{format.label}</span> : <span />}
-        <EventStatusBadge event={row} serverNow={now} />
+        <EventStatusBadge event={eventTimes(row)} serverNow={now} />
       </div>
       <h3 className="schcard__name">
         <Link className="eventcard__link" href={href}>
@@ -212,7 +212,7 @@ export function NextEventCard({ row, guides, now }: { row: Row; guides?: Guides;
     <aside className="nextevent" aria-label="Next event">
       <div className="nextevent__head">
         <span className="label">Next event</span>
-        <EventStatusBadge event={row} serverNow={now} />
+        <EventStatusBadge event={eventTimes(row)} serverNow={now} />
       </div>
       <div className="nextevent__body">
         <span className="nextevent__date" aria-hidden="true">

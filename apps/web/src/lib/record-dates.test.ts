@@ -8,6 +8,7 @@ import {
   eventDateTime,
   eventDay,
   eventStatus,
+  eventTimes,
   formatIn,
   jobClosed,
   jobDay,
@@ -81,6 +82,12 @@ describe('eventStatus (EV-U1) and the upcoming/past split (EV-C1)', () => {
     const { upcoming, past } = splitEvents(rows, now);
     expect(upcoming.map((row) => row.id)).toEqual(['live', 'soon', 'later']);
     expect(past.map((row) => row.id)).toEqual(['recent', 'old']);
+  });
+
+  it('hands the browser badge only the times, not the whole record', () => {
+    const row = { id: 'e', title: 'Fair', description: '<p>Long text</p>', seo: { metaDescription: 'x' }, startsAt: '2026-10-28T10:00:00Z', endsAt: null, timezone: 'Asia/Tokyo' };
+    expect(eventTimes(row)).toEqual({ startsAt: '2026-10-28T10:00:00Z', endsAt: null, timezone: 'Asia/Tokyo' });
+    expect(eventStatus(eventTimes(row), now)).toBe(eventStatus(row, now));
   });
 });
 

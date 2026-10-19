@@ -18,6 +18,7 @@ import {
   eventDateTime,
   eventDay,
   eventEnded,
+  eventTimes,
   eventZone,
   JOB_STATUS,
   jobClosed,
@@ -319,7 +320,7 @@ function EventWhen({ row, ended, now }: { row: DirectoryRow; ended: boolean; now
       {date ? (
         <div className="deadlinecard__row">
           <span className="label">Status</span>
-          <EventStatusBadge event={row} serverNow={now} />
+          <EventStatusBadge event={eventTimes(row)} serverNow={now} />
         </div>
       ) : null}
       {registration && !ended ? (
