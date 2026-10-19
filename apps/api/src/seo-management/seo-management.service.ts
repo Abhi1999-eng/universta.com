@@ -39,6 +39,14 @@ const ECHO_CHECKED = new Set<SeoBulkEntityType>([
   'university',
   'offering',
   'levelPage',
+  /* The shared admin editor used to save the same echoes for these, and
+     rows saved before it stopped are still stored: read as not written,
+     they let the page follow its own title and words again. */
+  'successStory',
+  'job',
+  'event',
+  'consultant',
+  'scholarship',
 ]);
 
 /* The types whose own words outrank the site's default description. Each

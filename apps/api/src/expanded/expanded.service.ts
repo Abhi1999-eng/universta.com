@@ -2797,7 +2797,9 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'offerings') {
       const record = await this.prisma.universityCourseOffering.findFirst({
@@ -2817,7 +2819,9 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'scholarships') {
       const record = await this.prisma.scholarship.findFirst({
@@ -2829,7 +2833,9 @@ export class ExpandedService {
           offerings: { include: { offering: true } },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'pages') {
       const record = await this.prisma.page.findFirst({
@@ -2843,7 +2849,9 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'consultants') {
       const record = await this.prisma.consultant.findFirst({
@@ -2855,7 +2863,9 @@ export class ExpandedService {
           languages: true,
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -2865,7 +2875,9 @@ export class ExpandedService {
     const row = await delegate.findFirst({
       where: resource === 'navigation-menus' ? { id } : { id, deletedAt: null },
     });
-    return this.withSeo(resource, row ?? this.notFound(resource));
+    return this.withSeo(resource, row ?? this.notFound(resource), {
+      stored: true,
+    });
   }
 
   async adminCreate(
@@ -2930,6 +2942,7 @@ export class ExpandedService {
     consultants: '/study-abroad-consultants',
     jobs: '/careers',
     events: '/events',
+    'success-stories': '/success-stories',
   };
 
   private async recordSlugRedirect(
@@ -2942,18 +2955,38 @@ export class ExpandedService {
     const oldSlug = typeof before.slug === 'string' ? before.slug : null;
     const newSlug = typeof after.slug === 'string' ? after.slug : null;
     if (!oldSlug || !newSlug || oldSlug === newSlug) return;
+    const oldPath = `${prefix}/${oldSlug}`;
+    const newPath = `${prefix}/${newSlug}`;
+    /* A record renamed back to an address it once had: the redirect that
+       sent that address away would now send it in a circle. */
+    await this.prisma.redirect.updateMany({
+      where: { sourcePath: newPath, isActive: true },
+      data: { isActive: false },
+    });
     await this.prisma.redirect.upsert({
-      where: { sourcePath: `${prefix}/${oldSlug}` },
+      where: { sourcePath: oldPath },
       update: {
-        targetPath: `${prefix}/${newSlug}`,
+        targetPath: newPath,
         httpStatusCode: 301,
         isActive: true,
       },
       create: {
-        sourcePath: `${prefix}/${oldSlug}`,
-        targetPath: `${prefix}/${newSlug}`,
+        sourcePath: oldPath,
+        targetPath: newPath,
         httpStatusCode: 301,
       },
+    });
+    /* A canonical that only named the old address -- stored by the editor
+       before it stopped saving resolved values back -- would now point
+       search engines at a redirect. Without it the page names its own
+       address again. */
+    await this.prisma.seoMetadata.updateMany({
+      where: {
+        ownerType: resource,
+        ownerId: String(after.id ?? before.id),
+        canonicalUrl: oldPath,
+      },
+      data: { canonicalUrl: null },
     });
   }
 
@@ -3693,37 +3726,74 @@ export class ExpandedService {
     return {};
   }
 
+  /**
+   * Stores what the editor wrote, field by field.
+   *
+   * It used to store nothing unless both an SEO title and a description were
+   * given, so a lone title was dropped without a word and an editor who
+   * emptied every field could never clear what was stored. Now each field is
+   * kept on its own -- the resolver fills whatever is left empty -- and an
+   * emptied field clears its stored value. A record that has no stored SEO
+   * and is saved with nothing written gets no row at all, so its page keeps
+   * following its own title, description and address.
+   *
+   * The title and description columns cannot hold null; an empty one is
+   * stored as '', which every reader treats as not written.
+   */
   private async saveSeo(resource: Resource, ownerId: string, value: unknown) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return;
     const seo = value as Data;
-    const seoTitle = this.optionalText(seo.seoTitle);
-    const metaDescription = this.optionalText(seo.metaDescription);
-    if (!seoTitle || !metaDescription) return;
-    const shared = {
-      seoTitle,
-      metaDescription,
+    const textFields = {
+      seoTitle: this.optionalText(seo.seoTitle),
+      metaDescription: this.optionalText(seo.metaDescription),
       canonicalUrl: this.optionalText(seo.canonicalUrl),
       focusKeyword: this.optionalText(seo.focusKeyword),
       ogTitle: this.optionalText(seo.ogTitle),
       ogDescription: this.optionalText(seo.ogDescription),
-      ogMediaId: this.optionalText(seo.ogMediaId),
       twitterTitle: this.optionalText(seo.twitterTitle),
       twitterDescription: this.optionalText(seo.twitterDescription),
-      twitterMediaId: this.optionalText(seo.twitterMediaId),
-      robotsIndex: seo.robotsIndex !== false,
-      robotsFollow: seo.robotsFollow !== false,
-      ...(seo.schemaJson !== undefined
-        ? { schemaJson: seo.schemaJson as Prisma.InputJsonValue }
-        : {}),
+    };
+    const ogMediaId = this.optionalText(seo.ogMediaId);
+    const twitterMediaId = this.optionalText(seo.twitterMediaId);
+    const robotsIndex = seo.robotsIndex !== false;
+    const robotsFollow = seo.robotsFollow !== false;
+    const schemaJson =
+      seo.schemaJson !== undefined && seo.schemaJson !== null
+        ? (seo.schemaJson as Prisma.InputJsonValue)
+        : undefined;
+    const written =
+      Object.values(textFields).some(Boolean) ||
+      Boolean(ogMediaId || twitterMediaId) ||
+      !robotsIndex ||
+      !robotsFollow ||
+      schemaJson !== undefined;
+    const where = { ownerType_ownerId: { ownerType: resource, ownerId } };
+    if (!written) {
+      const stored = await this.prisma.seoMetadata.findUnique({ where });
+      if (!stored) return;
+    }
+    const shared = {
+      ...textFields,
+      seoTitle: textFields.seoTitle ?? '',
+      metaDescription: textFields.metaDescription ?? '',
+      ogMediaId,
+      twitterMediaId,
+      robotsIndex,
+      robotsFollow,
+      ...(schemaJson !== undefined ? { schemaJson } : {}),
     };
     await this.prisma.seoMetadata.upsert({
-      where: { ownerType_ownerId: { ownerType: resource, ownerId } },
+      where,
       update: shared,
       create: { ownerType: resource, ownerId, ...shared },
     });
   }
 
-  private async withSeo(resource: Resource, record: { id: unknown }) {
+  private async withSeo(
+    resource: Resource,
+    record: { id: unknown },
+    options: { stored?: boolean } = {},
+  ) {
     const seo = await this.prisma.seoMetadata.findUnique({
       where: {
         ownerType_ownerId: { ownerType: resource, ownerId: String(record.id) },
@@ -3753,6 +3823,12 @@ export class ExpandedService {
     return {
       ...record,
       seo: resolved,
+      /* The admin's editor fills its SEO inputs from what an editor actually
+         wrote, and shows the resolved values only as placeholders. Filled
+         from `seo`, an untouched form saved the fallback title, the site's
+         default description and the current address back as hand-written,
+         and they never followed a rename again. */
+      ...(options.stored ? { seoStored: manual } : {}),
     };
   }
 

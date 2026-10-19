@@ -119,6 +119,25 @@ describe('A description nobody wrote', () => {
     });
   });
 
+  it('reads a stored copy of the site default as not written', async () => {
+    await expect(
+      createService().resolve(
+        'event',
+        {
+          id: 'event-1',
+          title: 'Demo',
+          slug: 'demo',
+          summary: 'Its own summary.',
+        },
+        { seoTitle: 'Demo', metaDescription: 'Global default description.' },
+      ),
+    ).resolves.toMatchObject({
+      seoTitle: 'Demo',
+      metaDescription: 'Its own summary.',
+      source: { title: 'fallback', description: 'fallback' },
+    });
+  });
+
   it('keeps a description an editor wrote', async () => {
     await expect(
       createService().resolve(

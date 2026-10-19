@@ -198,13 +198,15 @@ describe('SeoManagementService resolver', () => {
   });
 
   it('leaves the other types’ stored values as they are', async () => {
+    /* Scholarships joined the echo-checked types with the shared editor's
+       fix; a subject still keeps whatever was stored. */
     const { service } = createService();
     await expect(
       service.resolve(
-        'scholarship',
-        { id: 's-1', title: 'Demo Award', slug: 'demo-award' },
+        'subject',
+        { id: 's-1', name: 'Demo Studies', slug: 'demo-studies' },
         {
-          seoTitle: 'Demo Award',
+          seoTitle: 'Demo Studies',
           metaDescription: 'Global default description.',
         },
       ),
