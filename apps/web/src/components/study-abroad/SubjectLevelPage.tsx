@@ -293,6 +293,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'specializations',
     eyebrow: 'Specializations',
     title: specialization ? `Other ${subject.name} specializations at ${level.name}` : `Specializations at ${level.name}`,
+    layout: 'sparse',
     body: <>
       <SpecializationChips
         label={null}
@@ -312,6 +313,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'specializations',
     eyebrow: 'Specializations',
     title: `Other ${subject.name} specializations`,
+    layout: 'sparse',
     body: <>
       <SpecializationChips
         label={null}
@@ -335,6 +337,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'where-to-study',
     eyebrow: 'Destinations',
     title: `Where to study ${withArticle(level.name)} in ${field.name}`,
+    layout: 'split',
     body: <div className="h-grid">
       {destinations.map((option) => <RowCard
         key={option.value}
@@ -351,6 +354,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'parent-subject',
     eyebrow: 'Subject',
     title: `${subject.name} at ${level.name}`,
+    layout: 'split',
     body: <div className="h-grid">
       <RowCard href={upHref} title={`${level.name} in ${subject.name}`} meta={`All ${subject.name} specializations at ${level.name}`} />
     </div>,
@@ -370,6 +374,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'more',
     eyebrow: 'Keep exploring',
     title: `More on ${field.name}`,
+    layout: 'sparse',
     body: <>
       <LevelLinks variant="chips" field={field.name} label="Other study levels" links={otherLevels} />
       <MoreLink href={fieldHref}>About {field.name}</MoreLink>
@@ -405,6 +410,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'plan-your-level',
     eyebrow: 'Plan',
     title: `Plan your ${level.name}`,
+    layout: 'sparse',
     body: <LinkChips label={`Plan your ${level.name}`} links={plan} />,
   } : null;
   /* The other subjects with a page at this level, by the plain addresses
@@ -414,6 +420,7 @@ export async function SubjectLevelPage({ params, searchParams }: {
     id: 'more-subjects',
     eyebrow: 'Subjects',
     title: `More subjects at ${level.name}`,
+    layout: 'sparse',
     body: <>
       <LinkChips label={`More subjects at ${level.name}`} links={otherSubjects.map((row) => ({ href: row.href, label: row.name }))} />
       <MoreLink href="/subjects">All subjects</MoreLink>
@@ -478,7 +485,10 @@ export async function SubjectLevelPage({ params, searchParams }: {
       <div className="wrap">
         <Crumbs trail={trail} />
         <div className="hero__lead">
-          <p className="hero__eyebrow">Study level <b>·</b> {level.name}</p>
+          {/* The name is the first line, as on the subject and
+              specialization pages: the client had the "Study level ·
+              <level>" line over it taken off. The trail above and the
+              level bar below still say which level this is. */}
           <h1 className="hero__h1">{level.name} in {field.name}</h1>
           <p className="hero__sub">{lead}</p>
         </div>

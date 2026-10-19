@@ -1,6 +1,5 @@
 'use client';
 
-import { Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
@@ -165,10 +164,6 @@ const TOOLS = [
   { h: 'Free counselling', p: 'Book a session with an advisor.', href: '/counselling' },
 ];
 
-/** One way into the list from the blocks below it: what it is called, how
- *  many it opens, and the list it opens. */
-type BrowseItem = { key: string; title: string; meta: string | null; href: string };
-
 const byCount = (options: FacetOption[]) =>
   [...options].sort((left, right) => right.count - left.count);
 
@@ -213,38 +208,6 @@ export function CoursesReference(props: CoursesReferenceProps) {
           { value: genericSpecializations.length, label: 'Specializations' },
         ]
   ).filter((stat) => stat.value > 0);
-
-  const eyebrow = (
-    summary && programmes
-      ? [
-          countLabel(summary.countries, 'destination'),
-          countLabel(programmes.facets.subject.length, 'subject'),
-          countLabel(programmes.facets.specialization.length, 'specialization'),
-        ]
-      : [
-          countLabel(guideCatalogue?.total, 'course'),
-          countLabel(guideOptions?.countries.length, 'destination'),
-        ]
-  ).filter((part): part is string => Boolean(part));
-
-  /* The template's "Try" row is five hand-written example searches. These are
-     the catalogue's own busiest specializations, so a chip never offers a term
-     the search cannot answer. */
-  const tryChips: BrowseItem[] = programmes
-    ? byCount(programmes.facets.specialization)
-        .slice(0, 5)
-        .map((option) => ({
-          key: option.value,
-          title: option.label,
-          meta: null,
-          href: programmesHref({ specialization: [option.value] }),
-        }))
-    : genericSpecializations.slice(0, 5).map((option) => ({
-        key: option.value,
-        title: option.label,
-        meta: null,
-        href: guidesHref({ subSubject: [option.value] }),
-      }));
 
   /* Quick filters toggle one filter of the list on show straight away, so
      their pressed state is the address rather than page-local memory. */
@@ -444,20 +407,9 @@ export function CoursesReference(props: CoursesReferenceProps) {
             <span aria-current="page">Courses</span>
           </nav>
 
+          {/* No count line over the heading: the client had it taken off,
+              as it was on the subject pages. The figures are the strip's. */}
           <div className="hero__lead">
-            {eyebrow.length ? (
-              <p className="hero__eyebrow">
-                Course discovery
-                {/* Fragments, so the dot and the figure are the eyebrow's
-                    own flex items and keep its gap between them. */}
-                {eyebrow.map((part) => (
-                  <Fragment key={part}>
-                    <b>·</b>
-                    {part}
-                  </Fragment>
-                ))}
-              </p>
-            ) : null}
             <h1 className="hero__h1">{props.heading}</h1>
             <p className="hero__sub">{props.lede}</p>
           </div>
@@ -473,13 +425,9 @@ export function CoursesReference(props: CoursesReferenceProps) {
             </div>
           ) : null}
 
+          {/* The quick filters alone: the client had the template's "Try"
+              row of example searches taken off. */}
           <p className="bigsearch__ex" style={{ marginTop: 22 }}>
-            <span className="label">Try</span>
-            {tryChips.map((chip) => (
-              <Link key={chip.key} className="chipbtn chipbtn--sm" href={chip.href}>
-                {chip.title}
-              </Link>
-            ))}
             {quickFilters.map((filter) => (
               <button
                 key={filter.label}

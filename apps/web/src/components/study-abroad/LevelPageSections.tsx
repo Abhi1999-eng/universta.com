@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
+import { RichText, richTextToPlainText, safeRichText } from '@/components/phase1/RichText';
 import type { SubjectLevelPageContent } from '@/lib/catalog';
 import { withArticle } from '@/lib/level-page';
 import { SectionHead } from './SectionHead';
@@ -26,8 +26,11 @@ export function levelFaqs(content: SubjectLevelPageContent | null | undefined) {
 }
 
 /** One band of a level page: its anchor, the section head's eyebrow and
- *  heading, an optional lead beside them, and what follows them. */
-export type LevelBand = { id: string; eyebrow: string; title: string; lead?: ReactNode; body: ReactNode };
+ *  heading, an optional lead beside them, and what follows them. A split
+ *  band puts what follows in the column beside the heading, so every
+ *  band's content starts on one line down the page; a sparse one does the
+ *  same, smaller and closer, around a row of links. */
+export type LevelBand = { id: string; eyebrow: string; title: string; lead?: ReactNode; body: ReactNode; layout?: 'split' | 'sparse' };
 
 type WrittenBand = 'overview' | 'studyTopics' | 'careers' | 'industries' | 'employers' | 'admission' | 'lookingAhead' | 'faqs';
 
@@ -41,6 +44,55 @@ const prose = (value: string) => (
   </div>
 );
 
+/** A note whose list is the point -- careers, what you may study, who
+ *  hires -- drawn as the design's numbered careers list; employers' names
+ *  go unnumbered, and `after` follows the note. */
+const list = (value: string, names = false, after?: ReactNode) => (
+  <div className={names ? 'levellist levellist--names' : 'levellist'}>
+    {prose(value)}
+    {after}
+  </div>
+);
+
+/** "<strong>Name</strong>: line" or "Name: line" list items; null unless the whole value is one flat list read that way. */
+export function namedItems(value: string): Array<{ name: string; line: string }> | null {
+  /* Empty paragraphs an editor leaves around the list are not content. */
+  const flat = safeRichText(value).replace(/<p[^>]*>(?:\s|&nbsp;|<br>)*<\/p>/g, '').trim().match(/^<ul>([\s\S]*)<\/ul>$/);
+  if (!flat || /<\/?(?:ul|ol)>/.test(flat[1])) return null;
+  const items = flat[1].split('</li>').map((part) => part.trim()).filter(Boolean).map((item) => {
+    if (!item.startsWith('<li>')) return null;
+    /* A non-breaking space reads as a space, and one paragraph wrapped
+       round the item (aligned text comes back as <p style=...>) is unwrapped. */
+    const body = item.slice(4).replace(/&nbsp;/g, ' ').trim().replace(/^<p[^>]*>([\s\S]*)<\/p>$/, '$1').trim();
+    const match = body.match(/^<(strong|b)>([\s\S]+?)<\/\1>\s*[:\u2013\u2014-]\s*([\s\S]+)$/)
+      ?? body.match(/^<(strong|b)>([\s\S]+?):\s*<\/\1>\s*([\s\S]+)$/)
+      ?? body.match(/^()([^<:]{2,80}):\s+([\s\S]+)$/);
+    /* Sanitised text with every tag taken out: an entity in it, `&amp;`,
+       reads as the character it is, and no tag survives. */
+    const name = match?.[2].replace(/<[^>]+>/g, '').trim();
+    return match && name && richTextToPlainText(match[3]) ? { name, line: match[3].trim() } : null;
+  });
+  return items.length >= 2 && items.every(Boolean) ? (items as Array<{ name: string; line: string }>) : null;
+}
+
+/** Industries, each "Name: line" a card; any other note reads as prose.
+ *  The line is wrapped in a paragraph so `RichText` takes it as HTML: as
+ *  plain text it printed its entities as written. */
+const sectors = (value: string) => {
+  const items = namedItems(value);
+  if (!items) return prose(value);
+  return (
+    <ul className="levelsectors" role="list">
+      {items.map((item, index) => (
+        <li className="levelsector" key={`${index}-${item.name}`}>
+          <h3 className="levelsector__t" dangerouslySetInnerHTML={{ __html: item.name }} />
+          <RichText value={`<p>${item.line}</p>`} className="levelsector__b" />
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 /**
  * The page's written bands by id, each null when nothing is written. The
  * page decides where each one goes: a subject's level page and a
@@ -53,18 +105,17 @@ export function writtenLevelBands(
   const here = `${levelName} in ${fieldName}`;
   const faqs = levelFaqs(content);
   const written = (value: string | null | undefined, band: Omit<LevelBand, 'body'>, body = prose): LevelBand | null =>
-    said(value) ? { ...band, body: body(value) } : null;
+    said(value) ? { layout: 'split', ...band, body: body(value) } : null;
   return {
     overview: written(content?.intro, { id: 'overview', eyebrow: 'Overview', title: `Why study ${withArticle(levelName)} in ${fieldName}?` }),
-    studyTopics: written(content?.studyTopics, { id: 'study-topics', eyebrow: 'Curriculum', title: 'What you may study' }),
-    careers: written(content?.careersNote, { id: 'careers', eyebrow: 'Careers', title: 'Career pathways' }),
-    industries: written(content?.industries, { id: 'industries', eyebrow: 'Sectors', title: 'Industries' }),
-    employers: written(content?.employers, { id: 'employers', eyebrow: 'Who hires', title: 'Employers' }, (value) => (
-      <>
-        {prose(value)}
-        <p className="trust__note">{EMPLOYERS_NOTE}</p>
-      </>
-    )),
+    studyTopics: written(content?.studyTopics, { id: 'study-topics', eyebrow: 'Curriculum', title: 'What you may study' }, list),
+    careers: written(content?.careersNote, { id: 'careers', eyebrow: 'Careers', title: 'Career pathways' }, list),
+    industries: written(content?.industries, { id: 'industries', eyebrow: 'Sectors', title: 'Industries' }, sectors),
+    employers: written(
+      content?.employers,
+      { id: 'employers', eyebrow: 'Who hires', title: 'Employers' },
+      (value) => list(value, true, <p className="trust__note">{EMPLOYERS_NOTE}</p>),
+    ),
     admission: written(content?.admissionNote, { id: 'admission', eyebrow: 'Admission', title: `Getting into ${here}` }),
     lookingAhead: written(content?.lookingAhead, { id: 'looking-ahead', eyebrow: 'Outlook', title: 'Looking ahead' }),
     faqs: faqs.length
@@ -91,13 +142,24 @@ export function bandTones(ids: readonly string[], fixed = 'discovery'): Record<s
   return tones;
 }
 
-/** One band, drawn the way the guides draw a section. */
+/** One band, drawn the way the guides draw a section: a split or sparse
+ *  one with what it says beside its heading, any other under it. */
 export function LevelBandSection({ band, tone }: { band: LevelBand; tone: 'paper' | 'white' }) {
+  const sparse = band.layout === 'sparse';
+  const split = sparse || band.layout === 'split';
   return (
-    <section className={`sec sec--${tone}`} id={band.id}>
+    <section className={`sec sec--${tone}${sparse ? ' sec--sparse' : ''}${split ? ' levelband' : ''}`} id={band.id}>
       <div className="wrap">
-        <SectionHead eyebrow={band.eyebrow} title={band.title} lead={band.lead} />
-        {band.body}
+        {split ? (
+          <SectionHead eyebrow={band.eyebrow} title={band.title} lead={band.lead}>
+            <div className="levelband__body">{band.body}</div>
+          </SectionHead>
+        ) : (
+          <>
+            <SectionHead eyebrow={band.eyebrow} title={band.title} lead={band.lead} />
+            {band.body}
+          </>
+        )}
       </div>
     </section>
   );

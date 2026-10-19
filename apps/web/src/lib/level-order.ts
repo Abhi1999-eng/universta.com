@@ -20,16 +20,3 @@ export function sortByLevelOrder<T extends { code?: string | null }>(
     rank.get(String(level.code ?? '').toUpperCase()) ?? order.length;
   return [...levels].sort((a, b) => at(a) - at(b));
 }
-
-/** The distinct levels across several lists, in climbing order. */
-export function mergeLevels<T extends { code?: string | null }>(
-  lists: ReadonlyArray<readonly T[] | null | undefined>,
-  order: readonly string[],
-  key: (level: T) => string = (level) => String(level.code ?? ''),
-): T[] {
-  const seen = new Map<string, T>();
-  for (const list of lists)
-    for (const level of list ?? [])
-      if (!seen.has(key(level))) seen.set(key(level), level);
-  return sortByLevelOrder([...seen.values()], order);
-}

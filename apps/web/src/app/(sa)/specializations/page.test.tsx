@@ -58,21 +58,36 @@ describe('the specializations directory', () => {
   });
 
   it('says a filter matched nothing, not that nothing is published', async () => {
-    const html = await render({ subject: 'computer-science', level: 'FOUNDATION' });
+    const html = await render({ subject: 'computer-science' });
     expect(html).toContain('No specializations match those filters.');
-    expect(html).toContain('Try another subject or level.');
+    expect(html).toContain('Try another subject.');
     expect(html).not.toContain('No specializations are published yet.');
     /* No "0 shown of 0" beside it. */
     expect(html).not.toContain('h-count');
   });
 
-  it('keeps the whole catalogue’s count in the eyebrow, in the right number', async () => {
+  /* The level filter is gone from the page, so an old ?level= address
+     narrows nothing the page does not show. */
+  it('reads an old ?level= address without narrowing the list', async () => {
+    await render({ level: 'FOUNDATION' });
+    expect(getSpecializations).toHaveBeenCalledWith(expect.not.objectContaining({ level: expect.anything() }));
+  });
+
+  it('counts against the whole catalogue, with no count line over the heading', async () => {
     catalogue.filtered = [row];
     catalogue.filteredTotal = 1;
     const html = await render({ q: 'software' });
-    expect(html).toMatch(/Narrow down<b>·<\/b>120 specializations/);
+    expect(html).not.toContain('hero__eyebrow');
+    expect(html).not.toContain('Narrow down');
     expect(html).not.toContain('1 specializations');
     expect(html).toContain('1 of 120 shown');
+  });
+
+  it('offers no study level filter', async () => {
+    const html = await render({});
+    expect(html).not.toContain('name="level"');
+    expect(html).not.toContain('All levels');
+    expect(html).not.toContain('<span>Study level</span>');
   });
 
   it('says nothing is published only when nothing is filtered', async () => {
