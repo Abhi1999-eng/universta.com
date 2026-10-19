@@ -80,19 +80,30 @@ const same = (a: string | null, b: string | null) => Boolean(a && b && a.toLower
  * the same state (and the same country, when both say), or, with no state,
  * the same country, or, with neither, the same city. Never the location
  * itself, each place once, A to Z by place and then by name.
+ *
+ * A country is matched by its slug or its id: the consultants list names
+ * an office's country by id alone, while a location's own page has both.
  */
 export function nearbyOffices(
-  location: { slug: string; city?: unknown; state?: unknown; countrySlug?: string | null },
+  location: { slug: string; city?: unknown; state?: unknown; countrySlug?: string | null; countryId?: unknown },
   offices: readonly ConsultantOffice[],
   limit = NEARBY_SHOWN,
 ): ConsultantOffice[] {
   const city = text(location.city);
   const state = text(location.state);
   const country = location.countrySlug ?? null;
+  const countryId = text(location.countryId);
+  const hasCountry = Boolean(country || countryId);
+  const sameCountry = (office: ConsultantOffice) =>
+    Boolean((country && office.countrySlug === country) || (countryId && office.countryId === countryId));
   const near = (office: ConsultantOffice) => {
     if (office.slug === location.slug) return false;
-    if (state) return same(office.state, state) && (!country || !office.countrySlug || office.countrySlug === country);
-    if (country) return office.countrySlug === country;
+    if (state)
+      return (
+        same(office.state, state) &&
+        (!hasCountry || (!office.countrySlug && !office.countryId) || sameCountry(office))
+      );
+    if (hasCountry) return sameCountry(office);
     return same(office.city, city);
   };
   return offices

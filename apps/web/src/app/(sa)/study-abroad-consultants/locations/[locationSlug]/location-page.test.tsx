@@ -147,6 +147,21 @@ describe('a consultant location page\'s hero and closing row', () => {
     expect(related).not.toContain('Studying in');
   });
 
+  it('offers the other offices in the same country, which the consultants list names by id alone', async () => {
+    api.location = heidelberg({ countryId: 'de', country: { id: 'de', name: 'Germany', slug: 'germany' } });
+    api.consultants = [
+      consultant('x', {
+        locations: [
+          { location: { slug: 'berlin-office', name: 'Berlin office', city: 'Berlin', countryId: 'de', status: 'ACTIVE' } },
+          { location: { slug: 'paris-office', name: 'Paris office', city: 'Paris', countryId: 'fr', status: 'ACTIVE' } },
+        ],
+      }),
+    ];
+    const related = section(await render(), 'related');
+    expect(related).toContain('<a href="/study-abroad-consultants/locations/berlin-office">Berlin office, Berlin</a>');
+    expect(related).not.toContain('paris-office');
+  });
+
   it('adds the destination\'s guide when the place has a country, and keeps the Explore next band', async () => {
     api.location = heidelberg({ country: { name: 'Germany', slug: 'germany' } });
     api.destinations = [{ name: 'Germany', slug: 'germany', isAvailable: true }];

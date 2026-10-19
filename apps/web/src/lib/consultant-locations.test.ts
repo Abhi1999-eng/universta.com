@@ -41,6 +41,23 @@ describe('the offices near a location', () => {
     expect(slugs(nearbyOffices({ slug: 'here', city: 'Pune', countrySlug: 'india' }, offices))).toEqual(['delhi', 'mumbai']);
   });
 
+  it('match a country by its id when the list names an office\'s country by id alone', () => {
+    const byId = [
+      office('here', { city: 'Heidelberg', countryId: 'de', countrySlug: 'germany' }),
+      office('berlin', { city: 'Berlin', countryId: 'de' }),
+      office('paris', { city: 'Paris', countryId: 'fr' }),
+      office('munich', { city: 'Munich', state: 'Bavaria', countryId: 'de' }),
+      office('lyon', { city: 'Lyon', state: 'Bavaria', countryId: 'fr' }),
+    ];
+    expect(slugs(nearbyOffices({ slug: 'here', city: 'Heidelberg', countrySlug: 'germany', countryId: 'de' }, byId))).toEqual([
+      'berlin',
+      'munich',
+    ]);
+    expect(
+      slugs(nearbyOffices({ slug: 'here', city: 'Heidelberg', state: 'Bavaria', countrySlug: 'germany', countryId: 'de' }, byId)),
+    ).toEqual(['munich']);
+  });
+
   it('are those in the same city when the location has neither', () => {
     expect(slugs(nearbyOffices({ slug: 'here', city: 'pune' }, offices))).toEqual(['pune-2']);
     expect(nearbyOffices({ slug: 'here', city: null }, offices)).toEqual([]);

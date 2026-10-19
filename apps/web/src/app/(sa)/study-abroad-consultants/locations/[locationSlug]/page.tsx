@@ -98,7 +98,13 @@ export default async function ConsultantLocationPage({ params }: Props) {
      narrowing the list below to it. */
   const popular = consultantOptions(rows).destinations.slice(0, POPULAR_SHOWN);
   const nearby = nearbyOffices(
-    { slug: String(record.slug ?? locationSlug), city: record.city, state: record.state, countrySlug },
+    {
+      slug: String(record.slug ?? locationSlug),
+      city: record.city,
+      state: record.state,
+      countrySlug,
+      countryId: record.countryId ?? country?.id,
+    },
     liveConsultantOffices(published?.data ?? []),
   );
 
