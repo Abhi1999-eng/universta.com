@@ -58,6 +58,9 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
     (action, index, list) => list.findIndex((other) => other.href === action.href) === index,
   );
   const hasContact = Boolean(consultant.email || consultant.phone || consultant.websiteUrl);
+  /* A date is printed only beside VERIFIED: a pending record can still
+     carry the date of a check that no longer stands. */
+  const verifiedOn = consultant.verified && consultant.verifiedAt ? formatDate(consultant.verifiedAt) || null : null;
   /* A location is often named for its city, so the city is said once. */
   const once = (parts: Array<string | null | undefined>) =>
     parts.filter((part, index, all): part is string => Boolean(part) && all.indexOf(part) === index);
@@ -78,7 +81,7 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
               <div className="instcard__badges" style={{ marginBottom: 14 }}>
                 {consultant.verified ? (
                   <span className="badge badge--ok">
-                    Verified{consultant.verifiedAt ? ` ${formatDate(consultant.verifiedAt)}` : ''}
+                    Verified{verifiedOn ? ` ${verifiedOn}` : ''}
                   </span>
                 ) : (
                   <span className="badge badge--neutral">Not yet verified</span>
@@ -285,7 +288,9 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             title="Verification"
             lead={
               consultant.verified
-                ? 'An administrator has checked this record against its source and dated the check.'
+                ? verifiedOn
+                  ? 'An administrator has checked this record against its source and dated the check.'
+                  : 'An administrator has checked this record against its source. The date of that check was not recorded.'
                 : 'Listed, but not yet checked by Universta. Treat the details as the consultant published them.'
             }
           />
@@ -296,7 +301,7 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             </div>
             <div className="unisnap__cell">
               <span className="label">Last verified</span>
-              <b>{consultant.verifiedAt ? formatDate(consultant.verifiedAt) : 'Not verified'}</b>
+              <b>{consultant.verified ? (verifiedOn ?? 'Verified (date not recorded)') : 'Not verified'}</b>
             </div>
             <div className="unisnap__cell">
               <span className="label">Source</span>

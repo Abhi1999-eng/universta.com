@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
+import { consultantVerification } from '@/lib/consultant-profile';
 import { nameKey } from '@/lib/country-consultant-list';
 import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
@@ -68,8 +69,7 @@ export default async function ConsultantPage({ params }: Props) {
         email: typeof record.email === 'string' ? record.email : null,
         phone: typeof record.phone === 'string' ? record.phone : null,
         websiteUrl: typeof record.websiteUrl === 'string' ? record.websiteUrl : null,
-        verified: record.verificationStatus === 'VERIFIED',
-        verifiedAt: typeof record.verifiedAt === 'string' ? record.verifiedAt : null,
+        ...consultantVerification(record.verificationStatus, record.verifiedAt),
         sourceReference: typeof record.sourceReference === 'string' ? record.sourceReference : null,
       }}
       countries={list(record.countries, 'country')
