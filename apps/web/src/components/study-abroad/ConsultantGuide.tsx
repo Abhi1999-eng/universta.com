@@ -207,14 +207,21 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
 
       <section className="sec sec--white" id="about">
         <div className="wrap">
+          {/* The description beside the heading, as the design sets it,
+              rather than under it with the right half of the page empty.
+              It is rich text, so it goes in the head's own column, not in
+              the one-paragraph lead. */}
           <SectionHead
             eyebrow="About"
             title={`About ${consultant.name}`}
             lead={consultant.description ? null : (consultant.shortDescription ?? 'The consultant has published no description on this record.')}
-          />
-          {consultant.description ? <RichText value={consultant.description} className="h-prose" /> : null}
+          >
+            {consultant.description ? (
+              <RichText value={consultant.description} className="h-prose" />
+            ) : null}
+          </SectionHead>
           {countries.length || languages.length ? (
-            <div className="admgrid" style={{ marginTop: consultant.description ? 28 : 0 }}>
+            <div className="admgrid">
               {countries.length ? (
                 <div className="admgrid__col">
                   <p className="path__h">Destinations</p>

@@ -61,6 +61,28 @@ describe('a consultant profile\'s website and source', () => {
   });
 });
 
+describe('a consultant profile\'s About', () => {
+  it('sets the description in the head\'s right-hand column, with the destinations and languages below', () => {
+    const html = renderToStaticMarkup(
+      <ConsultantGuide
+        {...props({ description: '<p>We help with visas.</p><p>And with courses.</p>' })}
+        countries={[{ name: 'Japan', slug: 'japan' }]}
+      />,
+    );
+    const about = html.slice(html.indexOf('id="about"'), html.indexOf('</section>', html.indexOf('id="about"')));
+    const head = about.slice(about.indexOf('sec-head--split'), about.indexOf('admgrid'));
+    /* The aside holds the eyebrow and title; the next column holds the copy. */
+    expect(head).toMatch(/<\/div><div><div class="rich-text h-prose"><p>We help with visas\.<\/p><p>And with courses\.<\/p><\/div><\/div>/);
+    expect(about.indexOf('We help with visas')).toBeLessThan(about.indexOf('Destinations'));
+    expect(about).toContain('Languages');
+  });
+
+  it('falls back to the short description as the lead', () => {
+    const html = render({ description: null });
+    expect(html).toContain('<p class="sec-lead">Counsels students on studying abroad.</p>');
+  });
+});
+
 describe('a consultant profile\'s verification', () => {
   it('dates a verified consultant in the hero and the Verification section', () => {
     const html = render();
