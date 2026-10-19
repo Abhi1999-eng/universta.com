@@ -4,7 +4,7 @@ import { richTextToPlainText } from '@/components/phase1/RichText';
 import { Crumbs } from './Crumbs';
 import { PlanBand } from './PlanBand';
 import { QuoteByline, QuoteCard, type QuoteImage } from './QuoteCard';
-import { formatIn } from '@/lib/record-dates';
+import { employmentLabel, formatIn, jobDay, jobStatus, workingLabel } from '@/lib/record-dates';
 import { plainExcerpt, plainText } from '@/lib/record-text';
 import { universityHref } from '@/lib/university-links';
 
@@ -141,24 +141,61 @@ export const name = (value: unknown) =>
 
 export const facts = (...parts: Array<string | null | undefined>) => parts.filter(Boolean).join(' · ');
 
-export function JobCard({ row }: { row: DirectoryRow }) {
+/**
+ * A role as the /careers card shows it: its type as a pill at the top, the
+ * team and working pattern, the title, the summary (or the description,
+ * with its variables filled in), where it is, when it closes and when it
+ * was posted, and "Closing soon" beside the date in its last 21 days.
+ */
+export function JobCard({ row, now = Date.now() }: { row: DirectoryRow; now?: number }) {
   const href = `/careers/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const where = text(row.location) ?? name(row.city) ?? name(row.country);
-  const closes = day(row.expiryDate);
+  const closes = jobDay(row.expiryDate);
+  const posted = jobDay(row.publishedDate);
+  const type = employmentLabel(row.employmentType);
+  const summary = plainExcerpt(row.summary, 180) ?? plainExcerpt(row.description, 180, 'job', row);
+  const soon = jobStatus(row.expiryDate, now) === 'soon';
   return (
-    <Link className="h-card" href={href} key={row.id}>
+    <Link className="h-card jobcard" href={href} key={row.id}>
+      {type ? <span className="fundbadge jobcard__type">{type}</span> : null}
       <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
-        {facts(text(row.department), humanise(row.employmentType), humanise(row.remoteStatus))}
+        {facts(text(row.department), workingLabel(row.remoteStatus))}
       </span>
       <strong className="h-card__t">{text(row.title)}</strong>
-      {plain(row.summary ?? row.description) ? <span className="h-card__d">{plain(row.summary ?? row.description)}</span> : null}
-      <span className="h-card__m">{facts(where, closes ? `Closes ${closes}` : null)}</span>
+      {summary ? <span className="h-card__d">{summary}</span> : null}
+      {where || closes || posted ? (
+        <span className="h-card__m jobcard__when">
+          {[
+            where,
+            closes ? (
+              <span key="closes">
+                Closes {closes}
+                {soon ? (
+                  <>
+                    {' '}
+                    <span className="badge badge--req">Closing soon</span>
+                  </>
+                ) : null}
+              </span>
+            ) : null,
+            posted ? `Posted ${posted}` : null,
+          ]
+            .filter(Boolean)
+            .map((part, index) => (index ? [' · ', part] : part))}
+        </span>
+      ) : null}
       <span className="linkcta">
         View role <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
       </span>
     </Link>
   );
 }
+
+/** What the role search matches: the title, the team and every place named. */
+export const jobSearchText = (row: DirectoryRow) =>
+  [text(row.title), text(row.department), text(row.location), name(row.city), name(row.state), name(row.country), employmentLabel(row.employmentType), workingLabel(row.remoteStatus)]
+    .filter(Boolean)
+    .join(' ');
 
 /** A story's journey as its card shows it: variables filled in, as on the
  *  story's own page, then plain text cut to a short excerpt. */

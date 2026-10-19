@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { TestimonialCard } from './RecordDirectory';
+import { JobCard, jobSearchText, TestimonialCard } from './RecordDirectory';
 
 const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');
 
@@ -81,5 +81,50 @@ describe('TestimonialCard -- the zip quote card on /testimonials (T-G1)', () => 
   it('reads an older API that sends no relations at all', () => {
     const html = renderToStaticMarkup(<TestimonialCard row={{ id: 't1', quote: 'Q.', attribution: 'A B', universityId: 'u1', offeringId: 'o1' }} />);
     expect(parse(html).querySelectorAll('.quote__r')).toHaveLength(0);
+  });
+});
+
+describe('JobCard (JOB-G4)', () => {
+  const now = Date.parse('2026-10-19T12:00:00Z');
+  const role = (extra: Record<string, unknown> = {}) => ({
+    id: 'j1',
+    slug: 'admissions-analyst',
+    title: 'Admissions analyst',
+    department: 'Admissions',
+    location: 'Kyoto',
+    description: '<p>{jobTitle} in {jobDepartment}.</p>',
+    employmentType: 'Full-time',
+    remoteStatus: 'HYBRID',
+    publishedDate: '2026-10-01T00:00:00.000Z',
+    expiryDate: '2026-12-31T00:00:00.000Z',
+    ...extra,
+  });
+  const card = (extra: Record<string, unknown> = {}) => parse(renderToStaticMarkup(<JobCard row={role(extra)} now={now} />));
+
+  it('shows the type as a pill at the top, read the one way (JOB-C5-web)', () => {
+    const doc = card();
+    expect(doc.querySelector('a.h-card > .fundbadge')?.textContent).toBe('Full time');
+    expect(doc.querySelector('a.h-card > .h-card__m')?.textContent).toBe('Admissions · Hybrid');
+    expect(card({ employmentType: 'FULL_TIME' }).querySelector('.fundbadge')?.textContent).toBe('Full time');
+    expect(card({ employmentType: null }).querySelector('.fundbadge')).toBeNull();
+  });
+
+  it("fills in the description's variables when there is no summary (JOB-C3)", () => {
+    expect(card().querySelector('.h-card__d')?.textContent).toBe('Admissions analyst in Admissions.');
+  });
+
+  it('says when it closes and when it was posted, with Closing soon only in the last 21 days (JOB-G4, JOB-C8)', () => {
+    expect(card().querySelector('.jobcard__when')?.textContent).toBe('Kyoto · Closes 31 Dec 2026 · Posted 1 Oct 2026');
+    expect(card().querySelector('.badge')).toBeNull();
+    const soon = card({ expiryDate: '2026-11-01T00:00:00.000Z', publishedDate: null });
+    expect(soon.querySelector('.jobcard__when')?.textContent).toBe('Kyoto · Closes 1 Nov 2026 Closing soon');
+    expect(soon.querySelector('.badge.badge--req')?.textContent).toBe('Closing soon');
+    expect(card({ expiryDate: null }).querySelector('.badge')).toBeNull();
+  });
+
+  it('is searched by title, team and place (JOB-G3)', () => {
+    expect(jobSearchText(role({ city: { name: 'Kyoto City' }, country: { name: 'Japan' } }))).toBe(
+      'Admissions analyst Admissions Kyoto Kyoto City Japan Full time Hybrid',
+    );
   });
 });

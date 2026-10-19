@@ -116,3 +116,5 @@
 @media (max-width: 559px) {
   .sa .unisnap--fit > .unisnap__cell:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
+/* The /careers search box alone in its row takes the whole width. */
+.sa .dir__search > .dir__input:only-child { grid-column: 1 / -1; }
