@@ -21,6 +21,15 @@ import {
   deriveQuietly,
 } from '../catalog/derive-links';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import { htmlToPlainText } from '../seo-management/plain-text';
+import {
+  consultantLanguageWrites,
+  consultantLocationWrites,
+  consultantServiceWrites,
+  type ExistingLanguage,
+  type ExistingOffice,
+  type ExistingService,
+} from './consultant-relations';
 import {
   courseDeadlines,
   courseFacets,
@@ -93,7 +102,7 @@ const adminSearchFields: Record<Resource, string[]> = {
   jobs: ['title', 'slug'],
   events: ['title', 'slug'],
   'success-stories': ['title', 'slug'],
-  testimonials: ['quote'],
+  testimonials: ['quote', 'attribution'],
   pages: ['title', 'slug'],
   'navigation-menus': ['name'],
   'contact-inquiries': ['fullName', 'email', 'inquiryNumber'],
@@ -174,6 +183,96 @@ function effectivePublicationWhere(
 
 function contains(value: string | undefined) {
   return value?.trim() ? { contains: value.trim() } : undefined;
+}
+
+/** An outbound link a visitor is sent to: https only. */
+const HTTPS_URL = /^https:\/\/[^\s]+$/;
+/** A source or website a record cites: any absolute web address. */
+const ABSOLUTE_HTTP_URL = /^https?:\/\/[^\s/?#]+\.[^\s]*$/i;
+/** example.com, www.example.co.uk/path: a website written without its
+ * scheme. */
+const BARE_DOMAIN =
+  /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:[/?#][^\s]*)?$/i;
+const SIMPLE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CONSULTANT_VERIFICATION_STATES = new Set([
+  'UNVERIFIED',
+  'PENDING',
+  'VERIFIED',
+]);
+
+/** A website as a link can use it: absolute, with https:// added to a bare
+ * domain. Null when it is not a web address at all. */
+export function absoluteWebsite(value: string): string | null {
+  const trimmed = value.trim();
+  if (ABSOLUTE_HTTP_URL.test(trimmed)) return trimmed;
+  if (BARE_DOMAIN.test(trimmed)) return `https://${trimmed}`;
+  return null;
+}
+
+/** Whether an Intl formatter accepts this as an IANA time zone. */
+export function isTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A consultant's office as the public site may show it: only at a location
+ * that is still active. A deactivated or archived location's page answers
+ * 404, so an office there would link to nothing and keep a stale city in
+ * the directory's chips and filters.
+ */
+const ACTIVE_CONSULTANT_LOCATION = {
+  location: { status: 'ACTIVE', deletedAt: null },
+} satisfies Prisma.ConsultantLocationMapWhereInput;
+
+/** Midnight UTC at the start of `now`'s UTC calendar day. A role's closing
+ * date is a calendar date stored at 00:00Z, and the role stays open through
+ * the whole of that day. */
+export function startOfUtcDay(now: Date): Date {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+}
+
+/** A date filter value, as a full ISO instant or a plain YYYY-MM-DD; an
+ * unreadable value filters nothing rather than throwing a 500. */
+function filterDate(value: string | undefined): Date | null {
+  if (!value?.trim()) return null;
+  const parsed = new Date(value.trim());
+  return Number.isNaN(parsed.valueOf()) ? null : parsed;
+}
+
+/**
+ * Which events a listing asks for, as one condition.
+ *
+ * An event is over once it has ended -- its end, or its start when it has
+ * no end -- so one that started half an hour ago and runs for two more is
+ * still upcoming. `from` and `to` bound the start. Each part is its own
+ * entry in one AND: written as spreads they all set `startsAt` and the last
+ * one silently won.
+ */
+export function eventDateWhere(
+  query: { when?: string; from?: string; to?: string },
+  now: Date,
+): Array<Record<string, unknown>> {
+  const parts: Array<Record<string, unknown>> = [];
+  if (query.when === 'upcoming')
+    parts.push({
+      OR: [{ endsAt: { gte: now } }, { endsAt: null, startsAt: { gte: now } }],
+    });
+  else if (query.when === 'past')
+    parts.push({
+      OR: [{ endsAt: { lt: now } }, { endsAt: null, startsAt: { lt: now } }],
+    });
+  const from = filterDate(query.from);
+  const to = filterDate(query.to);
+  if (from) parts.push({ startsAt: { gte: from } });
+  if (to) parts.push({ startsAt: { lte: to } });
+  return parts;
 }
 
 /**
@@ -1111,7 +1210,10 @@ export class ExpandedService {
         where,
         take: FEATURED_FETCH_CAP,
         include: {
-          locations: { include: { location: true } },
+          locations: {
+            where: ACTIVE_CONSULTANT_LOCATION,
+            include: { location: true },
+          },
           countries: {
             include: { country: { select: { name: true, slug: true } } },
           },
@@ -1125,7 +1227,11 @@ export class ExpandedService {
         { name: (row) => row.name },
       );
       const total = sorted.length;
-      const data = sorted.slice(skip, skip + limit);
+      const data = await this.withMedia(
+        sorted.slice(skip, skip + limit),
+        'featuredMediaId',
+        'featuredMedia',
+      );
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'jobs') {
@@ -1139,11 +1245,18 @@ export class ExpandedService {
         ...(query.remote ? { remoteStatus: query.remote } : {}),
         ...(query.department ? { department: query.department } : {}),
         ...(query.type ? { employmentType: query.type } : {}),
-        ...(query.active === 'true'
-          ? { OR: [{ expiryDate: null }, { expiryDate: { gte: now } }] }
-          : query.active === 'false'
-            ? { expiryDate: { lt: now } }
-            : { OR: [{ expiryDate: null }, { expiryDate: { gte: now } }] }),
+        /* Open roles by default. A closing date is a calendar date, stored
+           at 00:00Z, and a role stays open through the whole of it: it is
+           compared with the start of today's UTC date, not with this
+           instant, so the list and every "Closed" label agree. */
+        ...(query.active === 'false'
+          ? { expiryDate: { lt: startOfUtcDay(now) } }
+          : {
+              OR: [
+                { expiryDate: null },
+                { expiryDate: { gte: startOfUtcDay(now) } },
+              ],
+            }),
       };
       const all = await this.prisma.job.findMany({
         where,
@@ -1168,31 +1281,34 @@ export class ExpandedService {
         ...(query.state ? { state: { slug: query.state } } : {}),
         ...(query.country ? { country: { slug: query.country } } : {}),
         ...(query.mode ? { eventType: query.mode } : {}),
-        ...(query.when === 'past'
-          ? { startsAt: { lt: now } }
-          : query.when === 'upcoming'
-            ? { startsAt: { gte: now } }
-            : {}),
-        ...(query.from ? { startsAt: { gte: new Date(query.from) } } : {}),
-        ...(query.to ? { startsAt: { lte: new Date(query.to) } } : {}),
       };
+      /* `publishedWhereScheduled` holds an AND of its own, so the dates are
+         added to it rather than written over it. */
+      where.AND = [...(where.AND as unknown[]), ...eventDateWhere(query, now)];
       const all = await this.prisma.event.findMany({
         where,
         take: FEATURED_FETCH_CAP,
         include: {
           city: { select: { name: true, slug: true } },
           state: { select: { name: true, slug: true } },
-          country: { select: { name: true, slug: true } },
+          country: { select: { name: true, slug: true, iso2Code: true } },
         },
       });
+      /* Soonest first; past events are read the other way round, the one
+         that has just finished at the top. */
+      const direction = query.when === 'past' ? -1 : 1;
       const sorted = sortByFeatured(
         all,
         now,
         (row) => row.title,
-        (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+        (a, b) => (a.startsAt.getTime() - b.startsAt.getTime()) * direction,
       );
       const total = sorted.length;
-      const data = sorted.slice(skip, skip + limit);
+      const data = await this.withMedia(
+        sorted.slice(skip, skip + limit),
+        'featuredMediaId',
+        'featuredMedia',
+      );
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'success-stories') {
@@ -1215,7 +1331,36 @@ export class ExpandedService {
         this.prisma.successStory.count({ where }),
       ]);
       return {
-        data: await this.withSuccessStoryMedia(rows),
+        data: await this.withSuccessStoryMedia(
+          rows.map((row) => this.liveRelations(row, now)),
+        ),
+        meta: meta(page, limit, Number(total)),
+      };
+    }
+    if (resource === 'testimonials') {
+      /* A testimonial is filed under a country, a university and a course,
+         and the card names them -- so they come with it, judged live by the
+         same rule as a story's, and so does the student's photo. */
+      const where = {
+        ...publishedWhereScheduled(now),
+        ...(q ? { OR: [{ quote: q }, { attribution: q }] } : {}),
+      };
+      const [rows, total] = await Promise.all([
+        this.prisma.testimonial.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+          include: this.storyRelations(),
+        }),
+        this.prisma.testimonial.count({ where }),
+      ]);
+      return {
+        data: await this.withMedia(
+          rows.map((row) => this.liveRelations(row, now)),
+          'imageMediaId',
+          'imageMedia',
+        ),
         meta: meta(page, limit, Number(total)),
       };
     }
@@ -1224,10 +1369,9 @@ export class ExpandedService {
     const delegate = this.prisma[
       resourceModel[resource] as keyof PrismaService
     ] as any;
-    const titleField = resource === 'testimonials' ? 'quote' : 'title';
     const where: any = {
       ...publishedWhereScheduled(now),
-      ...(q ? { [titleField]: q } : {}),
+      ...(q ? { title: q } : {}),
     };
     const [data, total] = await Promise.all([
       delegate.findMany({
@@ -1248,6 +1392,10 @@ export class ExpandedService {
     >,
     slug: string,
   ) {
+    /* A testimonial has no page of its own, and no slug to look one up by:
+       the generic lookup below asked the database for a column it does not
+       have and answered 500. */
+    if (resource === 'testimonials') return this.notFound(resource);
     const now = new Date();
     if (resource === 'universities') return this.universityDetail(slug);
     if (resource === 'scholarships') {
@@ -1277,6 +1425,7 @@ export class ExpandedService {
         where: { slug, ...publishedWhereScheduled(now) },
         include: {
           locations: {
+            where: ACTIVE_CONSULTANT_LOCATION,
             include: { location: { include: { country: true } } },
           },
           countries: { include: { country: true } },
@@ -1284,7 +1433,13 @@ export class ExpandedService {
           languages: true,
         },
       });
-      return this.withSeo(resource, row ?? this.notFound(resource));
+      if (!row) return this.notFound(resource);
+      const [withImage] = await this.withMedia(
+        [row],
+        'featuredMediaId',
+        'featuredMedia',
+      );
+      return this.withSeo(resource, withImage);
     }
     if (resource === 'success-stories') {
       const row = await this.prisma.successStory.findFirst({
@@ -1294,8 +1449,40 @@ export class ExpandedService {
       if (!row) return this.notFound(resource);
       return this.withSeo(
         resource,
-        await this.withSuccessStoryMedia([row]).then(([story]) => story),
+        await this.withSuccessStoryMedia([this.liveRelations(row, now)]).then(
+          ([story]) => story,
+        ),
       );
+    }
+    if (resource === 'events') {
+      const row = await this.prisma.event.findFirst({
+        where: { slug, ...publishedWhereScheduled(now) },
+        include: {
+          country: true,
+          city: true,
+          state: { select: { id: true, name: true, slug: true } },
+        },
+      });
+      if (!row) return this.notFound(resource);
+      /* The image is resolved before the SEO, so a share card can fall back
+         to the event's own picture when nobody chose one for it. */
+      const [withImage] = await this.withMedia(
+        [row],
+        'featuredMediaId',
+        'featuredMedia',
+      );
+      return this.withSeo(resource, withImage);
+    }
+    if (resource === 'jobs') {
+      const row = await this.prisma.job.findFirst({
+        where: { slug, ...publishedWhereScheduled(now) },
+        include: {
+          country: true,
+          city: true,
+          state: { select: { id: true, name: true, slug: true } },
+        },
+      });
+      return this.withSeo(resource, row ?? this.notFound(resource));
     }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -1304,27 +1491,105 @@ export class ExpandedService {
     ] as any;
     const row = await delegate.findFirst({
       where: { slug, ...publishedWhereScheduled(now) },
-      ...(resource === 'jobs' || resource === 'events'
-        ? { include: { country: true, city: true } }
-        : {}),
     });
     return this.withSeo(resource, row ?? this.notFound(resource));
   }
 
-  private successStoryRelations() {
+  /**
+   * The country, university and course a story or a testimonial is filed
+   * under, with what decides whether each is live. Prisma cannot filter an
+   * optional to-one include, so the status, deletion and publishing window
+   * are read here and judged by `liveRelations`, which then drops them: the
+   * response keeps the shape it always had.
+   */
+  private storyRelations() {
+    const state = { status: true, deletedAt: true } as const;
+    const window = { publishStartsAt: true, publishEndsAt: true } as const;
     return {
-      country: { select: { id: true, name: true, slug: true } },
-      university: { select: { id: true, name: true, slug: true } },
+      country: { select: { id: true, name: true, slug: true, ...state } },
+      university: {
+        select: { id: true, name: true, slug: true, ...state, ...window },
+      },
       offering: {
         select: {
           id: true,
           name: true,
           slug: true,
-          university: { select: { id: true, name: true, slug: true } },
+          ...state,
+          ...window,
+          university: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              ...state,
+              ...window,
+              country: { select: { slug: true, ...state } },
+            },
+          },
           genericCourse: { select: { id: true, name: true, slug: true } },
         },
       },
     };
+  }
+
+  private successStoryRelations() {
+    return this.storyRelations();
+  }
+
+  /**
+   * A story or testimonial names a country, university or course only while
+   * that record is live itself: published, not deleted and, for a university
+   * or a course, inside its publishing window. Otherwise the page would print
+   * an unpublished record's name and link it to an address that answers 404.
+   * What is not live reads as null, and the fields used to judge it are
+   * removed.
+   */
+  private liveRelations<T extends Record<string, unknown>>(row: T, now: Date) {
+    type Related = Record<string, unknown> | null | undefined;
+    const live = (value: Related, scheduled: boolean) => {
+      if (!value || value.status !== 'PUBLISHED' || value.deletedAt)
+        return false;
+      if (!scheduled) return true;
+      const starts = value.publishStartsAt as Date | string | null | undefined;
+      const ends = value.publishEndsAt as Date | string | null | undefined;
+      if (starts && new Date(starts) > now) return false;
+      if (ends && new Date(ends) <= now) return false;
+      return true;
+    };
+    const strip = (value: Record<string, unknown>) => {
+      const copy = { ...value };
+      delete copy.status;
+      delete copy.deletedAt;
+      delete copy.publishStartsAt;
+      delete copy.publishEndsAt;
+      return copy;
+    };
+    const country = row.country as Related;
+    const university = row.university as Related;
+    const offering = row.offering as Related;
+    const offeringUniversity = offering?.university as Related;
+    const universityCountry = offeringUniversity?.country as Related;
+    const result: Record<string, unknown> = { ...row };
+    if ('country' in row)
+      result.country = live(country, false) ? strip(country!) : null;
+    if ('university' in row)
+      result.university = live(university, true) ? strip(university!) : null;
+    if ('offering' in row)
+      result.offering = live(offering, true)
+        ? {
+            ...strip(offering!),
+            university: live(offeringUniversity, true)
+              ? {
+                  ...strip(offeringUniversity!),
+                  country: live(universityCountry, false)
+                    ? strip(universityCountry!)
+                    : null,
+                }
+              : null,
+          }
+        : null;
+    return result as T;
   }
 
   /**
@@ -1335,9 +1600,29 @@ export class ExpandedService {
   private async withSuccessStoryMedia<
     T extends { featuredMediaId: string | null },
   >(rows: T[]) {
-    const mediaIds = rows
-      .map((row) => row.featuredMediaId)
-      .filter((id): id is string => Boolean(id));
+    return this.withMedia(rows, 'featuredMediaId', 'featuredMedia');
+  }
+
+  /**
+   * Several records keep only the id of the image an editor picked --
+   * stories, events, consultants and testimonials have no relation to
+   * MediaAsset -- so the image never reached the website. This resolves the
+   * id under `idKey` into the small public shape under `outKey`, reading
+   * only active, undeleted assets, in one query for the whole page of rows.
+   * A missing or archived asset reads as null rather than a broken image.
+   */
+  private async withMedia<
+    T extends Record<string, unknown>,
+    K extends string,
+    O extends string,
+  >(rows: T[], idKey: K, outKey: O) {
+    const idOf = (row: T): string | null => {
+      const value: unknown = row[idKey];
+      return typeof value === 'string' && value ? value : null;
+    };
+    const mediaIds = [
+      ...new Set(rows.map(idOf).filter((id): id is string => Boolean(id))),
+    ];
     const media = mediaIds.length
       ? await this.prisma.mediaAsset.findMany({
           where: { id: { in: mediaIds }, status: 'ACTIVE', deletedAt: null },
@@ -1345,12 +1630,12 @@ export class ExpandedService {
         })
       : [];
     const byId = new Map(media.map((asset) => [asset.id, asset]));
-    return rows.map((row) => ({
-      ...row,
-      featuredMedia: row.featuredMediaId
-        ? (byId.get(row.featuredMediaId) ?? null)
-        : null,
-    }));
+    type Media = (typeof media)[number];
+    return rows.map((row): T & Record<O, Media | null> => {
+      const id = idOf(row);
+      const resolved = { [outKey]: id ? (byId.get(id) ?? null) : null };
+      return Object.assign({}, row, resolved as Record<O, Media | null>);
+    });
   }
 
   private async universityDetail(slug: string) {
@@ -2264,6 +2549,13 @@ export class ExpandedService {
           include: {
             consultant: {
               include: {
+                /* Each consultant's own offices, as the directory reads
+                   them, so a card here names its city and can be filtered
+                   by location like it can there. */
+                locations: {
+                  where: ACTIVE_CONSULTANT_LOCATION,
+                  include: { location: true },
+                },
                 services: true,
                 countries: { include: { country: true } },
                 languages: true,
@@ -2405,7 +2697,10 @@ export class ExpandedService {
       await this.prisma.consultant.findMany({
         where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
         include: {
-          locations: { include: { location: true } },
+          locations: {
+            where: ACTIVE_CONSULTANT_LOCATION,
+            include: { location: true },
+          },
           countries: { include: { country: true } },
           services: true,
           languages: true,
@@ -2564,7 +2859,9 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'offerings') {
       const record = await this.prisma.universityCourseOffering.findFirst({
@@ -2584,7 +2881,9 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'scholarships') {
       const record = await this.prisma.scholarship.findFirst({
@@ -2596,7 +2895,9 @@ export class ExpandedService {
           offerings: { include: { offering: true } },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'pages') {
       const record = await this.prisma.page.findFirst({
@@ -2610,7 +2911,9 @@ export class ExpandedService {
           },
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     if (resource === 'consultants') {
       const record = await this.prisma.consultant.findFirst({
@@ -2622,7 +2925,9 @@ export class ExpandedService {
           languages: true,
         },
       });
-      return this.withSeo(resource, record ?? this.notFound(resource));
+      return this.withSeo(resource, record ?? this.notFound(resource), {
+        stored: true,
+      });
     }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -2632,7 +2937,9 @@ export class ExpandedService {
     const row = await delegate.findFirst({
       where: resource === 'navigation-menus' ? { id } : { id, deletedAt: null },
     });
-    return this.withSeo(resource, row ?? this.notFound(resource));
+    return this.withSeo(resource, row ?? this.notFound(resource), {
+      stored: true,
+    });
   }
 
   async adminCreate(
@@ -2645,6 +2952,7 @@ export class ExpandedService {
       resourceModel[resource] as keyof PrismaService
     ] as any;
     const data = this.writeData(resource, body);
+    this.stampVerification(resource, data, null);
     try {
       const created = await delegate.create({
         data: { ...data, ...this.relationWrites(resource, body, false) },
@@ -2667,13 +2975,18 @@ export class ExpandedService {
     const delegate = this.prisma[
       resourceModel[resource] as keyof PrismaService
     ] as any;
-    const current = await this.adminDetail(resource, id);
+    const current = (await this.adminDetail(resource, id)) as Record<
+      string,
+      unknown
+    >;
     try {
+      const data = this.writeData(resource, body, true);
+      this.stampVerification(resource, data, current);
       const updated = await delegate.update({
         where: { id },
         data: {
-          ...this.writeData(resource, body, true),
-          ...this.relationWrites(resource, body, true),
+          ...data,
+          ...this.relationWrites(resource, body, true, current),
         },
       });
       await this.saveSeo(resource, id, body.seo);
@@ -2683,6 +2996,25 @@ export class ExpandedService {
     } catch (error) {
       throw this.conflict(error);
     }
+  }
+
+  /**
+   * A consultant marked Verified without a date was checked today. The
+   * profile shows when the check was made, and with no date it could only
+   * say "Verified" beside "Last verified: not recorded". Only the change to
+   * Verified stamps it: re-saving a record verified long ago keeps its date,
+   * and an editor who types a date keeps theirs.
+   */
+  private stampVerification(
+    resource: Resource,
+    data: Data,
+    current: Record<string, unknown> | null,
+  ) {
+    if (resource !== 'consultants') return;
+    if (data.verificationStatus !== 'VERIFIED') return;
+    if (current?.verificationStatus === 'VERIFIED') return;
+    if (data.verifiedAt) return;
+    data.verifiedAt = startOfUtcDay(new Date());
   }
 
   /** Flat top-level resources with a stable public detail URL of the shape
@@ -2697,6 +3029,7 @@ export class ExpandedService {
     consultants: '/study-abroad-consultants',
     jobs: '/careers',
     events: '/events',
+    'success-stories': '/success-stories',
   };
 
   private async recordSlugRedirect(
@@ -2709,18 +3042,38 @@ export class ExpandedService {
     const oldSlug = typeof before.slug === 'string' ? before.slug : null;
     const newSlug = typeof after.slug === 'string' ? after.slug : null;
     if (!oldSlug || !newSlug || oldSlug === newSlug) return;
+    const oldPath = `${prefix}/${oldSlug}`;
+    const newPath = `${prefix}/${newSlug}`;
+    /* A record renamed back to an address it once had: the redirect that
+       sent that address away would now send it in a circle. */
+    await this.prisma.redirect.updateMany({
+      where: { sourcePath: newPath, isActive: true },
+      data: { isActive: false },
+    });
     await this.prisma.redirect.upsert({
-      where: { sourcePath: `${prefix}/${oldSlug}` },
+      where: { sourcePath: oldPath },
       update: {
-        targetPath: `${prefix}/${newSlug}`,
+        targetPath: newPath,
         httpStatusCode: 301,
         isActive: true,
       },
       create: {
-        sourcePath: `${prefix}/${oldSlug}`,
-        targetPath: `${prefix}/${newSlug}`,
+        sourcePath: oldPath,
+        targetPath: newPath,
         httpStatusCode: 301,
       },
+    });
+    /* A canonical that only named the old address -- stored by the editor
+       before it stopped saving resolved values back -- would now point
+       search engines at a redirect. Without it the page names its own
+       address again. */
+    await this.prisma.seoMetadata.updateMany({
+      where: {
+        ownerType: resource,
+        ownerId: String(after.id ?? before.id),
+        canonicalUrl: oldPath,
+      },
+      data: { canonicalUrl: null },
     });
   }
 
@@ -3148,19 +3501,34 @@ export class ExpandedService {
       providers,
       media,
     ] = await Promise.all([
+      /* With their publishing state, so a pick list can mark a draft: a
+         story filed under an unpublished country used to name it on the
+         site and link to a page that answered 404. */
       this.prisma.country.findMany({
         where: active,
-        select: { id: true, name: true, slug: true },
+        select: { id: true, name: true, slug: true, status: true },
         orderBy: { name: 'asc' },
       }),
       this.prisma.university.findMany({
         where: active,
-        select: { id: true, name: true, slug: true, countryId: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          countryId: true,
+          status: true,
+        },
         orderBy: { name: 'asc' },
       }),
       this.prisma.universityCourseOffering.findMany({
         where: active,
-        select: { id: true, name: true, slug: true, universityId: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          universityId: true,
+          status: true,
+        },
         orderBy: { name: 'asc' },
       }),
       this.prisma.course.findMany({
@@ -3258,6 +3626,7 @@ export class ExpandedService {
     resource: Exclude<Resource, 'contact-inquiries'>,
     body: Data,
     replace: boolean,
+    current?: Record<string, unknown>,
   ): Data {
     const strings = (value: unknown) =>
       Array.isArray(value)
@@ -3396,18 +3765,20 @@ export class ExpandedService {
       };
     }
     if (resource === 'consultants') {
-      const locationIds = strings(body.locationIds);
       const countryIds = strings(body.countryIds);
-      const services = strings(body.services);
-      const languages = strings(body.languages);
+      /* A list that did not change writes nothing at all. */
+      const only = (key: string, write: Data) =>
+        Object.keys(write).length ? { [key]: write } : {};
       return {
         ...(Array.isArray(body.locationIds)
-          ? {
-              locations: {
-                ...reset,
-                create: locationIds.map((locationId) => ({ locationId })),
-              },
-            }
+          ? only(
+              'locations',
+              consultantLocationWrites(
+                strings(body.locationIds),
+                body.locationAddresses,
+                replace ? (current?.locations as ExistingOffice[]) : undefined,
+              ),
+            )
           : {}),
         ...(Array.isArray(body.countryIds)
           ? {
@@ -3418,64 +3789,98 @@ export class ExpandedService {
             }
           : {}),
         ...(Array.isArray(body.services)
-          ? {
-              services: {
-                ...reset,
-                create: services.map((name, index) => ({
-                  name,
-                  slug: `${name
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-|-$/g, '')}-${index + 1}`,
-                  displayOrder: index + 1,
-                })),
-              },
-            }
+          ? only(
+              'services',
+              consultantServiceWrites(
+                strings(body.services),
+                replace ? (current?.services as ExistingService[]) : undefined,
+              ),
+            )
           : {}),
         ...(Array.isArray(body.languages)
-          ? {
-              languages: {
-                ...reset,
-                create: languages.map((name) => ({ name })),
-              },
-            }
+          ? only(
+              'languages',
+              consultantLanguageWrites(
+                strings(body.languages),
+                replace
+                  ? (current?.languages as ExistingLanguage[])
+                  : undefined,
+              ),
+            )
           : {}),
       };
     }
     return {};
   }
 
+  /**
+   * Stores what the editor wrote, field by field.
+   *
+   * It used to store nothing unless both an SEO title and a description were
+   * given, so a lone title was dropped without a word and an editor who
+   * emptied every field could never clear what was stored. Now each field is
+   * kept on its own -- the resolver fills whatever is left empty -- and an
+   * emptied field clears its stored value. A record that has no stored SEO
+   * and is saved with nothing written gets no row at all, so its page keeps
+   * following its own title, description and address.
+   *
+   * The title and description columns cannot hold null; an empty one is
+   * stored as '', which every reader treats as not written.
+   */
   private async saveSeo(resource: Resource, ownerId: string, value: unknown) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return;
     const seo = value as Data;
-    const seoTitle = this.optionalText(seo.seoTitle);
-    const metaDescription = this.optionalText(seo.metaDescription);
-    if (!seoTitle || !metaDescription) return;
-    const shared = {
-      seoTitle,
-      metaDescription,
+    const textFields = {
+      seoTitle: this.optionalText(seo.seoTitle),
+      metaDescription: this.optionalText(seo.metaDescription),
       canonicalUrl: this.optionalText(seo.canonicalUrl),
       focusKeyword: this.optionalText(seo.focusKeyword),
       ogTitle: this.optionalText(seo.ogTitle),
       ogDescription: this.optionalText(seo.ogDescription),
-      ogMediaId: this.optionalText(seo.ogMediaId),
       twitterTitle: this.optionalText(seo.twitterTitle),
       twitterDescription: this.optionalText(seo.twitterDescription),
-      twitterMediaId: this.optionalText(seo.twitterMediaId),
-      robotsIndex: seo.robotsIndex !== false,
-      robotsFollow: seo.robotsFollow !== false,
-      ...(seo.schemaJson !== undefined
-        ? { schemaJson: seo.schemaJson as Prisma.InputJsonValue }
-        : {}),
+    };
+    const ogMediaId = this.optionalText(seo.ogMediaId);
+    const twitterMediaId = this.optionalText(seo.twitterMediaId);
+    const robotsIndex = seo.robotsIndex !== false;
+    const robotsFollow = seo.robotsFollow !== false;
+    const schemaJson =
+      seo.schemaJson !== undefined && seo.schemaJson !== null
+        ? (seo.schemaJson as Prisma.InputJsonValue)
+        : undefined;
+    const written =
+      Object.values(textFields).some(Boolean) ||
+      Boolean(ogMediaId || twitterMediaId) ||
+      !robotsIndex ||
+      !robotsFollow ||
+      schemaJson !== undefined;
+    const where = { ownerType_ownerId: { ownerType: resource, ownerId } };
+    if (!written) {
+      const stored = await this.prisma.seoMetadata.findUnique({ where });
+      if (!stored) return;
+    }
+    const shared = {
+      ...textFields,
+      seoTitle: textFields.seoTitle ?? '',
+      metaDescription: textFields.metaDescription ?? '',
+      ogMediaId,
+      twitterMediaId,
+      robotsIndex,
+      robotsFollow,
+      ...(schemaJson !== undefined ? { schemaJson } : {}),
     };
     await this.prisma.seoMetadata.upsert({
-      where: { ownerType_ownerId: { ownerType: resource, ownerId } },
+      where,
       update: shared,
       create: { ownerType: resource, ownerId, ...shared },
     });
   }
 
-  private async withSeo(resource: Resource, record: { id: unknown }) {
+  private async withSeo(
+    resource: Resource,
+    record: { id: unknown },
+    options: { stored?: boolean } = {},
+  ) {
     const seo = await this.prisma.seoMetadata.findUnique({
       where: {
         ownerType_ownerId: { ownerType: resource, ownerId: String(record.id) },
@@ -3505,6 +3910,12 @@ export class ExpandedService {
     return {
       ...record,
       seo: resolved,
+      /* The admin's editor fills its SEO inputs from what an editor actually
+         wrote, and shows the resolved values only as placeholders. Filled
+         from `seo`, an untouched form saved the fallback title, the site's
+         default description and the current address back as hand-written,
+         and they never followed a rename again. */
+      ...(options.stored ? { seoStored: manual } : {}),
     };
   }
 
@@ -3543,6 +3954,7 @@ export class ExpandedService {
       'services',
       'languages',
       'speakers',
+      'locationAddresses',
       'providerName',
       // Never written straight from the body: an override is validated from
       // the structured `chrome` key below so a malformed or hand-crafted
@@ -3603,6 +4015,11 @@ export class ExpandedService {
         'tuitionPeriod',
         'applicationUrl',
         'sourceReference',
+        /* What the programme page prints as "Course code", and the date its
+           facts were last checked against the source -- which is what turns
+           its "Needs verification" badge into "Verified". */
+        'courseCode',
+        'verifiedAt',
         'featuredMediaId',
         'status',
         'isFeatured',
@@ -3646,6 +4063,7 @@ export class ExpandedService {
         'websiteUrl',
         'verificationStatus',
         'sourceReference',
+        'verifiedAt',
         'featuredMediaId',
         'status',
         'isFeatured',
@@ -3724,6 +4142,10 @@ export class ExpandedService {
         'displayOrder',
       ]),
       testimonials: new Set([
+        /* The destination whose guide shows this quote under "Student
+           voices". Without it the section could only be filled from the
+           database. */
+        'countryId',
         'universityId',
         'offeringId',
         'quote',
@@ -3802,6 +4224,20 @@ export class ExpandedService {
       throw new UnprocessableEntityException({
         code: 'QUOTE_REQUIRED',
         message: 'A testimonial quote is required',
+        details: null,
+      });
+    /* A story is its journey: the column cannot be empty, and a story saved
+       without one reached the database and came back as a raw 500. An
+       emptied editor sends "<p><br></p>", which is no text either. On an
+       update the journey is only checked when it is sent. */
+    if (
+      resource === 'success-stories' &&
+      (partial ? 'journey' in body : true) &&
+      !htmlToPlainText(data.journey)
+    )
+      throw new UnprocessableEntityException({
+        code: 'JOURNEY_REQUIRED',
+        message: 'Write the journey: a story cannot be saved without it.',
         details: null,
       });
     // ISS-023. `pageType` has no default in the schema, so a create that
@@ -3893,7 +4329,7 @@ export class ExpandedService {
         });
       data[key] = parsed;
     };
-    if (resource === 'offerings')
+    if (resource === 'offerings') {
       for (const key of [
         'durationMin',
         'durationMax',
@@ -3901,6 +4337,49 @@ export class ExpandedService {
         'tuitionMax',
       ])
         normalizeDecimal(key);
+      normalizeDate('verifiedAt');
+      if ('courseCode' in data && !this.optionalText(data.courseCode))
+        data.courseCode = null;
+    }
+    if (resource === 'consultants') {
+      normalizeDate('verifiedAt');
+      if (
+        'verificationStatus' in data &&
+        !CONSULTANT_VERIFICATION_STATES.has(String(data.verificationStatus))
+      )
+        throw new UnprocessableEntityException({
+          code: 'VERIFICATION_STATUS_INVALID',
+          message:
+            'Verification state must be Not verified, Pending check or Verified.',
+          details: null,
+        });
+      /* A profile links both of these. Typed without a scheme, the link was
+         relative and opened one of our own 404s. A bare domain is plainly a
+         website, so it gains https://; anything else is refused with a
+         message the form shows. */
+      if ('websiteUrl' in data && this.optionalText(data.websiteUrl)) {
+        const url = absoluteWebsite(String(data.websiteUrl));
+        if (!url)
+          throw new UnprocessableEntityException({
+            code: 'WEBSITE_URL_INVALID',
+            message:
+              'Website URL must be a full address starting with https://, for example https://www.example.com.',
+            details: null,
+          });
+        data.websiteUrl = url;
+      }
+      if (
+        'sourceReference' in data &&
+        this.optionalText(data.sourceReference) &&
+        !ABSOLUTE_HTTP_URL.test(String(data.sourceReference))
+      )
+        throw new UnprocessableEntityException({
+          code: 'SOURCE_URL_INVALID',
+          message:
+            'Source URL must be the full address of the page you checked, starting with https://.',
+          details: null,
+        });
+    }
     if (resource === 'scholarships') {
       normalizeDecimal('amount');
       normalizeDate('deadline');
@@ -4009,8 +4488,46 @@ export class ExpandedService {
     if (resource === 'jobs') {
       normalizeDate('publishedDate');
       normalizeDate('expiryDate');
+      /* The Apply button links straight to this. Without a scheme it was a
+         relative link, and an applicant landed on one of our own 404s. */
+      if (
+        'applicationUrl' in data &&
+        this.optionalText(data.applicationUrl) &&
+        !HTTPS_URL.test(String(data.applicationUrl))
+      )
+        throw new UnprocessableEntityException({
+          code: 'APPLICATION_URL_INVALID',
+          message:
+            'Application URL must be a full address starting with https://.',
+          details: null,
+        });
+      if (
+        'applicationEmail' in data &&
+        this.optionalText(data.applicationEmail) &&
+        !SIMPLE_EMAIL.test(String(data.applicationEmail))
+      )
+        throw new UnprocessableEntityException({
+          code: 'APPLICATION_EMAIL_INVALID',
+          message:
+            'Application email must be an address like jobs@example.com.',
+          details: null,
+        });
     }
     if (resource === 'events') {
+      /* Every date on the site is drawn in this zone, and one an Intl
+         formatter does not know took the whole events listing down. Left
+         empty, it keeps the zone it has (or the default, on a new event). */
+      if ('timezone' in data) {
+        const zone = this.optionalText(data.timezone);
+        if (!zone) delete data.timezone;
+        else if (!isTimeZone(zone))
+          throw new UnprocessableEntityException({
+            code: 'INVALID_TIMEZONE',
+            message: `"${zone}" is not a time zone. Choose one from the list, for example Asia/Kolkata or Europe/London.`,
+            details: null,
+          });
+        else data.timezone = zone;
+      }
       normalizeDate('startsAt');
       normalizeDate('endsAt');
       const startsAt = data.startsAt as Date | null | undefined;

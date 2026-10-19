@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { levelPageSeoRecord } from '../subjects/level-pages.shared';
+import { plainExcerpt } from './plain-text';
 import {
   SEO_BULK_ENTITY_TYPES,
   SEO_ENTITY_DEFINITIONS,
@@ -38,7 +39,32 @@ const ECHO_CHECKED = new Set<SeoBulkEntityType>([
   'university',
   'offering',
   'levelPage',
+  /* The shared admin editor used to save the same echoes for these, and
+     rows saved before it stopped are still stored: read as not written,
+     they let the page follow its own title and words again. */
+  'successStory',
+  'job',
+  'event',
+  'consultant',
+  'scholarship',
 ]);
+
+/* The types whose own words outrank the site's default description. Each
+   has a summary, a description or a story of its own, and a page about one
+   record should be described by it rather than by a sentence shared with
+   every other page. The rest keep the order they had: a subject's and a
+   study level's pages build their descriptions their own way. */
+const RECORD_FIRST_DESCRIPTION = new Set<SeoBulkEntityType>([
+  'course',
+  'job',
+  'event',
+  'successStory',
+  'consultant',
+]);
+
+/* The types whose own picture stands in for a share image nobody chose,
+   ahead of the site's default image. */
+const RECORD_MEDIA_SHARE_IMAGE = new Set<SeoBulkEntityType>(['event']);
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -269,13 +295,28 @@ export class SeoManagementService {
       manual?.ogDescription,
       defaultDescription,
     );
+    /* What a description falls back to when nobody wrote one and no rule
+       applies. For a record-first type that is the record's own summary or
+       text, as plain words cut to a search result's length, ahead of the
+       site's default; for the others the default still comes first. */
+    const recordFirst = RECORD_FIRST_DESCRIPTION.has(entityType);
+    const ownDescription = recordFirst ? this.ownDescription(record) : null;
+    const unwrittenDescription = recordFirst
+      ? (ownDescription ??
+        defaultDescription ??
+        `Published information about ${fallbackTitle}.`)
+      : (defaultDescription ?? fallbackDescription);
+    const unwrittenSource =
+      (recordFirst && ownDescription) || !defaultDescription
+        ? 'fallback'
+        : 'default';
+    const recordImage = RECORD_MEDIA_SHARE_IMAGE.has(entityType)
+      ? media(nested(record, 'featuredMedia'))
+      : null;
     return {
       seoTitle: manualTitle ?? renderedTitle ?? fallbackTitle,
       metaDescription:
-        manualDescription ??
-        renderedDescription ??
-        text(defaultSeo.defaultDescription) ??
-        fallbackDescription,
+        manualDescription ?? renderedDescription ?? unwrittenDescription,
       canonicalUrl:
         manualCanonical ??
         (renderedCanonical && SAFE_CANONICAL.test(renderedCanonical)
@@ -292,9 +333,8 @@ export class SeoManagementService {
         renderedOgDescription ??
         manualDescription ??
         renderedDescription ??
-        text(defaultSeo.defaultDescription) ??
-        fallbackDescription,
-      ogMedia: media(manual?.ogMedia) ?? defaultImage,
+        unwrittenDescription,
+      ogMedia: media(manual?.ogMedia) ?? recordImage ?? defaultImage,
       twitterTitle:
         written(manual?.twitterTitle, fallbackTitle) ??
         manualOgTitle ??
@@ -306,9 +346,8 @@ export class SeoManagementService {
         manualOgDescription ??
         renderedOgDescription ??
         renderedDescription ??
-        text(defaultSeo.defaultDescription) ??
-        fallbackDescription,
-      twitterMedia: media(manual?.twitterMedia) ?? defaultImage,
+        unwrittenDescription,
+      twitterMedia: media(manual?.twitterMedia) ?? recordImage ?? defaultImage,
       robotsIndex:
         typeof manual?.robotsIndex === 'boolean'
           ? manual.robotsIndex
@@ -328,9 +367,7 @@ export class SeoManagementService {
           ? 'manual'
           : renderedDescription
             ? 'bulk'
-            : text(defaultSeo.defaultDescription)
-              ? 'default'
-              : 'fallback',
+            : unwrittenSource,
         /* Where the canonical came from, so a page that works out a better
            address of its own (a narrowed list, say) knows whether anyone
            chose this one. */
@@ -549,6 +586,26 @@ export class SeoManagementService {
       levelPage: directString(record, 'name'),
     };
     return byType[entityType] ?? 'Universta';
+  }
+
+  /**
+   * A record's own words, for a record-first type: its summary, else the
+   * opening of its description or story. Rich text arrives as HTML -- a
+   * story's journey is "<p>…</p>" -- so it is read as plain words and cut to
+   * a search result's length rather than passed on with its tags.
+   */
+  private ownDescription(record: RecordData): string | null {
+    for (const key of [
+      'shortDescription',
+      'summary',
+      'description',
+      'overview',
+      'journey',
+    ]) {
+      const excerpt = plainExcerpt(record[key]);
+      if (excerpt) return excerpt;
+    }
+    return null;
   }
 
   private fallbackDescription(record: RecordData, title: string) {

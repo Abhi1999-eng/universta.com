@@ -462,12 +462,30 @@ export class WebsitePagesService {
   async previewEntities(templateKey: string) {
     const take = 25;
     const pub = { status: 'PUBLISHED' as const, deletedAt: null };
+    /* What the public site shows of the records that have a publishing
+       window: published, and inside the window now. A record scheduled for
+       next month, or one whose window has closed, answers 404 there, so it
+       is no use to preview a template with. */
+    const now = new Date();
+    const live = {
+      ...pub,
+      AND: [
+        { OR: [{ publishStartsAt: null }, { publishStartsAt: { lte: now } }] },
+        { OR: [{ publishEndsAt: null }, { publishEndsAt: { gt: now } }] },
+      ],
+    };
+    /* A closed role's page still explains itself, but it no longer takes
+       applications: the list drops it at the end of its closing day (UTC),
+       and so does this. */
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
     const map = async (): Promise<Array<{ label: string; path: string }>> => {
       switch (templateKey) {
         case 'university-detail':
           return (
             await this.prisma.university.findMany({
-              where: pub,
+              where: live,
               take,
               orderBy: { name: 'asc' },
               select: { name: true, slug: true },
@@ -476,7 +494,7 @@ export class WebsitePagesService {
         case 'university-courses':
           return (
             await this.prisma.university.findMany({
-              where: pub,
+              where: live,
               take,
               orderBy: { name: 'asc' },
               select: { name: true, slug: true },
@@ -488,7 +506,7 @@ export class WebsitePagesService {
         case 'university-course-offering':
           return (
             await this.prisma.universityCourseOffering.findMany({
-              where: { ...pub },
+              where: live,
               take,
               select: {
                 name: true,
@@ -562,7 +580,7 @@ export class WebsitePagesService {
         case 'scholarship-detail':
           return (
             await this.prisma.scholarship.findMany({
-              where: pub,
+              where: live,
               take,
               orderBy: { title: 'asc' },
               select: { title: true, slug: true },
@@ -571,7 +589,7 @@ export class WebsitePagesService {
         case 'consultant-detail':
           return (
             await this.prisma.consultant.findMany({
-              where: pub,
+              where: live,
               take,
               orderBy: { name: 'asc' },
               select: { name: true, slug: true },
@@ -594,7 +612,15 @@ export class WebsitePagesService {
         case 'job-detail':
           return (
             await this.prisma.job.findMany({
-              where: pub,
+              where: {
+                ...live,
+                AND: [
+                  ...live.AND,
+                  {
+                    OR: [{ expiryDate: null }, { expiryDate: { gte: today } }],
+                  },
+                ],
+              },
               take,
               orderBy: { title: 'asc' },
               select: { title: true, slug: true },
@@ -603,7 +629,7 @@ export class WebsitePagesService {
         case 'event-detail':
           return (
             await this.prisma.event.findMany({
-              where: pub,
+              where: live,
               take,
               orderBy: { title: 'asc' },
               select: { title: true, slug: true },

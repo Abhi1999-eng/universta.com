@@ -117,8 +117,8 @@ test.describe('unified record editors', () => {
     const form = page.getByRole('form', { name: 'Create universities' });
     await expect(form).toBeVisible();
     await expect(form.getByText('Publish state', { exact: true })).toBeHidden();
-    await expect(form.getByText('Save draft', { exact: true })).toBeVisible();
-    await expect(form.getByRole('button', { name: 'Create draft' })).toBeVisible();
+    /* Named by its visible words, not announced as something it is not. */
+    await expect(form.getByRole('button', { name: 'Save draft', exact: true })).toBeVisible();
     await expect(form.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
   });
 });

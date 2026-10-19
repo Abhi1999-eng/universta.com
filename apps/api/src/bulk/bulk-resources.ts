@@ -49,6 +49,14 @@ export type BulkField = {
   /** A closed set enforced by imports and offered by XLSX templates. */
   allowedValues?: readonly string[];
 };
+/** The states a consultant's verification can be in, as the admin and the
+ * public profile read them. */
+const CONSULTANT_VERIFICATION_STATUSES = [
+  'UNVERIFIED',
+  'PENDING',
+  'VERIFIED',
+] as const satisfies readonly string[];
+
 export type BulkParseResult =
   | {
       data: Record<string, unknown>;
@@ -228,6 +236,8 @@ export function bulkFields(definition: BulkResourceDefinition): BulkField[] {
         return { ...field, type: 'number' };
       if (field.key === 'courseCode') return { ...field, type: 'text' };
     }
+    if (definition.key === 'consultants' && field.key === 'verificationStatus')
+      return { ...field, allowedValues: CONSULTANT_VERIFICATION_STATUSES };
     return field.key === 'status' && !field.allowedValues
       ? { ...field, allowedValues: definition.statusAllowedValues }
       : field;
@@ -2536,6 +2546,17 @@ const consultants: BulkResourceDefinition = {
   async parseRow(row, prisma) {
     const errors: string[] = [];
     if (!row.name?.trim()) errors.push('name is required');
+    /* The three states the admin and the profile know. Anything else was
+       stored as typed and then shown in the editor as a state it was not. */
+    const verificationStatus = row.verificationStatus?.trim() || 'UNVERIFIED';
+    if (
+      !(CONSULTANT_VERIFICATION_STATUSES as readonly string[]).includes(
+        verificationStatus,
+      )
+    )
+      errors.push(
+        `verificationStatus must be one of ${CONSULTANT_VERIFICATION_STATUSES.join(', ')}`,
+      );
     const countryIds = await parseCountrySlugs(
       prisma,
       row.countrySlugs,
@@ -2549,7 +2570,7 @@ const consultants: BulkResourceDefinition = {
         email: row.email?.trim() || null,
         phone: row.phone?.trim() || null,
         websiteUrl: row.websiteUrl?.trim() || null,
-        verificationStatus: row.verificationStatus?.trim() || 'UNVERIFIED',
+        verificationStatus,
         shortDescription: row.shortDescription?.trim() || null,
         status: row.status?.trim() || 'DRAFT',
       },

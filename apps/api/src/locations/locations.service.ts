@@ -512,7 +512,14 @@ export class LocationsService {
         country: { select: { name: true, slug: true } },
         stateRef: { select: { name: true, slug: true } },
         cityRef: { select: { name: true, slug: true } },
-        _count: { select: { consultants: true } },
+        /* Only consultants still in the catalogue: an archived one is
+           gone from every list, and counting it made the location look in
+           use when nothing on the site showed it. */
+        _count: {
+          select: {
+            consultants: { where: { consultant: { deletedAt: null } } },
+          },
+        },
       },
       orderBy: [{ name: 'asc' }],
     });
@@ -628,8 +635,10 @@ export class LocationsService {
 
   async archiveConsultantLocation(id: string) {
     await this.adminDetailConsultantLocation(id);
+    /* An archived consultant no longer holds its offices: it appears on
+       no list and no page, so it cannot keep the location from going. */
     const mapped = await this.prisma.consultantLocationMap.count({
-      where: { locationId: id },
+      where: { locationId: id, consultant: { deletedAt: null } },
     });
     if (mapped > 0)
       throw new ConflictException({

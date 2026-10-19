@@ -2,6 +2,20 @@ import { ExpandedService } from './expanded.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { ExperimentsService } from '../experiments/experiments.service';
 
+/* What the database hands back: each relation carries the fields that say
+   whether it is live, which the service reads and then removes. */
+const live = { status: 'PUBLISHED', deletedAt: null };
+const scheduled = { ...live, publishStartsAt: null, publishEndsAt: null };
+const country = {
+  id: 'country-1',
+  name: 'United Kingdom',
+  slug: 'united-kingdom',
+};
+const university = {
+  id: 'university-1',
+  name: 'Westbridge',
+  slug: 'westbridge',
+};
 const story = {
   id: 'story-1',
   title: 'From lecture halls to campaigns',
@@ -10,13 +24,18 @@ const story = {
   attribution: 'Amara',
   attributionNote: 'Demonstration profile, not a real student',
   featuredMediaId: 'media-1',
-  country: { id: 'country-1', name: 'United Kingdom', slug: 'united-kingdom' },
-  university: { id: 'university-1', name: 'Westbridge', slug: 'westbridge' },
+  country: { ...country, ...live },
+  university: { ...university, ...scheduled },
   offering: {
     id: 'offering-1',
     name: 'MSc Digital Marketing',
     slug: 'msc-digital-marketing',
-    university: { id: 'university-1', name: 'Westbridge', slug: 'westbridge' },
+    ...scheduled,
+    university: {
+      ...university,
+      ...scheduled,
+      country: { slug: 'united-kingdom', ...live },
+    },
     genericCourse: {
       id: 'course-1',
       name: 'Digital Marketing',
@@ -25,7 +44,7 @@ const story = {
   },
 };
 
-function service(found = story) {
+function service(found: typeof story | null = story) {
   const prisma = {
     successStory: {
       findMany: async () => [found],
@@ -54,10 +73,14 @@ describe('ExpandedService public success stories', () => {
     expect(listing.data[0]).toMatchObject({
       title: story.title,
       featuredMedia: { publicUrl: '/media/amara.jpg' },
-      country: story.country,
-      university: story.university,
-      offering: { slug: story.offering.slug },
+      country,
+      university,
+      offering: {
+        slug: story.offering.slug,
+        university: { ...university, country: { slug: 'united-kingdom' } },
+      },
     });
+    expect(listing.data[0].country).toEqual(country);
 
     await expect(
       svc.detail('success-stories', story.slug),

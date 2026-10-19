@@ -22,6 +22,7 @@ import { isStructuredPhase1Resource } from "./Phase1StructuredEditor";
 import { UnifiedPhase1StructuredEditor } from "./UnifiedPhase1StructuredEditor";
 import { PageCmsEditor } from "./PageCmsEditor";
 import { NavigationMenuEditor } from "./NavigationMenuEditor";
+import { formatDateTime, lifecycle, testimonialName } from "./record-lifecycle";
 
 const titles: Record<string, string> = {
   universities: "Universities",
@@ -49,8 +50,15 @@ type Phase1Row = {
   fullName?: string;
   inquiryNumber?: string;
   quote?: string;
+  attribution?: string | null;
   slug?: string;
   status?: string;
+  publishStartsAt?: string | null;
+  publishEndsAt?: string | null;
+  expiryDate?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  timezone?: string | null;
   convertedLeadId?: string | null;
   menuKey?: string;
   usedAs?: "header" | "footer" | null;
@@ -75,7 +83,8 @@ function rowName(row: Phase1Row) {
     row.title ??
     row.fullName ??
     row.inquiryNumber ??
-    row.quote?.slice(0, 48) ??
+    /* A testimonial is known by its words and by who said them. */
+    (row.quote ? testimonialName(row.quote, row.attribution) : undefined) ??
     "This record"
   );
 }
@@ -464,7 +473,7 @@ export function Phase1Manager({ resource }: { resource: string }) {
                 <span className="sr-only">Search {title.toLowerCase()}</span>
                 <input
                   className="p-input p-input--sm"
-                  placeholder="Search by name or slug"
+                  placeholder={resource === "testimonials" ? "Search quote or student name" : "Search by name or slug"}
                   value={q}
                   onChange={(event) => {
                     setQ(event.target.value);
@@ -505,7 +514,10 @@ export function Phase1Manager({ resource }: { resource: string }) {
             <tbody>
               {rows.map((row) => {
                 const name = rowName(row);
-                const sitePath = row.status === "PUBLISHED" ? (publicPaths[resource]?.(row) ?? null) : null;
+                /* Published is not always live: outside its publishing window
+                   the page answers 404, so there is nothing to view. */
+                const { notes, live } = lifecycle(resource, row);
+                const sitePath = live ? (publicPaths[resource]?.(row) ?? null) : null;
                 const working = busy[row.id];
                 return (
                 <tr className="border-b border-[#F0F2F5]" key={row.id}>
@@ -525,6 +537,11 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     ) : (
                       <span className="font-semibold">{name}</span>
                     )}
+                    {resource === "events" && row.startsAt ? (
+                      <span className="p-hint block">
+                        Starts <span data-testid="event-start">{formatDateTime(row.startsAt, row.timezone ?? "")}</span>
+                      </span>
+                    ) : null}
                     <span className="p-hint block">
                       {row.slug ?? ""}
                       {isNavMenu && row.menuKey ? ` (${row.menuKey})` : null}
@@ -537,7 +554,14 @@ export function Phase1Manager({ resource }: { resource: string }) {
                     </span>
                   </td>
                   <td className="p-4">
-                    <StatusBadge status={row.status} />
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={row.status} />
+                      {notes.map((note) => (
+                        <span key={note.label} className={`p-badge ${note.tone === "scheduled" ? "p-badge--warn" : ""}`.trim()}>
+                          {note.label}
+                        </span>
+                      ))}
+                    </span>
                   </td>
                   {isNavMenu ? (
                     <td className="p-4">

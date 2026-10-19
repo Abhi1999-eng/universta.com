@@ -1,0 +1,341 @@
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Phase1StructuredEditor } from './Phase1StructuredEditor';
+
+/**
+ * What the shared record editor sends for events, jobs, stories,
+ * testimonials and consultants -- each case here was a save that moved,
+ * froze, lost or refused something the editor never touched.
+ */
+
+type Row = Record<string, unknown>;
+const authFetch = vi.fn();
+vi.mock('@/features/auth/auth-client', () => ({
+  authFetch: (input: RequestInfo | URL, init?: RequestInit) => authFetch(input, init),
+}));
+
+const sent: Array<{ method: string; url: string; body: Row }> = [];
+let record: Row | null = null;
+let refusal: { code: string; message: string } | null = null;
+
+function reply(ok: boolean, data: unknown, error: unknown = null) {
+  return { ok, json: async () => ({ data, error, meta: null, requestId: 'test' }) } as unknown as Response;
+}
+
+const options = {
+  countries: [
+    { id: 'country-1', name: 'Japan', slug: 'japan', status: 'PUBLISHED' },
+    { id: 'country-2', name: 'Atlantis', slug: 'atlantis', status: 'DRAFT' },
+  ],
+  universities: [],
+  offerings: [],
+  courses: [],
+  levels: [],
+  modes: [],
+  intakes: [],
+  locations: [
+    { id: 'loc-1', name: 'Rajouri Garden', city: 'Delhi' },
+    { id: 'loc-2', name: 'Koramangala', city: 'Bengaluru' },
+  ],
+  providers: [],
+  media: [],
+  campuses: [],
+  states: [],
+  cities: [],
+};
+
+beforeEach(() => {
+  sent.length = 0;
+  record = null;
+  refusal = null;
+  authFetch.mockReset();
+  authFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = init?.method ?? 'GET';
+    if (url.endsWith('/form-options')) return reply(true, options);
+    /* Every stored record has a display order; the form insists on one. */
+    if (method === 'GET') return reply(true, record ? { displayOrder: 0, ...record } : record);
+    const body = JSON.parse(String(init?.body ?? '{}')) as Row;
+    sent.push({ method, url, body });
+    if (refusal) return reply(false, null, refusal);
+    return reply(true, { id: 'saved-1', ...body });
+  });
+});
+
+function open(resource: string, recordId?: string) {
+  render(<Phase1StructuredEditor resource={resource} recordId={recordId} onSaved={vi.fn().mockResolvedValue(undefined)} onCancel={vi.fn()} />);
+}
+async function form() {
+  const node = await screen.findByRole('form');
+  await waitFor(() => expect(within(node).queryByText('Loading record…')).toBeNull());
+  return node;
+}
+const input = (scope: HTMLElement, label: string) => within(scope).getByLabelText(label, { exact: true }) as HTMLInputElement;
+async function save(scope: HTMLElement) {
+  await userEvent.click(within(scope).getByRole('button', { name: /^(Save changes|Create draft)$/ }));
+}
+
+describe('dates and times', () => {
+  /* EV-C2. A Tokyo event at 18:00 was read and written in UTC by slicing the
+     ISO string, and every save shifted it by the server's offset. */
+  it('opens an event in its own zone and sends an unchanged save back exactly', async () => {
+    record = {
+      id: 'event-1',
+      title: 'Tokyo fair',
+      slug: 'tokyo-fair',
+      status: 'PUBLISHED',
+      timezone: 'Asia/Tokyo',
+      eventType: 'OFFLINE',
+      startsAt: '2026-11-05T09:00:00.000Z',
+      endsAt: '2026-11-05T11:30:15.000Z',
+      publishStartsAt: '2026-10-31T18:30:00.000Z',
+      publishEndsAt: null,
+    };
+    open('events', 'event-1');
+    const scope = await form();
+    expect(input(scope, 'Start date and time').value).toBe('2026-11-05T18:00');
+    expect(input(scope, 'End date and time').value).toBe('2026-11-05T20:30');
+    expect(input(scope, 'Publish from (optional)').value).toBe('2026-11-01T00:00');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toMatchObject({
+      startsAt: '2026-11-05T09:00:00.000Z',
+      endsAt: '2026-11-05T11:30:15.000Z',
+      publishStartsAt: '2026-10-31T18:30:00.000Z',
+      publishEndsAt: null,
+      timezone: 'Asia/Tokyo',
+    });
+  });
+
+  it('reads 18:00 typed for a Tokyo event as 18:00 in Tokyo', async () => {
+    open('events');
+    const scope = await form();
+    await userEvent.type(input(scope, 'Title'), 'Tokyo evening');
+    await userEvent.selectOptions(input(scope, 'Timezone'), 'Asia/Tokyo');
+    await userEvent.type(input(scope, 'Start date and time'), '2026-11-05T18:00');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body.startsAt).toBe('2026-11-05T09:00:00.000Z');
+  });
+
+  /* EV-M4. Publish from and Publish until moved on every save of every
+     structured record, not only events. */
+  it('keeps a role’s publishing window on an unchanged save', async () => {
+    record = {
+      id: 'job-1',
+      title: 'Counsellor',
+      slug: 'counsellor',
+      status: 'DRAFT',
+      publishStartsAt: '2026-10-31T18:30:00.000Z',
+      publishEndsAt: '2026-12-31T12:00:00.000Z',
+      applicationUrl: 'https://careers.example.com/apply',
+    };
+    open('jobs', 'job-1');
+    const scope = await form();
+    expect(input(scope, 'Publish until (optional)').value).toBe('2026-12-31T17:30');
+    /* The window is read in India's time, and the form says so. */
+    expect(within(scope).getByText(/Times are India time \(IST\)\./)).toBeInTheDocument();
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toMatchObject({
+      publishStartsAt: '2026-10-31T18:30:00.000Z',
+      publishEndsAt: '2026-12-31T12:00:00.000Z',
+    });
+  });
+
+  /* EV-C3. A zone saved before the list existed stays as it was. */
+  it('keeps an older event’s unknown zone without sending it', async () => {
+    record = { id: 'event-2', title: 'Old', slug: 'old', status: 'DRAFT', timezone: 'Tokyo', eventType: 'WORKSHOP', startsAt: '2026-11-05T09:00:00.000Z' };
+    open('events', 'event-2');
+    const scope = await form();
+    expect(input(scope, 'Timezone').value).toBe('Tokyo');
+    expect(within(scope).getByRole('option', { name: 'Tokyo (older value)' })).toBeTruthy();
+    /* EV-C9. A webinar-style kind reads as itself, not as In person. */
+    expect(input(scope, 'Event type').value).toBe('WORKSHOP');
+    expect(within(scope).getByRole('option', { name: 'Workshop (older value)' })).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'In person' })).toBeTruthy();
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect('timezone' in sent[0].body).toBe(false);
+    expect(sent[0].body.eventType).toBe('WORKSHOP');
+  });
+
+  it('shows the API’s time zone refusal under the field', async () => {
+    record = { id: 'event-3', title: 'Fair', slug: 'fair', status: 'DRAFT', timezone: 'Asia/Kolkata', startsAt: '2026-11-05T09:00:00.000Z' };
+    refusal = { code: 'INVALID_TIMEZONE', message: '"Mars/Base" is not a time zone.' };
+    open('events', 'event-3');
+    const scope = await form();
+    await save(scope);
+    await waitFor(() => expect(within(scope).getAllByText('"Mars/Base" is not a time zone.')).toHaveLength(2));
+  });
+});
+
+describe('SEO fields', () => {
+  /* SS-C4, CON-M1, EV-M5. The inputs were filled with the resolved values,
+     and an untouched save stored them as hand-written for good. */
+  it('hold only what was written, with the rest as placeholders', async () => {
+    record = {
+      id: 'story-1',
+      title: 'From Pune to Tokyo',
+      slug: 'from-pune-to-tokyo',
+      status: 'PUBLISHED',
+      journey: '<p>It began with a phone call.</p>',
+      seo: { seoTitle: 'From Pune to Tokyo', metaDescription: 'It began with a phone call.', canonicalUrl: '/success-stories/from-pune-to-tokyo', robotsIndex: true, robotsFollow: true },
+      seoStored: null,
+    };
+    open('success-stories', 'story-1');
+    const scope = await form();
+    expect(input(scope, 'SEO title').value).toBe('');
+    expect(input(scope, 'SEO title').placeholder).toBe('From Pune to Tokyo');
+    expect(input(scope, 'Canonical URL').placeholder).toBe('/success-stories/from-pune-to-tokyo');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body.seo).toMatchObject({ seoTitle: '', metaDescription: '', canonicalUrl: '', robotsIndex: true });
+  });
+
+  it('keep what an editor wrote', async () => {
+    record = {
+      id: 'story-2',
+      title: 'Story',
+      slug: 'story',
+      status: 'DRAFT',
+      journey: '<p>Words.</p>',
+      seo: { seoTitle: 'Written title', metaDescription: 'Words.' },
+      seoStored: { seoTitle: 'Written title', metaDescription: '', robotsIndex: false, robotsFollow: true },
+    };
+    open('success-stories', 'story-2');
+    const scope = await form();
+    expect(input(scope, 'SEO title').value).toBe('Written title');
+    expect(input(scope, 'Meta description').placeholder).toBe('Words.');
+    expect(input(scope, 'Allow search engines to index this page').checked).toBe(false);
+  });
+
+  /* SS-M3. A record the old editor had already saved holds its own name and
+     the site default as "written" SEO. Shown as values, they were saved again,
+     and after a rename the page kept the old name as its title. */
+  it('start empty for a stored echo the page ignores, so a save clears it', async () => {
+    const DEFAULT = 'Explore published study-abroad courses, universities, destinations and scholarships on Universta.';
+    record = {
+      id: 'story-3',
+      title: 'From Pune to Tokyo',
+      slug: 'from-pune-to-tokyo',
+      status: 'PUBLISHED',
+      journey: '<p>It began with a phone call.</p>',
+      seo: { seoTitle: 'From Pune to Tokyo', metaDescription: 'It began with a phone call.', ogTitle: 'From Pune to Tokyo', source: { title: 'fallback', description: 'fallback', canonical: 'fallback' } },
+      seoStored: { seoTitle: 'From Pune to Tokyo', metaDescription: DEFAULT, ogTitle: 'From Pune to Tokyo', ogDescription: DEFAULT, twitterTitle: 'From Pune to Tokyo', twitterDescription: DEFAULT, robotsIndex: true, robotsFollow: true },
+    };
+    open('success-stories', 'story-3');
+    const scope = await form();
+    expect(input(scope, 'SEO title').value).toBe('');
+    expect(input(scope, 'SEO title').placeholder).toBe('From Pune to Tokyo');
+    expect(input(scope, 'Meta description').value).toBe('');
+    expect(input(scope, 'Open Graph title').value).toBe('');
+    await userEvent.clear(input(scope, 'Title'));
+    await userEvent.type(input(scope, 'Title'), 'From Pune to Kyoto');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body.seo).toMatchObject({ seoTitle: '', metaDescription: '', ogTitle: '', ogDescription: '', twitterTitle: '', twitterDescription: '' });
+  });
+});
+
+describe('a success story', () => {
+  /* SS-C1. Saved without its journey, it came back as "Internal server
+     error"; an emptied editor still holds "<p><br></p>". */
+  it('needs its journey before it is sent', async () => {
+    open('success-stories');
+    const scope = await form();
+    await userEvent.type(input(scope, 'Title'), 'Untold story');
+    await save(scope);
+    expect(await within(scope).findByText('Write the journey: a story cannot be saved without it.')).toBeTruthy();
+    expect(sent).toHaveLength(0);
+  });
+
+  /* SS-C5, SS-C2. */
+  it('has an attribution note, and marks a draft country', async () => {
+    open('success-stories');
+    const scope = await form();
+    expect(input(scope, 'Attribution note (optional)')).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'Atlantis (draft)' })).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'Japan' })).toBeTruthy();
+  });
+});
+
+describe('a testimonial', () => {
+  /* T-C1, T-C2, T-C7. */
+  it('is filed under a country, has a sub-line, and has no SEO of its own', async () => {
+    record = { id: 't-1', quote: 'They answered every question.', attribution: 'Asha', status: 'DRAFT' };
+    open('testimonials', 't-1');
+    const scope = await form();
+    expect(within(scope).queryByLabelText('SEO title')).toBeNull();
+    const note = within(scope).getByTestId('testimonial-seo-note');
+    expect(within(note).getByRole('link', { name: 'Website Builder › Testimonials' })).toHaveAttribute('href', '/seo?key=testimonials-listing');
+    await userEvent.selectOptions(input(scope, 'Country (optional)'), 'country-1');
+    await userEvent.type(input(scope, 'Role or sub-line (optional)'), 'MEng, University of Tokyo');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toMatchObject({ countryId: 'country-1', attributionNote: 'MEng, University of Tokyo' });
+    expect('seo' in sent[0].body).toBe(false);
+  });
+});
+
+describe('a role', () => {
+  /* JOB-C2, JOB-C4, JOB-C5. */
+  it('wants an https application link and a real email, and warns when neither is set', async () => {
+    record = { id: 'job-2', title: 'Adviser', slug: 'adviser', status: 'DRAFT', employmentType: 'FULL_TIME', remoteStatus: 'Remote' };
+    open('jobs', 'job-2');
+    const scope = await form();
+    expect(within(scope).getByTestId('job-no-apply-warning')).toBeTruthy();
+    expect(input(scope, 'Employment type').value).toBe('FULL_TIME');
+    expect(within(scope).getByRole('option', { name: 'Full time (older value)' })).toBeTruthy();
+    expect(input(scope, 'Remote state').value).toBe('Remote');
+    await userEvent.type(input(scope, 'Application URL'), 'careers.example.test/apply');
+    await userEvent.type(input(scope, 'Application email'), 'jobs@example');
+    expect(within(scope).queryByTestId('job-no-apply-warning')).toBeNull();
+    await save(scope);
+    expect(await within(scope).findByText('Use the full address, starting with https://.')).toBeTruthy();
+    expect(within(scope).getByText('Use an email address like jobs@example.com.')).toBeTruthy();
+    expect(sent).toHaveLength(0);
+  });
+});
+
+describe('a consultant', () => {
+  /* CON-C3, CON-C13, CON-C1, CON-C4. */
+  it('shows its state and offices’ addresses, and sends the addresses back', async () => {
+    record = {
+      id: 'c-1',
+      name: 'Northbridge Advisors',
+      slug: 'northbridge-advisors',
+      status: 'PUBLISHED',
+      verificationStatus: 'PENDING',
+      websiteUrl: 'www.northbridge.test',
+      locations: [{ locationId: 'loc-1', address: '137 Whitmore Road', location: { id: 'loc-1' } }],
+      services: [{ name: 'Visa guidance' }],
+      languages: [{ name: 'English' }],
+    };
+    open('consultants', 'c-1');
+    const scope = await form();
+    expect(input(scope, 'Verification state').value).toBe('PENDING');
+    expect(within(scope).getByRole('option', { name: 'Pending check' })).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'Not verified' })).toBeTruthy();
+    expect(input(scope, 'Office address in Rajouri Garden · Delhi (optional)').value).toBe('137 Whitmore Road');
+    expect(input(scope, 'Verified on (optional)').type).toBe('date');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toMatchObject({
+      locationIds: ['loc-1'],
+      locationAddresses: { 'loc-1': '137 Whitmore Road' },
+      verificationStatus: 'PENDING',
+      websiteUrl: 'www.northbridge.test',
+    });
+  });
+
+  it('refuses a source that is not a web address', async () => {
+    record = { id: 'c-2', name: 'Demo', slug: 'demo', status: 'DRAFT', sourceReference: 'Checked by phone' };
+    open('consultants', 'c-2');
+    const scope = await form();
+    await save(scope);
+    expect(await within(scope).findByText('Use the full address of the page you checked, starting with https://.')).toBeTruthy();
+    expect(sent).toHaveLength(0);
+  });
+});

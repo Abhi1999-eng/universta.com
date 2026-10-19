@@ -199,6 +199,7 @@ export function MediaPickerDialog({
             <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
               {tab === 'upload' ? (
                 <MediaUploader
+                  embedded
                   onCancel={() => {
                     setTab('library');
                     void loadLibrary(query);

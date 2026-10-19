@@ -12,9 +12,15 @@ import {
 export function MediaUploader({
   onUploaded,
   onCancel,
+  embedded = false,
 }: {
   onUploaded: (asset: UploadedMediaAsset) => void;
   onCancel?: () => void;
+  /** Rendered inside another form -- the media picker, opened from a record
+   * editor. It is then a plain block, not a form of its own: a nested form's
+   * submit bubbled up to the editor's, and uploading an image saved the
+   * record and closed the editor. */
+  embedded?: boolean;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
@@ -52,8 +58,9 @@ export function MediaUploader({
     setPreview(URL.createObjectURL(nextFile));
   }
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function submit(event?: React.SyntheticEvent) {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (!file || uploading) return;
     setUploading(true);
     setError('');
@@ -71,8 +78,23 @@ export function MediaUploader({
     }
   }
 
+  const Root = embedded ? 'div' : 'form';
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-4">
+    <Root
+      {...(embedded
+        ? {
+            /* Enter in a text box would submit the editor around it. */
+            onKeyDown: (event: React.KeyboardEvent) => {
+              if (event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) return;
+              event.preventDefault();
+              event.stopPropagation();
+              void submit();
+            },
+          }
+        : { onSubmit: (event: React.FormEvent) => void submit(event) })}
+      className="space-y-4"
+      data-testid="media-uploader"
+    >
       <div
         role="button"
         tabIndex={0}
@@ -173,13 +195,14 @@ export function MediaUploader({
           </button>
         ) : null}
         <button
-          type="submit"
+          type={embedded ? 'button' : 'submit'}
+          onClick={embedded ? (event) => void submit(event) : undefined}
           disabled={!file || uploading}
           className="p-btn p-btn--primary"
         >
           {uploading ? 'Uploading…' : 'Upload and use image'}
         </button>
       </div>
-    </form>
+    </Root>
   );
 }
