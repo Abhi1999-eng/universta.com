@@ -868,8 +868,8 @@ export function OfferingGuide({
                 </p>
               </div>
               <ul className="examtests__list">
-                {tests.map((test) => (
-                  <li className="examchip" key={test.title}>
+                {tests.map((test, index) => (
+                  <li className="examchip" key={`${index}-${test.title}`}>
                     <span className="examchip__main">
                       <span className="examchip__name">{test.title}</span>
                       <span className="examchip__cat">English test</span>

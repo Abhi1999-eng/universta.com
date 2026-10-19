@@ -621,6 +621,19 @@ describe('what the course page draws from its course and its own record', () => 
     expect(eligibility).not.toContain('Preparation');
   });
 
+  it('cards two requirements for the same test separately, each with its minimum', () => {
+    const html = page([], {
+      requirements: [
+        { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '6.50' },
+        { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '7.00' },
+      ],
+    });
+    const eligibility = band(html, 'eligibility', 'apply');
+    expect(eligibility.match(/<li class="examchip">/g)).toHaveLength(2);
+    expect(eligibility).toMatch(/Minimum (<!-- -->)?6\.5/);
+    expect(eligibility).toMatch(/Minimum (<!-- -->)?7</);
+  });
+
   it('draws no test cards for a course that lists no English test', () => {
     expect(band(page([]), 'eligibility', 'apply')).not.toContain('examreq');
   });
