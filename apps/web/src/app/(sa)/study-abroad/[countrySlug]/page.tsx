@@ -545,6 +545,7 @@ export default async function StudyAbroadCountryPage({ params }: Params) {
         iso2Code={country.iso2Code ?? null}
         presence={page.consultants}
         alt={band('consultants')}
+        guidanceFrom={`/study-abroad/${country.slug}`}
       />
 
       <PlanBand

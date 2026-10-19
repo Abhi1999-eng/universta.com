@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ConsultantPresence } from '@/lib/countries';
 import { inCountry } from '@/lib/country-article';
+import { counsellingHref } from '@/lib/counselling-link';
 import { countryConsultantsHref } from '@/lib/country-consultant-list';
 import { cityKey } from '@/lib/university-list';
 
@@ -25,6 +26,7 @@ export function CountryConsultants({
   presence,
   alt,
   heading,
+  guidanceFrom,
 }: {
   countryName: string;
   countrySlug: string;
@@ -36,6 +38,10 @@ export function CountryConsultants({
   /** The band's question, when the page is about something narrower than
    *  the destination: "Need help applying to the University of Oxford?" */
   heading?: string;
+  /** The page the block sits on. Given, the block adds the design's
+   *  second button, "Get guidance through Universta", asking about this
+   *  destination from that page. Left out, the block is as before. */
+  guidanceFrom?: string;
 }) {
   if (!presence?.total) return null;
   const all = countryConsultantsHref(countrySlug);
@@ -81,6 +87,14 @@ export function CountryConsultants({
                 &rarr;
               </span>
             </Link>
+            {guidanceFrom ? (
+              <Link
+                className="btn btn--ghost"
+                href={counsellingHref({ source: 'country', country: countrySlug, from: guidanceFrom })}
+              >
+                Get guidance through Universta
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
