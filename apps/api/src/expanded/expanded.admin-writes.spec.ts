@@ -85,4 +85,49 @@ describe('ExpandedService admin writes', () => {
     );
   });
 
+  /* SS-C1. A story saved without its journey reached the database, which
+     cannot hold an empty one, and the editor saw "Internal server error". */
+  describe('a success story’s journey', () => {
+    it('is required when a story is created', async () => {
+      const { svc } = service();
+      await rejectsWith(
+        svc.adminCreate('success-stories', {
+          title: 'A demonstration story',
+          slug: 'a-demonstration-story',
+        }),
+        'JOURNEY_REQUIRED',
+      );
+      await rejectsWith(
+        svc.adminCreate('success-stories', {
+          title: 'A demonstration story',
+          slug: 'a-demonstration-story',
+          journey: '<p><br></p>',
+        }),
+        'JOURNEY_REQUIRED',
+      );
+    });
+
+    it('cannot be emptied on an update, but need not be sent', async () => {
+      const { svc } = service({ slug: 'a-demonstration-story' });
+      for (const journey of [null, '', '<p><br></p>', '<p>&nbsp;</p>'])
+        await rejectsWith(
+          svc.adminUpdate('success-stories', 'story-1', { journey }),
+          'JOURNEY_REQUIRED',
+        );
+      await expect(
+        svc.adminUpdate('success-stories', 'story-1', { title: 'Renamed' }),
+      ).resolves.toMatchObject({ title: 'Renamed' });
+    });
+
+    it('is stored when it has words in it', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('success-stories', {
+        title: 'A demonstration story',
+        slug: 'a-demonstration-story',
+        journey: '<p>A fictional journey.</p>',
+      });
+      expect(created[0].data.journey).toContain('A fictional journey.');
+    });
+  });
+
 });

@@ -21,6 +21,7 @@ import {
   deriveQuietly,
 } from '../catalog/derive-links';
 import { SEO_MANAGEMENT_RESOLVER } from '../seo-management/seo-management.tokens';
+import { htmlToPlainText } from '../seo-management/plain-text';
 import {
   courseDeadlines,
   courseFacets,
@@ -3807,6 +3808,20 @@ export class ExpandedService {
       throw new UnprocessableEntityException({
         code: 'QUOTE_REQUIRED',
         message: 'A testimonial quote is required',
+        details: null,
+      });
+    /* A story is its journey: the column cannot be empty, and a story saved
+       without one reached the database and came back as a raw 500. An
+       emptied editor sends "<p><br></p>", which is no text either. On an
+       update the journey is only checked when it is sent. */
+    if (
+      resource === 'success-stories' &&
+      (partial ? 'journey' in body : true) &&
+      !htmlToPlainText(data.journey)
+    )
+      throw new UnprocessableEntityException({
+        code: 'JOURNEY_REQUIRED',
+        message: 'Write the journey: a story cannot be saved without it.',
         details: null,
       });
     // ISS-023. `pageType` has no default in the schema, so a create that
