@@ -12,6 +12,7 @@ import { ConsultantTrust } from './ConsultantTrust';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Crumbs } from './Crumbs';
 import { SectionHead } from './SectionHead';
+import { UniversityTabs } from './UniversityTabs';
 
 /**
  * A consultant's profile, as the client's zip draws it: the compact hero
@@ -217,6 +218,21 @@ export function ConsultantGuide({
           </div>
         </div>
       </section>
+
+      {/* The design's strip of section links, sticking under the header.
+          Every section it names is always on the page. There is no
+          Universities tab: Universta records no university relationships
+          for a consultant. */}
+      <UniversityTabs
+        label="Consultant sections"
+        tabs={[
+          { id: 'about', label: 'About' },
+          { id: 'services', label: 'Services' },
+          { id: 'offices', label: 'Offices' },
+          { id: 'verification', label: 'Verification' },
+          { id: 'contact', label: 'Get guidance' },
+        ]}
+      />
 
       <section className="sec sec--white" id="about">
         <div className="wrap">

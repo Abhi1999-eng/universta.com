@@ -159,3 +159,21 @@ describe('a consultant profile\'s Get guidance', () => {
     expect(html.indexOf('id="contact"')).toBeLessThan(html.indexOf('Want a second opinion first?'));
   });
 });
+
+describe('a consultant profile\'s section strip', () => {
+  it('links each section on the page, under the hero, with no Universities tab', () => {
+    const html = render();
+    const strip = html.slice(html.indexOf('<nav class="unitabs'), html.indexOf('</nav>', html.indexOf('<nav class="unitabs')));
+    expect(strip).toContain('aria-label="Consultant sections"');
+    expect([...strip.matchAll(/href="#([a-z]+)">([^<]+)</g)].map((match) => `${match[1]}:${match[2]}`)).toEqual([
+      'about:About',
+      'services:Services',
+      'offices:Offices',
+      'verification:Verification',
+      'contact:Get guidance',
+    ]);
+    for (const id of ['about', 'services', 'offices', 'verification', 'contact']) expect(html).toContain(`id="${id}"`);
+    expect(html.indexOf('hero--compact')).toBeLessThan(html.indexOf('unitabs'));
+    expect(strip).not.toContain('Universities');
+  });
+});
