@@ -177,3 +177,18 @@ describe('the programme card', () => {
     expect(render(card({ id: undefined }, { offeringId: 'abc' }))).toContain('class="tinybtn"');
   });
 });
+
+describe('the programme’s picture on its card', () => {
+  it('draws the picture an editor chose at the top of the card', () => {
+    const html = render(
+      card({ featuredMedia: { id: 'm1', publicUrl: '/media/lab.jpg', altText: 'A lab', title: null } }),
+    );
+    expect(html).toContain('<span class="coursecard__media"><img src="/media/lab.jpg" alt="" loading="lazy"/></span>');
+    expect(html.indexOf('coursecard__media')).toBeLessThan(html.indexOf('coursecard__top'));
+  });
+
+  it('draws the card as before without one', () => {
+    expect(render(card({ featuredMedia: null }))).not.toContain('coursecard__media');
+    expect(render(card())).not.toContain('coursecard__media');
+  });
+});

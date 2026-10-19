@@ -112,6 +112,14 @@ export function OfferingCard({
 
   return (
     <article className="coursecard">
+      {/* The picture an editor chose for the programme, at the top of its
+          card; a card without one is drawn as before. */}
+      {course.media?.url ? (
+        <span className="coursecard__media">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={course.media.url} alt="" loading="lazy" />
+        </span>
+      ) : null}
       <div className="coursecard__top">
         {/* The design's short type line, "MASTER'S · MIST", on one line;
             a course without a short name shows its qualification there,

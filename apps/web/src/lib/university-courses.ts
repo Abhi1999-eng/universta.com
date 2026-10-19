@@ -761,6 +761,10 @@ export type OfferingCardData = {
   /** The course guide it is an instance of, while that guide's page is
    *  public; null otherwise. */
   genericCourse: { name: string; slug: string } | null;
+  /** The picture an editor chose for the programme, where the API sends
+   *  one (`featuredMedia`); null otherwise. Optional: a card built before
+   *  it was read leaves it out. */
+  media?: { url: string; alt: string } | null;
   university: {
     name: string;
     slug: string;
@@ -943,6 +947,7 @@ export function toOfferingCard(
     language: teachingLanguage(requirements),
     englishTests: englishTestsOf(requirements),
     genericCourse: publicGuide(generic),
+    media: offeringMedia(row.featuredMedia),
     university: {
       name: uni.name,
       slug: uni.slug,
@@ -951,6 +956,14 @@ export function toOfferingCard(
       location: place(campusCity ?? uni.city, uni.country),
     },
   };
+}
+
+/** A programme's picture as the API sends it -- { id, publicUrl, altText,
+ *  title } -- as a page draws it, or null without a usable address. */
+export function offeringMedia(raw: unknown): { url: string; alt: string } | null {
+  const media = record(raw);
+  const url = text(media?.publicUrl) ?? text(media?.url);
+  return url ? { url, alt: text(media?.altText) ?? text(media?.alt) ?? '' } : null;
 }
 
 /**

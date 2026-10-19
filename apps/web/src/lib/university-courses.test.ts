@@ -13,6 +13,7 @@ import {
   programmeName,
   readCourseFilters,
   toCourseFacets,
+  offeringMedia,
   toOfferingCard,
   toProgrammeList,
   toProgrammeSummary,
@@ -550,5 +551,23 @@ describe('the course page’s canonical address', () => {
     expect(offeringCanonical('/courses/msc-computer-science', nested)).toBe(
       '/courses/msc-computer-science',
     );
+  });
+});
+
+describe('a programme’s picture', () => {
+  it('reads the API’s public media shape', () => {
+    expect(
+      offeringMedia({ id: 'm1', publicUrl: '/media/lab.jpg', altText: 'A lab', title: 'Lab' }),
+    ).toEqual({ url: '/media/lab.jpg', alt: 'A lab' });
+  });
+
+  it('gives an empty alt where none was written, and nothing without an address', () => {
+    expect(offeringMedia({ id: 'm1', publicUrl: '/media/lab.jpg', altText: null })).toEqual({
+      url: '/media/lab.jpg',
+      alt: '',
+    });
+    expect(offeringMedia({ id: 'm1', publicUrl: '' })).toBeNull();
+    expect(offeringMedia(null)).toBeNull();
+    expect(offeringMedia(undefined)).toBeNull();
   });
 });
