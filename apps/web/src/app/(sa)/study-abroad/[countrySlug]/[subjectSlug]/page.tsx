@@ -430,10 +430,9 @@ export default async function Page({ params, searchParams }: Params) {
             </div>
           </div>
           {/* Each card says the levels the branch is offered at and its
-              courses here, and the bar narrows them to one level. */}
+              courses here. */}
           <div id="specialization-list">
             <SubjectSpecializations
-              subjectName={subject.name}
               subjectSlug={subject.slug}
               hrefBase={base}
               branches={view.specializations.map((entry) => ({
@@ -443,7 +442,6 @@ export default async function Page({ params, searchParams }: Params) {
               levelOrder={levelOrder}
               noun="course"
               limit={SPECIALIZATIONS_SHOWN}
-              levelLabel="Specializations by study level"
             />
           </div>
         </section>

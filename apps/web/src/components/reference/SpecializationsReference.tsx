@@ -163,12 +163,9 @@ export function SpecializationsReference(props: SpecializationsReferenceProps) {
             <span aria-current="page">Specializations</span>
           </nav>
 
+          {/* No count line over the heading: the client had it taken off,
+              as on the subject page. */}
           <div className="hero__lead">
-            <p className="hero__eyebrow">
-              Narrow your path<b>·</b>
-              {specializations.length} specializations<b>·</b>
-              {formatNumber(subject.publishedCourseCount)} courses
-            </p>
             <h1 className="hero__h1">Explore {subject.name} specializations</h1>
             <p className="hero__sub">
               Each specialization below opens the published courses mapped to

@@ -40,17 +40,18 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
   const page = Math.max(Number(first(params.page)) || 1, 1);
 
   const subjectSlug = first(params.subject).trim();
-  const level = first(params.level).trim();
+  /* No study level filter: the client had it taken off, and an old
+     address that still carries ?level= is read without it, so nothing
+     narrows the list that the page does not show. */
+  const filtered = Boolean(search || subjectSlug);
 
-  const filtered = Boolean(search || subjectSlug || level);
-
-  /* The dropdowns are decoration around the list: if either lookup fails the
-     page still lists specializations, it just cannot offer that filter. */
+  /* The subject dropdown and the cards' level links are decoration around
+     the list: if either lookup fails the page still lists specializations,
+     it just cannot offer that filter or those links. */
   const [result, subjects, levels, everything] = await Promise.all([
     getSpecializations({
       ...(search ? { search } : {}),
       ...(subjectSlug ? { subject: subjectSlug } : {}),
-      ...(level ? { level } : {}),
       limit: String(PAGE_SIZE),
       page: String(page),
     }).catch(() => null),
@@ -58,9 +59,9 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
       .then((response) => response.data)
       .catch(() => []),
     getCourseLevels().catch(() => []),
-    /* How many there are before any filter, which the design keeps in the
-       eyebrow and counts against ("12 of 55 shown"). One row's read: the
-       total is in its meta. Unfiltered, the list itself already says. */
+    /* How many there are before any filter, which the count line counts
+       against ("12 of 55 shown"). One row's read: the total is in its meta.
+       Unfiltered, the list itself already says. */
     filtered
       ? getSpecializations({ limit: '1' })
           .then((response) => response.meta?.total ?? null)
@@ -79,7 +80,6 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
     `/specializations?${new URLSearchParams({
       ...(search ? { q: search } : {}),
       ...(subjectSlug ? { subject: subjectSlug } : {}),
-      ...(level ? { level } : {}),
       page: String(next),
     })}`;
 
@@ -98,19 +98,10 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
             </span>
             <span aria-current="page">Specializations</span>
           </nav>
+          {/* No count line over the heading: the client had it taken off,
+              as on the subject pages. The count line under the filters
+              says how many there are. */}
           <div className="hero__lead">
-            {/* The whole catalogue's count, as the design keeps it: the
-                filtered figure is the count line's job, and it read "1
-                specializations". */}
-            {allTotal != null ? (
-              <p className="hero__eyebrow">
-                Narrow down<b>·</b>
-                {formatNumber(allTotal)}{' '}
-                {allTotal === 1 ? 'specialization' : 'specializations'}
-              </p>
-            ) : (
-              <p className="hero__eyebrow">Narrow down</p>
-            )}
             <h1 className="hero__h1">Specializations</h1>
             <p className="hero__sub">
               Every branch across our subjects. Pick one to see where it is
@@ -157,19 +148,6 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
                 </select>
               </label>
             ) : null}
-            {levels.length ? (
-              <label className="h-filter">
-                <span>Study level</span>
-                <select name="level" defaultValue={level}>
-                  <option value="">All levels</option>
-                  {levels.map((row) => (
-                    <option key={row.id} value={row.code}>
-                      {row.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
             <button className="btn btn--sm" type="submit">
               Search{' '}
               <span className="btn__arrow" aria-hidden="true">
@@ -183,11 +161,11 @@ export default async function SpecializationsIndexPage({ searchParams }: Props) 
               {filtered ? (
                 <>
                   {search
-                    ? `No specializations match “${search}”${subjectSlug || level ? ' with those filters' : ''}.`
+                    ? `No specializations match “${search}”${subjectSlug ? ' with those filters' : ''}.`
                     : 'No specializations match those filters.'}{' '}
                   <span>
-                    {subjectSlug || level
-                      ? 'Try another subject or level.'
+                    {subjectSlug
+                      ? 'Try another subject.'
                       : 'Try another word, or browse by subject.'}
                   </span>
                 </>

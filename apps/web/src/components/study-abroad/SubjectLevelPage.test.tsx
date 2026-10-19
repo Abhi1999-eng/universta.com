@@ -433,6 +433,16 @@ describe('a subject or specialization at one study level', () => {
 });
 
 describe('the level page’s hero', () => {
+  /* The client had the "Study level · <level>" line over the heading taken
+     off, as the subject and specialization pages had theirs. */
+  it('opens on its name, with no line above it', async () => {
+    for (const html of [await render(), await render({}, { specializationSlug: 'computer-science' })]) {
+      expect(html).not.toContain('hero__eyebrow');
+      expect(html).not.toMatch(/Study level <b>·<\/b>/);
+      expect(html.slice(html.indexOf('hero__lead'))).toMatch(/^hero__lead"><h1 class="hero__h1">/);
+    }
+  });
+
   it('leads with the level as Admin describes it, or the fixed line', async () => {
     expect(await render()).toContain('<p class="hero__sub">Explore published programmes by destination, university, fees, intake and entry requirements.</p>');
     vi.clearAllMocks();
@@ -640,13 +650,19 @@ describe('what an editor writes for a level page', () => {
       /Banks and studios\.[\s\S]*<p class="trust__note">Named for illustration only; not a ranking, endorsement or partnership\.<\/p>/,
     );
     /* Paper next to the white list, above and below, alternating outwards. */
-    expect(html).toContain('<section class="sec sec--paper" id="where-to-study">');
-    expect(html).toContain('<section class="sec sec--white" id="looking-ahead">');
+    expect(html).toContain('<section class="sec sec--paper levelband" id="where-to-study">');
+    expect(html).toContain('<section class="sec sec--white levelband" id="looking-ahead">');
     expect(html).toContain('<section class="sec sec--paper" id="consultants">');
     expect(html).toContain('<section class="sec sec--white" id="faqs">');
-    expect(html).toContain('<section class="sec sec--paper" id="plan-your-level">');
-    expect(html).toContain('<section class="sec sec--white" id="more-subjects">');
-    expect(html).toContain('<section class="sec sec--paper" id="more">');
+    expect(html).toContain('<section class="sec sec--paper sec--sparse levelband" id="plan-your-level">');
+    expect(html).toContain('<section class="sec sec--white sec--sparse levelband" id="more-subjects">');
+    expect(html).toContain('<section class="sec sec--paper sec--sparse levelband" id="more">');
+    /* Every band but the list, the consultants and the questions puts what
+       it says beside its heading; the ones that are a row of links are
+       sparse. */
+    expect(html).toContain('<section class="sec sec--paper sec--sparse levelband" id="specializations">');
+    for (const id of ['overview', 'study-topics', 'careers', 'industries', 'employers', 'admission'])
+      expect(html).toMatch(new RegExp(`<section class="sec sec--(?:paper|white) levelband" id="${id}">`));
     const questions = jsonLd(html).find((data) => data['@type'] === 'FAQPage')!;
     expect((questions.mainEntity as Array<{ name: string; acceptedAnswer: { text: string } }>).map((entry) => [entry.name, entry.acceptedAnswer.text])).toEqual([
       ['Do I need maths?', 'Answer 1.'],
@@ -669,8 +685,10 @@ describe('what an editor writes for a level page', () => {
     expect(html).toContain('<h2 class="sec-title">What you may study</h2>');
     expect(html).toContain('<h2 class="sec-title">Plan your Bachelor&#x27;s</h2>');
     expect(html).toContain('<h2 class="sec-title">Getting into Bachelor&#x27;s in Computer Science</h2>');
-    expect(html).toContain('<section class="sec sec--paper" id="where-to-study">');
-    expect(html).toContain('<section class="sec sec--paper" id="admission">');
+    expect(html).toContain('<section class="sec sec--paper levelband" id="where-to-study">');
+    expect(html).toContain('<section class="sec sec--paper levelband" id="admission">');
+    expect(html).toMatch(/<section class="sec sec--(?:paper|white) levelband" id="parent-subject">/);
+    expect(html).toMatch(/<section class="sec sec--(?:paper|white) sec--sparse levelband" id="specializations">/);
   });
 
   it('keeps the list’s anchor, so the switcher still lands on it', async () => {

@@ -170,7 +170,6 @@ describe('the "Popular" badge for a featured record', () => {
   it('draws no badge where nothing is featured', () => {
     const html = renderToStaticMarkup(
       <SubjectSpecializations
-        subjectName="Computer Science"
         subjectSlug="computer-science"
         branches={[branch({}) as never]}
       />,

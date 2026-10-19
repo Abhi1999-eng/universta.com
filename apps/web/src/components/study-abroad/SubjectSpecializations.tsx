@@ -1,38 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { SubjectBranch } from '@/lib/catalog';
 import { formatNumber } from '@/lib/format';
-import { mergeLevels, sortByLevelOrder } from '@/lib/level-order';
+import { sortByLevelOrder } from '@/lib/level-order';
 import { levelPageLinks } from '@/lib/subject-levels';
 import { CardMedia, PopularBadge } from './CardMedia';
 import { LevelLinks } from './LevelLinks';
 
 /**
- * A subject's specializations, filtered by the level they are taught at.
+ * A subject's specializations, each card with the levels it is taught at.
  *
- * The reference filters its grid on the levels each branch carries, so the bar
- * is built from the levels that actually appear across these branches: it can
- * never offer a level that would empty the grid, and it stands down entirely
- * when the catalogue has not recorded a level for any of them.
+ * The grid used to open on a bar of "All levels" and one chip per level,
+ * which narrowed it to one level. The client had that bar taken off, as it
+ * was on the subjects index; each card still says its own levels.
  *
- * Levels read in the order a student climbs them, on the bar and on each
- * card. Merged in the order they were met, the bar opened "PhD, Diploma,
- * Bachelor's".
+ * Levels read in the order a student climbs them on each card.
  */
 export function SubjectSpecializations({
-  subjectName,
   subjectSlug,
   branches,
   levelOrder = [],
   noun = 'programme',
   hrefBase,
   limit,
-  levelLabel = 'Study level',
   levelLinks,
 }: {
-  subjectName: string;
   subjectSlug: string;
   branches: SubjectBranch[];
   /** Level codes in academic order: the subject's own levels, which the
@@ -48,7 +42,6 @@ export function SubjectSpecializations({
   /** How many cards show before "Show all"; the rest stay in the page,
    *  hidden, so every specialization is still linked. */
   limit?: number;
-  levelLabel?: string;
   /** Link each card's levels to the specialization's page at that level,
    *  given the catalogue's active level codes in climbing order (empty when
    *  that read failed). Off by default: a subject in one destination draws
@@ -60,52 +53,13 @@ export function SubjectSpecializations({
     order?: string[];
   };
 }) {
-  const levels = useMemo(
-    () =>
-      mergeLevels(
-        branches.map((branch) => branch.levels),
-        levelOrder,
-        (level) => level.id,
-      ).map(({ id, name }) => ({ id, name })),
-    [branches, levelOrder],
-  );
-
-  const [level, setLevel] = useState('all');
   const [all, setAll] = useState(false);
   const base = hrefBase ?? `/subjects/${subjectSlug}`;
-  const shown =
-    level === 'all'
-      ? branches
-      : branches.filter((branch) => (branch.levels ?? []).some((row) => row.id === level));
 
   return (
     <>
-      {levels.length > 1 ? (
-        <div className="levelbar" role="group" aria-label={levelLabel}>
-          <button
-            className="chipbtn"
-            type="button"
-            aria-pressed={level === 'all'}
-            onClick={() => setLevel('all')}
-          >
-            All levels
-          </button>
-          {levels.map((row) => (
-            <button
-              key={row.id}
-              className="chipbtn"
-              type="button"
-              aria-pressed={level === row.id}
-              onClick={() => setLevel(row.id)}
-            >
-              {row.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       <div className="specgrid">
-        {shown.map((row, index) => {
+        {branches.map((row, index) => {
           const href = `${base}/${row.slug}`;
           /* Its levels, each linked to its page at that level. A link can
              not sit inside the card's own link, so a card with levels to
@@ -181,7 +135,7 @@ export function SubjectSpecializations({
         })}
       </div>
 
-      {limit !== undefined && shown.length > limit ? (
+      {limit !== undefined && branches.length > limit ? (
         <p className="h-more">
           <button
             type="button"
@@ -191,14 +145,8 @@ export function SubjectSpecializations({
           >
             {all
               ? 'Show fewer'
-              : `Show all ${formatNumber(shown.length)} specializations`}
+              : `Show all ${formatNumber(branches.length)} specializations`}
           </button>
-        </p>
-      ) : null}
-
-      {shown.length === 0 ? (
-        <p className="sec-lead">
-          No {subjectName} specializations are recorded at that level yet.
         </p>
       ) : null}
     </>

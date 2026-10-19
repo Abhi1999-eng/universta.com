@@ -132,7 +132,6 @@ describe('a subject’s page', () => {
   });
 
   it('states the true figures: destinations that teach it, every university', () => {
-    expect(html).toMatch(/<p class="subjabout__facts datum">.* 3 destinations<\/p>/);
     expect(html).toContain('3 destinations teach Computer Science');
     expect(html).toMatch(/Universities <span class="h-count__n">105<\/span>/);
   });
@@ -145,6 +144,8 @@ describe('a subject’s page', () => {
     expect(html).not.toContain('hero__eyebrow');
     expect(html).not.toContain('unisnap');
     expect(html).not.toMatch(/<span class="label">(?:Specializations|Study levels)<\/span>/);
+    /* Nor the overview's line of courses, specializations and destinations. */
+    expect(html).not.toContain('subjabout__facts');
   });
 
   it('shows the overview’s opening on the page, the rest under the toggle', () => {
@@ -391,7 +392,6 @@ describe('programmes on a subject’s and a specialization’s page', () => {
     expect(html).not.toContain('class="coursecard"');
     expect(html).toContain('Computer Science programmes by level');
     /* Every other count keeps the name it always had, too. */
-    expect(html).toMatch(/<p class="subjabout__facts datum">36 programmes ·.* 3 destinations<\/p>/);
     expect(html).toContain('<span class="speccard__count datum">6 programmes</span>');
     expect(html).toContain('aria-label="Computer Science in United Kingdom, 6 programmes"');
     expect(html).toContain('<a href="/study-abroad/united-states/computer-science">United States</a><span>6 programmes</span>');
@@ -409,9 +409,6 @@ describe('programmes on a subject’s and a specialization’s page', () => {
     expect(specs).not.toContain('programmes');
     expect(html).toContain('aria-label="Computer Science in United Kingdom, 6 courses"');
     expect(html).toContain('<a href="/study-abroad/united-states/computer-science">United States</a><span>6 courses</span>');
-    /* The facts line is all one kind of count: the destinations are the
-       ones its courses are taught in, so the first figure is its courses. */
-    expect(html).toMatch(/<p class="subjabout__facts datum">36 courses ·.* 3 destinations<\/p>/);
     expect(html).not.toContain('136 programmes ·');
   });
 
@@ -1124,8 +1121,10 @@ describe('the study levels as a toggle on a subject’s page', () => {
 
   it('draws one level toggle, and no bar of links over every level', () => {
     expect(html.match(/role="group" aria-label="Study level"/g)).toHaveLength(1);
-    /* The specialization filter above answers to its own name. */
-    expect(html).toContain('aria-label="Specializations by study level"');
+    /* The client had the "All levels" filter over the specializations
+       taken off. */
+    expect(html).not.toContain('aria-label="Specializations by study level"');
+    expect(html).not.toContain('All levels');
     expect(html).not.toContain('<nav class="levelbar');
     expect(html).toMatch(/aria-pressed="true" aria-controls="level-ug"/);
     expect(html).toContain('aria-controls="level-pg"');

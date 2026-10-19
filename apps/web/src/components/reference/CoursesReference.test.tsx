@@ -218,15 +218,23 @@ describe('/courses, the programme finder', () => {
     ).toBe(true);
   });
 
-  it('counts the whole catalogue of programmes in the hero, and what it holds in the eyebrow', () => {
+  it('counts the whole catalogue of programmes in the hero, with no count line over it', () => {
     const page = parse(render(props()));
     const stats = [...page.querySelectorAll('.statstrip span')].map((node) => node.textContent);
     expect(stats).toEqual(['Programmes', 'Universities', 'Cities', 'Intake months']);
     expect(page.querySelector('.statstrip b')?.textContent).toBe('1,155');
-    const eyebrow = page.querySelector('.hero__eyebrow')?.textContent;
-    expect(eyebrow).toContain('20 destinations');
-    expect(eyebrow).toContain('1 subject');
-    expect(eyebrow).toContain('1 specialization');
+    expect(page.querySelector('.hero__eyebrow')).toBeNull();
+  });
+
+  it('keeps the quick filters under the hero, with no "Try" row of example searches', () => {
+    const page = parse(render(props()));
+    const row = page.querySelector('.hero .bigsearch__ex')!;
+    expect(row.querySelector('.label')).toBeNull();
+    expect(row.querySelectorAll('a')).toHaveLength(0);
+    expect([...row.querySelectorAll('button')].map((node) => node.textContent)).toEqual([
+      'Scholarships',
+      'Post-study work',
+    ]);
   });
 
   it('switches between programmes and course guides, each with its count', () => {

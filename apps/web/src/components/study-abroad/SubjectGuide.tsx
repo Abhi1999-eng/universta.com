@@ -121,10 +121,6 @@ export function SubjectGuide({
     (subject.countries ?? []) as CountedDestination[],
   );
   const teaching = teachingDestinations(countries);
-  /* How many destinations teach it, which is the figure the page states.
-     Every destination lists every subject, so the length of the list
-     answered a different question -- and read 205 where 82 teach it. */
-  const destinationCount = subject.availableCountryCount ?? teaching.length;
   const courses: Course[] = subject.featuredCourses ?? [];
   const groups = levelGroups ?? [];
   /* The levels the subject has pages for -- ticked on it, together with
@@ -211,6 +207,9 @@ export function SubjectGuide({
       ? leadText.slice(said.length).trim()
       : leadText;
   const opening = unsaid ? firstSentence(unsaid) : null;
+  /* With the facts line gone, an overview that only repeats the hero's
+     short description leaves the band nothing of its own to show. */
+  const hasAbout = Boolean(opening || split?.rest);
   const universityCount = universityTotal ?? universities.length;
   const counselling = counsellingHref({
     source: 'subject',
@@ -224,7 +223,7 @@ export function SubjectGuide({
      courses keep a figure of their own. */
   const sampled = programmes?.cards.length ? programmes : null;
   /* Every other count on the page is of the catalogue's courses: the
-     specializations', the destinations' and the facts line's. Beside the
+     specializations' and the destinations'. Beside the
      programmes they are called courses, as the level block's are, or a
      chip saying "6 programmes" opens a page listing 15. */
   const noun = sampled ? 'course' : 'programme';
@@ -232,7 +231,7 @@ export function SubjectGuide({
     `${formatNumber(count)} ${count === 1 ? noun : `${noun}s`}`;
 
   const order: string[] = [];
-  if (hasOverview) order.push('about');
+  if (hasAbout) order.push('about');
   if (specializations.length) order.push('specializations');
   if (countries.length) order.push('destinations');
   if (sampled) order.push('courses');
@@ -304,24 +303,19 @@ export function SubjectGuide({
         </div>
       </section>
 
-      {hasOverview ? (
+      {hasAbout ? (
         <section className={band('about')} id="about">
           <div className="wrap">
             <SectionHead n={n('about')} eyebrow="Overview" title={`About ${subject.name}`}>
-              {opening ? <p className="ov__lead">{opening.first}</p> : null}
-              {opening?.rest ? <p className="ov__more">{opening.rest}</p> : null}
-              {/* One kind of count throughout: the destinations are the
-                  ones its courses are taught in, so the first figure is
-                  its courses too. Beside 82 destinations, 136 programmes
-                  read as taught in all of them; they are in 20. */}
-              <p className="subjabout__facts datum">
-                {formatNumber(subject.publishedCourseCount) || '—'}{' '}
-                {subject.publishedCourseCount === 1 ? noun : `${noun}s`} ·{' '}
-                {specializations.length || '—'}{' '}
-                {specializations.length === 1 ? 'specialization' : 'specializations'} ·{' '}
-                {destinationCount ? formatNumber(destinationCount) : '—'}{' '}
-                {destinationCount === 1 ? 'destination' : 'destinations'}
-              </p>
+              {/* No facts line of courses, specializations and destinations
+                  under the overview: the client had it taken off, with the
+                  facts box under the hero. */}
+              {opening ? (
+                <>
+                  <p className="ov__lead">{opening.first}</p>
+                  {opening.rest ? <p className="ov__more">{opening.rest}</p> : null}
+                </>
+              ) : null}
             </SectionHead>
             {split?.rest ? (
               <Longform label={`More about ${subject.name}`}>
@@ -344,12 +338,10 @@ export function SubjectGuide({
               lead={`The branches of ${subject.name} we cover. Each one has its own page.`}
             />
             <SubjectSpecializations
-              subjectName={subject.name}
               subjectSlug={subject.slug}
               branches={specializations}
               levelOrder={levelOrder}
               noun={noun}
-              levelLabel="Specializations by study level"
               levelLinks={{
                 catalogue: (catalogue ?? []).map((level) => level.code),
                 order: linkOrder,
