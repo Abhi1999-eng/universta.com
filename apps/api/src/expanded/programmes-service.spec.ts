@@ -186,10 +186,43 @@ describe('the programme finder’s reads', () => {
   });
 
   it('says what it left out and which order it applied', async () => {
-    const { service } = build([scanned({})]);
+    /* Pounds and yen: no fee order across them. */
+    const tokyo = {
+      ...warwick,
+      slug: 'university-of-tokyo',
+      country: { ...warwick.country, name: 'Japan', slug: 'japan', iso2Code: 'JP' },
+    };
+    const { service } = build([
+      scanned({ tuitionMin: '30000', currencyCode: 'GBP', tuitionPeriod: 'PER_YEAR' }),
+      scanned({
+        id: 'o-t',
+        slug: 'o-t',
+        university: tokyo,
+        tuitionMin: '535800',
+        currencyCode: 'JPY',
+        tuitionPeriod: 'PER_YEAR',
+      }),
+    ]);
     const result = await service.programmes({ sort: 'fee', level: 'nope' });
     expect(result.meta.sort).toBe('relevance');
     expect(result.meta.ignored).toEqual(['level=nope', 'sort=fee']);
+    expect(result.facets.tuition).toBeNull();
+  });
+
+  /* A catalogue all in one country sorts and filters by fee without a
+     country being chosen, as one in a chosen country always did. */
+  it('applies the fee order and range where every programme shares a currency', async () => {
+    const fee = (id: string, tuitionMin: string) =>
+      scanned({ id, slug: id, name: id, tuitionMin, currencyCode: 'GBP', tuitionPeriod: 'PER_YEAR' });
+    const { service } = build([fee('b', '30000'), fee('a', '22000'), fee('c', '26000')]);
+    const low = await service.programmes({ sort: 'fee' });
+    expect(low.meta.sort).toBe('fee');
+    expect(low.meta.ignored).toEqual([]);
+    expect(low.facets.tuition).toEqual({ currencyCode: 'GBP', count: 3 });
+    expect(low.data.map((row) => row.id)).toEqual(['a', 'c', 'b']);
+    const high = await service.programmes({ sort: 'fee-high', tuitionMax: '28000' });
+    expect(high.meta.sort).toBe('fee-high');
+    expect(high.data.map((row) => row.id)).toEqual(['c', 'a']);
   });
 
   /* "NOPE ×" over an empty list, before; now the catalogue's study-mode

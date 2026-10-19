@@ -35,12 +35,12 @@ import {
 } from './university-courses';
 import {
   matchesProgramme,
-  measurableFees,
   nameChoices,
   parseProgrammeQuery,
   PROGRAMME_SCAN_CAP,
   programmeFacets,
   programmeScope,
+  settleProgrammeFees,
   programmeSummary,
   unnamedChoices,
   type ProgrammeFacets,
@@ -1748,13 +1748,18 @@ export class ExpandedService {
     const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
     const scan = await this.scanProgrammes(parsed, now);
     /* The overview first: the tuition range it offers is the currency the
-       fees are filtered and ordered in. */
+       fees are filtered and ordered in -- or, where it offers none, the one
+       the matched rows share, if they share one. */
     const overview = await this.programmeOverview(parsed, scan, now);
+    const fees = settleProgrammeFees(
+      parsed,
+      overview.facets.tuition,
+      scan.rows,
+      now,
+    );
     const matching = sortOfferings(
-      measurableFees(scan.rows, overview.facets.tuition).filter((row) =>
-        matchesProgramme(row, parsed, now),
-      ),
-      parsed.sort,
+      fees.rows.filter((row) => matchesProgramme(row, fees.query, now)),
+      fees.query.sort,
       now,
     );
     const skip = (parsed.page - 1) * parsed.limit;
@@ -1763,16 +1768,16 @@ export class ExpandedService {
         matching.slice(skip, skip + parsed.limit).map((row) => row.id),
         now,
       ),
-      this.namedFacets(overview.facets, parsed),
+      this.namedFacets({ ...overview.facets, tuition: fees.tuition }, parsed),
     ]);
     return {
       data,
       meta: {
         ...meta(parsed.page, parsed.limit, matching.length),
         /* What was applied, which is not always what was asked: "lowest
-           tuition" across several countries is answered by relevance. */
-        sort: parsed.sort,
-        ignored: parsed.ignored,
+           tuition" across currencies is answered by relevance. */
+        sort: fees.query.sort,
+        ignored: fees.query.ignored,
         ...(scan.truncated || overview.truncated ? { truncated: true } : {}),
       },
       facets,
