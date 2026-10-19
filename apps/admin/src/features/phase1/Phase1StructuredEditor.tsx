@@ -18,6 +18,7 @@ import { nextAutoSlug } from '@/lib/slug';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 import { isFutureCalendarDate } from '@/lib/calendar-date';
+import { DEFAULT_TIME_ZONE, isTimeZone, timeZoneNames, utcIsoToWallTime, wallTimeToUtcIso, zoneOrDefault } from '@/lib/zoned-time';
 import { offeringDurationUnit, rowFieldLabel, singularTitle } from './structured-editor-labels';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 
@@ -133,6 +134,14 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data;
 }
 
+/* Which zone each date-and-time field is typed in. An event's own times are
+   in the event's time zone; a publishing window is in India's, where the
+   editors work. */
+const ZONED_FIELDS = ['startsAt', 'endsAt', 'publishStartsAt', 'publishEndsAt'] as const;
+function zoneFor(field: (typeof ZONED_FIELDS)[number], values: Record<string, string>) {
+  return field === 'startsAt' || field === 'endsAt' ? zoneOrDefault(values.timezone) : DEFAULT_TIME_ZONE;
+}
+
 export function isStructuredPhase1Resource(resource: string) {
   return structured.has(resource);
 }
@@ -165,6 +174,10 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [slugManuallyOverridden, setSlugManuallyOverridden] = useState(Boolean(recordId));
+  /* Each stored date as it was opened: an untouched field sends this instant
+     back exactly, seconds and all. */
+  const [initialDates, setInitialDates] = useState<Record<string, { wall: string; zone: string; iso: string }>>({});
+  const [storedTimezone, setStoredTimezone] = useState<string | null>(null);
 
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
@@ -182,10 +195,16 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     next.verifiedAt = next.verifiedAt ? next.verifiedAt.slice(0, 10) : '';
     next.publishedDate = next.publishedDate ? next.publishedDate.slice(0, 10) : '';
     next.expiryDate = next.expiryDate ? next.expiryDate.slice(0, 10) : '';
-    next.startsAt = next.startsAt ? next.startsAt.slice(0, 16) : '';
-    next.endsAt = next.endsAt ? next.endsAt.slice(0, 16) : '';
-    next.publishStartsAt = next.publishStartsAt ? next.publishStartsAt.slice(0, 16) : '';
-    next.publishEndsAt = next.publishEndsAt ? next.publishEndsAt.slice(0, 16) : '';
+    /* Stored instants shown as the wall time in their zone. */
+    const dates: Record<string, { wall: string; zone: string; iso: string }> = {};
+    for (const field of ZONED_FIELDS) {
+      const iso = string(record[field]);
+      const zone = zoneFor(field, next);
+      next[field] = utcIsoToWallTime(iso, zone);
+      if (iso && next[field]) dates[field] = { wall: next[field], zone, iso };
+    }
+    setInitialDates(dates);
+    setStoredTimezone(typeof record.timezone === 'string' ? record.timezone : null);
     if (Array.isArray(record.intakes))
       for (const item of record.intakes) {
         const intake = item as Row;
@@ -381,6 +400,19 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
         robotsFollow: values.robotsFollow !== 'false',
       },
     };
+    /* Dates and times go as instants, worked out in their zone, so the API no
+       longer reads them in its own server's zone. One left untouched goes
+       back exactly as it came. */
+    for (const field of ZONED_FIELDS) {
+      if (!(field in payload)) continue;
+      const wall = values[field] ?? '';
+      const zone = zoneFor(field, values);
+      const initial = initialDates[field];
+      payload[field] = initial && initial.wall === wall && initial.zone === zone ? initial.iso : wallTimeToUtcIso(wall, zone);
+    }
+    /* An older event may hold a zone that is not on the list. Left as it
+       was, it is not sent, so saving something else does not fail on it. */
+    if (resource === 'events' && storedTimezone !== null && values.timezone === storedTimezone && !isTimeZone(storedTimezone)) delete payload.timezone;
     for (const [key, value] of Object.entries(payload)) {
       if (value !== '') continue;
       // Empty optional controls clear persisted nullable values on edit.
@@ -490,14 +522,14 @@ function Field({ label, value, onChange, error, textarea = false, richText = fal
     </div>
   );
 }
-function Select({ label, value, onChange, options, error, helpKey, help, required = false }: { label: string; value: string; onChange: (value: string) => void; options: Option[]; error?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean }) {
+function Select({ label, value, onChange, options, error, helpKey, help, required = false, blank }: { label: string; value: string; onChange: (value: string) => void; options: Option[]; error?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean; /** The empty choice's wording, or null for a list that always has a value. */ blank?: string | null }) {
   const fieldId = useId();
   const errorId = useId();
   return (
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
       <select id={fieldId} value={value} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined}>
-        <option value="">Select {label.toLowerCase()}</option>
+        {blank === null ? null : <option value="">{blank ?? `Select ${label.toLowerCase()}`}</option>}
         {(options ?? []).map((option) => (
           <option key={option.id} value={option.id}>
             {labelOf(option)}
@@ -846,6 +878,32 @@ const REQUIREMENT_CATEGORIES: Option[] = [
 function withCurrent(options: Option[], value: string): Option[] {
   return value && !options.some((option) => option.id === value) ? [...options, { id: value, name: value }] : options;
 }
+/** "WORKSHOP" -> "Workshop", "Full-time" -> "Full-time". */
+function humanise(value: string) {
+  const spaced = value.replace(/_/g, ' ').trim();
+  return spaced === spaced.toUpperCase() ? spaced.charAt(0) + spaced.slice(1).toLowerCase() : spaced;
+}
+/** A fixed list, plus a value saved before the list existed, shown as it is
+ * and marked as older, so an unchanged save keeps it and an editor can see
+ * it is not one of the choices. */
+function withLegacy(options: Option[], value: string): Option[] {
+  return value && !options.some((option) => option.id === value) ? [...options, { id: value, name: `${humanise(value)} (older value)` }] : options;
+}
+/* How a visitor attends. The stored codes are what the event page and its
+   structured data read. */
+const EVENT_TYPES: Option[] = [
+  { id: 'OFFLINE', name: 'In person' },
+  { id: 'ONLINE', name: 'Online' },
+  { id: 'HYBRID', name: 'Hybrid' },
+];
+/** Every IANA zone, plus a stored value that is not one, marked as older. */
+function timeZoneOptions(value: string): Option[] {
+  const zones = timeZoneNames();
+  const options: Option[] = zones.map((zone) => ({ id: zone, name: zone.replace(/_/g, ' ') }));
+  if (!value || zones.includes(value)) return options;
+  /* A real zone this browser lists under another name still reads plainly. */
+  return [...options, { id: value, name: isTimeZone(value) ? value.replace(/_/g, ' ') : `${value} (older value)` }];
+}
 function OfferingFields(p: any) {
   return (
     <>
@@ -1050,15 +1108,8 @@ function EventFields(p: any) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Start date and time" type="datetime-local" value={p.values.startsAt ?? ''} onChange={(value) => p.set('startsAt', value)} error={p.errors.startsAt} helpKey="events.startsAt" />
         <Field label="End date and time" type="datetime-local" value={p.values.endsAt ?? ''} onChange={(value) => p.set('endsAt', value)} error={p.errors.endsAt} helpKey="events.endsAt" />
-        <Field label="Timezone" value={p.values.timezone ?? 'Asia/Kolkata'} onChange={(value) => p.set('timezone', value)} helpKey="events.timezone" />
-        <div className="text-sm font-semibold">
-          <FieldLabel label="Event type" htmlFor="event-type" helpKey="events.eventType" />
-          <select id="event-type" value={p.values.eventType ?? 'OFFLINE'} onChange={(event) => p.set('eventType', event.target.value)} className={inputClass}>
-            <option>OFFLINE</option>
-            <option>ONLINE</option>
-            <option>HYBRID</option>
-          </select>
-        </div>
+        <Select label="Timezone" value={p.values.timezone || DEFAULT_TIME_ZONE} onChange={(value) => p.set('timezone', value)} options={timeZoneOptions(p.values.timezone || DEFAULT_TIME_ZONE)} error={p.errors.timezone} helpKey="events.timezone" blank={null} />
+        <Select label="Event type" value={p.values.eventType || 'OFFLINE'} onChange={(value) => p.set('eventType', value)} options={withLegacy(EVENT_TYPES, p.values.eventType ?? '')} helpKey="events.eventType" blank={null} />
         <Field label="Venue (free text)" value={p.values.venue ?? ''} onChange={(value) => p.set('venue', value)} helpKey="events.venue" />
         <Select label="City (optional, structured)" value={p.values.cityId ?? ''} onChange={(value) => p.set('cityId', value)} options={p.cities} help={commonFieldHelp.city} />
         <Select label="State (optional, structured)" value={p.values.stateId ?? ''} onChange={(value) => p.set('stateId', value)} options={p.states} help={commonFieldHelp.state} />
