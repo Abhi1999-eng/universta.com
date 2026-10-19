@@ -8,18 +8,9 @@
  * Imported by the course pages themselves, so it loads with them.
  */
 
-/* --- the course card: one short type line, the fee kept whole --------- */
-
-.sa .coursecard__top { min-width: 0; }
-/* A course without a short name puts its full qualification on the type
-   line: one line, as the design's card has it, and whole in its title. */
-.sa .coursecard__type--long {
-  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-}
-.sa .coursecard__per { white-space: nowrap; }
-/* The amount is one unit: the facts' "break anywhere" rule split it inside
-   the number ("JPY 535,80" / "0/yr") once the cell was narrow. */
-.sa .coursecard__amount { white-space: nowrap; overflow-wrap: normal; }
+/* The course card's own rules (its type line, its fee, its picture) are in
+   study-abroad.css: the card is drawn on subject, specialization, level and
+   destination pages too, which do not load this file. */
 
 /* --- /courses: a quick filter with nothing behind it ------------------- */
 
@@ -90,15 +81,6 @@
   }
   .sa .entrycard--split .entrycard__t { grid-column: 1 / -1; }
 }
-
-/* --- a programme's picture, where an editor chose one -------------------- */
-
-/* At the top of its card, as the subject cards draw theirs. */
-.sa .coursecard__media {
-  display: block; margin: 0; aspect-ratio: 16 / 7; overflow: hidden;
-  border-radius: 6px; background: var(--surface-sunken);
-}
-.sa .coursecard__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* --- a programme's own page ---------------------------------------------- */
 

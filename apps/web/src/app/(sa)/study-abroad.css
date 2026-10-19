@@ -3495,6 +3495,22 @@
 .sa .coursecard__links { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; text-align: right; }
 .sa .coursecard__guide { color: var(--text); }
 .sa .coursecard__guide:hover { color: var(--accent); }
+/* One short type line, the fee kept whole and the editor's picture on top,
+   wherever the card is drawn: the course pages, and the subject,
+   specialization, level and destination pages that show programmes. */
+.sa .coursecard__top{ min-width: 0; }
+/* A course without a short name puts its full qualification on the type
+   line: one line, as the design's card has it, and whole in its title. */
+.sa .coursecard__type--long{ min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sa .coursecard__per{ white-space: nowrap; }
+/* The amount is one unit: the facts' "break anywhere" rule split it inside
+   the number ("JPY 535,8" / "00/yr") once the cell was narrow. */
+.sa .coursecard__amount{ white-space: nowrap; overflow-wrap: normal; }
+.sa .coursecard__media{
+  display: block; margin: 0; aspect-ratio: 16 / 7; overflow: hidden;
+  border-radius: 6px; background: var(--surface-sunken);
+}
+.sa .coursecard__media img{ display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* The course page: Save as the design's heart, Apply beside it, and the
    curriculum band, which holds only its note. */
