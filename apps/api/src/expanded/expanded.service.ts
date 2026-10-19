@@ -1216,7 +1216,9 @@ export class ExpandedService {
         this.prisma.successStory.count({ where }),
       ]);
       return {
-        data: await this.withSuccessStoryMedia(rows),
+        data: await this.withSuccessStoryMedia(
+          rows.map((row) => this.liveRelations(row, now)),
+        ),
         meta: meta(page, limit, Number(total)),
       };
     }
@@ -1295,7 +1297,9 @@ export class ExpandedService {
       if (!row) return this.notFound(resource);
       return this.withSeo(
         resource,
-        await this.withSuccessStoryMedia([row]).then(([story]) => story),
+        await this.withSuccessStoryMedia([this.liveRelations(row, now)]).then(
+          ([story]) => story,
+        ),
       );
     }
     // Prisma's generated delegates are selected by a validated resource key.
@@ -1312,20 +1316,101 @@ export class ExpandedService {
     return this.withSeo(resource, row ?? this.notFound(resource));
   }
 
-  private successStoryRelations() {
+  /**
+   * The country, university and course a story or a testimonial is filed
+   * under, with what decides whether each is live. Prisma cannot filter an
+   * optional to-one include, so the status, deletion and publishing window
+   * are read here and judged by `liveRelations`, which then drops them: the
+   * response keeps the shape it always had.
+   */
+  private storyRelations() {
+    const state = { status: true, deletedAt: true } as const;
+    const window = { publishStartsAt: true, publishEndsAt: true } as const;
     return {
-      country: { select: { id: true, name: true, slug: true } },
-      university: { select: { id: true, name: true, slug: true } },
+      country: { select: { id: true, name: true, slug: true, ...state } },
+      university: {
+        select: { id: true, name: true, slug: true, ...state, ...window },
+      },
       offering: {
         select: {
           id: true,
           name: true,
           slug: true,
-          university: { select: { id: true, name: true, slug: true } },
+          ...state,
+          ...window,
+          university: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              ...state,
+              ...window,
+              country: { select: { slug: true, ...state } },
+            },
+          },
           genericCourse: { select: { id: true, name: true, slug: true } },
         },
       },
     };
+  }
+
+  private successStoryRelations() {
+    return this.storyRelations();
+  }
+
+  /**
+   * A story or testimonial names a country, university or course only while
+   * that record is live itself: published, not deleted and, for a university
+   * or a course, inside its publishing window. Otherwise the page would print
+   * an unpublished record's name and link it to an address that answers 404.
+   * What is not live reads as null, and the fields used to judge it are
+   * removed.
+   */
+  private liveRelations<T extends Record<string, unknown>>(row: T, now: Date) {
+    type Related = Record<string, unknown> | null | undefined;
+    const live = (value: Related, scheduled: boolean) => {
+      if (!value || value.status !== 'PUBLISHED' || value.deletedAt)
+        return false;
+      if (!scheduled) return true;
+      const starts = value.publishStartsAt as Date | string | null | undefined;
+      const ends = value.publishEndsAt as Date | string | null | undefined;
+      if (starts && new Date(starts) > now) return false;
+      if (ends && new Date(ends) <= now) return false;
+      return true;
+    };
+    const strip = (value: Record<string, unknown>) => {
+      const copy = { ...value };
+      delete copy.status;
+      delete copy.deletedAt;
+      delete copy.publishStartsAt;
+      delete copy.publishEndsAt;
+      return copy;
+    };
+    const country = row.country as Related;
+    const university = row.university as Related;
+    const offering = row.offering as Related;
+    const offeringUniversity = offering?.university as Related;
+    const universityCountry = offeringUniversity?.country as Related;
+    const result: Record<string, unknown> = { ...row };
+    if ('country' in row)
+      result.country = live(country, false) ? strip(country!) : null;
+    if ('university' in row)
+      result.university = live(university, true) ? strip(university!) : null;
+    if ('offering' in row)
+      result.offering = live(offering, true)
+        ? {
+            ...strip(offering!),
+            university: live(offeringUniversity, true)
+              ? {
+                  ...strip(offeringUniversity!),
+                  country: live(universityCountry, false)
+                    ? strip(universityCountry!)
+                    : null,
+                }
+              : null,
+          }
+        : null;
+    return result as T;
   }
 
   /**
@@ -3149,19 +3234,34 @@ export class ExpandedService {
       providers,
       media,
     ] = await Promise.all([
+      /* With their publishing state, so a pick list can mark a draft: a
+         story filed under an unpublished country used to name it on the
+         site and link to a page that answered 404. */
       this.prisma.country.findMany({
         where: active,
-        select: { id: true, name: true, slug: true },
+        select: { id: true, name: true, slug: true, status: true },
         orderBy: { name: 'asc' },
       }),
       this.prisma.university.findMany({
         where: active,
-        select: { id: true, name: true, slug: true, countryId: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          countryId: true,
+          status: true,
+        },
         orderBy: { name: 'asc' },
       }),
       this.prisma.universityCourseOffering.findMany({
         where: active,
-        select: { id: true, name: true, slug: true, universityId: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          universityId: true,
+          status: true,
+        },
         orderBy: { name: 'asc' },
       }),
       this.prisma.course.findMany({
