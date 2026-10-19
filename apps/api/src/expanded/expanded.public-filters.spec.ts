@@ -266,3 +266,43 @@ describe('an event’s page', () => {
     });
   });
 });
+
+describe('the public careers list', () => {
+  /* JOB-M3. A closing date is a calendar date: at noon UTC on that day the
+     role is still open. */
+  it('keeps a role listed through its whole closing day', async () => {
+    const { svc } = service();
+    expect(ids(await svc.list('jobs', {}))).toEqual(
+      expect.arrayContaining(['closes-today', 'no-closing-date']),
+    );
+    expect(ids(await svc.list('jobs', {}))).not.toContain('closed-yesterday');
+    expect(ids(await svc.list('jobs', { active: 'true' }))).toContain(
+      'closes-today',
+    );
+  });
+
+  it('lists only the roles that closed before today as inactive', async () => {
+    const { svc } = service();
+    expect(ids(await svc.list('jobs', { active: 'false' }))).toEqual([
+      'closed-yesterday',
+    ]);
+  });
+
+  /* JOB-C9. JobGuide reads row.state; the detail never sent it. */
+  it('gives a role’s page its state', async () => {
+    const { svc, calls } = service();
+    const detail = (await svc.detail('jobs', 'closes-today')) as Row;
+    expect(detail.state).toEqual({
+      id: 'state-1',
+      name: 'Kanto',
+      slug: 'kanto',
+    });
+    expect(calls[0]).toMatchObject({
+      include: {
+        country: true,
+        city: true,
+        state: { select: { id: true, name: true, slug: true } },
+      },
+    });
+  });
+});

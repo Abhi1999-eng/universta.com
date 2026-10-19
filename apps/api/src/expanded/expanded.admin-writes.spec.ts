@@ -141,6 +141,54 @@ describe('ExpandedService admin writes', () => {
     });
   });
 
+  /* JOB-C2. "careers.example.test/apply" saved, and the Apply button
+     opened our own 404. */
+  describe('a job’s application link and email', () => {
+    const job = { title: 'Demo role', slug: 'demo-role' };
+
+    it('accepts an https link and an address', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('jobs', {
+        ...job,
+        applicationUrl: 'https://careers.example.test/apply',
+        applicationEmail: 'jobs@example.test',
+      });
+      expect(created[0].data).toMatchObject({
+        applicationUrl: 'https://careers.example.test/apply',
+        applicationEmail: 'jobs@example.test',
+      });
+    });
+
+    it('refuses a link without https:// and an email without a domain', async () => {
+      const { svc } = service();
+      for (const applicationUrl of [
+        'careers.example.test/apply',
+        'http://careers.example.test/apply',
+        '/careers/apply',
+      ])
+        await rejectsWith(
+          svc.adminCreate('jobs', { ...job, applicationUrl }),
+          'APPLICATION_URL_INVALID',
+        );
+      await rejectsWith(
+        svc.adminCreate('jobs', { ...job, applicationEmail: 'jobs@example' }),
+        'APPLICATION_EMAIL_INVALID',
+      );
+    });
+
+    it('lets both be cleared', async () => {
+      const { svc, updated } = service({ slug: 'demo-role' });
+      await svc.adminUpdate('jobs', 'job-1', {
+        applicationUrl: null,
+        applicationEmail: null,
+      });
+      expect(updated[0].data).toMatchObject({
+        applicationUrl: null,
+        applicationEmail: null,
+      });
+    });
+  });
+
   /* EV-C3. A timezone typed as "Tokyo" saved, and every visitor's events
      listing answered 500. */
   describe('an event’s time zone', () => {

@@ -177,6 +177,10 @@ function contains(value: string | undefined) {
   return value?.trim() ? { contains: value.trim() } : undefined;
 }
 
+/** An outbound link a visitor is sent to: https only. */
+const HTTPS_URL = /^https:\/\/[^\s]+$/;
+const SIMPLE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /** Whether an Intl formatter accepts this as an IANA time zone. */
 export function isTimeZone(zone: string): boolean {
   try {
@@ -185,6 +189,15 @@ export function isTimeZone(zone: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Midnight UTC at the start of `now`'s UTC calendar day. A role's closing
+ * date is a calendar date stored at 00:00Z, and the role stays open through
+ * the whole of that day. */
+export function startOfUtcDay(now: Date): Date {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
 }
 
 /** A date filter value, as a full ISO instant or a plain YYYY-MM-DD; an
@@ -1187,11 +1200,18 @@ export class ExpandedService {
         ...(query.remote ? { remoteStatus: query.remote } : {}),
         ...(query.department ? { department: query.department } : {}),
         ...(query.type ? { employmentType: query.type } : {}),
-        ...(query.active === 'true'
-          ? { OR: [{ expiryDate: null }, { expiryDate: { gte: now } }] }
-          : query.active === 'false'
-            ? { expiryDate: { lt: now } }
-            : { OR: [{ expiryDate: null }, { expiryDate: { gte: now } }] }),
+        /* Open roles by default. A closing date is a calendar date, stored
+           at 00:00Z, and a role stays open through the whole of it: it is
+           compared with the start of today's UTC date, not with this
+           instant, so the list and every "Closed" label agree. */
+        ...(query.active === 'false'
+          ? { expiryDate: { lt: startOfUtcDay(now) } }
+          : {
+              OR: [
+                { expiryDate: null },
+                { expiryDate: { gte: startOfUtcDay(now) } },
+              ],
+            }),
       };
       const all = await this.prisma.job.findMany({
         where,
@@ -1401,6 +1421,17 @@ export class ExpandedService {
       );
       return this.withSeo(resource, withImage);
     }
+    if (resource === 'jobs') {
+      const row = await this.prisma.job.findFirst({
+        where: { slug, ...publishedWhereScheduled(now) },
+        include: {
+          country: true,
+          city: true,
+          state: { select: { id: true, name: true, slug: true } },
+        },
+      });
+      return this.withSeo(resource, row ?? this.notFound(resource));
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[
@@ -1408,9 +1439,6 @@ export class ExpandedService {
     ] as any;
     const row = await delegate.findFirst({
       where: { slug, ...publishedWhereScheduled(now) },
-      ...(resource === 'jobs' || resource === 'events'
-        ? { include: { country: true, city: true } }
-        : {}),
     });
     return this.withSeo(resource, row ?? this.notFound(resource));
   }
@@ -4256,6 +4284,30 @@ export class ExpandedService {
     if (resource === 'jobs') {
       normalizeDate('publishedDate');
       normalizeDate('expiryDate');
+      /* The Apply button links straight to this. Without a scheme it was a
+         relative link, and an applicant landed on one of our own 404s. */
+      if (
+        'applicationUrl' in data &&
+        this.optionalText(data.applicationUrl) &&
+        !HTTPS_URL.test(String(data.applicationUrl))
+      )
+        throw new UnprocessableEntityException({
+          code: 'APPLICATION_URL_INVALID',
+          message:
+            'Application URL must be a full address starting with https://.',
+          details: null,
+        });
+      if (
+        'applicationEmail' in data &&
+        this.optionalText(data.applicationEmail) &&
+        !SIMPLE_EMAIL.test(String(data.applicationEmail))
+      )
+        throw new UnprocessableEntityException({
+          code: 'APPLICATION_EMAIL_INVALID',
+          message:
+            'Application email must be an address like jobs@example.com.',
+          details: null,
+        });
     }
     if (resource === 'events') {
       /* Every date on the site is drawn in this zone, and one an Intl
