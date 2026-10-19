@@ -210,3 +210,25 @@ describe('SEO fields', () => {
   });
 });
 
+describe('a success story', () => {
+  /* SS-C1. Saved without its journey, it came back as "Internal server
+     error"; an emptied editor still holds "<p><br></p>". */
+  it('needs its journey before it is sent', async () => {
+    open('success-stories');
+    const scope = await form();
+    await userEvent.type(input(scope, 'Title'), 'Untold story');
+    await save(scope);
+    expect(await within(scope).findByText('Write the journey: a story cannot be saved without it.')).toBeTruthy();
+    expect(sent).toHaveLength(0);
+  });
+
+  /* SS-C5, SS-C2. */
+  it('has an attribution note, and marks a draft country', async () => {
+    open('success-stories');
+    const scope = await form();
+    expect(input(scope, 'Attribution note (optional)')).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'Atlantis (draft)' })).toBeTruthy();
+    expect(within(scope).getByRole('option', { name: 'Japan' })).toBeTruthy();
+  });
+});
+

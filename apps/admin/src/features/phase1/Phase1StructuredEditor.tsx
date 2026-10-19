@@ -18,6 +18,7 @@ import { nextAutoSlug } from '@/lib/slug';
 import { getFieldHelp } from '@/lib/field-help/registry';
 import type { FieldHelpContent } from '@/lib/field-help/types';
 import { isFutureCalendarDate } from '@/lib/calendar-date';
+import { richTextOrEmpty } from '@/features/shared/rich-text-value';
 import { DEFAULT_TIME_ZONE, isTimeZone, timeZoneNames, utcIsoToWallTime, wallTimeToUtcIso, zoneOrDefault } from '@/lib/zoned-time';
 import { offeringDurationUnit, rowFieldLabel, singularTitle } from './structured-editor-labels';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
@@ -33,6 +34,9 @@ type Option = {
   countryId?: string;
   altText?: string;
   originalFileName?: string;
+  /** A country, university or offering's publishing state, so a pick list
+   * can say which ones are still drafts. */
+  status?: string;
 };
 type Options = {
   countries: Option[];
@@ -337,6 +341,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
       if (values.verifiedAt && isFutureCalendarDate(values.verifiedAt)) next.verifiedAt = 'Verified date cannot be in the future.';
     }
     if (resource === 'offerings' && !values.courseLevelId) next.courseLevelId = 'Select a course level.';
+    if (resource === 'success-stories' && !richTextOrEmpty(values.journey ?? '')) next.journey = 'Write the journey: a story cannot be saved without it.';
     if (resource === 'events' && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt)) next.endsAt = 'End date and time must be after the start.';
     }
@@ -552,7 +557,9 @@ function Select({ label, value, onChange, options, error, helpKey, help, require
   );
 }
 function labelOf(option: Option) {
-  return `${label(option)}${option.city ? ` · ${option.city}` : ''}`;
+  /* A draft can be picked, but the site will not show or link it until it is
+     published, so the list says so. */
+  return `${label(option)}${option.city ? ` · ${option.city}` : ''}${option.status === 'DRAFT' ? ' (draft)' : ''}`;
 }
 function Multi({ legend, options, selected, toggle, help, helpKey }: { legend: string; options: Option[]; selected: string[]; toggle: (id: string) => void; help?: FieldHelpContent; helpKey?: string }) {
   // The fieldset's own accessible name (what `getByRole('group', { name })`
@@ -1156,12 +1163,13 @@ function StoryFields(p: any) {
       <Core {...p} resource="success-stories" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Display attribution" value={p.values.attribution ?? ''} onChange={(value) => p.set('attribution', value)} helpKey="success-stories.attribution" />
+        <Field label="Attribution note (optional)" value={p.values.attributionNote ?? ''} onChange={(value) => p.set('attributionNote', value)} helpKey="success-stories.attributionNote" />
         <Select label="Country (optional)" value={p.values.countryId ?? ''} onChange={(value) => p.set('countryId', value)} options={p.countries} helpKey="success-stories.countryId" />
         <Select label="University (optional)" value={p.values.universityId ?? ''} onChange={(value) => p.set('universityId', value)} options={p.universities} helpKey="success-stories.universityId" />
         <Select label="University course offering (optional)" value={p.values.offeringId ?? ''} onChange={(value) => p.set('offeringId', value)} options={p.offerings} help={commonFieldHelp.course} />
         <MediaPickerDialog label="Media (optional)" value={p.values.featuredMediaId ?? ''} onChange={(value) => p.set('featuredMediaId', value)} helpKey="success-stories.featuredMediaId" />
       </div>
-      <Field label="Journey content" textarea richText variableContext="successStory" value={p.values.journey ?? ''} onChange={(value) => p.set('journey', value)} helpKey="success-stories.journey" />
+      <Field label="Journey content" textarea richText variableContext="successStory" value={p.values.journey ?? ''} onChange={(value) => p.set('journey', value)} error={p.errors.journey} helpKey="success-stories.journey" required />
       <ScheduledPublishingFields {...p} />
     </>
   );

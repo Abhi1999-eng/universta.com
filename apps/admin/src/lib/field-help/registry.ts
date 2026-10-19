@@ -785,7 +785,7 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
     purpose: 'The main narrative shown on the story’s page.',
     input: 'The full story text.',
     dataType: 'Long text',
-    required: 'Required.',
+    required: 'Required: a story cannot be saved without it.',
     frontendEffect: 'Shown as the main body of the success story page.',
     caution: 'If this is not a real, consenting student, the text must clearly state it is a demonstration profile — never present fabricated content as a real student’s story.',
   },
