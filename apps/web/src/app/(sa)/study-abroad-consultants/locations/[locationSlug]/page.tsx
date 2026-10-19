@@ -5,6 +5,7 @@ import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { CountryConsultantIndex } from '@/components/study-abroad/CountryConsultantIndex';
 import { Crumbs } from '@/components/study-abroad/Crumbs';
 import { ConnectBand, MatchBand } from '@/components/study-abroad/DiscoveryBands';
+import { locationHeading, locationPlaceLabel } from '@/lib/consultant-locations';
 import { toConsultantRows } from '@/lib/country-consultant-list';
 import { formatNumber } from '@/lib/format';
 import { phaseLocation } from '@/lib/phase1';
@@ -34,7 +35,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locationSlug } = await params;
   const row = await consultantLocation(locationSlug);
   if (!row) return { title: { absolute: 'Consultant location not found | Universta' }, robots: { index: false } };
-  const metadata = phaseOneMetadata(row, `/study-abroad-consultants/locations/${row.slug ?? locationSlug}`, 'Consultant location');
+  /* The title falls back to the place, as the heading reads, not to the
+     record's name ("Heidelberg advisory centre"); an editor's own SEO
+     title still wins. */
+  const metadata = phaseOneMetadata(
+    { ...row, name: locationHeading(row) },
+    `/study-abroad-consultants/locations/${row.slug ?? locationSlug}`,
+    'Consultant location',
+  );
   return { ...metadata, title: { absolute: String(metadata.title) } };
 }
 
@@ -57,6 +65,14 @@ export default async function ConsultantLocationPage({ params }: Props) {
   const place = [typeof record.city === 'string' ? record.city : null, typeof record.state === 'string' ? record.state : null, countryName]
     .filter(Boolean)
     .join(', ');
+  /* The place the page is about: "Heidelberg", with its state when there
+     is one. The record's own name stays on the page, in the eyebrow. */
+  const placeLabel = locationPlaceLabel(record);
+  const countryHref = countrySlug
+    ? hasGuide
+      ? `/study-abroad/${countrySlug}/consultants`
+      : `/study-abroad-consultants?country=${countrySlug}#consultants`
+    : null;
 
   return (
     <>
@@ -66,12 +82,13 @@ export default async function ConsultantLocationPage({ params }: Props) {
             trail={[
               { label: 'Home', href: '/' },
               { label: 'Consultants', href: '/study-abroad-consultants' },
-              { label: name },
+              ...(countryName && countryHref ? [{ label: countryName, href: countryHref }] : []),
+              { label: placeLabel },
             ]}
           />
           <div className="hero__lead">
             <p className="hero__eyebrow">
-              {place || 'Consultant office'}
+              {[name, countryName].filter(Boolean).join(' · ') || 'Consultant office'}
               {rows.length ? (
                 <>
                   <b>·</b>
@@ -79,7 +96,7 @@ export default async function ConsultantLocationPage({ params }: Props) {
                 </>
               ) : null}
             </p>
-            <h1 className="hero__h1">Study abroad consultants in {name}</h1>
+            <h1 className="hero__h1">{locationHeading(record)}</h1>
             <p className="hero__sub">
               {typeof record.overview === 'string' && record.overview.trim()
                 ? record.overview
@@ -89,7 +106,7 @@ export default async function ConsultantLocationPage({ params }: Props) {
         </div>
       </section>
 
-      <CountryConsultantIndex rows={rows} countrySlug="" where={name} guides={guides} byDestination />
+      <CountryConsultantIndex rows={rows} countrySlug="" where={placeLabel} guides={guides} byDestination />
 
       {countrySlug && countryName ? (
         <ConnectBand
