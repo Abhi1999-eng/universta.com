@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeConsultantFilters,
+  canonicalConsultantFilters,
   consultantListHref,
   consultantOptions,
   countryConsultantsHref,
@@ -190,6 +191,68 @@ describe('what the consultants list can be narrowed by', () => {
   it('does not offer a filter every consultant already satisfies', () => {
     expect(narrowsConsultants([{ value: 'a', label: 'A', count: 3 }], 3)).toBe(false);
     expect(narrowsConsultants(options.cities, 3)).toBe(true);
+  });
+});
+
+describe('one service or language, whatever slug or code a record gave it', () => {
+  /* The admin used to save "Visa documentation" as `visa-documentation-1`
+     and "English" with no code; the seeds wrote `visa-documentation` and
+     `en`. Both are the same thing to a reader. */
+  const mixed = toConsultantRows([
+    record({
+      id: 'm1',
+      name: 'Seeded Partners',
+      slug: 'seeded',
+      services: [{ name: 'Visa documentation', slug: 'visa-documentation' }],
+      languages: [{ name: 'English', code: 'en' }],
+    }),
+    record({
+      id: 'm2',
+      name: 'Admin Entered Advisers',
+      slug: 'admin-entered',
+      services: [
+        { name: 'Visa documentation', slug: 'visa-documentation-1' },
+        { name: ' visa  Documentation ', slug: 'visa-documentation-2' },
+      ],
+      languages: [
+        { name: 'English', code: null },
+        { name: 'english', code: null },
+      ],
+    }),
+  ]);
+
+  it('keeps one entry per name on a card', () => {
+    expect(mixed[1]!.services).toEqual([{ slug: 'visa-documentation-1', name: 'Visa documentation' }]);
+    expect(mixed[1]!.languages).toEqual([{ code: 'English', name: 'English' }]);
+  });
+
+  it('offers one option per name, counting every consultant who lists it', () => {
+    const options = consultantOptions(mixed);
+    expect(options.services).toEqual([
+      { value: 'visa-documentation', label: 'Visa documentation', count: 2 },
+    ]);
+    /* The code one record holds stands for the name everywhere. */
+    expect(options.languages).toEqual([{ value: 'en', label: 'English', count: 2 }]);
+  });
+
+  it('finds every consultant from the name\'s slug, the old suffixed one, or a language by name', () => {
+    expect(names(filterConsultants(mixed, state({ services: ['visa-documentation'] })))).toEqual([
+      'Seeded Partners',
+      'Admin Entered Advisers',
+    ]);
+    expect(filterConsultants(mixed, state({ services: ['visa-documentation-1'] }))).toHaveLength(2);
+    expect(filterConsultants(mixed, state({ languages: ['en'] }))).toHaveLength(2);
+    expect(filterConsultants(mixed, state({ languages: ['english'] }))).toHaveLength(2);
+    expect(filterConsultants(mixed, state({ services: ['nothing-like-it'] }))).toHaveLength(0);
+  });
+
+  it('reads an old link as the box it means, and drops what nobody lists', () => {
+    expect(
+      canonicalConsultantFilters(mixed, {
+        services: ['visa-documentation-1', 'atlantis'],
+        languages: ['english'],
+      }),
+    ).toEqual({ services: ['visa-documentation'], languages: ['en'] });
   });
 });
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
+import { nameKey } from '@/lib/country-consultant-list';
 import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
@@ -47,6 +48,12 @@ export default async function ConsultantPage({ params }: Props) {
           return { item, nested };
         })
       : [];
+  /* Each service or language once, by the name the reader sees: a record
+     the admin saved twice can hold "English" under two codes. */
+  const names = (value: unknown) =>
+    list(value, null)
+      .map(({ nested }) => (typeof nested?.name === 'string' ? nested.name.trim() : ''))
+      .filter((name, index, all) => name && all.findIndex((other) => nameKey(other) === nameKey(name)) === index);
 
   return (
     <ConsultantGuide
@@ -68,12 +75,8 @@ export default async function ConsultantPage({ params }: Props) {
       countries={list(record.countries, 'country')
         .filter(({ nested }) => nested?.slug)
         .map(({ nested }) => ({ name: String(nested!.name), slug: String(nested!.slug) }))}
-      services={list(record.services, null)
-        .map(({ nested }) => (nested?.name ? String(nested.name) : ''))
-        .filter(Boolean)}
-      languages={list(record.languages, null)
-        .map(({ nested }) => (nested?.name ? String(nested.name) : ''))
-        .filter(Boolean)}
+      services={names(record.services)}
+      languages={names(record.languages)}
       locations={list(record.locations, 'location')
         .filter(({ nested }) => nested?.slug)
         .map(({ item, nested }) => {

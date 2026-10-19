@@ -8,6 +8,7 @@ import {
   CONSULTANT_SORTS,
   CONSULTANT_STEP,
   activeConsultantFilters,
+  canonicalConsultantFilters,
   consultantListHref,
   consultantOptions,
   countryConsultantsHref,
@@ -119,7 +120,7 @@ export function ConsultantCard({
           <span className="label">Services</span>
           <div className="tagrow">
             {consultant.services.slice(0, SERVICES_SHOWN).map((service) => (
-              <span className="tag" key={service.slug}>
+              <span className="tag" key={service.name}>
                 {service.name}
               </span>
             ))}
@@ -213,12 +214,9 @@ export function CountryConsultantIndex({
     ...state,
     destinations: byDestination ? known(options.destinations, state.destinations) : [],
     cities: known(options.cities, state.cities),
-    services: known(options.services, state.services),
-    languages: state.languages.filter((value) =>
-      options.languages.some(
-        (option) => option.value === value || option.label.toLowerCase() === value,
-      ),
-    ),
+    /* A service or language by any name the address carries it under --
+       an old suffixed slug, a language by name -- as the box it ticks. */
+    ...canonicalConsultantFilters(rows, state),
   };
   const shown = filterConsultants(rows, filters);
   const active = activeConsultantFilters(filters);
