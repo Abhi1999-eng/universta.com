@@ -7,6 +7,19 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+/* The request form is the counselling page's own; here it only has to say
+   what it was given. */
+vi.mock('@/components/counselling/CounsellingForm', () => ({
+  CounsellingForm: ({ context, initialOptions }: { context: Record<string, string>; initialOptions: unknown }) => (
+    <form
+      data-testid="counselling"
+      data-source-type={context.sourceType}
+      data-source-page={context.sourcePagePath}
+      data-options={initialOptions ? 'given' : 'loaded'}
+    />
+  ),
+}));
+
 import { ConsultantGuide, type ConsultantGuideProps } from './ConsultantGuide';
 
 const props = (consultant: Partial<ConsultantGuideProps['consultant']> = {}): ConsultantGuideProps => ({
@@ -114,5 +127,35 @@ describe('a consultant profile\'s services', () => {
     );
     expect(html).toContain('<ul class="svclist svcgroups"><li class="svclist__item"><b>Visa documentation</b></li>');
     expect(html).not.toContain('svcgroup__t');
+  });
+});
+
+describe('a consultant profile\'s Get guidance', () => {
+  const section = (html: string) => html.slice(html.indexOf('id="contact"'), html.indexOf('</section>', html.indexOf('id="contact"')));
+
+  it('asks for guidance on the profile, naming the consultant and sending this page as where the request began', () => {
+    const html = render();
+    const contact = section(html);
+    expect(contact).toContain('Want help deciding on a consultant?');
+    expect(contact).toContain('weigh up Silverbeck Admissions Collective');
+    expect(contact).toContain('data-source-type="general"');
+    expect(contact).toContain('data-source-page="/study-abroad-consultants/silverbeck"');
+  });
+
+  it('passes the options read on the server to the form', () => {
+    const html = renderToStaticMarkup(
+      <ConsultantGuide {...props()} counselling={{ countries: [], courseLevels: [], intakes: [] }} />,
+    );
+    expect(section(html)).toContain('data-options="given"');
+    expect(section(render())).toContain('data-options="loaded"');
+  });
+
+  it('puts the trust box under the form, once, and keeps the contact card and the match band', () => {
+    const html = render({ email: 'hello@silverbeck.example' });
+    expect(html.match(/How Universta works with consultants/g)).toHaveLength(2); /* aria-label and heading */
+    const contact = section(html);
+    expect(contact.indexOf('data-testid="counselling"')).toBeLessThan(contact.indexOf('trustbox'));
+    expect(html).toContain('aria-label="Contact"');
+    expect(html.indexOf('id="contact"')).toBeLessThan(html.indexOf('Want a second opinion first?'));
   });
 });

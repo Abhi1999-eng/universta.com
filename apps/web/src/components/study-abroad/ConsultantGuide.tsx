@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { CounsellingForm } from '@/components/counselling/CounsellingForm';
 import { RichText } from '@/components/phase1/RichText';
+import type { CounsellingOptions } from '@/lib/counselling';
 import { consultantContactActions } from '@/lib/consultant-contact';
 import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
@@ -45,9 +47,20 @@ export type ConsultantGuideProps = {
   }>;
   /** The destinations with a guide of their own, by slug. */
   guides: ReadonlySet<string>;
+  /** The counselling form's countries, levels and intakes, read on the
+   *  server; without them the form loads its own. */
+  counselling?: CounsellingOptions | null;
 };
 
-export function ConsultantGuide({ consultant, countries, services, languages, locations, guides }: ConsultantGuideProps) {
+export function ConsultantGuide({
+  consultant,
+  countries,
+  services,
+  languages,
+  locations,
+  guides,
+  counselling = null,
+}: ConsultantGuideProps) {
   const self = `/study-abroad-consultants/${consultant.slug}`;
   const trail: Crumb[] = [
     { label: 'Home', href: '/' },
@@ -340,6 +353,29 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                   'Not recorded'
                 )}
               </b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The design's "Get guidance": the request on the profile itself, so
+          a reader need not leave the consultant to ask about them. It goes
+          to Universta with this page as where it started; the contact card
+          above stays as it is, with nothing held back until it is sent. */}
+      <section className="sec sec--white" id="contact">
+        <div className="wrap">
+          <div className="leadinline">
+            <div className="leadinline__copy">
+              <p className="eyebrow">Get guidance</p>
+              <h2 className="sec-title">Want help deciding on a consultant?</h2>
+              <p className="sec-lead">
+                Tell Universta what you plan to study and a counsellor will help you weigh up {consultant.name}{' '}
+                alongside the other options open to you. Your request comes to the Universta team; it is not
+                passed on to the consultant.
+              </p>
+            </div>
+            <div className="leadinline__form">
+              <CounsellingForm initialOptions={counselling} context={{ sourceType: 'general', sourcePagePath: self }} />
             </div>
           </div>
           <ConsultantTrust className="trustbox--below" />

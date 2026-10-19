@@ -8,3 +8,14 @@
 
 /* The trust box under a grid or a form, rather than flush against it. */
 .sa .trustbox--below { margin-top: 26px; }
+
+/* The profile's "Get guidance" (exams.css .leadinline): what the request
+   is for on the left, the request itself on the right, in one paper box. */
+.sa .leadinline { display: grid; gap: 26px; padding: clamp(20px, 3vw, 36px); background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+@media (min-width: 900px) {
+  .sa .leadinline { grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr); align-items: start; }
+  /* The form is the taller column; the sentence beside it keeps pace. */
+  .sa .leadinline__copy { position: sticky; top: calc(var(--nav-h) + 90px); }
+}
+.sa .leadinline__copy .sec-lead { margin-top: 12px; }
+.sa .leadinline__form { min-width: 0; }

@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
 import { consultantVerification } from '@/lib/consultant-profile';
+import { getCounsellingOptions } from '@/lib/counselling';
 import { liveLocationLinks, nameKey } from '@/lib/country-consultant-list';
 import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
@@ -39,7 +40,7 @@ export default async function ConsultantPage({ params }: Props) {
     if (redirect) permanentRedirect(redirect.targetPath);
     notFound();
   }
-  const directory = await getDestinations().catch(() => null);
+  const [directory, counselling] = await Promise.all([getDestinations().catch(() => null), getCounsellingOptions()]);
   const guides = new Set((directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])));
   const record = row as unknown as Record<string, unknown>;
   const list = (value: unknown, key: 'country' | 'location' | null) =>
@@ -92,6 +93,7 @@ export default async function ConsultantPage({ params }: Props) {
           };
         })}
       guides={guides}
+      counselling={counselling}
     />
   );
 }
