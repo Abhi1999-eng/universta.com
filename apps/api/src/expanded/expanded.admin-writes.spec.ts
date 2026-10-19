@@ -141,6 +141,127 @@ describe('ExpandedService admin writes', () => {
     });
   });
 
+  /* CON-C1. A consultant marked Verified showed "Last verified: Not
+     verified": there was no way to date the check. */
+  describe('a consultant’s verification date', () => {
+    const consultant = { name: 'Demo Advisers', slug: 'demo-advisers' };
+
+    it('stores the date an editor gives', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('consultants', {
+        ...consultant,
+        verificationStatus: 'VERIFIED',
+        verifiedAt: '2026-09-30',
+      });
+      expect(created[0].data.verifiedAt).toEqual(new Date('2026-09-30'));
+    });
+
+    it('is today when the record becomes Verified without one', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-19T15:30:00Z') });
+      try {
+        const { svc, created, updated } = service({
+          verificationStatus: 'PENDING',
+        });
+        await svc.adminCreate('consultants', {
+          ...consultant,
+          verificationStatus: 'VERIFIED',
+        });
+        expect(created[0].data.verifiedAt).toEqual(
+          new Date('2026-10-19T00:00:00Z'),
+        );
+        await svc.adminUpdate('consultants', 'consultant-1', {
+          verificationStatus: 'VERIFIED',
+          verifiedAt: null,
+        });
+        expect(updated[0].data.verifiedAt).toEqual(
+          new Date('2026-10-19T00:00:00Z'),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('is not stamped again on a record that was already Verified', async () => {
+      const { svc, updated } = service({ verificationStatus: 'VERIFIED' });
+      await svc.adminUpdate('consultants', 'consultant-1', {
+        name: 'Demo Advisers',
+        verificationStatus: 'VERIFIED',
+      });
+      expect(updated[0].data).not.toHaveProperty('verifiedAt');
+    });
+
+    /* CON-C13. Twenty published consultants are PENDING, and the editor
+       showed them as UNVERIFIED. */
+    it('accepts Pending and refuses a state the site does not know', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('consultants', {
+        ...consultant,
+        verificationStatus: 'PENDING',
+      });
+      expect(created[0].data.verificationStatus).toBe('PENDING');
+      await rejectsWith(
+        svc.adminCreate('consultants', {
+          ...consultant,
+          verificationStatus: 'CHECKED',
+        }),
+        'VERIFICATION_STATUS_INVALID',
+      );
+    });
+  });
+
+  /* CON-C4. "www.audit-review.test" saved as typed, and the profile linked
+     it as a relative address that opened one of our own 404s. */
+  describe('a consultant’s website and source', () => {
+    const consultant = { name: 'Demo Advisers', slug: 'demo-advisers' };
+
+    it('gives a bare domain its https://', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('consultants', {
+        ...consultant,
+        websiteUrl: 'www.demo-advisers.test',
+      });
+      expect(created[0].data.websiteUrl).toBe('https://www.demo-advisers.test');
+    });
+
+    it('keeps an absolute address as it is', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('consultants', {
+        ...consultant,
+        websiteUrl: 'http://demo-advisers.test/about',
+        sourceReference: 'https://registry.example.test/demo-advisers',
+      });
+      expect(created[0].data).toMatchObject({
+        websiteUrl: 'http://demo-advisers.test/about',
+        sourceReference: 'https://registry.example.test/demo-advisers',
+      });
+    });
+
+    it('refuses text that is not a web address', async () => {
+      const { svc } = service();
+      await rejectsWith(
+        svc.adminCreate('consultants', {
+          ...consultant,
+          websiteUrl: 'ask at reception',
+        }),
+        'WEBSITE_URL_INVALID',
+      );
+      await rejectsWith(
+        svc.adminCreate('consultants', {
+          ...consultant,
+          sourceReference: 'Checked by phone with the office',
+        }),
+        'SOURCE_URL_INVALID',
+      );
+      await rejectsWith(
+        svc.adminCreate('consultants', {
+          ...consultant,
+          sourceReference: 'registry.example.test/demo',
+        }),
+        'SOURCE_URL_INVALID',
+      );
+    });
+  });
+
   /* JOB-C2. "careers.example.test/apply" saved, and the Apply button
      opened our own 404. */
   describe('a job’s application link and email', () => {

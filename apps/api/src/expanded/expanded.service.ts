@@ -187,7 +187,27 @@ function contains(value: string | undefined) {
 
 /** An outbound link a visitor is sent to: https only. */
 const HTTPS_URL = /^https:\/\/[^\s]+$/;
+/** A source or website a record cites: any absolute web address. */
+const ABSOLUTE_HTTP_URL = /^https?:\/\/[^\s/?#]+\.[^\s]*$/i;
+/** example.com, www.example.co.uk/path: a website written without its
+ * scheme. */
+const BARE_DOMAIN =
+  /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:[/?#][^\s]*)?$/i;
 const SIMPLE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CONSULTANT_VERIFICATION_STATES = new Set([
+  'UNVERIFIED',
+  'PENDING',
+  'VERIFIED',
+]);
+
+/** A website as a link can use it: absolute, with https:// added to a bare
+ * domain. Null when it is not a web address at all. */
+export function absoluteWebsite(value: string): string | null {
+  const trimmed = value.trim();
+  if (ABSOLUTE_HTTP_URL.test(trimmed)) return trimmed;
+  if (BARE_DOMAIN.test(trimmed)) return `https://${trimmed}`;
+  return null;
+}
 
 /** Whether an Intl formatter accepts this as an IANA time zone. */
 export function isTimeZone(zone: string): boolean {
@@ -2932,6 +2952,7 @@ export class ExpandedService {
       resourceModel[resource] as keyof PrismaService
     ] as any;
     const data = this.writeData(resource, body);
+    this.stampVerification(resource, data, null);
     try {
       const created = await delegate.create({
         data: { ...data, ...this.relationWrites(resource, body, false) },
@@ -2960,6 +2981,7 @@ export class ExpandedService {
     >;
     try {
       const data = this.writeData(resource, body, true);
+      this.stampVerification(resource, data, current);
       const updated = await delegate.update({
         where: { id },
         data: {
@@ -2974,6 +2996,25 @@ export class ExpandedService {
     } catch (error) {
       throw this.conflict(error);
     }
+  }
+
+  /**
+   * A consultant marked Verified without a date was checked today. The
+   * profile shows when the check was made, and with no date it could only
+   * say "Verified" beside "Last verified: not recorded". Only the change to
+   * Verified stamps it: re-saving a record verified long ago keeps its date,
+   * and an editor who types a date keeps theirs.
+   */
+  private stampVerification(
+    resource: Resource,
+    data: Data,
+    current: Record<string, unknown> | null,
+  ) {
+    if (resource !== 'consultants') return;
+    if (data.verificationStatus !== 'VERIFIED') return;
+    if (current?.verificationStatus === 'VERIFIED') return;
+    if (data.verifiedAt) return;
+    data.verifiedAt = startOfUtcDay(new Date());
   }
 
   /** Flat top-level resources with a stable public detail URL of the shape
@@ -4022,6 +4063,7 @@ export class ExpandedService {
         'websiteUrl',
         'verificationStatus',
         'sourceReference',
+        'verifiedAt',
         'featuredMediaId',
         'status',
         'isFeatured',
@@ -4298,6 +4340,45 @@ export class ExpandedService {
       normalizeDate('verifiedAt');
       if ('courseCode' in data && !this.optionalText(data.courseCode))
         data.courseCode = null;
+    }
+    if (resource === 'consultants') {
+      normalizeDate('verifiedAt');
+      if (
+        'verificationStatus' in data &&
+        !CONSULTANT_VERIFICATION_STATES.has(String(data.verificationStatus))
+      )
+        throw new UnprocessableEntityException({
+          code: 'VERIFICATION_STATUS_INVALID',
+          message:
+            'Verification state must be Not verified, Pending check or Verified.',
+          details: null,
+        });
+      /* A profile links both of these. Typed without a scheme, the link was
+         relative and opened one of our own 404s. A bare domain is plainly a
+         website, so it gains https://; anything else is refused with a
+         message the form shows. */
+      if ('websiteUrl' in data && this.optionalText(data.websiteUrl)) {
+        const url = absoluteWebsite(String(data.websiteUrl));
+        if (!url)
+          throw new UnprocessableEntityException({
+            code: 'WEBSITE_URL_INVALID',
+            message:
+              'Website URL must be a full address starting with https://, for example https://www.example.com.',
+            details: null,
+          });
+        data.websiteUrl = url;
+      }
+      if (
+        'sourceReference' in data &&
+        this.optionalText(data.sourceReference) &&
+        !ABSOLUTE_HTTP_URL.test(String(data.sourceReference))
+      )
+        throw new UnprocessableEntityException({
+          code: 'SOURCE_URL_INVALID',
+          message:
+            'Source URL must be the full address of the page you checked, starting with https://.',
+          details: null,
+        });
     }
     if (resource === 'scholarships') {
       normalizeDecimal('amount');
