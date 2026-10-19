@@ -4,7 +4,7 @@ import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantChoose } from '@/components/study-abroad/ConsultantChoose';
 import { ConsultantTrust } from '@/components/study-abroad/ConsultantTrust';
 import { CountryConsultantIndex } from '@/components/study-abroad/CountryConsultantIndex';
-import { CountryListSearch } from '@/components/study-abroad/CountryListSearch';
+import { ConsultantSearch } from '@/components/study-abroad/ConsultantSearch';
 import { Crumbs } from '@/components/study-abroad/Crumbs';
 import { ConnectBand, MatchBand } from '@/components/study-abroad/DiscoveryBands';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
@@ -87,6 +87,10 @@ export default async function ConsultantsPage() {
   const destinations = [...(directory?.available ?? []), ...(directory?.comingSoon ?? [])];
   const guideOf = new Map(destinations.flatMap((entry) => (entry.slug ? [[entry.slug, entry] as const] : [])));
   const guides = (directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : []));
+  /* The destinations the hero's select offers, A to Z. */
+  const published = (directory?.available ?? [])
+    .flatMap((entry) => (entry.slug ? [{ slug: entry.slug, name: entry.name }] : []))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const n = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
   /* "Consultants by study destination": every destination with a guide,
      and any other a consultant lists. One with consultants opens them;
@@ -128,9 +132,7 @@ export default async function ConsultantsPage() {
           <p className="hero__sub">
             {managed.lede ?? 'Explore consultants by destination, city and services — then connect through Universta.'}
           </p>
-          <div className="bigsearch__wrap" style={{ marginTop: 22 }}>
-            <CountryListSearch placeholder="Consultant, country, city or service" label="Search consultants" />
-          </div>
+          <ConsultantSearch destinations={published} placeholder="Consultant, country, city or service" />
           <div className="btn-row" style={{ marginTop: 18 }}>
             <button className="btn btn--accent" type="button" data-open-assessment data-intent="consultants-index">
               Help Me Find the Right Consultant{' '}
@@ -158,7 +160,16 @@ export default async function ConsultantsPage() {
           </div>
         </section>
       ) : (
-        <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" guides={guides} byDestination compare logos />
+        <CountryConsultantIndex
+          rows={rows}
+          countrySlug=""
+          where="any destination"
+          guides={guides}
+          byDestination
+          compare
+          logos
+          destinationNames={published}
+        />
       )}
 
       <section className="sec sec--paper" id="need">

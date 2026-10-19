@@ -37,3 +37,26 @@
 .sa .conslogo--lg { width: 72px; height: 72px; }
 .sa .consultcard__id, .sa .consulthero__id { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .sa .consulthero__id { gap: 18px; }
+
+/* The directory hero's search (exams.css .coachsearch): the Destination
+   select, the box and the button in one white bar. */
+.sa .coachsearch { display: grid; gap: 10px; margin-top: 22px; padding: 12px; background: var(--white); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+@media (min-width: 760px) { .sa .coachsearch { grid-template-columns: 220px minmax(0, 1fr) auto; align-items: end; } }
+.sa .coachsearch__field { display: block; min-width: 0; }
+.sa .coachsearch__field .label { display: block; margin-bottom: 6px; }
+.sa .coachsearch select,
+.sa .coachsearch input {
+  width: 100%; min-height: 46px; padding: 11px 13px;
+  font: inherit; font-size: 15px; color: var(--text);
+  background: var(--white); border: 1px solid var(--line-strong); border-radius: var(--radius);
+  appearance: auto;
+}
+.sa .coachsearch select:focus, .sa .coachsearch input:focus { outline: 0; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7, 20, 38, .07); }
+.sa .coachsearch .btn { min-height: 46px; justify-content: center; }
+
+/* A list with nothing in it yet, said plainly with a way forward
+   (consultants.css .emptyband), lighter than the bands around it. */
+.sa .emptyband { display: grid; gap: 10px; justify-items: start; padding: 26px; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--paper); }
+.sa .emptyband__t { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; margin: 0; }
+.sa .emptyband__d { color: var(--muted); font-size: 15px; margin: 0; max-width: 62ch; }
+.sa .emptyband .btn-row { margin-top: 6px; }

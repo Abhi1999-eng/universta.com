@@ -217,6 +217,7 @@ export function CountryConsultantIndex({
   byDestination = false,
   compare = false,
   logos = false,
+  destinationNames = [],
 }: {
   rows: CountryConsultantRow[];
   /** The destination the page is about, or '' on the worldwide directory. */
@@ -232,6 +233,10 @@ export function CountryConsultantIndex({
   compare?: boolean;
   /** Each card's round logo, where the consultant has an image. */
   logos?: boolean;
+  /** The published destinations, by name: a destination chosen in the
+   *  hero that no consultant lists yet is kept, and said so, rather than
+   *  quietly dropped to show everyone. */
+  destinationNames?: ReadonlyArray<{ slug: string; name: string }>;
 }) {
   const path = usePathname();
   const params = useSearchParams();
@@ -245,9 +250,14 @@ export function CountryConsultantIndex({
   /* Values no consultant here carries -- a city from another destination's
      link, a service typed by hand -- are set aside rather than allowed to
      empty the list. */
+  const published = new Map(destinationNames.map((entry) => [entry.slug, entry.name] as const));
   const filters: ConsultantListState = {
     ...state,
-    destinations: byDestination ? known(options.destinations, state.destinations) : [],
+    destinations: byDestination
+      ? state.destinations.filter(
+          (value) => published.has(value) || options.destinations.some((option) => option.value === value),
+        )
+      : [],
     cities: known(options.cities, state.cities),
     /* A service or language by any name the address carries it under --
        an old suffixed slug, a language by name -- as the box it ticks. */
@@ -255,7 +265,11 @@ export function CountryConsultantIndex({
   };
   const shown = filterConsultants(rows, filters);
   const active = activeConsultantFilters(filters);
-  const chips = consultantChips(filters, options);
+  const chips = consultantChips(filters, options, { destinations: published });
+  /* Destinations asked for that no consultant here lists yet. */
+  const unlisted = filters.destinations.filter(
+    (value) => !options.destinations.some((option) => option.value === value),
+  );
   const narrowed = active > 0 || filters.q !== '';
   const visible = Math.min(shown.length, filters.page * CONSULTANT_STEP);
   const total = rows.length;
@@ -370,7 +384,14 @@ export function CountryConsultantIndex({
                 </button>
               </div>
               <div className="filters-panel__body">
-                {groups.destinations ? group('Destination', 'destinations', options.destinations) : null}
+                {groups.destinations
+                  ? group('Destination', 'destinations', [
+                      ...options.destinations,
+                      /* One chosen in the hero that nobody lists yet, ticked,
+                         so it can be unticked here too. */
+                      ...unlisted.map((value) => ({ value, label: published.get(value) ?? value, count: 0 })),
+                    ])
+                  : null}
                 {groups.cities ? group('Consultant location', 'cities', options.cities) : null}
                 {groups.services ? group('Service', 'services', options.services) : null}
                 {groups.languages ? group('Language', 'languages', options.languages) : null}
@@ -487,6 +508,34 @@ export function CountryConsultantIndex({
                     logo={logos}
                   />
                 ))}
+              </div>
+            ) : unlisted.length && unlisted.length === filters.destinations.length ? (
+              /* Only destinations nobody lists yet: say so, and offer the
+                 counsellor, rather than "No consultant matches that". */
+              <div className="emptyband">
+                <p className="emptyband__t">
+                  No consultant on Universta lists {unlisted.map((value) => published.get(value) ?? value).join(' or ')}{' '}
+                  yet.
+                </p>
+                <p className="emptyband__d">
+                  Tell Universta what you are planning and a counsellor will help you find a way forward.
+                </p>
+                <div className="btn-row">
+                  <Link
+                    className="btn btn--sm"
+                    href={counsellingHref(
+                      unlisted.length === 1
+                        ? { source: 'country', country: unlisted[0], from: path }
+                        : { source: 'general', from: path },
+                    )}
+                  >
+                    Ask Universta{' '}
+                    <span className="btn__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </Link>
+                  {clearLink('Clear filters', 'btn btn--sm btn--ghost')}
+                </div>
               </div>
             ) : (
               <div className="dir__none">

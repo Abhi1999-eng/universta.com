@@ -149,3 +149,34 @@ describe('the chips above the results', () => {
     expect(html).not.toContain('activechips__clear');
   });
 });
+
+describe('a published destination no consultant lists yet', () => {
+  it('is kept when chosen, says so plainly and offers the counsellor about it, instead of showing everyone', () => {
+    address.search = 'country=canada';
+    const html = renderToStaticMarkup(
+      <CountryConsultantIndex
+        rows={rows}
+        countrySlug=""
+        where="any destination"
+        byDestination
+        destinationNames={[{ slug: 'canada', name: 'Canada' }]}
+      />,
+    );
+    expect(html).toContain('0 consultants');
+    expect(html).toContain('aria-label="Remove Canada"');
+    expect(html).toContain('<p class="emptyband__t">No consultant on Universta lists Canada yet.</p>');
+    expect(hrefs(html)).toEqual(['/counselling?source=country&country=canada&from=%2Fstudy-abroad-consultants']);
+    expect(html).not.toContain('class="consultcard"');
+    /* Ticked in the Destination filter, so it can be unticked there too. */
+    expect(html).toMatch(/<input type="checkbox" checked=""\/><span>Canada<\/span><em>0<\/em>/);
+  });
+
+  it('is still set aside when it is not a published destination either', () => {
+    address.search = 'country=atlantis';
+    const html = renderToStaticMarkup(
+      <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" byDestination destinationNames={[]} />,
+    );
+    expect(html).toContain('2 consultants');
+    expect(html).not.toContain('emptyband');
+  });
+});
