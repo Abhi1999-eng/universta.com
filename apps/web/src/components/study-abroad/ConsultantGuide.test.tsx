@@ -177,3 +177,45 @@ describe('a consultant profile\'s section strip', () => {
     expect(strip).not.toContain('Universities');
   });
 });
+
+describe('a consultant profile\'s similar consultants', () => {
+  const card = (slug: string) => ({
+    id: slug,
+    name: `Consultant ${slug}`,
+    slug,
+    summary: null,
+    verified: false,
+    verifiedAt: null,
+    cities: ['Heidelberg'],
+    services: [],
+    languages: [],
+    destinations: [],
+  });
+  const section = (html: string) =>
+    html.includes('id="similar"') ? html.slice(html.indexOf('id="similar"'), html.indexOf('</section>', html.indexOf('id="similar"'))) : '';
+
+  it('shows up to three cards with the compare tick, says how they were chosen, and never mentions sponsorship or subjects', () => {
+    const html = renderToStaticMarkup(<ConsultantGuide {...props()} similar={['a', 'b', 'c'].map(card)} />);
+    const similar = section(html);
+    expect(similar).toContain('Consultants with a similar profile');
+    expect(similar).toContain('consultgrid consultgrid--3');
+    expect(similar.match(/class="consultcard"/g)).toHaveLength(3);
+    expect(similar.match(/aria-label="Compare Consultant /g)).toHaveLength(3);
+    expect(similar).toContain('cities, destinations and services they share with Silverbeck Admissions Collective. Paid placement plays no part.');
+    expect(similar).not.toMatch(/sponsor|subject/i);
+    /* Each card's guidance records the profile it was found on. */
+    expect(similar).toContain('href="/counselling?source=general&amp;from=%2Fstudy-abroad-consultants%2Fsilverbeck"');
+    expect(html.indexOf('id="contact"')).toBeLessThan(html.indexOf('id="similar"'));
+  });
+
+  it('sets a single one beside the heading, not alone in a row', () => {
+    const similar = section(renderToStaticMarkup(<ConsultantGuide {...props()} similar={[card('a')]} />));
+    expect(similar).toContain('sec-head--split');
+    expect(similar).toContain('A consultant with a similar profile');
+    expect(similar).toContain('consultgrid consultgrid--one');
+  });
+
+  it('leaves the section out when there is no one like this consultant', () => {
+    expect(render()).not.toContain('id="similar"');
+  });
+});

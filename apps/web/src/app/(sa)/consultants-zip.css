@@ -19,3 +19,13 @@
 }
 .sa .leadinline__copy .sec-lead { margin-top: 12px; }
 .sa .leadinline__form { min-width: 0; }
+
+/* A smaller section title, as the design sets its short heads ("Study
+   abroad consultants near you", "Consultants with a similar profile"), so
+   one line does not wrap into a tall block in half the page. */
+.sa .sec-title--sm { font-size: clamp(23px, 2.6vw, 32px); }
+
+/* Three cards in a row, for "Consultants with a similar profile". */
+@media (min-width: 1000px) { .sa .consultgrid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* One card beside its heading, in the head's own column. */
+.sa .consultgrid--one { grid-template-columns: minmax(0, 1fr); margin-top: 18px; }

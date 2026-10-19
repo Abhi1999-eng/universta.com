@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { CounsellingForm } from '@/components/counselling/CounsellingForm';
 import { RichText } from '@/components/phase1/RichText';
 import type { CounsellingOptions } from '@/lib/counselling';
+import { counsellingHref } from '@/lib/counselling-link';
+import type { CountryConsultantRow } from '@/lib/country-consultant-list';
 import { consultantContactActions } from '@/lib/consultant-contact';
 import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
@@ -9,6 +11,7 @@ import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
 import { ConsultantCompareButton, ConsultantCompareTray } from './ConsultantCompare';
 import { ConsultantTrust } from './ConsultantTrust';
+import { ConsultantCard } from './CountryConsultantIndex';
 import { ConnectBand, MatchBand } from './DiscoveryBands';
 import { Crumbs } from './Crumbs';
 import { SectionHead } from './SectionHead';
@@ -51,6 +54,8 @@ export type ConsultantGuideProps = {
   /** The counselling form's countries, levels and intakes, read on the
    *  server; without them the form loads its own. */
   counselling?: CounsellingOptions | null;
+  /** "Consultants with a similar profile", chosen by consultantNeighbours. */
+  similar?: CountryConsultantRow[];
 };
 
 export function ConsultantGuide({
@@ -61,6 +66,7 @@ export function ConsultantGuide({
   locations,
   guides,
   counselling = null,
+  similar = [],
 }: ConsultantGuideProps) {
   const self = `/study-abroad-consultants/${consultant.slug}`;
   const trail: Crumb[] = [
@@ -90,6 +96,17 @@ export function ConsultantGuide({
     once([location.city, location.state, location.country].filter((part) => part !== location.name)).join(', ');
   const destinationHref = (slug: string) =>
     guides.has(slug) ? `/study-abroad/${slug}/consultants` : `/study-abroad-consultants?country=${slug}#consultants`;
+  const similarNote = `Picked for the cities, destinations and services they share with ${consultant.name}. Paid placement plays no part.`;
+  const similarCards = similar.map((row) => (
+    <ConsultantCard
+      key={row.slug}
+      consultant={row}
+      countrySlug=""
+      guides={[...guides]}
+      guidance={counsellingHref({ source: 'general', from: self })}
+      compare
+    />
+  ));
 
   return (
     <>
@@ -397,6 +414,30 @@ export function ConsultantGuide({
           <ConsultantTrust className="trustbox--below" />
         </div>
       </section>
+
+      {/* The design closes the profile with consultants like this one,
+          from the published list alone. A single one sits beside the
+          heading rather than alone in a row. */}
+      {similar.length ? (
+        <section className="sec sec--paper sec--tight" id="similar">
+          <div className="wrap">
+            {similar.length === 1 ? (
+              <SectionHead eyebrow="Similar consultants" title="A consultant with a similar profile" lead={similarNote}>
+                <div className="consultgrid consultgrid--one">{similarCards}</div>
+              </SectionHead>
+            ) : (
+              <>
+                <div className="h-head">
+                  <p className="eyebrow">Similar consultants</p>
+                  <h2 className="sec-title sec-title--sm">Consultants with a similar profile</h2>
+                  <p className="sec-lead">{similarNote}</p>
+                </div>
+                <div className={`consultgrid${similar.length >= 3 ? ' consultgrid--3' : ''}`}>{similarCards}</div>
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <MatchBand
         eyebrow={{ n: 'Next step', label: 'Guidance' }}

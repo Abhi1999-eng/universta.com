@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
-import { consultantVerification } from '@/lib/consultant-profile';
+import { consultantNeighbours, consultantVerification } from '@/lib/consultant-profile';
 import { getCounsellingOptions } from '@/lib/counselling';
-import { liveLocationLinks, nameKey } from '@/lib/country-consultant-list';
-import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
+import { liveLocationLinks, nameKey, toConsultantRow, toConsultantRows } from '@/lib/country-consultant-list';
+import { phaseDetail, phaseListAll, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
 import { resolveContentVariables } from '../../../../../../../packages/content-variables';
@@ -40,9 +40,19 @@ export default async function ConsultantPage({ params }: Props) {
     if (redirect) permanentRedirect(redirect.targetPath);
     notFound();
   }
-  const [directory, counselling] = await Promise.all([getDestinations().catch(() => null), getCounsellingOptions()]);
+  const [directory, counselling, published] = await Promise.all([
+    getDestinations().catch(() => null),
+    getCounsellingOptions(),
+    /* The other consultants, for those like this one. Without them the
+       profile simply suggests none. */
+    phaseListAll<AnyRecord>('consultants').catch(() => null),
+  ]);
   const guides = new Set((directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])));
   const record = row as unknown as Record<string, unknown>;
+  const self = toConsultantRow(record);
+  const neighbours = self
+    ? consultantNeighbours(self, toConsultantRows(published?.data ?? []))
+    : { similar: [], others: [] };
   const list = (value: unknown, key: 'country' | 'location' | null) =>
     Array.isArray(value)
       ? value.map((entry) => {
@@ -94,6 +104,7 @@ export default async function ConsultantPage({ params }: Props) {
         })}
       guides={guides}
       counselling={counselling}
+      similar={neighbours.similar}
     />
   );
 }
