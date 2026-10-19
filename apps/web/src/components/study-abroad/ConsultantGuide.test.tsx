@@ -106,3 +106,13 @@ describe('a consultant profile\'s verification', () => {
     expect(html).toContain('Not yet verified');
   });
 });
+
+describe('a consultant profile\'s services', () => {
+  it('runs the list in the directory\'s two columns, with no invented group headings', () => {
+    const html = renderToStaticMarkup(
+      <ConsultantGuide {...props()} services={['Visa documentation', 'Course shortlisting', 'Interview practice']} />,
+    );
+    expect(html).toContain('<ul class="svclist svcgroups"><li class="svclist__item"><b>Visa documentation</b></li>');
+    expect(html).not.toContain('svcgroup__t');
+  });
+});

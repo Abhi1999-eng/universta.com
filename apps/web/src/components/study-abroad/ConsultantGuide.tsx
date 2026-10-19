@@ -260,8 +260,12 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             title="Services this consultant lists"
             lead="Only the services on this consultant's own profile. A listed service describes what they offer, not an outcome."
           />
+          {/* Two columns, as the directory sets the same list: one column
+              across the whole page left each name a long way from the
+              rule under it. Services have no categories here, so there
+              are no group headings. */}
           {services.length ? (
-            <ul className="svclist">
+            <ul className="svclist svcgroups">
               {services.map((service) => (
                 <li className="svclist__item" key={service}>
                   <b>{service}</b>
