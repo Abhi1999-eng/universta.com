@@ -102,8 +102,10 @@ export default async function Page({ params, searchParams }: Props) {
   /* Awards recorded against this course; failing those, the university's
      own. The destination's guide decides where the visa and living-cost
      links land and who the student can ask; the generic course holds the
-     questions editors wrote about it. Each is a cross-link here, so a
-     failure costs what it feeds rather than the page. */
+     questions editors wrote about it and its content sections -- the
+     curriculum, skills, documents and career outcomes. Each is a
+     cross-link here, so a failure costs what it feeds rather than the
+     page. */
   const [forCourse, guide, course] = await Promise.all([
     phaseList<AnyRecord>('scholarships', {
       offering: detail.card.slug,
@@ -133,6 +135,7 @@ export default async function Page({ params, searchParams }: Props) {
         scholarshipScope={forCourse.length ? 'course' : 'university'}
         destination={toDestination(guide)}
         faqs={course?.faqs ?? []}
+        sections={course?.contentSections ?? []}
       />
       <script type="application/ld+json">
         {jsonLdString(offeringJsonLd(detail, siteOrigin))}

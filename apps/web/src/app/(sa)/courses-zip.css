@@ -87,3 +87,49 @@
   }
   .sa .entrycard--split .entrycard__t { grid-column: 1 / -1; }
 }
+
+/* --- a programme's picture, where an editor chose one -------------------- */
+
+/* At the top of its card, as the subject cards draw theirs. */
+.sa .coursecard__media {
+  display: block; margin: 0; aspect-ratio: 16 / 7; overflow: hidden;
+  border-radius: 6px; background: var(--surface-sunken);
+}
+.sa .coursecard__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* --- a programme's own page ---------------------------------------------- */
+
+/* About: the display lead, then the full description, in the right-hand
+   column; the links after them. */
+.sa .cg-band .ov__lead { max-width: 34ch; }
+.sa .cg-band .ov__lead + .uc-longdesc,
+.sa .cg-band .ov__lead + .uc-longform,
+.sa .cg-band .ov__lead + .uc-missing { margin-top: 22px; }
+.sa .uc-longdesc { max-width: none; }
+
+/* Curriculum: the skills the course lists, across the width under it. */
+.sa .uc-skills { margin-top: clamp(30px, 3.6vw, 48px); }
+.sa .uc-skills .path__h { margin-bottom: 10px; }
+
+/* Fees: the headline box beside its rows, the notes under the rows. */
+.sa .uc-cost .cost__total { position: static; }
+.sa .uc-cost .costlist { margin: 0; }
+.sa .uc-cost .costrow dd { margin: 0; }
+
+/* Intakes: one card each, across the width. */
+@media (min-width: 1100px) {
+  .sa .uc-intakecards:has(> .intake:nth-child(3)) { grid-template-columns: repeat(3, 1fr); }
+}
+.sa .uc-intakecards { margin-top: 0; }
+.sa .uc-intakecards + .uc-missing { margin-top: 18px; }
+/* The long description, folded: the design's long-form toggle as a native
+   disclosure, so it opens without a script. */
+.sa .uc-longform { margin-top: 22px; }
+.sa .uc-longform > summary { list-style: none; }
+.sa .uc-longform > summary::-webkit-details-marker { display: none; }
+.sa .uc-longform[open] > summary .plus { transform: rotate(45deg); background: var(--paper); }
+.sa .uc-longform > .uc-longdesc { padding-bottom: 26px; }
+.sa .uc-longform + .uc-links { margin-top: 18px; }
+.sa .cg-band .sec-head--split .prose + .modnote,
+.sa .cg-band .sec-head--split .cg-checklist + .modnote,
+.sa .cg-band .sec-head--split .cg-media + .modnote { margin-top: 20px; }

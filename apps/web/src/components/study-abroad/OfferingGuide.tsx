@@ -10,7 +10,15 @@ import {
   type OfferingDetail,
 } from '@/lib/offering-detail';
 import type { ScholarshipCard } from '@/lib/scholarship-card';
-import { dateLabel, humanise, place, programmeType } from '@/lib/university-courses';
+import type { CourseDetail } from '@/lib/catalog';
+import { courseSections, sectionItems } from '@/lib/course-sections';
+import {
+  dateLabel,
+  humanise,
+  place,
+  programmeType,
+  tuitionParts,
+} from '@/lib/university-courses';
 import { breadcrumbJsonLd, faqJsonLd, type Crumb } from '@/lib/university-json-ld';
 import {
   countryUniversitiesHref,
@@ -22,6 +30,13 @@ import { Crumbs } from './Crumbs';
 import { CompareButton, CompareTray } from './CourseCompare';
 import { ConnectBand } from './DiscoveryBands';
 import { FlagMark } from './FlagMark';
+import {
+  CareerList,
+  DocumentPills,
+  SectionChecklist,
+  SectionMedia,
+  SectionProse,
+} from './CourseSectionParts';
 import { CourseSticky, EligibilityButton } from './OfferingActions';
 import { OfferingCard } from './OfferingCard';
 import { PlanBand } from './PlanBand';
@@ -46,16 +61,22 @@ import { countryConsultantsHref } from '@/lib/country-consultant-list';
  * page ends with the same course at other universities, each linking to
  * that university's own version of it.
  *
- * Nothing is invented to fill a gap. The design's curriculum lists modules
- * this catalogue does not keep per course, so its "What will you study?"
- * section is drawn the way the design draws a course without them: it says
- * the structure is not in our data and points to the official page. The
- * design's document checklist reads records the catalogue does not keep
- * either, and is not drawn. Its course FAQ is drawn from the questions
- * editors wrote for the course, and only when there are some.
+ * Nothing is invented to fill a gap. The curriculum, the skills, the
+ * documents and the career roles are the generic course's own content
+ * sections, which the route reads with the course: the curriculum fills
+ * "What will you study?", the documents are the design's "Documents
+ * required" pills beside the requirements and the career outcomes its
+ * numbered role list. A course without a curriculum section is drawn the
+ * way the design draws one without modules: the band says the structure is
+ * not in our data and points to the official page. Its course FAQ is drawn
+ * from the questions editors wrote for the course, and only when there are
+ * some.
  */
 
 const NOT_LISTED = 'Not listed';
+/** How long a description is read in place before it folds behind "Read
+ *  full course description". */
+const LONG_DESCRIPTION = 1200;
 
 export type OfferingFaq = { id: string; question: string; answer: string };
 
@@ -65,6 +86,7 @@ export function OfferingGuide({
   scholarshipScope = 'course',
   destination = null,
   faqs = [],
+  sections = [],
   today = new Date(),
 }: {
   detail: OfferingDetail;
@@ -77,6 +99,9 @@ export function OfferingGuide({
   destination?: UniversityDestination | null;
   /** The questions editors wrote for the course this one is an instance of. */
   faqs?: OfferingFaq[];
+  /** That course's content sections: its curriculum, skills, documents and
+   *  career outcomes are drawn here as well as on its guide. */
+  sections?: CourseDetail['contentSections'];
   today?: Date;
 }) {
   const { card, university } = detail;
@@ -159,11 +184,27 @@ export function OfferingGuide({
   const requirements = groupRequirements(detail.requirements);
   const overview = detail.overview?.trim();
   const hasOverview = Boolean(overview && richTextToPlainText(overview).trim());
+  /* Past this many characters the description opens on request, as the
+     design's long-form does; a shorter one is read in place. */
+  const longOverview = hasOverview && richTextToPlainText(overview!).trim().length > LONG_DESCRIPTION;
   const careers = detail.careerSummary?.trim();
   const language = teachingLanguage(detail.requirements);
   const questions = faqs.filter(
     (faq) => faq.question.trim() && richTextToPlainText(faq.answer).trim(),
   );
+  const {
+    curriculum,
+    skills,
+    documents,
+    careers: outcomes,
+  } = courseSections(sections);
+  const skillItems = sectionItems(skills);
+  const outcomeItems = sectionItems(outcomes);
+  /* The English tests the course lists, one card each under the grid. */
+  const tests = detail.requirements.filter(
+    (requirement) => requirement.category.toUpperCase() === 'ENGLISH_TEST',
+  );
+  const fee = card.tuition ? tuitionParts(card.tuition) : null;
 
   /* The tabs and the numbers both come from the bands that render. The
      questions follow the careers band, where the design puts them. */
@@ -176,7 +217,7 @@ export function OfferingGuide({
     ['apply', 'How to apply'],
   ];
   if (scholarships.length) numbered.push(['scholarships', 'Scholarships']);
-  if (careers) numbered.push(['careers', 'Careers']);
+  if (careers || outcomes) numbered.push(['careers', 'Careers']);
   if (questions.length) numbered.push(['faqs', 'FAQs']);
   numbered.push(['university', 'University']);
   const discovery: Array<[string, string]> = [];
@@ -429,6 +470,14 @@ export function OfferingGuide({
               </div>
             </aside>
           </div>
+          {/* The picture an editor chose for the programme, under its name
+              and its facts. */}
+          {card.media?.url ? (
+            <figure className="subjhero__media">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={card.media.url} alt={card.media.alt} loading="eager" />
+            </figure>
+          ) : null}
         </div>
       </section>
 
@@ -445,14 +494,38 @@ export function OfferingGuide({
         </div>
       </nav>
 
-      <section className={band('overview')} id="overview">
+      {/* The design's About: the short description as its display lead in
+          the right-hand column, the full description under it there, and
+          the key facts across the width below. */}
+      <section className={`${band('overview')} cg-band`} id="overview">
         <div className="wrap">
-          <SectionHead
-            n={n('overview')}
-            eyebrow="Overview"
-            title="About this programme"
-            lead={detail.shortDescription ?? undefined}
-          >
+          <SectionHead n={n('overview')} eyebrow="Overview" title="About this programme">
+            {detail.shortDescription ? (
+              <p className="ov__lead">{detail.shortDescription}</p>
+            ) : null}
+            {/* A long description behind the design's "Read full course
+                description", which opens in place; a short one in full. */}
+            {hasOverview && longOverview ? (
+              <details className="longform uc-longform">
+                <summary className="longform__toggle">
+                  <span>Read full course description</span>
+                  <span className="plus" aria-hidden="true">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </span>
+                </summary>
+                <div className="prose uc-longdesc">
+                  <RichText value={overview!} />
+                </div>
+              </details>
+            ) : hasOverview ? (
+              <div className="prose uc-longdesc">
+                <RichText value={overview!} />
+              </div>
+            ) : (
+              pointer(`${university.name} has not published a description of this course in our catalogue yet.`)
+            )}
             <div className="btn-row uc-links">
               <Link className="linkcta" href={listHref}>
                 View all {detail.more.total > 1 ? `${detail.more.total} ` : ''}
@@ -478,13 +551,6 @@ export function OfferingGuide({
               ) : null}
             </div>
           </SectionHead>
-          {hasOverview ? (
-            <div className="prose">
-              <RichText value={overview!} />
-            </div>
-          ) : (
-            pointer(`${university.name} has not published a description of this course in our catalogue yet.`)
-          )}
           <h3 className="uc-subhead">Key facts</h3>
           <div className="unisnap uc-keyfacts">
             {keyFacts.map((fact) => (
@@ -499,13 +565,31 @@ export function OfferingGuide({
         </div>
       </section>
 
-      {/* The design's module list, for a course without one: what it says
-          then, with the way to the page that does have it. */}
-      <section className={`${band('curriculum')} uc-curriculum`} id="curriculum">
+      {/* What the course's curriculum section says, and the skills it
+          lists; for a course without one, what the design says then, with
+          the way to the page that does have it. */}
+      <section
+        className={`${band('curriculum')} uc-curriculum cg-band`}
+        id="curriculum"
+      >
         <div className="wrap">
-          <SectionHead n={n('curriculum')} eyebrow="Curriculum" title="What will you study?">
+          <SectionHead
+            n={n('curriculum')}
+            eyebrow="Curriculum"
+            title={curriculum?.heading?.trim() || 'What will you study?'}
+            lead={curriculum?.subheading?.trim() || undefined}
+          >
+            {curriculum ? (
+              <>
+                <SectionChecklist section={curriculum} />
+                <SectionMedia media={curriculum.media} />
+              </>
+            ) : null}
+            {skills && !skillItems.length ? <SectionProse section={skills} /> : null}
             <p className="modnote uc-modnote">
-              A semester-by-semester structure is not in our data for this course.{' '}
+              {curriculum
+                ? 'Modules and their order change between years. '
+                : 'A semester-by-semester structure is not in our data for this course. '}
               {modulesSource ? (
                 <>
                   Check {modulesSource.named} for the current module sequence.{' '}
@@ -521,6 +605,12 @@ export function OfferingGuide({
               )}
             </p>
           </SectionHead>
+          {skillItems.length ? (
+            <div className="uc-skills">
+              <p className="path__h">{skills?.heading?.trim() || 'Skills you build'}</p>
+              <CareerList items={skillItems} label={skills?.heading?.trim() || 'Skills'} />
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -532,48 +622,64 @@ export function OfferingGuide({
             title="Tuition and cost"
             lead="What the catalogue records for international students. Living costs are set by the destination and live on its guide."
           />
-          {card.tuition ? (
+          {/* The design's cost layout: the headline fee in a box on the
+              left, its rows on the right. */}
+          {card.tuition && fee ? (
+            <div className="cost uc-cost">
+              <aside className="cost__total" aria-label="Tuition">
+                <div className="cost__total-head">
+                  <span className="label">Tuition</span>
+                </div>
+                <div className="cost__total-body">
+                  <div className="cost__big">{fee.amount}</div>
+                  <div className="cost__unit">
+                    {detail.tuitionPeriod ?? (fee.period ? 'Per year' : NOT_LISTED)}
+                  </div>
+                </div>
+              </aside>
+              <div>
+                <dl className="costlist">
+                  <div className="costrow">
+                    <dt className="costrow__l">Tuition</dt>
+                    <dd className="costrow__v datum">{card.tuition}</dd>
+                  </div>
+                  <div className="costrow">
+                    <dt className="costrow__l">Charged</dt>
+                    <dd className="costrow__v">{detail.tuitionPeriod ?? NOT_LISTED}</dd>
+                  </div>
+                  <div className="costrow">
+                    <dt className="costrow__l">Currency</dt>
+                    <dd className="costrow__v">{detail.currencyCode ?? NOT_LISTED}</dd>
+                  </div>
+                </dl>
+                <p className="uc-note">
+                  Published figure
+                  {dateLabel(detail.verifiedAt)
+                    ? `, verified ${dateLabel(detail.verifiedAt)}`
+                    : ''}
+                  . Confirm the exact fee with {university.name} before you apply.
+                </p>
+                <p className="uc-note">
+                  {/* The guide's cost section when it has one, which is
+                      where its living costs are. */}
+                  <Link href={costHref}>
+                    {/* One string: the compiler drops the space before an
+                        entity that follows an expression. */}
+                    {`Living costs and visa fees in ${inWhere} →`}
+                  </Link>
+                </p>
+              </div>
+            </div>
+          ) : (
             <>
-              <dl className="eligrid">
-                <div className="eligrid__row">
-                  <dt>Tuition</dt>
-                  <dd>
-                    <span className="datum">{card.tuition}</span>
-                  </dd>
-                </div>
-                <div className="eligrid__row">
-                  <dt>Charged</dt>
-                  <dd>
-                    <span>{detail.tuitionPeriod ?? NOT_LISTED}</span>
-                  </dd>
-                </div>
-                <div className="eligrid__row">
-                  <dt>Currency</dt>
-                  <dd>
-                    <span>{detail.currencyCode ?? NOT_LISTED}</span>
-                  </dd>
-                </div>
-              </dl>
+              {pointer('Fee information for this course is not listed yet.')}
               <p className="uc-note">
-                Published figure
-                {dateLabel(detail.verifiedAt)
-                  ? `, verified ${dateLabel(detail.verifiedAt)}`
-                  : ''}
-                . Confirm the exact fee with {university.name} before you apply.
+                <Link href={costHref}>
+                  {`Living costs and visa fees in ${inWhere} →`}
+                </Link>
               </p>
             </>
-          ) : (
-            pointer('Fee information for this course is not listed yet.')
           )}
-          <p className="uc-note">
-            {/* The guide's cost section when it has one, which is where its
-                living costs are. */}
-            <Link href={costHref}>
-              {/* One string: the compiler drops the space before an entity
-                  that follows an expression. */}
-              {`Living costs and visa fees in ${inWhere} →`}
-            </Link>
-          </p>
         </div>
       </section>
 
@@ -585,40 +691,48 @@ export function OfferingGuide({
             title="Intakes and deadlines"
             lead="Deadlines are set per course and move between cycles, so check the one you are applying to."
           />
-          <table className="entrytable uc-intakes">
-            <caption className="sr-only">
-              Intakes and application deadlines for {card.name}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Intake</th>
-                <th scope="col">Application deadline</th>
-                <th scope="col">Course start</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.intakes.length ? (
-                detail.intakes.map((intake) => (
-                  <tr key={`${intake.label}-${intake.deadline ?? ''}`}>
-                    <th scope="row">{intake.label}</th>
-                    <td>
-                      {dateLabel(intake.deadline) ?? NOT_LISTED}
-                      {intake.notes ? (
-                        <span className="entrytable__note">{intake.notes}</span>
-                      ) : null}
-                    </td>
-                    <td>{intake.start ?? NOT_LISTED}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <th scope="row">{NOT_LISTED}</th>
-                  <td>{NOT_LISTED}</td>
-                  <td>{NOT_LISTED}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {/* The design's intake cards, one per intake across the width:
+              its deadline and when classes begin, the next deadline still
+              to come marked as such and one that has passed said so. */}
+          <div className="intakes uc-intakecards">
+            {(detail.intakes.length
+              ? detail.intakes
+              : [{ label: NOT_LISTED, deadline: null, start: null, notes: null }]
+            ).map((intake) => {
+              const passed = Boolean(intake.deadline && intake.deadline < floor);
+              const next = Boolean(upcoming && intake.deadline === upcoming);
+              return (
+                <article
+                  className={`intake${next ? ' intake--primary' : ''}`}
+                  key={`${intake.label}-${intake.deadline ?? ''}`}
+                >
+                  <div className="intake__head">
+                    <h3 className="intake__name">{intake.label}</h3>
+                    {next ? (
+                      <span className="badge badge--ok">Next deadline</span>
+                    ) : passed ? (
+                      <span className="badge badge--neutral">Deadline passed</span>
+                    ) : null}
+                  </div>
+                  <dl className="intake__rows">
+                    <div className="intake__row">
+                      <dt>Application deadline</dt>
+                      <dd className={intake.deadline ? undefined : 'uc-none'}>
+                        {dateLabel(intake.deadline) ?? NOT_LISTED}
+                      </dd>
+                    </div>
+                    <div className="intake__row">
+                      <dt>Course start</dt>
+                      <dd className={intake.start ? undefined : 'uc-none'}>
+                        {intake.start ?? NOT_LISTED}
+                      </dd>
+                    </div>
+                  </dl>
+                  {intake.notes ? <p className="intake__note">{intake.notes}</p> : null}
+                </article>
+              );
+            })}
+          </div>
           {detail.intakes.length
             ? null
             : pointer('Intakes for this course have not been listed yet.')}
@@ -726,8 +840,57 @@ export function OfferingGuide({
                   </ul>
                 </>
               ) : null}
+              {/* The design's "Documents required" pills, from the
+                  documents section of the course this one teaches. */}
+              {documents ? (
+                <>
+                  <p className="path__h uc-gap">
+                    {documents.heading?.trim() || 'Documents required'}
+                  </p>
+                  {documents.subheading?.trim() ? (
+                    <p className="cg-note">{documents.subheading.trim()}</p>
+                  ) : null}
+                  <DocumentPills section={documents} />
+                </>
+              ) : null}
             </div>
           </div>
+          {/* The design's test cards: each English test the course lists,
+              its minimum where one is published, and that it is required. */}
+          {tests.length ? (
+            <div className="examreq">
+              <div className="examreq__head">
+                <h3 className="examreq__t">English tests</h3>
+                <p className="examtests__note">
+                  The English tests listed for this course. A test not named
+                  here may not be accepted, so check with the university
+                  before you book one.
+                </p>
+              </div>
+              <ul className="examtests__list">
+                {tests.map((test) => (
+                  <li className="examchip" key={test.title}>
+                    <span className="examchip__main">
+                      <span className="examchip__name">{test.title}</span>
+                      <span className="examchip__cat">English test</span>
+                    </span>
+                    <span className="examchip__meta">
+                      {test.minimumScore ? (
+                        <span className="examchip__score datum">
+                          Minimum {test.minimumScore}
+                        </span>
+                      ) : (
+                        <em>No minimum published</em>
+                      )}
+                    </span>
+                    <span className="examchip__side">
+                      <span className="badge badge--req">Required</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="btn-row uc-gap">
             <EligibilityButton
               className="btn btn--lg"
@@ -910,18 +1073,29 @@ export function OfferingGuide({
         </div>
       </section>
 
-      {careers ? (
-        <section className={band('careers')} id="careers">
+      {/* The careers prose beside the heading, and the course's career
+          outcomes as the design's numbered roles under it -- only the
+          ones an editor listed. */}
+      {careers || outcomes ? (
+        <section className={`${band('careers')} cg-band`} id="careers">
           <div className="wrap">
             <SectionHead
               n={n('careers')}
               eyebrow="Careers"
               title="Where can this course take you?"
               lead="Roles graduates of this kind of programme commonly move into. These are directions, not promises: no salary or employment figure is published here without a verified source."
+            >
+              {careers ? (
+                <div className="prose">
+                  <RichText value={careers} />
+                </div>
+              ) : null}
+              {outcomes && !outcomeItems.length ? <SectionProse section={outcomes} /> : null}
+            </SectionHead>
+            <CareerList
+              items={outcomeItems}
+              label={outcomes?.heading?.trim() || 'Career outcomes'}
             />
-            <div className="prose">
-              <RichText value={careers} />
-            </div>
             <div className="btn-row uc-gap">
               <Link className="linkcta" href={workHref}>
                 Post-study work rights in {inWhere}{' '}
