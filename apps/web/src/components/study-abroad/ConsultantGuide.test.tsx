@@ -219,3 +219,50 @@ describe('a consultant profile\'s similar consultants', () => {
     expect(render()).not.toContain('id="similar"');
   });
 });
+
+describe('a consultant profile\'s Related on Universta', () => {
+  const other = (slug: string, destinations: Array<{ slug: string; name: string }>) => ({
+    id: slug,
+    name: `Consultant ${slug}`,
+    slug,
+    summary: null,
+    verified: false,
+    verifiedAt: null,
+    cities: [],
+    services: [],
+    languages: [],
+    destinations,
+  });
+  const related = (html: string) => html.slice(html.indexOf('h-related'), html.indexOf('</section>', html.indexOf('h-related')));
+
+  it('lists the destinations covered and the other consultants for them, A to Z and said not to be a ranking', () => {
+    const html = renderToStaticMarkup(
+      <ConsultantGuide
+        {...props()}
+        countries={[
+          { name: 'Japan', slug: 'japan' },
+          { name: 'Germany', slug: 'germany' },
+        ]}
+        guides={new Set(['japan'])}
+        others={[
+          other('alpha', [{ slug: 'japan', name: 'Japan' }, { slug: 'france', name: 'France' }]),
+          other('beta', [{ slug: 'germany', name: 'Germany' }]),
+        ]}
+      />,
+    );
+    const block = related(html);
+    expect(block).toContain('Related on Universta');
+    expect(block).toContain('Destinations covered');
+    expect(block).toContain('<a href="/study-abroad/japan">Study in Japan</a>');
+    /* A destination with no guide is not a link to a missing page. */
+    expect(block).toContain('<a href="/study-abroad-consultants?country=germany#consultants">Study in Germany</a>');
+    expect(block).toContain('Other consultants for these destinations');
+    expect(block).toContain('<a href="/study-abroad-consultants/alpha">Consultant alpha</a><span>Japan</span>');
+    expect(block).toContain('In alphabetical order. This is not a ranking.');
+    expect(block).not.toMatch(/Subjects|levels/);
+  });
+
+  it('leaves the band\'s related groups out when there is nothing to relate', () => {
+    expect(render()).not.toContain('Related on Universta');
+  });
+});

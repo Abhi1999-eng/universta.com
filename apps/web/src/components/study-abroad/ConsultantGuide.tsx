@@ -56,6 +56,9 @@ export type ConsultantGuideProps = {
   counselling?: CounsellingOptions | null;
   /** "Consultants with a similar profile", chosen by consultantNeighbours. */
   similar?: CountryConsultantRow[];
+  /** The other consultants for this one's destinations, A to Z, none of
+   *  them among `similar`. */
+  others?: CountryConsultantRow[];
 };
 
 export function ConsultantGuide({
@@ -67,6 +70,7 @@ export function ConsultantGuide({
   guides,
   counselling = null,
   similar = [],
+  others = [],
 }: ConsultantGuideProps) {
   const self = `/study-abroad-consultants/${consultant.slug}`;
   const trail: Crumb[] = [
@@ -462,6 +466,33 @@ export function ConsultantGuide({
             ghost: true,
           })),
           { href: '/scholarships', label: 'Find scholarships', ghost: true },
+        ]}
+        /* "Related on Universta", as the design closes a profile: where the
+           consultant works, then who else works there. Subjects and levels
+           are left out -- Universta records neither for a consultant. */
+        groups={[
+          {
+            title: 'Destinations covered',
+            items: countries.map((country) => ({
+              id: country.slug,
+              name: `Study in ${country.name}`,
+              href: guides.has(country.slug) ? `/study-abroad/${country.slug}` : destinationHref(country.slug),
+            })),
+          },
+          {
+            title: 'Other consultants for these destinations',
+            total: others.length,
+            items: others.map((row) => ({
+              id: row.slug,
+              name: row.name,
+              href: `/study-abroad-consultants/${row.slug}`,
+              note: row.destinations
+                .filter((entry) => countries.some((country) => country.slug === entry.slug))
+                .map((entry) => entry.name)
+                .join(', '),
+            })),
+            note: 'In alphabetical order. This is not a ranking.',
+          },
         ]}
       />
 

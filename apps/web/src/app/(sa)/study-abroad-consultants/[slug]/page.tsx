@@ -105,6 +105,7 @@ export default async function ConsultantPage({ params }: Props) {
       guides={guides}
       counselling={counselling}
       similar={neighbours.similar}
+      others={neighbours.others}
     />
   );
 }
