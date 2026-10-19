@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeConsultantFilters,
   canonicalConsultantFilters,
+  consultantChips,
   consultantListHref,
   consultantLogo,
   consultantOptions,
@@ -328,5 +329,59 @@ describe('a consultant\'s logo', () => {
   it('rides on the card row, and is null for a record without one', () => {
     expect(toConsultantRow(record({ featuredMedia: { publicUrl: '/media/l.png' } }))?.logo).toBe('/media/l.png');
     expect(toConsultantRow(record())?.logo).toBeNull();
+  });
+});
+
+describe('the search finds a consultant by the destinations it lists', () => {
+  it('matches "Japan" to every consultant the Destination filter counts under Japan', () => {
+    const listed = toConsultantRows([
+      record({ id: 'j', slug: 'j', name: 'Kestrel Admissions', countries: [{ country: { name: 'Japan', slug: 'japan' } }] }),
+      record({ id: 'n', slug: 'n', name: 'Nobody Advisers', countries: [] }),
+    ]);
+    expect(names(filterConsultants(listed, state({ q: 'japan' })))).toEqual(['Kestrel Admissions']);
+    expect(consultantOptions(listed).destinations).toEqual([{ value: 'japan', label: 'Japan', count: 1 }]);
+  });
+});
+
+describe('the chips for what is in force', () => {
+  const options = consultantOptions(rows);
+
+  it('names the search and each choice by its filter\'s label, in order, each undoing only itself', () => {
+    const now = state({
+      q: 'visa',
+      destinations: ['belize'],
+      cities: ['pune'],
+      services: ['course-selection'],
+      languages: ['hi'],
+      verified: true,
+      page: 3,
+    });
+    const chips = consultantChips(now, options);
+    expect(chips.map((chip) => chip.label)).toEqual([
+      '\u201cvisa\u201d',
+      'Belize',
+      'Pune',
+      'Course selection',
+      'Hindi',
+      'Verified by Universta',
+    ]);
+    expect(chips[0]!.next).toEqual({ ...now, q: '', page: 1 });
+    expect(chips[2]!.next.cities).toEqual([]);
+    expect(chips[2]!.next.services).toEqual(['course-selection']);
+    expect(chips[5]!.next.verified).toBe(false);
+    expect(consultantListHref('/study-abroad-consultants', chips[1]!.next)).toBe(
+      '/study-abroad-consultants?q=visa&city=pune&service=course-selection&language=hi&verified=true',
+    );
+  });
+
+  it('takes a destination\'s name from the published list when no consultant here lists it', () => {
+    const chips = consultantChips(state({ destinations: ['japan'] }), options, {
+      destinations: new Map([['japan', 'Japan']]),
+    });
+    expect(chips.map((chip) => chip.label)).toEqual(['Japan']);
+  });
+
+  it('is empty when nothing is in force', () => {
+    expect(consultantChips(state({ sort: 'name-asc' }), options)).toEqual([]);
   });
 });

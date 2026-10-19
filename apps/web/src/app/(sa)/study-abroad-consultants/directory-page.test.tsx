@@ -115,3 +115,9 @@ describe('the directory\'s "Consultants by study destination"', () => {
     expect(section(await render(), 'destinations')).toBe('');
   });
 });
+
+describe('the directory\'s search box', () => {
+  it('says it finds consultants by country and city as well', async () => {
+    expect(await render()).toContain('placeholder="Consultant, country, city or service"');
+  });
+});

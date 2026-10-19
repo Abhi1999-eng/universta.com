@@ -129,7 +129,7 @@ export default async function ConsultantsPage() {
             {managed.lede ?? 'Explore consultants by destination, city and services — then connect through Universta.'}
           </p>
           <div className="bigsearch__wrap" style={{ marginTop: 22 }}>
-            <CountryListSearch placeholder="Consultant, city or service" label="Search consultants" />
+            <CountryListSearch placeholder="Consultant, country, city or service" label="Search consultants" />
           </div>
           <div className="btn-row" style={{ marginTop: 18 }}>
             <button className="btn btn--accent" type="button" data-open-assessment data-intent="consultants-index">

@@ -184,7 +184,7 @@ export default async function Page({ params }: Props) {
               </p>
               {rows.length ? (
                 <CountryListSearch
-                  placeholder="Consultant, city or service"
+                  placeholder="Consultant, country, city or service"
                   label={`Search consultants for ${where}`}
                 />
               ) : null}

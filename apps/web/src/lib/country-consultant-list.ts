@@ -378,9 +378,16 @@ export function narrowsConsultants(
   return options.length > 1 || (options.length === 1 && options[0]!.count < total);
 }
 
-/** The words a consultant is found by: the name, the cities and the services. */
+/** The words a consultant is found by: the name, the cities, the services
+ *  and the destinations it lists -- "Japan" finds every consultant the
+ *  Destination filter counts under Japan. */
 function searchText(row: CountryConsultantRow) {
-  return [row.name, ...row.cities, ...row.services.map((service) => service.name)].join(' ');
+  return [
+    row.name,
+    ...row.cities,
+    ...row.services.map((service) => service.name),
+    ...row.destinations.map((destination) => destination.name),
+  ].join(' ');
 }
 
 /**
@@ -436,4 +443,41 @@ export function activeConsultantFilters(state: ConsultantListState) {
     state.languages.length +
     (state.verified ? 1 : 0)
   );
+}
+
+export type ConsultantChip = {
+  key: string;
+  label: string;
+  /** The list's state with this one choice undone. */
+  next: ConsultantListState;
+};
+
+/**
+ * The choices in force, one chip each, above the results: the search, then
+ * each destination, city, service and language, then "Verified". Each
+ * names what it removes by the label its filter shows.
+ */
+export function consultantChips(
+  state: ConsultantListState,
+  options: Pick<ReturnType<typeof consultantOptions>, 'destinations' | 'cities' | 'services' | 'languages'>,
+  names: { destinations?: ReadonlyMap<string, string> } = {},
+): ConsultantChip[] {
+  const chips: ConsultantChip[] = [];
+  const reset = { page: 1 };
+  if (state.q) chips.push({ key: 'q', label: `\u201c${state.q}\u201d`, next: { ...state, ...reset, q: '' } });
+  const label = (list: ConsultantFilterOption[], value: string) =>
+    list.find((option) => option.value === value)?.label ?? value.replace(/-/g, ' ');
+  for (const key of ['destinations', 'cities', 'services', 'languages'] as const)
+    for (const value of state[key])
+      chips.push({
+        key: `${key}:${value}`,
+        label:
+          key === 'destinations' && names.destinations?.has(value)
+            ? names.destinations.get(value)!
+            : label(options[key], value),
+        next: { ...state, ...reset, [key]: state[key].filter((entry) => entry !== value) },
+      });
+  if (state.verified)
+    chips.push({ key: 'verified', label: 'Verified by Universta', next: { ...state, ...reset, verified: false } });
+  return chips;
 }

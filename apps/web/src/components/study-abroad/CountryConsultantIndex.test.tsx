@@ -113,3 +113,39 @@ describe('a consultant card\'s logo', () => {
     expect(renderToStaticMarkup(<ConsultantCard consultant={rows[0]!} countrySlug="" logo />)).not.toContain('<img');
   });
 });
+
+describe('the chips above the results', () => {
+  const chips = (html: string) =>
+    [...html.matchAll(/<a class="activechip" rel="nofollow" aria-label="Remove ([^"]+)" href="([^"]*)">/g)].map(
+      (match) => `${match[1]} -> ${match[2]!.replace(/&amp;/g, '&')}`,
+    );
+
+  it('shows each choice in force with a link that removes just that one, and "Clear all" for more than one', () => {
+    address.search = 'q=lind&country=japan&city=pune&verified=true';
+    const html = renderToStaticMarkup(
+      <CountryConsultantIndex rows={rows} countrySlug="" where="any destination" byDestination />,
+    );
+    expect(chips(html)).toEqual([
+      '“lind” -> /study-abroad-consultants?country=japan&city=pune&verified=true',
+      'Japan -> /study-abroad-consultants?q=lind&city=pune&verified=true',
+      'Pune -> /study-abroad-consultants?q=lind&country=japan&verified=true',
+      'Verified by Universta -> /study-abroad-consultants?q=lind&country=japan&city=pune',
+    ]);
+    expect(html).toContain('activechips__clear linkbtn');
+    expect(html.indexOf('activechips')).toBeLessThan(html.indexOf('consultgrid'));
+  });
+
+  it('shows no chips row when nothing is in force', () => {
+    expect(
+      renderToStaticMarkup(<CountryConsultantIndex rows={rows} countrySlug="" where="any destination" byDestination />),
+    ).not.toContain('activechips');
+  });
+
+  it('works the same on a destination\'s own page, where the destination itself is never a chip', () => {
+    address.path = '/study-abroad/japan/consultants';
+    address.search = 'country=japan&city=delhi';
+    const html = renderToStaticMarkup(<CountryConsultantIndex rows={rows} countrySlug="japan" where="Japan" />);
+    expect(chips(html)).toEqual(['Delhi -> /study-abroad/japan/consultants']);
+    expect(html).not.toContain('activechips__clear');
+  });
+});

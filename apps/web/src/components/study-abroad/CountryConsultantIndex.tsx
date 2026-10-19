@@ -9,6 +9,7 @@ import {
   CONSULTANT_STEP,
   activeConsultantFilters,
   canonicalConsultantFilters,
+  consultantChips,
   consultantListHref,
   consultantOptions,
   countryConsultantsHref,
@@ -254,6 +255,7 @@ export function CountryConsultantIndex({
   };
   const shown = filterConsultants(rows, filters);
   const active = activeConsultantFilters(filters);
+  const chips = consultantChips(filters, options);
   const narrowed = active > 0 || filters.q !== '';
   const visible = Math.min(shown.length, filters.page * CONSULTANT_STEP);
   const total = rows.length;
@@ -448,6 +450,29 @@ export function CountryConsultantIndex({
                 ) : null}
               </div>
             </div>
+
+            {/* What is in force, each with its own way to undo it. */}
+            {chips.length ? (
+              <div className="activechips" aria-label="Filters in force">
+                {chips.map((chip) => (
+                  <Link
+                    key={chip.key}
+                    className="activechip"
+                    href={consultantListHref(path, chip.next)}
+                    rel="nofollow"
+                    scroll={false}
+                    aria-label={`Remove ${chip.label}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      commit(chip.next);
+                    }}
+                  >
+                    {chip.label} <span aria-hidden="true">&times;</span>
+                  </Link>
+                ))}
+                {chips.length > 1 ? clearLink('Clear all', 'activechips__clear linkbtn') : null}
+              </div>
+            ) : null}
 
             {shown.length ? (
               <div className="consultgrid">
