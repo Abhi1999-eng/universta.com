@@ -73,3 +73,45 @@ describe('the directory\'s "near you" heading', () => {
     expect(cities).toContain('<p class="eyebrow">By city</p><h2 class="sec-title sec-title--sm">Study abroad consultants near you</h2>');
   });
 });
+
+describe('the directory\'s "Consultants by study destination"', () => {
+  const destination = (slug: string, name: string) => ({
+    name,
+    slug,
+    iso2Code: null,
+    isPopular: false,
+    isAvailable: true,
+    region: null,
+    summary: null,
+    bands: null,
+    counts: {},
+  });
+  const tiles = (html: string) =>
+    [...section(html, 'destinations').matchAll(/<a class="destgrid__item" href="([^"]+)">.*?destgrid__name">Study in ([^<]+)<\/span><span class="destgrid__n">([^<]+)</g)].map(
+      (match) => `${match[2]} ${match[3]} ${match[1]!.replace(/&amp;/g, '&')}`,
+    );
+
+  it('lists every destination with a guide: "N listed" to its consultants, "Guide" to its guide when none lists it', async () => {
+    api.available = [destination('japan', 'Japan'), destination('germany', 'Germany'), destination('canada', 'Canada')];
+    api.consultants = [
+      consultant('a', { countries: [{ country: { name: 'Germany', slug: 'germany' } }] }),
+      consultant('b', { countries: [{ country: { name: 'Germany', slug: 'germany' } }, { country: { name: 'Belize', slug: 'belize' } }] }),
+    ];
+    expect(tiles(await render())).toEqual([
+      'Germany 2 listed /study-abroad/germany/consultants',
+      /* A destination a consultant lists but no guide covers keeps its link into the list. */
+      'Belize 1 listed /study-abroad-consultants?country=belize#consultants',
+      'Canada Guide /study-abroad/canada',
+      'Japan Guide /study-abroad/japan',
+    ]);
+  });
+
+  it('still shows the destinations when no consultant lists one yet', async () => {
+    api.available = [destination('japan', 'Japan')];
+    expect(tiles(await render())).toEqual(['Japan Guide /study-abroad/japan']);
+  });
+
+  it('stands down when there is no destination at all', async () => {
+    expect(section(await render(), 'destinations')).toBe('');
+  });
+});

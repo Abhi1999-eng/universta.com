@@ -88,6 +88,19 @@ export default async function ConsultantsPage() {
   const guideOf = new Map(destinations.flatMap((entry) => (entry.slug ? [[entry.slug, entry] as const] : [])));
   const guides = (directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : []));
   const n = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
+  /* "Consultants by study destination": every destination with a guide,
+     and any other a consultant lists. One with consultants opens them;
+     one with none yet opens its guide, marked "Guide", rather than an
+     empty list. */
+  const listed = new Map(options.destinations.map((entry) => [entry.value, entry] as const));
+  const tiles = [
+    ...(directory?.available ?? []).flatMap((entry) =>
+      entry.slug ? [{ slug: entry.slug, name: entry.name, count: listed.get(entry.slug)?.count ?? 0 }] : [],
+    ),
+    ...options.destinations
+      .filter((entry) => !guides.includes(entry.value))
+      .map((entry) => ({ slug: entry.value, name: entry.label, count: entry.count })),
+  ].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return (
     <>
@@ -198,25 +211,27 @@ export default async function ConsultantsPage() {
         </section>
       ) : null}
 
-      {options.destinations.length ? (
+      {tiles.length ? (
         <section className="sec sec--paper" id="destinations">
           <div className="wrap">
             <SectionHead
               eyebrow="By destination"
               title="Consultants by study destination"
-              lead="Each destination page lists the consultants who support it, where they are and what they help with."
+              lead="Each destination page lists the consultants who support it, where they are and what they help with. Where none is listed yet, the destination's guide is the place to start."
             />
             <div className="destgrid">
-              {options.destinations.map((entry) => {
-                const guide = guideOf.get(entry.value);
-                const href = guide?.isAvailable
-                  ? countryConsultantsHref(entry.value)
-                  : `${consultantListHref(PATH, { destinations: [entry.value] })}#consultants`;
+              {tiles.map((entry) => {
+                const guide = guideOf.get(entry.slug);
+                const href = entry.count
+                  ? guide?.isAvailable
+                    ? countryConsultantsHref(entry.slug)
+                    : `${consultantListHref(PATH, { destinations: [entry.slug] })}#consultants`
+                  : `/study-abroad/${entry.slug}`;
                 return (
-                  <Link className="destgrid__item" href={href} key={entry.value}>
+                  <Link className="destgrid__item" href={href} key={entry.slug}>
                     <FlagMark iso2Code={guide?.iso2Code ?? null} bands={guide?.bands ?? null} />
-                    <span className="destgrid__name">Study in {entry.label}</span>
-                    <span className="destgrid__n">{formatNumber(entry.count)} listed</span>
+                    <span className="destgrid__name">Study in {entry.name}</span>
+                    <span className="destgrid__n">{entry.count ? `${formatNumber(entry.count)} listed` : 'Guide'}</span>
                   </Link>
                 );
               })}
