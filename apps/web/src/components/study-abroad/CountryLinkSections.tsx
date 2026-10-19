@@ -11,6 +11,7 @@ import { countryUniversitiesHref } from '@/lib/university-links';
 import { countryScholarshipsHref } from '@/lib/country-scholarship-list';
 import { countryConsultantsHref } from '@/lib/country-consultant-list';
 import type { RelatedGroup } from './DiscoveryBands';
+import { QuoteCard } from './QuoteCard';
 
 /**
  * The country guide's sections that link out to the rest of the catalogue:
@@ -702,15 +703,8 @@ export function CountryCourses({
   );
 }
 
-/** The initials shown beside a quote, from whatever attribution it carries. */
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
+/** How many quotes the guide prints before pointing to the testimonials page. */
+export const TESTIMONIALS_SHOWN = 6;
 
 /**
  * "What students say" -- testimonials attached to this destination.
@@ -744,31 +738,24 @@ export function CountryTestimonials({
           lead="Published as given, with the attribution each student agreed to."
         />
         <div className="quotes">
-          {testimonials.slice(0, 6).map((testimonial) => (
-            <figure className="quote" key={testimonial.id}>
-              <span className="quote__mark" aria-hidden="true">
-                “
-              </span>
-              <blockquote className="quote__t">{testimonial.quote}</blockquote>
-              {testimonial.attribution ? (
-                <figcaption className="quote__by">
-                  <span className="quote__init" aria-hidden="true">
-                    {initials(testimonial.attribution)}
-                  </span>
-                  <span>
-                    <span className="quote__n">{testimonial.attribution}</span>
-                    {testimonial.attributionNote ? (
-                      <>
-                        <br />
-                        <span className="quote__r">{testimonial.attributionNote}</span>
-                      </>
-                    ) : null}
-                  </span>
-                </figcaption>
-              ) : null}
-            </figure>
+          {testimonials.slice(0, TESTIMONIALS_SHOWN).map((testimonial) => (
+            <QuoteCard
+              key={testimonial.id}
+              quote={testimonial.quote}
+              /* A quote with no name keeps no foot, as before. */
+              name={testimonial.attribution}
+              note={testimonial.attribution ? testimonial.attributionNote : null}
+              image={testimonial.imageMedia}
+            />
           ))}
         </div>
+        {testimonials.length > TESTIMONIALS_SHOWN ? (
+          <p className="h-more">
+            <Link className="linkcta" href="/testimonials">
+              Read all testimonials <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
+            </Link>
+          </p>
+        ) : null}
       </div>
     </section>
   );

@@ -1,0 +1,133 @@
+/* =====================================================================
+   RECORD PAGES: testimonials, success stories, events and careers
+   The zip's patterns these pages borrow and study-abroad.css does not
+   already carry: the hub article with its sticky aside (hub.css), the
+   event and role cards built on the scholarship card, and the small
+   pieces the record guides need. Imported by those pages only.
+   ===================================================================== */
+
+/* --- Testimonials -------------------------------------------------- */
+/* The university under a student's name links to its page. */
+.sa .quote__r a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sa .quote__r a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+
+/* --- Success stories ----------------------------------------------- */
+/* The student's byline sits at the foot of a story card, above its link. */
+.sa .storycard .quote__by { margin-top: auto; padding-top: 14px; }
+.sa .storycard .h-card__d { margin-bottom: 10px; }
+
+/* The zip's hub article (hub.css): the story in a reading column with a
+   300px card beside it, held in view from 980px; stacked on a phone. */
+.sa .h-article { display: grid; gap: 30px; }
+.sa .h-article__main { min-width: 0; }
+.sa .h-article .h-head { max-width: none; }
+.sa .h-aside .h-card { gap: 10px; padding: 20px; }
+.sa .h-aside .quote__by { padding-top: 0; padding-bottom: 14px; border-top: 0; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px; }
+.sa .h-aside .btn { margin-top: 6px; }
+@media (min-width: 980px) {
+  .sa .h-article { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+  .sa .h-aside { position: sticky; top: calc(var(--nav-h) + 20px); }
+}
+
+/* --- Record pages' hero ---------------------------------------------- */
+/* An event's or a role's hero in the zip's split (scholarship.html): the
+   title and its buttons on the left, the dark date card on the right; on a
+   phone the card follows the title. The /events listing puts its next event
+   there. An event's picture follows the date card on a phone and runs the
+   width of both columns on a wide screen, so nothing sits empty beside it. */
+.sa .recordhero > div:first-child { min-width: 0; }
+.sa .recordhero .hero__sub { max-width: 60ch; }
+.sa .recordhero__aside { min-width: 0; }
+.sa .recordhero__media { margin: 0; max-width: 760px; aspect-ratio: 21 / 9; overflow: hidden; border-radius: 12px; background: var(--surface-sunken); }
+.sa .hero__lead .recordhero__media { margin-top: 26px; }
+@media (min-width: 1000px) {
+  .sa .recordhero > .recordhero__media { grid-column: 1 / -1; max-width: none; aspect-ratio: 16 / 5; }
+}
+.sa .recordhero__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sa .deadlinecard__row > span:last-child { text-align: right; }
+.sa .deadlinecard__row .badge { flex: none; }
+
+/* A record's prose band: the heading held on the left and the words in
+   the wide column beside it, as the level pages' bands; stacked on a phone. */
+.sa .recordband .sec-head { margin-bottom: 0; }
+.sa .recordband .h-prose { max-width: none; }
+@media (min-width: 940px) {
+  .sa .recordband .sec-head--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+}
+
+/* --- Events ---------------------------------------------------------- */
+/* The event card is the zip's scholarship card. Its title's link covers
+   the whole card; Register and the country chip sit above that link, so
+   each is a link of its own. */
+.sa .eventcard { position: relative; }
+.sa .eventcard__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.sa .eventcard__link:focus-visible { outline: 0; }
+.sa .eventcard:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7, 20, 38, 0.1); }
+.sa .eventcard a:not(.eventcard__link) { position: relative; z-index: 1; }
+.sa .eventcard:hover .schcard__name a { color: var(--accent); }
+.sa .eventcard__media { display: block; margin: -18px -20px 4px; aspect-ratio: 2 / 1; overflow: hidden; border-radius: 8px 8px 0 0; background: var(--surface-sunken); }
+.sa .eventcard__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sa .eventcard .schcard__foot { flex-wrap: wrap; justify-content: flex-start; }
+.sa .eventplace { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.sa .eventplace a.flagchip { color: inherit; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sa .eventplace a.flagchip:hover { color: var(--accent); text-decoration-color: var(--accent); }
+
+/* The /events hero's right half: the next event to start. */
+.sa .nextevent {
+  display: grid; gap: 14px; padding: 20px 22px;
+  background: var(--white); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+}
+.sa .nextevent__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sa .nextevent__body { display: flex; gap: 16px; align-items: flex-start; }
+.sa .nextevent__date {
+  flex: none; display: grid; justify-items: center; gap: 2px; width: 74px; padding: 10px 6px;
+  background: var(--navy); color: #fff; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.3;
+}
+.sa .nextevent__date b { font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; text-transform: none; }
+.sa .nextevent__what { min-width: 0; display: grid; gap: 4px; }
+.sa .nextevent__t { margin: 0 0 4px; font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.sa .nextevent__t a { color: inherit; text-decoration: none; }
+.sa .nextevent__t a:hover { color: var(--accent); }
+.sa .nextevent__m { margin: 0; font-size: 13.5px; color: var(--muted); }
+.sa .nextevent .btn-row { margin: 0; }
+
+/* The events finder: the search box over the filter panel and results,
+   with the past events in their own band under the upcoming ones. */
+.sa .eventdir__search { margin: 0 0 22px; }
+.sa .eventdir__past { margin-top: clamp(34px, 4vw, 52px); }
+.sa .eventdir__past .h-head { margin-bottom: 18px; }
+
+/* "More upcoming events" with only one other event: the card takes the
+   band's width rather than leaving its right half empty. */
+.sa #more-events .schgrid > :only-child { grid-column: 1 / -1; }
+
+/* Speakers: one card per name, across the band. */
+.sa .speakers { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.sa .speakers__card { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: var(--white); border: 1px solid var(--line); border-radius: 8px; }
+.sa .speakers__card strong { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.015em; }
+/* On the dark card a status badge needs its own ground, as the zip's has. */
+.sa .recordhero .deadlinecard .badge--ok { background: #E4F2ED; }
+.sa .recordhero .deadlinecard .badge--req { background: #FBE6E6; }
+.sa .recordhero .deadlinecard .badge--neutral { background: #EEF1F5; color: #4A5565; }
+
+/* --- Careers --------------------------------------------------------- */
+/* The role card: its type as the zip's pill at the top, and "Closing
+   soon" beside the closing date. */
+.sa .jobcard .jobcard__type { align-self: flex-start; margin-bottom: 2px; }
+.sa .jobcard__when .badge { vertical-align: 1px; }
+/* Each part of the meta line ("Closes 1 Jan 2027") wraps whole. */
+.sa .jobcard__date { white-space: nowrap; }
+
+/* An email in the facts strip breaks after its "@" or a dot, never inside
+   a word, and its cell may narrow to the strip rather than push past it. */
+.sa .unisnap--fit > .unisnap__cell { min-width: 0; }
+.sa .unisnap__cell b .unisnap__mail { overflow-wrap: break-word; word-break: normal; }
+
+/* On a phone the facts strip is two columns; an odd last cell takes the
+   whole row rather than leaving a grey gap beside it. */
+@media (max-width: 559px) {
+  .sa .unisnap--fit > .unisnap__cell:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+/* The /careers search box alone in its row takes the whole width. */
+.sa .dir__search > .dir__input:only-child { grid-column: 1 / -1; }

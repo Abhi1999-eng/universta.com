@@ -51,6 +51,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     items: [
       { label: 'Country Guides', href: '/study-abroad', description: 'Explore study destinations' },
       { label: 'Success Stories', href: '/success-stories', description: 'Read student stories' },
+      { label: 'Testimonials', href: '/testimonials', description: 'What students say' },
       { label: 'Events', href: '/events', description: 'Browse upcoming events' },
       { label: 'FAQs', href: '/faq', description: 'Answers to common questions' },
     ],
@@ -94,6 +95,7 @@ const FOOTER_COLUMNS = [
       { label: 'Scholarships', href: '/scholarships' },
       { label: 'Subjects', href: '/subjects' },
       { label: 'Events', href: '/events' },
+      { label: 'Testimonials', href: '/testimonials' },
       { label: 'Questions', href: '/faq' },
     ],
   },
