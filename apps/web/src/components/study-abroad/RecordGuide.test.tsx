@@ -118,6 +118,20 @@ describe('EventGuide', () => {
   it('draws an event whose zone was mistyped, in the site zone (EV-C3)', () => {
     const doc = page({ timezone: 'Tokyo' });
     expect(doc.querySelector('.deadlinecard .deadlinecard__row span:last-child')?.textContent).toBe('2:30 pm – 4:00 pm IST');
+    /* The facts strip prints its times in that zone too, and names it, rather
+       than "Tokyo" beside times that are India's. */
+    const cells = Object.fromEntries(
+      [...doc.querySelectorAll('.unisnap__cell')].map((cell) => [cell.querySelector('.label')?.textContent, cell.querySelector('b')?.textContent]),
+    );
+    expect(cells['Starts']).toBe('20 Nov 2026, 2:30 pm');
+    expect(cells['Time zone']).toBe('Asia/Kolkata');
+  });
+
+  it('leaves the Time zone cell out when the event names none, and prints its times in the site zone', () => {
+    const doc = page({ timezone: null });
+    const labels = [...doc.querySelectorAll('.unisnap__cell .label')].map((label) => label.textContent);
+    expect(labels).not.toContain('Time zone');
+    expect(doc.querySelector('.unisnap__cell b')?.textContent).toBe('20 Nov 2026, 2:30 pm');
   });
 
   it('fills in the description variables (EV-M1)', () => {

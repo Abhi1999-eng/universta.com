@@ -352,7 +352,10 @@ export function EventGuide({
   const self = `/events/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const title = text(row.title) ?? 'Event';
   const trail: Crumb[] = [{ label: 'Home', href: '/' }, { label: 'Events', href: '/events' }, { label: title }];
-  const zone = text(row.timezone);
+  /* The zone every time on the page is printed in: the event's own, or the
+     site's when the editor's is not a zone ("Tokyo"), so the Time zone cell
+     never names a zone the times are not in. */
+  const zone = eventZone(row.timezone);
   const registration = text(row.registrationUrl);
   const online = text(row.onlineUrl);
   const format = eventFormat(row.eventType, row.onlineUrl)?.label ?? null;
@@ -407,7 +410,7 @@ export function EventGuide({
         cells={[
           starts ? { label: 'Starts', value: starts } : null,
           when(row.endsAt, zone) ? { label: 'Ends', value: when(row.endsAt, zone) } : null,
-          zone ? { label: 'Time zone', value: zone.replace(/_/g, ' ') } : null,
+          text(row.timezone) ? { label: 'Time zone', value: zone.replace(/_/g, ' ') } : null,
           format ? { label: 'Format', value: format } : null,
           place.place || place.country
             ? { label: text(row.venue) ? 'Venue' : 'Location', value: <EventPlace row={row} guides={guides} physical /> }
