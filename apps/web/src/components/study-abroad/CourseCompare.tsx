@@ -384,8 +384,25 @@ export function CompareAddPicker({
 
 /**
  * On the comparison's bare address, a shortlist already on this device is
- * offered rather than silently opened: "/compare/courses" with nothing
- * chosen still says nothing is chosen.
+ * opened, as the design's compare page does: the address is replaced by the
+ * one naming those programmes, so the page never says "No courses selected
+ * yet" over a shortlist the tray has just been showing. Replaced rather
+ * than pushed, so Back does not land on the bare address and bounce again.
+ * Nothing on this device, nothing happens.
+ */
+export function OpenStoredShortlist() {
+  const router = useRouter();
+  useEffect(() => {
+    const stored = compareItems();
+    if (stored.length) router.replace(compareHref(stored));
+  }, [router]);
+  return null;
+}
+
+/**
+ * The same shortlist offered as a link, for the moment before it opens and
+ * for a browser without script: "/compare/courses" with nothing chosen
+ * still says nothing is chosen, and where to find what is.
  */
 export function StoredShortlist() {
   const compare = useCourseCompare();

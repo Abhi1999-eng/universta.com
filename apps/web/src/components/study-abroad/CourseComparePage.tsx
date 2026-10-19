@@ -14,6 +14,7 @@ import {
   CompareAddPicker,
   CompareRemoveLink,
   CompareSync,
+  OpenStoredShortlist,
   StoredShortlist,
 } from './CourseCompare';
 import { Crumbs } from './Crumbs';
@@ -250,8 +251,15 @@ export function CourseComparePage({
                   : 'No programmes are listed to compare yet.'}
               </p>
               {/* Only on the bare address: one that names programmes is
-                  answered by them, found or not. */}
-              {requested.length ? null : <StoredShortlist />}
+                  answered by them, found or not. A shortlist on this
+                  device opens at once; the link stays for a browser
+                  without script. */}
+              {requested.length ? null : (
+                <>
+                  <OpenStoredShortlist />
+                  <StoredShortlist />
+                </>
+              )}
               <div className="btn-row compare-empty__actions">
                 <Link className="btn" href="/courses">
                   Search courses{' '}
