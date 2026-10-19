@@ -103,3 +103,58 @@ describe('a consultant location page', () => {
     expect(await render()).toMatch(/hero__eyebrow">Heidelberg advisory centre<b>·<\/b>1 consultant</);
   });
 });
+
+describe('a consultant location page\'s hero and closing row', () => {
+  const section = (html: string, id: string) => {
+    const from = html.indexOf(`id="${id}"`);
+    return from < 0 ? '' : html.slice(from, html.indexOf('</section>', from));
+  };
+  const hero = (html: string) => html.slice(html.indexOf('hero--compact'), html.indexOf('</section>', html.indexOf('hero--compact')));
+  const office = (slug: string, name: string, city: string) => ({ location: { slug, name, city, status: 'ACTIVE' } });
+
+  it('carries the search, and the destinations the consultants here list, each narrowing the list to it', async () => {
+    api.location = heidelberg({
+      consultants: [
+        { consultant: consultant('a', { countries: [{ country: { name: 'Japan', slug: 'japan' } }] }) },
+        { consultant: consultant('b', { countries: [{ country: { name: 'Japan', slug: 'japan' } }, { country: { name: 'Germany', slug: 'germany' } }] }) },
+      ],
+    });
+    const top = hero(await render());
+    expect(top).toContain('placeholder="Consultant, country, city or service"');
+    expect(top).toContain('aria-label="Search consultants in Heidelberg"');
+    expect(top).toContain('<span class="label">Popular destinations</span>');
+    expect(top).toContain(
+      'href="/study-abroad-consultants/locations/heidelberg-advisory-centre?country=japan#consultants">Japan<em>2</em>',
+    );
+  });
+
+  it('shows no "Popular destinations" when the consultants here list none', async () => {
+    expect(hero(await render())).not.toContain('Popular destinations');
+  });
+
+  it('closes with the other offices in the same city, the directory and the trust box, where it had one lone link', async () => {
+    api.consultants = [
+      consultant('x', { locations: [office('heidelberg-advisory-centre', 'Heidelberg advisory centre', 'Heidelberg')] }),
+      consultant('y', { locations: [office('heidelberg-old-town', 'Old Town office', 'Heidelberg'), office('pune', 'Pune', 'Pune')] }),
+    ];
+    const related = section(await render(), 'related');
+    expect(related).toContain('Nearby and related');
+    expect(related).toContain('<a href="/study-abroad-consultants/locations/heidelberg-old-town">Old Town office, Heidelberg</a>');
+    expect(related).not.toContain('locations/pune');
+    expect(related).not.toContain('locations/heidelberg-advisory-centre"');
+    expect(related).toContain('<a href="/study-abroad-consultants">Browse all consultants</a>');
+    expect(related).toContain('How Universta works with consultants');
+    expect(related).not.toContain('Studying in');
+  });
+
+  it('adds the destination\'s guide when the place has a country, and keeps the Explore next band', async () => {
+    api.location = heidelberg({ country: { name: 'Germany', slug: 'germany' } });
+    api.destinations = [{ name: 'Germany', slug: 'germany', isAvailable: true }];
+    const html = await render();
+    const related = section(html, 'related');
+    expect(related).toContain('Studying in Germany');
+    expect(related).toContain('<a href="/study-abroad/germany">Germany study guide</a>');
+    expect(related).toContain('<a href="/study-abroad/germany/consultants">Germany consultants</a>');
+    expect(html).toContain('id="connect"');
+  });
+});

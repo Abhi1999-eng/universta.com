@@ -69,3 +69,34 @@ export function consultantLocationHref(slug: string): string {
 export function locationHeading(location: { name?: unknown; city?: unknown; state?: unknown }): string {
   return `Study abroad consultants in ${locationPlaceLabel(location)}`;
 }
+
+/** How many other places "Nearby and related" names. */
+export const NEARBY_SHOWN = 8;
+
+const same = (a: string | null, b: string | null) => Boolean(a && b && a.toLowerCase() === b.toLowerCase());
+
+/**
+ * The other live offices to offer under a location's consultants: those in
+ * the same state (and the same country, when both say), or, with no state,
+ * the same country, or, with neither, the same city. Never the location
+ * itself, each place once, A to Z by place and then by name.
+ */
+export function nearbyOffices(
+  location: { slug: string; city?: unknown; state?: unknown; countrySlug?: string | null },
+  offices: readonly ConsultantOffice[],
+  limit = NEARBY_SHOWN,
+): ConsultantOffice[] {
+  const city = text(location.city);
+  const state = text(location.state);
+  const country = location.countrySlug ?? null;
+  const near = (office: ConsultantOffice) => {
+    if (office.slug === location.slug) return false;
+    if (state) return same(office.state, state) && (!country || !office.countrySlug || office.countrySlug === country);
+    if (country) return office.countrySlug === country;
+    return same(office.city, city);
+  };
+  return offices
+    .filter(near)
+    .sort((a, b) => locationPlaceLabel(a).localeCompare(locationPlaceLabel(b)) || a.name.localeCompare(b.name))
+    .slice(0, limit);
+}
