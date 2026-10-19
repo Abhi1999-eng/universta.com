@@ -662,10 +662,8 @@ export type TuitionRange = { currencyCode: string | null; count: number };
 /** Whether every row is taught in the same country. */
 export function inOneCountry(rows: ProgrammeRow[]) {
   if (!rows.length) return false;
-  const first = countryOf(rows[0]!)?.slug ?? null;
-  return (
-    first !== null && rows.every((row) => countryOf(row)?.slug === first)
-  );
+  const first = countryOf(rows[0])?.slug ?? null;
+  return first !== null && rows.every((row) => countryOf(row)?.slug === first);
 }
 
 /**
@@ -721,7 +719,11 @@ export function settleProgrammeFees(
   offered: TuitionRange | null,
   rows: ProgrammeRow[],
   today = new Date(),
-): { query: ProgrammeQuery; tuition: TuitionRange | null; rows: ProgrammeRow[] } {
+): {
+  query: ProgrammeQuery;
+  tuition: TuitionRange | null;
+  rows: ProgrammeRow[];
+} {
   let tuition = offered;
   if (!tuition) {
     const matched = rows.filter((row) =>

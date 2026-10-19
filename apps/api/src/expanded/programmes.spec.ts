@@ -303,11 +303,17 @@ describe('narrowing across universities', () => {
   });
 
   it('counts a programme as funded by a live award or its course’s tick in its country', () => {
-    const ticked = { ...catalogue[0]!, scholarshipAvailable: true };
-    expect(matchesProgramme(ticked, parse({ scholarship: 'true' }), today)).toBe(true);
+    const ticked = { ...catalogue[0], scholarshipAvailable: true };
+    expect(
+      matchesProgramme(ticked, parse({ scholarship: 'true' }), today),
+    ).toBe(true);
     expect(
       programmeFacets([ticked, ...catalogue.slice(1)], parse({}), today).extras,
-    ).toContainEqual({ value: 'scholarship', label: 'With scholarships', count: 2 });
+    ).toContainEqual({
+      value: 'scholarship',
+      label: 'With scholarships',
+      count: 2,
+    });
   });
 });
 
@@ -506,24 +512,51 @@ describe('fees, wherever the rows share one currency', () => {
     const facets = programmeFacets(japanOnly, query, today);
     expect(facets.countries).toHaveLength(1);
     expect(facets.tuition).toEqual({ currencyCode: 'JPY', count: 2 });
-    const settled = settleProgrammeFees(query, facets.tuition, japanOnly, today);
+    const settled = settleProgrammeFees(
+      query,
+      facets.tuition,
+      japanOnly,
+      today,
+    );
     expect(settled.query.sort).toBe('fee');
     expect(settled.query.tuitionMax).toBe(530000);
     expect(settled.query.ignored).toEqual([]);
     expect(
       sortOfferings(
-        settled.rows.filter((row) => matchesProgramme(row, settled.query, today)),
+        settled.rows.filter((row) =>
+          matchesProgramme(row, settled.query, today),
+        ),
         settled.query.sort,
       ).map((row) => row.name),
     ).toEqual(['MEng Civil', 'PhD IST']);
   });
 
   it('offers it across countries whose fees are all in one currency', () => {
-    const paris = university('Sorbonne', { ...uk, name: 'France', slug: 'france', iso2Code: 'FR' }, 'Paris');
-    const berlin = university('TU Berlin', { ...uk, name: 'Germany', slug: 'germany', iso2Code: 'DE' }, 'Berlin');
+    const paris = university(
+      'Sorbonne',
+      { ...uk, name: 'France', slug: 'france', iso2Code: 'FR' },
+      'Paris',
+    );
+    const berlin = university(
+      'TU Berlin',
+      { ...uk, name: 'Germany', slug: 'germany', iso2Code: 'DE' },
+      'Berlin',
+    );
     const euros = [
-      programme({ name: 'MSc A', university: paris, tuitionMin: '3770', currencyCode: 'EUR', tuitionPeriod: 'PER_YEAR' }),
-      programme({ name: 'MSc B', university: berlin, tuitionMin: '1500', currencyCode: 'EUR', tuitionPeriod: 'PER_YEAR' }),
+      programme({
+        name: 'MSc A',
+        university: paris,
+        tuitionMin: '3770',
+        currencyCode: 'EUR',
+        tuitionPeriod: 'PER_YEAR',
+      }),
+      programme({
+        name: 'MSc B',
+        university: berlin,
+        tuitionMin: '1500',
+        currencyCode: 'EUR',
+        tuitionPeriod: 'PER_YEAR',
+      }),
     ];
     expect(programmeFacets(euros, parse({}), today).tuition).toEqual({
       currencyCode: 'EUR',
@@ -541,11 +574,20 @@ describe('fees, wherever the rows share one currency', () => {
         tuitionMin: '520800',
         currencyCode: 'JPY',
         tuitionPeriod: 'PER_YEAR',
-        genericCourse: { slug: 'meng-civil', name: 'MEng Civil', subject: computing, courseLevel: PG },
+        genericCourse: {
+          slug: 'meng-civil',
+          name: 'MEng Civil',
+          subject: computing,
+          courseLevel: PG,
+        },
       }),
     ];
     /* Counted over the whole catalogue, pounds and yen: no range there. */
-    const offered = programmeFacets(rows, programmeScope(robotics), today).tuition;
+    const offered = programmeFacets(
+      rows,
+      programmeScope(robotics),
+      today,
+    ).tuition;
     expect(offered).toBeNull();
     const settled = settleProgrammeFees(robotics, offered, rows, today);
     expect(settled.tuition).toEqual({ currencyCode: 'JPY', count: 1 });
@@ -556,7 +598,12 @@ describe('fees, wherever the rows share one currency', () => {
   it('keeps the multi-currency guard for a list whose fee lacks a currency', () => {
     const unknown = [
       tokyoFee('MIST', '535800'),
-      programme({ name: 'X', university: warwick, tuitionMin: '9000', tuitionPeriod: 'PER_YEAR' }),
+      programme({
+        name: 'X',
+        university: warwick,
+        tuitionMin: '9000',
+        tuitionPeriod: 'PER_YEAR',
+      }),
     ];
     expect(programmeFacets(unknown, parse({}), today).tuition).toBeNull();
   });

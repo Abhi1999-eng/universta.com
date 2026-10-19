@@ -71,7 +71,7 @@ describe('a course’s public detail', () => {
   it('reads each section with its picture', async () => {
     const { calls, courses } = service(course());
     await courses.publicDetail('mist');
-    const include = (calls[0]!.include as Row).contentSections as Row;
+    const include = (calls[0].include as Row).contentSections as Row;
     expect(include.include).toEqual({
       media: { select: expect.objectContaining({ publicUrl: true }) },
     });
@@ -121,13 +121,13 @@ describe('a course’s public detail', () => {
       }),
     );
     const detail = await courses.publicDetail('mist');
-    expect(detail.contentSections[0]!.media).toBeNull();
+    expect(detail.contentSections[0].media).toBeNull();
   });
 
   it('carries the course code, and null when none was given', async () => {
-    expect((await service(course()).courses.publicDetail('mist')).courseCode).toBe(
-      'IST-M',
-    );
+    expect(
+      (await service(course()).courses.publicDetail('mist')).courseCode,
+    ).toBe('IST-M');
     expect(
       (await service(course({ courseCode: null })).courses.publicDetail('mist'))
         .courseCode,

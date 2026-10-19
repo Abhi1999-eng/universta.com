@@ -89,8 +89,22 @@ function build(rows: Array<Record<string, unknown>>) {
     mediaAsset: {
       findMany: async (args: Args) =>
         [
-          { id: 'm-live', publicUrl: '/media/warwick.jpg', altText: 'Campus', title: null, status: 'ACTIVE', deletedAt: null },
-          { id: 'm-old', publicUrl: '/media/old.jpg', altText: null, title: null, status: 'ARCHIVED', deletedAt: null },
+          {
+            id: 'm-live',
+            publicUrl: '/media/warwick.jpg',
+            altText: 'Campus',
+            title: null,
+            status: 'ACTIVE',
+            deletedAt: null,
+          },
+          {
+            id: 'm-old',
+            publicUrl: '/media/old.jpg',
+            altText: null,
+            title: null,
+            status: 'ARCHIVED',
+            deletedAt: null,
+          },
         ]
           .filter(
             (asset) =>
@@ -98,7 +112,12 @@ function build(rows: Array<Record<string, unknown>>) {
               asset.status === args.where.status &&
               asset.deletedAt === null,
           )
-          .map(({ id, publicUrl, altText, title }) => ({ id, publicUrl, altText, title })),
+          .map(({ id, publicUrl, altText, title }) => ({
+            id,
+            publicUrl,
+            altText,
+            title,
+          })),
     },
     universityCourseOffering: {
       findMany: async (args: Args) => {
@@ -181,8 +200,18 @@ describe('the programme finder’s reads', () => {
       countryCourses: [{ countryId }],
     });
     const { service, findMany } = build([
-      scanned({ id: 'o-here', slug: 'here', university: uk, genericCourse: ticked('gb') }),
-      scanned({ id: 'o-elsewhere', slug: 'elsewhere', university: uk, genericCourse: ticked('jp') }),
+      scanned({
+        id: 'o-here',
+        slug: 'here',
+        university: uk,
+        genericCourse: ticked('gb'),
+      }),
+      scanned({
+        id: 'o-elsewhere',
+        slug: 'elsewhere',
+        university: uk,
+        genericCourse: ticked('jp'),
+      }),
       scanned({ id: 'o-none', slug: 'none', university: uk }),
     ]);
     const result = await service.programmes({ scholarship: 'true' });
@@ -193,7 +222,9 @@ describe('the programme finder’s reads', () => {
       count: 1,
     });
     /* Only a live, offered tick is read. */
-    expect(findMany[0]!.select.genericCourse.select.countryCourses.where).toEqual({
+    expect(
+      findMany[0].select.genericCourse.select.countryCourses.where,
+    ).toEqual({
       scholarshipAvailable: true,
       status: 'ACTIVE',
       deletedAt: null,
@@ -240,10 +271,19 @@ describe('the programme finder’s reads', () => {
     const tokyo = {
       ...warwick,
       slug: 'university-of-tokyo',
-      country: { ...warwick.country, name: 'Japan', slug: 'japan', iso2Code: 'JP' },
+      country: {
+        ...warwick.country,
+        name: 'Japan',
+        slug: 'japan',
+        iso2Code: 'JP',
+      },
     };
     const { service } = build([
-      scanned({ tuitionMin: '30000', currencyCode: 'GBP', tuitionPeriod: 'PER_YEAR' }),
+      scanned({
+        tuitionMin: '30000',
+        currencyCode: 'GBP',
+        tuitionPeriod: 'PER_YEAR',
+      }),
       scanned({
         id: 'o-t',
         slug: 'o-t',
@@ -263,14 +303,28 @@ describe('the programme finder’s reads', () => {
      country being chosen, as one in a chosen country always did. */
   it('applies the fee order and range where every programme shares a currency', async () => {
     const fee = (id: string, tuitionMin: string) =>
-      scanned({ id, slug: id, name: id, tuitionMin, currencyCode: 'GBP', tuitionPeriod: 'PER_YEAR' });
-    const { service } = build([fee('b', '30000'), fee('a', '22000'), fee('c', '26000')]);
+      scanned({
+        id,
+        slug: id,
+        name: id,
+        tuitionMin,
+        currencyCode: 'GBP',
+        tuitionPeriod: 'PER_YEAR',
+      });
+    const { service } = build([
+      fee('b', '30000'),
+      fee('a', '22000'),
+      fee('c', '26000'),
+    ]);
     const low = await service.programmes({ sort: 'fee' });
     expect(low.meta.sort).toBe('fee');
     expect(low.meta.ignored).toEqual([]);
     expect(low.facets.tuition).toEqual({ currencyCode: 'GBP', count: 3 });
     expect(low.data.map((row) => row.id)).toEqual(['a', 'c', 'b']);
-    const high = await service.programmes({ sort: 'fee-high', tuitionMax: '28000' });
+    const high = await service.programmes({
+      sort: 'fee-high',
+      tuitionMax: '28000',
+    });
     expect(high.meta.sort).toBe('fee-high');
     expect(high.data.map((row) => row.id)).toEqual(['c', 'a']);
   });
@@ -406,7 +460,10 @@ describe('the pictures on the finder’s cards', () => {
     ]);
     const result = await service.programmes({ sort: 'name' });
     const byId = new Map(
-      result.data.map((row: Record<string, unknown>) => [row.id, row.featuredMedia]),
+      result.data.map((row: Record<string, unknown>) => [
+        row.id,
+        row.featuredMedia,
+      ]),
     );
     expect(byId.get('a')).toEqual({
       id: 'm-live',

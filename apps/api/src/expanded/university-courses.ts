@@ -419,7 +419,9 @@ export function matchesCourseQuery(row: OfferingLike, query: CourseQuery) {
  * empty list.
  */
 export function hasScholarship(row: OfferingLike) {
-  return (row._count?.scholarships ?? 0) > 0 || row.scholarshipAvailable === true;
+  return (
+    (row._count?.scholarships ?? 0) > 0 || row.scholarshipAvailable === true
+  );
 }
 
 const byName = (a: OfferingLike, b: OfferingLike) =>
@@ -735,7 +737,9 @@ export function offeringMediaIds(
   ];
 }
 
-export function withOfferingMedia<T extends { featuredMediaId?: string | null }>(
+export function withOfferingMedia<
+  T extends { featuredMediaId?: string | null },
+>(
   rows: T[],
   assets: ReadonlyMap<string, PublicMedia>,
 ): Array<T & { featuredMedia: PublicMedia | null }> {

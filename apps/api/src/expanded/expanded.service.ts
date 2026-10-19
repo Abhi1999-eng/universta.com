@@ -1563,7 +1563,7 @@ export class ExpandedService {
       ]);
       return {
         ...withSeo,
-        featuredMedia: withOfferingMedia([row], assets)[0]!.featuredMedia,
+        featuredMedia: withOfferingMedia([row], assets)[0].featuredMedia,
         ...around,
         related: withOfferingMedia(around.related, assets),
         elsewhere: withOfferingMedia(around.elsewhere, assets),

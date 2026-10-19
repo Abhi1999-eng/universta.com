@@ -265,8 +265,13 @@ describe('ordering the list', () => {
       'PhD Computing',
     ]);
     const ranged = [
-      { ...catalogue[0]!, name: 'Range', tuitionMin: '10000', tuitionMax: '40000' },
-      { ...catalogue[1]!, name: 'Flat', tuitionMin: '35000', tuitionMax: null },
+      {
+        ...catalogue[0],
+        name: 'Range',
+        tuitionMin: '10000',
+        tuitionMax: '40000',
+      },
+      { ...catalogue[1], name: 'Flat', tuitionMin: '35000', tuitionMax: null },
     ];
     expect(sortOfferings(ranged, 'fee-high').map((row) => row.name)).toEqual([
       'Range',
