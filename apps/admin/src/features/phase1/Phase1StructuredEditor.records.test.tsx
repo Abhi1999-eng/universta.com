@@ -208,6 +208,33 @@ describe('SEO fields', () => {
     expect(input(scope, 'Meta description').placeholder).toBe('Words.');
     expect(input(scope, 'Allow search engines to index this page').checked).toBe(false);
   });
+
+  /* SS-M3. A record the old editor had already saved holds its own name and
+     the site default as "written" SEO. Shown as values, they were saved again,
+     and after a rename the page kept the old name as its title. */
+  it('start empty for a stored echo the page ignores, so a save clears it', async () => {
+    const DEFAULT = 'Explore published study-abroad courses, universities, destinations and scholarships on Universta.';
+    record = {
+      id: 'story-3',
+      title: 'From Pune to Tokyo',
+      slug: 'from-pune-to-tokyo',
+      status: 'PUBLISHED',
+      journey: '<p>It began with a phone call.</p>',
+      seo: { seoTitle: 'From Pune to Tokyo', metaDescription: 'It began with a phone call.', ogTitle: 'From Pune to Tokyo', source: { title: 'fallback', description: 'fallback', canonical: 'fallback' } },
+      seoStored: { seoTitle: 'From Pune to Tokyo', metaDescription: DEFAULT, ogTitle: 'From Pune to Tokyo', ogDescription: DEFAULT, twitterTitle: 'From Pune to Tokyo', twitterDescription: DEFAULT, robotsIndex: true, robotsFollow: true },
+    };
+    open('success-stories', 'story-3');
+    const scope = await form();
+    expect(input(scope, 'SEO title').value).toBe('');
+    expect(input(scope, 'SEO title').placeholder).toBe('From Pune to Tokyo');
+    expect(input(scope, 'Meta description').value).toBe('');
+    expect(input(scope, 'Open Graph title').value).toBe('');
+    await userEvent.clear(input(scope, 'Title'));
+    await userEvent.type(input(scope, 'Title'), 'From Pune to Kyoto');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body.seo).toMatchObject({ seoTitle: '', metaDescription: '', ogTitle: '', ogDescription: '', twitterTitle: '', twitterDescription: '' });
+  });
 });
 
 describe('a success story', () => {

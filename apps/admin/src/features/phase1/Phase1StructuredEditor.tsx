@@ -21,6 +21,7 @@ import { isFutureCalendarDate } from '@/lib/calendar-date';
 import { richTextOrEmpty } from '@/features/shared/rich-text-value';
 import { DEFAULT_TIME_ZONE, isTimeZone, timeZoneNames, utcIsoToWallTime, wallTimeToUtcIso, zoneOrDefault } from '@/lib/zoned-time';
 import { offeringDurationUnit, rowFieldLabel, singularTitle } from './structured-editor-labels';
+import { writtenSeoValues } from './seo-echoes';
 import { EditorSectionNav } from '@/features/shared/EditorSectionNav';
 
 type Option = {
@@ -206,10 +207,14 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
        that predates `seoStored` still fills them from `seo`. */
     const storedSeo = 'seoStored' in record ? record.seoStored : record.seo;
     const writtenSeo = storedSeo && typeof storedSeo === 'object' ? (storedSeo as Row) : null;
-    for (const key of [...SEO_TEXT_KEYS, 'ogMediaId', 'twitterMediaId']) next[key] = writtenSeo ? string(writtenSeo[key]) : '';
+    const resolvedSeo = 'seoStored' in record && record.seo && typeof record.seo === 'object' ? (record.seo as Row) : null;
+    /* A stored title or description the page ignores -- the old editor's
+       copy of the record's own name or the site default -- starts empty, so
+       the next save clears it and a rename is followed again. */
+    Object.assign(next, writtenSeoValues(writtenSeo, resolvedSeo, SEO_TEXT_KEYS));
+    for (const key of ['ogMediaId', 'twitterMediaId']) next[key] = writtenSeo ? string(writtenSeo[key]) : '';
     next.robotsIndex = writtenSeo?.robotsIndex === false ? 'false' : 'true';
     next.robotsFollow = writtenSeo?.robotsFollow === false ? 'false' : 'true';
-    const resolvedSeo = 'seoStored' in record && record.seo && typeof record.seo === 'object' ? (record.seo as Row) : null;
     setSeoPlaceholders(resolvedSeo ? Object.fromEntries(SEO_TEXT_KEYS.map((key) => [key, string(resolvedSeo[key])])) : {});
     next.deadline = next.deadline ? next.deadline.slice(0, 10) : '';
     next.verifiedAt = next.verifiedAt ? next.verifiedAt.slice(0, 10) : '';
