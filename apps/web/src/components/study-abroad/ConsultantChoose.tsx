@@ -9,7 +9,7 @@ export const CONSULTANT_CHOOSE = [
   ['Check university relationships', 'Ask which universities they represent or work with, and ask for evidence. A recommendation is not a partnership.'],
   ['Understand service fees', 'Ask for all fees in writing, including whether any university pays them a commission.'],
   ['Ask what is included', 'Confirm exactly which services are covered, from shortlisting to visa documents.'],
-  ['Check credentials where they apply', 'Immigration advice is regulated in many countries. Check any claimed authorization on the official register.'],
+  ['Check credentials where they apply', 'Immigration advice is regulated in many countries. Check any claimed authorisation on the official register.'],
   ['Avoid guarantees', 'No consultant can guarantee admission, a visa, a scholarship, a job or permanent residence. Treat guarantees as a warning sign.'],
   ['Review written agreements', 'Read the agreement before paying, including refund terms and what happens if an application is unsuccessful.'],
   ['Verify through official sources', 'Confirm requirements, deadlines and fees with the university and the official government website.'],
