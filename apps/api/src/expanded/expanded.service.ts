@@ -177,6 +177,53 @@ function contains(value: string | undefined) {
   return value?.trim() ? { contains: value.trim() } : undefined;
 }
 
+/** Whether an Intl formatter accepts this as an IANA time zone. */
+export function isTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A date filter value, as a full ISO instant or a plain YYYY-MM-DD; an
+ * unreadable value filters nothing rather than throwing a 500. */
+function filterDate(value: string | undefined): Date | null {
+  if (!value?.trim()) return null;
+  const parsed = new Date(value.trim());
+  return Number.isNaN(parsed.valueOf()) ? null : parsed;
+}
+
+/**
+ * Which events a listing asks for, as one condition.
+ *
+ * An event is over once it has ended -- its end, or its start when it has
+ * no end -- so one that started half an hour ago and runs for two more is
+ * still upcoming. `from` and `to` bound the start. Each part is its own
+ * entry in one AND: written as spreads they all set `startsAt` and the last
+ * one silently won.
+ */
+export function eventDateWhere(
+  query: { when?: string; from?: string; to?: string },
+  now: Date,
+): Array<Record<string, unknown>> {
+  const parts: Array<Record<string, unknown>> = [];
+  if (query.when === 'upcoming')
+    parts.push({
+      OR: [{ endsAt: { gte: now } }, { endsAt: null, startsAt: { gte: now } }],
+    });
+  else if (query.when === 'past')
+    parts.push({
+      OR: [{ endsAt: { lt: now } }, { endsAt: null, startsAt: { lt: now } }],
+    });
+  const from = filterDate(query.from);
+  const to = filterDate(query.to);
+  if (from) parts.push({ startsAt: { gte: from } });
+  if (to) parts.push({ startsAt: { lte: to } });
+  return parts;
+}
+
 /**
  * Bounded fetch-all cap for resources whose public listing needs an
  * application-level "effectively featured" sort (Prisma cannot express the
@@ -1169,31 +1216,34 @@ export class ExpandedService {
         ...(query.state ? { state: { slug: query.state } } : {}),
         ...(query.country ? { country: { slug: query.country } } : {}),
         ...(query.mode ? { eventType: query.mode } : {}),
-        ...(query.when === 'past'
-          ? { startsAt: { lt: now } }
-          : query.when === 'upcoming'
-            ? { startsAt: { gte: now } }
-            : {}),
-        ...(query.from ? { startsAt: { gte: new Date(query.from) } } : {}),
-        ...(query.to ? { startsAt: { lte: new Date(query.to) } } : {}),
       };
+      /* `publishedWhereScheduled` holds an AND of its own, so the dates are
+         added to it rather than written over it. */
+      where.AND = [...(where.AND as unknown[]), ...eventDateWhere(query, now)];
       const all = await this.prisma.event.findMany({
         where,
         take: FEATURED_FETCH_CAP,
         include: {
           city: { select: { name: true, slug: true } },
           state: { select: { name: true, slug: true } },
-          country: { select: { name: true, slug: true } },
+          country: { select: { name: true, slug: true, iso2Code: true } },
         },
       });
+      /* Soonest first; past events are read the other way round, the one
+         that has just finished at the top. */
+      const direction = query.when === 'past' ? -1 : 1;
       const sorted = sortByFeatured(
         all,
         now,
         (row) => row.title,
-        (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+        (a, b) => (a.startsAt.getTime() - b.startsAt.getTime()) * direction,
       );
       const total = sorted.length;
-      const data = sorted.slice(skip, skip + limit);
+      const data = await this.withMedia(
+        sorted.slice(skip, skip + limit),
+        'featuredMediaId',
+        'featuredMedia',
+      );
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'success-stories') {
@@ -1331,6 +1381,25 @@ export class ExpandedService {
           ([story]) => story,
         ),
       );
+    }
+    if (resource === 'events') {
+      const row = await this.prisma.event.findFirst({
+        where: { slug, ...publishedWhereScheduled(now) },
+        include: {
+          country: true,
+          city: true,
+          state: { select: { id: true, name: true, slug: true } },
+        },
+      });
+      if (!row) return this.notFound(resource);
+      /* The image is resolved before the SEO, so a share card can fall back
+         to the event's own picture when nobody chose one for it. */
+      const [withImage] = await this.withMedia(
+        [row],
+        'featuredMediaId',
+        'featuredMedia',
+      );
+      return this.withSeo(resource, withImage);
     }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -4189,6 +4258,20 @@ export class ExpandedService {
       normalizeDate('expiryDate');
     }
     if (resource === 'events') {
+      /* Every date on the site is drawn in this zone, and one an Intl
+         formatter does not know took the whole events listing down. Left
+         empty, it keeps the zone it has (or the default, on a new event). */
+      if ('timezone' in data) {
+        const zone = this.optionalText(data.timezone);
+        if (!zone) delete data.timezone;
+        else if (!isTimeZone(zone))
+          throw new UnprocessableEntityException({
+            code: 'INVALID_TIMEZONE',
+            message: `"${zone}" is not a time zone. Choose one from the list, for example Asia/Kolkata or Europe/London.`,
+            details: null,
+          });
+        else data.timezone = zone;
+      }
       normalizeDate('startsAt');
       normalizeDate('endsAt');
       const startsAt = data.startsAt as Date | null | undefined;

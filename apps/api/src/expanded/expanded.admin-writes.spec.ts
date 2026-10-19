@@ -141,4 +141,33 @@ describe('ExpandedService admin writes', () => {
     });
   });
 
+  /* EV-C3. A timezone typed as "Tokyo" saved, and every visitor's events
+     listing answered 500. */
+  describe('an event’s time zone', () => {
+    const event = {
+      title: 'Demo session',
+      slug: 'demo-session',
+      startsAt: '2026-11-20T09:00:00.000Z',
+    };
+
+    it('accepts an IANA zone', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('events', { ...event, timezone: 'Asia/Tokyo' });
+      expect(created[0].data.timezone).toBe('Asia/Tokyo');
+    });
+
+    it('refuses a zone no formatter knows, with a named error', async () => {
+      const { svc } = service();
+      await rejectsWith(
+        svc.adminCreate('events', { ...event, timezone: 'Tokyo' }),
+        'INVALID_TIMEZONE',
+      );
+    });
+
+    it('leaves the zone alone when none is sent', async () => {
+      const { svc, created } = service();
+      await svc.adminCreate('events', { ...event, timezone: '' });
+      expect(created[0].data).not.toHaveProperty('timezone');
+    });
+  });
 });
