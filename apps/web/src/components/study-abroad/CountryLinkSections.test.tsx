@@ -281,6 +281,46 @@ describe('country guide catalogue sections', () => {
     expect(html).toContain('Master’s applicant');
   });
 
+  /* T-M3. The guide prints six; the rest were unreachable from it. */
+  it('points to every testimonial when more than six are filed against the country', () => {
+    const quotes = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        id: `t${index}`,
+        quote: `Quote ${index}`,
+        attribution: `Student ${index}`,
+        attributionNote: null,
+      }));
+    const seven = renderToStaticMarkup(<CountryTestimonials alt country={country()} testimonials={quotes(7)} />);
+    expect(seven.match(/class="quote"/g)).toHaveLength(6);
+    expect(seven).toContain('href="/testimonials"');
+    expect(seven).toContain('Read all testimonials');
+    const six = renderToStaticMarkup(<CountryTestimonials alt country={country()} testimonials={quotes(6)} />);
+    expect(six).not.toContain('Read all testimonials');
+  });
+
+  /* T-C6-web. A photo an editor chose takes the initials' place. */
+  it("shows the testimonial's photo in the avatar where one is set", () => {
+    const html = renderToStaticMarkup(
+      <CountryTestimonials
+        alt
+        country={country()}
+        testimonials={[
+          {
+            id: 't1',
+            quote: 'Q.',
+            attribution: 'Aarti Nair',
+            attributionNote: null,
+            imageMedia: { id: 'm1', publicUrl: '/media/aarti.jpg', altText: 'Aarti at graduation', title: null, width: 400, height: 400 },
+          },
+          { id: 't2', quote: 'Q.', attribution: 'Kenji Sato', attributionNote: null },
+        ]}
+      />,
+    );
+    expect(html).toContain('src="/media/aarti.jpg"');
+    expect(html).toContain('alt="Aarti at graduation"');
+    expect(html).toContain('>KS<');
+  });
+
   /* Nothing is borrowed from a university to fill a country guide, and no
      placeholder quote is invented, so the section simply is not there. */
   it('stands down when no testimonial is filed against the country', () => {

@@ -315,6 +315,15 @@ export interface CountryTestimonial {
   quote: string;
   attribution: string | null;
   attributionNote: string | null;
+  /** The photo an editor chose; an older API leaves it out. */
+  imageMedia?: {
+    id?: string;
+    publicUrl: string;
+    altText?: string | null;
+    title?: string | null;
+    width?: number | null;
+    height?: number | null;
+  } | null;
 }
 export interface DirectoryRecord {
   name: string;
