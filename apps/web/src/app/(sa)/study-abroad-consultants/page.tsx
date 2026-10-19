@@ -14,6 +14,7 @@ import {
   isNarrowedConsultantList,
   toConsultantRows,
 } from '@/lib/country-consultant-list';
+import { counsellingHref } from '@/lib/counselling-link';
 import { formatNumber } from '@/lib/format';
 import { getListingPageContent } from '@/lib/listing-page-content';
 import { phaseListAll } from '@/lib/phase1';
@@ -302,7 +303,7 @@ export default async function ConsultantsPage() {
         heading="Not sure which consultant is right for you?"
         lead="Tell Universta what you're planning to study and we'll help you explore relevant options."
         href="/counselling"
-        talkHref="/counselling"
+        talkHref={counsellingHref({ source: 'general', from: PATH })}
         assessment={{
           label: 'Find My Consultant Options',
           intent: 'consultants-index',

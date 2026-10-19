@@ -6,6 +6,7 @@ import { CountryConsultantIndex } from '@/components/study-abroad/CountryConsult
 import { Crumbs } from '@/components/study-abroad/Crumbs';
 import { ConnectBand, MatchBand } from '@/components/study-abroad/DiscoveryBands';
 import { locationHeading, locationPlaceLabel } from '@/lib/consultant-locations';
+import { counsellingHref } from '@/lib/counselling-link';
 import { toConsultantRows } from '@/lib/country-consultant-list';
 import { formatNumber } from '@/lib/format';
 import { phaseLocation } from '@/lib/phase1';
@@ -134,7 +135,7 @@ export default async function ConsultantLocationPage({ params }: Props) {
         heading="Want help before you choose?"
         lead="Book a free Universta counselling session and we will help you narrow the list."
         href="/study-abroad-consultants"
-        talkHref="/counselling"
+        talkHref={counsellingHref({ source: 'general', from: `/study-abroad-consultants/locations/${String(record.slug ?? locationSlug)}` })}
         assessment={{
           label: 'Find My Consultant Options',
           intent: 'consultants-index',

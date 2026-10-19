@@ -93,6 +93,12 @@ describe('a consultant location page', () => {
     expect(crumbs).toContain('aria-current="page">Heidelberg<');
   });
 
+  it('sends "Talk to a consultant" to counselling that records this page', async () => {
+    expect(await render()).toContain(
+      'href="/counselling?source=general&amp;from=%2Fstudy-abroad-consultants%2Flocations%2Fheidelberg-advisory-centre"',
+    );
+  });
+
   it('keeps the existing count in the eyebrow', async () => {
     expect(await render()).toMatch(/hero__eyebrow">Heidelberg advisory centre<b>·<\/b>1 consultant</);
   });
