@@ -1,4 +1,4 @@
-import { richTextToPlainText } from '@/components/phase1/RichText';
+import { richTextToPlainText } from '../components/phase1/RichText';
 import { resolveContentVariables, type ContentVariableContext } from '../../../../packages/content-variables';
 
 /**

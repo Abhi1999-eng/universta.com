@@ -96,15 +96,18 @@ export function QuoteCard({
   note,
   image,
   extra,
+  className,
 }: {
   quote: string;
   name: string | null;
   note?: string | null;
   image?: QuoteImage;
   extra?: ReactNode;
+  /** Another template's card class alongside the zip's, where it draws one. */
+  className?: string;
 }) {
   return (
-    <figure className="quote">
+    <figure className={className ? `quote ${className}` : 'quote'}>
       <span className="quote__mark" aria-hidden="true">
         “
       </span>

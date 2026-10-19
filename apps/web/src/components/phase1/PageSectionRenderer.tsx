@@ -6,8 +6,10 @@ import { phaseList } from "@/lib/phase1";
 import { getCountries } from "@/lib/countries";
 import { getCourses } from "@/lib/catalog";
 import { resolveHref } from "@/lib/internal-links";
+import { QuoteCard } from "@/components/study-abroad/QuoteCard";
 import {
   applyPicks,
+  directoryItem,
   directoryQuery,
   type DirectoryItem,
   type DirectorySettings,
@@ -56,12 +58,6 @@ const DIRECTORY_RESOURCE: Record<string, string> = {
   TESTIMONIALS: "testimonials",
   SUCCESS_STORIES: "success-stories",
 };
-const DIRECTORY_HREF_PREFIX: Record<string, string> = {
-  UNIVERSITY_DIRECTORY: "/universities",
-  SCHOLARSHIP_DIRECTORY: "/scholarships",
-  CONSULTANT_DIRECTORY: "/study-abroad-consultants",
-};
-
 export async function fetchDirectoryItems(
   sectionType: string,
   settings: DirectorySettings,
@@ -90,17 +86,7 @@ export async function fetchDirectoryItems(
       const resource = DIRECTORY_RESOURCE[sectionType];
       if (!resource) return [];
       const result = await phaseList<AnyRecord>(resource, query);
-      const prefix = DIRECTORY_HREF_PREFIX[sectionType];
-      items = result.data.map((item) => ({
-        slug: string(item.slug),
-        title: string(item.name) || string(item.title),
-        description:
-          string(item.shortDescription) ||
-          string(item.quote) ||
-          string(item.journey) ||
-          string(item.summary),
-        href: prefix && item.slug ? `${prefix}/${item.slug}` : null,
-      }));
+      items = result.data.map((item) => directoryItem(sectionType, item as Record<string, unknown>));
     }
     return applyPicks(items, settings).slice(0, Number(take));
   } catch {
@@ -190,6 +176,24 @@ async function RelatedLinks({ items }: { items: SectionRow[] }) {
 }
 function Directory({ items }: { items: DirectoryItem[] }) {
   if (!items.length) return null;
+  /* Testimonials are the zip's quote cards, with the student's name and
+     role line, never an empty <cite>. */
+  if (items.every((item) => item.quote)) {
+    return (
+      <div className="quotes">
+        {items.map((item, index) => (
+          <QuoteCard
+            className="catalog-card"
+            key={`${item.id ?? item.title}-${index}`}
+            quote={item.quote!.text}
+            name={item.quote!.name}
+            note={item.quote!.role}
+            image={item.quote!.image}
+          />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="catalog-card-grid">
       {items.map((item, index) =>
@@ -203,7 +207,7 @@ function Directory({ items }: { items: DirectoryItem[] }) {
         ) : (
           <blockquote className="catalog-card" key={`${item.title}-${index}`}>
             <p>&ldquo;{item.description}&rdquo;</p>
-            <cite>{item.title}</cite>
+            {item.title ? <cite>{item.title}</cite> : null}
           </blockquote>
         ),
       )}
