@@ -116,7 +116,11 @@ describe('the programme card', () => {
 
   it('keeps the fee whole, breaking only before "/yr"', () => {
     const html = render(card({ tuitionMin: '535800', currencyCode: 'JPY', tuitionPeriod: 'PER_YEAR' }));
-    expect(html).toContain('JPY 535,800<wbr/><span class="coursecard__per">/yr</span>');
+    /* The amount is one unbreakable unit, so the cell can never split it
+       inside the number ("JPY 535,80" / "0/yr"). */
+    expect(html).toContain(
+      '<span class="coursecard__amount">JPY 535,800</span><wbr/><span class="coursecard__per">/yr</span>',
+    );
     expect(facts(html)[2]).toEqual(['Tuition', 'JPY 535,800/yr']);
   });
 

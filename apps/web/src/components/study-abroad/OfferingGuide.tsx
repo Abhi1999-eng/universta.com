@@ -893,7 +893,7 @@ export function OfferingGuide({
           ) : null}
           <div className="btn-row uc-gap">
             <EligibilityButton
-              className="btn btn--lg"
+              className="btn btn--lg uc-wrapbtn"
               intent="course-eligibility"
               countrySlug={country.slug}
               countryName={country.name}

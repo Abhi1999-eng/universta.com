@@ -17,6 +17,9 @@
   min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .sa .coursecard__per { white-space: nowrap; }
+/* The amount is one unit: the facts' "break anywhere" rule split it inside
+   the number ("JPY 535,80" / "0/yr") once the cell was narrow. */
+.sa .coursecard__amount { white-space: nowrap; overflow-wrap: normal; }
 
 /* --- /courses: a quick filter with nothing behind it ------------------- */
 
@@ -166,3 +169,6 @@
 .sa .savedcourses__row .badge { flex: none; }
 .sa .savedcourses__note { flex: none; max-width: 22ch; font-size: 13px; color: var(--muted); text-align: right; }
 .sa .savedcourses__signin { color: var(--text); font-weight: 600; white-space: nowrap; }
+/* A long call to action wraps on a narrow phone rather than running past
+   its edge. */
+.sa .uc-wrapbtn { white-space: normal; text-align: center; max-width: 100%; }

@@ -85,10 +85,10 @@ export function OfferingCard({
     {
       label: 'Tuition',
       /* Held together as "JPY 535,800", then "/yr": it breaks there or not
-         at all, never as "JPY / 535,800/ / yr". */
+         at all, never as "JPY / 535,800/ / yr" nor inside the number. */
       value: fee ? (
         <>
-          {fee.amount}
+          <span className="coursecard__amount">{fee.amount}</span>
           {fee.period ? (
             <>
               <wbr />
