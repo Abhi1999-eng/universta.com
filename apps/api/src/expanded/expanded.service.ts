@@ -199,6 +199,16 @@ export function isTimeZone(zone: string): boolean {
   }
 }
 
+/**
+ * A consultant's office as the public site may show it: only at a location
+ * that is still active. A deactivated or archived location's page answers
+ * 404, so an office there would link to nothing and keep a stale city in
+ * the directory's chips and filters.
+ */
+const ACTIVE_CONSULTANT_LOCATION = {
+  location: { status: 'ACTIVE', deletedAt: null },
+} satisfies Prisma.ConsultantLocationMapWhereInput;
+
 /** Midnight UTC at the start of `now`'s UTC calendar day. A role's closing
  * date is a calendar date stored at 00:00Z, and the role stays open through
  * the whole of that day. */
@@ -1180,7 +1190,10 @@ export class ExpandedService {
         where,
         take: FEATURED_FETCH_CAP,
         include: {
-          locations: { include: { location: true } },
+          locations: {
+            where: ACTIVE_CONSULTANT_LOCATION,
+            include: { location: true },
+          },
           countries: {
             include: { country: { select: { name: true, slug: true } } },
           },
@@ -1194,7 +1207,11 @@ export class ExpandedService {
         { name: (row) => row.name },
       );
       const total = sorted.length;
-      const data = sorted.slice(skip, skip + limit);
+      const data = await this.withMedia(
+        sorted.slice(skip, skip + limit),
+        'featuredMediaId',
+        'featuredMedia',
+      );
       return { data, meta: meta(page, limit, total) };
     }
     if (resource === 'jobs') {
@@ -1388,6 +1405,7 @@ export class ExpandedService {
         where: { slug, ...publishedWhereScheduled(now) },
         include: {
           locations: {
+            where: ACTIVE_CONSULTANT_LOCATION,
             include: { location: { include: { country: true } } },
           },
           countries: { include: { country: true } },
@@ -1395,7 +1413,13 @@ export class ExpandedService {
           languages: true,
         },
       });
-      return this.withSeo(resource, row ?? this.notFound(resource));
+      if (!row) return this.notFound(resource);
+      const [withImage] = await this.withMedia(
+        [row],
+        'featuredMediaId',
+        'featuredMedia',
+      );
+      return this.withSeo(resource, withImage);
     }
     if (resource === 'success-stories') {
       const row = await this.prisma.successStory.findFirst({
@@ -2505,6 +2529,13 @@ export class ExpandedService {
           include: {
             consultant: {
               include: {
+                /* Each consultant's own offices, as the directory reads
+                   them, so a card here names its city and can be filtered
+                   by location like it can there. */
+                locations: {
+                  where: ACTIVE_CONSULTANT_LOCATION,
+                  include: { location: true },
+                },
                 services: true,
                 countries: { include: { country: true } },
                 languages: true,
@@ -2646,7 +2677,10 @@ export class ExpandedService {
       await this.prisma.consultant.findMany({
         where: { slug: { in: slugs }, ...publishedWhereScheduled(now) },
         include: {
-          locations: { include: { location: true } },
+          locations: {
+            where: ACTIVE_CONSULTANT_LOCATION,
+            include: { location: true },
+          },
           countries: { include: { country: true } },
           services: true,
           languages: true,
