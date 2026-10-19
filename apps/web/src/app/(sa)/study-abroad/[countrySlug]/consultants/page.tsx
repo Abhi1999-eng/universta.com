@@ -2,12 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { AnyRecord } from '@/components/phase1/PhaseOneViews';
+import { ConsultantChoose } from '@/components/study-abroad/ConsultantChoose';
+import { ConsultantTrust } from '@/components/study-abroad/ConsultantTrust';
 import { CountryConsultantIndex } from '@/components/study-abroad/CountryConsultantIndex';
 import { CountryListSearch } from '@/components/study-abroad/CountryListSearch';
 import { CountryTabs } from '@/components/study-abroad/CountryTabs';
 import { ConnectBand } from '@/components/study-abroad/DiscoveryBands';
 import { FlagMark } from '@/components/study-abroad/FlagMark';
 import { PlanBand } from '@/components/study-abroad/PlanBand';
+import { SectionHead } from '@/components/study-abroad/SectionHead';
 import { inCountry } from '@/lib/country-article';
 import {
   consultantListHref,
@@ -50,18 +53,28 @@ const SNAPSHOT_NAMED = 3;
 async function load(slug: string) {
   const page = await getStudyAbroadCountry(slug);
   if (!page) return null;
-  const [list, directory] = await Promise.all([
+  const [list, directory, everyone] = await Promise.all([
     phaseListAll<AnyRecord>('consultants', { country: slug }).catch(() => null),
     /* Which of the other destinations a card names have a guide, and so a
        consultants page of their own to link to. Its failure only leaves
        those names unlinked. */
     getDestinations().catch(() => null),
+    /* Every consultant, for the other destinations that have some. Its
+       failure only leaves that list out. */
+    phaseListAll<AnyRecord>('consultants').catch(() => null),
   ]);
+  const listed = new Map(
+    consultantOptions(toConsultantRows(everyone?.data ?? [])).destinations.map((entry) => [entry.value, entry.count] as const),
+  );
   return {
     page,
     failed: list === null,
     rows: toConsultantRows(list?.data ?? []),
     guides: (directory?.available ?? []).flatMap((entry) => (entry.slug ? [entry.slug] : [])),
+    /* The other destinations with a guide that consultants list, A to Z. */
+    others: (directory?.available ?? [])
+      .flatMap((entry) => (entry.slug && entry.slug !== slug && listed.get(entry.slug) ? [{ slug: entry.slug, name: entry.name }] : []))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
 
@@ -97,7 +110,7 @@ export default async function Page({ params }: Props) {
   const { countrySlug } = await params;
   const loaded = await load(countrySlug);
   if (!loaded) notFound();
-  const { page, rows, failed, guides } = loaded;
+  const { page, rows, failed, guides, others } = loaded;
   const { country } = page;
   const where = inCountry(country.name, country.iso2Code);
   const tabs = await loadCountryTabs(country.slug, (country.subjects ?? []).length);
@@ -108,6 +121,7 @@ export default async function Page({ params }: Props) {
 
   const options = consultantOptions(rows);
   const path = countryConsultantsHref(country.slug);
+  const byCity = options.cities.length > 1 || options.services.length > 1;
   const noun = rows.length === 1 ? 'consultant' : 'consultants';
 
   /* The design's snapshot, from the consultants themselves: every row is a
@@ -252,7 +266,7 @@ export default async function Page({ params }: Props) {
       {/* The reference's "consultants by city", as the design's chip rows:
           every city and service the consultants here carry, with how many,
           each a link into the list above. */}
-      {options.cities.length > 1 || options.services.length > 1 ? (
+      {byCity ? (
         <section className="sec sec--paper sec--tight" id="by-city">
           <div className="wrap">
             {options.cities.length > 1 ? (
@@ -288,6 +302,35 @@ export default async function Page({ params }: Props) {
           </div>
         </section>
       ) : null}
+
+      {/* The directory's checks and its trust box, the same words on
+          every consultants page, with the other destinations' consultants
+          beside the box. */}
+      <section className={`sec ${byCity ? 'sec--white' : 'sec--paper'}`} id="choose">
+        <div className="wrap">
+          <SectionHead
+            eyebrow="Due diligence"
+            title={`How to choose a consultant for ${where}`}
+            lead="Official guidance warns students about unreliable agents and promises that cannot be kept. Run these checks before you sign anything or pay a fee."
+          />
+          <ConsultantChoose />
+          <div className="relgrid">
+            {others.length ? (
+              <div className="relgrid__col">
+                <p className="path__h">Other destinations</p>
+                <ul className="linklist">
+                  {others.map((entry) => (
+                    <li key={entry.slug}>
+                      <Link href={countryConsultantsHref(entry.slug)}>Consultants for {entry.name}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <ConsultantTrust />
+          </div>
+        </div>
+      </section>
 
       <PlanBand
         heading="Not sure which consultant is right for you?"

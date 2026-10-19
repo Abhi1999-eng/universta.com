@@ -537,6 +537,31 @@ export function CountryConsultantIndex({
                   {clearLink('Clear filters', 'btn btn--sm btn--ghost')}
                 </div>
               </div>
+            ) : total === 0 && countrySlug ? (
+              /* A destination nobody lists yet: said plainly, with the
+                 counsellor for that destination, lighter than the plan band
+                 that follows. */
+              <div className="emptyband">
+                <p className="emptyband__t">No consultant on Universta lists {where} yet.</p>
+                <p className="emptyband__d">
+                  Tell Universta what you are planning and a counsellor will help you prepare for {where}.
+                </p>
+                <div className="btn-row">
+                  <Link
+                    className="btn btn--sm"
+                    href={counsellingHref({
+                      source: 'country',
+                      country: countrySlug,
+                      from: countryConsultantsHref(countrySlug),
+                    })}
+                  >
+                    Ask Universta about {where}{' '}
+                    <span className="btn__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  </Link>
+                </div>
+              </div>
             ) : (
               <div className="dir__none">
                 <p>
