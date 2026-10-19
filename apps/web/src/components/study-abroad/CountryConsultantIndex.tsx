@@ -158,11 +158,16 @@ export function ConsultantCard({
         </Link>
         <Link
           className="btn btn--sm"
-          href={guidance ?? counsellingHref({
-            source: 'country',
-            country: countrySlug,
-            from: countryConsultantsHref(countrySlug),
-          })}
+          href={
+            guidance ??
+            (countrySlug
+              ? counsellingHref({
+                  source: 'country',
+                  country: countrySlug,
+                  from: countryConsultantsHref(countrySlug),
+                })
+              : counsellingHref({ source: 'general' }))
+          }
         >
           Get guidance{' '}
           <span className="btn__arrow" aria-hidden="true">
@@ -264,6 +269,11 @@ export function CountryConsultantIndex({
   };
 
   const noun = (count: number) => (count === 1 ? 'consultant' : 'consultants');
+  /* On a page about no destination -- the worldwide directory, a city's
+     page -- a card's "Get guidance" says which page the request came
+     from, rather than a destination's consultants page that does not
+     exist ("/study-abroad//consultants"). */
+  const guidance = countrySlug ? undefined : counsellingHref({ source: 'general', from: path });
 
   const group = (
     title: string,
@@ -418,6 +428,7 @@ export function CountryConsultantIndex({
                     consultant={row}
                     countrySlug={countrySlug}
                     guides={guides}
+                    guidance={guidance}
                   />
                 ))}
               </div>
