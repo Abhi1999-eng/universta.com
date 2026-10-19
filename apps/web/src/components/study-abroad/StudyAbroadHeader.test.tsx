@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NAVIGATION_GROUPS, PRIMARY, StudyAbroadHeader } from './StudyAbroadChrome';
+import { NAVIGATION_GROUPS, PRIMARY, StudyAbroadFooter, StudyAbroadHeader } from './StudyAbroadChrome';
 import { StudyAbroadShell } from './StudyAbroadShell';
 import { StudentSessionProvider } from '@/components/student/StudentSession';
 
@@ -60,6 +60,16 @@ describe('the final ZIP navigation', () => {
     expect(NAVIGATION_GROUPS.map((group) => group.label)).toEqual([
       'Study Abroad', 'Tools', 'Resources', 'For Institutions', 'About',
     ]);
+  });
+
+  /* /testimonials was published and in the sitemap, but nothing on the site
+     linked to it. */
+  it('links the testimonials page from the Resources menu and the footer', () => {
+    const resources = NAVIGATION_GROUPS.find((group) => group.label === 'Resources')!.items.map((item) => item.href);
+    expect(resources.indexOf('/testimonials')).toBe(resources.indexOf('/success-stories') + 1);
+    const html = renderToStaticMarkup(<StudyAbroadFooter />);
+    const footer = new DOMParser().parseFromString(html, 'text/html');
+    expect(footer.querySelector('a[href="/testimonials"]')?.textContent).toBe('Testimonials');
   });
 
   it('provides separate catalogue search, country selector, account and assessment controls', () => {
