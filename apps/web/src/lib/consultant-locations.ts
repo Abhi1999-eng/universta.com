@@ -20,6 +20,51 @@ export function locationPlaceLabel(location: { name?: unknown; city?: unknown; s
   return state && state.toLowerCase() !== city.toLowerCase() ? `${city}, ${state}` : city;
 }
 
+export type ConsultantOffice = {
+  slug: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  countryId: string | null;
+  countrySlug: string | null;
+};
+
+/**
+ * Every live office location the published consultants have, once each,
+ * in the order they are first met: the location pages the sitemap
+ * announces and a city's page links to. A location counts only when it
+ * says it is ACTIVE and is not archived -- its own page answers 404
+ * otherwise.
+ */
+export function liveConsultantOffices(consultants: readonly unknown[]): ConsultantOffice[] {
+  const offices = new Map<string, ConsultantOffice>();
+  for (const consultant of consultants) {
+    const links = (consultant as { locations?: unknown } | null)?.locations;
+    if (!Array.isArray(links)) continue;
+    for (const link of links) {
+      const location = (link as { location?: Record<string, unknown> } | null)?.location;
+      const slug = text(location?.slug);
+      if (!location || !slug || location.status !== 'ACTIVE' || location.deletedAt) continue;
+      if (offices.has(slug)) continue;
+      const country = location.country as Record<string, unknown> | null | undefined;
+      offices.set(slug, {
+        slug,
+        name: text(location.name) ?? slug,
+        city: text(location.city),
+        state: text(location.state),
+        countryId: text(location.countryId) ?? text(country?.id),
+        countrySlug: text(country?.slug),
+      });
+    }
+  }
+  return [...offices.values()];
+}
+
+/** A location page's address. */
+export function consultantLocationHref(slug: string): string {
+  return `/study-abroad-consultants/locations/${slug}`;
+}
+
 /** The page's heading and the title it falls back to. */
 export function locationHeading(location: { name?: unknown; city?: unknown; state?: unknown }): string {
   return `Study abroad consultants in ${locationPlaceLabel(location)}`;

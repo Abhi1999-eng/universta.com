@@ -11,6 +11,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
   universities: [] as Array<Record<string, unknown>>,
+  /** The published consultants, as the list endpoint serves them. */
+  consultants: [] as Array<Record<string, unknown>>,
+  /** What a destination's own consultant count reads, by slug. */
+  consultantTotals: {} as Record<string, number | Error>,
+  consultantCountReads: [] as string[],
   /** What a destination's own university count reads, by slug. */
   totals: {} as Record<string, number | Error>,
   countReads: [] as Array<Record<string, string>>,
@@ -92,11 +97,22 @@ const paged = <T>(rows: T[], params: Record<string, string> = {}) => {
 
 vi.mock('@/lib/phase1', () => ({
   phaseListAll: async (resource: string) => ({
-    data: resource === 'universities' ? api.universities : [],
+    data:
+      resource === 'universities'
+        ? api.universities
+        : resource === 'consultants'
+          ? api.consultants
+          : [],
     meta: null,
     truncated: null,
   }),
   phaseList: async (resource: string, params: Record<string, string>) => {
+    if (resource === 'consultants') {
+      api.consultantCountReads.push(params.country ?? '');
+      const total = api.consultantTotals[params.country ?? ''] ?? 0;
+      if (total instanceof Error) throw total;
+      return { data: [], meta: { total } };
+    }
     if (resource !== 'universities') throw new Error(`unexpected ${resource}`);
     api.countReads.push(params);
     const total = api.totals[params.country ?? ''] ?? 0;
@@ -158,6 +174,9 @@ beforeEach(() => {
   ];
   api.totals = {};
   api.countReads = [];
+  api.consultants = [];
+  api.consultantTotals = {};
+  api.consultantCountReads = [];
   api.countries = [
     { slug: 'united-kingdom' },
     { slug: 'zambia' },
@@ -209,6 +228,54 @@ describe('each destination’s university list in the sitemap', () => {
       '/study-abroad/united-kingdom/universities',
       '/study-abroad/iceland/universities',
     ]);
+  });
+});
+
+/**
+ * The consultants' office locations and each destination's consultants
+ * page. Both are indexable and were reachable only from a profile's
+ * office cards.
+ */
+describe('consultant pages in the sitemap', () => {
+  const office = (slug: string, over: Record<string, unknown> = {}) => ({
+    address: null,
+    location: { slug, name: `${slug} office`, city: slug, status: 'ACTIVE', deletedAt: null, ...over },
+  });
+
+  it('announces each live office location once', async () => {
+    api.consultants = [
+      { slug: 'a', countries: [], locations: [office('pune'), office('leeds', { status: 'INACTIVE' })] },
+      {
+        slug: 'b',
+        countries: [],
+        locations: [office('pune'), office('delft', { deletedAt: '2026-10-01T00:00:00Z' }), office('kyoto')],
+      },
+    ];
+    const locations = (await paths()).filter((path) => path.startsWith('/study-abroad-consultants/locations/'));
+    expect(locations).toEqual([
+      '/study-abroad-consultants/locations/pune',
+      '/study-abroad-consultants/locations/kyoto',
+    ]);
+    expect(await paths()).toContain('/study-abroad-consultants/a');
+  });
+
+  it('announces a destination\'s consultants page only where its own count has someone', async () => {
+    api.consultants = [
+      { slug: 'a', locations: [], countries: [{ country: { slug: 'zambia' } }, { country: { slug: 'oman' } }] },
+      /* A destination with no published guide has no page to announce. */
+      { slug: 'b', locations: [], countries: [{ country: { slug: 'atlantis' } }] },
+    ];
+    api.consultantTotals = { zambia: 2, oman: 0 };
+    const pages = (await paths()).filter((path) => /^\/study-abroad\/[^/]+\/consultants$/.test(path));
+    expect(pages).toEqual(['/study-abroad/zambia/consultants']);
+    /* Only the destinations a consultant lists are asked about. */
+    expect(api.consultantCountReads.sort()).toEqual(['oman', 'zambia']);
+  });
+
+  it('leaves out a destination whose consultant count could not be read', async () => {
+    api.consultants = [{ slug: 'a', locations: [], countries: [{ country: { slug: 'zambia' } }] }];
+    api.consultantTotals = { zambia: new Error('503') };
+    expect((await paths()).some((path) => path.endsWith('/consultants'))).toBe(false);
   });
 });
 

@@ -18,7 +18,13 @@ import {
   type CountryFieldPageRow,
   type SpecializationRow,
 } from "@/lib/catalog";
+import {
+  consultantLocationHref,
+  liveConsultantOffices,
+} from "@/lib/consultant-locations";
+import { countryConsultantsHref } from "@/lib/country-consultant-list";
 import { countryFieldPaths } from "@/lib/country-field-page";
+import { destinationTotal } from "@/lib/country-tabs";
 import { indexableLevelPaths, programmeTally } from "@/lib/level-page-index";
 import { siteOrigin } from "@/lib/site-origin";
 import { specializationHasOwnWords } from "@/lib/specialization-written";
@@ -81,6 +87,37 @@ async function countriesWithUniversities(
     });
   }
   return [...seen];
+}
+
+/**
+ * The destinations whose consultants page has someone on it. That page is
+ * noindex while its own count reads zero, so a destination is announced
+ * only when a published consultant lists it and the same count the page
+ * reads says so too; a count that fails leaves it out.
+ */
+async function countriesWithConsultants(
+  countrySlugs: string[],
+  consultants: AnyRecord[],
+) {
+  const listed = new Set(
+    consultants.flatMap((row) =>
+      (Array.isArray(row.countries) ? (row.countries as Array<{ country?: { slug?: unknown } }>) : [])
+        .map((link) => link?.country?.slug)
+        .filter((slug): slug is string => typeof slug === "string" && slug !== ""),
+    ),
+  );
+  const candidates = [...new Set(countrySlugs)].filter((slug) => listed.has(slug));
+  const kept: string[] = [];
+  for (let from = 0; from < candidates.length; from += COUNT_CONCURRENCY) {
+    const batch = candidates.slice(from, from + COUNT_CONCURRENCY);
+    const totals = await Promise.all(
+      batch.map((slug) => destinationTotal(slug, "consultants")),
+    );
+    batch.forEach((slug, index) => {
+      if ((totals[index] ?? 0) > 0) kept.push(slug);
+    });
+  }
+  return kept;
 }
 
 /* The catalogue lists serve a hundred rows a page at most. */
@@ -249,10 +286,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       countries.map((country) => country.slug),
       universities.data,
     );
+    const consultantLists = await countriesWithConsultants(
+      countries.map((country) => country.slug),
+      consultants.data,
+    );
     const dynamicRoutes = [
       ...universities.data.map((row) => `/universities/${row.slug}`),
       ...scholarships.data.map((row) => `/scholarships/${row.slug}`),
       ...consultants.data.map((row) => `/study-abroad-consultants/${row.slug}`),
+      /* Each live office location's page, once, and each destination's
+         consultants page that has a consultant on it. */
+      ...liveConsultantOffices(consultants.data).map((office) =>
+        consultantLocationHref(office.slug),
+      ),
+      ...consultantLists.map((slug) => countryConsultantsHref(slug)),
       ...jobs.data.map((row) => `/careers/${row.slug}`),
       ...events.data.map((row) => `/events/${row.slug}`),
       ...successStories.data.map((row) => `/success-stories/${row.slug}`),
