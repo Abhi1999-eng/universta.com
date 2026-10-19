@@ -24,3 +24,66 @@
    open an empty list. Its title says why. */
 .sa .chipbtn:disabled { opacity: .5; cursor: not-allowed; }
 .sa .chipbtn:disabled:hover { border-color: var(--line); }
+
+/* --- a course's content sections ---------------------------------------- */
+
+/* A band whose text sits in the right-hand column of its head: the head is
+   then the whole band, and keeps no gap under it for content that is not
+   there. A list after it (the numbered roles, the steps) keeps the gap. */
+.sa .cg-band .wrap > .sec-head:last-child { margin-bottom: 0; }
+.sa .cg-band .sec-head--split .sec-lead + * { margin-top: 18px; }
+.sa .cg-band .sec-head--split .prose + .prose,
+.sa .cg-band .sec-head--split .prose + .cg-checklist,
+.sa .cg-band .sec-head--split .cg-checklist + .cg-docs,
+.sa .cg-band .sec-head--split .prose + .cg-docs { margin-top: 26px; }
+
+/* The picture an editor chose for a section, under its text. */
+.sa .cg-media { margin: 22px 0 0; }
+.sa .cg-media img {
+  display: block; width: 100%; max-height: 380px; object-fit: cover;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface-sunken);
+}
+.sa .cg-media figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+/* Lists drawn as the design's classes, without the browser's markers. */
+.sa .cg-list,
+.sa .cg-pills { list-style: none; margin: 0; padding: 0; }
+.sa .cg-checklist { list-style: disc; margin: 0; padding-left: 1.25em; display: grid; gap: 8px; }
+.sa .cg-checklist li::marker { color: var(--accent); }
+.sa .cg-docs .path__h { margin-bottom: 8px; }
+.sa .cg-note { margin: 0 0 12px; font-size: 14px; color: var(--muted); }
+
+/* The application process as numbered steps, however many an editor
+   wrote: up to five in one row, more in two rows that read across. */
+@media (min-width: 900px) {
+  .sa .cg-steps { grid-template-columns: repeat(var(--cg-steps, 5), minmax(0, 1fr)); }
+  .sa .cg-steps--rows .applystep {
+    border-right: 0; border-bottom: 1px solid var(--on-navy-line-soft);
+    padding: 20px 22px 22px 0;
+  }
+  .sa .cg-steps--rows .applystep:first-child { padding-left: 0; }
+}
+.sa .cg-steps .applystep__b { color: var(--on-navy); margin-top: 8px; }
+
+/* The sources, under the facts they vouch for. */
+.sa .cg-sources { margin-bottom: 10px; }
+.sa .cg-sources .snap__source b { color: var(--text); }
+.sa .cg-sources__more { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.sa .cg-sources__more summary { cursor: pointer; font-weight: 600; color: var(--text); }
+.sa .cg-sources__more .prose { margin-top: 8px; font-size: 13px; line-height: 1.55; max-width: none; }
+
+/* A destination's availability, as the editor marked it. */
+.sa .chipbtn .badge,
+.sa .entrycard__t .badge { margin-inline-start: 8px; vertical-align: middle; }
+
+/* What each destination asks: a card's figures and its words in two
+   groups, side by side when a single destination has the row to itself. */
+.sa .entrycard__col { display: flex; flex-direction: column; gap: .875rem; min-width: 0; }
+@media (min-width: 900px) {
+  .sa .entrygrid--one { grid-template-columns: minmax(0, 1fr); }
+  .sa .entrycard--split {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    column-gap: clamp(28px, 4vw, 56px); align-items: start;
+  }
+  .sa .entrycard--split .entrycard__t { grid-column: 1 / -1; }
+}

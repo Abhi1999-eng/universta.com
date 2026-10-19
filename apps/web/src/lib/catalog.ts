@@ -51,7 +51,7 @@ export interface CourseAvailability {
     status?: string | null;
   }>;
 }
-export interface CourseDetail extends Course { overview: string | null; careerSummary: string | null; availability: CourseAvailability[]; selectedCountry: { id: string; name: string; slug: string } | null; contentSections: Array<{ id: string; sectionKey: string; sectionType: string; heading: string | null; subheading: string | null; bodyJson: { paragraphs?: unknown } | null; media: Media | null; displayOrder: number }>; faqs: Array<{ id: string; question: string; answer: string }>; relatedCourses: Course[]; seo: Seo | null; jsonLd: Record<string, unknown>; }
+export interface CourseDetail extends Course { /** The code an editor gave the course. Optional: an older API sends none. */ courseCode?: string | null; overview: string | null; careerSummary: string | null; availability: CourseAvailability[]; selectedCountry: { id: string; name: string; slug: string } | null; /** Each body in its type's shape: rich text as `paragraphs`, a checklist as `items`, steps as `steps` ({ order, text }). */ contentSections: Array<{ id: string; sectionKey: string; sectionType: string; heading: string | null; subheading: string | null; bodyJson: { paragraphs?: unknown; items?: unknown; steps?: unknown } | null; media: Media | null; displayOrder: number }>; faqs: Array<{ id: string; question: string; answer: string }>; relatedCourses: Course[]; seo: Seo | null; jsonLd: Record<string, unknown>; }
 export interface CourseFilterOption {
   id?: string;
   value: string;

@@ -136,4 +136,11 @@ describe('whether a destination has anything to say', () => {
   it('is not fooled by empty prose', () => {
     expect(hasEntryDetail(row({ admissionRequirements: '   ' }))).toBe(false);
   });
+
+  it('counts where graduates go and a destination marked Limited', () => {
+    expect(hasEntryDetail(row({ careerOpportunities: 'Engineering roles.' }))).toBe(true);
+    expect(hasEntryDetail(row({ careerOpportunities: '  ' }))).toBe(false);
+    expect(hasEntryDetail(row({ availabilityStatus: 'LIMITED' }))).toBe(true);
+    expect(hasEntryDetail(row({ availabilityStatus: 'AVAILABLE' }))).toBe(false);
+  });
 });

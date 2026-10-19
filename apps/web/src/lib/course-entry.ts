@@ -100,7 +100,9 @@ export function intakeRows(row: CourseAvailability): IntakeRow[] {
     }));
 }
 
-/** Whether a destination has anything to say beyond its own name. */
+/** Whether a destination has anything to say beyond its own name: a
+ *  figure, a requirement in words, where its graduates go, or that the
+ *  editor marked it "Limited". */
 export function hasEntryDetail(row: CourseAvailability): boolean {
   return Boolean(
     feeRange(row.tuition) ||
@@ -110,6 +112,8 @@ export function hasEntryDetail(row: CourseAvailability): boolean {
       intakeRows(row).length ||
       row.admissionRequirements?.trim() ||
       row.englishRequirementsText?.trim() ||
-      row.applicationNotes?.trim(),
+      row.applicationNotes?.trim() ||
+      row.careerOpportunities?.trim() ||
+      row.availabilityStatus === 'LIMITED',
   );
 }

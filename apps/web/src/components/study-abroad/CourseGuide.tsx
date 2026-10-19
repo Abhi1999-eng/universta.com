@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import type { CourseDetail } from '@/lib/catalog';
 import { RichText, richTextToPlainText } from '@/components/phase1/RichText';
 import { CourseCards } from './CourseCards';
@@ -21,6 +22,19 @@ import {
   intakeRows,
 } from '@/lib/course-entry';
 import { allProgrammes, ProgrammeSample } from './ProgrammeSample';
+import {
+  courseSections,
+  sectionItems,
+  sectionParagraphs,
+  sectionSteps,
+} from '@/lib/course-sections';
+import {
+  CareerList,
+  DocumentPills,
+  SectionChecklist,
+  SectionMedia,
+  SectionProse,
+} from './CourseSectionParts';
 
 /** How many of the programmes read are drawn as cards; the rest are a line
  *  each, so every university the page read is named. */
@@ -32,6 +46,7 @@ const NOT_LISTED = 'Not listed';
 const TAB_LABELS: Record<string, string> = {
   about: 'About',
   curriculum: 'Curriculum',
+  skills: 'Skills',
   eligibility: 'Eligibility',
   destinations: 'Destinations',
   taught: 'Universities',
@@ -60,6 +75,16 @@ const TAB_LABELS: Record<string, string> = {
  *
  * The facts the hero used to run together in one line are the design's
  * "At a glance" panel, as on a programme's own page.
+ *
+ * Every kind of content section the admin offers has a place: the
+ * curriculum and the skills, admission requirements with the documents as
+ * the design's pills, the application process as its numbered steps, the
+ * career outcomes as its numbered role list under the careers prose, the
+ * sources under the facts and the counselling call as the closing band.
+ * Each section's subheading is its band's lead and its picture sits under
+ * its text. The prose of a band sits in the right-hand column beside its
+ * heading, as the design lays every band out, so no band leaves the right
+ * half of the page empty.
  */
 export function CourseGuide({
   course,
@@ -87,11 +112,21 @@ export function CourseGuide({
   const availability = course.availability ?? [];
   const careers = course.careerSummary?.trim();
 
-  const named = (key: string) =>
-    sections.find((section) => section.sectionKey === key);
-  const curriculum = named('curriculum');
-  const eligibility = named('eligibility');
-  const apply = named('apply') ?? named('admission-process');
+  const {
+    curriculum,
+    skills,
+    admission,
+    documents,
+    careers: outcomes,
+    application: apply,
+    sources,
+    counselling,
+  } = courseSections(sections);
+  const eligibility = admission ?? documents;
+  const steps = sectionSteps(apply);
+  const skillItems = sectionItems(skills);
+  const outcomeItems = sectionItems(outcomes);
+  const sourceText = sectionParagraphs(sources);
 
   /* The destination the guide was opened under, by its name; the course's
      record narrows to it, so it is the one row its availability holds. */
@@ -115,13 +150,25 @@ export function CourseGuide({
   const intakesHere = [
     ...new Set(atHere ? intakeRows(atHere).map((row) => row.name) : []),
   ];
+  const code = course.courseCode?.trim() || null;
+  const credits =
+    course.credits !== null &&
+    course.credits !== undefined &&
+    course.credits !== '' &&
+    Number.isFinite(Number(course.credits))
+      ? formatNumber(Number(course.credits))
+      : null;
   const glance: Array<{ label: string; value: string | null; note?: string | null }> = [
     {
       label: 'Level',
       value: course.courseLevel?.name ?? null,
       note: course.qualificationName,
     },
+    /* The code and the credits an editor recorded, where there are some;
+       a course without them keeps the panel it had. */
+    ...(code ? [{ label: 'Course code', value: code }] : []),
     { label: 'Duration', value: duration },
+    ...(credits ? [{ label: 'Credits', value: credits }] : []),
     { label: 'Study mode', value: modes || null },
     hereName
       ? { label: 'Destination', value: hereName }
@@ -163,6 +210,7 @@ export function CourseGuide({
   const order: string[] = [];
   if (hasOverview) order.push('about');
   if (curriculum) order.push('curriculum');
+  if (skills) order.push('skills');
   if (eligibility) order.push('eligibility');
   if (availability.length) order.push('destinations');
   if (taught) order.push('taught');
@@ -172,7 +220,7 @@ export function CourseGuide({
   if (detailed.length) order.push('entry');
   if (apply) order.push('apply');
   if (scholarships.length) order.push('funding');
-  if (careers) order.push('careers');
+  if (careers || outcomes) order.push('careers');
   if (faqs.length) order.push('faqs');
   if (related.length) order.push('similar');
 
@@ -184,14 +232,18 @@ export function CourseGuide({
     order.indexOf(id) % 2 === 0 ? 'sec sec--paper' : 'sec sec--white';
 
   const subjectSlug = course.subject?.slug;
-  const body = (section: { bodyJson?: { paragraphs?: unknown } | null }) => {
-    const paragraphs = Array.isArray(section.bodyJson?.paragraphs)
-      ? (section.bodyJson.paragraphs as unknown[]).filter(
-          (line): line is string => typeof line === 'string',
-        )
-      : [];
-    return paragraphs;
-  };
+  /* The counselling section is the closing invitation's own words, where
+     an editor wrote some. */
+  const ctaBody = counselling
+    ? [
+        counselling.subheading?.trim(),
+        ...sectionParagraphs(counselling).map((line) =>
+          richTextToPlainText(line).trim(),
+        ),
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : '';
 
   return (
     <>
@@ -310,6 +362,26 @@ export function CourseGuide({
                 </div>
               ))}
               <div className="snap__foot">
+                {/* The sources section, under the facts it vouches for:
+                    its heading and date line, and how they were checked
+                    one click away. */}
+                {sources ? (
+                  <div className="cg-sources">
+                    <p className="snap__source">
+                      <b>{sources.heading?.trim() || 'Sources'}</b>
+                      {sources.subheading?.trim()
+                        ? ` · ${sources.subheading.trim()}`
+                        : ''}
+                    </p>
+                    {sourceText.length || sources.media?.url ? (
+                      <details className="cg-sources__more">
+                        <summary>How we checked</summary>
+                        <SectionProse section={sources} />
+                        <SectionMedia media={sources.media} />
+                      </details>
+                    ) : null}
+                  </div>
+                ) : null}
                 <p className="snap__disclaimer">
                   {hereName
                     ? `What the catalogue records for ${here}. `
@@ -320,6 +392,18 @@ export function CourseGuide({
               </div>
             </aside>
           </div>
+          {/* The picture an editor set on the course, under its name and
+              its facts, as a subject's hero carries its own. */}
+          {course.featuredMedia?.url ? (
+            <figure className="subjhero__media">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={course.featuredMedia.url}
+                alt={course.featuredMedia.alt ?? ''}
+                loading="eager"
+              />
+            </figure>
+          ) : null}
         </div>
       </section>
 
@@ -338,50 +422,88 @@ export function CourseGuide({
       ) : null}
 
       {hasOverview ? (
-        <section className={band('about')} id="about">
+        <section className={`${band('about')} cg-band`} id="about">
           <div className="wrap">
             <SectionHead
               n={n('about')}
               eyebrow="Overview"
               title={`About ${course.name}`}
-            />
-            <div className="prose">
-              <RichText value={overview!} />
-            </div>
+            >
+              <div className="prose">
+                <RichText value={overview!} />
+              </div>
+            </SectionHead>
           </div>
         </section>
       ) : null}
 
       {curriculum ? (
-        <section className={band('curriculum')} id="curriculum">
+        <section className={`${band('curriculum')} cg-band`} id="curriculum">
           <div className="wrap">
             <SectionHead
               n={n('curriculum')}
               eyebrow="Curriculum"
-              title={curriculum.heading ?? 'What you study'}
-            />
-            <div className="prose">
-              {body(curriculum).map((line, index) => (
-                <RichText key={index} value={line} />
-              ))}
-            </div>
+              title={curriculum.heading?.trim() || 'What you study'}
+              lead={curriculum.subheading?.trim() || undefined}
+            >
+              <SectionChecklist section={curriculum} />
+              <SectionMedia media={curriculum.media} />
+            </SectionHead>
+          </div>
+        </section>
+      ) : null}
+
+      {skills ? (
+        <section className={`${band('skills')} cg-band`} id="skills">
+          <div className="wrap">
+            <SectionHead
+              n={n('skills')}
+              eyebrow="Skills"
+              title={skills.heading?.trim() || 'Skills you build'}
+              lead={skills.subheading?.trim() || undefined}
+            >
+              {skillItems.length ? null : <SectionProse section={skills} />}
+              <SectionMedia media={skills.media} />
+            </SectionHead>
+            <CareerList items={skillItems} label={skills.heading?.trim() || 'Skills'} />
           </div>
         </section>
       ) : null}
 
       {eligibility ? (
-        <section className={band('eligibility')} id="eligibility">
+        <section className={`${band('eligibility')} cg-band`} id="eligibility">
           <div className="wrap">
             <SectionHead
               n={n('eligibility')}
               eyebrow="Eligibility"
-              title={eligibility.heading ?? 'Who can apply'}
-            />
-            <div className="prose">
-              {body(eligibility).map((line, index) => (
-                <RichText key={index} value={line} />
-              ))}
-            </div>
+              title={eligibility.heading?.trim() || 'Who can apply'}
+              lead={eligibility.subheading?.trim() || undefined}
+            >
+              {admission ? (
+                <>
+                  <SectionChecklist section={admission} />
+                  <SectionMedia media={admission.media} />
+                </>
+              ) : null}
+              {/* The documents, as the design's "Documents required"
+                  pills beside the requirements. Alone, they are the band. */}
+              {documents ? (
+                <div className="cg-docs">
+                  {admission ? (
+                    <>
+                      <p className="path__h">
+                        {documents.heading?.trim() || 'Documents required'}
+                      </p>
+                      {documents.subheading?.trim() ? (
+                        <p className="cg-note">{documents.subheading.trim()}</p>
+                      ) : null}
+                    </>
+                  ) : null}
+                  <DocumentPills section={documents} />
+                  <SectionMedia media={documents.media} />
+                </div>
+              ) : null}
+            </SectionHead>
           </div>
         </section>
       ) : null}
@@ -405,6 +527,9 @@ export function CourseGuide({
                   href={`/study-abroad/${row.country.slug}`}
                 >
                   {row.country.name}
+                  {row.availabilityStatus === 'LIMITED' ? (
+                    <span className="badge badge--cond">Limited</span>
+                  ) : null}
                 </Link>
               ))}
             </div>
@@ -450,123 +575,168 @@ export function CourseGuide({
               title="What each destination asks for"
               lead="The same programme is admitted on different terms in different countries. Only what the catalogue records is shown -- a figure missing here has not been set, not set to zero."
             />
-            <div className="entrygrid">
+            {/* One destination: its card takes the width in two columns,
+                the figures and intakes on the left, what it asks in words
+                on the right. Several: one card each, side by side. */}
+            <div
+              className={`entrygrid${detailed.length === 1 ? ' entrygrid--one' : ''}`}
+            >
               {detailed.map((row) => {
                 const tuition = feeRange(row.tuition);
                 const applicationFee = feeRange(row.applicationFee);
                 const academic = academicRows(row);
                 const english = englishRows(row);
                 const intakes = intakeRows(row);
+                const limited = row.availabilityStatus === 'LIMITED';
+                const figures = Boolean(
+                  tuition || applicationFee || academic.length || english.length || intakes.length,
+                );
+                const words = Boolean(
+                  row.englishRequirementsText?.trim() ||
+                    row.admissionRequirements?.trim() ||
+                    row.applicationNotes?.trim() ||
+                    row.careerOpportunities?.trim() ||
+                    row.sourceReference,
+                );
                 return (
-                  <article className="entrycard" key={row.id}>
+                  <article
+                    className={`entrycard${
+                      detailed.length === 1 && figures && words ? ' entrycard--split' : ''
+                    }`}
+                    key={row.id}
+                  >
                     <h3 className="entrycard__t">
                       <Link href={`/study-abroad/${row.country.slug}`}>
                         {row.country.name}
                       </Link>
+                      {/* What the editor ticked as "Limited": taught there,
+                          with fewer places or not every year. */}
+                      {limited ? (
+                        <span className="badge badge--cond">Limited availability</span>
+                      ) : null}
                     </h3>
 
-                    {tuition || applicationFee ? (
-                      <dl className="entrycard__facts">
-                        {tuition ? (
-                          <div>
-                            <dt>Tuition</dt>
-                            <dd>{tuition}</dd>
-                          </div>
+                    {figures ? (
+                      <div className="entrycard__col">
+                        {tuition || applicationFee ? (
+                          <dl className="entrycard__facts">
+                            {tuition ? (
+                              <div>
+                                <dt>Tuition</dt>
+                                <dd>{tuition}</dd>
+                              </div>
+                            ) : null}
+                            {applicationFee ? (
+                              <div>
+                                <dt>Application fee</dt>
+                                <dd>{applicationFee}</dd>
+                              </div>
+                            ) : null}
+                          </dl>
                         ) : null}
-                        {applicationFee ? (
-                          <div>
-                            <dt>Application fee</dt>
-                            <dd>{applicationFee}</dd>
-                          </div>
+
+                        {academic.length ? (
+                          <dl className="entrycard__facts">
+                            {academic.map((fact) => (
+                              <div key={fact.label}>
+                                <dt>{fact.label}</dt>
+                                <dd>{fact.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
                         ) : null}
-                      </dl>
+
+                        {english.length ? (
+                          <>
+                            <p className="entrycard__label">
+                              <span className="label">English, minimum</span>
+                            </p>
+                            <dl className="entrycard__facts">
+                              {english.map((fact) => (
+                                <div key={fact.label}>
+                                  <dt>{fact.label}</dt>
+                                  <dd>{fact.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </>
+                        ) : null}
+
+                        {intakes.length ? (
+                          <table className="entrytable">
+                            <caption className="sr-only">
+                              Intakes and application deadlines in{' '}
+                              {row.country.name}
+                            </caption>
+                            <thead>
+                              <tr>
+                                <th scope="col">Intake</th>
+                                <th scope="col">Apply by</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {intakes.map((intake) => (
+                                <tr key={intake.id}>
+                                  <th scope="row">{intake.name}</th>
+                                  <td>
+                                    {intake.deadline ?? 'Deadline not published'}
+                                    {intake.notes ? (
+                                      <span className="entrytable__note">
+                                        {intake.notes}
+                                      </span>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : null}
+                      </div>
                     ) : null}
 
-                    {academic.length ? (
-                      <dl className="entrycard__facts">
-                        {academic.map((fact) => (
-                          <div key={fact.label}>
-                            <dt>{fact.label}</dt>
-                            <dd>{fact.value}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    ) : null}
+                    {words ? (
+                      <div className="entrycard__col">
+                        {row.englishRequirementsText?.trim() ? (
+                          <p className="entrycard__note">
+                            {row.englishRequirementsText}
+                          </p>
+                        ) : null}
+                        {row.admissionRequirements?.trim() ? (
+                          <p className="entrycard__note">
+                            {row.admissionRequirements}
+                          </p>
+                        ) : null}
+                        {row.applicationNotes?.trim() ? (
+                          <p className="entrycard__note">{row.applicationNotes}</p>
+                        ) : null}
+                        {/* Where graduates go from this destination, and
+                            the work rules that apply there. */}
+                        {row.careerOpportunities?.trim() ? (
+                          <>
+                            <p className="entrycard__label">
+                              <span className="label">After graduating</span>
+                            </p>
+                            <p className="entrycard__note">
+                              {row.careerOpportunities}
+                            </p>
+                          </>
+                        ) : null}
 
-                    {english.length ? (
-                      <>
-                        <p className="entrycard__label">
-                          <span className="label">English, minimum</span>
-                        </p>
-                        <dl className="entrycard__facts">
-                          {english.map((fact) => (
-                            <div key={fact.label}>
-                              <dt>{fact.label}</dt>
-                              <dd>{fact.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </>
-                    ) : null}
-
-                    {row.englishRequirementsText?.trim() ? (
-                      <p className="entrycard__note">
-                        {row.englishRequirementsText}
-                      </p>
-                    ) : null}
-
-                    {intakes.length ? (
-                      <table className="entrytable">
-                        <caption className="sr-only">
-                          Intakes and application deadlines in{' '}
-                          {row.country.name}
-                        </caption>
-                        <thead>
-                          <tr>
-                            <th scope="col">Intake</th>
-                            <th scope="col">Apply by</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {intakes.map((intake) => (
-                            <tr key={intake.id}>
-                              <th scope="row">{intake.name}</th>
-                              <td>
-                                {intake.deadline ?? 'Deadline not published'}
-                                {intake.notes ? (
-                                  <span className="entrytable__note">
-                                    {intake.notes}
-                                  </span>
-                                ) : null}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : null}
-
-                    {row.admissionRequirements?.trim() ? (
-                      <p className="entrycard__note">
-                        {row.admissionRequirements}
-                      </p>
-                    ) : null}
-                    {row.applicationNotes?.trim() ? (
-                      <p className="entrycard__note">{row.applicationNotes}</p>
-                    ) : null}
-
-                    {row.sourceReference ? (
-                      <p className="entrycard__src">
-                        <a
-                          href={row.sourceReference}
-                          rel="nofollow noopener"
-                          target="_blank"
-                        >
-                          The university&rsquo;s own page for this programme
-                        </a>
-                        {dateLabel(row.verifiedAt)
-                          ? `, checked ${dateLabel(row.verifiedAt)}`
-                          : null}
-                      </p>
+                        {row.sourceReference ? (
+                          <p className="entrycard__src">
+                            <a
+                              href={row.sourceReference}
+                              rel="nofollow noopener"
+                              target="_blank"
+                            >
+                              The university&rsquo;s own page for this programme
+                            </a>
+                            {dateLabel(row.verifiedAt)
+                              ? `, checked ${dateLabel(row.verifiedAt)}`
+                              : null}
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
                   </article>
                 );
@@ -576,19 +746,42 @@ export function CourseGuide({
         </section>
       ) : null}
 
+      {/* The application process as the design's numbered steps on
+          navy; saved as text, as text in the right-hand column. */}
       {apply ? (
-        <section className={band('apply')} id="apply">
+        <section
+          className={steps.length ? 'sec sec--navy cg-band' : `${band('apply')} cg-band`}
+          id="apply"
+        >
           <div className="wrap">
             <SectionHead
               n={n('apply')}
               eyebrow="Applying"
-              title={apply.heading ?? 'How to apply'}
-            />
-            <div className="prose">
-              {body(apply).map((line, index) => (
-                <RichText key={index} value={line} />
-              ))}
-            </div>
+              title={apply.heading?.trim() || 'How to apply'}
+              lead={apply.subheading?.trim() || undefined}
+            >
+              {steps.length ? null : <SectionProse section={apply} />}
+              <SectionMedia media={apply.media} />
+            </SectionHead>
+            {steps.length ? (
+              <ol
+                className={`applysteps cg-steps${steps.length > 5 ? ' cg-steps--rows' : ''}`}
+                style={
+                  {
+                    '--cg-steps': steps.length > 5 ? Math.ceil(steps.length / 2) : steps.length,
+                  } as CSSProperties
+                }
+              >
+                {steps.map((step, index) => (
+                  <li className="applystep" key={`${index}-${step}`}>
+                    <span className="applystep__n">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <p className="applystep__b">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -607,17 +800,31 @@ export function CourseGuide({
         </section>
       ) : null}
 
-      {careers ? (
-        <section className={band('careers')} id="careers">
+      {/* The careers prose beside the heading, and the career outcomes
+          an editor listed as the design's numbered roles under it. */}
+      {careers || outcomes ? (
+        <section className={`${band('careers')} cg-band`} id="careers">
           <div className="wrap">
             <SectionHead
               n={n('careers')}
               eyebrow="Careers"
-              title="Where it leads"
+              title={outcomes?.heading?.trim() || 'Where it leads'}
+              lead={outcomes?.subheading?.trim() || undefined}
+            >
+              {careers ? (
+                <div className="prose">
+                  <RichText value={careers} />
+                </div>
+              ) : null}
+              {outcomes && !outcomeItems.length ? (
+                <SectionProse section={outcomes} />
+              ) : null}
+              <SectionMedia media={outcomes?.media} />
+            </SectionHead>
+            <CareerList
+              items={outcomeItems}
+              label={outcomes?.heading?.trim() || 'Career outcomes'}
             />
-            <div className="prose">
-              <RichText value={careers} />
-            </div>
           </div>
         </section>
       ) : null}
@@ -668,8 +875,11 @@ export function CourseGuide({
       />
 
       <PlanBand
-        heading="Not sure this is the right programme?"
-        body="Tell us about your academic profile, goals and budget. We'll help you understand your options across every destination we cover."
+        heading={counselling?.heading?.trim() || 'Not sure this is the right programme?'}
+        body={
+          ctaBody ||
+          "Tell us about your academic profile, goals and budget. We'll help you understand your options across every destination we cover."
+        }
         secondary={{ href: '/courses', label: 'Browse all courses' }}
       />
 
