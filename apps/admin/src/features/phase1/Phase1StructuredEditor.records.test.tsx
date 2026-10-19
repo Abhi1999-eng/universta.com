@@ -169,3 +169,44 @@ describe('dates and times', () => {
   });
 });
 
+describe('SEO fields', () => {
+  /* SS-C4, CON-M1, EV-M5. The inputs were filled with the resolved values,
+     and an untouched save stored them as hand-written for good. */
+  it('hold only what was written, with the rest as placeholders', async () => {
+    record = {
+      id: 'story-1',
+      title: 'From Pune to Tokyo',
+      slug: 'from-pune-to-tokyo',
+      status: 'PUBLISHED',
+      journey: '<p>It began with a phone call.</p>',
+      seo: { seoTitle: 'From Pune to Tokyo', metaDescription: 'It began with a phone call.', canonicalUrl: '/success-stories/from-pune-to-tokyo', robotsIndex: true, robotsFollow: true },
+      seoStored: null,
+    };
+    open('success-stories', 'story-1');
+    const scope = await form();
+    expect(input(scope, 'SEO title').value).toBe('');
+    expect(input(scope, 'SEO title').placeholder).toBe('From Pune to Tokyo');
+    expect(input(scope, 'Canonical URL').placeholder).toBe('/success-stories/from-pune-to-tokyo');
+    await save(scope);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body.seo).toMatchObject({ seoTitle: '', metaDescription: '', canonicalUrl: '', robotsIndex: true });
+  });
+
+  it('keep what an editor wrote', async () => {
+    record = {
+      id: 'story-2',
+      title: 'Story',
+      slug: 'story',
+      status: 'DRAFT',
+      journey: '<p>Words.</p>',
+      seo: { seoTitle: 'Written title', metaDescription: 'Words.' },
+      seoStored: { seoTitle: 'Written title', metaDescription: '', robotsIndex: false, robotsFollow: true },
+    };
+    open('success-stories', 'story-2');
+    const scope = await form();
+    expect(input(scope, 'SEO title').value).toBe('Written title');
+    expect(input(scope, 'Meta description').placeholder).toBe('Words.');
+    expect(input(scope, 'Allow search engines to index this page').checked).toBe(false);
+  });
+});
+

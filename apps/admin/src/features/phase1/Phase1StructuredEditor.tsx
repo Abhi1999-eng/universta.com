@@ -141,6 +141,7 @@ const ZONED_FIELDS = ['startsAt', 'endsAt', 'publishStartsAt', 'publishEndsAt'] 
 function zoneFor(field: (typeof ZONED_FIELDS)[number], values: Record<string, string>) {
   return field === 'startsAt' || field === 'endsAt' ? zoneOrDefault(values.timezone) : DEFAULT_TIME_ZONE;
 }
+const SEO_TEXT_KEYS = ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'twitterTitle', 'twitterDescription'] as const;
 
 export function isStructuredPhase1Resource(resource: string) {
   return structured.has(resource);
@@ -174,6 +175,11 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [slugManuallyOverridden, setSlugManuallyOverridden] = useState(Boolean(recordId));
+  /* What the SEO fields fall back to when left empty -- the record's own
+     title, the site's default description, its own address -- shown as
+     placeholders. Filled in as values, an untouched form saved them back as
+     hand-written and they stopped following the record. */
+  const [seoPlaceholders, setSeoPlaceholders] = useState<Record<string, string>>({});
   /* Each stored date as it was opened: an untouched field sends this instant
      back exactly, seconds and all. */
   const [initialDates, setInitialDates] = useState<Record<string, { wall: string; zone: string; iso: string }>>({});
@@ -182,15 +188,16 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
   function hydrate(record: Row) {
     const next: Record<string, string> = {};
     for (const key of ['name', 'slug', 'countryId', 'institutionType', 'qsRanking', 'totalStudents', 'internationalStudentsPercent', 'studentFacultyRatio', 'establishedYear', 'campusSetting', 'admissionsEmail', 'statsSourceName', 'statsSourceUrl', 'statsYear', 'shortDescription', 'overview', 'featuredMediaId', 'sourceReference', 'verifiedAt', 'status', 'universityId', 'genericCourseId', 'campusId', 'courseLevelId', 'studyMode', 'durationMin', 'durationMax', 'durationUnit', 'tuitionMin', 'tuitionMax', 'currencyCode', 'tuitionPeriod', 'applicationUrl', 'providerId', 'title', 'quote', 'summary', 'description', 'benefitType', 'amount', 'currencyCode', 'eligibility', 'deadline', 'email', 'phone', 'websiteUrl', 'verificationStatus', 'department', 'employmentType', 'location', 'remoteStatus', 'responsibilities', 'qualifications', 'applicationEmail', 'publishedDate', 'expiryDate', 'startsAt', 'endsAt', 'timezone', 'eventType', 'venue', 'onlineUrl', 'registrationUrl', 'journey', 'attribution', 'attributionNote', 'imageMediaId', 'displayOrder', 'publishStartsAt', 'publishEndsAt', 'cityId', 'stateId']) next[key] = string(record[key]);
-    if (record.seo && typeof record.seo === 'object') {
-      const seo = record.seo as Row;
-      for (const key of ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'ogMediaId', 'twitterTitle', 'twitterDescription', 'twitterMediaId']) next[key] = string(seo[key]);
-      next.robotsIndex = seo.robotsIndex === false ? 'false' : 'true';
-      next.robotsFollow = seo.robotsFollow === false ? 'false' : 'true';
-    } else {
-      next.robotsIndex = 'true';
-      next.robotsFollow = 'true';
-    }
+    /* The SEO inputs hold only what an editor wrote (`seoStored`); what the
+       page would use without them (`seo`) becomes their placeholders. An API
+       that predates `seoStored` still fills them from `seo`. */
+    const storedSeo = 'seoStored' in record ? record.seoStored : record.seo;
+    const writtenSeo = storedSeo && typeof storedSeo === 'object' ? (storedSeo as Row) : null;
+    for (const key of [...SEO_TEXT_KEYS, 'ogMediaId', 'twitterMediaId']) next[key] = writtenSeo ? string(writtenSeo[key]) : '';
+    next.robotsIndex = writtenSeo?.robotsIndex === false ? 'false' : 'true';
+    next.robotsFollow = writtenSeo?.robotsFollow === false ? 'false' : 'true';
+    const resolvedSeo = 'seoStored' in record && record.seo && typeof record.seo === 'object' ? (record.seo as Row) : null;
+    setSeoPlaceholders(resolvedSeo ? Object.fromEntries(SEO_TEXT_KEYS.map((key) => [key, string(resolvedSeo[key])])) : {});
     next.deadline = next.deadline ? next.deadline.slice(0, 10) : '';
     next.verifiedAt = next.verifiedAt ? next.verifiedAt.slice(0, 10) : '';
     next.publishedDate = next.publishedDate ? next.publishedDate.slice(0, 10) : '';
@@ -486,7 +493,7 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
             {resource === 'events' ? <EventFields values={values} set={set} errors={errors} tags={tags} media={options.media} cities={options.cities} states={options.states} countries={options.countries} setTags={setTags} tagDraft={tagDraft} setTagDraft={setTagDraft} addTag={addTag} /> : null}
             {resource === 'success-stories' ? <StoryFields values={values} set={set} errors={errors} countries={options.countries} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
             {resource === 'testimonials' ? <TestimonialFields values={values} set={set} errors={errors} universities={options.universities} offerings={options.offerings} media={options.media} /> : null}
-            <SeoFields values={values} set={set} />
+            <SeoFields values={values} set={set} placeholders={seoPlaceholders} />
             <div data-testid="structured-editor-save-row" className="flex flex-wrap gap-3 border-t border-[#E8ECF3] pt-6">
               <label className="text-sm font-semibold">
                 Publish state
@@ -506,14 +513,14 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
   );
 }
 
-function Field({ label, value, onChange, error, textarea = false, richText = false, variableContext, type = 'text', helpKey, help, required = false }: { label: string; value: string; onChange: (value: string) => void; error?: string; textarea?: boolean; richText?: boolean; variableContext?: EditorVariableContext; type?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean }) {
+function Field({ label, value, onChange, error, textarea = false, richText = false, variableContext, type = 'text', helpKey, help, required = false, placeholder }: { label: string; value: string; onChange: (value: string) => void; error?: string; textarea?: boolean; richText?: boolean; variableContext?: EditorVariableContext; type?: string; helpKey?: string; help?: FieldHelpContent; required?: boolean; placeholder?: string }) {
   const fieldId = useId();
   const errorId = useId();
   const disabled = useContext(StructuredEditorDisabledContext);
   return (
     <div className="block text-sm font-semibold">
       <FieldLabel label={label} htmlFor={fieldId} helpKey={helpKey} help={help} required={required} />
-      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} hideLabel allowedVariables={variablesForContext(variableContext)} entityContext={{ variableContext }} /> : textarea ? <textarea id={fieldId} value={value} onChange={(event) => onChange(event.target.value)} className={`${error ? invalidInputClass : inputClass} min-h-28`} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} /> : <input id={fieldId} type={type} value={value} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} />}
+      {richText ? <RichTextEditor label={label} value={value} onChange={onChange} disabled={disabled} hideLabel allowedVariables={variablesForContext(variableContext)} entityContext={{ variableContext }} /> : textarea ? <textarea id={fieldId} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={`${error ? invalidInputClass : inputClass} min-h-28`} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} /> : <input id={fieldId} type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={error ? invalidInputClass : inputClass} aria-invalid={Boolean(error)} required={required} aria-describedby={error ? errorId : undefined} />}
       {error ? (
         <span id={errorId} className="mt-1 block p-danger">
           {error}
@@ -1195,29 +1202,29 @@ function Repeater({ title, rows, fields, add, update, helpPrefix, choices }: { t
     </fieldset>
   );
 }
-function SeoFields({ values, set }: { values: Record<string, string>; set: (key: string, value: string) => void }) {
+function SeoFields({ values, set, placeholders = {} }: { values: Record<string, string>; set: (key: string, value: string) => void; placeholders?: Record<string, string> }) {
   const canonical = values.canonicalUrl ?? '';
   const canonicalUnsafe = canonical.trim() !== '' && !canonical.startsWith('/') && !/^https:\/\/[^/]*universta/i.test(canonical);
   return (
     <fieldset className="p-card">
       <legend className="px-1 text-sm font-semibold">SEO</legend>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="SEO title" value={values.seoTitle ?? ''} onChange={(value) => set('seoTitle', value)} help={commonFieldHelp.seoTitle} />
-        <Field label="Meta description" value={values.metaDescription ?? ''} onChange={(value) => set('metaDescription', value)} help={commonFieldHelp.metaDescription} />
+        <Field label="SEO title" value={values.seoTitle ?? ''} onChange={(value) => set('seoTitle', value)} placeholder={placeholders.seoTitle} help={commonFieldHelp.seoTitle} />
+        <Field label="Meta description" value={values.metaDescription ?? ''} onChange={(value) => set('metaDescription', value)} placeholder={placeholders.metaDescription} help={commonFieldHelp.metaDescription} />
         <div>
-          <Field label="Canonical URL" value={canonical} onChange={(value) => set('canonicalUrl', value)} help={commonFieldHelp.canonicalUrl} />
+          <Field label="Canonical URL" value={canonical} onChange={(value) => set('canonicalUrl', value)} help={commonFieldHelp.canonicalUrl} placeholder={placeholders.canonicalUrl} />
           {canonicalUnsafe ? <p className="mt-1 p-danger">This points off-site. Use a site-relative path (starting with &quot;/&quot;) unless an external canonical is intentional.</p> : null}
         </div>
-        <Field label="Focus keyword" value={values.focusKeyword ?? ''} onChange={(value) => set('focusKeyword', value)} help={commonFieldHelp.focusKeyword} />
+        <Field label="Focus keyword" value={values.focusKeyword ?? ''} onChange={(value) => set('focusKeyword', value)} placeholder={placeholders.focusKeyword} help={commonFieldHelp.focusKeyword} />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Open Graph title" value={values.ogTitle ?? ''} onChange={(value) => set('ogTitle', value)} help={commonFieldHelp.ogTitle} />
-        <Field label="Open Graph description" value={values.ogDescription ?? ''} onChange={(value) => set('ogDescription', value)} help={commonFieldHelp.ogDescription} />
+        <Field label="Open Graph title" value={values.ogTitle ?? ''} onChange={(value) => set('ogTitle', value)} placeholder={placeholders.ogTitle} help={commonFieldHelp.ogTitle} />
+        <Field label="Open Graph description" value={values.ogDescription ?? ''} onChange={(value) => set('ogDescription', value)} placeholder={placeholders.ogDescription} help={commonFieldHelp.ogDescription} />
         <MediaPickerDialog label="Open Graph image (Media Library)" value={values.ogMediaId ?? ''} onChange={(value) => set('ogMediaId', value)} help={commonFieldHelp.ogMedia} />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Twitter title" value={values.twitterTitle ?? ''} onChange={(value) => set('twitterTitle', value)} help={commonFieldHelp.twitterTitle} />
-        <Field label="Twitter description" value={values.twitterDescription ?? ''} onChange={(value) => set('twitterDescription', value)} help={commonFieldHelp.twitterDescription} />
+        <Field label="Twitter title" value={values.twitterTitle ?? ''} onChange={(value) => set('twitterTitle', value)} placeholder={placeholders.twitterTitle} help={commonFieldHelp.twitterTitle} />
+        <Field label="Twitter description" value={values.twitterDescription ?? ''} onChange={(value) => set('twitterDescription', value)} placeholder={placeholders.twitterDescription} help={commonFieldHelp.twitterDescription} />
       </div>
       <div className="mt-4 flex flex-wrap gap-6">
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1229,6 +1236,7 @@ function SeoFields({ values, set }: { values: Record<string, string>; set: (key:
           <FieldLabel label="Allow search engines to follow its links" htmlFor="seo-robots-follow-phase1" help={commonFieldHelp.robotsFollow} />
         </div>
       </div>
+      <p className="p-hint">Leave a field empty to let it follow the record: the greyed text is what the page uses then, and it changes when the record is renamed or moved.</p>
       <p className="p-hint">Unpublished drafts are never indexable regardless of this setting — it only takes effect once the record is Published.</p>
     </fieldset>
   );
