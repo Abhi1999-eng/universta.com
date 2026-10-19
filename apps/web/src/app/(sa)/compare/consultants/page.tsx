@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from 'react';
 import { ConsultantCompareSync } from '@/components/study-abroad/ConsultantCompare';
 import { RecordCompare, type CompareRow } from '@/components/study-abroad/RecordCompare';
 import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
+import { counsellingHref } from '@/lib/counselling-link';
 import { liveLocationLinks } from '@/lib/country-consultant-list';
 import { formatDate } from '@/lib/format';
 import { phaseCompare, phaseComparisonOptions } from '@/lib/phase1';
@@ -114,6 +115,22 @@ export default async function CompareConsultants({
     {
       label: 'Profile',
       cells: cell((row) => <Link href={`/study-abroad-consultants/${row.slug}`}>Open the profile</Link>),
+    },
+    {
+      /* The design's last row: guidance about each consultant, asked from
+         its own profile, so the request says which one the reader meant. */
+      label: 'Next step',
+      cells: cell((row) => (
+        <Link
+          className="btn btn--sm"
+          href={counsellingHref({ source: 'general', from: `/study-abroad-consultants/${String(row.slug)}` })}
+        >
+          Get guidance{' '}
+          <span className="btn__arrow" aria-hidden="true">
+            &rarr;
+          </span>
+        </Link>
+      )),
     },
   ];
 

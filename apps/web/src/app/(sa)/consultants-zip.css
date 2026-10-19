@@ -68,3 +68,7 @@
 @media (min-width: 760px) { .sa .relgrid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }
 .sa .relgrid__col { display: grid; gap: 8px; align-content: start; min-width: 0; }
 .sa .relgrid__note { color: var(--muted); font-size: 14px; margin: 0; }
+
+/* The comparison's "Next step" buttons: the table colours its links as
+   text, which left a button's label dark on dark. */
+.sa .comparetable td a.btn { color: var(--btn-fg); text-decoration: none; }
