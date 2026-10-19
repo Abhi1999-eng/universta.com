@@ -146,8 +146,8 @@ export function SavedCoursesBand({
             </p>
           ) : !state.rows.length ? (
             <p className="sec-lead">
-              You have not saved a course yet. Use the heart on any course card
-              and it will wait for you here.
+              You have not saved a course yet. Tap the heart on a programme you
+              like and it will be kept here for you to compare.
             </p>
           ) : null}
         </SectionHead>

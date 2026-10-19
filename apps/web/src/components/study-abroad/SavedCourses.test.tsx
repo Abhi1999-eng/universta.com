@@ -93,7 +93,10 @@ describe('the band', () => {
   });
 
   it('says so when nothing is saved yet', () => {
-    expect(band({ kind: 'ready', rows: [] })).toContain('You have not saved a course yet.');
+    const html = band({ kind: 'ready', rows: [] });
+    expect(html).toContain('You have not saved a course yet.');
+    /* In our own words, not the reference build's empty line. */
+    expect(html).not.toContain('Use the heart on any course card');
   });
 });
 
