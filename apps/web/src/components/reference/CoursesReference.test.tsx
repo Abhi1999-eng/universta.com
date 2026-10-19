@@ -266,7 +266,8 @@ describe('/courses, the programme finder', () => {
     expect(page.querySelector('.cf-switch')).toBeNull();
     expect(page.querySelector('[data-testid=course-guide-grid]')).not.toBeNull();
     const stats = [...page.querySelectorAll('.statstrip span')].map((node) => node.textContent);
-    expect(stats).toEqual(['Courses', 'Destinations', 'Subjects', 'Specializations']);
+    /* One subject and one specialization in the fixture, named so. */
+    expect(stats).toEqual(['Courses', 'Destinations', 'Subject', 'Specialization']);
     /* Without programmes the guides are the page, so their own address
        does not name a view. */
     expect(page.querySelector('input[name=view]')).toBeNull();
@@ -447,6 +448,51 @@ describe('/courses, the bands under the list', () => {
       node.textContent?.includes('All destinations'),
     );
     expect(link?.getAttribute('href')).toBe('/study-abroad');
+  });
+
+  it('names a figure of one in the singular in the hero', () => {
+    const one = programmes();
+    const page = parse(
+      render(
+        props({
+          programmes: {
+            ...one,
+            summary: { programmes: 4, universities: 1, cities: 1, intakeMonths: 1, countries: 1 },
+          },
+        }),
+      ),
+    );
+    expect([...page.querySelectorAll('.statstrip span')].map((node) => node.textContent)).toEqual([
+      'Programmes',
+      'University',
+      'City',
+      'Intake month',
+    ]);
+
+    const guides = parse(
+      render(
+        guidesView(
+          {},
+          {
+            programmes: null,
+            guideCatalogue: {
+              options: {
+                ...options,
+                countries: options.countries.slice(0, 1),
+                subjects: options.subjects.slice(0, 1),
+              },
+              total: 1,
+            },
+          },
+        ),
+      ),
+    );
+    expect([...guides.querySelectorAll('.statstrip span')].map((node) => node.textContent)).toEqual([
+      'Course',
+      'Destination',
+      'Subject',
+      'Specialization',
+    ]);
   });
 });
 

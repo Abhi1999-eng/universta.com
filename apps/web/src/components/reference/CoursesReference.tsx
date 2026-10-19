@@ -193,21 +193,26 @@ export function CoursesReference(props: CoursesReferenceProps) {
      this catalogue can actually count. A figure with nothing behind it is
      left out rather than printed as a dash. They count the whole catalogue,
      filtered or not, as the reference's hero does. */
+  const stat = (value: number, one: string, many: string) => ({
+    value,
+    /* The label agrees with its figure: "1 University", "242 Universities". */
+    label: value === 1 ? one : many,
+  });
   const stats = (
     summary
       ? [
-          { value: summary.programmes, label: 'Programmes' },
-          { value: summary.universities, label: 'Universities' },
-          { value: summary.cities, label: 'Cities' },
-          { value: summary.intakeMonths, label: 'Intake months' },
+          stat(summary.programmes, 'Programme', 'Programmes'),
+          stat(summary.universities, 'University', 'Universities'),
+          stat(summary.cities, 'City', 'Cities'),
+          stat(summary.intakeMonths, 'Intake month', 'Intake months'),
         ]
       : [
-          { value: guideCatalogue?.total ?? 0, label: 'Courses' },
-          { value: guideOptions?.countries.length ?? 0, label: 'Destinations' },
-          { value: guideOptions?.subjects.length ?? 0, label: 'Subjects' },
-          { value: genericSpecializations.length, label: 'Specializations' },
+          stat(guideCatalogue?.total ?? 0, 'Course', 'Courses'),
+          stat(guideOptions?.countries.length ?? 0, 'Destination', 'Destinations'),
+          stat(guideOptions?.subjects.length ?? 0, 'Subject', 'Subjects'),
+          stat(genericSpecializations.length, 'Specialization', 'Specializations'),
         ]
-  ).filter((stat) => stat.value > 0);
+  ).filter((entry) => entry.value > 0);
 
   /* Quick filters toggle one filter of the list on show straight away, so
      their pressed state is the address rather than page-local memory. */
