@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { StoryCard } from './RecordDirectory';
-import { EventGuide, StoryGuide } from './RecordGuide';
+import { EventGuide, JobGuide, StoryGuide } from './RecordGuide';
 
 const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');
 
@@ -170,5 +170,88 @@ describe('EventGuide', () => {
     expect(doc.querySelector('#more-events h2')?.textContent).toBe('More upcoming events');
     expect(doc.querySelector('#more-events article .eventcard__link')?.getAttribute('href')).toBe('/events/a');
     expect(page().querySelector('#more-events')).toBeNull();
+  });
+});
+
+const role = (extra: Record<string, unknown> = {}) => ({
+  id: 'j1',
+  slug: 'admissions-analyst',
+  title: 'Admissions analyst',
+  department: 'Admissions',
+  location: 'Kyoto',
+  summary: 'Read applications with the team.',
+  description: '<p>{jobTitle} in {jobDepartment}.</p>',
+  employmentType: 'FULL_TIME',
+  remoteStatus: 'REMOTE',
+  applicationUrl: 'https://jobs.example.test/apply',
+  applicationEmail: 'hiring-team@universta.example.test',
+  publishedDate: '2026-10-01T00:00:00.000Z',
+  expiryDate: '2026-12-31T00:00:00.000Z',
+  ...extra,
+});
+
+describe('JobGuide', () => {
+  const page = (extra: Record<string, unknown> = {}, at = now) => parse(renderToStaticMarkup(<JobGuide row={role(extra)} now={at} />));
+  const cells = (doc: Document) =>
+    Object.fromEntries([...doc.querySelectorAll('.unisnap__cell')].map((cell) => [cell.querySelector('.label')?.textContent, cell]));
+
+  it("fills in the description's variables (JOB-C3)", () => {
+    expect(page().querySelector('#overview .h-prose')?.textContent).toBe('Admissions analyst in Admissions.');
+  });
+
+  it('says "Apply for this role" and keeps the new-tab arrow (JOB-C10)', () => {
+    expect(page().querySelector('.hero .btn-row a.btn--lg')?.textContent).toBe('Apply for this role ↗');
+  });
+
+  it("puts the zip's deadline card beside the title: date, status, posted and apply (JOB-G1, JOB-C8)", () => {
+    const card = page().querySelector('.recordhero__aside aside.deadlinecard');
+    expect(card?.querySelector('.deadlinecard__date')?.textContent).toBe('31 Dec 2026');
+    const rows = Object.fromEntries([...(card?.querySelectorAll('.deadlinecard__row') ?? [])].map((row) => [row.querySelector('.label')?.textContent, row]));
+    expect(rows.Status?.querySelector('.badge.badge--ok')?.textContent).toBe('Open');
+    expect(rows.Posted?.textContent).toBe('Posted1 Oct 2026');
+    expect(card?.querySelector('a.btn')?.getAttribute('href')).toBe('https://jobs.example.test/apply');
+  });
+
+  it('reads Closing soon in the last 21 days, and No closing date set without one (JOB-G1)', () => {
+    expect(page({ expiryDate: '2026-11-01T00:00:00.000Z' }).querySelector('.deadlinecard .badge')?.textContent).toBe('Closing soon');
+    const open = page({ expiryDate: null, publishedDate: null });
+    expect(open.querySelector('.deadlinecard__varies')?.textContent).toBe('No closing date set');
+    expect(open.querySelector('.deadlinecard .badge')?.textContent).toBe('Open');
+    expect(open.querySelector('.deadlinecard')?.textContent).not.toContain('Posted');
+  });
+
+  it('closes the role the day after its closing date, by the UTC date (JOB-C1-web, JOB-M3-web)', () => {
+    const lastDay = page({ expiryDate: '2026-10-19T00:00:00.000Z' }, Date.parse('2026-10-19T23:30:00Z'));
+    expect(lastDay.querySelector('.examtests__note')).toBeNull();
+    expect(lastDay.querySelector('a[href="https://jobs.example.test/apply"]')).not.toBeNull();
+
+    const closed = page({ expiryDate: '2026-10-19T00:00:00.000Z' }, Date.parse('2026-10-20T00:30:00Z'));
+    expect(closed.querySelector('.examtests__note')?.textContent).toBe('Applications for this role closed on 19 Oct 2026.');
+    expect(closed.querySelector('.deadlinecard .badge')?.textContent).toBe('Closed');
+    /* No way to apply is left; the way back and the question stay. */
+    expect(closed.querySelector('a[href="https://jobs.example.test/apply"]')).toBeNull();
+    expect(closed.querySelector('a[href^="mailto:"]')).toBeNull();
+    expect([...closed.querySelectorAll('.hero .btn-row a')].map((link) => link.textContent)).toEqual(['All open roles', 'Ask about this role']);
+  });
+
+  it('asks about the role on the contact form with its title as the subject (JOB-C4-web)', () => {
+    expect(page().querySelector('.hero a[href^="/contact"]')?.getAttribute('href')).toBe('/contact?subject=Role%3A%20Admissions%20analyst');
+  });
+
+  it('reads one label for each type and pattern however it was typed (JOB-C5-web)', () => {
+    const doc = page({ employmentType: 'Full-time', remoteStatus: 'On-site' });
+    expect(doc.querySelector('.hero__eyebrow')?.textContent).toBe('Role · Admissions · Full time · On site');
+    expect(cells(doc).Type?.querySelector('b')?.textContent).toBe('Full time');
+    expect(cells(doc).Working?.querySelector('b')?.textContent).toBe('On site');
+  });
+
+  it('lets the email break after its @ (JOB-C7)', () => {
+    const mail = cells(page())['Apply by email']?.querySelector('a.unisnap__mail');
+    expect(mail?.innerHTML).toBe('hiring-team@<wbr>universta.example.test');
+    expect(mail?.getAttribute('href')).toBe('mailto:hiring-team@universta.example.test');
+  });
+
+  it('sets the role text beside its heading (JOB-G2)', () => {
+    expect(page().querySelector('#overview.recordband .sec-head--split > div:last-child .h-prose')).not.toBeNull();
   });
 });

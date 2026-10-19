@@ -101,3 +101,18 @@
 .sa .recordhero .deadlinecard .badge--ok { background: #E4F2ED; }
 .sa .recordhero .deadlinecard .badge--req { background: #FBE6E6; }
 .sa .recordhero .deadlinecard .badge--neutral { background: #EEF1F5; color: #4A5565; }
+
+/* --- Careers --------------------------------------------------------- */
+/* The role card: its type as the zip's pill at the top, and "Closing
+   soon" beside the closing date. */
+.sa .jobcard .jobcard__type { align-self: flex-start; margin-bottom: 2px; }
+.sa .jobcard__when .badge { vertical-align: 1px; }
+
+/* An email in the facts strip breaks after its "@", never inside a word. */
+.sa .unisnap__cell b .unisnap__mail { overflow-wrap: break-word; word-break: normal; }
+
+/* On a phone the facts strip is two columns; an odd last cell takes the
+   whole row rather than leaving a grey gap beside it. */
+@media (max-width: 559px) {
+  .sa .unisnap--fit > .unisnap__cell:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}

@@ -5,13 +5,26 @@ import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
 import { Crumbs } from './Crumbs';
 import { ConnectBand } from './DiscoveryBands';
-import { day, facts, humanise, name, plain, StoryCard, text, type DirectoryRow } from './RecordDirectory';
+import { day, facts, name, plain, StoryCard, text, type DirectoryRow } from './RecordDirectory';
 import { EventCard, EventPlace, eventImage, eventPlace, type Guides } from './EventCards';
 import { EventStatusBadge, LocalTime } from './EventClock';
 import { initials, QuoteByline } from './QuoteCard';
 import { SectionHead } from './SectionHead';
 import { eventFormat } from '@/lib/event-filters';
-import { eventClock, eventClockRange, eventDateTime, eventDay, eventEnded, eventZone } from '@/lib/record-dates';
+import {
+  employmentLabel,
+  eventClock,
+  eventClockRange,
+  eventDateTime,
+  eventDay,
+  eventEnded,
+  eventZone,
+  JOB_STATUS,
+  jobClosed,
+  jobDay,
+  jobStatus,
+  workingLabel,
+} from '@/lib/record-dates';
 import { plainText } from '@/lib/record-text';
 import { programmePath } from '@/lib/success-story';
 import { resolveContentVariables } from '../../../../../packages/content-variables';
@@ -125,61 +138,128 @@ const when = (value: unknown, timeZone?: string | null) => eventDateTime(value, 
 
 const counselling = (self: string) => `/counselling?source=general&from=${encodeURIComponent(self)}`;
 
-export function JobGuide({ row }: { row: DirectoryRow }) {
+/** "Role: <title>", for the contact form's Subject, so the enquiry names the role. */
+export const roleEnquiryHref = (title: string) => `/contact?subject=${encodeURIComponent(`Role: ${title}`)}`;
+
+/** An email address that may break after its "@", and nowhere inside a word. */
+function Mail({ address }: { address: string }) {
+  const at = address.indexOf('@');
+  return (
+    <a className="unisnap__mail" href={`mailto:${address}`}>
+      {at > 0 ? (
+        <>
+          {address.slice(0, at + 1)}
+          <wbr />
+          {address.slice(at + 1)}
+        </>
+      ) : (
+        address
+      )}
+    </a>
+  );
+}
+
+/**
+ * The hero's right half on a role page, in the zip's deadline card: the
+ * closing date large, whether the role is open, closing soon or closed (by
+ * the UTC date, as the list decides), when it was posted, and the way to
+ * apply while it is open.
+ */
+function JobDeadline({ row, now, apply }: { row: DirectoryRow; now: number; apply: ReactNode }) {
+  const closes = jobDay(row.expiryDate);
+  const status = JOB_STATUS[jobStatus(row.expiryDate, now) ?? 'open'];
+  const posted = jobDay(row.publishedDate);
+  return (
+    <aside className="deadlinecard" aria-label="Applications close">
+      <span className="label">Applications close</span>
+      {closes ? <b className="deadlinecard__date datum">{closes}</b> : <b className="deadlinecard__varies">No closing date set</b>}
+      <div className="deadlinecard__row">
+        <span className="label">Status</span>
+        <span className={`badge ${status.badge}`}>{status.label}</span>
+      </div>
+      {posted ? (
+        <div className="deadlinecard__row">
+          <span className="label">Posted</span>
+          <span>{posted}</span>
+        </div>
+      ) : null}
+      {apply}
+    </aside>
+  );
+}
+
+export function JobGuide({ row, now = Date.now() }: { row: DirectoryRow; now?: number }) {
   const self = `/careers/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const title = text(row.title) ?? 'Role';
   const trail: Crumb[] = [{ label: 'Home', href: '/' }, { label: 'Careers', href: '/careers' }, { label: title }];
-  const applyUrl = text(row.applicationUrl);
-  const applyEmail = text(row.applicationEmail);
+  /* A closed role keeps its page, so a shared link still explains itself,
+     but no longer invites an application. */
+  const closed = jobClosed(row.expiryDate, now);
+  const applyUrl = closed ? null : text(row.applicationUrl);
+  const applyEmail = closed ? null : text(row.applicationEmail);
   /* A role's free-text location is usually its city again, so each place is said once. */
-  const where = facts(...[text(row.location), name(row.city), name(row.state), name(row.country)].filter((part, index, all) => part && all.indexOf(part) === index));
-  const closes = day(row.expiryDate);
-  const description = text(row.description);
+  const where = facts(
+    ...[text(row.location), name(row.city), name(row.state), name(row.country)].filter(
+      (part, index, all) => part && all.findIndex((other) => other?.toLowerCase() === part.toLowerCase()) === index,
+    ),
+  );
+  const closes = jobDay(row.expiryDate);
+  const type = employmentLabel(row.employmentType);
+  const working = workingLabel(row.remoteStatus);
+  const resolve = (value: unknown) => {
+    const resolved = text(value) ? resolveContentVariables('job', String(value), row) : null;
+    return resolved && plainText(resolved) ? resolved : null;
+  };
+  const description = resolve(row.description);
+  const apply = (size: 'lg' | 'block') =>
+    applyUrl ? (
+      <a className={size === 'lg' ? 'btn btn--lg' : 'btn btn--block'} href={applyUrl} rel="nofollow noopener" target="_blank">
+        Apply for this role{' '}
+        <span className="btn__arrow" aria-hidden="true">
+          &#8599;
+        </span>
+      </a>
+    ) : applyEmail ? (
+      <a className={size === 'lg' ? 'btn btn--lg' : 'btn btn--block'} href={`mailto:${applyEmail}`}>
+        Apply by email{' '}
+        <span className="btn__arrow" aria-hidden="true">
+          &rarr;
+        </span>
+      </a>
+    ) : null;
   return (
     <>
       <Hero
         trail={trail}
         self={self}
-        eyebrow={facts('Role', text(row.department), humanise(row.employmentType), humanise(row.remoteStatus)) || 'Role'}
+        eyebrow={facts('Role', text(row.department), type, working) || 'Role'}
         title={title}
         sub={plain(row.summary, 400) ?? (description ? null : 'Universta has published this role without a summary.')}
+        note={closed && closes ? `Applications for this role closed on ${closes}.` : null}
+        aside={<JobDeadline row={row} now={now} apply={apply('block')} />}
         actions={
           <>
-            {applyUrl ? (
-              <a className="btn btn--lg" href={applyUrl} rel="nofollow noopener" target="_blank">
-                Apply on the official site{' '}
-                <span className="btn__arrow" aria-hidden="true">
-                  &#8599;
-                </span>
-              </a>
-            ) : applyEmail ? (
-              <a className="btn btn--lg" href={`mailto:${applyEmail}`}>
-                Apply by email{' '}
-                <span className="btn__arrow" aria-hidden="true">
-                  &rarr;
-                </span>
-              </a>
-            ) : null}
+            {apply('lg')}
             <Link className={`btn btn--lg${applyUrl || applyEmail ? ' btn--ghost' : ''}`} href="/careers">
               All open roles
             </Link>
-            <Link className="btn btn--lg btn--ghost" href="/contact">
+            <Link className="btn btn--lg btn--ghost" href={roleEnquiryHref(title)}>
               Ask about this role
             </Link>
           </>
         }
         cells={[
           where ? { label: 'Location', value: where } : null,
-          humanise(row.remoteStatus) ? { label: 'Working', value: humanise(row.remoteStatus) } : null,
-          humanise(row.employmentType) ? { label: 'Type', value: humanise(row.employmentType) } : null,
+          working ? { label: 'Working', value: working } : null,
+          type ? { label: 'Type', value: type } : null,
           text(row.department) ? { label: 'Department', value: text(row.department) } : null,
           closes ? { label: 'Applications close', value: closes } : null,
-          applyEmail ? { label: 'Apply by email', value: <a href={`mailto:${applyEmail}`}>{applyEmail}</a> } : null,
+          applyEmail ? { label: 'Apply by email', value: <Mail address={applyEmail} /> } : null,
         ]}
       />
       <Prose eyebrow="Overview" title="About the role" value={description} />
-      <Prose eyebrow="Role details" title="Responsibilities" value={text(row.responsibilities) ? resolveContentVariables('job', String(row.responsibilities), row) : null} />
-      <Prose eyebrow="Requirements" title="Qualifications" value={text(row.qualifications) ? resolveContentVariables('job', String(row.qualifications), row) : null} />
+      <Prose eyebrow="Role details" title="Responsibilities" value={resolve(row.responsibilities)} />
+      <Prose eyebrow="Requirements" title="Qualifications" value={resolve(row.qualifications)} />
       <ConnectBand
         actions={[
           { href: '/careers', label: 'All open roles' },
