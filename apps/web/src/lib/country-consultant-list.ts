@@ -63,6 +63,25 @@ export function nameKey(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+/**
+ * Whether an office's location is still live. The API is to send only
+ * active ones, but an older one sent every link, so a location an admin
+ * switched off kept its city in the filters and its office on the profile,
+ * linking to a page that answers 404. A row that does not say its status
+ * is taken as live.
+ */
+export function isLiveLocation(location: unknown): boolean {
+  if (!location || typeof location !== 'object') return false;
+  const row = location as Record<string, unknown>;
+  if (row.status != null && row.status !== 'ACTIVE') return false;
+  return !row.deletedAt;
+}
+
+/** A consultant record's office links whose location is live. */
+export function liveLocationLinks(value: unknown): Array<Record<string, unknown>> {
+  return records(value).filter((link) => isLiveLocation(link.location));
+}
+
 /** A service's address in a link, from its name alone, as the catalogue
  *  writes it: "Visa documentation" is `visa-documentation`. */
 export function serviceSlug(name: string): string {
@@ -91,7 +110,7 @@ export function toConsultantRow(record: unknown): CountryConsultantRow | null {
         ? new Date(verifiedAt).getTime() || null
         : null,
     cities: unique(
-      records(row.locations).flatMap((link) => {
+      liveLocationLinks(row.locations).flatMap((link) => {
         const location = link.location as Record<string, unknown> | undefined;
         const city = text(location?.city);
         return city ? [city] : [];

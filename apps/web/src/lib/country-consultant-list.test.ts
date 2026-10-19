@@ -6,6 +6,7 @@ import {
   consultantOptions,
   countryConsultantsHref,
   filterConsultants,
+  isLiveLocation,
   isNarrowedConsultantList,
   narrowsConsultants,
   readConsultantState,
@@ -110,6 +111,22 @@ describe('a destination\'s consultants page', () => {
       'Ashgrove Advisers',
     ]);
     expect(toConsultantRow(null)).toBeNull();
+  });
+
+  it('leaves out an office whose location is switched off or archived', () => {
+    const row = toConsultantRow(
+      record({
+        locations: [
+          { location: { city: 'Pune', status: 'ACTIVE', deletedAt: null } },
+          { location: { city: 'Leeds', status: 'INACTIVE', deletedAt: null } },
+          { location: { city: 'Delft', status: 'ACTIVE', deletedAt: '2026-10-01T00:00:00Z' } },
+          /* An API that does not say is taken at its word. */
+          { location: { city: 'Adelaide' } },
+        ],
+      }),
+    );
+    expect(row?.cities).toEqual(['Pune', 'Adelaide']);
+    expect(isLiveLocation(null)).toBe(false);
   });
 
   it('dates a verification only when the record is verified', () => {

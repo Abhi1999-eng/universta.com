@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import { RecordCompare, type CompareRow } from '@/components/study-abroad/RecordCompare';
 import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
+import { liveLocationLinks } from '@/lib/country-consultant-list';
 import { formatDate } from '@/lib/format';
 import { phaseCompare, phaseComparisonOptions } from '@/lib/phase1';
 import { COMPARE_LIMIT, readCompareSlugs } from '@/lib/record-compare';
@@ -65,7 +66,7 @@ export default async function CompareConsultants({
     {
       label: 'Offices',
       cells: cell((row) => {
-        const offices = (Array.isArray(row.locations) ? (row.locations as Dict[]) : [])
+        const offices = liveLocationLinks(row.locations)
           .map((entry) => {
             const location = (entry.location ?? {}) as Dict;
             const name = text(location.name);

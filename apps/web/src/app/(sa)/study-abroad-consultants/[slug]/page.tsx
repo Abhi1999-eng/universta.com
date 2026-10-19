@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
 import { consultantVerification } from '@/lib/consultant-profile';
-import { nameKey } from '@/lib/country-consultant-list';
+import { liveLocationLinks, nameKey } from '@/lib/country-consultant-list';
 import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
@@ -77,7 +77,7 @@ export default async function ConsultantPage({ params }: Props) {
         .map(({ nested }) => ({ name: String(nested!.name), slug: String(nested!.slug) }))}
       services={names(record.services)}
       languages={names(record.languages)}
-      locations={list(record.locations, 'location')
+      locations={list(liveLocationLinks(record.locations), 'location')
         .filter(({ nested }) => nested?.slug)
         .map(({ item, nested }) => {
           const country = nested!.country as Record<string, unknown> | undefined;
