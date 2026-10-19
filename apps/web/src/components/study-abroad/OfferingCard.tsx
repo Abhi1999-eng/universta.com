@@ -1,7 +1,12 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { StudentCatalogueActions } from '@/components/student/StudentCatalogueActions';
 import { inCountry } from '@/lib/country-article';
-import type { OfferingCardData } from '@/lib/university-courses';
+import {
+  programmeType,
+  tuitionParts,
+  type OfferingCardData,
+} from '@/lib/university-courses';
 import { CompareCheck } from './CourseCompare';
 import { universityInitials } from '@/lib/university-initials';
 
@@ -67,19 +72,39 @@ export function OfferingCard({
   const country = course.university.country;
   const branch = course.specialization ?? course.subject;
   const language = course.language ?? null;
-  const facts = [
+  /* The tests a course names are its evidence for "English": they go to the
+     tag row, each as its own tag, so the Language cell stays one word as on
+     the design's card. A row built without the list splits the note. */
+  const tests = language
+    ? (language.tests ?? (language.note ? language.note.split(' · ') : []))
+    : [];
+  const fee = course.tuition ? tuitionParts(course.tuition) : null;
+  const facts: Array<{ label: string; value: ReactNode; datum?: boolean }> = [
     { label: 'Duration', value: course.duration, datum: true },
+    { label: 'Language', value: language?.value ?? null },
     {
-      label: 'Language',
-      value: language?.value ?? null,
-      note: language?.note ?? null,
+      label: 'Tuition',
+      /* Held together as "JPY 535,800", then "/yr": it breaks there or not
+         at all, never as "JPY / 535,800/ / yr". */
+      value: fee ? (
+        <>
+          {fee.amount}
+          {fee.period ? (
+            <>
+              <wbr />
+              <span className="coursecard__per">{fee.period}</span>
+            </>
+          ) : null}
+        </>
+      ) : null,
+      datum: true,
     },
-    { label: 'Tuition', value: course.tuition, datum: true },
     {
       label: course.intakes.length > 1 ? 'Intakes' : 'Intake',
       value: course.intakes.join(' · ') || null,
     },
   ];
+  const type = programmeType(course);
   /* The account save takes the offering's id; a row that only had its slug
      to stand in for one gets no heart rather than one that cannot save. */
   const savedId = course.offeringId ?? (course.id !== course.slug ? course.id : null);
@@ -88,10 +113,18 @@ export function OfferingCard({
   return (
     <article className="coursecard">
       <div className="coursecard__top">
-        <span className="coursecard__type">
-          {[course.level?.name ?? 'Programme', course.qualification]
-            .filter(Boolean)
-            .join(' · ')}
+        {/* The design's short type line, "MASTER'S · MIST", on one line;
+            a course without a short name shows its qualification there,
+            clamped, and whole in the title. */}
+        <span
+          className={`coursecard__type${type.short ? '' : ' coursecard__type--long'}`}
+          title={
+            !type.short && course.qualification
+              ? `${type.level} · ${course.qualification}`
+              : undefined
+          }
+        >
+          {[type.level, type.kind].filter(Boolean).join(' · ')}
         </span>
         <div className="coursecard__tools">
           {savedId ? (
@@ -169,9 +202,6 @@ export function OfferingCard({
               }
             >
               {fact.value ?? NOT_LISTED}
-              {fact.value && fact.note ? (
-                <small className="coursecard__note"> ({fact.note})</small>
-              ) : null}
             </dd>
           </div>
         ))}
@@ -179,6 +209,7 @@ export function OfferingCard({
 
       {course.specialization ||
       course.studyMode ||
+      tests.length ||
       course.campus ||
       course.courseCode ||
       course.nextDeadline ? (
@@ -192,6 +223,11 @@ export function OfferingCard({
             </Link>
           ) : null}
           {course.studyMode ? <span className="tag">{course.studyMode}</span> : null}
+          {tests.map((test) => (
+            <span className="tag coursecard__test" key={test}>
+              {test}
+            </span>
+          ))}
           {course.campus ? (
             <span className="tag">Campus: {course.campus.name}</span>
           ) : null}

@@ -16,6 +16,7 @@ import { loadOffering } from '@/lib/university-courses-server';
 import { offeringHref } from '@/lib/university-links';
 import { toDestination } from '@/lib/university-record';
 import { offeringTitle, universityPageMetadata } from '@/lib/university-seo';
+import '@/app/(sa)/courses-zip.css';
 
 /**
  * One course at one university, under its country:

@@ -1,0 +1,19 @@
+/*
+ * Course pages, as the client's reference build (Mudit's zip) draws them:
+ * the programme finder, the course guides, a programme's own page, a
+ * university's course list and the course comparison. study-abroad.css
+ * already ports the zip's course classes; what is here is what those pages
+ * needed on top -- the parts the zip has and ours did not draw yet.
+ *
+ * Imported by the course pages themselves, so it loads with them.
+ */
+
+/* --- the course card: one short type line, the fee kept whole --------- */
+
+.sa .coursecard__top { min-width: 0; }
+/* A course without a short name puts its full qualification on the type
+   line: one line, as the design's card has it, and whole in its title. */
+.sa .coursecard__type--long {
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.sa .coursecard__per { white-space: nowrap; }

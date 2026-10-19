@@ -28,6 +28,7 @@ import {
   readCourseFilters,
   toProgrammeList,
 } from '@/lib/university-courses';
+import '@/app/(sa)/courses-zip.css';
 
 export const dynamic = 'force-dynamic';
 

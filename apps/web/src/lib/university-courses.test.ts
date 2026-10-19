@@ -277,6 +277,8 @@ describe('a course as a card', () => {
     expect(listed.language).toEqual({
       value: 'English',
       note: 'IELTS Academic 6.5 minimum · Placeholder 5 minimum',
+      /* The same evidence, one test at a time, for the card's tags. */
+      tests: ['IELTS Academic 6.5 minimum', 'Placeholder 5 minimum'],
     });
     expect(listed.englishTests).toEqual([
       { test: 'IELTS', title: 'IELTS Academic', minimum: '6.5' },

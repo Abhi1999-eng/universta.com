@@ -8,6 +8,7 @@ import type { AnyRecord } from "@/components/phase1/PhaseOneViews";
 import { programmeSample } from "@/lib/programme-sample";
 import { toScholarshipCards } from "@/lib/scholarship-card";
 import { withQuery } from "@/lib/university-courses";
+import "@/app/(sa)/courses-zip.css";
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;

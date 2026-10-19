@@ -18,6 +18,7 @@ import {
 } from '@/lib/university-courses';
 import { loadCourseList } from '@/lib/university-courses-server';
 import { universityCoursesHref } from '@/lib/university-links';
+import '@/app/(sa)/courses-zip.css';
 
 /**
  * Every course one university teaches, under its country:
