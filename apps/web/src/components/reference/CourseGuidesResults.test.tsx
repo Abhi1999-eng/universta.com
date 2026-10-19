@@ -234,6 +234,18 @@ describe('an empty list of course guides', () => {
     expect(back.pathname).toBe(base);
     expect(back.searchParams.has('page')).toBe(false);
     expect(back.hash).toBe('#discovery');
+    /* No "Page 9 of 3" under a list that has said it ends before page 9,
+       even where the reader chose the page and the pager is drawn. */
+    const paged = page(props({ page: '9' }, { courses: [], meta: { page: 9, limit: 12, total: 25, totalPages: 3 }, base, scope, paged: true }));
+    expect(paged.querySelector('nav.pager')).not.toBeNull();
+    expect(said(paged)).toBe('The list ends before this page. Back to the start of the list.');
+    expect(paged.body.textContent).not.toContain('Page 9 of 3');
+    expect(paged.querySelector('.pager-status')).toBeNull();
+  });
+
+  it('keeps the page label inside the run', () => {
+    const doc = page(props({ page: '2' }, { courses: [guide], meta: { page: 2, limit: 12, total: 25, totalPages: 3 }, base, scope, paged: true }));
+    expect(doc.querySelector('.pager-status')?.textContent).toBe('Page 2 of 3');
   });
 
   it('draws where else to look, and always the assessment', () => {
