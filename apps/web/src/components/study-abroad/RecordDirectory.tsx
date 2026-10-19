@@ -3,10 +3,14 @@ import type { ReactNode } from 'react';
 import { richTextToPlainText } from '@/components/phase1/RichText';
 import { Crumbs } from './Crumbs';
 import { PlanBand } from './PlanBand';
+import { QuoteCard, type QuoteImage } from './QuoteCard';
+import { universityHref } from '@/lib/university-links';
 
 /**
- * The approved design's directory page, for the record types the design does
- * not draw itself: careers, events, success stories and testimonials.
+ * The approved design's directory page for careers, events, success stories
+ * and testimonials. The zip draws testimonials itself -- its quote card on
+ * the country guide -- and the testimonials page uses that card; the other
+ * three borrow the shape of its other directories.
  *
  * These pages wore the older template -- its own header, a "Published
  * directory" hero promising "nothing here is placeholder content", and a grey
@@ -32,9 +36,11 @@ type Props = {
   empty: { heading: string; body: string };
   /** The grid's column width: stories and quotes read better wider. */
   wide?: boolean;
+  /** The grid's own class, where the cards need another layout ("quotes"). */
+  grid?: string;
 };
 
-export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows, card, empty, wide }: Props) {
+export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows, card, empty, wide, grid }: Props) {
   const count = `${total} ${total === 1 ? noun[0] : noun[1]}`;
   return (
     <>
@@ -54,7 +60,7 @@ export function RecordDirectory({ trail, eyebrow, title, lede, noun, total, rows
             <h2 className="sec-title">{count}</h2>
           </div>
           {rows.length ? (
-            <div className={wide ? 'h-grid h-grid--wide' : 'h-grid'}>{rows.map((row) => card(row))}</div>
+            <div className={grid ?? (wide ? 'h-grid h-grid--wide' : 'h-grid')}>{rows.map((row) => card(row))}</div>
           ) : (
             <div className="h-empty h-empty--box">
               <h3>{empty.heading}</h3>
@@ -171,16 +177,53 @@ export function StoryCard({ row }: { row: DirectoryRow }) {
   );
 }
 
-/** A quote has no page of its own, so its card is not a link. */
+type Place = { name?: unknown; slug?: unknown } | null | undefined;
+
+/**
+ * Where a testimonial's student studied, as the muted line under the name:
+ * the university (linked to its page), the course where it says more than
+ * the university does, and the country. An offering's own name already ends
+ * "... at <the university>", so the course is its general course's name.
+ * Every relation is read defensively: an older API sends none of them.
+ */
+export function testimonialPlace(row: DirectoryRow): ReactNode {
+  const offering = row.offering as { name?: unknown; university?: Place; genericCourse?: Place } | null | undefined;
+  const university = (row.university as Place) ?? offering?.university;
+  const universityName = text(university?.name);
+  const universitySlug = text(university?.slug);
+  const course = text(offering?.genericCourse?.name) ?? (universityName ? null : text(offering?.name));
+  const country = text((row.country as Place)?.name);
+  const parts: ReactNode[] = [
+    universityName ? (
+      universitySlug ? (
+        <Link href={universityHref(universitySlug)} key="u">
+          {universityName}
+        </Link>
+      ) : (
+        universityName
+      )
+    ) : null,
+    course,
+    country && country !== universityName ? country : null,
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return parts.map((part, index) => (index ? [' · ', part] : part));
+}
+
+/**
+ * A quote has no page of its own, so its card is not a link, and the whole
+ * quote is printed: cut at 400 characters, the rest could never be read.
+ */
 export function TestimonialCard({ row }: { row: DirectoryRow }) {
+  const quote = text(row.quote);
+  if (!quote) return null;
   return (
-    <figure className="h-card" key={row.id} style={{ margin: 0 }}>
-      <blockquote className="quotecard" style={{ margin: 0 }}>
-        <p>{plain(row.quote, 400)}</p>
-      </blockquote>
-      <figcaption className="h-card__m">
-        {facts(text(row.attribution), name(row.university), name(row.offering))}
-      </figcaption>
-    </figure>
+    <QuoteCard
+      quote={quote}
+      name={text(row.attribution)}
+      note={text(row.attributionNote)}
+      image={row.imageMedia as QuoteImage}
+      extra={testimonialPlace(row)}
+    />
   );
 }

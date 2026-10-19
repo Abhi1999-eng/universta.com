@@ -1,0 +1,12 @@
+/* =====================================================================
+   RECORD PAGES: testimonials, success stories, events and careers
+   The zip's patterns these pages borrow and study-abroad.css does not
+   already carry: the hub article with its sticky aside (hub.css), the
+   event and role cards built on the scholarship card, and the small
+   pieces the record guides need. Imported by those pages only.
+   ===================================================================== */
+
+/* --- Testimonials -------------------------------------------------- */
+/* The university under a student's name links to its page. */
+.sa .quote__r a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sa .quote__r a:hover { color: var(--accent); text-decoration-color: var(--accent); }
