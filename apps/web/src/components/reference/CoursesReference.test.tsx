@@ -237,6 +237,41 @@ describe('/courses, the programme finder', () => {
     ]);
   });
 
+  /* The first chip on the page opened "0 programmes of 4". It stays, and
+     is inactive while nothing is behind it; on, it can always be undone. */
+  it('draws a quick filter inactive while it would open nothing, and live otherwise', () => {
+    const chips = (value: CoursesReferenceProps) =>
+      [...parse(render(value)).querySelectorAll('.hero .bigsearch__ex button')].map((node) => ({
+        label: node.textContent,
+        disabled: node.hasAttribute('disabled'),
+        title: node.getAttribute('title'),
+      }));
+    const none = chips(props());
+    expect(none.map((chip) => chip.label)).toEqual(['Scholarships', 'Post-study work']);
+    expect(none[0]).toEqual({
+      label: 'Scholarships',
+      disabled: true,
+      title: 'No programme lists a scholarship yet',
+    });
+
+    const funded = programmes();
+    funded.facets = {
+      ...funded.facets,
+      extras: [
+        { value: 'scholarship', label: 'With scholarships', count: 3 },
+        { value: 'postStudyWork', label: 'Post-study work', count: 2 },
+      ],
+    };
+    expect(chips(props({ programmes: funded })).map((chip) => chip.disabled)).toEqual([false, false]);
+
+    /* On, with nothing behind it, it stays live so it can be turned off. */
+    const on = programmes({ scholarship: 'true' });
+    expect(chips(props({ programmes: on }))[0]!.disabled).toBe(false);
+
+    /* The guides count their own tick. */
+    expect(chips(guidesView())[0]!.disabled).toBe(false);
+  });
+
   it('switches between programmes and course guides, each with its count', () => {
     const page = parse(render(props()));
     const programmesTab = page.querySelector('[data-testid=switch-programmes]')!;

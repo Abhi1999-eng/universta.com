@@ -17,3 +17,10 @@
   min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .sa .coursecard__per { white-space: nowrap; }
+
+/* --- /courses: a quick filter with nothing behind it ------------------- */
+
+/* Drawn, so the toggles stay where they were, but inactive: it would only
+   open an empty list. Its title says why. */
+.sa .chipbtn:disabled { opacity: .5; cursor: not-allowed; }
+.sa .chipbtn:disabled:hover { border-color: var(--line); }

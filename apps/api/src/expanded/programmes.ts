@@ -29,6 +29,7 @@ import {
   DURATION_BANDS,
   FEE_SORTS,
   fold,
+  hasScholarship,
   matchesCourseQuery,
   mostFirst,
   nextDeadline,
@@ -625,7 +626,7 @@ export function programmeFacets(
     {
       value: 'scholarship',
       label: 'With scholarships',
-      count: rows.filter((row) => (row._count?.scholarships ?? 0) > 0).length,
+      count: rows.filter(hasScholarship).length,
     },
     {
       value: 'postStudyWork',

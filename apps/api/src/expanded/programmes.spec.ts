@@ -301,6 +301,14 @@ describe('narrowing across universities', () => {
     ]);
     expect(run({ scholarship: 'true' })).toEqual(['MSc Robotics']);
   });
+
+  it('counts a programme as funded by a live award or its course’s tick in its country', () => {
+    const ticked = { ...catalogue[0]!, scholarshipAvailable: true };
+    expect(matchesProgramme(ticked, parse({ scholarship: 'true' }), today)).toBe(true);
+    expect(
+      programmeFacets([ticked, ...catalogue.slice(1)], parse({}), today).extras,
+    ).toContainEqual({ value: 'scholarship', label: 'With scholarships', count: 2 });
+  });
 });
 
 describe('application status, from recorded deadlines only', () => {

@@ -107,6 +107,10 @@ export type OfferingLike = {
     intake?: IntakeLike | null;
   }>;
   _count?: { scholarships?: number };
+  /** Whether the course is ticked "Scholarship available" for the country
+   * this programme is taught in -- the tick a course guide's "Scholarships"
+   * tag reads. Only the programme finder reads it. */
+  scholarshipAvailable?: boolean | null;
 };
 
 export type Query = Record<string, string | string[] | undefined>;
@@ -392,7 +396,7 @@ export function matchesCourseQuery(row: OfferingLike, query: CourseQuery) {
     return false;
   if (query.campuses.length && !query.campuses.includes(row.campus?.slug ?? ''))
     return false;
-  if (query.scholarship && !(row._count?.scholarships ?? 0)) return false;
+  if (query.scholarship && !hasScholarship(row)) return false;
   /* The tuition bounds read as they always have: a course with no stated
      fee is not excluded by a bound it cannot be measured against. */
   if (query.tuitionMin !== null) {
@@ -404,6 +408,18 @@ export function matchesCourseQuery(row: OfferingLike, query: CourseQuery) {
     if (min !== null && min > query.tuitionMax) return false;
   }
   return true;
+}
+
+/**
+ * Whether a programme has funding to show: a live award recorded against
+ * it, or the "Scholarship available" tick on its course for the country it
+ * is taught in. The second is what a course guide's "Scholarships" tag
+ * reads, so the guides and the programmes no longer disagree about the
+ * same course -- every guide tagged while the programmes' filter opened an
+ * empty list.
+ */
+export function hasScholarship(row: OfferingLike) {
+  return (row._count?.scholarships ?? 0) > 0 || row.scholarshipAvailable === true;
 }
 
 const byName = (a: OfferingLike, b: OfferingLike) =>

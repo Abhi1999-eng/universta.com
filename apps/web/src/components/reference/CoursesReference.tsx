@@ -216,14 +216,19 @@ export function CoursesReference(props: CoursesReferenceProps) {
 
   /* Quick filters toggle one filter of the list on show straight away, so
      their pressed state is the address rather than page-local memory. */
+  /* Each also knows how many it would open, over the whole catalogue: a
+     chip that can only lead to an empty list is drawn inactive rather than
+     followed -- unless it is on, when it has to stay to be undone. Null
+     where the count is not known, which leaves the chip as it was. */
   const quick = (
     which: 'scholarship' | 'postStudyWork',
-  ): { on: boolean; href: string } => {
+  ): { on: boolean; href: string; count: number | null } => {
     if (view === 'programmes' && programmes) {
       const on = programmes.filters[which];
       return {
         on,
         href: `/courses${courseListSearch(programmes.filters, { [which]: !on })}#discovery`,
+        count: programmes.facets.extras.find((option) => option.value === which)?.count ?? 0,
       };
     }
     const key = which === 'scholarship' ? 'scholarshipAvailable' : 'postStudyWorkAvailable';
@@ -231,11 +236,23 @@ export function CoursesReference(props: CoursesReferenceProps) {
     return {
       on,
       href: `/courses${guideListSearch(guideFilters, { [key]: !on }, { view: viewParam })}#discovery`,
+      count: guideOptions
+        ? (guideOptions.extras.find((option) => option.value === key)?.count ?? 0)
+        : null,
     };
   };
+  const onProgrammesView = view === 'programmes' && programmes !== null;
   const quickFilters = [
-    { label: 'Scholarships', ...quick('scholarship') },
-    { label: 'Post-study work', ...quick('postStudyWork') },
+    {
+      label: 'Scholarships',
+      none: `No ${onProgrammesView ? 'programme' : 'course'} lists a scholarship yet`,
+      ...quick('scholarship'),
+    },
+    {
+      label: 'Post-study work',
+      none: `No ${onProgrammesView ? 'programme' : 'course'} is in a post-study work destination yet`,
+      ...quick('postStudyWork'),
+    },
   ];
 
   /* ------------------------------------------------------------ browse */
@@ -439,17 +456,22 @@ export function CoursesReference(props: CoursesReferenceProps) {
           {/* The quick filters alone: the client had the template's "Try"
               row of example searches taken off. */}
           <p className="bigsearch__ex" style={{ marginTop: 22 }}>
-            {quickFilters.map((filter) => (
-              <button
-                key={filter.label}
-                type="button"
-                className={`chipbtn chipbtn--sm${filter.on ? ' on' : ''}`}
-                aria-pressed={filter.on}
-                onClick={() => router.push(filter.href)}
-              >
-                {filter.label}
-              </button>
-            ))}
+            {quickFilters.map((filter) => {
+              const empty = !filter.on && filter.count === 0;
+              return (
+                <button
+                  key={filter.label}
+                  type="button"
+                  className={`chipbtn chipbtn--sm${filter.on ? ' on' : ''}`}
+                  aria-pressed={filter.on}
+                  disabled={empty}
+                  title={empty ? filter.none : undefined}
+                  onClick={() => router.push(filter.href)}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
           </p>
         </div>
       </section>
