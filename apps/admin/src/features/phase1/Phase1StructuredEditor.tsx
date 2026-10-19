@@ -98,6 +98,28 @@ function ids(value: unknown, key: string) {
   return Array.isArray(value) ? value.map((item) => (item && typeof item === 'object' ? string((item as Record<string, unknown>)[key]) : '')).filter(Boolean) : [];
 }
 
+/** A refusal from the API, with the code that says which field it is about. */
+class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
+/* The API's named refusals and the field each is about, so the message also
+   shows under that field rather than only in the banner at the top. */
+const FIELD_BY_ERROR_CODE: Record<string, string> = {
+  JOURNEY_REQUIRED: 'journey',
+  INVALID_TIMEZONE: 'timezone',
+  APPLICATION_URL_INVALID: 'applicationUrl',
+  APPLICATION_EMAIL_INVALID: 'applicationEmail',
+  WEBSITE_URL_INVALID: 'websiteUrl',
+  SOURCE_URL_INVALID: 'sourceReference',
+  VERIFICATION_STATUS_INVALID: 'verificationStatus',
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await authFetch(`/api/v1/admin/phase1/${path}`, {
     ...init,
@@ -105,9 +127,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = (await response.json()) as {
     data: T | null;
-    error: { message?: string } | null;
+    error: { message?: string; code?: string } | null;
   };
-  if (!response.ok || body.error || body.data === null) throw new Error(body.error?.message ?? 'Unable to save record');
+  if (!response.ok || body.error || body.data === null) throw new ApiError(body.error?.message ?? 'Unable to save record', body.error?.code);
   return body.data;
 }
 
@@ -377,6 +399,8 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     } catch (error: unknown) {
       setMessageTone('error');
       setMessage(error instanceof Error ? error.message : 'Unable to save record');
+      const field = error instanceof ApiError && error.code ? FIELD_BY_ERROR_CODE[error.code] : undefined;
+      if (field) setErrors((current) => ({ ...current, [field]: (error as Error).message }));
     } finally {
       setBusy(false);
     }
