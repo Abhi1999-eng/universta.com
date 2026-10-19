@@ -19,6 +19,24 @@ import { createRoot, type Root } from 'react-dom/client';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+/* The device's shortlist lives in localStorage. Some Node versions put a
+   storage object of their own on the global, without its methods, over
+   jsdom's; an in-memory one makes the test the same on every runner. */
+const memory = new Map<string, string>();
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: (key: string) => memory.get(key) ?? null,
+    setItem: (key: string, value: string) => void memory.set(key, String(value)),
+    removeItem: (key: string) => void memory.delete(key),
+    clear: () => memory.clear(),
+    key: (index: number) => [...memory.keys()][index] ?? null,
+    get length() {
+      return memory.size;
+    },
+  },
+});
+
 let root: Root | null = null;
 let host: HTMLElement | null = null;
 afterEach(() => {
