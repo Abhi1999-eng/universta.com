@@ -98,10 +98,31 @@ describe('a university’s course list', () => {
   });
 
   it('keeps all six figures, in the design’s strip', () => {
-    const html = render();
+    const html = render({ campuses: 3 });
     expect(html).toContain('statstrip statstrip--6');
-    for (const label of ['Courses', 'Degree levels', 'Subjects', 'Study modes', 'Campuses', 'Intakes'])
+    for (const label of ['Courses', 'Degree levels', 'Subjects', 'Study modes', 'Campuses'])
       expect(html).toContain(`<span>${label}</span>`);
+    /* One intake in the fixture: the label agrees with it. */
+    expect(html).toContain('<b class="datum">1</b><span>Intake</span>');
+  });
+
+  it('names each figure in the singular when it is one', () => {
+    const one = [{ value: 'x', label: 'X', count: 1 }];
+    const html = render({
+      catalogueTotal: 1,
+      campuses: 1,
+      facets: {
+        ...facets,
+        level: one,
+        subject: one,
+        studyMode: one,
+        intake: one,
+      },
+    });
+    for (const label of ['Course', 'Degree level', 'Subject', 'Study mode', 'Campus', 'Intake'])
+      expect(html).toContain(`<b class="datum">1</b><span>${label}</span>`);
+    for (const label of ['Courses', 'Degree levels', 'Study modes', 'Campuses', 'Intakes'])
+      expect(html).not.toContain(`<span>${label}</span>`);
   });
 
   it('lists popular subjects with counts, each opening that subject in the country', () => {

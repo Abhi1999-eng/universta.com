@@ -64,9 +64,13 @@ describe('the programme card', () => {
     ]);
   });
 
-  it('names English only on the course’s English-test evidence, with the score', () => {
+  it('names English only on the course’s English-test evidence, with the score in the tags', () => {
     const evidenced = card({}, { language: { value: 'English', note: 'IELTS 6.5 minimum' } });
-    expect(facts(render(evidenced))[1]).toEqual(['Language', 'English (IELTS 6.5 minimum)']);
+    /* One word in the cell, as on the design's card; the evidence, word for
+       word and without the brackets it used to be wrapped in, as a tag. */
+    expect(facts(render(evidenced))[1]).toEqual(['Language', 'English']);
+    expect(render(evidenced)).toContain('<span class="tag coursecard__test">IELTS 6.5 minimum</span>');
+    expect(render(evidenced)).not.toContain('(IELTS');
     expect(facts(render(card({}, { language: null })))[1]).toEqual(['Language', 'Not listed']);
     /* A list that does not carry the language yet says so, too. */
     expect(facts(render(card()))[1]).toEqual(['Language', 'Not listed']);
@@ -77,6 +81,47 @@ describe('the programme card', () => {
     const html = render(card());
     expect(html).toContain('<span class="tag">Full time</span>');
     expect(html).not.toContain('FULL_TIME');
+  });
+
+  it('lists each accepted test as its own tag, as the record names it', () => {
+    const html = render(
+      card({
+        requirements: [
+          { category: 'ENGLISH_TEST', title: 'TOEFL iBT (official score report)', minimumScore: null },
+          { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '6.5' },
+        ],
+      }),
+    );
+    expect(facts(html)[1]).toEqual(['Language', 'English']);
+    expect(html).toContain('<span class="tag coursecard__test">TOEFL iBT (official score report)</span>');
+    expect(html).toContain('<span class="tag coursecard__test">IELTS Academic 6.5 minimum</span>');
+    expect(html).not.toContain('English (TOEFL');
+  });
+
+  it('says what kind of programme it is in the design’s short type line', () => {
+    const short = card({
+      genericCourse: {
+        slug: 'mist',
+        shortName: 'MIST',
+        qualificationName: 'Master of Information Science and Technology',
+        courseLevel: { code: 'PG', name: "Master's" },
+      },
+    });
+    expect(render(short)).toContain('<span class="coursecard__type">Master&#x27;s · MIST</span>');
+    /* No short name: the qualification stands in, clamped, whole in the title. */
+    expect(render(card())).toContain(
+      '<span class="coursecard__type coursecard__type--long" title="Master&#x27;s · Master of Science">Master&#x27;s · Master of Science</span>',
+    );
+  });
+
+  it('keeps the fee whole, breaking only before "/yr"', () => {
+    const html = render(card({ tuitionMin: '535800', currencyCode: 'JPY', tuitionPeriod: 'PER_YEAR' }));
+    /* The amount is one unbreakable unit, so the cell can never split it
+       inside the number ("JPY 535,80" / "0/yr"). */
+    expect(html).toContain(
+      '<span class="coursecard__amount">JPY 535,800</span><wbr/><span class="coursecard__per">/yr</span>',
+    );
+    expect(facts(html)[2]).toEqual(['Tuition', 'JPY 535,800/yr']);
   });
 
   it('keeps every tag and link the card had', () => {
@@ -134,5 +179,20 @@ describe('the programme card', () => {
     expect(render(slugOnly)).not.toContain('class="tinybtn"');
     /* The offering's own id, where the list gives it, is the one saved. */
     expect(render(card({ id: undefined }, { offeringId: 'abc' }))).toContain('class="tinybtn"');
+  });
+});
+
+describe('the programme’s picture on its card', () => {
+  it('draws the picture an editor chose at the top of the card', () => {
+    const html = render(
+      card({ featuredMedia: { id: 'm1', publicUrl: '/media/lab.jpg', altText: 'A lab', title: null } }),
+    );
+    expect(html).toContain('<span class="coursecard__media"><img src="/media/lab.jpg" alt="" loading="lazy"/></span>');
+    expect(html.indexOf('coursecard__media')).toBeLessThan(html.indexOf('coursecard__top'));
+  });
+
+  it('draws the card as before without one', () => {
+    expect(render(card({ featuredMedia: null }))).not.toContain('coursecard__media');
+    expect(render(card())).not.toContain('coursecard__media');
   });
 });

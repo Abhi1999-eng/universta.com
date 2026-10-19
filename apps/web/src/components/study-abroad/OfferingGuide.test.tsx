@@ -122,6 +122,16 @@ describe('the course page', () => {
     expect(html).toContain('href="/study-abroad/united-kingdom/computer-science"');
   });
 
+  it('says the short type over the title rather than repeating it, keeping the qualification in the panel', () => {
+    const short = render(detail({ genericCourse: { ...generic, shortName: 'MSc CS' } }));
+    const eyebrow = short.match(/<p class="hero__eyebrow">(.*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, '');
+    expect(eyebrow).toBe("Master&#x27;s·MSc CS·Full time");
+    expect(short).toContain('<span class="snap__n">Master of Science</span>');
+    /* No short name: the qualification, as before. */
+    const plain = render().match(/<p class="hero__eyebrow">(.*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, '');
+    expect(plain).toBe("Master&#x27;s·Master of Science·Full time");
+  });
+
   it('lists every row of the panel, “Not listed” where the record is silent', () => {
     const html = render();
     const rows = html.match(/class="snap__k">([^<]+)</g) ?? [];
@@ -172,7 +182,7 @@ describe('the course page', () => {
     expect(html).not.toContain('Entry requirements for this course have not been listed yet.');
   });
 
-  it('shows intakes as a table, with the next deadline in the panel and the steps', () => {
+  it('shows intakes as the design’s cards, with the next deadline in the panel and the steps', () => {
     const html = render(
       detail({
         intakes: [
@@ -185,7 +195,15 @@ describe('the course page', () => {
         verifiedAt: '2026-09-01T00:00:00.000Z',
       }),
     );
-    expect(html).toContain('<th scope="col">Course start</th>');
+    /* One card per intake, the next deadline still to come marked and
+       the one that has passed said so; each keeps its start month. */
+    const intakes = html.slice(html.indexOf('id="intakes"'), html.indexOf('id="eligibility"'));
+    expect(intakes.match(/<article class="intake/g)).toHaveLength(2);
+    expect(intakes).toContain('<article class="intake intake--primary">');
+    expect(intakes).toContain('Next deadline');
+    expect(intakes).toContain('Deadline passed');
+    expect(intakes).toContain('<dt>Course start</dt>');
+    expect(intakes).toContain('September');
     /* The same deadline written the same way as on the university's
        profile and its course list. */
     expect(html).toContain('15 January 2027');
@@ -510,5 +528,173 @@ describe('what the course page reads from its destination and its course', () =>
         'https://universta.example',
       ).inLanguage,
     ).toBe('en');
+  });
+});
+
+/**
+ * The generic course's own content on a programme's page: its curriculum
+ * in place of "not in our data", its skills, its documents as the design's
+ * pills, its career outcomes as the numbered roles; the English tests the
+ * programme lists as cards; the About, Fees and Intakes bands across the
+ * width; and the picture an editor chose.
+ */
+describe('what the course page draws from its course and its own record', () => {
+  type Section = NonNullable<Parameters<typeof OfferingGuide>[0]['sections']>[number];
+  const section = (over: Partial<Section>): Section => ({
+    id: over.sectionKey ?? 's',
+    sectionKey: 'curriculum',
+    sectionType: 'RICH_TEXT',
+    heading: null,
+    subheading: null,
+    bodyJson: null,
+    media: null,
+    displayOrder: 0,
+    ...over,
+  });
+  const page = (sections: Section[], over: Record<string, unknown> = {}) =>
+    renderToStaticMarkup(
+      <OfferingGuide
+        detail={detail(over)}
+        sections={sections}
+        today={new Date('2026-10-05T00:00:00Z')}
+      />,
+    );
+  const band = (html: string, id: string, next: string) =>
+    html.slice(html.indexOf(`id="${id}"`), html.indexOf(`id="${next}"`));
+
+  it('draws the course’s curriculum instead of saying it is not in our data', () => {
+    const html = page([
+      section({
+        heading: 'What you will study',
+        subheading: 'Courses, then a thesis',
+        bodyJson: { paragraphs: ['<p>Core courses in algorithms.</p>'] },
+      }),
+    ]);
+    const curriculum = band(html, 'curriculum', 'fees');
+    expect(curriculum).toContain('What you will study');
+    expect(curriculum).toContain('Courses, then a thesis');
+    expect(curriculum).toContain('Core courses in algorithms.');
+    expect(curriculum).not.toContain('not in our data');
+  });
+
+  it('still says so for a course without a curriculum section', () => {
+    expect(band(page([]), 'curriculum', 'fees')).toContain(
+      'A semester-by-semester structure is not in our data for this course.',
+    );
+  });
+
+  it('lists the skills under the curriculum', () => {
+    const html = page([section({ sectionKey: 'skills', heading: 'Skills you build', bodyJson: { items: ['Research programming'] } })]);
+    const curriculum = band(html, 'curriculum', 'fees');
+    expect(curriculum).toContain('Skills you build');
+    expect(curriculum).toMatch(/careerlist__n[^>]*>01<\/span>Research programming/);
+  });
+
+  it('draws the documents as pills beside the requirements', () => {
+    const html = page([
+      section({
+        sectionKey: 'documents',
+        heading: 'Documents you will need',
+        bodyJson: { items: ['Transcripts', 'TOEFL score report'] },
+      }),
+    ]);
+    const eligibility = band(html, 'eligibility', 'apply');
+    expect(eligibility).toContain('Documents you will need');
+    expect(eligibility).toContain('<li class="pill pill--sm">Transcripts</li>');
+  });
+
+  it('cards each English test the course lists, with its minimum or saying there is none', () => {
+    const html = page([], {
+      requirements: [
+        { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '7.00' },
+        { category: 'ENGLISH_TEST', title: 'TOEFL iBT' },
+        { category: 'ACADEMIC', title: 'Undergraduate degree' },
+      ],
+    });
+    const eligibility = band(html, 'eligibility', 'apply');
+    expect(eligibility).toContain('class="examreq"');
+    expect(eligibility.match(/<li class="examchip">/g)).toHaveLength(2);
+    expect(eligibility).toMatch(/examchip__score datum">Minimum (<!-- -->)?7</);
+    expect(eligibility).toContain('No minimum published');
+    /* The language list stays as it was. */
+    expect(eligibility).toContain('IELTS Academic<em>Minimum 7</em>');
+    expect(eligibility).not.toContain('Preparation');
+  });
+
+  it('cards two requirements for the same test separately, each with its minimum', () => {
+    const html = page([], {
+      requirements: [
+        { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '6.50' },
+        { category: 'ENGLISH_TEST', title: 'IELTS Academic', minimumScore: '7.00' },
+      ],
+    });
+    const eligibility = band(html, 'eligibility', 'apply');
+    expect(eligibility.match(/<li class="examchip">/g)).toHaveLength(2);
+    expect(eligibility).toMatch(/Minimum (<!-- -->)?6\.5/);
+    expect(eligibility).toMatch(/Minimum (<!-- -->)?7</);
+  });
+
+  it('draws no test cards for a course that lists no English test', () => {
+    expect(band(page([]), 'eligibility', 'apply')).not.toContain('examreq');
+  });
+
+  it('keeps the careers prose and adds the course’s roles under it', () => {
+    const html = page([
+      section({ sectionKey: 'career-outcomes', bodyJson: { items: ['Data scientist', 'Research engineer'] } }),
+    ]);
+    const careers = band(html, 'careers', 'university');
+    expect(careers).toContain('Senior technical roles and doctoral study.');
+    expect(careers).toContain('class="careerlist');
+    expect(careers.indexOf('Senior technical roles')).toBeLessThan(careers.indexOf('Data scientist'));
+  });
+
+  it('never invents a role when the course lists none', () => {
+    expect(band(page([]), 'careers', 'university')).not.toContain('careerlist');
+  });
+
+  it('opens a careers band from the course’s roles alone', () => {
+    const html = page(
+      [section({ sectionKey: 'career-outcomes', bodyJson: { items: ['Data scientist'] } })],
+      { genericCourse: { ...generic, careerSummary: null } },
+    );
+    expect(html).toContain('id="careers"');
+    expect(html).toContain('Data scientist');
+  });
+
+  it('sets the short description as the display lead, the full one beside the heading', () => {
+    const html = page([]);
+    const overview = band(html, 'overview', 'curriculum');
+    expect(overview).toContain('<p class="ov__lead">Advanced study across algorithms and systems.</p>');
+    expect(overview).not.toContain('class="sec-lead"');
+    /* In the right-hand column, before the key facts across the width. */
+    expect(overview.indexOf('Taught at University of Oxford.')).toBeLessThan(overview.indexOf('Key facts'));
+    expect(overview).toMatch(/sec-head__aside[\s\S]*<\/div><div>[\s\S]*Taught at University of Oxford\./);
+  });
+
+  it('folds a very long description behind “Read full course description”', () => {
+    const long = `<p>${'A sentence about the course. '.repeat(60)}</p>`;
+    const overview = band(page([], { overview: long }), 'overview', 'curriculum');
+    expect(overview).toContain('Read full course description');
+    expect(overview).toContain('<details class="longform uc-longform">');
+    expect(overview).toContain('A sentence about the course.');
+    expect(band(page([]), 'overview', 'curriculum')).not.toContain('Read full course description');
+  });
+
+  it('lays the fees out as the design’s cost box beside its rows, every row kept', () => {
+    const html = page([], { tuitionMin: '30000', currencyCode: 'GBP', tuitionPeriod: 'PER_YEAR' });
+    const fees = band(html, 'fees', 'intakes');
+    expect(fees).toContain('class="cost__total"');
+    expect(fees).toContain('GBP\u00a030,000');
+    for (const row of ['Tuition', 'Charged', 'Currency']) expect(fees).toContain(`>${row}</dt>`);
+    expect(fees).toContain('Living costs and visa fees in the United Kingdom');
+  });
+
+  it('shows the programme’s picture in its hero and on its card', () => {
+    const media = { id: 'm1', publicUrl: '/media/oxford.jpg', altText: 'The Radcliffe Camera', title: null };
+    const html = page([], { featuredMedia: media });
+    const hero = html.slice(html.indexOf('id="course-hero"'), html.indexOf('unitabs'));
+    expect(hero).toContain('src="/media/oxford.jpg"');
+    expect(hero).toContain('alt="The Radcliffe Camera"');
+    expect(page([])).not.toContain('subjhero__media');
   });
 });

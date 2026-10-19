@@ -13,6 +13,7 @@ import {
   programmeName,
   readCourseFilters,
   toCourseFacets,
+  offeringMedia,
   toOfferingCard,
   toProgrammeList,
   toProgrammeSummary,
@@ -82,6 +83,13 @@ describe('the list’s address', () => {
     expect(filters.scholarship).toBe(true);
     expect(filters.page).toBe(3);
     expect(filters.sort).toBe('fee');
+  });
+
+  it('reads "Highest tuition" under its own name and the design’s', () => {
+    expect(readCourseFilters({ sort: 'fee-high' }).sort).toBe('fee-high');
+    expect(readCourseFilters({ sort: 'cost-high' }).sort).toBe('fee-high');
+    expect(readCourseFilters({ sort: 'cost-low' }).sort).toBe('fee');
+    expect(courseListSearch(readCourseFilters({ sort: 'cost-high' }))).toBe('?sort=fee-high');
   });
 
   it('ignores a sort it does not offer and a page that is not one', () => {
@@ -277,6 +285,8 @@ describe('a course as a card', () => {
     expect(listed.language).toEqual({
       value: 'English',
       note: 'IELTS Academic 6.5 minimum · Placeholder 5 minimum',
+      /* The same evidence, one test at a time, for the card's tags. */
+      tests: ['IELTS Academic 6.5 minimum', 'Placeholder 5 minimum'],
     });
     expect(listed.englishTests).toEqual([
       { test: 'IELTS', title: 'IELTS Academic', minimum: '6.5' },
@@ -541,5 +551,23 @@ describe('the course page’s canonical address', () => {
     expect(offeringCanonical('/courses/msc-computer-science', nested)).toBe(
       '/courses/msc-computer-science',
     );
+  });
+});
+
+describe('a programme’s picture', () => {
+  it('reads the API’s public media shape', () => {
+    expect(
+      offeringMedia({ id: 'm1', publicUrl: '/media/lab.jpg', altText: 'A lab', title: 'Lab' }),
+    ).toEqual({ url: '/media/lab.jpg', alt: 'A lab' });
+  });
+
+  it('gives an empty alt where none was written, and nothing without an address', () => {
+    expect(offeringMedia({ id: 'm1', publicUrl: '/media/lab.jpg', altText: null })).toEqual({
+      url: '/media/lab.jpg',
+      alt: '',
+    });
+    expect(offeringMedia({ id: 'm1', publicUrl: '' })).toBeNull();
+    expect(offeringMedia(null)).toBeNull();
+    expect(offeringMedia(undefined)).toBeNull();
   });
 });

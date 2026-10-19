@@ -24,6 +24,7 @@ import type { Course, CourseFilterOptions, Subject } from '@/lib/catalog';
 import { checkGuideFilters, readGuideFilters } from '@/lib/courses-params';
 import { readCourseFilters, toProgrammeList } from '@/lib/university-courses';
 import { COMPARE_LIMIT } from '@/components/study-abroad/CourseCompare';
+import { toStripEvent } from '@/lib/course-events';
 import { CoursesReference, type CoursesReferenceProps } from './CoursesReference';
 
 /**
@@ -237,6 +238,41 @@ describe('/courses, the programme finder', () => {
     ]);
   });
 
+  /* The first chip on the page opened "0 programmes of 4". It stays, and
+     is inactive while nothing is behind it; on, it can always be undone. */
+  it('draws a quick filter inactive while it would open nothing, and live otherwise', () => {
+    const chips = (value: CoursesReferenceProps) =>
+      [...parse(render(value)).querySelectorAll('.hero .bigsearch__ex button')].map((node) => ({
+        label: node.textContent,
+        disabled: node.hasAttribute('disabled'),
+        title: node.getAttribute('title'),
+      }));
+    const none = chips(props());
+    expect(none.map((chip) => chip.label)).toEqual(['Scholarships', 'Post-study work']);
+    expect(none[0]).toEqual({
+      label: 'Scholarships',
+      disabled: true,
+      title: 'No programme lists a scholarship yet',
+    });
+
+    const funded = programmes();
+    funded.facets = {
+      ...funded.facets,
+      extras: [
+        { value: 'scholarship', label: 'With scholarships', count: 3 },
+        { value: 'postStudyWork', label: 'Post-study work', count: 2 },
+      ],
+    };
+    expect(chips(props({ programmes: funded })).map((chip) => chip.disabled)).toEqual([false, false]);
+
+    /* On, with nothing behind it, it stays live so it can be turned off. */
+    const on = programmes({ scholarship: 'true' });
+    expect(chips(props({ programmes: on }))[0]!.disabled).toBe(false);
+
+    /* The guides count their own tick. */
+    expect(chips(guidesView())[0]!.disabled).toBe(false);
+  });
+
   it('switches between programmes and course guides, each with its count', () => {
     const page = parse(render(props()));
     const programmesTab = page.querySelector('[data-testid=switch-programmes]')!;
@@ -266,7 +302,8 @@ describe('/courses, the programme finder', () => {
     expect(page.querySelector('.cf-switch')).toBeNull();
     expect(page.querySelector('[data-testid=course-guide-grid]')).not.toBeNull();
     const stats = [...page.querySelectorAll('.statstrip span')].map((node) => node.textContent);
-    expect(stats).toEqual(['Courses', 'Destinations', 'Subjects', 'Specializations']);
+    /* One subject and one specialization in the fixture, named so. */
+    expect(stats).toEqual(['Courses', 'Destinations', 'Subject', 'Specialization']);
     /* Without programmes the guides are the page, so their own address
        does not name a view. */
     expect(page.querySelector('input[name=view]')).toBeNull();
@@ -440,6 +477,99 @@ describe('/courses, the programme finder', () => {
   });
 });
 
+describe('/courses, the bands under the list', () => {
+  const named = (name: string, publishedCourseCount: number): Subject => ({
+    ...subject,
+    id: name,
+    name,
+    slug: name.toLowerCase().replace(/\W+/g, '-'),
+    publishedCourseCount,
+  });
+
+  it('browses only subjects with published courses, the busiest first', () => {
+    const subjects = [
+      named('QA Delete Test', 0),
+      named('Browser Country E2E Subject', 0),
+      named('Law', 2),
+      named('Computer Science', 9),
+      named('Engineering', 5),
+    ];
+    const page = parse(render(props({ subjects })));
+    const browse = [...page.querySelectorAll('#subjects .subjcard__name a')].map(
+      (node) => node.textContent,
+    );
+    expect(browse).toEqual(['Computer Science', 'Engineering', 'Law']);
+    /* The "Related on Universta" subjects follow the same rule. */
+    const related = [...page.querySelectorAll('#connect .h-relgroup')].find((group) =>
+      group.querySelector('.h-relgroup__t')?.textContent?.startsWith('Subjects'),
+    );
+    expect([...related!.querySelectorAll('li a')].map((node) => node.textContent)).toEqual([
+      'Computer Science',
+      'Engineering',
+      'Law',
+    ]);
+  });
+
+  it('hides the subject band when no subject has a published course', () => {
+    const page = parse(render(props({ subjects: [named('QA Delete Test', 0)] })));
+    expect(page.querySelector('#subjects')).toBeNull();
+    expect(page.body.textContent).not.toContain('QA Delete Test');
+  });
+
+  it('sends "All destinations" to the destinations, not the home page', () => {
+    const page = parse(render(props()));
+    const link = [...page.querySelectorAll('#destinations a.linkcta')].find((node) =>
+      node.textContent?.includes('All destinations'),
+    );
+    expect(link?.getAttribute('href')).toBe('/study-abroad');
+  });
+
+  it('names a figure of one in the singular in the hero', () => {
+    const one = programmes();
+    const page = parse(
+      render(
+        props({
+          programmes: {
+            ...one,
+            summary: { programmes: 4, universities: 1, cities: 1, intakeMonths: 1, countries: 1 },
+          },
+        }),
+      ),
+    );
+    expect([...page.querySelectorAll('.statstrip span')].map((node) => node.textContent)).toEqual([
+      'Programmes',
+      'University',
+      'City',
+      'Intake month',
+    ]);
+
+    const guides = parse(
+      render(
+        guidesView(
+          {},
+          {
+            programmes: null,
+            guideCatalogue: {
+              options: {
+                ...options,
+                countries: options.countries.slice(0, 1),
+                subjects: options.subjects.slice(0, 1),
+              },
+              total: 1,
+            },
+          },
+        ),
+      ),
+    );
+    expect([...guides.querySelectorAll('.statstrip span')].map((node) => node.textContent)).toEqual([
+      'Course',
+      'Destination',
+      'Subject',
+      'Specialization',
+    ]);
+  });
+});
+
 describe('/courses?view=guides, the course guides', () => {
   it('makes the filter form the panel’s own scrolling body, with Apply at its foot', () => {
     const page = parse(render(guidesView()));
@@ -537,5 +667,80 @@ describe('/courses?view=guides, the course guides', () => {
     expect(
       page.querySelector('#course-guide-filters input[type=hidden][name=university]')?.getAttribute('value'),
     ).toBe('university-of-warwick');
+  });
+});
+
+/**
+ * The "Upcoming events" strip, as the zip's scholarship card: format badge,
+ * Date, Time with its zone, Format, Where, and "View event", each date in
+ * the event's own zone rather than UTC. The card is an <article> whose
+ * title link covers it; Register is a link of its own beside it.
+ */
+describe('the upcoming events strip', () => {
+  const event = toStripEvent(
+    {
+      title: 'Study in Japan evening',
+      slug: 'study-in-japan-evening',
+      eventType: 'WEBINAR',
+      /* 16:00 UTC on the 25th is 01:00 on the 26th in Tokyo. */
+      startsAt: '2026-10-25T16:00:00.000Z',
+      endsAt: '2026-10-25T18:00:00.000Z',
+      timezone: 'Asia/Tokyo',
+      venue: 'Shibuya Hall',
+      city: { name: 'Tokyo' },
+      country: { name: 'Japan', slug: 'japan', iso2Code: 'jp' },
+      registrationUrl: 'https://example.invalid/register',
+    },
+    Date.parse('2026-10-01T00:00:00Z'),
+  );
+  const strip = (html: string) =>
+    html.slice(html.indexOf('id="events"'), html.indexOf('id="how-to-choose"'));
+
+  it('dates each event in its own zone, with the time and the zone’s name', () => {
+    const html = strip(render(props({ events: [event] })));
+    expect(html).toContain('26 Oct 2026');
+    expect(html).not.toContain('25 Oct 2026');
+    expect(html).toContain('<dt>Time</dt><dd>1:00 am JST</dd>');
+  });
+
+  it('draws the zip’s card: badge, facts and the ways in, with no link inside a link', () => {
+    const html = strip(render(props({ events: [event] })));
+    expect(html).toContain('<article class="schcard cg-eventcard">');
+    expect(html).toContain('<span class="fundbadge">Webinar</span>');
+    for (const label of ['Date', 'Time', 'Format', 'Where']) expect(html).toContain(`<dt>${label}</dt>`);
+    expect(html).toContain('Shibuya Hall, Tokyo');
+    expect(html).toContain('<span class="flagchip__code">JP</span>Japan');
+    expect(html).toContain('href="/events/study-in-japan-evening"');
+    expect(html).toContain('View event');
+    expect(html).toContain('href="https://example.invalid/register"');
+    const doc = parse(html);
+    expect(doc.querySelectorAll('a a')).toHaveLength(0);
+  });
+
+  it('offers Register only until the event has ended', () => {
+    const over = toStripEvent(
+      {
+        title: 'Past evening',
+        slug: 'past',
+        startsAt: '2026-01-01T10:00:00Z',
+        registrationUrl: 'https://example.invalid/register',
+      },
+      Date.parse('2026-10-01T00:00:00Z'),
+    );
+    expect(strip(render(props({ events: [over] })))).not.toContain('Register');
+  });
+
+  it('still prints a date for an event passed in the old shape', () => {
+    expect(strip(render(props()))).toContain('1 Nov 2026');
+  });
+});
+
+/** "How to choose" sets its prose beside its heading, not under it. */
+describe('how to choose a course', () => {
+  it('puts the prose and its Read more in the right-hand column of the split head', () => {
+    const html = render(props());
+    const band = html.slice(html.indexOf('id="how-to-choose"'), html.indexOf('id="faq"'));
+    expect(band).toMatch(/sec-head--split[\s\S]*sec-head__aside[\s\S]*<\/div><div><div class="prose">/);
+    expect(band).toContain('Read more about course selection');
   });
 });

@@ -12,6 +12,7 @@ import {
   type GuideFilters,
   type GuideUnknown,
 } from '@/lib/courses-params';
+import type { StripEvent } from '@/lib/course-events';
 import { formatNumber } from '@/lib/format';
 import { intakeRange } from '@/lib/intake-range';
 import {
@@ -81,12 +82,9 @@ export type CoursesReferenceProps = {
   /** Real link clusters; each is empty when the catalogue has no records. */
   universities: Array<{ name: string; slug: string }>;
   consultants: Array<{ name: string; slug: string }>;
-  events: Array<{
-    name: string;
-    slug: string;
-    mode: string | null;
-    startAt: string | null;
-  }>;
+  /** The upcoming events strip, each formatted in the event's own zone
+   *  (see course-events). */
+  events: StripEvent[];
   heading: string;
   lede: string;
   ctaHeading: string;
@@ -193,32 +191,42 @@ export function CoursesReference(props: CoursesReferenceProps) {
      this catalogue can actually count. A figure with nothing behind it is
      left out rather than printed as a dash. They count the whole catalogue,
      filtered or not, as the reference's hero does. */
+  const stat = (value: number, one: string, many: string) => ({
+    value,
+    /* The label agrees with its figure: "1 University", "242 Universities". */
+    label: value === 1 ? one : many,
+  });
   const stats = (
     summary
       ? [
-          { value: summary.programmes, label: 'Programmes' },
-          { value: summary.universities, label: 'Universities' },
-          { value: summary.cities, label: 'Cities' },
-          { value: summary.intakeMonths, label: 'Intake months' },
+          stat(summary.programmes, 'Programme', 'Programmes'),
+          stat(summary.universities, 'University', 'Universities'),
+          stat(summary.cities, 'City', 'Cities'),
+          stat(summary.intakeMonths, 'Intake month', 'Intake months'),
         ]
       : [
-          { value: guideCatalogue?.total ?? 0, label: 'Courses' },
-          { value: guideOptions?.countries.length ?? 0, label: 'Destinations' },
-          { value: guideOptions?.subjects.length ?? 0, label: 'Subjects' },
-          { value: genericSpecializations.length, label: 'Specializations' },
+          stat(guideCatalogue?.total ?? 0, 'Course', 'Courses'),
+          stat(guideOptions?.countries.length ?? 0, 'Destination', 'Destinations'),
+          stat(guideOptions?.subjects.length ?? 0, 'Subject', 'Subjects'),
+          stat(genericSpecializations.length, 'Specialization', 'Specializations'),
         ]
-  ).filter((stat) => stat.value > 0);
+  ).filter((entry) => entry.value > 0);
 
   /* Quick filters toggle one filter of the list on show straight away, so
      their pressed state is the address rather than page-local memory. */
+  /* Each also knows how many it would open, over the whole catalogue: a
+     chip that can only lead to an empty list is drawn inactive rather than
+     followed -- unless it is on, when it has to stay to be undone. Null
+     where the count is not known, which leaves the chip as it was. */
   const quick = (
     which: 'scholarship' | 'postStudyWork',
-  ): { on: boolean; href: string } => {
+  ): { on: boolean; href: string; count: number | null } => {
     if (view === 'programmes' && programmes) {
       const on = programmes.filters[which];
       return {
         on,
         href: `/courses${courseListSearch(programmes.filters, { [which]: !on })}#discovery`,
+        count: programmes.facets.extras.find((option) => option.value === which)?.count ?? 0,
       };
     }
     const key = which === 'scholarship' ? 'scholarshipAvailable' : 'postStudyWorkAvailable';
@@ -226,11 +234,23 @@ export function CoursesReference(props: CoursesReferenceProps) {
     return {
       on,
       href: `/courses${guideListSearch(guideFilters, { [key]: !on }, { view: viewParam })}#discovery`,
+      count: guideOptions
+        ? (guideOptions.extras.find((option) => option.value === key)?.count ?? 0)
+        : null,
     };
   };
+  const onProgrammesView = view === 'programmes' && programmes !== null;
   const quickFilters = [
-    { label: 'Scholarships', ...quick('scholarship') },
-    { label: 'Post-study work', ...quick('postStudyWork') },
+    {
+      label: 'Scholarships',
+      none: `No ${onProgrammesView ? 'programme' : 'course'} lists a scholarship yet`,
+      ...quick('scholarship'),
+    },
+    {
+      label: 'Post-study work',
+      none: `No ${onProgrammesView ? 'programme' : 'course'} is in a post-study work destination yet`,
+      ...quick('postStudyWork'),
+    },
   ];
 
   /* ------------------------------------------------------------ browse */
@@ -321,7 +341,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
         })),
       };
 
-  const topSubjects = props.subjects.slice(0, 8);
+  /* "Browse courses by subject" lists the subjects with published courses,
+     the busiest first: a subject with none opens an empty guide, and a test
+     subject an editor left published has none. */
+  const coursedSubjects = props.subjects
+    .filter((subject) => (subject.publishedCourseCount ?? 0) > 0)
+    .sort((left, right) => right.publishedCourseCount - left.publishedCourseCount);
+  const topSubjects = coursedSubjects.slice(0, 8);
   /* Destinations for the prose and the link clusters: the ones the list
      itself counts. */
   const topCountries = browse.countries.slice(0, 6);
@@ -428,17 +454,22 @@ export function CoursesReference(props: CoursesReferenceProps) {
           {/* The quick filters alone: the client had the template's "Try"
               row of example searches taken off. */}
           <p className="bigsearch__ex" style={{ marginTop: 22 }}>
-            {quickFilters.map((filter) => (
-              <button
-                key={filter.label}
-                type="button"
-                className={`chipbtn chipbtn--sm${filter.on ? ' on' : ''}`}
-                aria-pressed={filter.on}
-                onClick={() => router.push(filter.href)}
-              >
-                {filter.label}
-              </button>
-            ))}
+            {quickFilters.map((filter) => {
+              const empty = !filter.on && filter.count === 0;
+              return (
+                <button
+                  key={filter.label}
+                  type="button"
+                  className={`chipbtn chipbtn--sm${filter.on ? ' on' : ''}`}
+                  aria-pressed={filter.on}
+                  disabled={empty}
+                  title={empty ? filter.none : undefined}
+                  onClick={() => router.push(filter.href)}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
           </p>
         </div>
       </section>
@@ -552,7 +583,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
             <SectionHead
               eyebrow="Explore"
               title="Browse courses by subject"
-              lead="Every subject area currently published in the catalogue."
+              lead="The subject areas with the most published courses in the catalogue."
             >
               <p className="h-more">
                 <Link className="linkcta" href="/subjects">
@@ -638,7 +669,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               }
             >
               <p className="h-more">
-                <Link className="linkcta" href="/">
+                <Link className="linkcta" href="/study-abroad">
                   All destinations{' '}
                   <span className="linkcta__arrow" aria-hidden="true">
                     &rarr;
@@ -767,67 +798,141 @@ export function CoursesReference(props: CoursesReferenceProps) {
                 </Link>
               </p>
             </SectionHead>
-            <div className="h-grid h-grid--4">
-              {props.events.map((event) => (
-                <Link key={event.slug} href={`/events/${event.slug}`} className="h-card">
-                  {event.mode ? <span className="badge">{event.mode}</span> : null}
-                  <span className="h-card__t">{event.name}</span>
-                  {event.startAt ? (
-                    <span className="h-card__m">
-                      {new Intl.DateTimeFormat('en-GB', {
-                        dateStyle: 'medium',
-                        timeZone: 'UTC',
-                      }).format(new Date(event.startAt))}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
+            {/* The zip's scholarship card, for an event: its format at the
+                top, the title (whose link covers the card), when it is in
+                its own zone, its format and place, and the ways in.
+                Register is a link of its own above the card's, never a
+                link inside a link. */}
+            <div className="h-grid h-grid--4 cg-events">
+              {props.events.map((event) => {
+                const date =
+                  event.date ??
+                  (event.startAt
+                    ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' }).format(
+                        new Date(event.startAt),
+                      )
+                    : null);
+                const format = event.format ?? event.mode;
+                return (
+                  <article key={event.slug} className="schcard cg-eventcard">
+                    <div className="schcard__top">
+                      {event.mode ? <span className="fundbadge">{event.mode}</span> : <span />}
+                    </div>
+                    <h3 className="schcard__name">
+                      <Link className="cg-eventcard__link" href={`/events/${event.slug}`}>
+                        {event.name}
+                      </Link>
+                    </h3>
+                    <dl className="schcard__facts">
+                      {date ? (
+                        <div>
+                          <dt>Date</dt>
+                          <dd>{date}</dd>
+                        </div>
+                      ) : null}
+                      {event.time ? (
+                        <div>
+                          <dt>Time</dt>
+                          <dd>{event.time}</dd>
+                        </div>
+                      ) : null}
+                      {format ? (
+                        <div>
+                          <dt>Format</dt>
+                          <dd>{format}</dd>
+                        </div>
+                      ) : null}
+                      {event.where || event.country ? (
+                        <div>
+                          <dt>Where</dt>
+                          <dd>
+                            {event.where ? <span>{event.where}</span> : null}
+                            {event.country ? (
+                              <span className="flagchip">
+                                {event.country.iso2 ? (
+                                  <span className="flagchip__code">{event.country.iso2}</span>
+                                ) : null}
+                                {event.country.name}
+                              </span>
+                            ) : null}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    <div className="schcard__foot">
+                      {/* How the card's own link looks, not a second link. */}
+                      <span className="btn btn--sm" aria-hidden="true">
+                        View event{' '}
+                        <span className="btn__arrow" aria-hidden="true">
+                          &rarr;
+                        </span>
+                      </span>
+                      {event.registerUrl ? (
+                        <a
+                          className="btn btn--sm btn--ghost cg-eventcard__register"
+                          href={event.registerUrl}
+                          rel="nofollow noopener"
+                          target="_blank"
+                        >
+                          Register{' '}
+                          <span className="btn__arrow" aria-hidden="true">
+                            &#8599;
+                          </span>
+                        </a>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
       ) : null}
 
-      {/* HOW TO CHOOSE */}
-      <section className="sec sec--white" id="how-to-choose">
+      {/* HOW TO CHOOSE: the prose and its "Read more" in the right-hand
+          column beside the heading, as the design's About band sits, so
+          the band does not leave the right half of the page empty. */}
+      <section className="sec sec--white cg-band" id="how-to-choose">
         <div className="wrap">
-          <SectionHead eyebrow="Guidance" title="How to choose the right study abroad course" />
-          <div className="prose">
-            <p>
-              The best programme balances academic fit, affordability, admission chances and career
-              outcomes. Start by filtering on your target degree level and destination, then narrow by
-              study mode and scholarship availability. Shortlist up to {UP_TO} courses and use the compare
-              tray to weigh tuition, duration and intakes against each other.
-            </p>
-            <details className="readmore cf-readmore">
-              <summary>Read more about course selection</summary>
-              <div>
-                <h3>Popular course and destination combinations</h3>
-                <p>
-                  {topSubjects.slice(0, 4).map((subject, index) => (
-                    <span key={subject.id}>
-                      {index > 0 ? ', ' : ''}
-                      <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
-                    </span>
-                  ))}
-                  {topSubjects.length && topCountries.length ? ' and destinations such as ' : null}
-                  {topCountries.slice(0, 4).map((country, index) => (
-                    <span key={country.key}>
-                      {index > 0 ? ', ' : ''}
-                      <Link href={`/study-abroad/${country.key}`}>{country.title}</Link>
-                    </span>
-                  ))}
-                  {topSubjects.length || topCountries.length
-                    ? ' each open their own filterable listing.'
-                    : 'Browse the filters above to open a filterable listing.'}
-                </p>
-                <h3>English language requirements</h3>
-                <p>
-                  Requirements are recorded per programme. Filter by the test you have taken to see
-                  only the courses that publish an accepted score for it.
-                </p>
-              </div>
-            </details>
-          </div>
+          <SectionHead eyebrow="Guidance" title="How to choose the right study abroad course">
+            <div className="prose">
+              <p>
+                The best programme balances academic fit, affordability, admission chances and career
+                outcomes. Start by filtering on your target degree level and destination, then narrow by
+                study mode and scholarship availability. Shortlist up to {UP_TO} courses and use the compare
+                tray to weigh tuition, duration and intakes against each other.
+              </p>
+              <details className="readmore cf-readmore">
+                <summary>Read more about course selection</summary>
+                <div>
+                  <h3>Popular course and destination combinations</h3>
+                  <p>
+                    {topSubjects.slice(0, 4).map((subject, index) => (
+                      <span key={subject.id}>
+                        {index > 0 ? ', ' : ''}
+                        <Link href={`/subjects/${subject.slug}`}>{subject.name}</Link>
+                      </span>
+                    ))}
+                    {topSubjects.length && topCountries.length ? ' and destinations such as ' : null}
+                    {topCountries.slice(0, 4).map((country, index) => (
+                      <span key={country.key}>
+                        {index > 0 ? ', ' : ''}
+                        <Link href={`/study-abroad/${country.key}`}>{country.title}</Link>
+                      </span>
+                    ))}
+                    {topSubjects.length || topCountries.length
+                      ? ' each open their own filterable listing.'
+                      : 'Browse the filters above to open a filterable listing.'}
+                  </p>
+                  <h3>English language requirements</h3>
+                  <p>
+                    Requirements are recorded per programme. Filter by the test you have taken to see
+                    only the courses that publish an accepted score for it.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </SectionHead>
         </div>
       </section>
 
@@ -932,7 +1037,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
         groups={[
           {
             title: 'Subjects',
-            items: props.subjects.slice(0, 6).map((row) => ({
+            items: coursedSubjects.slice(0, 6).map((row) => ({
               id: String(row.id),
               name: String(row.name),
               href: `/subjects/${String(row.slug)}`,

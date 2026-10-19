@@ -27,7 +27,9 @@ import {
   courseFacets,
   COURSE_SORTS,
   DURATION_BANDS,
+  FEE_SORTS,
   fold,
+  hasScholarship,
   matchesCourseQuery,
   mostFirst,
   nextDeadline,
@@ -129,6 +131,11 @@ export type ProgrammeQuery = Omit<CourseQuery, 'intakes'> & {
   within: ProgrammeScopeKey[];
   /** What the request asked for that was left out, as `key=value`. */
   ignored: string[];
+  /** The fee bounds and fee order asked for, as `key=value`. They are read
+   * here and settled once the rows are known: they apply where the rows
+   * share one currency (see settleProgrammeFees), and are named as left
+   * out where they do not. */
+  feeRequests: string[];
 };
 
 /**
@@ -151,6 +158,9 @@ const LEVEL_WORDS: Record<string, string> = {
 const SORT_ALIASES: Record<string, CourseSort> = {
   title: 'name',
   'tuition-low': 'fee',
+  'cost-low': 'fee',
+  'tuition-high': 'fee-high',
+  'cost-high': 'fee-high',
   featured: 'relevance',
 };
 
@@ -265,27 +275,36 @@ export function parseProgrammeQuery(
 
   const countries = slugs('country');
   /* Fees are recorded in each destination's own currency and nothing here
-     converts between them, so a bound or a "lowest first" across several
-     countries would compare pounds with yen. Both apply inside one. */
-  const oneCountry = countries.length === 1;
-  const money = (...keys: string[]) => {
-    const raw = first(...keys);
-    if (!raw) return null;
-    const amount = Number(raw.value);
-    if (oneCountry && Number.isFinite(amount) && amount >= 0) return amount;
-    ignored.push(`${raw.key}=${raw.value}`);
-    return null;
-  };
-
+     converts between them, so a bound or a "lowest first" across pounds
+     and yen would compare the two. Whether the rows share one currency is
+     only known once they are read, so a fee bound and a fee order are
+     taken here and settled then (settleProgrammeFees). A bound that is no
+     amount at all is left out now. */
+  const feeRequests: string[] = [];
   const sortRaw = first('sort');
   let sort: CourseSort = 'relevance';
   if (sortRaw) {
     const named =
       SORT_ALIASES[sortRaw.value] ??
       COURSE_SORTS.find((entry) => entry === sortRaw.value);
-    if (named && (named !== 'fee' || oneCountry)) sort = named;
-    else ignored.push(`sort=${sortRaw.value}`);
+    if (named) {
+      sort = named;
+      if (FEE_SORTS.includes(named)) feeRequests.push(`sort=${sortRaw.value}`);
+    } else ignored.push(`sort=${sortRaw.value}`);
   }
+  const money = (...keys: string[]) => {
+    const raw = first(...keys);
+    if (!raw) return null;
+    const amount = Number(raw.value);
+    if (Number.isFinite(amount) && amount >= 0) {
+      feeRequests.push(`${raw.key}=${raw.value}`);
+      return amount;
+    }
+    ignored.push(`${raw.key}=${raw.value}`);
+    return null;
+  };
+  const tuitionMin = money('tuitionMin', 'minTuition');
+  const tuitionMax = money('tuitionMax', 'maxTuition');
 
   const pageRaw = first('page', 'pg');
   let page = 1;
@@ -332,13 +351,14 @@ export function parseProgrammeQuery(
     englishTests,
     scores,
     statuses,
-    tuitionMin: money('tuitionMin', 'minTuition'),
-    tuitionMax: money('tuitionMax', 'maxTuition'),
+    tuitionMin,
+    tuitionMax,
     sort,
     page,
     limit,
     within,
     ignored,
+    feeRequests,
   };
 }
 
@@ -606,7 +626,7 @@ export function programmeFacets(
     {
       value: 'scholarship',
       label: 'With scholarships',
-      count: rows.filter((row) => (row._count?.scholarships ?? 0) > 0).length,
+      count: rows.filter(hasScholarship).length,
     },
     {
       value: 'postStudyWork',
@@ -615,27 +635,12 @@ export function programmeFacets(
     },
   ].filter((option) => option.count > 0);
 
-  /* Fees compare only inside one country, so the range is offered there
-     alone, in the currency its programmes record most. It is labelled
-     annual, so only fees recorded by the year are counted towards it. */
-  let tuition: { currencyCode: string | null; count: number } | null = null;
-  if (query.countries.length === 1) {
-    const annual = local.filter(
-      (row) =>
-        row.tuitionPeriod === ANNUAL &&
-        (number(row.tuitionMin) !== null || number(row.tuitionMax) !== null),
-    );
-    const currencies = tally(annual, (row) =>
-      row.currencyCode
-        ? [{ value: row.currencyCode, label: row.currencyCode }]
-        : [],
-    ).sort((a, b) => b.count - a.count);
-    const currencyCode = currencies[0]?.value ?? null;
-    tuition = {
-      currencyCode,
-      count: annual.filter((row) => feeMeasurable(row, currencyCode)).length,
-    };
-  }
+  /* Fees compare only in one currency: inside one country, or across a
+     list whose fees all share one (see tuitionRange). */
+  const tuition = tuitionRange(
+    local,
+    query.countries.length === 1 || inOneCountry(local),
+  );
 
   return {
     ...base,
@@ -651,6 +656,100 @@ export function programmeFacets(
 }
 
 export type ProgrammeFacets = ReturnType<typeof programmeFacets>;
+
+export type TuitionRange = { currencyCode: string | null; count: number };
+
+/** Whether every row is taught in the same country. */
+export function inOneCountry(rows: ProgrammeRow[]) {
+  if (!rows.length) return false;
+  const first = countryOf(rows[0])?.slug ?? null;
+  return first !== null && rows.every((row) => countryOf(row)?.slug === first);
+}
+
+/**
+ * The fee range a list can be filtered and ordered by, or null when its
+ * fees cannot be set against each other.
+ *
+ * Inside one country the range is offered in the currency its programmes
+ * record most, as it always was; a fee in another currency is set aside by
+ * measurableFees as a missing one is. Across countries nothing converts
+ * pounds into yen, so the range is offered only when every fee the rows
+ * record is in one currency -- a catalogue that is all in Japan, or all in
+ * euros. It is labelled annual, so only fees recorded by the year are
+ * counted towards it.
+ */
+export function tuitionRange(
+  rows: ProgrammeRow[],
+  oneCountry: boolean,
+): TuitionRange | null {
+  const priced = rows.filter(
+    (row) => number(row.tuitionMin) !== null || number(row.tuitionMax) !== null,
+  );
+  const annual = priced.filter((row) => row.tuitionPeriod === ANNUAL);
+  if (!oneCountry) {
+    const currencies = new Set(priced.map((row) => row.currencyCode ?? ''));
+    if (currencies.size !== 1 || currencies.has('') || !annual.length)
+      return null;
+  }
+  const currencies = tally(annual, (row) =>
+    row.currencyCode
+      ? [{ value: row.currencyCode, label: row.currencyCode }]
+      : [],
+  ).sort((a, b) => b.count - a.count);
+  const currencyCode = currencies[0]?.value ?? null;
+  return {
+    currencyCode,
+    count: annual.filter((row) => feeMeasurable(row, currencyCode)).length,
+  };
+}
+
+/**
+ * The request's fee bounds and fee order, settled against the rows.
+ *
+ * The range the counts offer comes first: it is taken over the part of the
+ * catalogue the list is fixed to. Where that part mixes currencies, the
+ * rows the rest of the request matches may still share one -- a subject
+ * taught only in Japan -- and then the range is theirs. With no range at
+ * all, the bounds and the fee order are left out and named as left out,
+ * and the list is answered by relevance. The rows come back with only the
+ * fees the range measures, which is what the bounds and the order read.
+ */
+export function settleProgrammeFees(
+  query: ProgrammeQuery,
+  offered: TuitionRange | null,
+  rows: ProgrammeRow[],
+  today = new Date(),
+): {
+  query: ProgrammeQuery;
+  tuition: TuitionRange | null;
+  rows: ProgrammeRow[];
+} {
+  let tuition = offered;
+  if (!tuition) {
+    const matched = rows.filter((row) =>
+      matchesProgramme(
+        row,
+        { ...query, tuitionMin: null, tuitionMax: null },
+        today,
+      ),
+    );
+    tuition = tuitionRange(
+      matched,
+      query.countries.length === 1 || inOneCountry(matched),
+    );
+  }
+  const settled: ProgrammeQuery = tuition
+    ? query
+    : {
+        ...query,
+        tuitionMin: null,
+        tuitionMax: null,
+        sort: FEE_SORTS.includes(query.sort) ? 'relevance' : query.sort,
+        ignored: [...query.ignored, ...query.feeRequests],
+        feeRequests: [],
+      };
+  return { query: settled, tuition, rows: measurableFees(rows, tuition) };
+}
 
 /** The destinations, subjects and courses chosen that no option names. */
 export function unnamedChoices(facets: ProgrammeFacets, query: ProgrammeQuery) {

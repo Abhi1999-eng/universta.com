@@ -36,20 +36,23 @@ import {
   effectiveLevel,
   matchesCourseQuery,
   NEIGHBOUR_TAKE,
+  offeringMediaIds,
   parseCourseQuery,
   relatedOfferings,
   sortOfferings,
   UNIVERSITY_CATALOGUE_CAP,
+  withOfferingMedia,
   type OfferingLike,
+  type PublicMedia,
 } from './university-courses';
 import {
   matchesProgramme,
-  measurableFees,
   nameChoices,
   parseProgrammeQuery,
   PROGRAMME_SCAN_CAP,
   programmeFacets,
   programmeScope,
+  settleProgrammeFees,
   programmeSummary,
   unnamedChoices,
   type ProgrammeFacets,
@@ -442,6 +445,18 @@ function programmeScanSelect(now: Date) {
         subject: { select: { name: true, slug: true } },
         subSubject: { select: { name: true, slug: true } },
         courseLevel: level,
+        /* The countries the course is ticked "Scholarship available" in,
+           as its guide shows them: the finder's scholarship filter counts
+           the tick for the programme's own country. */
+        countryCourses: {
+          where: {
+            scholarshipAvailable: true,
+            status: 'ACTIVE',
+            deletedAt: null,
+            availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+          },
+          select: { countryId: true },
+        },
       },
     },
     intakes: {
@@ -466,6 +481,7 @@ function programmeScanSelect(now: Date) {
         slug: true,
         country: {
           select: {
+            id: true,
             name: true,
             slug: true,
             iso2Code: true,
@@ -1822,7 +1838,25 @@ export class ExpandedService {
         this.withSeo('offerings', row),
         this.offeringNeighbours(row, university.id, now),
       ]);
-      return { ...withSeo, ...around };
+      /* The pictures of the course and of every card the page draws, in
+         one read. */
+      const assets = await this.offeringMedia([
+        row,
+        ...around.related,
+        ...around.elsewhere,
+        ...around.moreAtUniversity.rows,
+      ]);
+      return {
+        ...withSeo,
+        featuredMedia: withOfferingMedia([row], assets)[0].featuredMedia,
+        ...around,
+        related: withOfferingMedia(around.related, assets),
+        elsewhere: withOfferingMedia(around.elsewhere, assets),
+        moreAtUniversity: {
+          ...around.moreAtUniversity,
+          rows: withOfferingMedia(around.moreAtUniversity.rows, assets),
+        },
+      };
     }
     /* The list keeps how far "Load more" has gone in its address, and a
        reload renders that whole run in one answer, so a page here may be
@@ -1857,7 +1891,8 @@ export class ExpandedService {
       parsed.sort,
       now,
     );
-    const data = matching.slice(skip, skip + limit);
+    const rows = matching.slice(skip, skip + limit);
+    const data = withOfferingMedia(rows, await this.offeringMedia(rows));
     return {
       university,
       data,
@@ -2033,13 +2068,18 @@ export class ExpandedService {
     const parsed = parseProgrammeQuery(query, await this.knownCodes(now));
     const scan = await this.scanProgrammes(parsed, now);
     /* The overview first: the tuition range it offers is the currency the
-       fees are filtered and ordered in. */
+       fees are filtered and ordered in -- or, where it offers none, the one
+       the matched rows share, if they share one. */
     const overview = await this.programmeOverview(parsed, scan, now);
+    const fees = settleProgrammeFees(
+      parsed,
+      overview.facets.tuition,
+      scan.rows,
+      now,
+    );
     const matching = sortOfferings(
-      measurableFees(scan.rows, overview.facets.tuition).filter((row) =>
-        matchesProgramme(row, parsed, now),
-      ),
-      parsed.sort,
+      fees.rows.filter((row) => matchesProgramme(row, fees.query, now)),
+      fees.query.sort,
       now,
     );
     const skip = (parsed.page - 1) * parsed.limit;
@@ -2048,16 +2088,16 @@ export class ExpandedService {
         matching.slice(skip, skip + parsed.limit).map((row) => row.id),
         now,
       ),
-      this.namedFacets(overview.facets, parsed),
+      this.namedFacets({ ...overview.facets, tuition: fees.tuition }, parsed),
     ]);
     return {
       data,
       meta: {
         ...meta(parsed.page, parsed.limit, matching.length),
         /* What was applied, which is not always what was asked: "lowest
-           tuition" across several countries is answered by relevance. */
-        sort: parsed.sort,
-        ignored: parsed.ignored,
+           tuition" across currencies is answered by relevance. */
+        sort: fees.query.sort,
+        ignored: fees.query.ignored,
         ...(scan.truncated || overview.truncated ? { truncated: true } : {}),
       },
       facets,
@@ -2170,6 +2210,11 @@ export class ExpandedService {
       )
       .map((row) => ({
         ...row,
+        scholarshipAvailable: Boolean(
+          row.genericCourse?.countryCourses.some(
+            (mapping) => mapping.countryId === row.university.country.id,
+          ),
+        ),
         campus: row.campus
           ? {
               name: row.campus.name,
@@ -2280,7 +2325,22 @@ export class ExpandedService {
       include: offeringCardInclude(now),
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
-    return ids.flatMap((id) => byId.get(id) ?? []);
+    const cards = ids.flatMap((id) => byId.get(id) ?? []);
+    return withOfferingMedia(cards, await this.offeringMedia(cards));
+  }
+
+  /** The active pictures behind a set of courses' `featuredMediaId`, by id:
+   * one read for a whole page. */
+  private async offeringMedia(
+    rows: ReadonlyArray<{ featuredMediaId?: string | null }>,
+  ): Promise<Map<string, PublicMedia>> {
+    const ids = offeringMediaIds(rows);
+    if (!ids.length) return new Map();
+    const assets = await this.prisma.mediaAsset.findMany({
+      where: { id: { in: ids }, status: 'ACTIVE', deletedAt: null },
+      select: { id: true, publicUrl: true, altText: true, title: true },
+    });
+    return new Map(assets.map((asset) => [asset.id, asset]));
   }
 
   /** The level and study-mode codes the catalogue knows, which those

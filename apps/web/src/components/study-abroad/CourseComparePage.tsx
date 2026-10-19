@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   COMPARE_LIMIT,
   COMPARE_ROWS,
+  compareHref,
   compareMarks,
   withoutSlug,
   type CompareCell,
@@ -14,16 +15,18 @@ import {
   CompareAddPicker,
   CompareRemoveLink,
   CompareSync,
+  OpenStoredShortlist,
   StoredShortlist,
 } from './CourseCompare';
 import { Crumbs } from './Crumbs';
 import { PlanBand } from './PlanBand';
+import { SavedCourses } from './SavedCourses';
 
 /**
  * Programmes side by side, at /compare/courses, in the design's comparison:
  * a compact hero with the "Add a course…" list, the twelve-row table with a
- * Remove under each programme, the "Which course fits me best?" card and
- * the plan band.
+ * Remove under each programme, the "Which course fits me best?" card, the
+ * student's saved courses and the plan band.
  *
  * The behaviour is the reference's: the address names the programmes, so a
  * comparison can be shared and comes back the same; each Remove is a link
@@ -250,8 +253,15 @@ export function CourseComparePage({
                   : 'No programmes are listed to compare yet.'}
               </p>
               {/* Only on the bare address: one that names programmes is
-                  answered by them, found or not. */}
-              {requested.length ? null : <StoredShortlist />}
+                  answered by them, found or not. A shortlist on this
+                  device opens at once; the link stays for a browser
+                  without script. */}
+              {requested.length ? null : (
+                <>
+                  <OpenStoredShortlist />
+                  <StoredShortlist />
+                </>
+              )}
               <div className="btn-row compare-empty__actions">
                 <Link className="btn" href="/courses">
                   Search courses{' '}
@@ -264,6 +274,13 @@ export function CourseComparePage({
           )}
         </div>
       </section>
+
+      {/* The design's "My saved courses": the programmes the student saved
+          with the heart, each one step from the comparison. */}
+      <SavedCourses
+        picked={columns.map((column) => column.slug)}
+        returnTo={compareHref(requested)}
+      />
 
       <PlanBand secondary={{ href: '/courses', label: 'Search courses' }} />
 
