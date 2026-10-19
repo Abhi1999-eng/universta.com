@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import { RecordCompare, type CompareRow } from '@/components/study-abroad/RecordCompare';
+import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
 import { phaseCompare, phaseComparisonOptions } from '@/lib/phase1';
 import { COMPARE_LIMIT, readCompareSlugs } from '@/lib/record-compare';
@@ -92,13 +93,19 @@ export default async function CompareConsultants({
     },
     {
       label: 'Website',
-      cells: cell((row) =>
-        text(row.websiteUrl) ? (
-          <a href={String(row.websiteUrl)} rel="nofollow noopener" target="_blank">
-            {String(row.websiteUrl).replace(/^https?:\/\//, '')}
+      /* Linked only when it is an absolute web address; a bare "www.…"
+         would be a link to a page of our own that does not exist. */
+      cells: cell((row) => {
+        const raw = text(row.websiteUrl);
+        const website = externalHttpUrl(raw);
+        return website ? (
+          <a href={website} rel="nofollow noopener" target="_blank">
+            {displayUrl(website)}
           </a>
-        ) : null,
-      ),
+        ) : raw ? (
+          displayUrl(raw)
+        ) : null;
+      }),
     },
     { label: 'In a sentence', cells: cell((row) => text(row.shortDescription)) },
     {

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { RichText } from '@/components/phase1/RichText';
 import { consultantContactActions } from '@/lib/consultant-contact';
+import { displayUrl, externalHttpUrl } from '@/lib/consultant-profile';
 import { formatDate } from '@/lib/format';
 import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
@@ -58,6 +59,11 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
     (action, index, list) => list.findIndex((other) => other.href === action.href) === index,
   );
   const hasContact = Boolean(consultant.email || consultant.phone || consultant.websiteUrl);
+  /* Linked only when it is an absolute web address: a bare "www.…" typed
+     into the admin became a link to a page of our own that does not exist.
+     Anything else is shown as the text it is. */
+  const website = externalHttpUrl(consultant.websiteUrl);
+  const source = externalHttpUrl(consultant.sourceReference);
   /* A date is printed only beside VERIFIED: a pending record can still
      carry the date of a check that no longer stands. */
   const verifiedOn = consultant.verified && consultant.verifiedAt ? formatDate(consultant.verifiedAt) || null : null;
@@ -124,8 +130,8 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                     ) : null}
                   </a>
                 ))}
-                {consultant.websiteUrl ? (
-                  <a className="btn btn--lg btn--ghost" href={consultant.websiteUrl} rel="nofollow noopener" target="_blank">
+                {website ? (
+                  <a className="btn btn--lg btn--ghost" href={website} rel="nofollow noopener" target="_blank">
                     Visit website{' '}
                     <span className="btn__arrow" aria-hidden="true">
                       &#8599;
@@ -167,9 +173,13 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
                       <div className="contactcard__row">
                         <dt className="label">Website</dt>
                         <dd>
-                          <a href={consultant.websiteUrl} rel="nofollow noopener" target="_blank">
-                            {consultant.websiteUrl.replace(/^https?:\/\//, '')}
-                          </a>
+                          {website ? (
+                            <a href={website} rel="nofollow noopener" target="_blank">
+                              {displayUrl(website)}
+                            </a>
+                          ) : (
+                            displayUrl(consultant.websiteUrl)
+                          )}
                         </dd>
                       </div>
                     ) : null}
@@ -306,10 +316,12 @@ export function ConsultantGuide({ consultant, countries, services, languages, lo
             <div className="unisnap__cell">
               <span className="label">Source</span>
               <b>
-                {consultant.sourceReference ? (
-                  <a href={consultant.sourceReference} rel="nofollow noopener" target="_blank">
+                {source ? (
+                  <a href={source} rel="nofollow noopener" target="_blank">
                     The consultant&rsquo;s own listing &#8599;
                   </a>
+                ) : consultant.sourceReference?.trim() ? (
+                  consultant.sourceReference.trim()
                 ) : (
                   'Not recorded'
                 )}

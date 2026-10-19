@@ -37,6 +37,30 @@ const render = (over: Partial<ConsultantGuideProps['consultant']> = {}) =>
 const lastVerified = (html: string) =>
   html.match(/<span class="label">Last verified<\/span><b>([^<]*)<\/b>/)?.[1];
 
+describe('a consultant profile\'s website and source', () => {
+  it('links an absolute address from the hero, the contact card and the source', () => {
+    const html = render({
+      websiteUrl: 'https://silverbeck.example',
+      sourceReference: 'https://directory.example/silverbeck',
+    });
+    expect(html.match(/href="https:\/\/silverbeck\.example"/g)).toHaveLength(2);
+    expect(html).toContain('Visit website');
+    expect(html).toContain('href="https://directory.example/silverbeck"');
+  });
+
+  it('shows a bare domain and a note as text, with no link to a page that does not exist', () => {
+    const html = render({
+      websiteUrl: 'www.audit-consultant.test',
+      sourceReference: 'Checked by phone with the office',
+    });
+    expect(html).not.toContain('href="www.audit-consultant.test"');
+    expect(html).not.toContain('Visit website');
+    expect(html).toContain('<dd>www.audit-consultant.test</dd>');
+    expect(html).not.toContain('href="Checked by phone');
+    expect(html).toContain('Checked by phone with the office');
+  });
+});
+
 describe('a consultant profile\'s verification', () => {
   it('dates a verified consultant in the hero and the Verification section', () => {
     const html = render();
