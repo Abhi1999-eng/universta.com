@@ -442,6 +442,44 @@ describe('/courses, the programme finder', () => {
 });
 
 describe('/courses, the bands under the list', () => {
+  const named = (name: string, publishedCourseCount: number): Subject => ({
+    ...subject,
+    id: name,
+    name,
+    slug: name.toLowerCase().replace(/\W+/g, '-'),
+    publishedCourseCount,
+  });
+
+  it('browses only subjects with published courses, the busiest first', () => {
+    const subjects = [
+      named('QA Delete Test', 0),
+      named('Browser Country E2E Subject', 0),
+      named('Law', 2),
+      named('Computer Science', 9),
+      named('Engineering', 5),
+    ];
+    const page = parse(render(props({ subjects })));
+    const browse = [...page.querySelectorAll('#subjects .subjcard__name a')].map(
+      (node) => node.textContent,
+    );
+    expect(browse).toEqual(['Computer Science', 'Engineering', 'Law']);
+    /* The "Related on Universta" subjects follow the same rule. */
+    const related = [...page.querySelectorAll('#connect .h-relgroup')].find((group) =>
+      group.querySelector('.h-relgroup__t')?.textContent?.startsWith('Subjects'),
+    );
+    expect([...related!.querySelectorAll('li a')].map((node) => node.textContent)).toEqual([
+      'Computer Science',
+      'Engineering',
+      'Law',
+    ]);
+  });
+
+  it('hides the subject band when no subject has a published course', () => {
+    const page = parse(render(props({ subjects: [named('QA Delete Test', 0)] })));
+    expect(page.querySelector('#subjects')).toBeNull();
+    expect(page.body.textContent).not.toContain('QA Delete Test');
+  });
+
   it('sends "All destinations" to the destinations, not the home page', () => {
     const page = parse(render(props()));
     const link = [...page.querySelectorAll('#destinations a.linkcta')].find((node) =>

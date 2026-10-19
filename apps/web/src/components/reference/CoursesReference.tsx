@@ -326,7 +326,13 @@ export function CoursesReference(props: CoursesReferenceProps) {
         })),
       };
 
-  const topSubjects = props.subjects.slice(0, 8);
+  /* "Browse courses by subject" lists the subjects with published courses,
+     the busiest first: a subject with none opens an empty guide, and a test
+     subject an editor left published has none. */
+  const coursedSubjects = props.subjects
+    .filter((subject) => (subject.publishedCourseCount ?? 0) > 0)
+    .sort((left, right) => right.publishedCourseCount - left.publishedCourseCount);
+  const topSubjects = coursedSubjects.slice(0, 8);
   /* Destinations for the prose and the link clusters: the ones the list
      itself counts. */
   const topCountries = browse.countries.slice(0, 6);
@@ -557,7 +563,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
             <SectionHead
               eyebrow="Explore"
               title="Browse courses by subject"
-              lead="Every subject area currently published in the catalogue."
+              lead="The subject areas with the most published courses in the catalogue."
             >
               <p className="h-more">
                 <Link className="linkcta" href="/subjects">
@@ -937,7 +943,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
         groups={[
           {
             title: 'Subjects',
-            items: props.subjects.slice(0, 6).map((row) => ({
+            items: coursedSubjects.slice(0, 6).map((row) => ({
               id: String(row.id),
               name: String(row.name),
               href: `/subjects/${String(row.slug)}`,
