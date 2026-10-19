@@ -151,6 +151,40 @@ describe('the programme finder’s reads', () => {
     });
   });
 
+  /* /courses' "Scholarships" chip opened an empty list while every course
+     guide was tagged "Scholarships" from the course's own tick. The tick
+     for the country the programme is taught in now counts too. */
+  it('counts the course’s "Scholarship available" tick for the programme’s own country', async () => {
+    const uk = { ...warwick, country: { ...warwick.country, id: 'gb' } };
+    const ticked = (countryId: string) => ({
+      slug: 'msc',
+      name: 'MSc',
+      subject: null,
+      subSubject: null,
+      courseLevel: null,
+      countryCourses: [{ countryId }],
+    });
+    const { service, findMany } = build([
+      scanned({ id: 'o-here', slug: 'here', university: uk, genericCourse: ticked('gb') }),
+      scanned({ id: 'o-elsewhere', slug: 'elsewhere', university: uk, genericCourse: ticked('jp') }),
+      scanned({ id: 'o-none', slug: 'none', university: uk }),
+    ]);
+    const result = await service.programmes({ scholarship: 'true' });
+    expect(result.data.map((row) => row.id)).toEqual(['o-here']);
+    expect(result.facets.extras).toContainEqual({
+      value: 'scholarship',
+      label: 'With scholarships',
+      count: 1,
+    });
+    /* Only a live, offered tick is read. */
+    expect(findMany[0]!.select.genericCourse.select.countryCourses.where).toEqual({
+      scholarshipAvailable: true,
+      status: 'ACTIVE',
+      deletedAt: null,
+      availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+    });
+  });
+
   it('reads the page’s rows in full, in the list’s order, and no more', async () => {
     const { service, findMany } = build([
       scanned({ id: 'o-b', slug: 'b', name: 'B' }),

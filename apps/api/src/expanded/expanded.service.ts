@@ -343,6 +343,18 @@ function programmeScanSelect(now: Date) {
         subject: { select: { name: true, slug: true } },
         subSubject: { select: { name: true, slug: true } },
         courseLevel: level,
+        /* The countries the course is ticked "Scholarship available" in,
+           as its guide shows them: the finder's scholarship filter counts
+           the tick for the programme's own country. */
+        countryCourses: {
+          where: {
+            scholarshipAvailable: true,
+            status: 'ACTIVE',
+            deletedAt: null,
+            availabilityStatus: { in: ['AVAILABLE', 'LIMITED'] },
+          },
+          select: { countryId: true },
+        },
       },
     },
     intakes: {
@@ -367,6 +379,7 @@ function programmeScanSelect(now: Date) {
         slug: true,
         country: {
           select: {
+            id: true,
             name: true,
             slug: true,
             iso2Code: true,
@@ -1890,6 +1903,11 @@ export class ExpandedService {
       )
       .map((row) => ({
         ...row,
+        scholarshipAvailable: Boolean(
+          row.genericCourse?.countryCourses.some(
+            (mapping) => mapping.countryId === row.university.country.id,
+          ),
+        ),
         campus: row.campus
           ? {
               name: row.campus.name,
