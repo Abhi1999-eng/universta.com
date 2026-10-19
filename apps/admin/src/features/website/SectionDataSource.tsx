@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authFetch } from "@/features/auth/auth-client";
+import { testimonialName } from "@/features/phase1/record-lifecycle";
 
 export type DataSourceValue = {
   limit?: number;
@@ -61,6 +62,32 @@ export function isDataSourceSection(sectionType: string): boolean {
 
 type Option = { slug: string; name: string };
 
+/** What a pick is saved as, and how it reads in the list. Records are picked
+ * by slug -- except testimonials, which have no slug (and so could never be
+ * picked at all): they are picked by id and read as their quote and who
+ * said it. The site matches a pick on slug, then on id. */
+export function pickOptions(
+  sectionType: string,
+  rows: Record<string, unknown>[],
+): Option[] {
+  if (sectionType === "TESTIMONIALS")
+    return rows
+      .map((row) => ({
+        slug: String(row.id ?? ""),
+        name: testimonialName(
+          String(row.quote ?? ""),
+          typeof row.attribution === "string" ? row.attribution : null,
+        ),
+      }))
+      .filter((row) => row.slug);
+  return rows
+    .map((row) => ({
+      slug: String(row.slug ?? ""),
+      name: String(row.name ?? row.title ?? row.slug ?? ""),
+    }))
+    .filter((row) => row.slug);
+}
+
 const controlClass =
   "p-input";
 
@@ -99,14 +126,7 @@ export function SectionDataSource({
         const body = await response.json();
         if (cancelled) return;
         const rows = (body?.data ?? []) as Record<string, unknown>[];
-        setOptions(
-          rows
-            .map((row) => ({
-              slug: String(row.slug ?? ""),
-              name: String(row.name ?? row.title ?? row.slug ?? ""),
-            }))
-            .filter((row) => row.slug),
-        );
+        setOptions(pickOptions(sectionType, rows));
       } catch {
         if (!cancelled) setOptions([]);
       }
@@ -114,7 +134,7 @@ export function SectionDataSource({
     return () => {
       cancelled = true;
     };
-  }, [source, mode, search]);
+  }, [source, mode, search, sectionType]);
 
   // Country choices for the one filter the API supports on these resources.
   useEffect(() => {
