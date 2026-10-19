@@ -3603,6 +3603,11 @@ export class ExpandedService {
         'tuitionPeriod',
         'applicationUrl',
         'sourceReference',
+        /* What the programme page prints as "Course code", and the date its
+           facts were last checked against the source -- which is what turns
+           its "Needs verification" badge into "Verified". */
+        'courseCode',
+        'verifiedAt',
         'featuredMediaId',
         'status',
         'isFeatured',
@@ -3893,7 +3898,7 @@ export class ExpandedService {
         });
       data[key] = parsed;
     };
-    if (resource === 'offerings')
+    if (resource === 'offerings') {
       for (const key of [
         'durationMin',
         'durationMax',
@@ -3901,6 +3906,10 @@ export class ExpandedService {
         'tuitionMax',
       ])
         normalizeDecimal(key);
+      normalizeDate('verifiedAt');
+      if ('courseCode' in data && !this.optionalText(data.courseCode))
+        data.courseCode = null;
+    }
     if (resource === 'scholarships') {
       normalizeDecimal('amount');
       normalizeDate('deadline');
