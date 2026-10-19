@@ -98,7 +98,9 @@ describe('what each destination asks for', () => {
       }),
     ]);
     expect(markup).toContain('September');
-    expect(markup).toContain('2027-01-15');
+    /* As the programme page writes it, never the stored ISO date. */
+    expect(markup).toContain('15 January 2027');
+    expect(markup).not.toContain('2027-01-15');
   });
 
   it('says a deadline is unpublished rather than leaving the cell blank', () => {
@@ -130,7 +132,8 @@ describe('what each destination asks for', () => {
       }),
     ]);
     expect(markup).toContain('https://example.invalid/programme');
-    expect(markup).toContain('checked 2026-10-02');
+    expect(markup).toContain('checked 2 October 2026');
+    expect(markup).not.toContain('2026-10-02');
   });
 
   it('gives a destination a card only when it recorded something', () => {

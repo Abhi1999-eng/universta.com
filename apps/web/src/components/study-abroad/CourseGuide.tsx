@@ -11,6 +11,7 @@ import { counsellingHref } from '@/lib/counselling-link';
 import { inCountry } from '@/lib/country-article';
 import { durationLabel, programmesHref } from '@/lib/course-levels';
 import { formatNumber } from '@/lib/format';
+import { dateLabel } from '@/lib/university-courses';
 import type { ProgrammeSample as Programmes } from '@/lib/programme-sample';
 import {
   academicRows,
@@ -562,8 +563,8 @@ export function CourseGuide({
                         >
                           The university&rsquo;s own page for this programme
                         </a>
-                        {row.verifiedAt
-                          ? `, checked ${new Date(row.verifiedAt).toISOString().slice(0, 10)}`
+                        {dateLabel(row.verifiedAt)
+                          ? `, checked ${dateLabel(row.verifiedAt)}`
                           : null}
                       </p>
                     ) : null}

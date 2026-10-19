@@ -1,4 +1,5 @@
 import type { CourseAvailability } from './catalog';
+import { dateLabel } from './university-courses';
 
 /**
  * What one destination asks of an applicant, reduced to the rows a page can
@@ -75,7 +76,9 @@ export type IntakeRow = { id: string; name: string; deadline: string | null; not
 /**
  * The intakes a destination opens, with the deadline where one is known.
  *
- * An intake with no deadline is still worth printing -- knowing a course
+ * The deadline is written the way a university's own pages write it --
+ * "15 January 2027" -- so the guide and a programme page of the same course
+ * agree. An intake with no deadline is still worth printing -- knowing a course
  * starts in September is useful even when nobody has recorded the closing
  * date -- so the row stays and the deadline cell says what it is.
  */
@@ -90,9 +93,9 @@ export function intakeRows(row: CourseAvailability): IntakeRow[] {
         entry.intake?.name?.trim() ||
         entry.intake?.shortLabel?.trim() ||
         'Intake',
-      deadline: entry.applicationDeadline
-        ? new Date(entry.applicationDeadline).toISOString().slice(0, 10)
-        : null,
+      /* "17 November 2026", as the programme page writes the same
+         deadline, rather than the ISO date it is stored as. */
+      deadline: dateLabel(entry.applicationDeadline),
       notes: entry.deadlineNotes?.trim() || null,
     }));
 }

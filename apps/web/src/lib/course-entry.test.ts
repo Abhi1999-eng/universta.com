@@ -91,12 +91,17 @@ describe('the intakes a destination opens', () => {
     ...over,
   });
 
-  it('carries the deadline as a plain date', () => {
+  it('writes the deadline as day, month and year, as a programme page does', () => {
     expect(
       intakeRows(row({ intakes: [intake({ applicationDeadline: '2027-01-15T00:00:00.000Z' })] })),
     ).toEqual([
-      { id: 'i1', name: 'September', deadline: '2027-01-15', notes: null },
+      { id: 'i1', name: 'September', deadline: '15 January 2027', notes: null },
     ]);
+    /* Never the stored ISO date. */
+    expect(
+      intakeRows(row({ intakes: [intake({ applicationDeadline: '2026-11-17T00:00:00.000Z' })] }))[0]
+        ?.deadline,
+    ).toBe('17 November 2026');
   });
 
   it('keeps an intake whose deadline nobody recorded', () => {
