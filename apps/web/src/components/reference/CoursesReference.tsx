@@ -638,7 +638,7 @@ export function CoursesReference(props: CoursesReferenceProps) {
               }
             >
               <p className="h-more">
-                <Link className="linkcta" href="/">
+                <Link className="linkcta" href="/study-abroad">
                   All destinations{' '}
                   <span className="linkcta__arrow" aria-hidden="true">
                     &rarr;

@@ -440,6 +440,16 @@ describe('/courses, the programme finder', () => {
   });
 });
 
+describe('/courses, the bands under the list', () => {
+  it('sends "All destinations" to the destinations, not the home page', () => {
+    const page = parse(render(props()));
+    const link = [...page.querySelectorAll('#destinations a.linkcta')].find((node) =>
+      node.textContent?.includes('All destinations'),
+    );
+    expect(link?.getAttribute('href')).toBe('/study-abroad');
+  });
+});
+
 describe('/courses?view=guides, the course guides', () => {
   it('makes the filter form the panel’s own scrolling body, with Apply at its foot', () => {
     const page = parse(render(guidesView()));
