@@ -756,14 +756,14 @@ export const fieldHelpRegistry: Record<string, FieldHelpContent> = {
   'events.summary': commonFieldHelp.shortDescription,
   'events.startsAt': {
     purpose: 'When the event begins.',
-    input: 'The real date and time the event starts.',
+    input: 'The real date and time the event starts, as a clock where it is held shows it: the time zone is the one chosen under Timezone.',
     dataType: 'Date and time',
     required: 'Required.',
     frontendEffect: 'Shown as the event start time.',
   },
   'events.endsAt': {
     purpose: 'When the event ends.',
-    input: 'The real date and time the event ends, if known.',
+    input: 'The real date and time the event ends, if known, in the event’s own time zone (see Timezone).',
     dataType: 'Date and time',
     required: 'Optional.',
     frontendEffect: 'Shown as the event end time.',

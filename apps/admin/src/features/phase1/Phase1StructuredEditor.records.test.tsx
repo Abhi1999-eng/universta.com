@@ -134,6 +134,8 @@ describe('dates and times', () => {
     open('jobs', 'job-1');
     const scope = await form();
     expect(input(scope, 'Publish until (optional)').value).toBe('2026-12-31T17:30');
+    /* The window is read in India's time, and the form says so. */
+    expect(within(scope).getByText(/Times are India time \(IST\)\./)).toBeInTheDocument();
     await save(scope);
     await waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].body).toMatchObject({

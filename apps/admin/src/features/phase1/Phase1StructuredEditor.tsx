@@ -682,7 +682,7 @@ function ScheduledPublishingFields(p: any) {
         <Field label="Publish from (optional)" type="datetime-local" value={p.values.publishStartsAt ?? ''} onChange={(value) => p.set('publishStartsAt', value)} help={commonFieldHelp.publishStartsAt} />
         <Field label="Publish until (optional)" type="datetime-local" value={p.values.publishEndsAt ?? ''} onChange={(value) => p.set('publishEndsAt', value)} error={p.errors.publishEndsAt} help={commonFieldHelp.publishEndsAt} />
       </div>
-      <p className="p-hint">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit.</p>
+      <p className="p-hint">Even while Published, this record is only publicly visible inside this window. Leave blank on either side for no limit. Times are India time (IST).</p>
     </details>
   );
 }
