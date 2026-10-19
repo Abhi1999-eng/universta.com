@@ -250,3 +250,23 @@ describe('a testimonial', () => {
   });
 });
 
+describe('a role', () => {
+  /* JOB-C2, JOB-C4, JOB-C5. */
+  it('wants an https application link and a real email, and warns when neither is set', async () => {
+    record = { id: 'job-2', title: 'Adviser', slug: 'adviser', status: 'DRAFT', employmentType: 'FULL_TIME', remoteStatus: 'Remote' };
+    open('jobs', 'job-2');
+    const scope = await form();
+    expect(within(scope).getByTestId('job-no-apply-warning')).toBeTruthy();
+    expect(input(scope, 'Employment type').value).toBe('FULL_TIME');
+    expect(within(scope).getByRole('option', { name: 'Full time (older value)' })).toBeTruthy();
+    expect(input(scope, 'Remote state').value).toBe('Remote');
+    await userEvent.type(input(scope, 'Application URL'), 'careers.example.test/apply');
+    await userEvent.type(input(scope, 'Application email'), 'jobs@example');
+    expect(within(scope).queryByTestId('job-no-apply-warning')).toBeNull();
+    await save(scope);
+    expect(await within(scope).findByText('Use the full address, starting with https://.')).toBeTruthy();
+    expect(within(scope).getByText('Use an email address like jobs@example.com.')).toBeTruthy();
+    expect(sent).toHaveLength(0);
+  });
+});
+

@@ -147,6 +147,10 @@ function zoneFor(field: (typeof ZONED_FIELDS)[number], values: Record<string, st
 }
 const SEO_TEXT_KEYS = ['seoTitle', 'metaDescription', 'canonicalUrl', 'focusKeyword', 'ogTitle', 'ogDescription', 'twitterTitle', 'twitterDescription'] as const;
 
+/** A plain https address, as a visitor's browser must be sent to. */
+const HTTPS_URL = /^https:\/\/\S+$/;
+const SIMPLE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function isStructuredPhase1Resource(resource: string) {
   return structured.has(resource);
 }
@@ -342,6 +346,10 @@ export function Phase1StructuredEditor({ resource, recordId, onSaved, onCancel }
     }
     if (resource === 'offerings' && !values.courseLevelId) next.courseLevelId = 'Select a course level.';
     if (resource === 'success-stories' && !richTextOrEmpty(values.journey ?? '')) next.journey = 'Write the journey: a story cannot be saved without it.';
+    if (resource === 'jobs') {
+      if (values.applicationUrl?.trim() && !HTTPS_URL.test(values.applicationUrl.trim())) next.applicationUrl = 'Use the full address, starting with https://.';
+      if (values.applicationEmail?.trim() && !SIMPLE_EMAIL.test(values.applicationEmail.trim())) next.applicationEmail = 'Use an email address like jobs@example.com.';
+    }
     if (resource === 'events' && values.startsAt && values.endsAt) {
       if (new Date(values.endsAt) <= new Date(values.startsAt)) next.endsAt = 'End date and time must be after the start.';
     }
@@ -916,6 +924,10 @@ function humanise(value: string) {
 function withLegacy(options: Option[], value: string): Option[] {
   return value && !options.some((option) => option.id === value) ? [...options, { id: value, name: `${humanise(value)} (older value)` }] : options;
 }
+/* The words a visitor reads, stored as written. The web page maps each to
+   its structured-data value. */
+const EMPLOYMENT_TYPES: Option[] = ['Full time', 'Part time', 'Contract', 'Internship', 'Temporary'].map((name) => ({ id: name, name }));
+const REMOTE_STATES: Option[] = ['On site', 'Hybrid', 'Remote'].map((name) => ({ id: name, name }));
 /* How a visitor attends. The stored codes are what the event page and its
    structured data read. */
 const EVENT_TYPES: Option[] = [
@@ -1110,17 +1122,22 @@ function JobFields(p: any) {
       <Core {...p} summaryKey="summary" resource="jobs" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Department" value={p.values.department ?? ''} onChange={(value) => p.set('department', value)} helpKey="jobs.department" />
-        <Field label="Employment type" value={p.values.employmentType ?? ''} onChange={(value) => p.set('employmentType', value)} helpKey="jobs.employmentType" />
+        <Select label="Employment type" value={p.values.employmentType ?? ''} onChange={(value) => p.set('employmentType', value)} options={withLegacy(EMPLOYMENT_TYPES, p.values.employmentType ?? '')} helpKey="jobs.employmentType" blank="Not stated" />
         <Field label="Location (free text)" value={p.values.location ?? ''} onChange={(value) => p.set('location', value)} helpKey="jobs.location" />
         <Select label="City (optional, structured)" value={p.values.cityId ?? ''} onChange={(value) => p.set('cityId', value)} options={p.cities} help={commonFieldHelp.city} />
         <Select label="State (optional, structured)" value={p.values.stateId ?? ''} onChange={(value) => p.set('stateId', value)} options={p.states} help={commonFieldHelp.state} />
         <Select label="Country (optional, structured)" value={p.values.countryId ?? ''} onChange={(value) => p.set('countryId', value)} options={p.countries} help={commonFieldHelp.country} />
-        <Field label="Remote state" value={p.values.remoteStatus ?? ''} onChange={(value) => p.set('remoteStatus', value)} helpKey="jobs.remoteStatus" />
+        <Select label="Remote state" value={p.values.remoteStatus ?? ''} onChange={(value) => p.set('remoteStatus', value)} options={withLegacy(REMOTE_STATES, p.values.remoteStatus ?? '')} helpKey="jobs.remoteStatus" blank="Not stated" />
         <Field label="Published date" type="date" value={p.values.publishedDate ?? ''} onChange={(value) => p.set('publishedDate', value)} />
         <Field label="Expiry" type="date" value={p.values.expiryDate ?? ''} onChange={(value) => p.set('expiryDate', value)} />
-        <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} helpKey="jobs.applicationUrl" />
-        <Field label="Application email" value={p.values.applicationEmail ?? ''} onChange={(value) => p.set('applicationEmail', value)} helpKey="jobs.applicationEmail" />
+        <Field label="Application URL" value={p.values.applicationUrl ?? ''} onChange={(value) => p.set('applicationUrl', value)} error={p.errors.applicationUrl} helpKey="jobs.applicationUrl" />
+        <Field label="Application email" value={p.values.applicationEmail ?? ''} onChange={(value) => p.set('applicationEmail', value)} error={p.errors.applicationEmail} helpKey="jobs.applicationEmail" />
       </div>
+      {!p.values.applicationUrl?.trim() && !p.values.applicationEmail?.trim() ? (
+        <p role="note" className="rounded-xl border border-[#FEDF89] bg-[#FFFAEB] px-4 py-3 text-sm text-[#93370D]" data-testid="job-no-apply-warning">
+          No way to apply is set yet. You can still save and publish, but without an application URL or email the role’s page has no Apply button: it can only offer “Ask about this role”, which goes to the general contact form.
+        </p>
+      ) : null}
       <Field label="Description" textarea richText variableContext="job" value={p.values.description ?? ''} onChange={(value) => p.set('description', value)} helpKey="jobs.description" />
       <Field label="Responsibilities" textarea richText variableContext="job" value={p.values.responsibilities ?? ''} onChange={(value) => p.set('responsibilities', value)} />
       <Field label="Qualifications" textarea richText variableContext="job" value={p.values.qualifications ?? ''} onChange={(value) => p.set('qualifications', value)} />

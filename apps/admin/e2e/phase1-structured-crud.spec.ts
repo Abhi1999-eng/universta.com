@@ -275,9 +275,9 @@ test.describe.serial('Phase 1 structured Admin CRUD through the visible UI', () 
     await form.getByLabel('Title', { exact: true }).fill(jobTitle);
     await form.getByLabel('Slug', { exact: true }).fill(jobSlug);
     await form.getByLabel('Department', { exact: true }).fill('Fictional Careers');
-    await form.getByLabel('Employment type', { exact: true }).fill('FULL_TIME');
+    await form.getByLabel('Employment type', { exact: true }).selectOption('Full time');
     await form.getByLabel('Location (free text)', { exact: true }).fill('Local');
-    await form.getByLabel('Remote state', { exact: true }).fill('HYBRID');
+    await form.getByLabel('Remote state', { exact: true }).selectOption('Hybrid');
     await form.getByLabel('Expiry', { exact: true }).fill('2030-12-31');
     await form.getByLabel('Description', { exact: true }).fill('Fictional job description.');
     const edit = await saveAndOpenEdit(page, 'jobs', jobTitle);
