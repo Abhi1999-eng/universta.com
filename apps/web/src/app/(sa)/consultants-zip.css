@@ -29,3 +29,11 @@
 @media (min-width: 1000px) { .sa .consultgrid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 /* One card beside its heading, in the head's own column. */
 .sa .consultgrid--one { grid-template-columns: minmax(0, 1fr); margin-top: 18px; }
+
+/* A consultant's own image, where the record has one: a round logo beside
+   the name on its card and in its profile's hero. The zip draws no images,
+   so this is ours, kept small and quiet. */
+.sa .conslogo { flex: none; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--white); border: 1px solid var(--line); }
+.sa .conslogo--lg { width: 72px; height: 72px; }
+.sa .consultcard__id, .sa .consulthero__id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sa .consulthero__id { gap: 18px; }

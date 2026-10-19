@@ -3,6 +3,7 @@ import {
   activeConsultantFilters,
   canonicalConsultantFilters,
   consultantListHref,
+  consultantLogo,
   consultantOptions,
   countryConsultantsHref,
   filterConsultants,
@@ -302,5 +303,30 @@ describe('filterConsultants', () => {
       'Lindenhall Global Admissions',
       'Ashgrove Advisers',
     ]);
+  });
+});
+
+describe('a consultant\'s logo', () => {
+  it('is the featured image\'s own path or an absolute web address', () => {
+    expect(consultantLogo({ featuredMedia: { id: 'm1', publicUrl: '/media/lindenhall.png', altText: null, title: null } })).toBe(
+      '/media/lindenhall.png',
+    );
+    expect(consultantLogo({ featuredMedia: { publicUrl: 'https://cdn.example.test/logo.png' } })).toBe(
+      'https://cdn.example.test/logo.png',
+    );
+  });
+
+  it('is nothing when the record has no image, an API leaves it out, or the address is not one an image may load', () => {
+    expect(consultantLogo({ featuredMedia: null })).toBeNull();
+    expect(consultantLogo({})).toBeNull();
+    expect(consultantLogo(null)).toBeNull();
+    expect(consultantLogo({ featuredMedia: { publicUrl: '' } })).toBeNull();
+    expect(consultantLogo({ featuredMedia: { publicUrl: '//elsewhere.example/logo.png' } })).toBeNull();
+    expect(consultantLogo({ featuredMedia: { publicUrl: 'javascript:alert(1)' } })).toBeNull();
+  });
+
+  it('rides on the card row, and is null for a record without one', () => {
+    expect(toConsultantRow(record({ featuredMedia: { publicUrl: '/media/l.png' } }))?.logo).toBe('/media/l.png');
+    expect(toConsultantRow(record())?.logo).toBeNull();
   });
 });

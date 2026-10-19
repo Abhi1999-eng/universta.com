@@ -39,6 +39,9 @@ export type CountryConsultantRow = {
   languages: Array<{ code: string; name: string }>;
   /** Every destination the consultant lists. */
   destinations: Array<{ slug: string; name: string }>;
+  /** The consultant's own image, drawn as a round logo where a page asks
+   *  for it. Absent from an API that does not send it. */
+  logo?: string | null;
 };
 
 const text = (value: unknown): string | null =>
@@ -89,6 +92,18 @@ export function serviceSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+/**
+ * The address of a record's featured image, when it has one an <img> may
+ * load: the API's `/media/...` path, which this site serves, or an
+ * absolute web address. Anything else is no image.
+ */
+export function consultantLogo(record: unknown): string | null {
+  const media = (record as { featuredMedia?: unknown } | null)?.featuredMedia;
+  const url = text((media as { publicUrl?: unknown } | null | undefined)?.publicUrl);
+  if (!url) return null;
+  return /^\/(?!\/)/.test(url) || /^https?:\/\/[^/]/i.test(url) ? url : null;
 }
 
 /** One list-endpoint row, or null when it has no page to link to. */
@@ -142,6 +157,7 @@ export function toConsultantRow(record: unknown): CountryConsultantRow | null {
       }),
       (country) => country.slug,
     ),
+    logo: consultantLogo(row),
   };
 }
 

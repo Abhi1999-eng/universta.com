@@ -266,3 +266,16 @@ describe('a consultant profile\'s Related on Universta', () => {
     expect(render()).not.toContain('Related on Universta');
   });
 });
+
+describe('a consultant profile\'s logo', () => {
+  it('draws the consultant\'s image as a round logo beside the name in the hero', () => {
+    const html = render({ logo: '/media/silverbeck.png' });
+    expect(html).toContain('<div class="consulthero__id"><img class="conslogo conslogo--lg" src="/media/silverbeck.png" alt=""');
+    expect(html.indexOf('conslogo')).toBeLessThan(html.indexOf('<h1'));
+  });
+
+  it('draws nothing when there is none', () => {
+    expect(render()).not.toContain('conslogo');
+    expect(render({ logo: null })).not.toContain('<img');
+  });
+});

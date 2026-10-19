@@ -40,6 +40,7 @@ export function ConsultantCard({
   guides = [],
   guidance,
   compare = false,
+  logo = false,
 }: {
   consultant: CountryConsultantRow;
   /** The destination the page is about, named first among the badges. */
@@ -54,6 +55,10 @@ export function ConsultantCard({
   /** The design's "Compare" tick, feeding the comparison tray. The
    *  consultants pages ask for it; a subject's level page does not. */
   compare?: boolean;
+  /** The consultant's own image as a round logo beside the name, when the
+   *  record has one. The consultants pages ask for it; a level page does
+   *  not. */
+  logo?: boolean;
 }) {
   const href = `/study-abroad-consultants/${consultant.slug}`;
   const destinations = [
@@ -75,9 +80,19 @@ export function ConsultantCard({
         ) : null}
       </div>
 
-      <h3 className="consultcard__name">
-        <Link href={href}>{consultant.name}</Link>
-      </h3>
+      {logo && consultant.logo ? (
+        <div className="consultcard__id">
+          {/* eslint-disable-next-line @next/next/no-img-element -- the API's own media path, served as it is */}
+          <img className="conslogo" src={consultant.logo} alt="" width={44} height={44} loading="lazy" />
+          <h3 className="consultcard__name">
+            <Link href={href}>{consultant.name}</Link>
+          </h3>
+        </div>
+      ) : (
+        <h3 className="consultcard__name">
+          <Link href={href}>{consultant.name}</Link>
+        </h3>
+      )}
 
       {destinations.length ? (
         <div className="destbadges" aria-label="Destinations">
@@ -200,6 +215,7 @@ export function CountryConsultantIndex({
   guides = [],
   byDestination = false,
   compare = false,
+  logos = false,
 }: {
   rows: CountryConsultantRow[];
   /** The destination the page is about, or '' on the worldwide directory. */
@@ -213,6 +229,8 @@ export function CountryConsultantIndex({
   byDestination?: boolean;
   /** Each card's "Compare" tick and the comparison tray. */
   compare?: boolean;
+  /** Each card's round logo, where the consultant has an image. */
+  logos?: boolean;
 }) {
   const path = usePathname();
   const params = useSearchParams();
@@ -441,6 +459,7 @@ export function CountryConsultantIndex({
                     guides={guides}
                     guidance={guidance}
                     compare={compare}
+                    logo={logos}
                   />
                 ))}
               </div>

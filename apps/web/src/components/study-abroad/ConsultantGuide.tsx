@@ -37,6 +37,8 @@ export type ConsultantGuideProps = {
     verified: boolean;
     verifiedAt: string | null;
     sourceReference: string | null;
+    /** The consultant's own image, drawn as a round logo in the hero. */
+    logo?: string | null;
   };
   countries: Array<{ name: string; slug: string }>;
   services: string[];
@@ -109,6 +111,7 @@ export function ConsultantGuide({
       guides={[...guides]}
       guidance={counsellingHref({ source: 'general', from: self })}
       compare
+      logo
     />
   ));
 
@@ -131,7 +134,15 @@ export function ConsultantGuide({
                 )}
                 <span className="badge badge--neutral">Independent consultant</span>
               </div>
-              <h1 className="hero__h1">{consultant.name}</h1>
+              {consultant.logo ? (
+                <div className="consulthero__id">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- the API's own media path, served as it is */}
+                  <img className="conslogo conslogo--lg" src={consultant.logo} alt="" width={72} height={72} />
+                  <h1 className="hero__h1">{consultant.name}</h1>
+                </div>
+              ) : (
+                <h1 className="hero__h1">{consultant.name}</h1>
+              )}
               {consultant.shortDescription ? <p className="hero__sub">{consultant.shortDescription}</p> : null}
               {countries.length ? (
                 <div className="consulthero__row">

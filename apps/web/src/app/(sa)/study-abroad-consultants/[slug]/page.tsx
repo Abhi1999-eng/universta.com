@@ -4,7 +4,13 @@ import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { ConsultantGuide } from '@/components/study-abroad/ConsultantGuide';
 import { consultantNeighbours, consultantVerification } from '@/lib/consultant-profile';
 import { getCounsellingOptions } from '@/lib/counselling';
-import { liveLocationLinks, nameKey, toConsultantRow, toConsultantRows } from '@/lib/country-consultant-list';
+import {
+  consultantLogo,
+  liveLocationLinks,
+  nameKey,
+  toConsultantRow,
+  toConsultantRows,
+} from '@/lib/country-consultant-list';
 import { phaseDetail, phaseListAll, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
 import { getDestinations } from '@/lib/study-abroad';
@@ -83,6 +89,7 @@ export default async function ConsultantPage({ params }: Props) {
         websiteUrl: typeof record.websiteUrl === 'string' ? record.websiteUrl : null,
         ...consultantVerification(record.verificationStatus, record.verifiedAt),
         sourceReference: typeof record.sourceReference === 'string' ? record.sourceReference : null,
+        logo: consultantLogo(record),
       }}
       countries={list(record.countries, 'country')
         .filter(({ nested }) => nested?.slug)

@@ -93,3 +93,23 @@ describe('"Get guidance" on a consultant card', () => {
     expect(hrefs(html)).toEqual(['/counselling?source=general']);
   });
 });
+
+describe('a consultant card\'s logo', () => {
+  const [withLogo] = toConsultantRows([
+    { id: 'c3', name: 'Logo Advisers', slug: 'logo', featuredMedia: { id: 'm', publicUrl: '/media/logo.png', altText: null, title: null } },
+  ]);
+
+  it('is drawn beside the name where the page asks for it and the record has an image', () => {
+    const html = renderToStaticMarkup(<ConsultantCard consultant={withLogo!} countrySlug="" logo />);
+    expect(html).toContain('<div class="consultcard__id"><img class="conslogo" src="/media/logo.png" alt=""');
+    const index = renderToStaticMarkup(
+      <CountryConsultantIndex rows={[withLogo!, ...rows]} countrySlug="" where="any destination" byDestination logos />,
+    );
+    expect(index.match(/class="conslogo"/g)).toHaveLength(1);
+  });
+
+  it('is never drawn where the page does not ask, as on a level page, nor for a record without one', () => {
+    expect(renderToStaticMarkup(<ConsultantCard consultant={withLogo!} countrySlug="" />)).not.toContain('<img');
+    expect(renderToStaticMarkup(<ConsultantCard consultant={rows[0]!} countrySlug="" logo />)).not.toContain('<img');
+  });
+});

@@ -245,6 +245,7 @@ export default async function Page({ params }: Props) {
           where={where}
           guides={guides}
           compare
+          logos
         />
       )}
 

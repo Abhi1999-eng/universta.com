@@ -108,7 +108,7 @@ export default async function ConsultantLocationPage({ params }: Props) {
         </div>
       </section>
 
-      <CountryConsultantIndex rows={rows} countrySlug="" where={placeLabel} guides={guides} byDestination compare />
+      <CountryConsultantIndex rows={rows} countrySlug="" where={placeLabel} guides={guides} byDestination compare logos />
 
       {countrySlug && countryName ? (
         <ConnectBand
