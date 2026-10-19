@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import type { DirectoryRow } from '@/components/study-abroad/RecordDirectory';
 import { JobGuide } from '@/components/study-abroad/RecordGuide';
+import { jobPostingJsonLd } from '@/lib/job-json-ld';
 import { jsonLdString } from '@/lib/json-ld';
 import { phaseDetail, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
@@ -33,22 +34,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return jobClosed(row.expiryDate) ? { ...titled, robots: { index: false, follow: true } } : titled;
 }
 
-function jobPostingJsonLd(row: AnyRecord) {
-  const datePosted = row.publishedDate ?? row.createdAt;
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'JobPosting',
-    title: row.title,
-    description: row.description ?? row.summary ?? row.title,
-    datePosted,
-    validThrough: row.expiryDate ?? undefined,
-    employmentType: row.employmentType ?? undefined,
-    hiringOrganization: { '@type': 'Organization', name: 'Universta' },
-    jobLocation: row.location ? { '@type': 'Place', address: row.location } : undefined,
-    jobLocationType: row.remoteStatus === 'REMOTE' ? 'TELECOMMUTE' : undefined,
-  };
-}
-
 export default async function JobPage({ params }: Props) {
   const { slug } = await params;
   const row = await job(slug);
@@ -64,7 +49,7 @@ export default async function JobPage({ params }: Props) {
       <JobGuide row={record} now={now} />
       {/* A closed role is no longer a job posting. */}
       {jobClosed(record.expiryDate, now) ? null : (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jobPostingJsonLd(row)) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jobPostingJsonLd(record)) }} />
       )}
     </>
   );
