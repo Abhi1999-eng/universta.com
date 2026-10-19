@@ -166,9 +166,9 @@ export function JobCard({ row, now = new Date().getTime() }: { row: DirectoryRow
       {where || closes || posted ? (
         <span className="h-card__m jobcard__when">
           {[
-            where,
+            where ? <span key="where">{where}</span> : null,
             closes ? (
-              <span key="closes">
+              <span className="jobcard__date" key="closes">
                 Closes {closes}
                 {soon ? (
                   <>
@@ -178,7 +178,11 @@ export function JobCard({ row, now = new Date().getTime() }: { row: DirectoryRow
                 ) : null}
               </span>
             ) : null,
-            posted ? `Posted ${posted}` : null,
+            posted ? (
+              <span className="jobcard__date" key="posted">
+                Posted {posted}
+              </span>
+            ) : null,
           ]
             .filter(Boolean)
             .map((part, index) => (index ? [' · ', part] : part))}

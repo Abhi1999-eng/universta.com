@@ -109,22 +109,28 @@ function Hero({
       <div className="btn-row" style={{ marginTop: 22 }}>
         {actions}
       </div>
-      {media ? <figure className="recordhero__media">{media}</figure> : null}
     </>
   );
+  const picture = media ? <figure className="recordhero__media">{media}</figure> : null;
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd(trail, self)) }} />
       <section className="hero hero--compact">
         <div className="wrap">
           <Crumbs trail={trail} />
+          {/* The picture follows the date card on a phone, and sits under
+              the title beside it on a wide screen. */}
           {aside ? (
             <div className="coursehero__grid recordhero">
               <div>{lead}</div>
               <div className="recordhero__aside">{aside}</div>
+              {picture}
             </div>
           ) : (
-            <div className="hero__lead">{lead}</div>
+            <div className="hero__lead">
+              {lead}
+              {picture}
+            </div>
           )}
           <Snapshot cells={cells} />
         </div>
@@ -141,20 +147,21 @@ const counselling = (self: string) => `/counselling?source=general&from=${encode
 /** "Role: <title>", for the contact form's Subject, so the enquiry names the role. */
 export const roleEnquiryHref = (title: string) => `/contact?subject=${encodeURIComponent(`Role: ${title}`)}`;
 
-/** An email address that may break after its "@", and nowhere inside a word. */
+/** An email address that may break after its "@" and the dots of its
+ *  domain, and nowhere inside a word. */
 function Mail({ address }: { address: string }) {
   const at = address.indexOf('@');
+  const domain = at > 0 ? address.slice(at + 1).split(/(?<=\.)/) : [];
   return (
     <a className="unisnap__mail" href={`mailto:${address}`}>
-      {at > 0 ? (
-        <>
-          {address.slice(0, at + 1)}
-          <wbr />
-          {address.slice(at + 1)}
-        </>
-      ) : (
-        address
-      )}
+      {at > 0
+        ? [address.slice(0, at + 1), ...domain].map((part, index) => (
+            <span key={index}>
+              {index ? <wbr /> : null}
+              {part}
+            </span>
+          ))
+        : address}
     </a>
   );
 }

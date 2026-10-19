@@ -245,9 +245,16 @@ describe('JobGuide', () => {
     expect(cells(doc).Working?.querySelector('b')?.textContent).toBe('On site');
   });
 
-  it('lets the email break after its @ (JOB-C7)', () => {
+  it('lets the email break after its @ and its dots (JOB-C7)', () => {
     const mail = cells(page())['Apply by email']?.querySelector('a.unisnap__mail');
-    expect(mail?.innerHTML).toBe('hiring-team@<wbr>universta.example.test');
+    expect(mail?.textContent).toBe('hiring-team@universta.example.test');
+    /* A break after the @ and after each dot of the domain, none inside a word. */
+    expect([...(mail?.querySelectorAll('span') ?? [])].map((part) => part.innerHTML)).toEqual([
+      'hiring-team@',
+      '<wbr>universta.',
+      '<wbr>example.',
+      '<wbr>test',
+    ]);
     expect(mail?.getAttribute('href')).toBe('mailto:hiring-team@universta.example.test');
   });
 

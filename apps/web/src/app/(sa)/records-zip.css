@@ -37,7 +37,13 @@
 .sa .recordhero > div:first-child { min-width: 0; }
 .sa .recordhero .hero__sub { max-width: 60ch; }
 .sa .recordhero__aside { min-width: 0; }
-.sa .recordhero__media { margin: 26px 0 0; max-width: 760px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; background: var(--surface-sunken); }
+.sa .recordhero__media { margin: 0; max-width: 760px; aspect-ratio: 21 / 9; overflow: hidden; border-radius: 12px; background: var(--surface-sunken); }
+.sa .hero__lead .recordhero__media { margin-top: 26px; }
+@media (min-width: 1000px) {
+  .sa .recordhero:has(> .recordhero__media) > div:first-child { grid-column: 1; grid-row: 1; }
+  .sa .recordhero:has(> .recordhero__media) > .recordhero__aside { grid-column: 2; grid-row: 1 / span 2; }
+  .sa .recordhero > .recordhero__media { grid-column: 1; grid-row: 2; }
+}
 .sa .recordhero__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sa .deadlinecard__row > span:last-child { text-align: right; }
 .sa .deadlinecard__row .badge { flex: none; }
@@ -60,7 +66,7 @@
 .sa .eventcard:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(7, 20, 38, 0.1); }
 .sa .eventcard a:not(.eventcard__link) { position: relative; z-index: 1; }
 .sa .eventcard:hover .schcard__name a { color: var(--accent); }
-.sa .eventcard__media { display: block; margin: -18px -20px 4px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px 8px 0 0; background: var(--surface-sunken); }
+.sa .eventcard__media { display: block; margin: -18px -20px 4px; aspect-ratio: 2 / 1; overflow: hidden; border-radius: 8px 8px 0 0; background: var(--surface-sunken); }
 .sa .eventcard__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sa .eventcard .schcard__foot { flex-wrap: wrap; justify-content: flex-start; }
 .sa .eventplace { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
@@ -94,7 +100,7 @@
 .sa .eventdir__past .h-head { margin-bottom: 18px; }
 
 /* Speakers: one card per name, across the band. */
-.sa .speakers { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+.sa .speakers { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
 .sa .speakers__card { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: var(--white); border: 1px solid var(--line); border-radius: 8px; }
 .sa .speakers__card strong { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.015em; }
 /* On the dark card a status badge needs its own ground, as the zip's has. */
@@ -107,8 +113,12 @@
    soon" beside the closing date. */
 .sa .jobcard .jobcard__type { align-self: flex-start; margin-bottom: 2px; }
 .sa .jobcard__when .badge { vertical-align: 1px; }
+/* Each part of the meta line ("Closes 1 Jan 2027") wraps whole. */
+.sa .jobcard__date { white-space: nowrap; }
 
-/* An email in the facts strip breaks after its "@", never inside a word. */
+/* An email in the facts strip breaks after its "@" or a dot, never inside
+   a word, and its cell may narrow to the strip rather than push past it. */
+.sa .unisnap--fit > .unisnap__cell { min-width: 0; }
 .sa .unisnap__cell b .unisnap__mail { overflow-wrap: break-word; word-break: normal; }
 
 /* On a phone the facts strip is two columns; an odd last cell takes the
