@@ -94,7 +94,7 @@ const adminSearchFields: Record<Resource, string[]> = {
   jobs: ['title', 'slug'],
   events: ['title', 'slug'],
   'success-stories': ['title', 'slug'],
-  testimonials: ['quote'],
+  testimonials: ['quote', 'attribution'],
   pages: ['title', 'slug'],
   'navigation-menus': ['name'],
   'contact-inquiries': ['fullName', 'email', 'inquiryNumber'],
@@ -1222,15 +1222,41 @@ export class ExpandedService {
         meta: meta(page, limit, Number(total)),
       };
     }
+    if (resource === 'testimonials') {
+      /* A testimonial is filed under a country, a university and a course,
+         and the card names them -- so they come with it, judged live by the
+         same rule as a story's, and so does the student's photo. */
+      const where = {
+        ...publishedWhereScheduled(now),
+        ...(q ? { OR: [{ quote: q }, { attribution: q }] } : {}),
+      };
+      const [rows, total] = await Promise.all([
+        this.prisma.testimonial.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+          include: this.storyRelations(),
+        }),
+        this.prisma.testimonial.count({ where }),
+      ]);
+      return {
+        data: await this.withMedia(
+          rows.map((row) => this.liveRelations(row, now)),
+          'imageMediaId',
+          'imageMedia',
+        ),
+        meta: meta(page, limit, Number(total)),
+      };
+    }
     // Prisma's generated delegates are selected by a validated resource key.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const delegate = this.prisma[
       resourceModel[resource] as keyof PrismaService
     ] as any;
-    const titleField = resource === 'testimonials' ? 'quote' : 'title';
     const where: any = {
       ...publishedWhereScheduled(now),
-      ...(q ? { [titleField]: q } : {}),
+      ...(q ? { title: q } : {}),
     };
     const [data, total] = await Promise.all([
       delegate.findMany({
@@ -1251,6 +1277,10 @@ export class ExpandedService {
     >,
     slug: string,
   ) {
+    /* A testimonial has no page of its own, and no slug to look one up by:
+       the generic lookup below asked the database for a column it does not
+       have and answered 500. */
+    if (resource === 'testimonials') return this.notFound(resource);
     const now = new Date();
     if (resource === 'universities') return this.universityDetail(slug);
     if (resource === 'scholarships') {
@@ -1421,9 +1451,29 @@ export class ExpandedService {
   private async withSuccessStoryMedia<
     T extends { featuredMediaId: string | null },
   >(rows: T[]) {
-    const mediaIds = rows
-      .map((row) => row.featuredMediaId)
-      .filter((id): id is string => Boolean(id));
+    return this.withMedia(rows, 'featuredMediaId', 'featuredMedia');
+  }
+
+  /**
+   * Several records keep only the id of the image an editor picked --
+   * stories, events, consultants and testimonials have no relation to
+   * MediaAsset -- so the image never reached the website. This resolves the
+   * id under `idKey` into the small public shape under `outKey`, reading
+   * only active, undeleted assets, in one query for the whole page of rows.
+   * A missing or archived asset reads as null rather than a broken image.
+   */
+  private async withMedia<
+    T extends Record<string, unknown>,
+    K extends string,
+    O extends string,
+  >(rows: T[], idKey: K, outKey: O) {
+    const idOf = (row: T): string | null => {
+      const value: unknown = row[idKey];
+      return typeof value === 'string' && value ? value : null;
+    };
+    const mediaIds = [
+      ...new Set(rows.map(idOf).filter((id): id is string => Boolean(id))),
+    ];
     const media = mediaIds.length
       ? await this.prisma.mediaAsset.findMany({
           where: { id: { in: mediaIds }, status: 'ACTIVE', deletedAt: null },
@@ -1431,12 +1481,12 @@ export class ExpandedService {
         })
       : [];
     const byId = new Map(media.map((asset) => [asset.id, asset]));
-    return rows.map((row) => ({
-      ...row,
-      featuredMedia: row.featuredMediaId
-        ? (byId.get(row.featuredMediaId) ?? null)
-        : null,
-    }));
+    type Media = (typeof media)[number];
+    return rows.map((row): T & Record<O, Media | null> => {
+      const id = idOf(row);
+      const resolved = { [outKey]: id ? (byId.get(id) ?? null) : null };
+      return Object.assign({}, row, resolved as Record<O, Media | null>);
+    });
   }
 
   private async universityDetail(slug: string) {
@@ -3830,6 +3880,10 @@ export class ExpandedService {
         'displayOrder',
       ]),
       testimonials: new Set([
+        /* The destination whose guide shows this quote under "Student
+           voices". Without it the section could only be filled from the
+           database. */
+        'countryId',
         'universityId',
         'offeringId',
         'quote',

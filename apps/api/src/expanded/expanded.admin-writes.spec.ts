@@ -85,6 +85,17 @@ describe('ExpandedService admin writes', () => {
     );
   });
 
+  /* T-C1. The country guide's "Student voices" could only be filled from
+     the database: the API dropped countryId. */
+  it('stores the country a testimonial is filed under', async () => {
+    const { svc, created } = service();
+    await svc.adminCreate('testimonials', {
+      quote: 'A fictional demonstration quote.',
+      countryId: 'country-1',
+    });
+    expect(created[0].data).toMatchObject({ countryId: 'country-1' });
+  });
+
   /* SS-C1. A story saved without its journey reached the database, which
      cannot hold an empty one, and the editor saw "Internal server error". */
   describe('a success story’s journey', () => {
