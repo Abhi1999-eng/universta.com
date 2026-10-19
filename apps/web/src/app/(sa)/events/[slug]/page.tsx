@@ -4,6 +4,7 @@ import { type AnyRecord } from '@/components/phase1/PhaseOneViews';
 import { moreEvents } from '@/components/study-abroad/EventCards';
 import type { DirectoryRow } from '@/components/study-abroad/RecordDirectory';
 import { EventGuide } from '@/components/study-abroad/RecordGuide';
+import { eventJsonLd } from '@/lib/event-json-ld';
 import { jsonLdString } from '@/lib/json-ld';
 import { phaseDetail, phaseListAll, phaseResolveRedirect } from '@/lib/phase1';
 import { phaseOneMetadata } from '@/lib/phase1-metadata';
@@ -31,30 +32,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { ...metadata, title: { absolute: String(metadata.title) } };
 }
 
-function eventJsonLd(row: AnyRecord) {
-  const isOnline = row.eventType === 'ONLINE';
-  const isHybrid = row.eventType === 'HYBRID';
-  const venue = row.venue ? { '@type': 'Place', name: row.venue } : undefined;
-  const virtual = row.onlineUrl ? { '@type': 'VirtualLocation', url: row.onlineUrl } : undefined;
-  const location = isHybrid ? [venue, virtual].filter(Boolean) : isOnline ? virtual : venue;
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Event',
-    name: row.title,
-    description: row.description ?? row.summary ?? row.title,
-    startDate: row.startsAt,
-    endDate: row.endsAt ?? undefined,
-    eventAttendanceMode: isOnline
-      ? 'https://schema.org/OnlineEventAttendanceMode'
-      : isHybrid
-        ? 'https://schema.org/MixedEventAttendanceMode'
-        : 'https://schema.org/OfflineEventAttendanceMode',
-    eventStatus: 'https://schema.org/EventScheduled',
-    location,
-    organizer: { '@type': 'Organization', name: 'Universta' },
-  };
-}
-
 export default async function EventPage({ params }: Props) {
   const { slug } = await params;
   /* The event, every published one for "More upcoming events", and the
@@ -78,7 +55,7 @@ export default async function EventPage({ params }: Props) {
   return (
     <>
       <EventGuide row={record} more={moreEvents(record, all, now, 4)} guides={guides} now={now} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(eventJsonLd(row)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(eventJsonLd(record)) }} />
     </>
   );
 }
