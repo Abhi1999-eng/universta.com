@@ -55,9 +55,8 @@ export function CountryConsultants({
             </h2>
             <p className="consultcta__d">
               {presence.total === 1
-                ? `One consultant on Universta supports students planning to study in ${where}.`
-                : `${presence.total} consultants on Universta support students planning to study in ${where}.`}{' '}
-              Compare them, then request guidance through Universta.
+                ? `One consultant on Universta supports students planning to study in ${where}. View their profile, then request guidance through Universta.`
+                : `${presence.total} consultants on Universta support students planning to study in ${where}. Compare them, then request guidance through Universta.`}
             </p>
             {presence.cities.length ? (
               <p className="citychips">
