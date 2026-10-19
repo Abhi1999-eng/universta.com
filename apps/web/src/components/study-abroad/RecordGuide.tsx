@@ -5,8 +5,11 @@ import { jsonLdString } from '@/lib/json-ld';
 import { breadcrumbJsonLd, type Crumb } from '@/lib/university-json-ld';
 import { Crumbs } from './Crumbs';
 import { ConnectBand } from './DiscoveryBands';
-import { day, facts, humanise, name, plain, text, type DirectoryRow } from './RecordDirectory';
+import { day, facts, humanise, name, plain, StoryCard, text, type DirectoryRow } from './RecordDirectory';
+import { QuoteByline } from './QuoteCard';
 import { SectionHead } from './SectionHead';
+import { plainText } from '@/lib/record-text';
+import { programmePath } from '@/lib/success-story';
 import { resolveContentVariables } from '../../../../../packages/content-variables';
 
 /**
@@ -242,30 +245,44 @@ export function EventGuide({ row }: { row: DirectoryRow }) {
   );
 }
 
-export function StoryGuide({ row }: { row: DirectoryRow }) {
+export function StoryGuide({ row, more = [] }: { row: DirectoryRow; more?: DirectoryRow[] }) {
   const self = `/success-stories/${encodeURIComponent(String(row.slug ?? row.id))}`;
   const title = text(row.title) ?? 'Success story';
   const trail: Crumb[] = [{ label: 'Home', href: '/' }, { label: 'Success stories', href: '/success-stories' }, { label: title }];
   const country = row.country as { name?: unknown; slug?: unknown } | null | undefined;
   const university = row.university as { name?: unknown; slug?: unknown } | null | undefined;
   const offering = row.offering as
-    | { name?: unknown; slug?: unknown; university?: { slug?: unknown } | null; genericCourse?: { name?: unknown; slug?: unknown } | null }
+    | {
+        name?: unknown;
+        slug?: unknown;
+        university?: { slug?: unknown; country?: { slug?: unknown } | null } | null;
+        genericCourse?: { name?: unknown; slug?: unknown } | null;
+      }
     | null
     | undefined;
   const media = row.featuredMedia as { publicUrl?: unknown; altText?: unknown; title?: unknown } | null | undefined;
   const programme = text(offering?.name) ?? text(offering?.genericCourse?.name);
-  const programmeHref =
-    text(offering?.slug) && text(offering?.university?.slug)
-      ? `/universities/${encodeURIComponent(String(offering!.university!.slug))}/courses/${encodeURIComponent(String(offering!.slug))}`
-      : text(offering?.genericCourse?.slug)
-        ? `/courses/${encodeURIComponent(String(offering!.genericCourse!.slug))}`
-        : null;
+  const programmeHref = programmePath({
+    offering: offering
+      ? {
+          slug: text(offering.slug),
+          university: offering.university
+            ? { slug: text(offering.university.slug), country: { slug: text(offering.university.country?.slug) } }
+            : null,
+          genericCourse: { slug: text(offering.genericCourse?.slug) },
+        }
+      : null,
+  });
   const related: Array<{ label: string; value: string; href: string | null }> = [
     text(country?.name) ? { label: 'Study destination', value: String(country!.name), href: text(country?.slug) ? `/study-abroad/${encodeURIComponent(String(country!.slug))}` : null } : null,
     text(university?.name) ? { label: 'University', value: String(university!.name), href: text(university?.slug) ? `/universities/${encodeURIComponent(String(university!.slug))}` : null } : null,
     programme ? { label: 'Programme', value: programme, href: programmeHref } : null,
   ].filter((entry): entry is { label: string; value: string; href: string | null } => Boolean(entry));
-  const journey = text(row.journey) ? resolveContentVariables('successStory', String(row.journey), row) : null;
+  const resolved = text(row.journey) ? resolveContentVariables('successStory', String(row.journey), row) : null;
+  /* An emptied editor saves "<p><br></p>": that is a story with no text, not
+     an empty "How it went" band. */
+  const journey = resolved && plainText(resolved) ? resolved : null;
+  const attribution = text(row.attribution);
   return (
     <>
       <Hero
@@ -273,7 +290,7 @@ export function StoryGuide({ row }: { row: DirectoryRow }) {
         self={self}
         eyebrow={facts('Success story', text(country?.name), text(university?.name)) || 'Success story'}
         title={title}
-        sub={text(row.attribution)}
+        sub={attribution}
         note={text(row.attributionNote)}
         actions={
           <>
@@ -290,38 +307,88 @@ export function StoryGuide({ row }: { row: DirectoryRow }) {
         }
         cells={[]}
       />
+      {/* The zip's hub article: the story in a reading column, and beside it,
+          held in view as the reader scrolls, who told it and a way to plan
+          the same move. On a phone the card follows the story. */}
       <section className="sec sec--white" id="journey">
-        <div className="wrap">
-          <SectionHead eyebrow="The journey" title="How it went" />
-          {text(media?.publicUrl) ? (
-            <figure className="h-figure" style={{ marginBottom: 24 }}>
-              <img src={String(media!.publicUrl)} alt={text(media?.altText) ?? text(media?.title) ?? title} />
-            </figure>
-          ) : null}
-          {journey ? <RichText value={journey} className="h-prose" /> : <p className="examtests__note">The story has been published without its text.</p>}
-          {related.length ? (
-            <div className="h-grid h-grid--4" style={{ marginTop: 30 }}>
-              {related.map((entry) =>
-                entry.href ? (
-                  <Link className="h-card" href={entry.href} key={entry.label}>
-                    <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
-                      {entry.label}
-                    </span>
-                    <strong className="h-card__t">{entry.value}</strong>
-                  </Link>
-                ) : (
-                  <div className="h-card" key={entry.label}>
-                    <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
-                      {entry.label}
-                    </span>
-                    <strong className="h-card__t">{entry.value}</strong>
-                  </div>
-                ),
-              )}
+        <div className="wrap h-article">
+          <div className="h-article__main">
+            <div className="h-head">
+              <p className="eyebrow">The journey</p>
+              <h2 className="sec-title">How it went</h2>
             </div>
-          ) : null}
+            {text(media?.publicUrl) ? (
+              <figure className="h-figure" style={{ marginBottom: 24 }}>
+                <img src={String(media!.publicUrl)} alt={text(media?.altText) ?? text(media?.title) ?? title} />
+              </figure>
+            ) : null}
+            {journey ? (
+              <>
+                <RichText value={journey} className="h-prose" />
+                <p className="h-note">
+                  This is one student’s own account. Entry requirements, costs and visa timelines change from year to
+                  year, so check the details on the university’s official website before you plan around them.
+                </p>
+              </>
+            ) : (
+              <p className="examtests__note">The story has been published without its text.</p>
+            )}
+            {related.length ? (
+              <div className="h-grid h-grid--4" style={{ marginTop: 30 }}>
+                {related.map((entry) =>
+                  entry.href ? (
+                    <Link className="h-card" href={entry.href} key={entry.label}>
+                      <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
+                        {entry.label}
+                      </span>
+                      <strong className="h-card__t">{entry.value}</strong>
+                    </Link>
+                  ) : (
+                    <div className="h-card" key={entry.label}>
+                      <span className="h-card__m" style={{ marginTop: 0, paddingTop: 0 }}>
+                        {entry.label}
+                      </span>
+                      <strong className="h-card__t">{entry.value}</strong>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : null}
+          </div>
+          <aside className="h-aside" aria-label="About this story">
+            <div className="h-card">
+              {attribution ? <QuoteByline as="div" name={attribution} note={text(row.attributionNote)} /> : null}
+              <strong className="h-card__t">Planning something similar?</strong>
+              <span className="h-card__d">
+                A Universta counsellor can talk through the destination, the application and the timeline with you.
+              </span>
+              <Link className="btn btn--sm" href={counselling(self)}>
+                Plan a similar journey
+              </Link>
+            </div>
+          </aside>
         </div>
       </section>
+      {more.length ? (
+        <section className="sec sec--paper sec--tight h-sec" id="more-stories">
+          <div className="wrap">
+            <div className="h-head">
+              <p className="eyebrow eyebrow--plain">Student journeys</p>
+              <h2 className="sec-title">More success stories</h2>
+            </div>
+            <div className="h-grid h-grid--4">
+              {more.map((story) => (
+                <StoryCard row={story} key={story.id} />
+              ))}
+            </div>
+            <p className="h-more">
+              <Link className="linkcta" href="/success-stories">
+                All success stories <span className="linkcta__arrow" aria-hidden="true">&rarr;</span>
+              </Link>
+            </p>
+          </div>
+        </section>
+      ) : null}
       <ConnectBand
         actions={[
           { href: '/courses', label: 'Explore courses' },
