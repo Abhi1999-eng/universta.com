@@ -36,7 +36,7 @@ import { PlanBand } from './PlanBand';
 import { allProgrammes, ProgrammeSample } from './ProgrammeSample';
 import { FUNDING_CAVEAT, ScholarshipCards } from './ScholarshipCards';
 import { SectionHead } from './SectionHead';
-import { FaqList, SectionBody } from './SpecializationContent';
+import { FaqList, WideSectionBody } from './SpecializationContent';
 
 /** A sibling as the record now sends it: enough to fill a card. Older
  *  records send the name alone, and the card shows what there is. */
@@ -283,16 +283,19 @@ export function SpecializationGuide({
       </section>
 
       {hasOverview ? (
-        <section className={band('about')} id="about">
+        /* Heading on the left, the overview beside it: under the heading
+           it left the right half of the page empty. */
+        <section className={`${band('about')} levelband`} id="about">
           <div className="wrap">
             <SectionHead
               n={n('about')}
               eyebrow="Overview"
               title={`About ${specialization.name}`}
-            />
-            <div className="prose">
-              <RichText value={overview!} />
-            </div>
+            >
+              <div className="levelband__body prose">
+                <RichText value={overview!} />
+              </div>
+            </SectionHead>
           </div>
         </section>
       ) : null}
@@ -300,15 +303,18 @@ export function SpecializationGuide({
       {sections.map((section) => {
         const id = `content-${section.sectionKey}`;
         return (
-          <section className={band(id)} id={id} key={section.id}>
+          <section className={`${band(id)} levelband`} id={id} key={section.id}>
             <div className="wrap">
               <SectionHead
                 n={n(id)}
                 eyebrow={SECTION_EYEBROWS[section.sectionKey] ?? 'About'}
                 title={section.heading ?? sectionTitle(section.sectionKey)}
                 lead={section.subheading}
-              />
-              <SectionBody section={section} />
+              >
+                <div className="levelband__body">
+                  <WideSectionBody section={section} />
+                </div>
+              </SectionHead>
             </div>
           </section>
         );

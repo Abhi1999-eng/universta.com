@@ -25,6 +25,19 @@ export function sectionLines(section: Pick<ContentSection, 'sectionType' | 'body
   return strings(body.paragraphs);
 }
 
+/** "<p><strong>Name</strong>: line</p>" paragraphs, read as named cards; null
+ *  unless every paragraph reads that way and there are at least two -- a
+ *  destinations section written country by country. */
+export function namedParagraphs(lines: string[]): Array<{ name: string; line: string }> | null {
+  const cards = lines.map((line) => {
+    const match = line
+      .trim()
+      .match(/^<p>\s*<(strong|b)>([^<:]{2,60}?):?<\/\1>\s*[:\u2013\u2014-]?\s*([\s\S]+?)\s*<\/p>$/);
+    return match && match[3].replace(/<[^>]+>/g, '').trim() ? { name: match[2].trim(), line: match[3].trim() } : null;
+  });
+  return cards.length >= 2 && cards.every(Boolean) ? (cards as Array<{ name: string; line: string }>) : null;
+}
+
 /** The small label over each kind of section. */
 export const SECTION_EYEBROWS: Record<string, string> = {
   'what-you-study': 'What you study',
