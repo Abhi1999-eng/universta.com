@@ -3829,6 +3829,9 @@
 .sa .levelband.sec--sparse .sec-head--split .sec-head__aside{ position: static; }
 .sa .levelband .specchips{ margin-top: 0; }
 .sa .levelband .h-grid{ grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+/* A band with a lead line over its body (a specialization's sections): the body starts a step below the lead. */
+.sa .levelband .sec-lead + .levelband__body{ margin-top: 22px; }
+.sa .levelband__body > .prose{ max-width: none; }
 /* Careers and what you may study: the list numbered in columns, as the
    design's careers list. */
 .sa .levellist .prose{ max-width: none; }
@@ -3845,6 +3848,8 @@
 .sa .levellist--names .rich-text > :is(ul, ol) > li{ font-size: 15.5px; padding-left: 0; text-indent: 0; }
 .sa .levellist--names .rich-text > :is(ul, ol) > li::before{ content: none; }
 @media (min-width: 600px){ .sa .levellist--names .rich-text > :is(ul, ol){ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Steps are sentences, not names: the list's numbering and rules, in body type. */
+.sa .levellist--steps .rich-text > :is(ul, ol) > li{ font-family: var(--font-body, inherit); font-weight: 400; font-size: 15.5px; letter-spacing: 0; line-height: 1.55; }
 /* Industries: each "Name: line" a card. */
 .sa .levelsectors{ list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
 .sa .levelsector{ padding: 18px 20px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); }
