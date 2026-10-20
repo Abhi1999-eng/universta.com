@@ -2454,6 +2454,19 @@
   }
 }
 .sa .coursecard__uni > span{ min-width: 0; }
+/* A card is often narrower than the screen suggests -- two up beside the
+   filters, the four facts squeezed until "September" broke into "Sept /
+   embe / r". The card measures itself: below about 470px the facts sit two
+   by two, the divider only on the right-hand one, and no word is split. */
+.sa .coursecard{ container-type: inline-size; }
+@container (max-width: 470px){
+  .sa .coursecard__facts{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 0; }
+  .sa .coursecard__facts div:nth-child(odd){ padding-left: 0; border-left: 0; }
+  .sa .coursecard__facts div:nth-child(even){ padding-left: 14px; border-left: 1px solid var(--line-soft); }
+  .sa .coursecard__facts dt,
+  .sa .coursecard__facts dd{ overflow-wrap: break-word; }
+}
+
 .sa .coursecard__uni b,
 .sa .coursecard__uni em{ overflow-wrap: anywhere; }
 
